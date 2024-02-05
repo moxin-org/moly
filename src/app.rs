@@ -9,7 +9,7 @@ live_design! {
     App = {{App}} {
         ui: <Window> {
             window: {inner_size: vec2(1280, 1000)},
-            pass: {clear_color: #2A}
+            pass: {clear_color: #fff}
 
             body = {
                 width: Fill,
@@ -34,6 +34,7 @@ impl LiveRegister for App {
         makepad_widgets::live_design(cx);
 
         crate::shared::styles::live_design(cx);
+        crate::shared::widgets::live_design(cx);
 
         crate::landing::model_card::live_design(cx);
         crate::landing::model_list::live_design(cx);

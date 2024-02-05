@@ -18,9 +18,9 @@ live_design! {
         <Label> {
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 20},
-                color: #f00
+                color: #000
             }
-            text: "LLM Studio"
+            text: "Moxin"
         }
 
         <ModelList> {}
