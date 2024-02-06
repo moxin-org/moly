@@ -12,6 +12,8 @@ live_design! {
 
     const MODEL_LINK_FONT_COLOR = #x155EEF
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
+    ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
+    ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
 
     ModelLink = <LinkLabel> {
         width: Fill,
@@ -240,6 +242,60 @@ live_design! {
         }
     }
 
+    ModelCardButton = <RoundedView> {
+        width: 140,
+        height: 32,
+        align: {x: 0.5, y: 0.5}
+        spacing: 6,
+
+        draw_bg: { color: #099250 }
+
+        button_icon = <Icon> {
+            draw_icon: {
+                fn get_color(self) -> vec4 {
+                    return #fff;
+                }
+            }
+            icon_walk: {width: Fit, height: Fit}
+        }
+
+        button_label = <Label> {
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 9},
+                fn get_color(self) -> vec4 {
+                    return #fff;
+                }
+            }
+        }
+    }
+
+    DownloadButton = <ModelCardButton> {
+        button_label = { text: "Download" }
+        button_icon = { draw_icon: {
+            svg_file: (ICON_DOWNLOAD),
+        }}
+    }
+
+    DownloadedButton = <ModelCardButton> {
+        draw_bg: { color: #fff, border_color: #099250, border_width: 0.5}
+        button_label = {
+            text: "Downloaded"
+            draw_text: {
+                fn get_color(self) -> vec4 {
+                    return #099250;
+                }
+            }
+        }
+        button_icon = {
+            draw_icon: {
+                svg_file: (ICON_DOWNLOAD_DONE),
+                fn get_color(self) -> vec4 {
+                    return #099250;
+                }
+            }
+        }
+    }
+
     ModelHighlightedFilesRowWithData = <ModelHighlightedFilesRow> {
         cell1 = {
             spacing: 10,
@@ -289,29 +345,6 @@ live_design! {
 
         cell4 = {
             align: {x: 0.5, y: 0.5},
-            <Button> {
-                text: "Download"
-                width: 160,
-
-                align: {x: 0.5, y: 0.5}
-
-                draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 9},
-                    fn get_color(self) -> vec4 {
-                        return mix(
-                            mix(
-                                #fff,
-                                #fff,
-                                self.hover
-                            ),
-                            #fff,
-                            self.pressed
-                        )
-                    }
-                }
-
-                draw_bg: { bodytop: #099250, bodybottom: #099250  }
-            }
         }
     }
 
@@ -391,6 +424,9 @@ live_design! {
             cell3 = {
                 quantization_tag = { quantization = { text: "Q4_K_S" }}
             }
+            cell4 = {
+                <DownloadButton> {}
+            }
         }
         <ModelHighlightedFilesRowWithData> {
             cell1 = {
@@ -405,6 +441,9 @@ live_design! {
             cell2 = { full_size = { text: "2.30 GB" }}
             cell3 = {
                 quantization_tag = { quantization = { text: "Q6_K" }}
+            }
+            cell4 = {
+                <DownloadedButton> {}
             }
         }
     }
