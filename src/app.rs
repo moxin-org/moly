@@ -35,6 +35,7 @@ impl LiveRegister for App {
 
         crate::shared::styles::live_design(cx);
         crate::shared::widgets::live_design(cx);
+        crate::shared::icon::live_design(cx);
 
         crate::landing::model_card::live_design(cx);
         crate::landing::model_list::live_design(cx);

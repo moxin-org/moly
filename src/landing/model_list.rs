@@ -9,7 +9,7 @@ live_design! {
 
     ModelList = <View> {
         width: Fill,
-        height: Fill,
+        height: Fit,
 
         flow: Down
         spacing: 30,
