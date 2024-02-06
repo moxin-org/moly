@@ -16,7 +16,7 @@ live_design! {
     ModelLink = <LinkLabel> {
         width: Fill,
         draw_text: {
-            text_style: <REGULAR_FONT>{font_size: 10},
+            text_style: <REGULAR_FONT>{font_size: 9},
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
@@ -32,6 +32,10 @@ live_design! {
     }
 
     ModelAttributeTag = <RoundedView> {
+        width: Fit,
+        height: Fit,
+        padding: {top: 6, bottom: 6, left: 10, right: 10}
+
         spacing: 5,
         draw_bg: {
             instance radius: 2.0,
@@ -39,14 +43,14 @@ live_design! {
 
         attr_name = <Label> {
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 10},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 color: #fff
             }
         }
 
         attr_value = <Label> {
             draw_text:{
-                text_style: <BOLD_FONT>{font_size: 10},
+                text_style: <BOLD_FONT>{font_size: 9},
                 color: #fff
             }
         }
@@ -59,30 +63,18 @@ live_design! {
         spacing: 10,
 
         <ModelAttributeTag> {
-            width: Fit,
-            height: Fit,
-            padding: 4,
-
             draw_bg: { color: #3538CD },
             attr_name = { text: "Model Size" }
             attr_value = { text: "7B params" }
         }
 
         <ModelAttributeTag> {
-            width: Fit,
-            height: Fit,
-            padding: 4,
-
             draw_bg: { color: #CA8504 },
             attr_name = { text: "Requires" }
             attr_value = { text: "8GB+ RAM" }
         }
 
         <ModelAttributeTag> {
-            width: Fit,
-            height: Fit,
-            padding: 4,
-
             draw_bg: { color: #FCCEEE },
             attr_name = {
                 draw_text: { color: #C11574 },
@@ -142,10 +134,11 @@ live_design! {
         height: Fit,
         flow: Down,
         spacing: 20,
+        padding: { right: 100 }
 
         <Label> {
             draw_text:{
-                text_style: <BOLD_FONT>{font_size: 12},
+                text_style: <BOLD_FONT>{font_size: 11},
                 color: #000
             }
             text: "Model Summary"
@@ -153,37 +146,40 @@ live_design! {
         summary = <Label> {
             width: Fill,
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 10},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 word: Wrap,
                 color: #000
             }
             text: "OpenHermes 2.5 Mistral 7B is an advanced iteration of the OpenHermes 2 language model, enhanced by training on a significant proportion of code datasets. This additional training improved performance across several benchmarks, notably TruthfulQA, AGIEval, and the GPT4All suite, while slightly decreasing the BigBench score. Notably, the model's ability to handle code-related tasks, measured by the humaneval score..."
         }
+
+        <ModelLink> {
+            text: "View All"
+        }
     }
 
     ModelDetails = <View> {
-        width: 500,
+        width: 400,
         height: Fit,
         flow: Down,
         spacing: 20,
 
         <Label> {
             draw_text:{
-                text_style: <BOLD_FONT>{font_size: 12},
+                text_style: <BOLD_FONT>{font_size: 11},
                 color: #000
             }
             text: "Author"
         }
 
         <ModelLink> {
-            width: Fill,
             text: "Teknium"
         }
 
         <Label> {
             width: Fill,
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 10},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 word: Wrap,
                 color: #000
             }
@@ -192,14 +188,13 @@ live_design! {
 
         <Label> {
             draw_text:{
-                text_style: <BOLD_FONT>{font_size: 12},
+                text_style: <BOLD_FONT>{font_size: 11},
                 color: #000
             }
             text: "Model Resources"
         }
 
         <ModelLink> {
-            width: Fill,
             text: "Hugging Face"
         }
     }
@@ -222,15 +217,15 @@ live_design! {
         }
 
         cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell2 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell3 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell4 = <View> { width: 200, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell2 = <View> { width: 180, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell3 = <View> { width: 180, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell4 = <View> { width: 220, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
     ModelHighlightedFilesLabel = <RoundedView> {
         width: Fit,
         height: Fit,
-        padding: 4,
+        padding: {top: 6, bottom: 6, left: 10, right: 10}
 
         draw_bg: {
             instance radius: 2.0,
@@ -239,7 +234,7 @@ live_design! {
 
         label = <Label> {
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 10},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 color: #3F621A
             }
         }
@@ -250,7 +245,7 @@ live_design! {
             spacing: 10,
             filename = <Label> {
                 draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 10},
+                    text_style: <BOLD_FONT>{font_size: 9},
                     color: #000
                 }
             }
@@ -259,7 +254,7 @@ live_design! {
         cell2 = {
             full_size = <Label> {
                 draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 10},
+                    text_style: <REGULAR_FONT>{font_size: 9},
                     color: #000
                 }
             }
@@ -269,7 +264,7 @@ live_design! {
             quantization_tag = <RoundedView> {
                 width: Fit,
                 height: Fit,
-                padding: 4,
+                padding: {top: 6, bottom: 6, left: 10, right: 10}
 
                 draw_bg: {
                     instance radius: 2.0,
@@ -278,7 +273,7 @@ live_design! {
         
                 quantization = <Label> {
                     draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 10},
+                        text_style: <REGULAR_FONT>{font_size: 9},
                         color: #1849A9
                     }
                 }
@@ -301,7 +296,7 @@ live_design! {
                 align: {x: 0.5, y: 0.5}
 
                 draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 10},
+                    text_style: <REGULAR_FONT>{font_size: 9},
                     fn get_color(self) -> vec4 {
                         return mix(
                             mix(
@@ -330,7 +325,7 @@ live_design! {
             cell1 = {
                 <Label> {
                     draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 10},
+                        text_style: <BOLD_FONT>{font_size: 9},
                         color: #000
                     }
                     text: "Highlighted Files"
@@ -340,7 +335,7 @@ live_design! {
             cell4 = {
                 align: {x: 0.5, y: 0.5},
                 <ModelLink> {
-                    width: Fill,
+                    width: Fit,
                     text: "See All Files"
                 }
             }
@@ -349,9 +344,10 @@ live_design! {
         <ModelHighlightedFilesRow> {
             show_bg: false,
             cell1 = {
+                height: 40
                 <Label> {
                     draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 10},
+                        text_style: <BOLD_FONT>{font_size: 9},
                         color: #667085
                     }
                     text: "Model File"
@@ -359,9 +355,10 @@ live_design! {
             }
 
             cell2 = {
+                height: 40
                 <Label> {
                     draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 10},
+                        text_style: <BOLD_FONT>{font_size: 9},
                         color: #667085
                     }
                     text: "Full Size"
@@ -369,13 +366,17 @@ live_design! {
             }
 
             cell3 = {
+                height: 40
                 <Label> {
                     draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 10},
+                        text_style: <BOLD_FONT>{font_size: 9},
                         color: #667085
                     }
                     text: "Quantization"
                 }
+            }
+            cell4 = {
+                height: 40
             }
         }
 
@@ -419,7 +420,7 @@ live_design! {
 
         flow: Down,
         padding: 30,
-        spacing: 30,
+        spacing: 20,
 
         <ModelHeading> {}
         <Line> {}
