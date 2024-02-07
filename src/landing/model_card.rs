@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use crate::data::store::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -348,11 +349,54 @@ live_design! {
         }
     }
 
+    ModelHighlightedFilesList = {{ModelHighlightedFilesList}} {
+        width: Fill,
+        height: Fit,
+        flow: Down,
+
+        template_downloaded: <ModelHighlightedFilesRowWithData> {
+            cell1 = {
+                filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
+                <ModelHighlightedFilesLabel> {
+                    label = { text: "Less Compressed" }
+                }
+                <ModelHighlightedFilesLabel> {
+                    label = { text: "Might be slower" }
+                }
+            }
+            cell2 = { full_size = { text: "2.30 GB" }}
+            cell3 = {
+                quantization_tag = { quantization = { text: "Q6_K" }}
+            }
+            cell4 = {
+                <DownloadedButton> {}
+            }
+        }
+
+        template_download: <ModelHighlightedFilesRowWithData> {
+            cell1 = {
+                filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
+                <ModelHighlightedFilesLabel> {
+                    label = { text: "Less Compressed" }
+                }
+                <ModelHighlightedFilesLabel> {
+                    label = { text: "Might be slower" }
+                }
+            }
+            cell2 = { full_size = { text: "2.30 GB" }}
+            cell3 = {
+                quantization_tag = { quantization = { text: "Q6_K" }}
+            }
+            cell4 = {
+                <DownloadButton> {}
+            }
+        }
+    }
+
     ModelHighlightedFiles = <View> {
         width: Fill,
         height: Fit,
-
-        flow: Down
+        flow: Down,
 
         <ModelHighlightedFilesRow> {
             cell1 = {
@@ -413,39 +457,7 @@ live_design! {
             }
         }
 
-        <ModelHighlightedFilesRowWithData> {
-            cell1 = {
-                filename = { text: "stablelm-zephyr-3b.Q4_K_S.gguf" }
-                <ModelHighlightedFilesLabel> {
-                    label = { text: "Small & Fast" }
-                }
-            }
-            cell2 = { full_size = { text: "1.62 GB" }}
-            cell3 = {
-                quantization_tag = { quantization = { text: "Q4_K_S" }}
-            }
-            cell4 = {
-                <DownloadButton> {}
-            }
-        }
-        <ModelHighlightedFilesRowWithData> {
-            cell1 = {
-                filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
-                <ModelHighlightedFilesLabel> {
-                    label = { text: "Less Compressed" }
-                }
-                <ModelHighlightedFilesLabel> {
-                    label = { text: "Might be slower" }
-                }
-            }
-            cell2 = { full_size = { text: "2.30 GB" }}
-            cell3 = {
-                quantization_tag = { quantization = { text: "Q6_K" }}
-            }
-            cell4 = {
-                <DownloadedButton> {}
-            }
-        }
+        <ModelHighlightedFilesList> {}
     }
 
     ModelCard = <RoundedView> {
@@ -465,5 +477,76 @@ live_design! {
         <Line> {}
         <ModelInformation> {}
         <ModelHighlightedFiles> {}
+    }
+}
+
+
+#[derive(Live, Widget)]
+pub struct ModelHighlightedFilesList {
+    #[redraw] #[rust]
+    area: Area,
+
+    #[walk]
+    walk: Walk,
+
+    #[layout]
+    layout: Layout,
+
+    #[live]
+    template_downloaded: Option<LivePtr>,
+    #[live]
+    template_download: Option<LivePtr>,
+
+    #[rust]
+    items: ComponentMap<LiveId, WidgetRef>,
+}
+
+impl LiveHook for ModelHighlightedFilesList {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        // TODO Temporary data load
+        let store = Store::new();
+        let files = &store.models[0].files;
+
+        let mut item_widget;
+        for i in 0..files.len() {
+            let item_id = LiveId(i as u64).into();
+            if files[i].downloaded {
+                item_widget = WidgetRef::new_from_ptr(cx, self.template_downloaded);
+            } else {
+                item_widget = WidgetRef::new_from_ptr(cx, self.template_download);
+            }
+
+            let filename = &files[i].path;
+            let size = &files[i].size;
+            let quantization = &files[i].quantization;
+            item_widget.apply_over(cx, live!{
+                cell1 = {
+                    filename = { text: (filename) }
+                }
+                cell2 = { full_size = { text: (size) }}
+                cell3 = {
+                    quantization_tag = { quantization = { text: (quantization) }}
+                 }
+            });
+
+            self.items.insert(item_id, item_widget);
+        }
+    }
+}
+
+impl Widget for ModelHighlightedFilesList {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        for (_id, item) in self.items.iter_mut() {
+            item.handle_event(cx, event, scope);
+        }
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        cx.begin_turtle(walk, self.layout);
+        for (_id, item) in self.items.iter_mut() {
+            let _ = item.draw_walk(cx, scope, walk);
+        }
+        cx.end_turtle_with_area(&mut self.area);
+        DrawStep::done()
     }
 }
