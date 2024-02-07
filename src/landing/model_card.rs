@@ -65,19 +65,19 @@ live_design! {
         height: Fit,
         spacing: 10,
 
-        <ModelAttributeTag> {
+        model_size_tag = <ModelAttributeTag> {
             draw_bg: { color: #3538CD },
             attr_name = { text: "Model Size" }
             attr_value = { text: "7B params" }
         }
 
-        <ModelAttributeTag> {
+        model_requires_tag = <ModelAttributeTag> {
             draw_bg: { color: #CA8504 },
             attr_name = { text: "Requires" }
             attr_value = { text: "8GB+ RAM" }
         }
 
-        <ModelAttributeTag> {
+        model_architecture_tag = <ModelAttributeTag> {
             draw_bg: { color: #FCCEEE },
             attr_name = {
                 draw_text: { color: #C11574 },
@@ -97,12 +97,11 @@ live_design! {
             height: Fit,
             flow: Down,
             spacing: 10,
-            name = <Label> {
+            model_name = <Label> {
                 draw_text:{
                     text_style: <BOLD_FONT>{font_size: 16},
                     color: #000
                 }
-                text: "OpenHermes 2.5 Mistral 7B"
             }
             <ModelAttributes> {}
         }
@@ -146,14 +145,13 @@ live_design! {
             }
             text: "Model Summary"
         }
-        summary = <Label> {
+        model_summary = <Label> {
             width: Fill,
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 9},
                 word: Wrap,
                 color: #000
             }
-            text: "OpenHermes 2.5 Mistral 7B is an advanced iteration of the OpenHermes 2 language model, enhanced by training on a significant proportion of code datasets. This additional training improved performance across several benchmarks, notably TruthfulQA, AGIEval, and the GPT4All suite, while slightly decreasing the BigBench score. Notably, the model's ability to handle code-related tasks, measured by the humaneval score..."
         }
 
         <ModelLink> {
@@ -349,6 +347,15 @@ live_design! {
         }
     }
 
+    ModelHighlightedFileTags = {{ModelHighlightedFileTags}} {
+        width: Fit,
+        height: Fit,
+        flow: Right,
+        spacing: 5,
+
+        template: <ModelHighlightedFilesLabel> {}
+    }
+
     ModelHighlightedFilesList = {{ModelHighlightedFilesList}} {
         width: Fill,
         height: Fit,
@@ -357,12 +364,7 @@ live_design! {
         template_downloaded: <ModelHighlightedFilesRowWithData> {
             cell1 = {
                 filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
-                <ModelHighlightedFilesLabel> {
-                    label = { text: "Less Compressed" }
-                }
-                <ModelHighlightedFilesLabel> {
-                    label = { text: "Might be slower" }
-                }
+                tags = <ModelHighlightedFileTags> {}
             }
             cell2 = { full_size = { text: "2.30 GB" }}
             cell3 = {
@@ -376,12 +378,7 @@ live_design! {
         template_download: <ModelHighlightedFilesRowWithData> {
             cell1 = {
                 filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
-                <ModelHighlightedFilesLabel> {
-                    label = { text: "Less Compressed" }
-                }
-                <ModelHighlightedFilesLabel> {
-                    label = { text: "Might be slower" }
-                }
+                tags = <ModelHighlightedFileTags> {}
             }
             cell2 = { full_size = { text: "2.30 GB" }}
             cell3 = {
@@ -457,33 +454,38 @@ live_design! {
             }
         }
 
-        <ModelHighlightedFilesList> {}
+        file_list = <ModelHighlightedFilesList> {}
     }
 
-    ModelCard = <RoundedView> {
+    ModelCard = {{ModelCard}} {
         width: Fill,
         height: Fit,
 
-        draw_bg: {
-            instance radius: 3.0,
-            color: #F2F4F7
+        <RoundedView> {
+            width: Fill,
+            height: Fit,
+
+            draw_bg: {
+                instance radius: 3.0,
+                color: #F2F4F7
+            }
+
+            flow: Down,
+            padding: 30,
+            spacing: 20,
+
+            <ModelHeading> {}
+            <Line> {}
+            <ModelInformation> {}
+            <ModelHighlightedFiles> {}
         }
-
-        flow: Down,
-        padding: 30,
-        spacing: 20,
-
-        <ModelHeading> {}
-        <Line> {}
-        <ModelInformation> {}
-        <ModelHighlightedFiles> {}
     }
 }
 
 
-#[derive(Live, Widget)]
+#[derive(Live, LiveHook, LiveRegisterWidget, WidgetRef)]
 pub struct ModelHighlightedFilesList {
-    #[redraw] #[rust]
+    #[rust]
     area: Area,
 
     #[walk]
@@ -501,20 +503,53 @@ pub struct ModelHighlightedFilesList {
     items: ComponentMap<LiveId, WidgetRef>,
 }
 
-impl LiveHook for ModelHighlightedFilesList {
-    fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        // TODO Temporary data load
-        let store = Store::new();
-        let files = &store.models[0].files;
+impl Widget for ModelHighlightedFilesList {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        for (_id, item) in self.items.iter_mut() {
+            item.handle_event(cx, event, scope);
+        }
+    }
 
-        let mut item_widget;
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        cx.begin_turtle(walk, self.layout);
+
+        let files = &mut scope.data.get_mut::<Model>().files;
+        self.draw_files(cx, walk, files);
+
+        cx.end_turtle_with_area(&mut self.area);
+        DrawStep::done()
+    }
+}
+
+
+impl WidgetNode for ModelHighlightedFilesList {
+    fn walk(&mut self, _cx:&mut Cx) -> Walk{
+        self.walk
+    }
+
+    fn redraw(&mut self, cx: &mut Cx){
+        self.area.redraw(cx)
+    }
+
+    fn find_widgets(&mut self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet) {
+        for item in self.items.values_mut() {
+            item.find_widgets(path, cached, results);
+        }
+    }
+}
+
+impl ModelHighlightedFilesList {
+    fn draw_files(&mut self, cx: &mut Cx2d, walk: Walk, files: &Vec<File>) {
         for i in 0..files.len() {
-            let item_id = LiveId(i as u64).into();
-            if files[i].downloaded {
-                item_widget = WidgetRef::new_from_ptr(cx, self.template_downloaded);
+            let template = if files[i].downloaded {
+                self.template_downloaded
             } else {
-                item_widget = WidgetRef::new_from_ptr(cx, self.template_download);
-            }
+                self.template_download
+            };
+            let item_id = LiveId(i as u64).into();
+            let item_widget = self.items.get_or_insert(cx, item_id, | cx | {
+                WidgetRef::new_from_ptr(cx, template)
+            });
 
             let filename = &files[i].path;
             let size = &files[i].size;
@@ -529,12 +564,32 @@ impl LiveHook for ModelHighlightedFilesList {
                  }
             });
 
-            self.items.insert(item_id, item_widget);
+            item_widget.model_highlighted_file_tags(id!(tags)).set_tags(cx, files[i].tags.clone());
+
+            let _ = item_widget.draw_walk(cx, &mut Scope::empty(), walk);
         }
     }
 }
 
-impl Widget for ModelHighlightedFilesList {
+#[derive(Live, LiveHook, Widget)]
+pub struct ModelHighlightedFileTags {
+    #[redraw] #[rust]
+    area: Area,
+
+    #[walk]
+    walk: Walk,
+
+    #[layout]
+    layout: Layout,
+
+    #[live]
+    template: Option<LivePtr>,
+
+    #[rust]
+    items: ComponentMap<LiveId, WidgetRef>,
+}
+
+impl Widget for ModelHighlightedFileTags {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         for (_id, item) in self.items.iter_mut() {
             item.handle_event(cx, event, scope);
@@ -548,5 +603,51 @@ impl Widget for ModelHighlightedFilesList {
         }
         cx.end_turtle_with_area(&mut self.area);
         DrawStep::done()
+    }
+}
+
+impl ModelHighlightedFileTagsRef {
+    pub fn set_tags(&self, cx: &mut Cx, tags: Vec<String>) {
+        let Some(mut tags_widget) = self.borrow_mut() else { return };
+        tags_widget.items.clear();
+        for (i, tag) in tags.iter().enumerate() {
+            let item_id = LiveId(i as u64).into();
+            let item_widget = WidgetRef::new_from_ptr(cx, tags_widget.template);
+            item_widget.apply_over(cx, live!{label = { text: (tag) }});
+            tags_widget.items.insert(item_id, item_widget);
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ModelCard {
+    #[deref]
+    view: View,
+}
+
+impl Widget for ModelCard {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let model = scope.data.get::<Model>();
+
+        let name = &model.name;
+        self.label(id!(model_name)).set_text(name);
+
+        let size = &model.size;
+        self.label(id!(model_size_tag.attr_value)).set_text(size);
+
+        let requires = &model.requires;
+        self.label(id!(model_requires_tag.attr_value)).set_text(requires);
+
+        let architecture = &model.architecture;
+        self.label(id!(model_architecture_tag.attr_value)).set_text(architecture);
+
+        let summary = &model.summary;
+        self.label(id!(model_summary)).set_text(summary);
+
+        self.view.draw_walk(cx, scope, walk)
     }
 }
