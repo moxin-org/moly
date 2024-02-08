@@ -68,6 +68,33 @@ impl Store {
             },
         ];
 
+        let stable_lm_files = vec![
+            File {
+                path: "nexusraven-v2-13b.Q4_K_S.gguf".to_string(),
+                size: "1.62 GB".to_string(),
+                quantization: "Q4_K_S".to_string(),
+                downloaded: true,
+                tags: vec!["Small & Fast".to_string()],
+            },
+            File {
+                path: "nexusraven-v2-13b.Q6_K.gguf".to_string(),
+                size: "2.30 GB".to_string(),
+                quantization: "Q6_K".to_string(),
+                downloaded: false,
+                tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
+            },
+        ];
+
+        let qwen_files = vec![
+            File {
+                path: "qwen1_5-7b-chat-q5_k_m.gguf".to_string(),
+                size: "2.30 GB".to_string(),
+                quantization: "Q5_K_M".to_string(),
+                downloaded: false,
+                tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
+            },
+        ];
+
         Store {
             models: vec![
                 Model {
@@ -96,6 +123,34 @@ impl Store {
                         name: "Nexusflow".to_string(),
                         url: "https://nexusflow.ai/".to_string(),
                         description: "Nexusflow is democratizing Cyber Intelligence with Generative AI, fully on top of open-source large language models (LLMs).".to_string(),
+                    },
+                },
+                Model {
+                    name: "StableLM Zephyr 3B".to_string(),
+                    summary: "StableLM Zephyr 3B is an English-language, auto-regressive language model with 3 billion parameters, developed by Stability AI. It's an instruction-tuned model influenced by HuggingFace's Zephyr 7B training approach and is built on transformer decoder architecture. It was trained using a mix of public and synthetic datasets, including SFT and Preference Datasets from the HuggingFace Hub with Direct Preference Optimization (DPO). Its performance has been evaluated using the MT Bench and Alpaca Benchmark, achieving a score of 6.64 and a win rate of 76% respectively. For fine-tuning, it utilizes the StabilityAI's stablelm-3b-4e1t model and is available under the StabilityAI Non-Commercial Research Community License. Commercial use requires contacting Stability AI for more information. The model was trained on a Stability AI cluster with 8 nodes, each equipped with 8 A100 80GB GPUs, using internal scripts for SFT steps and HuggingFace's Alignment Handbook scripts for DPO training.".to_string(),
+                    size: "3B params".to_string(),
+                    requires: "8GB+ RAM".to_string(),
+                    released_at: NaiveDate::from_ymd_opt(2023, 11, 21).unwrap(),
+                    architecture: "StableLM".to_string(),
+                    files: stable_lm_files,
+                    author: Author {
+                        name: "Stability AI".to_string(),
+                        url: "https://stability.ai/".to_string(),
+                        description: "Stability AI is developing cutting-edge open AI models for Image, Language, Audio, Video, 3D and Biology.".to_string(),
+                    },
+                },
+                Model {
+                    name: "Qwen 1.5".to_string(),
+                    summary: "Qwen1.5 is the large language model series developed by Qwen Team, Alibaba Group. It is a transformer-based decoder-only language model pretrained on large-scale multilingual data covering a wide range of domains and it is aligned with human preferences.".to_string(),
+                    size: "3B params".to_string(),
+                    requires: "8GB+ RAM".to_string(),
+                    released_at: NaiveDate::from_ymd_opt(2024, 2, 3).unwrap(),
+                    architecture: "qwen2".to_string(),
+                    files: qwen_files,
+                    author: Author {
+                        name: "Qwen Team, Alibaba Group".to_string(),
+                        url: "https://huggingface.co/Qwen".to_string(),
+                        description: "Qwen (abbr. for Tongyi Qianwen 通义千问) refers to the large language model family built by Alibaba Cloud".to_string(),
                     },
                 },
             ],
