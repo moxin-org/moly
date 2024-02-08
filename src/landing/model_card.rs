@@ -1,5 +1,6 @@
 use makepad_widgets::*;
 use crate::data::store::*;
+use chrono::Utc;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -107,12 +108,11 @@ live_design! {
         }
         <VerticalFiller> {}
         <View> {
-            width: Fit,
+            width: 260,
             height: Fit,
-            <ModelAttributeTag> {
+            model_released_at_tag = <ModelAttributeTag> {
                 width: Fit,
                 height: Fit,
-                padding: 4,
     
                 draw_bg: {
                     color: #0000,
@@ -124,8 +124,8 @@ live_design! {
                     text: "Released"
                 }
                 attr_value = {
+                    margin: {left: 10},
                     draw_text: { color: #000 }
-                    text: "Oct 29, 2023 (90 days ago)"
                 }
             }
         }
@@ -173,18 +173,15 @@ live_design! {
             text: "Author"
         }
 
-        <ModelLink> {
-            text: "Teknium"
-        }
+        author_name = <ModelLink> {}
 
-        <Label> {
+        author_description = <Label> {
             width: Fill,
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 9},
                 word: Wrap,
                 color: #000
             }
-            text: "Creator of numerous chart topping fine-tunes and a Co-founder of NousResearch"
         }
 
         <Label> {
@@ -647,6 +644,17 @@ impl Widget for ModelCard {
 
         let summary = &model.summary;
         self.label(id!(model_summary)).set_text(summary);
+
+        let author_name = &model.author.name;
+        self.link_label(id!(author_name)).set_text(author_name);
+
+        let author_description = &model.author.description;
+        self.label(id!(author_description)).set_text(author_description);
+
+        let released_at = &model.released_at.format("%b %-d, %C%y");
+        let days_ago = (Utc::now().date_naive() - model.released_at).num_days();
+        let released_at_str = format!("{} ({} days ago)", released_at, days_ago);
+        self.label(id!(model_released_at_tag.attr_value)).set_text(&released_at_str);
 
         self.view.draw_walk(cx, scope, walk)
     }
