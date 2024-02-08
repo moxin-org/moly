@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-makepad-widgets = { path = "../makepad/widgets", version = "0.6.0" }
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 chrono = "0.4"

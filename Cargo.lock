@@ -49,9 +49,9 @@ checksum = "7f30e7476521f6f8af1a1c4c0b8cc94f0bee37d91763d0ca2665f299b6cd8aec"
 
 [[package]]
 name = "bytemuck"
-version = "1.14.1"
+version = "1.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed2490600f404f2b94c167e31d3ed1d5f3c225a0f3b80230053b3e0b7b962bd9"
+checksum = "ea31d69bda4949c1c1562c1e6f042a1caefac98cdc8a298260a2ff41c1e2d42b"
 
 [[package]]
 name = "cc"
@@ -135,6 +135,7 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 [[package]]
 name = "makepad-derive-live"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -143,6 +144,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-wasm-bridge"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -150,6 +152,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-widget"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -158,6 +161,7 @@ dependencies = [
 [[package]]
 name = "makepad-draw"
 version = "0.6.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "ab_glyph_rasterizer",
  "makepad-platform",
@@ -170,18 +174,30 @@ dependencies = [
 [[package]]
 name = "makepad-futures"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 
 [[package]]
 name = "makepad-futures-legacy"
 version = "0.7.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
+
+[[package]]
+name = "makepad-html"
+version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
+dependencies = [
+ "makepad-live-id",
+]
 
 [[package]]
 name = "makepad-http"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 
 [[package]]
 name = "makepad-live-compiler"
 version = "0.5.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -191,6 +207,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-live-id-macros",
 ]
@@ -198,6 +215,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id-macros"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -205,6 +223,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-tokenizer"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -214,14 +233,17 @@ dependencies = [
 [[package]]
 name = "makepad-math"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 
 [[package]]
 name = "makepad-micro-serde"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-micro-serde-derive",
 ]
@@ -229,6 +251,7 @@ dependencies = [
 [[package]]
 name = "makepad-micro-serde-derive"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -236,10 +259,12 @@ dependencies = [
 [[package]]
 name = "makepad-objc-sys"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 
 [[package]]
 name = "makepad-platform"
 version = "0.6.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-futures",
  "makepad-futures-legacy",
@@ -254,6 +279,7 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "0.5.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-live-compiler",
 ]
@@ -261,6 +287,7 @@ dependencies = [
 [[package]]
 name = "makepad-vector"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "ttf-parser",
 ]
@@ -268,6 +295,7 @@ dependencies = [
 [[package]]
 name = "makepad-wasm-bridge"
 version = "0.4.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -276,9 +304,11 @@ dependencies = [
 [[package]]
 name = "makepad-widgets"
 version = "0.6.0"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
+ "makepad-html",
  "makepad-zune-jpeg",
  "makepad-zune-png",
 ]
@@ -286,6 +316,7 @@ dependencies = [
 [[package]]
 name = "makepad-windows"
 version = "0.51.1"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "windows-core 0.51.1",
  "windows-targets 0.48.5",
@@ -294,6 +325,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-core"
 version = "0.2.14"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "bitflags 2.4.2",
 ]
@@ -301,6 +333,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-inflate"
 version = "0.2.54"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "simd-adler32",
 ]
@@ -308,6 +341,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-jpeg"
 version = "0.3.17"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-zune-core",
 ]
@@ -315,6 +349,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.2.1"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "makepad-zune-core",
  "makepad-zune-inflate",
@@ -504,6 +539,7 @@ checksum = "4f186bd2dcf04330886ce82d6f33dd75a7bfcf69ecf5763b89fcde53b6ac9838"
 [[package]]
 name = "windows-core"
 version = "0.51.1"
+source = "git+https://github.com/makepad/makepad?branch=rik#8f6ea2a19e89a3f31e7bb65f40c6d7a21afd57a0"
 dependencies = [
  "windows-targets 0.48.5",
 ]
