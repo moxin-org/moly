@@ -31,15 +31,15 @@ pub struct ModelList {
 
 impl Widget for ModelList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope)
+        self.view.handle_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let models = Store::new().models.clone();
         let models_count = models.len();
 
-        while let Some(list_item) = self.view.draw_walk(cx, scope, walk).step(){
-            if let Some(mut list) = list_item.as_portal_list().borrow_mut() {
+        while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step(){
+            if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, models_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
                     let item = list.item(cx, item_id, live_id!(Model)).unwrap();
