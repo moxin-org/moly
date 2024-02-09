@@ -16,7 +16,7 @@ live_design! {
         height: Fill,
         flow: Overlay,
 
-        <View> {
+        main = <View> {
             width: Fill,
             height: Fill,
             flow: Down,
@@ -60,13 +60,33 @@ live_design! {
 #[derive(Live, LiveHook, Widget)]
 pub struct LandingScreen {
     #[deref]
-    view: View
+    view: View,
+
+    #[rust]
+    all_files_panel_open: bool
 }
 
 impl Widget for LandingScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
+        if self.all_files_panel_open {
+            self.view(id!(all_files_panel)).handle_event(cx, event, scope);
+
+            match event.hits(cx, self.view.area()) {
+                Hit::FingerDown(fe) => {
+                    let screen_rect = fe.rect.size.x;
+                    if let Size::Fixed(panel_width) = self.view(id!(all_files_panel)).walk(cx).width {
+                        if fe.abs.x < screen_rect - panel_width  {
+                            self.slide_panel(id!(all_files_panel)).close(cx);
+                            self.all_files_panel_open = false;
+                        }
+                    }
+                },
+                _ => ()
+            }
+        } else {
+            self.view.handle_event(cx, event, scope);
+            self.widget_match_event(cx, event, scope);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -75,12 +95,13 @@ impl Widget for LandingScreen {
 }
 
 impl WidgetMatchEvent for LandingScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         for action in actions {
             if let ModelCardAction::ViewAllFiles(model_id) = action.as_widget_action().cast() {
                 if let Some(model) = Store::new().models.iter().find(|m| m.name == model_id) {
                     self.view(id!(all_files_panel)).model_all_files(id!(all_files)).set_model(model.clone());
                     self.slide_panel(id!(all_files_panel)).open(cx);
+                    self.all_files_panel_open = true;
                 }
             };
         }
