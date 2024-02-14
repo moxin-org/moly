@@ -4,19 +4,46 @@ live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
+    import crate::shared::styles::*;
     import crate::landing::landing_screen::LandingScreen;
 
     ICON_EXPLORE = dep("crate://self/resources/icons/explore.svg")
     ICON_FOLDER = dep("crate://self/resources/icons/folder.svg")
 
     SidebarMenuButton = <RadioButton> {
-        width: Fit,
-        height: Fit,
-        align: {x: 0.0, y: 0.0}
+        width: 70,
+        height: 70,
+        icon_walk: {width: 48, height: 48}
+        flow: Down, spacing: 5.0, align: {x: 0.5, y: 0.5}
         draw_radio: {
             radio_type: Tab,
-            color_active: #fff,
+            color_active: #F2F4F7,
             color_inactive: #fff,
+        }
+        draw_icon: {
+            fn get_color(self) -> vec4 {
+                return mix(
+                    #000,
+                    #666,
+                    self.hover
+                )
+            }
+        }
+    }
+
+    // This is a placeholder for the actual My Models screen view
+    MyModelsView = <View> {
+        width: Fill,
+        height: Fill,
+        margin: 50,
+        spacing: 30,
+
+        <Label> {
+            draw_text:{
+                text_style: <REGULAR_FONT>{font_size: 20},
+                color: #000
+            }
+            text: "My Models"
         }
     }
 
@@ -31,38 +58,18 @@ live_design! {
 
                 sidebar_menu = <View> {
                     width: 100,
-                    flow: Down, spacing: 30.0,
-                    padding: { top: 60, left: 40 }
+                    flow: Down, spacing: 10.0,
+                    padding: { top: 40, left: 30 }
                     tab1 = <SidebarMenuButton> {
                         animator: {selected = {default: on}}
                         draw_icon: {
                             svg_file: (ICON_EXPLORE),
-                            fn get_color(self) -> vec4 {
-                                return mix(
-                                    #000,
-                                    #666,
-                                    self.hover
-                                )
-                            }
                         }
-                        width: Fill,
-                        icon_walk: {width: 48, height: 48}
-                        flow: Down, spacing: 5.0, align: {x: 0.5, y: 0.5}
                     }
                     tab2 = <SidebarMenuButton> {
                         draw_icon: {
                             svg_file: (ICON_FOLDER),
-                            fn get_color(self) -> vec4 {
-                                return mix(
-                                    #000,
-                                    #666,
-                                    self.hover
-                                )
-                            }
                         }
-                        width: Fill
-                        icon_walk: {width: 48, height: 48}
-                        flow: Down, spacing: 5.0, align: {x: 0.5, y: 0.5}
                     }
                 }
 
@@ -70,11 +77,13 @@ live_design! {
                     margin: 0.0,
                     padding: 0.0,
 
+                    flow: Overlay,
+
                     width: Fill,
                     height: Fill,
 
                     tab1_frame = <LandingScreen> {visible: true}
-                    tab2_frame = <View> {visible: false}
+                    tab2_frame = <MyModelsView> {visible: false}
                 }
             }
         }

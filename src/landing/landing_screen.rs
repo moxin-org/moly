@@ -73,7 +73,10 @@ impl Widget for LandingScreen {
 
             match event.hits(cx, self.view.area()) {
                 Hit::FingerDown(fe) => {
-                    let screen_rect = fe.rect.size.x;
+                    // TODO This is a very complex way to check if the user clicked outside the panel
+                    // Investigate if Makepad has a better way to do this
+                    let screen_rect = fe.rect.size.x + fe.rect.pos.x;
+
                     if let Size::Fixed(panel_width) = self.view(id!(all_files_panel)).walk(cx).width {
                         if fe.abs.x < screen_rect - panel_width  {
                             self.slide_panel(id!(all_files_panel)).close(cx);
