@@ -28,7 +28,7 @@ live_design! {
                     text_style: <REGULAR_FONT>{font_size: 20},
                     color: #000
                 }
-                text: "Moxin"
+                text: "Explore"
             }
 
             <ModelList> {}
