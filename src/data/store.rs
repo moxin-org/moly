@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{NaiveDate, Utc};
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -155,5 +155,13 @@ impl Store {
                 },
             ],
         }
+    }
+}
+
+impl Model {
+    pub fn formatted_release_date(&self) -> String {
+        let released_at = self.released_at.format("%b %-d, %C%y");
+        let days_ago = (Utc::now().date_naive() - self.released_at).num_days();
+        format!("{} ({} days ago)", released_at, days_ago)
     }
 }

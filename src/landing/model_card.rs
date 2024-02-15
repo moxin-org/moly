@@ -1,6 +1,5 @@
 use makepad_widgets::*;
 use crate::data::store::*;
-use chrono::Utc;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -11,85 +10,11 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
     import crate::shared::icon::Icon;
+    import crate::landing::shared::*;
 
-    const MODEL_LINK_FONT_COLOR = #x155EEF
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
-
-    ModelLink = <LinkLabel> {
-        width: Fill,
-        draw_text: {
-            text_style: <REGULAR_FONT>{font_size: 9},
-            fn get_color(self) -> vec4 {
-                return mix(
-                    mix(
-                        MODEL_LINK_FONT_COLOR,
-                        MODEL_LINK_FONT_COLOR,
-                        self.hover
-                    ),
-                    MODEL_LINK_FONT_COLOR,
-                    self.pressed
-                )
-            }
-        }
-    }
-
-    ModelAttributeTag = <RoundedView> {
-        width: Fit,
-        height: Fit,
-        padding: {top: 6, bottom: 6, left: 10, right: 10}
-
-        spacing: 5,
-        draw_bg: {
-            instance radius: 2.0,
-        }
-
-        attr_name = <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 9},
-                color: #fff
-            }
-        }
-
-        attr_value = <Label> {
-            draw_text:{
-                text_style: <BOLD_FONT>{font_size: 9},
-                color: #fff
-            }
-        }
-
-    }
-
-    ModelAttributes = <View> {
-        width: Fit,
-        height: Fit,
-        spacing: 10,
-
-        model_size_tag = <ModelAttributeTag> {
-            draw_bg: { color: #3538CD },
-            attr_name = { text: "Model Size" }
-            attr_value = { text: "7B params" }
-        }
-
-        model_requires_tag = <ModelAttributeTag> {
-            draw_bg: { color: #CA8504 },
-            attr_name = { text: "Requires" }
-            attr_value = { text: "8GB+ RAM" }
-        }
-
-        model_architecture_tag = <ModelAttributeTag> {
-            draw_bg: { color: #FCCEEE },
-            attr_name = {
-                draw_text: { color: #C11574 },
-                text: "Architecture"
-            }
-            attr_value = {
-                draw_text: { color: #C11574 },
-                text: "Mistral"
-            }
-        }
-    }
 
     ModelHeading = <View> {
         height: Fit,
@@ -113,7 +38,7 @@ live_design! {
             model_released_at_tag = <ModelAttributeTag> {
                 width: Fit,
                 height: Fit,
-    
+
                 draw_bg: {
                     color: #0000,
                     border_color: #98A2B3,
@@ -658,9 +583,7 @@ impl Widget for ModelCard {
         let author_description = &model.author.description;
         self.label(id!(author_description)).set_text(author_description);
 
-        let released_at = &model.released_at.format("%b %-d, %C%y");
-        let days_ago = (Utc::now().date_naive() - model.released_at).num_days();
-        let released_at_str = format!("{} ({} days ago)", released_at, days_ago);
+        let released_at_str = &model.formatted_release_date();
         self.label(id!(model_released_at_tag.attr_value)).set_text(&released_at_str);
 
         self.view.draw_walk(cx, scope, walk)
