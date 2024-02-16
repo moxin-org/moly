@@ -7,6 +7,7 @@ pub struct File {
     pub quantization: String,
     pub downloaded: bool,
     pub tags: Vec<String>,
+    pub featured: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -40,11 +41,52 @@ impl Store {
     pub fn new() -> Store {
         let open_hermes_files = vec![
             File {
+                path: "openhermes-2.5-mistral-7b.Q2_K.gguf".to_string(),
+                size: "3.08 GB".to_string(),
+                quantization: "Q2_K".to_string(),
+                downloaded: false,
+                tags: vec![],
+                featured: false,
+            },
+            File {
+                path: "openhermes-2.5-mistral-7b.Q3_K_S.gguf".to_string(),
+                size: "3.16 GB".to_string(),
+                quantization: "Q3_K_S".to_string(),
+                downloaded: false,
+                tags: vec![],
+                featured: false,
+            },
+            File {
+                path: "openhermes-2.5-mistral-7b.Q3_K_M.gguf".to_string(),
+                size: "3.52 GB".to_string(),
+                quantization: "Q3_K_M".to_string(),
+                downloaded: false,
+                tags: vec![],
+                featured: false,
+            },
+            File {
+                path: "openhermes-2.5-mistral-7b.Q3_K_L.gguf".to_string(),
+                size: "3.82 GB".to_string(),
+                quantization: "Q3_K_M".to_string(),
+                downloaded: false,
+                tags: vec![],
+                featured: false,
+            },
+            File {
+                path: "openhermes-2.5-mistral-7b.Q4_0.gguf".to_string(),
+                size: "4.11 GB".to_string(),
+                quantization: "Q4_0".to_string(),
+                downloaded: false,
+                tags: vec![],
+                featured: false,
+            },
+            File {
                 path: "stablelm-zephyr-3b.Q4_K_S.gguf".to_string(),
                 size: "1.62 GB".to_string(),
                 quantization: "Q4_K_S".to_string(),
                 downloaded: true,
                 tags: vec!["Small & Fast".to_string()],
+                featured: true,
             },
             File {
                 path: "stablelm-zephyr-3b.Q6_K.gguf".to_string(),
@@ -52,6 +94,7 @@ impl Store {
                 quantization: "Q6_K".to_string(),
                 downloaded: false,
                 tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
+                featured: true,
             },
         ];
 
@@ -62,6 +105,7 @@ impl Store {
                 quantization: "Q4_K_S".to_string(),
                 downloaded: false,
                 tags: vec!["Small & Fast".to_string()],
+                featured: true,
             },
             File {
                 path: "nexusraven-v2-13b.Q6_K.gguf".to_string(),
@@ -69,6 +113,7 @@ impl Store {
                 quantization: "Q6_K".to_string(),
                 downloaded: true,
                 tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
+                featured: true,
             },
         ];
 
@@ -79,6 +124,7 @@ impl Store {
                 quantization: "Q4_K_S".to_string(),
                 downloaded: true,
                 tags: vec!["Small & Fast".to_string()],
+                featured: true,
             },
             File {
                 path: "nexusraven-v2-13b.Q6_K.gguf".to_string(),
@@ -86,6 +132,7 @@ impl Store {
                 quantization: "Q6_K".to_string(),
                 downloaded: false,
                 tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
+                featured: true,
             },
         ];
 
@@ -96,6 +143,7 @@ impl Store {
                 quantization: "Q5_K_M".to_string(),
                 downloaded: false,
                 tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
+                featured: true,
             },
         ];
 
@@ -164,6 +212,10 @@ impl Store {
             ],
         }
     }
+
+    pub fn find_model_by_id(id: &str) -> Option<Model> {
+        Store::new().models.iter().find(|m| m.id == id).cloned()
+    }
 }
 
 impl Model {
@@ -171,5 +223,9 @@ impl Model {
         let released_at = self.released_at.format("%b %-d, %C%y");
         let days_ago = (Utc::now().date_naive() - self.released_at).num_days();
         format!("{} ({} days ago)", released_at, days_ago)
+    }
+
+    pub fn featured_files(&self) -> Vec<File> {
+        self.files.iter().filter(|f| f.featured).cloned().collect()
     }
 }

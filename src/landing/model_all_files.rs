@@ -99,7 +99,7 @@ impl Widget for ModelAllFiles {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        if let Some(model) = Store::new().models.iter().find(|m| m.id == self.model_id) {
+        if let Some(model) = Store::find_model_by_id(&self.model_id) {
             let _ = self.view.draw_walk(cx, &mut Scope::with_data(&mut model.clone()), walk);
         };
 

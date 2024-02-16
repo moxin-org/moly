@@ -289,6 +289,9 @@ pub struct ModelFilesItems {
     #[live(true)]
     show_tags: bool,
 
+    #[live(false)]
+    show_featured: bool,
+
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
 }
@@ -303,8 +306,14 @@ impl Widget for ModelFilesItems {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         cx.begin_turtle(walk, self.layout);
 
-        let files = &mut scope.data.get_mut::<Model>().files;
-        self.draw_files(cx, walk, files);
+        let model = &mut scope.data.get_mut::<Model>();
+        let files = if self.show_featured {
+            model.featured_files()
+        } else {
+            model.files.clone()
+        };
+
+        self.draw_files(cx, walk, &files);
 
         cx.end_turtle_with_area(&mut self.area);
         DrawStep::done()

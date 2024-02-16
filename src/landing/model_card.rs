@@ -146,7 +146,7 @@ live_design! {
             <ModelHeading> {}
             <Line> {}
             <ModelInformation> {}
-            <ModelFilesList> {}
+            <ModelFilesList> { file_list = { show_featured: true } }
         }
     }
 }
