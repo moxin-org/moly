@@ -16,8 +16,12 @@ pub struct Author {
     pub description: String,
 }
 
+// We're using the HuggingFace identifier as the model ID for now
+// We should consider using a different identifier in the future if more
+// models sources are added.
 #[derive(Debug, Clone)]
 pub struct Model {
+    pub id: String,
     pub name: String,
     pub summary: String,
     pub size: String,
@@ -98,6 +102,7 @@ impl Store {
         Store {
             models: vec![
                 Model {
+                    id: "teknium/OpenHermes-2.5-Mistral-7B".to_string(),
                     name: "OpenHermes 2.5 Mistral 7B".to_string(),
                     summary: "OpenHermes 2.5 Mistral 7B is an advanced iteration of the OpenHermes 2 language model, enhanced by training on a significant proportion of code datasets. This additional training improved performance across several benchmarks, notably TruthfulQA, AGIEval, and the GPT4All suite, while slightly decreasing the BigBench score. Notably, the model's ability to handle code-related tasks, measured by the humaneval score...".to_string(),
                     size: "7B params".to_string(),
@@ -112,6 +117,7 @@ impl Store {
                     },
                 },
                 Model {
+                    id: "Nexusflow/NexusRaven-V2-13B".to_string(),
                     name: "NexusRaven-V2-13B".to_string(),
                     summary: "NexusRaven-V2 accepts a list of python functions. These python functions can do anything (e.g. sending GET/POST requests to external APIs). The two requirements include the python function signature and the appropriate docstring to generate the function call. *** Follow NexusRaven's prompting guide found on the model's Hugging Face page. ***".to_string(),
                     size: "13B params".to_string(),
@@ -126,6 +132,7 @@ impl Store {
                     },
                 },
                 Model {
+                    id: "stabilityai/stablelm-zephyr-3b".to_string(),
                     name: "StableLM Zephyr 3B".to_string(),
                     summary: "StableLM Zephyr 3B is an English-language, auto-regressive language model with 3 billion parameters, developed by Stability AI. It's an instruction-tuned model influenced by HuggingFace's Zephyr 7B training approach and is built on transformer decoder architecture. It was trained using a mix of public and synthetic datasets, including SFT and Preference Datasets from the HuggingFace Hub with Direct Preference Optimization (DPO). Its performance has been evaluated using the MT Bench and Alpaca Benchmark, achieving a score of 6.64 and a win rate of 76% respectively. For fine-tuning, it utilizes the StabilityAI's stablelm-3b-4e1t model and is available under the StabilityAI Non-Commercial Research Community License. Commercial use requires contacting Stability AI for more information. The model was trained on a Stability AI cluster with 8 nodes, each equipped with 8 A100 80GB GPUs, using internal scripts for SFT steps and HuggingFace's Alignment Handbook scripts for DPO training.".to_string(),
                     size: "3B params".to_string(),
@@ -140,6 +147,7 @@ impl Store {
                     },
                 },
                 Model {
+                    id: "Qwen/Qwen1.5-7B-Chat-GGUF".to_string(),
                     name: "Qwen 1.5".to_string(),
                     summary: "Qwen1.5 is the large language model series developed by Qwen Team, Alibaba Group. It is a transformer-based decoder-only language model pretrained on large-scale multilingual data covering a wide range of domains and it is aligned with human preferences.".to_string(),
                     size: "3B params".to_string(),

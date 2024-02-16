@@ -42,7 +42,6 @@ live_design! {
         flow: Down,
         spacing: 10,
         model_id_label = <Label> {
-            text: "TheBloke/stablelm-zephyr-3b-GGUF",
             draw_text:{
                 text_style: <BOLD_FONT>{font_size: 9},
                 color: #000
@@ -100,7 +99,7 @@ impl Widget for ModelAllFiles {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        if let Some(model) = Store::new().models.iter().find(|m| m.name == self.model_id) {
+        if let Some(model) = Store::new().models.iter().find(|m| m.id == self.model_id) {
             let _ = self.view.draw_walk(cx, &mut Scope::with_data(&mut model.clone()), walk);
         };
 
@@ -111,6 +110,10 @@ impl Widget for ModelAllFiles {
 impl ModelAllFilesRef {
     pub fn set_model(&self, model: Model) {
         let Some(mut all_files_widget) = self.borrow_mut() else { return };
+
+        let id = &model.id;
+        all_files_widget.model_id = id.clone();
+        all_files_widget.label(id!(model_id_label)).set_text(&id);
 
         let name = &model.name;
         all_files_widget.label(id!(model_name)).set_text(name);
@@ -126,8 +129,5 @@ impl ModelAllFilesRef {
 
         let file_count_str = format!("{} Available Files", model.files.len());
         all_files_widget.label(id!(files_count_label)).set_text(&file_count_str);
-
-        // TODO Check later what is the model id
-        all_files_widget.model_id = model.name;
     }
 }

@@ -101,7 +101,7 @@ impl WidgetMatchEvent for LandingScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         for action in actions {
             if let ModelCardAction::ViewAllFiles(model_id) = action.as_widget_action().cast() {
-                if let Some(model) = Store::new().models.iter().find(|m| m.name == model_id) {
+                if let Some(model) = Store::new().models.iter().find(|m| m.id == model_id) {
                     self.view(id!(all_files_panel)).model_all_files(id!(all_files)).set_model(model.clone());
                     self.slide_panel(id!(all_files_panel)).open(cx);
                     self.all_files_panel_open = true;

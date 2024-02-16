@@ -169,8 +169,7 @@ impl Widget for ModelCard {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let model = scope.data.get::<Model>();
 
-        // TODO: For now the model id is the name, but it should be a unique id
-        self.model_id = model.name.clone();
+        self.model_id = model.id.clone();
 
         let name = &model.name;
         self.label(id!(model_name)).set_text(name);
