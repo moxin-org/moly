@@ -63,7 +63,7 @@ live_design! {
                 height: Fill,
                 flow: Overlay,
 
-                main = <View> {
+                <View> {
                     width: Fill,
                     height: Fill,
 
