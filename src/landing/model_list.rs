@@ -16,6 +16,10 @@ live_design! {
             width: Fill,
             height: Fill,
 
+            // We need this setting because we will have modal dialogs that should
+            // "capture" the events, so we don't want to handle them here.
+            capture_overload: false,
+
             Model = <ModelCard> {
                 margin: {bottom: 30},
             }
