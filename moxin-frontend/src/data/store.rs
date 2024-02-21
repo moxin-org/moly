@@ -5,7 +5,11 @@ use moxin_backend::Backend;
 
 #[derive(Default)]
 pub struct Store {
+    // This is the backend representation, including the sender and receiver ends of the channels to
+    // communicate with the backend thread.
     pub backend: Backend,
+
+    // Local cache for the list of models
     pub models: Vec<Model>,
 }
 
@@ -23,6 +27,10 @@ impl Store {
         };
 
         store
+    }
+
+    pub fn get_model_by_id(&self, id: &str) -> Option<Model> {
+        self.models.iter().find(|m| m.id == id).cloned()
     }
 
     pub fn formatted_model_release_date(model: &Model) -> String {

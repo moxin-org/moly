@@ -2,6 +2,7 @@ use makepad_widgets::*;
 use crate::shared::slide_panel_modal::SlidePanelModalWidgetRefExt;
 use crate::landing::model_all_files::ModelAllFilesWidgetRefExt;
 use crate::landing::model_card::ModelCardAction;
+use crate::data::store::Store;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -114,10 +115,19 @@ live_design! {
 
 app_main!(App);
 
-#[derive(Live, LiveHook)]
+#[derive(Live)]
 pub struct App {
     #[live]
     ui: WidgetRef,
+
+    #[rust]
+    store: Store,
+}
+
+impl LiveHook for App {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        self.store = Store::new();
+    }
 }
 
 impl LiveRegister for App {
@@ -140,7 +150,8 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        self.ui.handle_event(cx, event, &mut Scope::empty());
+        let scope = &mut Scope::with_data(&mut self.store);
+        self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
     }
 }
@@ -162,9 +173,11 @@ impl MatchEvent for App {
         );
 
         for action in actions {
-            if let ModelCardAction::ViewAllFiles(model) = action.as_widget_action().cast() {
-                self.ui.model_all_files(id!(all_files)).set_model(model.clone());
-                self.ui.slide_panel_modal(id!(modals)).show(cx);
+            if let ModelCardAction::ViewAllFiles(model_id) = action.as_widget_action().cast() {
+                if let Some(model) = self.store.get_model_by_id(&model_id) {
+                    self.ui.model_all_files(id!(all_files)).set_model(model);
+                    self.ui.slide_panel_modal(id!(modals)).show(cx);
+                }
             };
         }
     }

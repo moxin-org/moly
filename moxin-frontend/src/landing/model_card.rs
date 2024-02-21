@@ -158,7 +158,7 @@ pub struct ModelCard {
     view: View,
 
     #[rust]
-    model: Model,
+    model_id: String,
 }
 
 impl Widget for ModelCard {
@@ -170,7 +170,7 @@ impl Widget for ModelCard {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let model = scope.data.get::<Model>();
 
-        self.model = model.clone();
+        self.model_id = model.id.clone();
 
         let name = &model.name;
         self.label(id!(model_name)).set_text(name);
@@ -202,7 +202,7 @@ impl Widget for ModelCard {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelCardAction {
-    ViewAllFiles(Model),
+    ViewAllFiles(String),
     None,
 }
 
@@ -210,7 +210,7 @@ impl WidgetMatchEvent for ModelCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.link_label(id!(all_files_link)).clicked(&actions) {
             let widget_uid = self.widget_uid();
-            cx.widget_action(widget_uid, &scope.path, ModelCardAction::ViewAllFiles(self.model.clone()));
+            cx.widget_action(widget_uid, &scope.path, ModelCardAction::ViewAllFiles(self.model_id.clone()));
         }
     }
 }

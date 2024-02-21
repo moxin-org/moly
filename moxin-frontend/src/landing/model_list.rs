@@ -27,19 +27,10 @@ live_design! {
     }
 }
 
-#[derive(Live, Widget)]
+#[derive(Live, LiveHook, Widget)]
 pub struct ModelList {
     #[deref]
-    view: View,
-
-    #[rust]
-    store: Store,
-}
-
-impl LiveHook for ModelList {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.store = Store::new();
-    }
+    view: View
 }
 
 impl Widget for ModelList {
@@ -48,7 +39,8 @@ impl Widget for ModelList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let models = &self.store.models;
+        let store = scope.data.get::<Store>();
+        let models = store.models.clone();
         let models_count = models.len();
 
         while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step(){
