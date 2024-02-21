@@ -1,6 +1,6 @@
 [workspace]
 
-members = [
+members = [ "moxin-backend",
     "moxin-frontend",
     "moxin-protocol"
 ]

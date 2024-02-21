@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct File {
     pub path: String,
     pub size: String,
@@ -10,7 +10,7 @@ pub struct File {
     pub featured: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Author {
     pub name: String,
     pub url: String,
@@ -20,7 +20,7 @@ pub struct Author {
 // We're using the HuggingFace identifier as the model ID for now
 // We should consider using a different identifier in the future if more
 // models sources are added.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Model {
     pub id: String,
     pub name: String,

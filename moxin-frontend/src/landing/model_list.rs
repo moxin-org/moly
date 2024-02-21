@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::backend::*;
+use crate::data::store::Store;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -33,12 +33,12 @@ pub struct ModelList {
     view: View,
 
     #[rust]
-    backend: Backend
+    store: Store,
 }
 
 impl LiveHook for ModelList {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.backend = Backend::new();
+        self.store = Store::new();
     }
 }
 
@@ -48,20 +48,18 @@ impl Widget for ModelList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.backend.command_sender.send(Command::GetFeaturedModels);
-        if let Response::FeaturedModels(models) = self.backend.response_receiver.recv().unwrap() {
-            let models_count = models.len();
+        let models = &self.store.models;
+        let models_count = models.len();
 
-            while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step(){
-                if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
-                    list.set_item_range(cx, 0, models_count);
-                    while let Some(item_id) = list.next_visible_item(cx) {
-                        let item = list.item(cx, item_id, live_id!(Model)).unwrap();
+        while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step(){
+            if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
+                list.set_item_range(cx, 0, models_count);
+                while let Some(item_id) = list.next_visible_item(cx) {
+                    let item = list.item(cx, item_id, live_id!(Model)).unwrap();
 
-                        if item_id < models_count {
-                            let model_data = &models[item_id];
-                            item.draw_all(cx, &mut Scope::with_data(&mut model_data.clone()));
-                        }
+                    if item_id < models_count {
+                        let model_data = &models[item_id];
+                        item.draw_all(cx, &mut Scope::with_data(&mut model_data.clone()));
                     }
                 }
             }

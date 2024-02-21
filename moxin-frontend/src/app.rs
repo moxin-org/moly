@@ -2,7 +2,6 @@ use makepad_widgets::*;
 use crate::shared::slide_panel_modal::SlidePanelModalWidgetRefExt;
 use crate::landing::model_all_files::ModelAllFilesWidgetRefExt;
 use crate::landing::model_card::ModelCardAction;
-use crate::data::store::Store;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -163,12 +162,9 @@ impl MatchEvent for App {
         );
 
         for action in actions {
-            if let ModelCardAction::ViewAllFiles(model_id) = action.as_widget_action().cast() {
-                if let Some(model) = Store::find_model_by_id(&model_id) {
-                    self.ui.model_all_files(id!(all_files)).set_model(model.clone());
-
-                    self.ui.slide_panel_modal(id!(modals)).show(cx);
-                }
+            if let ModelCardAction::ViewAllFiles(model) = action.as_widget_action().cast() {
+                self.ui.model_all_files(id!(all_files)).set_model(model.clone());
+                self.ui.slide_panel_modal(id!(modals)).show(cx);
             };
         }
     }

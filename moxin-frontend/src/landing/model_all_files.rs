@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::store::*;
+use moxin_protocol::data::Model;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -90,7 +90,7 @@ pub struct ModelAllFiles {
     view: View,
 
     #[rust]
-    model_id: String,
+    model: Model,
 }
 
 impl Widget for ModelAllFiles {
@@ -99,9 +99,7 @@ impl Widget for ModelAllFiles {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        if let Some(model) = Store::find_model_by_id(&self.model_id) {
-            let _ = self.view.draw_walk(cx, &mut Scope::with_data(&mut model.clone()), walk);
-        };
+        let _ = self.view.draw_walk(cx, &mut Scope::with_data(&mut self.model.clone()), walk);
 
         DrawStep::done()
     }
@@ -111,8 +109,9 @@ impl ModelAllFilesRef {
     pub fn set_model(&self, model: Model) {
         let Some(mut all_files_widget) = self.borrow_mut() else { return };
 
+        all_files_widget.model = model.clone();
+        
         let id = &model.id;
-        all_files_widget.model_id = id.clone();
         all_files_widget.label(id!(model_id_label)).set_text(&id);
 
         let name = &model.name;

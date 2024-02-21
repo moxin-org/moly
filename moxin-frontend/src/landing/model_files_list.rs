@@ -1,5 +1,6 @@
 use makepad_widgets::*;
-use crate::data::store::*;
+use crate::data::store::Store;
+use moxin_protocol::data::{Model, File};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -306,9 +307,9 @@ impl Widget for ModelFilesItems {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         cx.begin_turtle(walk, self.layout);
 
-        let model = &mut scope.data.get_mut::<Model>();
+        let model = scope.data.get::<Model>();
         let files = if self.show_featured {
-            model.featured_files()
+            Store::model_featured_files(model)
         } else {
             model.files.clone()
         };

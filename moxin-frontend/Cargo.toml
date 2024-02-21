@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 moxin-protocol = { path = "../moxin-protocol" }
+moxin-backend = { path = "../moxin-backend" }
 ## makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-widgets = { path = "../../makepad/widgets", version = "0.6.0" }
 chrono = "0.4"

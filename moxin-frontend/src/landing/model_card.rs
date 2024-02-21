@@ -1,5 +1,6 @@
 use makepad_widgets::*;
-use crate::data::store::*;
+use moxin_protocol::data::Model;
+use crate::data::store::Store;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -157,7 +158,7 @@ pub struct ModelCard {
     view: View,
 
     #[rust]
-    model_id: String,
+    model: Model,
 }
 
 impl Widget for ModelCard {
@@ -169,7 +170,7 @@ impl Widget for ModelCard {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let model = scope.data.get::<Model>();
 
-        self.model_id = model.id.clone();
+        self.model = model.clone();
 
         let name = &model.name;
         self.label(id!(model_name)).set_text(name);
@@ -192,7 +193,7 @@ impl Widget for ModelCard {
         let author_description = &model.author.description;
         self.label(id!(author_description)).set_text(author_description);
 
-        let released_at_str = &model.formatted_release_date();
+        let released_at_str = Store::formatted_model_release_date(model);
         self.label(id!(model_released_at_tag.attr_value)).set_text(&released_at_str);
 
         self.view.draw_walk(cx, scope, walk)
@@ -201,7 +202,7 @@ impl Widget for ModelCard {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelCardAction {
-    ViewAllFiles(String),
+    ViewAllFiles(Model),
     None,
 }
 
@@ -209,7 +210,7 @@ impl WidgetMatchEvent for ModelCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.link_label(id!(all_files_link)).clicked(&actions) {
             let widget_uid = self.widget_uid();
-            cx.widget_action(widget_uid, &scope.path, ModelCardAction::ViewAllFiles(self.model_id.clone()));
+            cx.widget_action(widget_uid, &scope.path, ModelCardAction::ViewAllFiles(self.model.clone()));
         }
     }
 }

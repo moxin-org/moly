@@ -326,11 +326,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "moxin-backend"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "moxin-protocol",
+]
+
+[[package]]
 name = "moxin-frontend"
 version = "0.1.0"
 dependencies = [
  "chrono",
  "makepad-widgets",
+ "moxin-backend",
  "moxin-protocol",
 ]
 
