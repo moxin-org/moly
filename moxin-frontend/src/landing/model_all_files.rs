@@ -99,7 +99,7 @@ impl Widget for ModelAllFiles {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        let _ = self.view.draw_walk(cx, &mut Scope::with_data(&mut self.model.clone()), walk);
+        let _ = self.view.draw_walk(cx, &mut Scope::with_data(&mut self.model), walk);
 
         DrawStep::done()
     }

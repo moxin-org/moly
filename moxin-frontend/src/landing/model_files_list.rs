@@ -365,7 +365,7 @@ impl ModelFilesItems {
             });
 
             if self.show_tags {
-                item_widget.model_files_tags(id!(tags)).set_tags(cx, files[i].tags.clone());
+                item_widget.model_files_tags(id!(tags)).set_tags(cx, &files[i].tags);
             }
 
             let _ = item_widget.draw_walk(cx, &mut Scope::empty(), walk);
@@ -409,7 +409,7 @@ impl Widget for ModelFilesTags {
 }
 
 impl ModelFilesTagsRef {
-    pub fn set_tags(&self, cx: &mut Cx, tags: Vec<String>) {
+    pub fn set_tags(&self, cx: &mut Cx, tags: &Vec<String>) {
         let Some(mut tags_widget) = self.borrow_mut() else { return };
         tags_widget.items.clear();
         for (i, tag) in tags.iter().enumerate() {

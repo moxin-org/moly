@@ -40,10 +40,10 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>();
-        let models = store.models.clone();
+        let models = &store.models;
         let models_count = models.len();
 
-        while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step(){
+        while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step(){
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, models_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
