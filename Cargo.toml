@@ -1,10 +1,8 @@
-[package]
-name = "moxin"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = [
+    "moxin-frontend",
+    "moxin-protocol"
+]
 
-[dependencies]
-makepad-widgets = { path = "../makepad/widgets", version = "0.6.0" }
-chrono = "0.4"
+workspace.resolver = "2"
