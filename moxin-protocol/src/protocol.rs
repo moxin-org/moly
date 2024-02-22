@@ -9,8 +9,15 @@ pub enum ContextOverflowPolicy {
 }
 
 #[derive(Clone, Debug)]
+pub enum GPULayers {
+    Specific(u32),
+    Max,
+}
+
+#[derive(Clone, Debug)]
 pub struct ModelExecutionConfig {
     pub cpu_threads: u32,
+    pub gpu_layers: GPULayers,
     pub use_mlock: bool,
     pub n_batch: u32,
     pub n_ctx: u32,
@@ -112,6 +119,7 @@ pub struct DownloadedFile {
     pub model: Model,
     pub downloaded_at: NaiveDate,
     pub compatibility_guess: CompatibilityGuess,
+    pub information: String,
 }
 
 #[derive(Clone, Debug)]
