@@ -1,11 +1,16 @@
 use chrono::NaiveDate;
 
+pub type FileID = String;
+pub type ModelID = String;
+
 #[derive(Debug, Clone, Default)]
 pub struct File {
+    pub id: FileID,
     pub name: String,
     pub size: String,
     pub quantization: String,
     pub downloaded: bool,
+    pub downloaded_path: Option<String>,
     pub tags: Vec<String>,
     pub featured: bool,
 }
@@ -22,7 +27,7 @@ pub struct Author {
 // models sources are added.
 #[derive(Debug, Clone, Default)]
 pub struct Model {
-    pub id: String,
+    pub id: ModelID,
     pub name: String,
     pub summary: String,
     pub size: String,
