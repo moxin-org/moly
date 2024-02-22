@@ -351,7 +351,7 @@ impl ModelFilesItems {
                 WidgetRef::new_from_ptr(cx, template)
             });
 
-            let filename = &files[i].path;
+            let filename = &files[i].name;
             let size = &files[i].size;
             let quantization = &files[i].quantization;
             item_widget.apply_over(cx, live!{

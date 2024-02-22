@@ -31,6 +31,7 @@ impl Backend {
                         Command::SearchModels(query) => {
                             println!("Searching for models with query: {}", query);
                         }
+                        _ => {}
                     }
                 }
             }

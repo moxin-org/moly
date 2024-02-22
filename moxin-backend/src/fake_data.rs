@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 pub fn get_models() -> Vec<Model> {
     let open_hermes_files = vec![
         File {
-            path: "openhermes-2.5-mistral-7b.Q2_K.gguf".to_string(),
+            name: "openhermes-2.5-mistral-7b.Q2_K.gguf".to_string(),
             size: "3.08 GB".to_string(),
             quantization: "Q2_K".to_string(),
             downloaded: false,
@@ -12,7 +12,7 @@ pub fn get_models() -> Vec<Model> {
             featured: false,
         },
         File {
-            path: "openhermes-2.5-mistral-7b.Q3_K_S.gguf".to_string(),
+            name: "openhermes-2.5-mistral-7b.Q3_K_S.gguf".to_string(),
             size: "3.16 GB".to_string(),
             quantization: "Q3_K_S".to_string(),
             downloaded: false,
@@ -20,7 +20,7 @@ pub fn get_models() -> Vec<Model> {
             featured: false,
         },
         File {
-            path: "openhermes-2.5-mistral-7b.Q3_K_M.gguf".to_string(),
+            name: "openhermes-2.5-mistral-7b.Q3_K_M.gguf".to_string(),
             size: "3.52 GB".to_string(),
             quantization: "Q3_K_M".to_string(),
             downloaded: false,
@@ -28,7 +28,7 @@ pub fn get_models() -> Vec<Model> {
             featured: false,
         },
         File {
-            path: "openhermes-2.5-mistral-7b.Q3_K_L.gguf".to_string(),
+            name: "openhermes-2.5-mistral-7b.Q3_K_L.gguf".to_string(),
             size: "3.82 GB".to_string(),
             quantization: "Q3_K_M".to_string(),
             downloaded: false,
@@ -36,7 +36,7 @@ pub fn get_models() -> Vec<Model> {
             featured: false,
         },
         File {
-            path: "openhermes-2.5-mistral-7b.Q4_0.gguf".to_string(),
+            name: "openhermes-2.5-mistral-7b.Q4_0.gguf".to_string(),
             size: "4.11 GB".to_string(),
             quantization: "Q4_0".to_string(),
             downloaded: false,
@@ -44,7 +44,7 @@ pub fn get_models() -> Vec<Model> {
             featured: false,
         },
         File {
-            path: "stablelm-zephyr-3b.Q4_K_S.gguf".to_string(),
+            name: "stablelm-zephyr-3b.Q4_K_S.gguf".to_string(),
             size: "1.62 GB".to_string(),
             quantization: "Q4_K_S".to_string(),
             downloaded: true,
@@ -52,7 +52,7 @@ pub fn get_models() -> Vec<Model> {
             featured: true,
         },
         File {
-            path: "stablelm-zephyr-3b.Q6_K.gguf".to_string(),
+            name: "stablelm-zephyr-3b.Q6_K.gguf".to_string(),
             size: "2.30 GB".to_string(),
             quantization: "Q6_K".to_string(),
             downloaded: false,
@@ -63,7 +63,7 @@ pub fn get_models() -> Vec<Model> {
 
     let nexus_raven_files = vec![
         File {
-            path: "nexusraven-v2-13b.Q4_K_S.gguf".to_string(),
+            name: "nexusraven-v2-13b.Q4_K_S.gguf".to_string(),
             size: "7.41 GB".to_string(),
             quantization: "Q4_K_S".to_string(),
             downloaded: false,
@@ -71,7 +71,7 @@ pub fn get_models() -> Vec<Model> {
             featured: true,
         },
         File {
-            path: "nexusraven-v2-13b.Q6_K.gguf".to_string(),
+            name: "nexusraven-v2-13b.Q6_K.gguf".to_string(),
             size: "10.68 GB".to_string(),
             quantization: "Q6_K".to_string(),
             downloaded: true,
@@ -82,7 +82,7 @@ pub fn get_models() -> Vec<Model> {
 
     let stable_lm_files = vec![
         File {
-            path: "nexusraven-v2-13b.Q4_K_S.gguf".to_string(),
+            name: "nexusraven-v2-13b.Q4_K_S.gguf".to_string(),
             size: "1.62 GB".to_string(),
             quantization: "Q4_K_S".to_string(),
             downloaded: true,
@@ -90,7 +90,7 @@ pub fn get_models() -> Vec<Model> {
             featured: true,
         },
         File {
-            path: "nexusraven-v2-13b.Q6_K.gguf".to_string(),
+            name: "nexusraven-v2-13b.Q6_K.gguf".to_string(),
             size: "2.30 GB".to_string(),
             quantization: "Q6_K".to_string(),
             downloaded: false,
@@ -101,7 +101,7 @@ pub fn get_models() -> Vec<Model> {
 
     let qwen_files = vec![
         File {
-            path: "qwen1_5-7b-chat-q5_k_m.gguf".to_string(),
+            name: "qwen1_5-7b-chat-q5_k_m.gguf".to_string(),
             size: "2.30 GB".to_string(),
             quantization: "Q5_K_M".to_string(),
             downloaded: false,
@@ -125,6 +125,8 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://github.com/teknium1".to_string(),
                 description: "Creator of numerous chart topping fine-tunes and a Co-founder of NousResearch.".to_string(),
             },
+            like_count: 10,
+            download_count: 5003,
         },
         Model {
             id: "Nexusflow/NexusRaven-V2-13B".to_string(),
@@ -140,6 +142,8 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://nexusflow.ai/".to_string(),
                 description: "Nexusflow is democratizing Cyber Intelligence with Generative AI, fully on top of open-source large language models (LLMs).".to_string(),
             },
+            like_count: 10,
+            download_count: 5003,
         },
         Model {
             id: "stabilityai/stablelm-zephyr-3b".to_string(),
@@ -155,6 +159,8 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://stability.ai/".to_string(),
                 description: "Stability AI is developing cutting-edge open AI models for Image, Language, Audio, Video, 3D and Biology.".to_string(),
             },
+            like_count: 10,
+            download_count: 5003,
         },
         Model {
             id: "Qwen/Qwen1.5-7B-Chat-GGUF".to_string(),
@@ -170,6 +176,8 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://huggingface.co/Qwen".to_string(),
                 description: "Qwen (abbr. for Tongyi Qianwen 通义千问) refers to the large language model family built by Alibaba Cloud".to_string(),
             },
+            like_count: 10,
+            download_count: 5003,
         },
     ]
 }

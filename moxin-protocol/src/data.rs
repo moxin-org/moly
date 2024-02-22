@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 
 #[derive(Debug, Clone, Default)]
 pub struct File {
-    pub path: String,
+    pub name: String,
     pub size: String,
     pub quantization: String,
     pub downloaded: bool,
@@ -31,4 +31,6 @@ pub struct Model {
     pub released_at: NaiveDate,
     pub files: Vec<File>,
     pub author: Author,
+    pub like_count: u32,
+    pub download_count: u32,
 }

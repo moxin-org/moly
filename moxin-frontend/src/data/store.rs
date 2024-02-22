@@ -22,8 +22,9 @@ impl Store {
 
         store.backend.command_sender.send(Command::GetFeaturedModels).unwrap();
         if let Ok(response) = store.backend.response_receiver.recv() {
-            let Response::FeaturedModels(models) = response;
-            store.models = models;
+            if let Response::FeaturedModels(models) = response {
+                store.models = models;
+            }
         };
 
         store
