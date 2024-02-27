@@ -1,4 +1,62 @@
 use chrono::NaiveDate;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Role {
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "user")]
+    User,
+    #[serde(rename = "assistant")]
+    Assistant,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Message {
+    pub role: Role,
+    pub content: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ChatBody {
+    pub messages: Vec<Message>,
+    pub channel_id: String,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Options {
+    pub ctx_size: Option<u64>,
+    pub n_predict: Option<u64>,
+    pub n_gpu_layers: Option<u64>,
+    pub batch_size: Option<u64>,
+    pub temp: Option<f32>,
+    pub repeat_penalty: Option<f32>,
+    pub reverse_prompt: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct LoadModel {
+    pub model: String,
+    #[serde(default)]
+    pub prompt_template: Option<String>,
+    #[serde(default)]
+    pub options: Options,
+}
+
+#[derive(Debug)]
+pub enum TokenError {
+    BackendNotRun,
+    EndOfSequence,
+    ContextFull,
+    PromptTooLong,
+    TooLarge,
+    InvalidEncoding,
+    Other,
+}
+
+pub struct Token {
+    pub content: String,
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct File {

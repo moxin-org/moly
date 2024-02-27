@@ -1,21 +1,17 @@
-use crate::data::Model;
+use crossbeam::channel::Sender;
+
+use crate::data::{ChatBody, LoadModel, Model, Token, TokenError};
 
 #[derive(Clone, Debug)]
 pub enum Command {
-    GetFeaturedModels,
+    GetFeaturedModels(Sender<Vec<Model>>),
 
     // The argument is a string with the keywords to search for.
-    SearchModels(String),
+    SearchModels(String, Sender<Vec<Model>>),
 
     // The argument is the File name.
-    DownloadFile(String),
-}
+    DownloadFile(String, Sender<()>),
 
-#[derive(Clone, Debug)]
-pub enum Response {
-    // Response to the GetFeaturedModels command
-    FeaturedModels(Vec<Model>),
-
-    // Response to the SearchModels command
-    ModelsSearchResults(Vec<Model>),
+    LoadModel(LoadModel, Sender<()>),
+    Chat(ChatBody, Sender<Result<Token, TokenError>>),
 }

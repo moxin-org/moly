@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 moxin-protocol = { path = "../moxin-protocol" }
 chrono = "0.4"
+crossbeam = "0.8"
