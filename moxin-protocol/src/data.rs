@@ -22,6 +22,21 @@ pub struct Author {
     pub description: String,
 }
 
+#[derive(Clone, Debug)]
+pub enum CompatibilityGuess {
+    PossiblySupported,
+    NotSupported,
+}
+
+#[derive(Clone, Debug)]
+pub struct DownloadedFile {
+    pub file: File,
+    pub model: Model,
+    pub downloaded_at: NaiveDate,
+    pub compatibility_guess: CompatibilityGuess,
+    pub information: String,
+}
+
 // We're using the HuggingFace identifier as the model ID for now
 // We should consider using a different identifier in the future if more
 // models sources are added.

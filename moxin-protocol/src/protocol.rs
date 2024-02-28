@@ -4,6 +4,12 @@ use chrono::NaiveDate;
 use anyhow::Result;
 
 #[derive(Clone, Debug)]
+pub enum FileDownloadResponse {
+    Progress(FileID, f32),
+    Completed(DownloadedFile),
+}
+
+#[derive(Clone, Debug)]
 pub enum ContextOverflowPolicy {
     StopAtLimit,
     TruncateMiddle,
@@ -32,12 +38,81 @@ pub struct LoadModelOptions {
 }
 
 #[derive(Clone, Debug)]
+pub struct LoadedModelInfo {
+    pub file_id: FileID,
+    pub model_id: ModelID,
+
+    // JSON formatted string with the model information. See "Model Inspector" in LMStudio.
+    pub information: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModelResourcesInfo {
+    ram_usage: f32,
+    cpu_usage: f32,
+}
+
+#[derive(Clone, Debug)]
+pub enum LoadModelResponse {
+    Progress(FileID, f32),
+    Completed(LoadedModelInfo),
+    ModelResoucesUsage(ModelResourcesInfo),
+}
+
+pub enum ChatError {
+    BackendNotRun,
+    EndOfSequence,
+    ContextFull,
+    PromptTooLong,
+    TooLarge,
+    InvalidEncoding,
+    Other,
+}
+
+#[derive(Clone, Debug)]
+pub enum StopReason {
+    Completed,
+    Stopped
+}
+
+#[derive(Clone, Debug)]
+pub struct ChatCompletionData {
+    // The response from the model in JSON format
+    // https://platform.openai.com/docs/api-reference/chat/object
+    response: String,
+
+    // The remaining fields are stats about the chat completion process
+    time_to_first_token: f32,
+    time_to_generate: f32,
+    speed: f32,
+    gpu_layers: u32,
+    cpu_threads: u32,
+    mlock: bool,
+    token_count: u32,
+    token_limit: u32,
+    stop_reason: StopReason,
+}
+
+#[derive(Clone, Debug)]
+pub enum ChatResponse {
+    ChatCompletion(ChatCompletionData),
+    // https://platform.openai.com/docs/api-reference/chat/streaming
+    ChatCompletionChunk(String),
+}
+
+#[derive(Clone, Debug)]
 pub struct LocalServerConfig {
     pub port: u16,
     pub cors: bool,
     pub request_queuing: bool,
     pub verbose_server_logs: bool,
     pub apply_prompt_formatting: bool,
+}
+
+#[derive(Clone, Debug)]
+pub enum LocalServerResponse {
+    Started,
+    Log(String),
 }
 
 #[derive(Clone, Debug)]
@@ -64,94 +139,4 @@ pub enum Command {
     StartLocalServer(LocalServerConfig, Sender<Result<LocalServerResponse>>),
     // Command to stop the local server
     StopLocalServer(Sender<Result<()>>),
-}
-
-#[derive(Clone, Debug)]
-pub struct LoadedModelInfo {
-    pub file_id: FileID,
-    pub model_id: ModelID,
-
-    // JSON formatted string with the model information. See "Model Inspector" in LMStudio.
-    pub information: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct ModelResourcesInfo {
-    ram_usage: f32,
-    cpu_usage: f32,
-}
-
-#[derive(Clone, Debug)]
-pub enum StopReason {
-    Completed,
-    Stopped
-}
-
-#[derive(Clone, Debug)]
-pub struct ChatCompletionData {
-    // The response from the model in JSON format, following https://platform.openai.com/docs/api-reference/chat/create
-    response: String,
-
-    // The remaining fields are stats about the chat completion process
-    time_to_first_token: f32,
-    time_to_generate: f32,
-    speed: f32,
-    gpu_layers: u32,
-    cpu_threads: u32,
-    mlock: bool,
-    token_count: u32,
-    token_limit: u32,
-    stop_reason: StopReason,
-}
-
-#[derive(Clone, Debug)]
-pub enum CompatibilityGuess {
-    PossiblySupported,
-    NotSupported,
-}
-
-#[derive(Clone, Debug)]
-pub struct DownloadedFile {
-    pub file: File,
-    pub model: Model,
-    pub downloaded_at: NaiveDate,
-    pub compatibility_guess: CompatibilityGuess,
-    pub information: String,
-}
-
-#[derive(Clone, Debug)]
-pub enum FileDownloadResponse {
-    Progress(FileID, f32),
-    Completed(File),
-}
-
-#[derive(Clone, Debug)]
-pub enum LoadModelResponse {
-    Progress(FileID, f32),
-    Completed(LoadedModelInfo),
-    ModelResoucesUsage(ModelResourcesInfo),
-}
-
-pub enum ChatError {
-    BackendNotRun,
-    EndOfSequence,
-    ContextFull,
-    PromptTooLong,
-    TooLarge,
-    InvalidEncoding,
-    Other,
-}
-
-#[derive(Clone, Debug)]
-pub enum ChatResponse {
-    // https://platform.openai.com/docs/api-reference/chat/object
-    ChatCompletion(String),
-    // https://platform.openai.com/docs/api-reference/chat/streaming
-    ChatCompletionChunk(String),
-}
-
-#[derive(Clone, Debug)]
-pub enum LocalServerResponse {
-    Started,
-    Log(String),
 }
