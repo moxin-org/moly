@@ -1,5 +1,6 @@
 mod fake_data;
 
+use anyhow::anyhow;
 use std::sync::mpsc;
 use moxin_protocol::protocol::Command;
 
@@ -24,7 +25,8 @@ impl Backend {
                     match command {
                         Command::GetFeaturedModels(tx) => {
                             let models = fake_data::get_models();
-                            tx.send(models).unwrap();
+                            tx.send(Ok(models)).unwrap();
+                            //tx.send(Err(anyhow!("Database query failed"))).unwrap();
                         }
                         Command::SearchModels(query, _tx) => {
                             println!("Searching for models with query: {}", query);

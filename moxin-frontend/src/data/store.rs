@@ -28,8 +28,11 @@ impl Store {
             .send(Command::GetFeaturedModels(tx))
             .unwrap();
 
-        if let Ok(models) = rx.recv() {
-            store.models = models;
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(models) => store.models = models,
+                Err(err) => eprintln!("Error fetching models: {:?}", err),
+            }
         };
 
         store

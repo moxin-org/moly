@@ -1,6 +1,7 @@
 use crate::data::*;
 use std::sync::mpsc::Sender;
 use chrono::NaiveDate;
+use anyhow::Result;
 
 #[derive(Clone, Debug)]
 pub enum ContextOverflowPolicy {
@@ -41,27 +42,28 @@ pub struct LocalServerConfig {
 
 #[derive(Clone, Debug)]
 pub enum Command {
-    GetFeaturedModels(Sender<Vec<Model>>),
+    GetFeaturedModels(Sender<Result<Vec<Model>>>),
 
     // The argument is a string with the keywords to search for.
-    SearchModels(String, Sender<Vec<Model>>),
+    SearchModels(String, Sender<Result<Vec<Model>>>),
 
-    DownloadFile(FileID, Sender<FileDownloadResponse>),
-    GetDownloadedFiles(Sender<Vec<DownloadedFile>>),
+    DownloadFile(FileID, Sender<Result<FileDownloadResponse>>),
+    GetDownloadedFiles(Sender<Result<Vec<DownloadedFile>>>),
 
-    LoadModel(FileID, LoadModelOptions, Sender<LoadModelResponse>),
-    EjectModel(FileID),
-    GetLoadedModel(Sender<Option<ModelResourcesInfo>>),
+    LoadModel(FileID, LoadModelOptions, Sender<Result<LoadModelResponse>>),
+
+    // Eject currently loaded model, if any is provided
+    EjectModel(Sender<Result<()>>),
 
     // The argument is the chat message in JSON format, following https://platform.openai.com/docs/api-reference/chat/create
     Chat(String, Sender<Result<ChatResponse, ChatError>>),
     // Command to stop the current chat completion
-    StopChatCompletion,
+    StopChatCompletion(Sender<Result<()>>),
 
     // Command to start a local server to interact with chat models
-    StartLocalServer(LocalServerConfig, Sender<LocalServerResponse>),
+    StartLocalServer(LocalServerConfig, Sender<Result<LocalServerResponse>>),
     // Command to stop the local server
-    StopLocalServer,
+    StopLocalServer(Sender<Result<()>>),
 }
 
 #[derive(Clone, Debug)]
