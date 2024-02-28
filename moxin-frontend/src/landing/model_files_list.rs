@@ -17,13 +17,14 @@ live_design! {
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
 
-    ModelFilesRow = <View> {
+    ModelFilesRow = <RoundedYView> {
         width: Fill,
         height: Fit,
 
         show_bg: true,
         draw_bg: {
-            color: #fff
+            color: #00f
+            radius: vec2(1.0, 1.0)
         }
 
         cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
@@ -104,7 +105,21 @@ live_design! {
         }
     }
 
+    ModelFilesTags = {{ModelFilesTags}} {
+        width: Fit,
+        height: Fit,
+        flow: Right,
+        spacing: 5,
+
+        template: <ModelFilesListLabel> {}
+    }
+
     ModelFilesRowWithData = <ModelFilesRow> {
+        show_bg: true,
+        draw_bg: {
+            color: #fff
+        }
+
         cell1 = {
             spacing: 10,
             filename = <Label> {
@@ -113,6 +128,7 @@ live_design! {
                     color: #000
                 }
             }
+            tags = <ModelFilesTags> {}
         }
 
         cell2 = {
@@ -156,78 +172,40 @@ live_design! {
         }
     }
 
-    ModelFilesTags = {{ModelFilesTags}} {
-        width: Fit,
-        height: Fit,
-        flow: Right,
-        spacing: 5,
-
-        template: <ModelFilesListLabel> {}
-    }
-
     ModelFilesItems = {{ModelFilesItems}} {
         width: Fill,
         height: Fit,
         flow: Down,
 
         template_downloaded: <ModelFilesRowWithData> {
-            cell1 = {
-                filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
-                tags = <ModelFilesTags> {}
-            }
-            cell2 = { full_size = { text: "2.30 GB" }}
-            cell3 = {
-                quantization_tag = { quantization = { text: "Q6_K" }}
-            }
             cell4 = {
                 <DownloadedButton> {}
             }
         }
 
         template_download: <ModelFilesRowWithData> {
-            cell1 = {
-                filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
-                tags = <ModelFilesTags> {}
-            }
-            cell2 = { full_size = { text: "2.30 GB" }}
-            cell3 = {
-                quantization_tag = { quantization = { text: "Q6_K" }}
-            }
             cell4 = {
                 <DownloadButton> {}
             }
         }
     }
 
-    ModelFilesList = <View> {
+    ModelFilesList = <RoundedView> {
         width: Fill,
         height: Fit,
         flow: Down,
 
-        heading_row = <ModelFilesRow> {
-            cell1 = {
-                <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 9},
-                        color: #000
-                    }
-                    text: "Highlighted Files"
-                }
-            }
-
-            cell4 = {
-                align: {x: 0.5, y: 0.5},
-                all_files_link = <ModelLink> {
-                    width: Fit,
-                    text: "See All Files"
-                }
-            }
+        show_bg: true,
+        draw_bg: {
+            color: #EAECF0
+            radius: 3.0
         }
 
         <ModelFilesRow> {
             show_bg: true,
             draw_bg: {
                 color: #F2F4F7
+                radius: vec2(3.0, 0.5)
             }
 
             cell1 = {
@@ -268,6 +246,36 @@ live_design! {
         }
 
         file_list = <ModelFilesItems> {}
+
+        footer = <RoundedYView> {
+            width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
+
+            show_bg: true,
+            draw_bg: {
+                color: #fff
+                radius: vec2(0.5, 3.0)
+            }
+
+            all_files_link = <ModelLink> {
+                width: Fit,
+                text: "Show All Files (12)"
+
+                draw_text: {
+                    text_style: <BOLD_FONT>{font_size: 9},
+                    fn get_color(self) -> vec4 {
+                        return mix(
+                            mix(
+                                #667085,
+                                #667085,
+                                self.hover
+                            ),
+                            #667085,
+                            self.pressed
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -339,7 +347,7 @@ impl WidgetNode for ModelFilesItems {
 }
 
 impl ModelFilesItems {
-    fn draw_files(&mut self, cx: &mut Cx2d, walk: Walk, files: &Vec<File>) {
+    fn draw_files(&mut self, cx: &mut Cx2d, _walk: Walk, files: &Vec<File>) {
         for i in 0..files.len() {
             let template = if files[i].downloaded {
                 self.template_downloaded
@@ -368,7 +376,7 @@ impl ModelFilesItems {
                 item_widget.model_files_tags(id!(tags)).set_tags(cx, &files[i].tags);
             }
 
-            let _ = item_widget.draw_walk(cx, &mut Scope::empty(), walk);
+            let _ = item_widget.draw_all(cx, &mut Scope::empty());
         }
     }
 }
@@ -400,7 +408,7 @@ impl Widget for ModelFilesTags {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         cx.begin_turtle(walk, self.layout);
-        for (_id, item) in self.items.iter_mut() {
+        for (_id, item) in self.items.iter_mut() { 
             let _ = item.draw_walk(cx, scope, walk);
         }
         cx.end_turtle_with_area(&mut self.area);

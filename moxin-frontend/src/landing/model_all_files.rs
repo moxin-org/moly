@@ -77,8 +77,8 @@ live_design! {
             <ModelHeading> { margin: {left: 10}}
             <ModelAllFilesInfo> {}
             <ModelFilesList> {
-                heading_row = { visible: false }
                 file_list = { show_tags: false }
+                footer = { visible: false }
             }
         }
     }

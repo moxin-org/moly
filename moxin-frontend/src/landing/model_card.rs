@@ -137,7 +137,9 @@ live_design! {
 
             draw_bg: {
                 instance radius: 3.0,
-                color: #F2F4F7
+                color: #F9FAFB,
+                border_color: #DFDFDF,
+                border_width: 1.0,
             }
 
             flow: Down,
