@@ -1,4 +1,5 @@
 use crate::data::*;
+use std::sync::mpsc::Sender;
 use chrono::NaiveDate;
 
 #[derive(Clone, Debug)]
@@ -15,8 +16,8 @@ pub enum GPULayers {
 }
 
 #[derive(Clone, Debug)]
-pub struct ModelExecutionConfig {
-    pub cpu_threads: u32,
+pub struct LoadModelOptions {
+    pub prompt_template: Option<String>,
     pub gpu_layers: GPULayers,
     pub use_mlock: bool,
     pub n_batch: u32,
@@ -40,33 +41,27 @@ pub struct LocalServerConfig {
 
 #[derive(Clone, Debug)]
 pub enum Command {
-    GetFeaturedModels,
+    GetFeaturedModels(Sender<Vec<Model>>),
 
     // The argument is a string with the keywords to search for.
-    SearchModels(String),
+    SearchModels(String, Sender<Vec<Model>>),
 
-    DownloadFile(FileID),
+    DownloadFile(FileID, Sender<FileDownloadResponse>),
+    GetDownloadedFiles(Sender<Vec<DownloadedFile>>),
 
-    LoadModel(FileID),
+    LoadModel(FileID, LoadModelOptions, Sender<LoadModelResponse>),
     EjectModel(FileID),
-    GetLoadedModel(),
+    GetLoadedModel(Sender<Option<ModelResourcesInfo>>),
 
     // The argument is the chat message in JSON format, following https://platform.openai.com/docs/api-reference/chat/create
-    GetChatCompletion(String),
-
+    Chat(String, Sender<Result<ChatResponse, ChatError>>),
     // Command to stop the current chat completion
     StopChatCompletion,
 
-    // Command to set global settings for the backend
-    ConfigureModelExecution(ModelExecutionConfig),
-
     // Command to start a local server to interact with chat models
-    StartLocalServer(LocalServerConfig),
-
+    StartLocalServer(LocalServerConfig, Sender<LocalServerResponse>),
     // Command to stop the local server
     StopLocalServer,
-
-    GetDownloadedFiles,
 }
 
 #[derive(Clone, Debug)]
@@ -79,7 +74,7 @@ pub struct LoadedModelInfo {
 }
 
 #[derive(Clone, Debug)]
-pub struct ModelSystemInfo {
+pub struct ModelResourcesInfo {
     ram_usage: f32,
     cpu_usage: f32,
 }
@@ -123,37 +118,38 @@ pub struct DownloadedFile {
 }
 
 #[derive(Clone, Debug)]
-pub enum Response {
-    // Response to the GetFeaturedModels command
-    FeaturedModels(Vec<Model>),
+pub enum FileDownloadResponse {
+    Progress(FileID, f32),
+    Completed(File),
+}
 
-    // Response to the SearchModels command
-    ModelsSearchResults(Vec<Model>),
+#[derive(Clone, Debug)]
+pub enum LoadModelResponse {
+    Progress(FileID, f32),
+    Completed(LoadedModelInfo),
+    ModelResoucesUsage(ModelResourcesInfo),
+}
 
-    // Responses related with the DownloadFile command
-    FileDownloadProgress(FileID, f32), // Progress value from 0.0 to 1.0
-    FileDownloaded(File), // The downloaded_path field is filled
+pub enum ChatError {
+    BackendNotRun,
+    EndOfSequence,
+    ContextFull,
+    PromptTooLong,
+    TooLarge,
+    InvalidEncoding,
+    Other,
+}
 
-    LoadModelProgress(FileID, f32), // Progress value from 0.0 to 1.0
+#[derive(Clone, Debug)]
+pub enum ChatResponse {
+    // https://platform.openai.com/docs/api-reference/chat/object
+    ChatCompletion(String),
+    // https://platform.openai.com/docs/api-reference/chat/streaming
+    ChatCompletionChunk(String),
+}
 
-    // Response to the GetLoadedModel command, but also sent when the model has been loaded
-    LoadedModel(Option<LoadedModelInfo>),
-
-    // This response is an update that is sent periodically to the client.
-    // It is not a response to a specific command, but they will arrive when the
-    // model is loaded and running.
-    ModelSystemInfoUpdate(ModelSystemInfo),
-
-    // Responses to the GetChatCompletion command.
-    ChatCompletion(ChatCompletionData), // Final response. It also is emitten when the chat is stopped with the StopChatCompletion command
-    ChatCompletionChunk(String), // Streamed chunk of the response in JSON format (following https://platform.openai.com/docs/api-reference/chat/create)
-
-    // Response to the GetDownloadedFiles command
-    DownloadFilesResults(Vec<DownloadedFile>),
-
-    // Response to the StartLocalServer command
-    LocalServerStarted,
-
-    // Chunk of the local server log
-    LocalServerLog(String),
+#[derive(Clone, Debug)]
+pub enum LocalServerResponse {
+    Started,
+    Log(String),
 }
