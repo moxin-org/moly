@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::Model;
 use crate::data::store::Store;
+use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -187,13 +188,20 @@ impl Widget for ModelCard {
         self.label(id!(model_architecture_tag.attr_value)).set_text(architecture);
 
         let summary = &model.summary;
-        self.label(id!(model_summary)).set_text(summary);
+        const MAX_SUMMARY_LENGTH: usize = 500;
+        let trimmed_summary = if summary.len() > MAX_SUMMARY_LENGTH {
+            let trimmed = summary.graphemes(true).take(MAX_SUMMARY_LENGTH).collect::<String>();
+            format!("{}...", trimmed)
+        } else {
+            summary.to_string()
+        };
+        self.label(id!(model_summary)).set_text(&trimmed_summary);
 
         let author_name = &model.author.name;
         self.link_label(id!(author_name)).set_text(author_name);
 
         let author_description = &model.author.description;
-        self.label(id!(author_description)).set_text(author_description);
+        self.label(id!(author_description)).set_text(&author_description);
 
         let released_at_str = Store::formatted_model_release_date(model);
         self.label(id!(model_released_at_tag.attr_value)).set_text(&released_at_str);
