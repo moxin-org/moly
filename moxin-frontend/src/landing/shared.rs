@@ -9,20 +9,33 @@ live_design! {
 
     const MODEL_LINK_FONT_COLOR = #x155EEF
 
-    ModelLink = <LinkLabel> {
-        width: Fill,
-        draw_text: {
-            text_style: <REGULAR_FONT>{font_size: 9},
-            fn get_color(self) -> vec4 {
-                return mix(
-                    mix(
+    ModelLink = <View> {
+        width: Fit,
+        height: Fit,
+        flow: Down,
+        link = <LinkLabel> {
+            width: Fit,
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 9},
+                fn get_color(self) -> vec4 {
+                    return mix(
+                        mix(
+                            MODEL_LINK_FONT_COLOR,
+                            MODEL_LINK_FONT_COLOR,
+                            self.hover
+                        ),
                         MODEL_LINK_FONT_COLOR,
-                        MODEL_LINK_FONT_COLOR,
-                        self.hover
-                    ),
-                    MODEL_LINK_FONT_COLOR,
-                    self.pressed
-                )
+                        self.pressed
+                    )
+                }
+            }
+        }
+        underline = <Line> {
+            width: Fill,
+            height: 1,
+            show_bg: true,
+            draw_bg: {
+                color: (MODEL_LINK_FONT_COLOR)
             }
         }
     }

@@ -30,7 +30,7 @@ live_design! {
         <View> {
             height: Fit,
             <ModelLink> {
-                text: "Hugging Face"
+                link = { text: "Hugging Face" }
             }
         }
     }

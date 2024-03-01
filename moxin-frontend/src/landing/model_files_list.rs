@@ -25,10 +25,10 @@ live_design! {
             radius: vec2(1.0, 1.0)
         }
 
-        cell1 = <View> { width: 540, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
         cell2 = <View> { width: 140, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell3 = <View> { width: 140, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell4 = <View> { width: Fit, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell3 = <View> { width: 340, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
     ModelFilesListLabel = <RoundedView> {
@@ -126,7 +126,6 @@ live_design! {
                     color: #000
                 }
             }
-            tags = <ModelFilesTags> {}
         }
 
         cell2 = {
@@ -139,6 +138,7 @@ live_design! {
         }
 
         cell3 = {
+            spacing: 6,
             quantization_tag = <RoundedView> {
                 width: Fit,
                 height: Fit,
@@ -158,6 +158,7 @@ live_design! {
                     }
                 }
             }
+            tags = <ModelFilesTags> {}
         }
 
         cell4 = {
@@ -250,23 +251,25 @@ live_design! {
             }
 
             all_files_link = <ModelLink> {
-                width: Fit,
-                text: "Show All Files (12)"
+                link = {
+                    text: "Show All Files (12)"
 
-                draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 9},
-                    fn get_color(self) -> vec4 {
-                        return mix(
-                            mix(
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 9},
+                        fn get_color(self) -> vec4 {
+                            return mix(
+                                mix(
+                                    #667085,
+                                    #667085,
+                                    self.hover
+                                ),
                                 #667085,
-                                #667085,
-                                self.hover
-                            ),
-                            #667085,
-                            self.pressed
-                        )
+                                self.pressed
+                            )
+                        }
                     }
                 }
+                underline = { visible: false }
             }
         }
     }

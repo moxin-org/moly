@@ -16,6 +16,7 @@ live_design! {
 
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
+    ICON_EXTERNAL_LINK = dep("crate://self/resources/icons/external_link.svg")
 
     ModelHeading = <View> {
         flow: Down,
@@ -159,8 +160,18 @@ live_design! {
         }
 
         <ModelLink> {
-            text: "View All"
+            link = { text: "View All" }
         }
+    }
+
+    ExternalLinkIcon = <Icon> {
+        draw_icon: {
+            svg_file: (ICON_EXTERNAL_LINK),
+            fn get_color(self) -> vec4 {
+                return (MODEL_LINK_FONT_COLOR);
+            }
+        }
+        icon_walk: {width: 12, height: 12}
     }
 
     ModelDetails = <View> {
@@ -174,30 +185,21 @@ live_design! {
                 text_style: <BOLD_FONT>{font_size: 11},
                 color: #000
             }
-            text: "Author"
+            text: "Resouces"
         }
 
-        author_name = <ModelLink> {}
-
-        author_description = <Label> {
-            width: Fill,
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 9},
-                word: Wrap,
-                color: #000
-            }
+        <View> {
+            width: Fit,
+            height: Fit,
+            author_name = <ModelLink> {}
+            <ExternalLinkIcon> {}
         }
 
-        <Label> {
-            draw_text:{
-                text_style: <BOLD_FONT>{font_size: 11},
-                color: #000
-            }
-            text: "Model Resources"
-        }
-
-        <ModelLink> {
-            text: "Hugging Face"
+        <View> {
+            width: Fit,
+            height: Fit,
+            <ModelLink> { link = { text: "Hugging Face" } }
+            <ExternalLinkIcon> {}
         }
     }
 
@@ -279,7 +281,7 @@ impl Widget for ModelCard {
         self.label(id!(model_summary)).set_text(&trimmed_summary);
 
         let author_name = &model.author.name;
-        self.link_label(id!(author_name)).set_text(author_name);
+        self.link_label(id!(author_name.link)).set_text(author_name);
 
         let author_description = &model.author.description;
         self.label(id!(author_description)).set_text(&author_description);
@@ -299,7 +301,7 @@ pub enum ModelCardAction {
 
 impl WidgetMatchEvent for ModelCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.link_label(id!(all_files_link)).clicked(&actions) {
+        if self.link_label(id!(all_files_link.link)).clicked(&actions) {
             let widget_uid = self.widget_uid();
             cx.widget_action(widget_uid, &scope.path, ModelCardAction::ViewAllFiles(self.model_id.clone()));
         }
