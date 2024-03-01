@@ -14,6 +14,8 @@ live_design! {
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
+    ICON_ADD = dep("crate://self/resources/icons/add.svg")
+    ICON_REMOVE = dep("crate://self/resources/icons/remove.svg")
 
     ModelFilesRow = <RoundedYView> {
         width: Fill,
@@ -184,7 +186,40 @@ live_design! {
         }
     }
 
-    ModelFilesList = <RoundedView> {
+    FooterLink = <View> {
+        align: {x: 0.0, y: 0.5},
+        spacing: 10,
+        icon = <Icon> {
+            draw_icon: {
+                svg_file: (ICON_ADD),
+                fn get_color(self) -> vec4 {
+                    return #667085;
+                }
+            }
+            icon_walk: {width: 14, height: 14}
+        }
+        model_link = <ModelLink> {
+            link = {
+                draw_text: {
+                    text_style: <BOLD_FONT>{font_size: 9},
+                    fn get_color(self) -> vec4 {
+                        return mix(
+                            mix(
+                                #667085,
+                                #667085,
+                                self.hover
+                            ),
+                            #667085,
+                            self.pressed
+                        )
+                    }
+                }
+            }
+            underline = { visible: false }
+        }
+    }
+
+    ModelFilesList = {{ModelFilesList}}<RoundedView> {
         width: Fill,
         height: Fit,
         flow: Down,
@@ -239,7 +274,8 @@ live_design! {
             }
         }
 
-        file_list = <ModelFilesItems> {}
+        <ModelFilesItems> { show_featured: true }
+        remaining_files = <ModelFilesItems> { visible: false, show_featured: false }
 
         footer = <RoundedYView> {
             width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
@@ -250,26 +286,18 @@ live_design! {
                 radius: vec2(0.5, 3.0)
             }
 
-            all_files_link = <ModelLink> {
-                link = {
-                    text: "Show All Files (12)"
+            all_files_link = <FooterLink> {
+                icon = { draw_icon: { svg_file: (ICON_ADD) }}
+                model_link = { link = { text: "Show All Files (12)" }}
+            }
 
-                    draw_text: {
-                        text_style: <BOLD_FONT>{font_size: 9},
-                        fn get_color(self) -> vec4 {
-                            return mix(
-                                mix(
-                                    #667085,
-                                    #667085,
-                                    self.hover
-                                ),
-                                #667085,
-                                self.pressed
-                            )
-                        }
-                    }
+            only_recommended_link = <FooterLink> {
+                visible: false,
+                icon = {
+                    padding: { top: 10 }
+                    draw_icon: { svg_file: (ICON_REMOVE) }
                 }
-                underline = { visible: false }
+                model_link = { link = { text: "Show Only Recommended Files" }}
             }
         }
     }
@@ -297,6 +325,9 @@ pub struct ModelFilesItems {
     #[live(false)]
     show_featured: bool,
 
+    #[live(true)]
+    visible: bool,
+
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
 }
@@ -309,22 +340,24 @@ impl Widget for ModelFilesItems {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        cx.begin_turtle(walk, self.layout);
+        if self.visible {
+            cx.begin_turtle(walk, self.layout);
 
-        let model = scope.data.get::<Model>();
-        let files = if self.show_featured {
-            Store::model_featured_files(model)
-        } else {
-            model.files.clone()
-        };
+            let model = scope.data.get::<Model>();
+            let files = if self.show_featured {
+                Store::model_featured_files(model)
+            } else {
+                Store::model_other_files(model)
+            };
 
-        self.draw_files(cx, walk, &files);
+            self.draw_files(cx, walk, &files);
 
-        cx.end_turtle_with_area(&mut self.area);
+            cx.end_turtle_with_area(&mut self.area);
+        }
+
         DrawStep::done()
     }
 }
-
 
 impl WidgetNode for ModelFilesItems {
     fn walk(&mut self, _cx:&mut Cx) -> Walk{
@@ -421,6 +454,51 @@ impl ModelFilesTagsRef {
             let item_widget = WidgetRef::new_from_ptr(cx, tags_widget.template);
             item_widget.apply_over(cx, live!{label = { text: (tag) }});
             tags_widget.items.insert(item_id, item_widget);
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ModelFilesList {
+    #[deref] view: View,
+}
+
+impl Widget for ModelFilesList {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let model = scope.data.get::<Model>();
+        let files_count = model.files.len();
+        let all_files_link = self.view(id!(all_files_link.link));
+        all_files_link.set_text(&format!("Show All Files ({})", files_count));
+
+        let _ = self.view.draw_walk(cx, scope, walk);
+
+        DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for ModelFilesList {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if self.link_label(id!(all_files_link.link)).clicked(&actions) {
+            self.model_files_items(id!(remaining_files)).apply_over(cx, live!{visible: true});
+            
+            self.view(id!(all_files_link)).apply_over(cx, live!{visible: false});
+            self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: true});
+
+            self.redraw(cx);
+        }
+
+        if self.link_label(id!(only_recommended_link.link)).clicked(&actions) {
+            self.model_files_items(id!(remaining_files)).apply_over(cx, live!{visible: false});
+            
+            self.view(id!(all_files_link)).apply_over(cx, live!{visible: true});
+            self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: false});
+
+            self.redraw(cx);
         }
     }
 }

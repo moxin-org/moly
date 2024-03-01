@@ -233,7 +233,7 @@ live_design! {
             <ModelHeading> {}
             <Line> {}
             <ModelInformation> {}
-            <ModelFilesList> { file_list = { show_featured: true } }
+            <ModelFilesList> {}
         }
     }
 }
@@ -250,7 +250,7 @@ pub struct ModelCard {
 impl Widget for ModelCard {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
+        // self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -290,20 +290,5 @@ impl Widget for ModelCard {
         self.label(id!(model_released_at_tag.attr_value)).set_text(&released_at_str);
 
         self.view.draw_walk(cx, scope, walk)
-    }
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum ModelCardAction {
-    ViewAllFiles(String),
-    None,
-}
-
-impl WidgetMatchEvent for ModelCard {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.link_label(id!(all_files_link.link)).clicked(&actions) {
-            let widget_uid = self.widget_uid();
-            cx.widget_action(widget_uid, &scope.path, ModelCardAction::ViewAllFiles(self.model_id.clone()));
-        }
     }
 }
