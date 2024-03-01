@@ -58,27 +58,18 @@ live_design! {
         spacing: 10,
 
         model_size_tag = <ModelAttributeTag> {
-            draw_bg: { color: #3538CD },
+            draw_bg: { color: #44899A },
             attr_name = { text: "Model Size" }
-            attr_value = { text: "7B params" }
         }
 
         model_requires_tag = <ModelAttributeTag> {
-            draw_bg: { color: #CA8504 },
+            draw_bg: { color: #5CAA74 },
             attr_name = { text: "Requires" }
-            attr_value = { text: "8GB+ RAM" }
         }
 
         model_architecture_tag = <ModelAttributeTag> {
-            draw_bg: { color: #FCCEEE },
-            attr_name = {
-                draw_text: { color: #C11574 },
-                text: "Architecture"
-            }
-            attr_value = {
-                draw_text: { color: #C11574 },
-                text: "Mistral"
-            }
+            draw_bg: { color: #A44EBB },
+            attr_name = { text: "Architecture" }
         }
     }
 }

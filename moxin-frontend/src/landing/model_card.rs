@@ -14,44 +14,125 @@ live_design! {
     import crate::landing::shared::*;
     import crate::landing::model_files_list::ModelFilesList;
 
+    ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
+    ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
+
     ModelHeading = <View> {
+        flow: Down,
+        width: Fill,
         height: Fit,
+
+        spacing: 10,
+
         <View> {
-            width: Fit,
+            width: Fill,
             height: Fit,
-            flow: Down,
+
             spacing: 10,
-            model_name = <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 16},
-                    color: #000
-                }
-            }
-            <ModelAttributes> {}
-        }
-        <VerticalFiller> {}
-        <View> {
-            width: 260,
-            height: Fit,
-            model_released_at_tag = <ModelAttributeTag> {
+            align: {x: 0.0, y: 0.5},
+
+            <View> {
                 width: Fit,
                 height: Fit,
+                model_name = <Label> {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 16},
+                        color: #000
+                    }
+                }
+            }
+
+            <RoundedView> {
+                width: Fit,
+                height: Fit,
+                padding: {top: 6, bottom: 6, left: 4, right: 10}
+                margin: {left: 30}
+
+                spacing: 4,
+                align: {x: 0.0, y: 0.5},
 
                 draw_bg: {
-                    color: #0000,
-                    border_color: #98A2B3,
-                    border_width: 1.0,
-                },
-                attr_name = {
-                    draw_text: { color: #000 }
-                    text: "Released"
+                    instance radius: 2.0,
+                    color: #FFEDED,
                 }
-                attr_value = {
-                    margin: {left: 10},
-                    draw_text: { color: #000 }
+
+                <Icon> {
+                    draw_icon: {
+                        svg_file: (ICON_FAVORITE),
+                        fn get_color(self) -> vec4 {
+                            return #000;
+                        }
+                    }
+                    icon_walk: {width: 14, height: 14}
+                }
+
+                <Label> {
+                    text: "180"
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 10},
+                        color: #1C1917
+                    }
+                }
+            }
+
+            <RoundedView> {
+                width: Fit,
+                height: Fit,
+                padding: {top: 6, bottom: 6, left: 4, right: 10}
+
+                spacing: 4,
+                align: {x: 0.0, y: 0.5},
+
+                draw_bg: {
+                    instance radius: 2.0,
+                    color: #DCF6E6,
+                }
+
+                <Icon> {
+                    draw_icon: {
+                        svg_file: (ICON_DOWNLOADS),
+                        fn get_color(self) -> vec4 {
+                            return #000;
+                        }
+                    }
+                    icon_walk: {width: 12, height: 12}
+                }
+
+                <Label> {
+                    text: "27355"
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 10},
+                        color: #1C1917
+                    }
+                }
+            }
+
+            <VerticalFiller> {}
+
+            <View> {
+                width: 260,
+                height: Fit,
+                model_released_at_tag = <ModelAttributeTag> {
+                    width: Fit,
+                    height: Fit,
+    
+                    draw_bg: {
+                        color: #0000,
+                        border_color: #98A2B3,
+                        border_width: 1.0,
+                    },
+                    attr_name = {
+                        draw_text: { color: #000 }
+                        text: "Released"
+                    }
+                    attr_value = {
+                        margin: {left: 10},
+                        draw_text: { color: #000 }
+                    }
                 }
             }
         }
+        <ModelAttributes> {}
     }
 
     ModelSummary = <View> {

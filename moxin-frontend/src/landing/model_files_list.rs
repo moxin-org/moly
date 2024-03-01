@@ -10,10 +10,8 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
-    import crate::shared::icon::Icon;
     import crate::landing::shared::*;
 
-    ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
 
@@ -27,10 +25,10 @@ live_design! {
             radius: vec2(1.0, 1.0)
         }
 
-        cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell2 = <View> { width: 180, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell3 = <View> { width: 180, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell4 = <View> { width: 220, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell1 = <View> { width: 540, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell2 = <View> { width: 140, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell3 = <View> { width: 140, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell4 = <View> { width: Fit, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
     ModelFilesListLabel = <RoundedView> {
@@ -40,13 +38,13 @@ live_design! {
 
         draw_bg: {
             instance radius: 2.0,
-            color: #E6F4D7,
+            color: #E6F1EC,
         }
 
         label = <Label> {
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 9},
-                color: #3F621A
+                color: #1C1917
             }
         }
     }
@@ -148,21 +146,16 @@ live_design! {
 
                 draw_bg: {
                     instance radius: 2.0,
-                    color: #B9E6FE,
+                    border_color: #B4B4B4,
+                    border_width: 0.5,
+                    color: #FFF,
                 }
         
                 quantization = <Label> {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 9},
-                        color: #1849A9
+                        color: #000
                     }
-                }
-
-                <Icon> {
-                    draw_icon: {
-                        svg_file: (ICON_INFO), color: #00f,
-                    }
-                    icon_walk: {width: Fit, height: Fit}
                 }
             }
         }
