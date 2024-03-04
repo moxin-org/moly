@@ -263,8 +263,8 @@ live_design! {
             }
         }
 
-        <ModelFilesItems> { show_featured: true }
-        remaining_files = <ModelFilesItems> { visible: false, show_featured: false }
+        <ModelFilesItems> { show_featured: true, animated_height: 1.0 }
+        remaining_files = <ModelFilesItems> { show_featured: false }
 
         footer = <RoundedYView> {
             width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
@@ -272,7 +272,7 @@ live_design! {
             show_bg: true,
             draw_bg: {
                 color: #fff
-                radius: vec2(0.5, 3.0)
+                radius: vec2(1.0, 3.0)
             }
 
             all_files_link = <FooterLink> {
@@ -287,6 +287,25 @@ live_design! {
                     draw_icon: { svg_file: (ICON_REMOVE) }
                 }
                 link = { text: "Show Only Recommended Files" }
+            }
+        }
+
+        show_all_animation_progress: 0.0,
+        animator: {
+            show_all = {
+                default: hide,
+                show = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {show_all_animation_progress: 1.0}
+                }
+                hide = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {show_all_animation_progress: 0.0}
+                }
             }
         }
     }
@@ -317,6 +336,9 @@ pub struct ModelFilesItems {
     #[live(true)]
     visible: bool,
 
+    #[live]
+    animated_height: f64,
+
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
 }
@@ -329,20 +351,20 @@ impl Widget for ModelFilesItems {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        if self.visible {
-            cx.begin_turtle(walk, self.layout);
+        let model = scope.data.get::<Model>();
+        let files = if self.show_featured {
+            Store::model_featured_files(model)
+        } else {
+            Store::model_other_files(model)
+        };
 
-            let model = scope.data.get::<Model>();
-            let files = if self.show_featured {
-                Store::model_featured_files(model)
-            } else {
-                Store::model_other_files(model)
-            };
+        let total_height = files.len() as f64 * 56.0;
 
-            self.draw_files(cx, walk, &files);
+        let walk = Walk{height: makepad_widgets::Size::Fixed(total_height * self.animated_height), ..walk};
+        cx.begin_turtle(walk, self.layout);
 
-            cx.end_turtle_with_area(&mut self.area);
-        }
+        self.draw_files(cx, &files);
+        cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()
     }
@@ -365,7 +387,7 @@ impl WidgetNode for ModelFilesItems {
 }
 
 impl ModelFilesItems {
-    fn draw_files(&mut self, cx: &mut Cx2d, _walk: Walk, files: &Vec<File>) {
+    fn draw_files(&mut self, cx: &mut Cx2d, files: &Vec<File>) {
         for i in 0..files.len() {
             let template = if files[i].downloaded {
                 self.template_downloaded
@@ -376,7 +398,6 @@ impl ModelFilesItems {
             let item_widget = self.items.get_or_insert(cx, item_id, | cx | {
                 WidgetRef::new_from_ptr(cx, template)
             });
-
             let filename = &files[i].name;
             let size = &files[i].size;
             let quantization = &files[i].quantization;
@@ -450,12 +471,24 @@ impl ModelFilesTagsRef {
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelFilesList {
     #[deref] view: View,
+
+    #[live]
+    show_all_animation_progress: f64,
+
+    #[animator]
+    animator: Animator,
 }
 
 impl Widget for ModelFilesList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.model_files_items(id!(remaining_files))
+                .apply_over(cx, live!{animated_height: (self.show_all_animation_progress)});
+            self.redraw(cx);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -474,14 +507,16 @@ impl WidgetMatchEvent for ModelFilesList {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(fe) = self.view(id!(all_files_link)).finger_up(&actions) {
             if fe.was_tap() {
-                self.apply_visibility(cx, true);
+                self.apply_links_visibility(cx, true);
+                self.animator_play(cx, id!(show_all.show));
                 self.redraw(cx);
             }
         }
 
         if let Some(fe) = self.view(id!(only_recommended_link)).finger_up(&actions) {
             if fe.was_tap() {
-                self.apply_visibility(cx, false);
+                self.apply_links_visibility(cx, false);
+                self.animator_play(cx, id!(show_all.hide));
                 self.redraw(cx);
             }
         }
@@ -489,8 +524,7 @@ impl WidgetMatchEvent for ModelFilesList {
 }
 
 impl ModelFilesList {
-    fn apply_visibility(&mut self, cx: &mut Cx, show_all: bool) {
-        self.model_files_items(id!(remaining_files)).apply_over(cx, live!{visible: (show_all)});
+    fn apply_links_visibility(&mut self, cx: &mut Cx, show_all: bool) {
         self.view(id!(all_files_link)).apply_over(cx, live!{visible: (!show_all)});
         self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: (show_all)});
     }
