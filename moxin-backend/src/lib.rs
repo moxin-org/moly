@@ -1,6 +1,5 @@
 mod fake_data;
 
-use anyhow::anyhow;
 use std::sync::mpsc;
 use moxin_protocol::protocol::Command;
 

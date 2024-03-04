@@ -1,7 +1,7 @@
-use crate::data::*;
 use std::sync::mpsc::Sender;
-use chrono::NaiveDate;
 use anyhow::Result;
+use crate::data::*;
+use crate::open_ai::*;
 
 #[derive(Clone, Debug)]
 pub enum FileDownloadResponse {
@@ -48,8 +48,8 @@ pub struct LoadedModelInfo {
 
 #[derive(Clone, Debug)]
 pub struct ModelResourcesInfo {
-    ram_usage: f32,
-    cpu_usage: f32,
+    pub ram_usage: f32,
+    pub cpu_usage: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -67,34 +67,6 @@ pub enum ChatError {
     TooLarge,
     InvalidEncoding,
     Other,
-}
-
-#[derive(Clone, Debug)]
-pub enum StopReason {
-    Completed,
-    Stopped
-}
-
-#[derive(Clone, Debug)]
-pub struct ChatCompletionData {
-    // The response from the model in JSON format
-    // https://platform.openai.com/docs/api-reference/chat/object
-    response: String,
-
-    // The remaining fields are stats about the chat completion process
-    time_to_first_token: f32,
-    time_to_generate: f32,
-    speed: f32,
-    token_count: u32,
-    token_limit: u32,
-    stop_reason: StopReason,
-}
-
-#[derive(Clone, Debug)]
-pub enum ChatResponse {
-    ChatCompletion(ChatCompletionData),
-    // https://platform.openai.com/docs/api-reference/chat/streaming
-    ChatCompletionChunk(String),
 }
 
 #[derive(Clone, Debug)]
@@ -127,9 +99,7 @@ pub enum Command {
     // Eject currently loaded model, if any is provided
     EjectModel(Sender<Result<()>>),
 
-    // The argument is the chat message in JSON format, following https://platform.openai.com/docs/api-reference/chat/create
-    Chat(String, Sender<Result<ChatResponse, ChatError>>),
-    // Command to stop the current chat completion
+    Chat(ChatRequestData, Sender<Result<ChatResponse, ChatError>>),
     StopChatCompletion(Sender<Result<()>>),
 
     // Command to start a local server to interact with chat models
