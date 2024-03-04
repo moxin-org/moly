@@ -187,6 +187,7 @@ live_design! {
     }
 
     FooterLink = <View> {
+        cursor: Hand,
         align: {x: 0.0, y: 0.5},
         spacing: 10,
         icon = <Icon> {
@@ -198,24 +199,12 @@ live_design! {
             }
             icon_walk: {width: 14, height: 14}
         }
-        model_link = <ModelLink> {
-            link = {
-                draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 9},
-                    fn get_color(self) -> vec4 {
-                        return mix(
-                            mix(
-                                #667085,
-                                #667085,
-                                self.hover
-                            ),
-                            #667085,
-                            self.pressed
-                        )
-                    }
-                }
+        link = <Label> {
+            width: Fit,
+            draw_text: {
+                text_style: <BOLD_FONT>{font_size: 9},
+                color: #667085,
             }
-            underline = { visible: false }
         }
     }
 
@@ -288,7 +277,7 @@ live_design! {
 
             all_files_link = <FooterLink> {
                 icon = { draw_icon: { svg_file: (ICON_ADD) }}
-                model_link = { link = { text: "Show All Files (12)" }}
+                link = { text: "Show All Files (12)" }
             }
 
             only_recommended_link = <FooterLink> {
@@ -297,7 +286,7 @@ live_design! {
                     padding: { top: 10 }
                     draw_icon: { svg_file: (ICON_REMOVE) }
                 }
-                model_link = { link = { text: "Show Only Recommended Files" }}
+                link = { text: "Show Only Recommended Files" }
             }
         }
     }
@@ -482,23 +471,27 @@ impl Widget for ModelFilesList {
 }
 
 impl WidgetMatchEvent for ModelFilesList {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.link_label(id!(all_files_link.link)).clicked(&actions) {
-            self.model_files_items(id!(remaining_files)).apply_over(cx, live!{visible: true});
-            
-            self.view(id!(all_files_link)).apply_over(cx, live!{visible: false});
-            self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: true});
-
-            self.redraw(cx);
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        if let Some(fe) = self.view(id!(all_files_link)).finger_up(&actions) {
+            if fe.was_tap() {
+                self.apply_visibility(cx, true);
+                self.redraw(cx);
+            }
         }
 
-        if self.link_label(id!(only_recommended_link.link)).clicked(&actions) {
-            self.model_files_items(id!(remaining_files)).apply_over(cx, live!{visible: false});
-            
-            self.view(id!(all_files_link)).apply_over(cx, live!{visible: true});
-            self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: false});
-
-            self.redraw(cx);
+        if let Some(fe) = self.view(id!(only_recommended_link)).finger_up(&actions) {
+            if fe.was_tap() {
+                self.apply_visibility(cx, false);
+                self.redraw(cx);
+            }
         }
+    }
+}
+
+impl ModelFilesList {
+    fn apply_visibility(&mut self, cx: &mut Cx, show_all: bool) {
+        self.model_files_items(id!(remaining_files)).apply_over(cx, live!{visible: (show_all)});
+        self.view(id!(all_files_link)).apply_over(cx, live!{visible: (!show_all)});
+        self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: (show_all)});
     }
 }
