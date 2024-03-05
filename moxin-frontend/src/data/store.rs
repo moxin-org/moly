@@ -1,7 +1,8 @@
 use chrono::Utc;
 use moxin_protocol::data::{Model, File};
-use moxin_protocol::protocol::{Command, Response};
+use moxin_protocol::protocol::Command;
 use moxin_backend::Backend;
+use std::sync::mpsc::channel;
 
 #[derive(Default)]
 pub struct Store {
@@ -20,10 +21,17 @@ impl Store {
             backend: Backend::default(),
         };
 
-        store.backend.command_sender.send(Command::GetFeaturedModels).unwrap();
-        if let Ok(response) = store.backend.response_receiver.recv() {
-            if let Response::FeaturedModels(models) = response {
-                store.models = models;
+        let (tx, rx) = channel();
+        store
+            .backend
+            .command_sender
+            .send(Command::GetFeaturedModels(tx))
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(models) => store.models = models,
+                Err(err) => eprintln!("Error fetching models: {:?}", err),
             }
         };
 
