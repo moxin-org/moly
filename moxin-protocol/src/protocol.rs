@@ -59,16 +59,6 @@ pub enum LoadModelResponse {
     ModelResoucesUsage(ModelResourcesInfo),
 }
 
-pub enum ChatError {
-    BackendNotRun,
-    EndOfSequence,
-    ContextFull,
-    PromptTooLong,
-    TooLarge,
-    InvalidEncoding,
-    Other,
-}
-
 #[derive(Clone, Debug)]
 pub struct LocalServerConfig {
     pub port: u16,
@@ -99,7 +89,7 @@ pub enum Command {
     // Eject currently loaded model, if any is provided
     EjectModel(Sender<Result<()>>),
 
-    Chat(ChatRequestData, Sender<Result<ChatResponse, ChatError>>),
+    Chat(ChatRequestData, Sender<Result<ChatResponse>>),
     StopChatCompletion(Sender<Result<()>>),
 
     // Command to start a local server to interact with chat models
