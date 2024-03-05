@@ -2,9 +2,18 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use crate::data::*;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Message {
+    pub content: String,
+    pub role: String,
+    pub name: Option<String>,
+}
+
 // Based on https://platform.openai.com/docs/api-reference/chat/object
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChatRequestData {
+    pub messages: Vec<Message>,
+
     // Not really necesary but it is part of the OpenAI API. We are going to send the id
     // of the model currently loaded.
     pub model: ModelID,
