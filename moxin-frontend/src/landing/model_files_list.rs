@@ -10,26 +10,27 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
-    import crate::shared::icon::Icon;
     import crate::landing::shared::*;
 
-    ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
+    ICON_ADD = dep("crate://self/resources/icons/add.svg")
+    ICON_REMOVE = dep("crate://self/resources/icons/remove.svg")
 
-    ModelFilesRow = <View> {
+    ModelFilesRow = <RoundedYView> {
         width: Fill,
         height: Fit,
 
         show_bg: true,
         draw_bg: {
-            color: #fff
+            color: #00f
+            radius: vec2(1.0, 1.0)
         }
 
         cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell2 = <View> { width: 180, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell3 = <View> { width: 180, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell4 = <View> { width: 220, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell2 = <View> { width: 140, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell3 = <View> { width: 340, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
     ModelFilesListLabel = <RoundedView> {
@@ -39,13 +40,13 @@ live_design! {
 
         draw_bg: {
             instance radius: 2.0,
-            color: #E6F4D7,
+            color: #E6F1EC,
         }
 
         label = <Label> {
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 9},
-                color: #3F621A
+                color: #1C1917
             }
         }
     }
@@ -104,7 +105,21 @@ live_design! {
         }
     }
 
+    ModelFilesTags = {{ModelFilesTags}} {
+        width: Fit,
+        height: Fit,
+        flow: Right,
+        spacing: 5,
+
+        template: <ModelFilesListLabel> {}
+    }
+
     ModelFilesRowWithData = <ModelFilesRow> {
+        show_bg: true,
+        draw_bg: {
+            color: #fff
+        }
+
         cell1 = {
             spacing: 10,
             filename = <Label> {
@@ -125,6 +140,7 @@ live_design! {
         }
 
         cell3 = {
+            spacing: 6,
             quantization_tag = <RoundedView> {
                 width: Fit,
                 height: Fit,
@@ -132,37 +148,24 @@ live_design! {
 
                 draw_bg: {
                     instance radius: 2.0,
-                    color: #B9E6FE,
+                    border_color: #B4B4B4,
+                    border_width: 0.5,
+                    color: #FFF,
                 }
         
                 quantization = <Label> {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 9},
-                        color: #1849A9
+                        color: #000
                     }
-                }
-
-                <Icon> {
-                    draw_icon: {
-                        svg_file: (ICON_INFO), color: #00f,
-                    }
-                    icon_walk: {width: Fit, height: Fit}
                 }
             }
+            tags = <ModelFilesTags> {}
         }
 
         cell4 = {
             align: {x: 0.5, y: 0.5},
         }
-    }
-
-    ModelFilesTags = {{ModelFilesTags}} {
-        width: Fit,
-        height: Fit,
-        flow: Right,
-        spacing: 5,
-
-        template: <ModelFilesListLabel> {}
     }
 
     ModelFilesItems = {{ModelFilesItems}} {
@@ -171,63 +174,56 @@ live_design! {
         flow: Down,
 
         template_downloaded: <ModelFilesRowWithData> {
-            cell1 = {
-                filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
-                tags = <ModelFilesTags> {}
-            }
-            cell2 = { full_size = { text: "2.30 GB" }}
-            cell3 = {
-                quantization_tag = { quantization = { text: "Q6_K" }}
-            }
             cell4 = {
                 <DownloadedButton> {}
             }
         }
 
         template_download: <ModelFilesRowWithData> {
-            cell1 = {
-                filename = { text: "stablelm-zephyr-3b.Q6_K.gguf" }
-                tags = <ModelFilesTags> {}
-            }
-            cell2 = { full_size = { text: "2.30 GB" }}
-            cell3 = {
-                quantization_tag = { quantization = { text: "Q6_K" }}
-            }
             cell4 = {
                 <DownloadButton> {}
             }
         }
     }
 
-    ModelFilesList = <View> {
+    FooterLink = <View> {
+        cursor: Hand,
+        align: {x: 0.0, y: 0.5},
+        spacing: 10,
+        icon = <Icon> {
+            draw_icon: {
+                svg_file: (ICON_ADD),
+                fn get_color(self) -> vec4 {
+                    return #667085;
+                }
+            }
+            icon_walk: {width: 14, height: 14}
+        }
+        link = <Label> {
+            width: Fit,
+            draw_text: {
+                text_style: <BOLD_FONT>{font_size: 9},
+                color: #667085,
+            }
+        }
+    }
+
+    ModelFilesList = {{ModelFilesList}}<RoundedView> {
         width: Fill,
         height: Fit,
         flow: Down,
 
-        heading_row = <ModelFilesRow> {
-            cell1 = {
-                <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 9},
-                        color: #000
-                    }
-                    text: "Highlighted Files"
-                }
-            }
-
-            cell4 = {
-                align: {x: 0.5, y: 0.5},
-                all_files_link = <ModelLink> {
-                    width: Fit,
-                    text: "See All Files"
-                }
-            }
+        show_bg: true,
+        draw_bg: {
+            color: #EAECF0
+            radius: 3.0
         }
 
         <ModelFilesRow> {
             show_bg: true,
             draw_bg: {
                 color: #F2F4F7
+                radius: vec2(3.0, 0.5)
             }
 
             cell1 = {
@@ -267,7 +263,51 @@ live_design! {
             }
         }
 
-        file_list = <ModelFilesItems> {}
+        <ModelFilesItems> { show_featured: true, animated_height: 1.0 }
+        remaining_files = <ModelFilesItems> { show_featured: false }
+
+        footer = <RoundedYView> {
+            width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
+
+            show_bg: true,
+            draw_bg: {
+                color: #fff
+                radius: vec2(1.0, 3.0)
+            }
+
+            all_files_link = <FooterLink> {
+                icon = { draw_icon: { svg_file: (ICON_ADD) }}
+                link = { text: "Show All Files (12)" }
+            }
+
+            only_recommended_link = <FooterLink> {
+                visible: false,
+                icon = {
+                    padding: { top: 10 }
+                    draw_icon: { svg_file: (ICON_REMOVE) }
+                }
+                link = { text: "Show Only Recommended Files" }
+            }
+        }
+
+        show_all_animation_progress: 0.0,
+        animator: {
+            show_all = {
+                default: hide,
+                show = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {show_all_animation_progress: 1.0}
+                }
+                hide = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {show_all_animation_progress: 0.0}
+                }
+            }
+        }
     }
 }
 
@@ -293,6 +333,12 @@ pub struct ModelFilesItems {
     #[live(false)]
     show_featured: bool,
 
+    #[live(true)]
+    visible: bool,
+
+    #[live]
+    animated_height: f64,
+
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
 }
@@ -305,22 +351,24 @@ impl Widget for ModelFilesItems {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        cx.begin_turtle(walk, self.layout);
-
         let model = scope.data.get::<Model>();
         let files = if self.show_featured {
             Store::model_featured_files(model)
         } else {
-            model.files.clone()
+            Store::model_other_files(model)
         };
 
-        self.draw_files(cx, walk, &files);
+        let total_height = files.len() as f64 * 56.0;
 
+        let walk = Walk{height: makepad_widgets::Size::Fixed(total_height * self.animated_height), ..walk};
+        cx.begin_turtle(walk, self.layout);
+
+        self.draw_files(cx, &files);
         cx.end_turtle_with_area(&mut self.area);
+
         DrawStep::done()
     }
 }
-
 
 impl WidgetNode for ModelFilesItems {
     fn walk(&mut self, _cx:&mut Cx) -> Walk{
@@ -339,7 +387,7 @@ impl WidgetNode for ModelFilesItems {
 }
 
 impl ModelFilesItems {
-    fn draw_files(&mut self, cx: &mut Cx2d, walk: Walk, files: &Vec<File>) {
+    fn draw_files(&mut self, cx: &mut Cx2d, files: &Vec<File>) {
         for i in 0..files.len() {
             let template = if files[i].downloaded {
                 self.template_downloaded
@@ -350,7 +398,6 @@ impl ModelFilesItems {
             let item_widget = self.items.get_or_insert(cx, item_id, | cx | {
                 WidgetRef::new_from_ptr(cx, template)
             });
-
             let filename = &files[i].name;
             let size = &files[i].size;
             let quantization = &files[i].quantization;
@@ -368,7 +415,7 @@ impl ModelFilesItems {
                 item_widget.model_files_tags(id!(tags)).set_tags(cx, &files[i].tags);
             }
 
-            let _ = item_widget.draw_walk(cx, &mut Scope::empty(), walk);
+            let _ = item_widget.draw_all(cx, &mut Scope::empty());
         }
     }
 }
@@ -400,7 +447,7 @@ impl Widget for ModelFilesTags {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         cx.begin_turtle(walk, self.layout);
-        for (_id, item) in self.items.iter_mut() {
+        for (_id, item) in self.items.iter_mut() { 
             let _ = item.draw_walk(cx, scope, walk);
         }
         cx.end_turtle_with_area(&mut self.area);
@@ -418,5 +465,67 @@ impl ModelFilesTagsRef {
             item_widget.apply_over(cx, live!{label = { text: (tag) }});
             tags_widget.items.insert(item_id, item_widget);
         }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ModelFilesList {
+    #[deref] view: View,
+
+    #[live]
+    show_all_animation_progress: f64,
+
+    #[animator]
+    animator: Animator,
+}
+
+impl Widget for ModelFilesList {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.model_files_items(id!(remaining_files))
+                .apply_over(cx, live!{animated_height: (self.show_all_animation_progress)});
+            self.redraw(cx);
+        }
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let model = scope.data.get::<Model>();
+        let files_count = model.files.len();
+        let all_files_link = self.view(id!(all_files_link.link));
+        all_files_link.set_text(&format!("Show All Files ({})", files_count));
+
+        let _ = self.view.draw_walk(cx, scope, walk);
+
+        DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for ModelFilesList {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        if let Some(fe) = self.view(id!(all_files_link)).finger_up(&actions) {
+            if fe.was_tap() {
+                self.apply_links_visibility(cx, true);
+                self.animator_play(cx, id!(show_all.show));
+                self.redraw(cx);
+            }
+        }
+
+        if let Some(fe) = self.view(id!(only_recommended_link)).finger_up(&actions) {
+            if fe.was_tap() {
+                self.apply_links_visibility(cx, false);
+                self.animator_play(cx, id!(show_all.hide));
+                self.redraw(cx);
+            }
+        }
+    }
+}
+
+impl ModelFilesList {
+    fn apply_links_visibility(&mut self, cx: &mut Cx, show_all: bool) {
+        self.view(id!(all_files_link)).apply_over(cx, live!{visible: (!show_all)});
+        self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: (show_all)});
     }
 }

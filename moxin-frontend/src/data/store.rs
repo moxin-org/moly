@@ -51,4 +51,8 @@ impl Store {
     pub fn model_featured_files(model: &Model) -> Vec<File> {
         model.files.iter().filter(|f| f.featured).cloned().collect()
     }
+
+    pub fn model_other_files(model: &Model) -> Vec<File> {
+        model.files.iter().filter(|f| !f.featured).cloned().collect()
+    }
 }
