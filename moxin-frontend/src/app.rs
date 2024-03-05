@@ -121,6 +121,7 @@ impl LiveRegister for App {
         crate::landing::model_card::live_design(cx);
         crate::landing::model_list::live_design(cx);
         crate::landing::landing_screen::live_design(cx);
+        crate::landing::search_bar::live_design(cx);
     }
 }
 
