@@ -19,17 +19,24 @@ live_design! {
 
         show_bg: true,
 
-        // TODO Work a bit to have a radial gradient rather than a horizontal one
         draw_bg: {
+            color: #cccccc33,
             instance color2: #AF56DA55,
-            instance dither: 1.0
             fn get_color(self) -> vec4 {
-                let dither = Math::random_2d(self.pos.xy) * 0.04 * self.dither;
-                return mix(self.color, self.color2, self.pos.x + dither)
+                let coef = self.rect_size.y / self.rect_size.x;
+
+                let distance_vec = self.pos - vec2(0.8, 1.1);
+                let norm_distance = length(vec2(distance_vec.x, distance_vec.y * coef) * 2.2);
+                
+                if pow(norm_distance, 1.4) > 1.0 {
+                    return self.color;
+                } else {
+                    return mix(self.color2, self.color, pow(norm_distance, 1.4));
+                }
             }
 
             fn pixel(self) -> vec4 {
-                return Pal::premul(self.get_color())
+                return Pal::premul(self.get_color());
             }
         }
 
