@@ -27,8 +27,13 @@ impl Backend {
                             tx.send(Ok(models)).unwrap();
                             //tx.send(Err(anyhow!("Database query failed"))).unwrap();
                         }
-                        Command::SearchModels(query, _tx) => {
-                            println!("Searching for models with query: {}", query);
+                        Command::SearchModels(query, tx) => {
+                            let models = fake_data::get_models();
+                            let filtered = models
+                                .into_iter()
+                                .filter(|model| model.name.contains(&query))
+                                .collect();
+                            tx.send(Ok(filtered)).unwrap();
                         }
                         _ => {}
                     }

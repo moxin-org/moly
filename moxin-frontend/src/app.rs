@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::store::Store;
+use crate::data::store::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -148,5 +148,17 @@ impl MatchEvent for App {
                 application_pages.tab2_frame,
             ),
         );
+
+        for action in actions.iter() {
+            match action.as_widget_action().cast() {
+                StoreAction::Search(keywords) => {
+                    self.store.load_search_results(keywords);
+                }
+                StoreAction::ResetSearch => {
+                    self.store.load_featured_models();
+                }
+                _ => {}
+            }
+        }
     }
 }

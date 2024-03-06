@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use crate::data::store::StoreAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -9,7 +10,7 @@ live_design! {
 
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
 
-    SearchBar = <View> {
+    SearchBar = {{SearchBar}} {
         width: Fill,
         height: 200,
 
@@ -78,7 +79,7 @@ live_design! {
                 icon_walk: {width: 24, height: 24}
             }
 
-            <TextInput> {
+            input = <TextInput> {
                 width: 800,
                 height: Fit,
 
@@ -129,6 +130,46 @@ live_design! {
                         return sdf.result
                     }
                 }
+            }
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct SearchBar {
+    #[deref]
+    view: View
+}
+
+impl Widget for SearchBar {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+
+impl WidgetMatchEvent for SearchBar {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if let Some(keywords) = self.text_input(id!(input)).changed(actions) {
+            if keywords.len() > 3 {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    StoreAction::Search(keywords.to_string()),
+                );
+            } else if keywords.len() == 0 {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    StoreAction::ResetSearch,
+                );
             }
         }
     }
