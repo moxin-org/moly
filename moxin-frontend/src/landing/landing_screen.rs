@@ -6,6 +6,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::VerticalFiller;
     import crate::landing::search_bar::SearchBar;
     import crate::landing::model_list::ModelList;
 
@@ -13,6 +14,8 @@ live_design! {
         width: Fill,
         height: Fit,
         spacing: 30,
+
+        align: {x: 0.5, y: 0.5},
 
         heading_no_filters = <View> {
             width: Fit,
@@ -42,6 +45,33 @@ live_design! {
                     color: #000
                 }
                 text: " for \"Open Hermes\""
+            }
+        }
+
+        <VerticalFiller> {}
+
+        filters = <View> {
+            width: Fit,
+            <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 12},
+                    color: #667085
+                }
+                text: "SORT BY"
+            }
+
+            <View> {
+                width: Fit,
+                height: Fit,
+                padding: { left: 30 },
+                <Label> {
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 12},
+                        color: #667085
+                    }
+                    text: "Most Downloads"
+                }
+            
             }
         }
     }
@@ -82,6 +112,7 @@ impl Widget for LandingScreen {
         if let Some(keyword) = store.keyword.clone() {
             self.view(id!(heading_with_filters)).set_visible(true);
             self.view(id!(heading_no_filters)).set_visible(false);
+            self.view(id!(filters)).set_visible(true);
 
             let models = &store.models;
             let models_count = models.len();
@@ -91,6 +122,7 @@ impl Widget for LandingScreen {
         } else {
             self.view(id!(heading_with_filters)).set_visible(false);
             self.view(id!(heading_no_filters)).set_visible(true);
+            self.view(id!(filters)).set_visible(false);
         }
 
         self.view.draw_walk(cx, scope, walk)
