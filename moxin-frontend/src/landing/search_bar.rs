@@ -43,7 +43,7 @@ live_design! {
 
         <Label> {
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 16},
+                text_style: <REGULAR_FONT>{font_size: 13},
                 color: #000
             }
             text: "Discover, download, and run local LLMs"
@@ -58,7 +58,7 @@ live_design! {
                 color: #fff
             }
 
-            padding: {top: 6, bottom: 6, left: 20, right: 20}
+            padding: {top: 3, bottom: 3, left: 20, right: 20}
 
             spacing: 4,
             align: {x: 0.0, y: 0.5},
@@ -80,7 +80,7 @@ live_design! {
             }
 
             input = <TextInput> {
-                width: 800,
+                width: 600,
                 height: Fit,
 
                 empty_message: "Search Model by Keyword"
@@ -88,7 +88,7 @@ live_design! {
                     color: #fff
                 }
                 draw_text: {
-                    text_style:<REGULAR_FONT>{font_size: 14},
+                    text_style:<REGULAR_FONT>{font_size: 10},
                     fn get_color(self) -> vec4 {
                         return #555
                     }
