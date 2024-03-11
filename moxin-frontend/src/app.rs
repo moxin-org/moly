@@ -157,6 +157,9 @@ impl MatchEvent for App {
                 StoreAction::ResetSearch => {
                     self.store.load_featured_models();
                 }
+                StoreAction::Sort(criteria) => {
+                    self.store.sort_models(criteria);
+                }
                 _ => {}
             }
         }

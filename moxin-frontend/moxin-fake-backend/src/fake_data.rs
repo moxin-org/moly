@@ -149,8 +149,8 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://github.com/teknium1".to_string(),
                 description: "Creator of numerous chart topping fine-tunes and a Co-founder of NousResearch.".to_string(),
             },
-            like_count: 10,
-            download_count: 5003,
+            like_count: 100,
+            download_count: 503,
         },
         Model {
             id: "Nexusflow/NexusRaven-V2-13B".to_string(),
@@ -166,8 +166,8 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://nexusflow.ai/".to_string(),
                 description: "Nexusflow is democratizing Cyber Intelligence with Generative AI, fully on top of open-source large language models (LLMs).".to_string(),
             },
-            like_count: 10,
-            download_count: 5003,
+            like_count: 14,
+            download_count: 2003,
         },
         Model {
             id: "stabilityai/stablelm-zephyr-3b".to_string(),
@@ -183,7 +183,7 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://stability.ai/".to_string(),
                 description: "Stability AI is developing cutting-edge open AI models for Image, Language, Audio, Video, 3D and Biology.".to_string(),
             },
-            like_count: 10,
+            like_count: 160,
             download_count: 5003,
         },
         Model {
@@ -200,8 +200,8 @@ pub fn get_models() -> Vec<Model> {
                 url: "https://huggingface.co/Qwen".to_string(),
                 description: "Qwen (abbr. for Tongyi Qianwen 通义千问) refers to the large language model family built by Alibaba Cloud".to_string(),
             },
-            like_count: 10,
-            download_count: 5003,
+            like_count: 98,
+            download_count: 903,
         },
     ]
 }

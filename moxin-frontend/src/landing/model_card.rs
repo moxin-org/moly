@@ -67,8 +67,7 @@ live_design! {
                     icon_walk: {width: 14, height: 14}
                 }
 
-                <Label> {
-                    text: "180"
+                model_like_count = <Label> {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 10},
                         color: #1C1917
@@ -99,8 +98,7 @@ live_design! {
                     icon_walk: {width: 12, height: 12}
                 }
 
-                <Label> {
-                    text: "27355"
+                model_download_count = <Label> {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 10},
                         color: #1C1917
@@ -250,7 +248,6 @@ pub struct ModelCard {
 impl Widget for ModelCard {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        // self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -260,6 +257,12 @@ impl Widget for ModelCard {
 
         let name = &model.name;
         self.label(id!(model_name)).set_text(name);
+
+        let download_count = &model.download_count;
+        self.label(id!(model_download_count)).set_text(&format!("{}", download_count));
+
+        let like_count = &model.like_count;
+        self.label(id!(model_like_count)).set_text(&format!("{}", like_count));
 
         let size = &model.size;
         self.label(id!(model_size_tag.attr_value)).set_text(size);

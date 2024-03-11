@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::store::Store;
+use crate::data::store::{Store, StoreAction, SortCriteria};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -154,7 +154,7 @@ live_design! {
                 text: "SORT BY"
             }
 
-            <ModelsDropDown> {
+            sorting = <ModelsDropDown> {
                 width: 220,
                 height: Fit,
 
@@ -194,7 +194,8 @@ pub struct LandingScreen {
 
 impl Widget for LandingScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-            self.view.handle_event(cx, event, scope);
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -216,5 +217,27 @@ impl Widget for LandingScreen {
         }
 
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for LandingScreen {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if let Some(item_selected) = self.drop_down(id!(sorting)).selected(&actions) {
+            // TODO Check if we can use liveids instead of item index
+            let criteria = match item_selected {
+                0 => SortCriteria::MostDownloads,
+                1 => SortCriteria::LeastDownloads,
+                2 => SortCriteria::MostLikes,
+                3 => SortCriteria::LeastLikes,
+                4_usize.. => panic!()
+            };
+
+            let widget_uid = self.widget_uid();
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                StoreAction::Sort(criteria),
+            );
+        }
     }
 }

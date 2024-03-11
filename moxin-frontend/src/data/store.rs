@@ -9,7 +9,16 @@ use makepad_widgets::DefaultNone;
 pub enum StoreAction {
     Search(String),
     ResetSearch,
+    Sort(SortCriteria),
     None,
+}
+
+#[derive(Clone, Debug)]
+pub enum SortCriteria {
+    MostDownloads,
+    LeastDownloads,
+    MostLikes,
+    LeastLikes,
 }
 
 #[derive(Default)]
@@ -71,6 +80,23 @@ impl Store {
                 Err(err) => eprintln!("Error fetching models: {:?}", err),
             }
         };
+    }
+
+    pub fn sort_models(&mut self, criteria: SortCriteria) {
+        match criteria {
+            SortCriteria::MostDownloads => {
+                self.models.sort_by(|a, b| b.download_count.cmp(&a.download_count));
+            }
+            SortCriteria::LeastDownloads => {
+                self.models.sort_by(|a, b| a.download_count.cmp(&b.download_count));
+            }
+            SortCriteria::MostLikes => {
+                self.models.sort_by(|a, b| b.like_count.cmp(&a.like_count));
+            }
+            SortCriteria::LeastLikes => {
+                self.models.sort_by(|a, b| a.like_count.cmp(&b.like_count));
+            }
+        }
     }
 
     pub fn formatted_model_release_date(model: &Model) -> String {
