@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::store::Store;
+use crate::data::store::{Store, StoreAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -36,6 +36,7 @@ pub struct ModelList {
 impl Widget for ModelList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -58,5 +59,21 @@ impl Widget for ModelList {
         }
 
         DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for ModelList {
+    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        for action in actions.iter() {
+            match action.as_widget_action().cast() {
+                StoreAction::Search(keywords) => {
+                    self.portal_list(id!(list)).set_first_id_and_scroll(0, 0.0);
+                }
+                StoreAction::ResetSearch => {
+                    self.portal_list(id!(list)).set_first_id_and_scroll(0, 0.0);
+                }
+                _ => {}
+            }
+        }
     }
 }

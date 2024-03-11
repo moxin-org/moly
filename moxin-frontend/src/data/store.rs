@@ -20,6 +20,8 @@ pub struct Store {
 
     // Local cache for the list of models
     pub models: Vec<Model>,
+
+    pub keyword: Option<String>,
 }
 
 impl Store {
@@ -27,6 +29,7 @@ impl Store {
         let mut store = Self {
             models: vec![],
             backend: Backend::default(),
+            keyword: None,
         };
         store.load_featured_models();
         store
@@ -42,7 +45,10 @@ impl Store {
 
         if let Ok(response) = rx.recv() {
             match response {
-                Ok(models) => self.models = models,
+                Ok(models) => {
+                    self.models = models;
+                    self.keyword = None;
+                },
                 Err(err) => eprintln!("Error fetching models: {:?}", err),
             }
         };
@@ -53,12 +59,15 @@ impl Store {
         self
             .backend
             .command_sender
-            .send(Command::SearchModels(query, tx))
+            .send(Command::SearchModels(query.clone(), tx))
             .unwrap();
 
         if let Ok(response) = rx.recv() {
             match response {
-                Ok(models) => self.models = models,
+                Ok(models) => {
+                    self.models = models;
+                    self.keyword = Some(query.clone());
+                },
                 Err(err) => eprintln!("Error fetching models: {:?}", err),
             }
         };

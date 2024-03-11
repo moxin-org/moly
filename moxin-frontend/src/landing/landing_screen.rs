@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use crate::data::store::Store;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -27,12 +28,35 @@ live_design! {
                 margin: 50,
                 spacing: 30,
 
-                <Label> {
-                    draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 20},
-                        color: #000
+                heading_no_filters = <View> {
+                    width: Fit,
+                    height: Fit,
+                    <Label> {
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 20},
+                            color: #000
+                        }
+                        text: "Explore"
                     }
-                    text: "Explore"
+                    }
+
+                heading_with_filters = <View> {
+                    width: Fit,
+                    height: Fit,
+                    results = <Label> {
+                        draw_text:{
+                            text_style: <BOLD_FONT>{font_size: 18},
+                            color: #000
+                        }
+                        text: "12 Results"
+                    }
+                    keyword = <Label> {
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 18},
+                            color: #000
+                        }
+                        text: " for \"Open Hermes\""
+                    }
                 }
 
                 <ModelList> {}
@@ -53,6 +77,21 @@ impl Widget for LandingScreen {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get::<Store>();
+        if let Some(keyword) = store.keyword.clone() {
+            self.view(id!(heading_with_filters)).set_visible(true);
+            self.view(id!(heading_no_filters)).set_visible(false);
+
+            let models = &store.models;
+            let models_count = models.len();
+
+            self.label(id!(heading_with_filters.results)).set_text(&format!("{} Results", models_count));
+            self.label(id!(heading_with_filters.keyword)).set_text(&format!(" for \"{}\"", keyword));
+        } else {
+            self.view(id!(heading_with_filters)).set_visible(false);
+            self.view(id!(heading_no_filters)).set_visible(true);
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
