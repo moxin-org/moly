@@ -296,13 +296,13 @@ live_design! {
                 default: hide,
                 show = {
                     redraw: true,
-                    from: {all: Forward {duration: 5.3}}
+                    from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
                     apply: {show_all_animation_progress: 1.0}
                 }
                 hide = {
                     redraw: true,
-                    from: {all: Forward {duration: 5.3}}
+                    from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
                     apply: {show_all_animation_progress: 0.0}
                 }

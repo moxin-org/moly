@@ -9,6 +9,43 @@ live_design! {
     import crate::landing::search_bar::SearchBar;
     import crate::landing::model_list::ModelList;
 
+    Heading = <View> {
+        width: Fill,
+        height: Fit,
+        spacing: 30,
+
+        heading_no_filters = <View> {
+            width: Fit,
+            height: Fit,
+            <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 18},
+                    color: #000
+                }
+                text: "Explore"
+            }
+        }
+
+        heading_with_filters = <View> {
+            width: Fit,
+            height: Fit,
+            results = <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 16},
+                    color: #000
+                }
+                text: "12 Results"
+            }
+            keyword = <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 16},
+                    color: #000
+                }
+                text: " for \"Open Hermes\""
+            }
+        }
+    }
+
     LandingScreen = {{LandingScreen}} {
         width: Fill,
         height: Fill,
@@ -19,48 +56,12 @@ live_design! {
             height: Fill,
             flow: Down,
 
+            margin: 50,
+            spacing: 30,
+
             <SearchBar> {}
-
-            <View> {
-                width: Fill,
-                height: Fill,
-                flow: Down,
-                margin: 50,
-                spacing: 30,
-
-                heading_no_filters = <View> {
-                    width: Fit,
-                    height: Fit,
-                    <Label> {
-                        draw_text:{
-                            text_style: <REGULAR_FONT>{font_size: 20},
-                            color: #000
-                        }
-                        text: "Explore"
-                    }
-                    }
-
-                heading_with_filters = <View> {
-                    width: Fit,
-                    height: Fit,
-                    results = <Label> {
-                        draw_text:{
-                            text_style: <BOLD_FONT>{font_size: 18},
-                            color: #000
-                        }
-                        text: "12 Results"
-                    }
-                    keyword = <Label> {
-                        draw_text:{
-                            text_style: <REGULAR_FONT>{font_size: 18},
-                            color: #000
-                        }
-                        text: " for \"Open Hermes\""
-                    }
-                }
-
-                <ModelList> {}
-            }
+            <Heading> {}
+            <ModelList> {}
         }
     }
 }

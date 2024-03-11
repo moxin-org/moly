@@ -66,7 +66,7 @@ impl WidgetMatchEvent for ModelList {
     fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         for action in actions.iter() {
             match action.as_widget_action().cast() {
-                StoreAction::Search(keywords) => {
+                StoreAction::Search(_keywords) => {
                     self.portal_list(id!(list)).set_first_id_and_scroll(0, 0.0);
                 }
                 StoreAction::ResetSearch => {
