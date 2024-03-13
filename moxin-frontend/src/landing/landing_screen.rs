@@ -19,7 +19,7 @@ live_design! {
         popup_menu_position: BelowInput
 
         draw_text: {
-            text_style: <BOLD_FONT> {},
+            text_style: <BOLD_FONT> { font_size: 10 },
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
@@ -38,7 +38,7 @@ live_design! {
 
             draw_bg: {
                 color: #fff,
-                border_width: 2.0,
+                border_width: 1.5,
                 border_color: #EAECF0,
                 radius: 4.0
                 blur: 0.0
@@ -76,7 +76,7 @@ live_design! {
                 }
 
                 draw_name: {
-                    text_style: <BOLD_FONT> {}
+                    text_style: <BOLD_FONT> { font_size: 10 }
                     instance selected: 0.0
                     instance hover: 0.0
                     fn get_color(self) -> vec4 {
