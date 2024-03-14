@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::store::Store;
+use crate::data::store::{Store, StoreAction};
 use moxin_protocol::data::{Model, File};
 
 live_design! {
@@ -533,6 +533,15 @@ impl WidgetMatchEvent for ModelFilesList {
                 self.apply_links_visibility(cx, false);
                 self.animator_play(cx, id!(show_all.hide));
                 self.redraw(cx);
+            }
+        }
+
+        for action in actions.iter() {
+            match action.as_widget_action().cast() {
+                StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
+                    self.actual_height = None;
+                }
+                _ => {}
             }
         }
     }

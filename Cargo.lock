@@ -24,6 +24,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.81"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0952808a6c2afd1aa8947271f3a60f1a6763c7b912d210184c5149b5cf147247"
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -132,6 +138,7 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 [[package]]
 name = "makepad-derive-live"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -140,6 +147,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-wasm-bridge"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -147,6 +155,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-widget"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -155,8 +164,10 @@ dependencies = [
 [[package]]
 name = "makepad-draw"
 version = "0.6.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "ab_glyph_rasterizer",
+ "makepad-html",
  "makepad-platform",
  "makepad-vector",
  "rustybuzz",
@@ -167,14 +178,17 @@ dependencies = [
 [[package]]
 name = "makepad-futures"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 
 [[package]]
 name = "makepad-futures-legacy"
 version = "0.7.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 
 [[package]]
 name = "makepad-html"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-live-id",
 ]
@@ -182,10 +196,12 @@ dependencies = [
 [[package]]
 name = "makepad-http"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 
 [[package]]
 name = "makepad-live-compiler"
 version = "0.5.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -195,6 +211,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-live-id-macros",
 ]
@@ -202,6 +219,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id-macros"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -209,6 +227,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-tokenizer"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -216,16 +235,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "makepad-markdown"
+version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
+dependencies = [
+ "makepad-live-id",
+]
+
+[[package]]
 name = "makepad-math"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 
 [[package]]
 name = "makepad-micro-serde"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-micro-serde-derive",
 ]
@@ -233,6 +263,7 @@ dependencies = [
 [[package]]
 name = "makepad-micro-serde-derive"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -240,10 +271,12 @@ dependencies = [
 [[package]]
 name = "makepad-objc-sys"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 
 [[package]]
 name = "makepad-platform"
 version = "0.6.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-futures",
  "makepad-futures-legacy",
@@ -258,6 +291,7 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "0.5.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-live-compiler",
 ]
@@ -265,6 +299,7 @@ dependencies = [
 [[package]]
 name = "makepad-vector"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "ttf-parser",
 ]
@@ -272,6 +307,7 @@ dependencies = [
 [[package]]
 name = "makepad-wasm-bridge"
 version = "0.4.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -280,10 +316,12 @@ dependencies = [
 [[package]]
 name = "makepad-widgets"
 version = "0.6.0"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
  "makepad-html",
+ "makepad-markdown",
  "makepad-zune-jpeg",
  "makepad-zune-png",
 ]
@@ -291,6 +329,7 @@ dependencies = [
 [[package]]
 name = "makepad-windows"
 version = "0.51.1"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "windows-core 0.51.1",
  "windows-targets 0.48.5",
@@ -299,6 +338,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-core"
 version = "0.2.14"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "bitflags 2.4.2",
 ]
@@ -306,6 +346,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-inflate"
 version = "0.2.54"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "simd-adler32",
 ]
@@ -313,6 +354,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-jpeg"
 version = "0.3.17"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-zune-core",
 ]
@@ -320,6 +362,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.2.1"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "makepad-zune-core",
  "makepad-zune-inflate",
@@ -334,20 +377,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "moxin-fake-backend"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "moxin-protocol",
+]
+
+[[package]]
 name = "moxin-frontend"
 version = "0.1.0"
 dependencies = [
  "chrono",
  "makepad-widgets",
- "moxin-backend",
+ "moxin-fake-backend",
  "moxin-protocol",
+ "unicode-segmentation",
 ]
 
 [[package]]
 name = "moxin-protocol"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
+ "serde",
 ]
 
 [[package]]
@@ -403,6 +457,26 @@ name = "sdfer"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27fd75ebc7c721a70d202c7cdd2beb108bbe5dfaaea68e06aff4de2f4cc240ed"
+
+[[package]]
+name = "serde"
+version = "1.0.197"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fb1c873e1b9b056a4dc4c0c198b24c3ffa059243875552b2bd0933b1aee4ce2"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.197"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "simd-adler32"
@@ -470,6 +544,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad8d71f5726e5f285a935e9fe8edfd53f0491eb6e9a5774097fdabee7cd8c9cd"
 
 [[package]]
+name = "unicode-segmentation"
+version = "1.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4c87d22b6e3f4a18d4d40ef354e97c90fcb14dd91d7dc0aa9d8a1172ebf7202"
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -526,6 +606,7 @@ checksum = "4f186bd2dcf04330886ce82d6f33dd75a7bfcf69ecf5763b89fcde53b6ac9838"
 [[package]]
 name = "windows-core"
 version = "0.51.1"
+source = "git+https://github.com/jmbejar/makepad?branch=dropdown-parametrization#e6a98667438e528b0b8e29cdfbbd5b8ec314a324"
 dependencies = [
  "windows-targets 0.48.5",
 ]
