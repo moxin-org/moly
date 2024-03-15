@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::store::Store;
+use crate::data::store::{Store, StoreAction};
 use moxin_protocol::data::{Model, File};
 
 live_design! {
@@ -263,8 +263,12 @@ live_design! {
             }
         }
 
-        <ModelFilesItems> { show_featured: true, animated_height: 1.0 }
-        remaining_files = <ModelFilesItems> { show_featured: false }
+        <ModelFilesItems> { show_featured: true}
+        remaining_files_wrapper = <View> {
+            width: Fill,
+            height: 0,
+            remaining_files = <ModelFilesItems> { show_featured: false}
+        }
 
         footer = <RoundedYView> {
             width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
@@ -336,9 +340,6 @@ pub struct ModelFilesItems {
     #[live(true)]
     visible: bool,
 
-    #[live]
-    animated_height: f64,
-
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
 }
@@ -357,10 +358,6 @@ impl Widget for ModelFilesItems {
         } else {
             Store::model_other_files(model)
         };
-
-        let total_height = files.len() as f64 * 56.0;
-
-        let walk = Walk{height: makepad_widgets::Size::Fixed(total_height * self.animated_height), ..walk};
         cx.begin_turtle(walk, self.layout);
 
         self.draw_files(cx, &files);
@@ -417,6 +414,13 @@ impl ModelFilesItems {
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
         }
+    }
+}
+
+impl ModelFilesItemsRef {
+    fn get_height(&mut self, cx: &mut Cx) -> f64 {
+        let Some(inner) = self.borrow_mut() else { return 0.0 };
+        inner.area.rect(cx).size.y
     }
 }
 
@@ -477,6 +481,9 @@ pub struct ModelFilesList {
 
     #[animator]
     animator: Animator,
+
+    #[rust]
+    actual_height: Option<f64>,
 }
 
 impl Widget for ModelFilesList {
@@ -485,9 +492,12 @@ impl Widget for ModelFilesList {
         self.widget_match_event(cx, event, scope);
 
         if self.animator_handle_event(cx, event).must_redraw() {
-            self.model_files_items(id!(remaining_files))
-                .apply_over(cx, live!{animated_height: (self.show_all_animation_progress)});
-            self.redraw(cx);
+            if let Some(total_height) = self.actual_height {
+                let height = self.show_all_animation_progress * total_height;
+                self.view(id!(remaining_files_wrapper))
+                    .apply_over(cx, live!{height: (height)});
+                self.redraw(cx);
+            }
         }
     }
 
@@ -498,6 +508,11 @@ impl Widget for ModelFilesList {
         all_files_link.set_text(&format!("Show All Files ({})", files_count));
 
         let _ = self.view.draw_walk(cx, scope, walk);
+
+        // Let's remember the actual rendered height of the remaining_files element.
+        if self.actual_height.is_none() {
+            self.actual_height = Some(self.model_files_items(id!(remaining_files)).get_height(cx))
+        }
 
         DrawStep::done()
     }
@@ -518,6 +533,15 @@ impl WidgetMatchEvent for ModelFilesList {
                 self.apply_links_visibility(cx, false);
                 self.animator_play(cx, id!(show_all.hide));
                 self.redraw(cx);
+            }
+        }
+
+        for action in actions.iter() {
+            match action.as_widget_action().cast() {
+                StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
+                    self.actual_height = None;
+                }
+                _ => {}
             }
         }
     }

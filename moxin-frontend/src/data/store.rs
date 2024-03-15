@@ -3,6 +3,23 @@ use moxin_protocol::data::{Model, File};
 use moxin_protocol::protocol::Command;
 use moxin_backend::Backend;
 use std::sync::mpsc::channel;
+use makepad_widgets::DefaultNone;
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum StoreAction {
+    Search(String),
+    ResetSearch,
+    Sort(SortCriteria),
+    None,
+}
+
+#[derive(Clone, Debug)]
+pub enum SortCriteria {
+    MostDownloads,
+    LeastDownloads,
+    MostLikes,
+    LeastLikes,
+}
 
 #[derive(Default)]
 pub struct Store {
@@ -12,6 +29,8 @@ pub struct Store {
 
     // Local cache for the list of models
     pub models: Vec<Model>,
+
+    pub keyword: Option<String>,
 }
 
 impl Store {
@@ -19,10 +38,15 @@ impl Store {
         let mut store = Self {
             models: vec![],
             backend: Backend::default(),
+            keyword: None,
         };
-
-        let (tx, rx) = channel();
+        store.load_featured_models();
         store
+    }
+
+    pub fn load_featured_models(&mut self) {
+        let (tx, rx) = channel();
+        self
             .backend
             .command_sender
             .send(Command::GetFeaturedModels(tx))
@@ -30,16 +54,49 @@ impl Store {
 
         if let Ok(response) = rx.recv() {
             match response {
-                Ok(models) => store.models = models,
+                Ok(models) => {
+                    self.models = models;
+                    self.keyword = None;
+                },
                 Err(err) => eprintln!("Error fetching models: {:?}", err),
             }
         };
-
-        store
     }
 
-    pub fn get_model_by_id(&self, id: &str) -> Option<Model> {
-        self.models.iter().find(|m| m.id == id).cloned()
+    pub fn load_search_results(&mut self, query: String) {
+        let (tx, rx) = channel();
+        self
+            .backend
+            .command_sender
+            .send(Command::SearchModels(query.clone(), tx))
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(models) => {
+                    self.models = models;
+                    self.keyword = Some(query.clone());
+                },
+                Err(err) => eprintln!("Error fetching models: {:?}", err),
+            }
+        };
+    }
+
+    pub fn sort_models(&mut self, criteria: SortCriteria) {
+        match criteria {
+            SortCriteria::MostDownloads => {
+                self.models.sort_by(|a, b| b.download_count.cmp(&a.download_count));
+            }
+            SortCriteria::LeastDownloads => {
+                self.models.sort_by(|a, b| a.download_count.cmp(&b.download_count));
+            }
+            SortCriteria::MostLikes => {
+                self.models.sort_by(|a, b| b.like_count.cmp(&a.like_count));
+            }
+            SortCriteria::LeastLikes => {
+                self.models.sort_by(|a, b| a.like_count.cmp(&b.like_count));
+            }
+        }
     }
 
     pub fn formatted_model_release_date(model: &Model) -> String {
