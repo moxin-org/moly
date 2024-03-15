@@ -8,6 +8,8 @@ live_design! {
     import crate::shared::styles::*;
     import makepad_draw::shader::std::*;
 
+    import crate::landing::sorting::Sorting;
+
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
 
     SearchBar = {{SearchBar}} {
@@ -41,15 +43,19 @@ live_design! {
             }
         }
 
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 13},
-                color: #000
+        title = <View> {
+            width: Fit,
+            height: Fit,
+            <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 13},
+                    color: #000
+                }
+                text: "Discover, download, and run local LLMs"
             }
-            text: "Discover, download, and run local LLMs"
         }
 
-        <RoundedView> {
+        input_container = <RoundedView> {
             width: Fit,
             height: Fit,
 
@@ -132,6 +138,13 @@ live_design! {
                 }
             }
         }
+
+        sorting = <View> {
+            visible: false,
+            width: Fit,
+            height: Fit,
+            <Sorting> {}
+        }
     }
 }
 
@@ -172,5 +185,33 @@ impl WidgetMatchEvent for SearchBar {
                 );
             }
         }
+    }
+}
+
+impl SearchBarRef {
+    pub fn collapse(&self, cx: &mut Cx) {
+        let Some(mut inner) = self.borrow_mut() else { return };
+        inner.apply_over(cx, live!{
+            flow: Right,
+            title = { visible: false }
+            height: 100,
+            align: {x: 0.0, y: 0.5},
+            padding: {left: 20},
+            spacing: 80,
+            sorting = { visible: true }
+        })
+    }
+
+    pub fn expand(&self, cx: &mut Cx) {
+        let Some(mut inner) = self.borrow_mut() else { return };
+        inner.apply_over(cx, live!{
+            flow: Down,
+            title = { visible: true }
+            height: 200,
+            align: {x: 0.5, y: 0.5},
+            padding: {left: 0},
+            spacing: 50,
+            sorting = { visible: false }
+        })
     }
 }
