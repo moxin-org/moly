@@ -176,12 +176,20 @@ live_design! {
             height: Fill,
             flow: Down,
 
-            margin: 50,
+            //margin: 50,
             spacing: 30,
 
             <SearchBar> {}
-            <Heading> {}
-            <ModelList> {}
+            <View> {
+                width: Fill,
+                height: Fill,
+                flow: Down,
+                spacing: 30,
+                margin: { left: 50, right: 50 },
+
+                <Heading> {}
+                <ModelList> {}
+            }
         }
     }
 }

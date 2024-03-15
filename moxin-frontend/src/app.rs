@@ -8,27 +8,38 @@ live_design! {
     import crate::shared::styles::*;
     import crate::landing::landing_screen::LandingScreen;
 
-    ICON_EXPLORE = dep("crate://self/resources/icons/explore.svg")
-    ICON_FOLDER = dep("crate://self/resources/icons/folder.svg")
+    ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
+    ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
+    ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
 
     SidebarMenuButton = <RadioButton> {
-        width: 70,
-        height: 70,
-        icon_walk: {width: 48, height: 48}
+        width: 60,
+        height: 60,
+        icon_walk: {width: 32, height: 32}
         flow: Down, spacing: 5.0, align: {x: 0.5, y: 0.5}
         draw_radio: {
             radio_type: Tab,
-            color_active: #F2F4F7,
-            color_inactive: #fff,
+            color_active: #EDEEF0,
+            color_inactive: #EDEEF0,
         }
         draw_icon: {
             fn get_color(self) -> vec4 {
                 return mix(
-                    #000,
-                    #666,
-                    self.hover
+                    mix(
+                        #344054,
+                        #636e82,
+                        self.hover
+                    ),
+                    #B258DD,
+                    self.selected
                 )
             }
+        }
+        draw_text: {
+            color_selected: #B258DD,
+            color_unselected: #344054,
+            color_unselected_hover: #636e82,
+            text_style: <REGULAR_FONT> {font_size: 8}
         }
     }
 
@@ -59,17 +70,33 @@ live_design! {
 
                 sidebar_menu = <View> {
                     width: 100,
-                    flow: Down, spacing: 10.0,
-                    padding: { top: 40, left: 30 }
+                    flow: Down, spacing: 20.0,
+                    padding: { top: 80 }
+
+                    align: {x: 0.5, y: 0.0},
+
+                    show_bg: true,
+                    draw_bg: {
+                        color: #EDEEF0,
+                    }
+
                     tab1 = <SidebarMenuButton> {
                         animator: {selected = {default: on}}
+                        label: "Discover",
                         draw_icon: {
-                            svg_file: (ICON_EXPLORE),
+                            svg_file: (ICON_DISCOVER),
                         }
                     }
                     tab2 = <SidebarMenuButton> {
+                        label: "Chat",
                         draw_icon: {
-                            svg_file: (ICON_FOLDER),
+                            svg_file: (ICON_CHAT),
+                        }
+                    }
+                    tab3 = <SidebarMenuButton> {
+                        label: "My Models",
+                        draw_icon: {
+                            svg_file: (ICON_MY_MODELS),
                         }
                     }
                 }
@@ -85,6 +112,7 @@ live_design! {
 
                     tab1_frame = <LandingScreen> {visible: true}
                     tab2_frame = <MyModelsView> {visible: false}
+                    tab3_frame = <MyModelsView> {visible: false}
                 }
             }
         }
@@ -138,6 +166,7 @@ impl MatchEvent for App {
         self.ui.radio_button_set(ids!(
             sidebar_menu.tab1,
             sidebar_menu.tab2,
+            sidebar_menu.tab3,
         ))
         .selected_to_visible(
             cx,
@@ -146,6 +175,7 @@ impl MatchEvent for App {
             ids!(
                 application_pages.tab1_frame,
                 application_pages.tab2_frame,
+                application_pages.tab3_frame,
             ),
         );
 
