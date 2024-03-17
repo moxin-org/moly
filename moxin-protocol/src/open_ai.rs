@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
 use crate::data::*;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Message {
     pub content: String,
-    pub role: String,
+    pub role: Role,
     pub name: Option<String>,
 }
 
@@ -40,7 +40,17 @@ pub struct ChatRequestData {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MessageData {
     pub content: String,
-    pub role: String,
+    pub role: Role,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Role {
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "user")]
+    User,
+    #[serde(rename = "assistant")]
+    Assistant,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -70,7 +80,7 @@ pub enum StopReason {
     #[serde(rename = "length")]
     Length,
     #[serde(rename = "content_filter")]
-    ContentFilter
+    ContentFilter,
 }
 
 // ChatResponse structs
@@ -111,7 +121,7 @@ fn response_object() -> String {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChunkChoiceData {
-    pub finish_reason: StopReason,
+    pub finish_reason: Option<StopReason>,
     pub index: u32,
     pub delta: MessageData,
     pub logprobs: Option<LogProbsData>,

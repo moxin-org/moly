@@ -8,3 +8,10 @@ edition = "2021"
 [dependencies]
 moxin-protocol = { path = "../moxin-protocol" }
 chrono = "0.4"
+wasmedge-sdk = { git = "https://github.com/WasmEdge/wasmedge-rust-sdk.git", rev = "1ef2434", default-features = false, features = [
+    "wasi_nn",
+] }
+log = "0.4.21"
+anyhow = "1.0"
+serde_json = "1.0"
+crossbeam = "0.8"
