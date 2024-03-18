@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 use crate::data::store::{Store, StoreAction, SortCriteria};
 use crate::landing::search_bar::SearchBarWidgetExt;
+use crate::landing::model_list::ModelListAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -55,7 +56,7 @@ live_design! {
 
         sorting = <Sorting> {
             width: Fit,
-            height: 400 // FIXME: This is a hack to make the dropdown appear
+            height: Fit,
             visible: false
         }
     }
@@ -87,10 +88,21 @@ live_design! {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub enum SearchBarState {
+    #[default] ExpandedWithoutFilters,
+    ExpandedWithFilters,
+    CollapsedWithoutFilters,
+    CollapsedWithFilters
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct LandingScreen {
     #[deref]
-    view: View
+    view: View,
+
+    #[rust]
+    search_bar_state: SearchBarState
 }
 
 impl Widget for LandingScreen {
@@ -104,24 +116,31 @@ impl Widget for LandingScreen {
         if let Some(keyword) = store.keyword.clone() {
             self.view(id!(heading_with_filters)).set_visible(true);
             self.view(id!(heading_no_filters)).set_visible(false);
-            self.view(id!(sorting)).set_visible(true);
+
+            if self.search_bar_state == SearchBarState::ExpandedWithoutFilters {
+                self.search_bar_state = SearchBarState::ExpandedWithFilters;
+                self.view(id!(sorting)).set_visible(true);
+            }
+            if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
+                self.search_bar_state = SearchBarState::CollapsedWithFilters;
+            }
 
             let models = &store.models;
             let models_count = models.len();
-
             self.label(id!(heading_with_filters.results)).set_text(&format!("{} Results", models_count));
             self.label(id!(heading_with_filters.keyword)).set_text(&format!(" for \"{}\"", keyword));
-
-            // Test
-            self.search_bar(id!(search_bar)).collapse(cx);
         } else {
             self.view(id!(heading_with_filters)).set_visible(false);
             self.view(id!(heading_no_filters)).set_visible(true);
-            self.view(id!(sorting)).set_visible(false);
 
-            // Test
-            self.search_bar(id!(search_bar)).expand(cx);
-        }
+            // Keyword was removed from the search input
+            if self.search_bar_state == SearchBarState::CollapsedWithFilters ||
+                self.search_bar_state == SearchBarState::ExpandedWithFilters {
+                    self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
+                    self.search_bar(id!(search_bar)).expand(cx);
+                    self.view(id!(sorting)).set_visible(false);
+            }
+    }
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -145,6 +164,31 @@ impl WidgetMatchEvent for LandingScreen {
                 &scope.path,
                 StoreAction::Sort(criteria),
             );
+        }
+
+        let store = scope.data.get::<Store>();
+        for action in actions.iter() {
+            match action.as_widget_action().cast() {
+                ModelListAction::ScrolledAtTop => {
+                    if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
+                        self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
+                        self.search_bar(id!(search_bar)).expand(cx);
+                        self.view(id!(sorting)).set_visible(false);
+                        self.redraw(cx);
+                    }
+                }
+                ModelListAction::ScrolledNotAtTop => {
+                    if self.search_bar_state == SearchBarState::ExpandedWithoutFilters {
+                        self.search_bar_state = SearchBarState::CollapsedWithoutFilters;
+                    } else if self.search_bar_state == SearchBarState::ExpandedWithFilters {
+                        self.search_bar_state = SearchBarState::CollapsedWithFilters;
+                    }
+                    self.search_bar(id!(search_bar)).collapse(cx);
+                    self.view(id!(sorting)).set_visible(false);
+                    self.redraw(cx);
+                }
+                _ => {}
+            }
         }
     }
 }

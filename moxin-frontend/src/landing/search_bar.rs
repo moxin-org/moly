@@ -139,7 +139,7 @@ live_design! {
             }
         }
 
-        sorting = <View> {
+        search_sorting = <View> {
             visible: false,
             width: Fit,
             height: Fit,
@@ -198,7 +198,7 @@ impl SearchBarRef {
             align: {x: 0.0, y: 0.5},
             padding: {left: 20},
             spacing: 80,
-            sorting = { visible: true }
+            search_sorting = { visible: true }
         })
     }
 
@@ -211,7 +211,7 @@ impl SearchBarRef {
             align: {x: 0.5, y: 0.5},
             padding: {left: 0},
             spacing: 50,
-            sorting = { visible: false }
+            search_sorting = { visible: false }
         })
     }
 }
