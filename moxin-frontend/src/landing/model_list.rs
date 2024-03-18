@@ -62,17 +62,45 @@ impl Widget for ModelList {
     }
 }
 
+#[derive(Clone, DefaultNone, Debug)]
+pub enum ModelListAction {
+    None,
+    ScrolledAtTop,
+    ScrolledNotAtTop,
+}
+
+const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
+
 impl WidgetMatchEvent for ModelList {
-    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let portal_list_ref = self.portal_list(id!(list));
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 StoreAction::Search(_keywords) => {
-                    self.portal_list(id!(list)).set_first_id_and_scroll(0, 0.0);
+                    portal_list_ref.set_first_id_and_scroll(0, 0.0);
                 }
                 StoreAction::ResetSearch => {
-                    self.portal_list(id!(list)).set_first_id_and_scroll(0, 0.0);
+                    portal_list_ref.set_first_id_and_scroll(0, 0.0);
                 }
                 _ => {}
+            }
+        }
+
+        if portal_list_ref.scrolled(actions) {
+            let widget_uid = self.widget_uid();
+            if portal_list_ref.first_id() == 0 &&
+                portal_list_ref.scroll_position() > SCROLLING_AT_TOP_THRESHOLD {
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        ModelListAction::ScrolledAtTop,
+                    );
+            } else {
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    ModelListAction::ScrolledNotAtTop,
+                );
             }
         }
     }

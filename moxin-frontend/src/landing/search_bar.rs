@@ -1,5 +1,6 @@
 use makepad_widgets::*;
-use crate::data::store::StoreAction;
+use crate::data::store::{StoreAction, SortCriteria};
+use crate::landing::sorting::SortingWidgetExt;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -7,6 +8,8 @@ live_design! {
 
     import crate::shared::styles::*;
     import makepad_draw::shader::std::*;
+
+    import crate::landing::sorting::Sorting;
 
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
 
@@ -41,15 +44,19 @@ live_design! {
             }
         }
 
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 13},
-                color: #000
+        title = <View> {
+            width: Fit,
+            height: Fit,
+            <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 13},
+                    color: #000
+                }
+                text: "Discover, download, and run local LLMs"
             }
-            text: "Discover, download, and run local LLMs"
         }
 
-        <RoundedView> {
+        input_container = <RoundedView> {
             width: Fit,
             height: Fit,
 
@@ -132,19 +139,53 @@ live_design! {
                 }
             }
         }
+
+        search_sorting = <View> {
+            visible: false,
+            width: Fit,
+            height: Fit,
+            <Sorting> {}
+        }
+
+        animator: {
+            search_bar = {
+                default: expanded,
+                collapsed = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: { height: 100 }
+                }
+                expanded = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: { height: 200 }
+                }
+            }
+        }
     }
 }
 
 #[derive(Live, LiveHook, Widget)]
 pub struct SearchBar {
     #[deref]
-    view: View
+    view: View,
+
+    #[animator]
+    animator: Animator,
+
+    #[rust]
+    collapsed: bool
 }
 
 impl Widget for SearchBar {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -172,5 +213,42 @@ impl WidgetMatchEvent for SearchBar {
                 );
             }
         }
+    }
+}
+
+impl SearchBarRef {
+    pub fn collapse(&self, cx: &mut Cx, selected_sort: SortCriteria) {
+        let Some(mut inner) = self.borrow_mut() else { return };
+        if inner.collapsed { return; }
+        inner.collapsed = true;
+
+        inner.apply_over(cx, live!{
+            flow: Right,
+            title = { visible: false }
+            align: {x: 0.0, y: 0.5},
+            padding: {left: 20},
+            spacing: 80,
+            search_sorting = { visible: true }
+        });
+
+        inner.sorting(id!(search_sorting)).set_selected_item(selected_sort);
+        inner.animator_play(cx, id!(search_bar.collapsed));
+    }
+
+    pub fn expand(&self, cx: &mut Cx) {
+        let Some(mut inner) = self.borrow_mut() else { return };
+        if !inner.collapsed { return; }
+        inner.collapsed = false;
+
+        inner.apply_over(cx, live!{
+            flow: Down,
+            title = { visible: true }
+            align: {x: 0.5, y: 0.5},
+            padding: {left: 0},
+            spacing: 50,
+            search_sorting = { visible: false }
+        });
+
+        inner.animator_play(cx, id!(search_bar.expanded));
     }
 }
