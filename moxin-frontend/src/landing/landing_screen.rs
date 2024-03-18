@@ -1,6 +1,7 @@
 use makepad_widgets::*;
-use crate::data::store::{Store, StoreAction, SortCriteria};
+use crate::data::store::Store;
 use crate::landing::search_bar::SearchBarWidgetExt;
+use crate::landing::sorting::SortingWidgetExt;
 use crate::landing::model_list::ModelListAction;
 
 live_design! {
@@ -119,7 +120,7 @@ impl Widget for LandingScreen {
 
             if self.search_bar_state == SearchBarState::ExpandedWithoutFilters {
                 self.search_bar_state = SearchBarState::ExpandedWithFilters;
-                self.view(id!(sorting)).set_visible(true);
+                self.sorting(id!(sorting)).set_visible(cx, true);
             }
             if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
                 self.search_bar_state = SearchBarState::CollapsedWithFilters;
@@ -138,7 +139,7 @@ impl Widget for LandingScreen {
                 self.search_bar_state == SearchBarState::ExpandedWithFilters {
                     self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
                     self.search_bar(id!(search_bar)).expand(cx);
-                    self.view(id!(sorting)).set_visible(false);
+                    self.sorting(id!(sorting)).set_visible(cx, false);
             }
     }
 
@@ -147,33 +148,14 @@ impl Widget for LandingScreen {
 }
 
 impl WidgetMatchEvent for LandingScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(item_selected) = self.drop_down(id!(sorting)).selected(&actions) {
-            // TODO Check if we can use liveids instead of item index
-            let criteria = match item_selected {
-                0 => SortCriteria::MostDownloads,
-                1 => SortCriteria::LeastDownloads,
-                2 => SortCriteria::MostLikes,
-                3 => SortCriteria::LeastLikes,
-                4_usize.. => panic!()
-            };
-
-            let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                StoreAction::Sort(criteria),
-            );
-        }
-
-        let store = scope.data.get::<Store>();
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 ModelListAction::ScrolledAtTop => {
                     if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
                         self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
                         self.search_bar(id!(search_bar)).expand(cx);
-                        self.view(id!(sorting)).set_visible(false);
+                        self.sorting(id!(sorting)).set_visible(cx, false);
                         self.redraw(cx);
                     }
                 }
@@ -184,7 +166,7 @@ impl WidgetMatchEvent for LandingScreen {
                         self.search_bar_state = SearchBarState::CollapsedWithFilters;
                     }
                     self.search_bar(id!(search_bar)).collapse(cx);
-                    self.view(id!(sorting)).set_visible(false);
+                    self.sorting(id!(sorting)).set_visible(cx, false);
                     self.redraw(cx);
                 }
                 _ => {}

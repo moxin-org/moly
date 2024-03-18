@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use crate::data::store::{StoreAction, SortCriteria};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -97,7 +98,7 @@ live_design! {
         }
     }
 
-    Sorting = <View> {
+    Sorting = {{Sorting}} {
         width: Fit,
         height: Fit,
         align: {x: 0.5, y: 0.5},
@@ -110,7 +111,7 @@ live_design! {
             text: "SORT BY"
         }
         
-        <ModelsDropDown> {
+        options = <ModelsDropDown> {
             width: 220,
             height: Fit,
 
@@ -119,5 +120,54 @@ live_design! {
             labels: ["Most Downloads", "Least Downloads", "Most Likes", "Least Likes"]
             values: [MostDownloads, LeastDownloads, MostLikes, LeastLikes]
         }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct Sorting {
+    #[deref]
+    view: View
+}
+
+impl Widget for Sorting {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+
+impl WidgetMatchEvent for Sorting {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if let Some(item_selected) = self.drop_down(id!(options)).selected(&actions) {
+            // TODO Check if we can use liveids instead of item index
+            let criteria = match item_selected {
+                0 => SortCriteria::MostDownloads,
+                1 => SortCriteria::LeastDownloads,
+                2 => SortCriteria::MostLikes,
+                3 => SortCriteria::LeastLikes,
+                4_usize.. => panic!()
+            };
+
+            let widget_uid = self.widget_uid();
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                StoreAction::Sort(criteria),
+            );
+        }
+    }
+}
+
+impl SortingRef {
+    pub fn set_visible(&self, cx: &mut Cx, visible: bool) {
+        let Some(mut inner) = self.borrow_mut() else { return };
+        inner.apply_over(cx, live!{
+            visible: (visible)
+        });
     }
 }
