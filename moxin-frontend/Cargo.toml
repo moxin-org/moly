@@ -12,7 +12,7 @@ moxin-protocol = { path = "../moxin-protocol" }
 moxin-backend = { path = "./moxin-fake-backend", package="moxin-fake-backend" }
 
 ## makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
-makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "dropdown-parametrization" }
+makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "moxin-changes" }
 
 chrono = "0.4"
 unicode-segmentation = "1.10.1"
