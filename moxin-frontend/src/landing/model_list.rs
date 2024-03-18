@@ -69,6 +69,8 @@ pub enum ModelListAction {
     ScrolledNotAtTop,
 }
 
+const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
+
 impl WidgetMatchEvent for ModelList {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let portal_list_ref = self.portal_list(id!(list));
@@ -86,12 +88,13 @@ impl WidgetMatchEvent for ModelList {
 
         if portal_list_ref.scrolled(actions) {
             let widget_uid = self.widget_uid();
-            if portal_list_ref.first_id() == 0 {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ModelListAction::ScrolledAtTop,
-                );
+            if portal_list_ref.first_id() == 0 &&
+                portal_list_ref.scroll_position() > SCROLLING_AT_TOP_THRESHOLD {
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        ModelListAction::ScrolledAtTop,
+                    );
             } else {
                 cx.widget_action(
                     widget_uid,
