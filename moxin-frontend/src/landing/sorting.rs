@@ -170,4 +170,15 @@ impl SortingRef {
             visible: (visible)
         });
     }
+
+    pub fn set_selected_item(&self, criteria: SortCriteria) {
+        let Some(mut inner) = self.borrow_mut() else { return };
+        let criteria_id = match criteria {
+            SortCriteria::MostDownloads => 0,
+            SortCriteria::LeastDownloads => 1,
+            SortCriteria::MostLikes => 2,
+            SortCriteria::LeastLikes => 3,
+        };
+        inner.drop_down(id!(options)).set_selected_item(criteria_id);
+    }
 }

@@ -1,5 +1,6 @@
 use makepad_widgets::*;
-use crate::data::store::StoreAction;
+use crate::data::store::{StoreAction, SortCriteria};
+use crate::landing::sorting::SortingWidgetExt;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -189,7 +190,7 @@ impl WidgetMatchEvent for SearchBar {
 }
 
 impl SearchBarRef {
-    pub fn collapse(&self, cx: &mut Cx) {
+    pub fn collapse(&self, cx: &mut Cx, selected_sort: SortCriteria) {
         let Some(mut inner) = self.borrow_mut() else { return };
         inner.apply_over(cx, live!{
             flow: Right,
@@ -199,7 +200,9 @@ impl SearchBarRef {
             padding: {left: 20},
             spacing: 80,
             search_sorting = { visible: true }
-        })
+        });
+
+        inner.sorting(id!(search_sorting)).set_selected_item(selected_sort);
     }
 
     pub fn expand(&self, cx: &mut Cx) {

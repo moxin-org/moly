@@ -13,9 +13,9 @@ pub enum StoreAction {
     None,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum SortCriteria {
-    MostDownloads,
+    #[default] MostDownloads,
     LeastDownloads,
     MostLikes,
     LeastLikes,
@@ -31,6 +31,7 @@ pub struct Store {
     pub models: Vec<Model>,
 
     pub keyword: Option<String>,
+    pub sorted_by: SortCriteria,
 }
 
 impl Store {
@@ -39,8 +40,10 @@ impl Store {
             models: vec![],
             backend: Backend::default(),
             keyword: None,
+            sorted_by: SortCriteria::MostDownloads,
         };
         store.load_featured_models();
+        store.sort_models(SortCriteria::MostDownloads);
         store
     }
 
@@ -97,6 +100,7 @@ impl Store {
                 self.models.sort_by(|a, b| a.like_count.cmp(&b.like_count));
             }
         }
+        self.sorted_by = criteria;
     }
 
     pub fn formatted_model_release_date(model: &Model) -> String {

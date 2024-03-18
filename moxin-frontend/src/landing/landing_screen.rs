@@ -120,7 +120,10 @@ impl Widget for LandingScreen {
 
             if self.search_bar_state == SearchBarState::ExpandedWithoutFilters {
                 self.search_bar_state = SearchBarState::ExpandedWithFilters;
-                self.sorting(id!(sorting)).set_visible(cx, true);
+                let sorting_ref = self.sorting(id!(sorting));
+                sorting_ref.set_visible(cx, true);
+                sorting_ref.set_selected_item(store.sorted_by);
+
             }
             if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
                 self.search_bar_state = SearchBarState::CollapsedWithFilters;
@@ -148,7 +151,7 @@ impl Widget for LandingScreen {
 }
 
 impl WidgetMatchEvent for LandingScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 ModelListAction::ScrolledAtTop => {
@@ -165,7 +168,8 @@ impl WidgetMatchEvent for LandingScreen {
                     } else if self.search_bar_state == SearchBarState::ExpandedWithFilters {
                         self.search_bar_state = SearchBarState::CollapsedWithFilters;
                     }
-                    self.search_bar(id!(search_bar)).collapse(cx);
+                    let store = scope.data.get::<Store>();
+                    self.search_bar(id!(search_bar)).collapse(cx, store.sorted_by);
                     self.sorting(id!(sorting)).set_visible(cx, false);
                     self.redraw(cx);
                 }
