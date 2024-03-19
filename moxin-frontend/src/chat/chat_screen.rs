@@ -138,6 +138,14 @@ impl Widget for ChatScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        if let Event::Signal = event {
+            let store = scope.data.get_mut::<Store>();
+            store.update_chat_history();
+            self.redraw(cx);
+            dbg!("model response arrived");
+            self.enabled = true;
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -183,6 +191,7 @@ impl WidgetMatchEvent for ChatScreen {
                     TextInputAction::Return(prompt) => {
                         let store = scope.data.get_mut::<Store>();
                         store.send_chat(prompt.clone());
+                        dbg!("waiting for model response");
                         self.redraw(cx);
                     }
                     _ => {}
