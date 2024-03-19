@@ -55,9 +55,11 @@ live_design! {
                     }
 
                     label = <Label> {
+                        width: Fill,
                         draw_text:{
                             text_style: <REGULAR_FONT>{font_size: 12},
-                            color: #000
+                            color: #000,
+                            word: Wrap,
                         }
                         text: "Chat Line"
                     }
@@ -111,7 +113,7 @@ live_design! {
                             self.rect_size.y,
                             self.border_radius
                         )
-                        sdf.fill(mix(#eee, #ddd, self.focus)); // Pad color
+                        sdf.fill(mix(#e99, #d99, self.focus));
                         return sdf.result
                     }
                 }
