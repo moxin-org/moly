@@ -16,7 +16,9 @@ impl Default for Backend {
 
 impl Backend {
     pub fn new() -> Backend {
-        let command_sender = backend_impls::BackendImpl::new(".".to_string());
+        let home = std::env::var("HOME").unwrap();
+
+        let command_sender = backend_impls::BackendImpl::new(format!("{home}/ai"));
         Backend { command_sender }
     }
 }

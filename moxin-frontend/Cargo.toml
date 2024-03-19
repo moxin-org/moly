@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 moxin-protocol = { path = "../moxin-protocol" }
 
-## moxin-backend = { path = "../moxin-backend" }
-moxin-backend = { path = "./moxin-fake-backend", package="moxin-fake-backend" }
+moxin-backend = { path = "../moxin-backend" }
+## moxin-backend = { path = "./moxin-fake-backend", package="moxin-fake-backend" }
 
 ## makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "moxin-changes" }

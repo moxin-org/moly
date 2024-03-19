@@ -1,6 +1,7 @@
 use chrono::Utc;
 use moxin_protocol::data::{Model, File};
-use moxin_protocol::protocol::Command;
+use moxin_protocol::protocol::{Command, LoadModelOptions};
+use moxin_protocol::open_ai::*;
 use moxin_backend::Backend;
 use std::sync::mpsc::channel;
 use makepad_widgets::DefaultNone;
@@ -32,6 +33,8 @@ pub struct Store {
 
     pub keyword: Option<String>,
     pub sorted_by: SortCriteria,
+
+    pub chat_history: Vec<String>,
 }
 
 impl Store {
@@ -41,9 +44,10 @@ impl Store {
             backend: Backend::default(),
             keyword: None,
             sorted_by: SortCriteria::MostDownloads,
+            chat_history: vec![],
         };
-        store.load_featured_models();
-        store.sort_models(SortCriteria::MostDownloads);
+        //store.load_featured_models();
+        //store.sort_models(SortCriteria::MostDownloads);
         store
     }
 
@@ -81,6 +85,93 @@ impl Store {
                     self.keyword = Some(query.clone());
                 },
                 Err(err) => eprintln!("Error fetching models: {:?}", err),
+            }
+        };
+    }
+
+    pub fn load_model(&mut self) {
+        let (tx, rx) = channel();
+        let cmd = Command::LoadModel(
+            "llama-2-7b-chat.Q4_K_M".to_string(),
+            LoadModelOptions {
+                prompt_template: None,
+                gpu_layers: moxin_protocol::protocol::GPULayers::Max,
+                use_mlock: false,
+                n_batch: 512,
+                n_ctx: 512,
+                rope_freq_scale: 0.0,
+                rope_freq_base: 0.0,
+                context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            },
+            tx,
+        );
+        
+        self
+            .backend
+            .command_sender
+            .send(cmd)
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(response) => {
+                    dbg!(response);
+                },
+                Err(err) => eprintln!("Error loading model: {:?}", err),
+            }
+        };
+    }
+
+    pub fn send_chat(&mut self, prompt: String) {
+        let (tx, rx) = channel();
+        let mut messages:Vec<_> = self.chat_history.iter().enumerate().map(|(i, message)| {
+            let role = if i % 2 == 0 { Role::User } else { Role::Assistant };
+            Message {
+                content: message.clone(),
+                role: role,
+                name: None,
+            }
+        }).collect();
+        messages.push(Message {
+            content: prompt.clone(),
+            role: Role::User,
+            name: None,
+        });
+
+        let cmd = Command::Chat(
+            ChatRequestData {
+                messages: messages,
+                model: "llama-2-7b-chat.Q5_K_M".to_string(),
+                frequency_penalty: None,
+                logprobs: None,
+                top_logprobs: None,
+                max_tokens: None,
+                presence_penalty: None,
+                seed: None,
+                stop: None,
+                stream: Some(false),
+                temperature: None,
+                top_p: None,
+                n: None,
+                logit_bias: None,
+            },
+            tx,
+        );
+
+        self
+            .backend
+            .command_sender
+            .send(cmd)
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(ChatResponse::ChatFinalResponseData(data)) => {
+                    self.chat_history.push(prompt.clone());
+                    self.chat_history.push(data.choices[0].message.content.clone());
+                },
+                Err(err) => eprintln!("Error sending prompt: {:?}", err),
+                _ => (),
             }
         };
     }
