@@ -11,12 +11,12 @@ live_design! {
     ModelsDropDown = <DropDown> {
         width: Fit
         height: Fit
-        padding: {top: 10.0, right: 20.0, bottom: 10.0, left: 10.0}
+        padding: {top: 20.0, right: 10.0, bottom: 20.0, left: 16.0}
 
         popup_menu_position: BelowInput
 
         draw_text: {
-            text_style: <BOLD_FONT> { font_size: 10 },
+            text_style: <BOLD_FONT> { font_size: 9 },
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
@@ -60,20 +60,20 @@ live_design! {
                             self.hover
                         ))
 
-                        let sz = 4.;
-                        let dx = 2.0;
+                        let sz = 3.;
+                        let dx = 1.6;
                         let c = vec2(0.9 * self.rect_size.x, 0.5 * self.rect_size.y);
                         sdf.move_to(c.x - sz + dx * 0.5, c.y - sz + dx);
                         sdf.line_to(c.x, c.y + sz);
                         sdf.line_to(c.x + sz * 2.0, c.y - sz * 2.0);
-                        sdf.stroke(mix(#0000, #0, self.selected), 1.5);
+                        sdf.stroke(mix(#0000, #0, self.selected), 1.0);
 
                         return sdf.result;
                     }
                 }
 
                 draw_name: {
-                    text_style: <BOLD_FONT> { font_size: 10 }
+                    text_style: <BOLD_FONT> { font_size: 9 }
                     instance selected: 0.0
                     instance hover: 0.0
                     fn get_color(self) -> vec4 {
@@ -84,6 +84,8 @@ live_design! {
         }
 
         draw_bg: {
+            instance open: 0.0
+
             fn get_bg(self, inout sdf: Sdf2d) {
                 sdf.box(
                     2,
@@ -95,6 +97,28 @@ live_design! {
                 sdf.stroke_keep(#EAECF0, 2.);
                 sdf.fill(#fff);
             }
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                self.get_bg(sdf);
+
+                let c = vec2(self.rect_size.x - 20.0, self.rect_size.y * 0.5)
+                let sz = 2.5;
+
+                if self.open < 0.5 {
+                    sdf.move_to(c.x - sz * 2.0, c.y - sz);
+                    sdf.line_to(c.x, c.y + sz);
+                    sdf.line_to(c.x + sz * 2.0, c.y - sz);
+                }
+                else {
+                    sdf.move_to(c.x - sz * 2.0, c.y + sz);
+                    sdf.line_to(c.x, c.y - sz);
+                    sdf.line_to(c.x + sz * 2.0, c.y + sz);
+                }
+                sdf.stroke(#666, 1.0);
+
+                return sdf.result
+            }
         }
     }
 
@@ -105,7 +129,7 @@ live_design! {
 
         <Label> {
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 12},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 color: #667085
             }
             text: "SORT BY"

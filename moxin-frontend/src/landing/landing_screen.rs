@@ -24,10 +24,13 @@ live_design! {
 
         heading_no_filters = <View> {
             width: Fit,
-            height: Fit,
+            height: 50,
+
+            align: {x: 0.5, y: 0.5},
+
             <Label> {
                 draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 18},
+                    text_style: <REGULAR_FONT>{font_size: 16},
                     color: #000
                 }
                 text: "Explore"
@@ -36,7 +39,10 @@ live_design! {
 
         heading_with_filters = <View> {
             width: Fit,
-            height: Fit,
+            height: 50,
+
+            align: {x: 0.5, y: 0.5},
+
             results = <Label> {
                 draw_text:{
                     text_style: <BOLD_FONT>{font_size: 16},

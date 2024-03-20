@@ -83,7 +83,7 @@ live_design! {
                         return #666;
                     }
                 }
-                icon_walk: {width: 24, height: 24}
+                icon_walk: {width: 20, height: 20}
             }
 
             input = <TextInput> {
@@ -95,7 +95,7 @@ live_design! {
                     color: #fff
                 }
                 draw_text: {
-                    text_style:<REGULAR_FONT>{font_size: 10},
+                    text_style:<REGULAR_FONT>{font_size: 12},
                     fn get_color(self) -> vec4 {
                         return #555
                     }
