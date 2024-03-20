@@ -23,6 +23,10 @@ pub enum SortCriteria {
     LeastLikes,
 }
 
+pub enum ChatHistoryUpdate {
+    Append(String),
+}
+
 #[derive(Default)]
 pub struct Store {
     // This is the backend representation, including the sender and receiver ends of the channels to
@@ -36,7 +40,7 @@ pub struct Store {
     pub sorted_by: SortCriteria,
 
     pub chat_history: Vec<String>,
-    pub chat_update_receiver: Option<Receiver<Vec<String>>>,
+    pub chat_update_receiver: Option<Receiver<ChatHistoryUpdate>>,
 }
 
 impl Store {
@@ -118,6 +122,7 @@ impl Store {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(response) => {
+                    makepad_widgets::log!("Model loaded");
                     dbg!(response);
                 },
                 Err(err) => eprintln!("Error loading model: {:?}", err),
@@ -152,7 +157,7 @@ impl Store {
                 presence_penalty: None,
                 seed: None,
                 stop: None,
-                stream: Some(false),
+                stream: Some(true),
                 temperature: None,
                 top_p: None,
                 n: None,
@@ -160,6 +165,9 @@ impl Store {
             },
             tx,
         );
+
+        self.chat_history.push(prompt.clone());
+        self.chat_history.push("".to_string());
 
         let (store_chat_tx, store_chat_rx) = channel();
         self.chat_update_receiver = Some(store_chat_rx);
@@ -171,29 +179,33 @@ impl Store {
             .unwrap();
 
         thread::spawn(move || {
-            if let Ok(response) = rx.recv() {
-                match response {
-                    Ok(ChatResponse::ChatFinalResponseData(data)) => {
-                        // self.chat_history.push(prompt.clone());
-                        // self.chat_history.push(data.choices[0].message.content.clone());
-                        store_chat_tx.send([
-                            prompt.clone(),
-                            data.choices[0].message.content.clone()
-                        ].to_vec()).unwrap();
+            loop {
+                if let Ok(response) = rx.recv() {
+                    match response {
+                        Ok(ChatResponse::ChatResponseChunk(data)) => {
+                            store_chat_tx.send(ChatHistoryUpdate::Append(
+                                data.choices[0].delta.content.clone()
+                            )).unwrap();
 
-                        SignalToUI::set_ui_signal();
-                    },
-                    Err(err) => eprintln!("Error sending prompt: {:?}", err),
-                    _ => (),
-                }
-            };
+                            SignalToUI::set_ui_signal();
+
+                            if let Some(_reason) = &data.choices[0].finish_reason {
+                                break;
+                            }
+                        },
+                        Err(err) => eprintln!("Error sending prompt: {:?}", err),
+                        _ => (),
+                    }
+                };
+            }
         });
     }
 
     pub fn update_chat_history(&mut self) {
         if let Some(rx) = &self.chat_update_receiver {
-            if let Ok(mut response) = rx.recv() {
-                self.chat_history.append(&mut response);
+            if let Ok(ChatHistoryUpdate::Append(mut response)) = rx.recv() {
+                let last = self.chat_history.last_mut().unwrap();
+                last.push_str(&mut response);
             }
         }
     }
