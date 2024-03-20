@@ -5,14 +5,32 @@ use std::thread;
 use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
 
-pub enum ChatHistoryUpdate {
-    Append(String),
+pub enum ChatTokenArrivalAction {
+    AppendDelta(String),
+    StreamingDone,
+}
+
+#[derive(Clone)]
+pub struct ChatMessage {
+    pub role: Role,
+    pub content: String,
+}
+
+impl ChatMessage {
+    pub fn role_to_string(&self) -> String {
+        match self.role {
+            Role::User => "User".to_string(),
+            Role::Assistant => "Assistant".to_string(),
+            Role::System => "System".to_string(),
+        }
+    }
 }
 
 pub struct Chat {
-    pub messages: Vec<String>,
-    pub messages_update_sender: Sender<ChatHistoryUpdate>,
-    pub messages_update_receiver: Receiver<ChatHistoryUpdate>,
+    pub messages: Vec<ChatMessage>,
+    pub messages_update_sender: Sender<ChatTokenArrivalAction>,
+    pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
+    pub is_streaming: bool,
 }
 
 impl Chat {
@@ -22,17 +40,17 @@ impl Chat {
             messages: vec![],
             messages_update_sender: tx,
             messages_update_receiver: rx,
+            is_streaming: false,
         };
         chat
     }
 
     pub fn send_message_to_model(&mut self, prompt: String, backend: &Backend) {
         let (tx, rx) = channel();
-        let mut messages: Vec<_> = self.messages.iter().enumerate().map(|(i, message)| {
-            let role = if i % 2 == 0 { Role::User } else { Role::Assistant };
+        let mut messages: Vec<_> = self.messages.iter().map(|message| {
             Message {
-                content: message.clone(),
-                role: role,
+                content: message.content.clone(),
+                role: message.role.clone(),
                 name: None,
             }
         }).collect();
@@ -63,26 +81,30 @@ impl Chat {
             tx,
         );
 
-        self.messages.push(prompt.clone());
-        self.messages.push("".to_string());
+        self.messages.push(ChatMessage{role: Role::User, content: prompt.clone()});
+        self.messages.push(ChatMessage{role: Role::Assistant, content: "".to_string()});
 
         let store_chat_tx = self.messages_update_sender.clone();
         backend.command_sender.send(cmd).unwrap();
-
+        self.is_streaming = true;
         thread::spawn(move || {
             loop {
                 if let Ok(response) = rx.recv() {
                     match response {
                         Ok(ChatResponse::ChatResponseChunk(data)) => {
-                            store_chat_tx.send(ChatHistoryUpdate::Append(
+                            let mut is_done = false;
+
+                            store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
                                 data.choices[0].delta.content.clone()
                             )).unwrap();
 
-                            SignalToUI::set_ui_signal();
-
                             if let Some(_reason) = &data.choices[0].finish_reason {
-                                break;
+                                is_done = true;
+                                store_chat_tx.send(ChatTokenArrivalAction::StreamingDone).unwrap();
                             }
+
+                            SignalToUI::set_ui_signal();
+                            if is_done { break; }
                         },
                         Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
                         _ => (),
@@ -93,10 +115,16 @@ impl Chat {
     }
 
     pub fn update_messages(&mut self) {
-        if let Ok(ChatHistoryUpdate::Append(response)) =
-            self.messages_update_receiver.recv() {
-                let last = self.messages.last_mut().unwrap();
-                last.push_str(&response);
+        for msg in self.messages_update_receiver.try_iter() {
+            match msg {
+                ChatTokenArrivalAction::AppendDelta(response) => {
+                    let last = self.messages.last_mut().unwrap();
+                    last.content.push_str(&response);
+                },
+                ChatTokenArrivalAction::StreamingDone => {
+                    self.is_streaming = false;
+                },
+            }
         }
     }
 }

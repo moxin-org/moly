@@ -8,6 +8,53 @@ live_design! {
     import crate::shared::styles::*;
     import makepad_draw::shader::std::*;
 
+    ChatLine = <View> {
+        margin: {bottom: 5},
+        padding: 20,
+        width: Fill,
+        height: Fit,
+
+        show_bg: true,
+        draw_bg: {
+            color: #ddd
+        }
+
+        <RoundedView> {
+            width: 100,
+            height: 50,
+            padding: 10,
+            margin: {right: 10},
+
+            show_bg: true,
+            draw_bg: {
+                color: #a66
+            }
+
+            align: {x: 0.5, y: 0.5},
+
+            role = <Label> {
+                width: Fit,
+                height: Fit,
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 12},
+                    color: #000,
+                    word: Wrap,
+                }
+            }
+        }
+
+        label = <Label> {
+            width: Fill,
+            height: Fit,
+            draw_text:{
+                text_style: <REGULAR_FONT>{font_size: 12},
+                color: #000,
+                word: Wrap,
+            }
+            text: "Chat Line"
+        }
+    }
+
     ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
@@ -43,27 +90,7 @@ live_design! {
                 width: Fill,
                 height: Fill,
 
-                ChatLine = <View> {
-                    margin: {bottom: 5},
-                    padding: 20,
-                    width: Fill,
-                    height: Fit,
-
-                    show_bg: true,
-                    draw_bg: {
-                        color: #ddd
-                    }
-
-                    label = <Label> {
-                        width: Fill,
-                        draw_text:{
-                            text_style: <REGULAR_FONT>{font_size: 12},
-                            color: #000,
-                            word: Wrap,
-                        }
-                        text: "Chat Line"
-                    }
-                }
+                ChatLine = <ChatLine> {}
             }
 
             prompt = <TextInput> {
@@ -131,7 +158,7 @@ pub struct ChatScreen {
     loaded: bool,
 
     #[rust(true)]
-    enabled: bool
+    prompt_enabled: bool
 }
 
 impl Widget for ChatScreen {
@@ -144,8 +171,7 @@ impl Widget for ChatScreen {
             store.update_chat_messages();
             self.redraw(cx);
 
-            // TODO check this logic
-            self.enabled = true;
+            self.prompt_enabled = !store.current_chat.as_ref().unwrap().is_streaming;
         }
     }
 
@@ -166,7 +192,8 @@ impl Widget for ChatScreen {
 
                     if item_id < chats_count {
                         let model_data = &chat_history[item_id];
-                        item.label(id!(label)).set_text(model_data.trim());
+                        item.label(id!(label)).set_text(&model_data.content.trim());
+                        item.label(id!(role)).set_text(&model_data.role_to_string());
                         item.draw_all(cx, &mut Scope::with_data(&mut model_data.clone()));
                     }
                 }
@@ -190,13 +217,19 @@ impl WidgetMatchEvent for ChatScreen {
             self.redraw(cx);
         }
 
-        if self.enabled {
+        if self.prompt_enabled {
             for action in actions.iter() {
                 match action.as_widget_action().cast() {
                     TextInputAction::Return(prompt) => {
+                        if prompt.trim().is_empty() {
+                            return;
+                        }
+
+                        self.prompt_enabled = false;
                         let store = scope.data.get_mut::<Store>();
                         store.send_chat_message(prompt.clone());
-                        self.redraw(cx);
+
+                        self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
                     }
                     _ => {}
                 }

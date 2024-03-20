@@ -51,6 +51,8 @@ impl Store {
         store
     }
 
+    // Commands to the backend
+
     pub fn load_featured_models(&mut self) {
         let (tx, rx) = channel();
         self
@@ -123,6 +125,8 @@ impl Store {
         };
     }
 
+    // Chat specific commands
+
     pub fn send_chat_message(&mut self, prompt: String) {
         let chat = &mut self.current_chat.get_or_insert(Chat::new());
         chat.send_message_to_model(prompt, &self.backend);
@@ -132,6 +136,8 @@ impl Store {
         let Some(ref mut chat) = self.current_chat else { return };
         chat.update_messages();
     }
+
+    // Utility functions
 
     pub fn sort_models(&mut self, criteria: SortCriteria) {
         match criteria {
