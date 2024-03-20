@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::store::Store;
+use crate::data::store::{Store, StoreAction};
 use crate::landing::search_bar::SearchBarWidgetExt;
 use crate::landing::sorting::SortingWidgetExt;
 use crate::landing::model_list::ModelListAction;
@@ -124,17 +124,6 @@ impl Widget for LandingScreen {
             self.view(id!(heading_with_filters)).set_visible(true);
             self.view(id!(heading_no_filters)).set_visible(false);
 
-            if self.search_bar_state == SearchBarState::ExpandedWithoutFilters {
-                self.search_bar_state = SearchBarState::ExpandedWithFilters;
-                let sorting_ref = self.sorting(id!(sorting));
-                sorting_ref.set_visible(cx, true);
-                sorting_ref.set_selected_item(store.sorted_by);
-
-            }
-            if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
-                self.search_bar_state = SearchBarState::CollapsedWithFilters;
-            }
-
             let models = &store.models;
             let models_count = models.len();
             self.label(id!(heading_with_filters.results)).set_text(&format!("{} Results", models_count));
@@ -142,15 +131,7 @@ impl Widget for LandingScreen {
         } else {
             self.view(id!(heading_with_filters)).set_visible(false);
             self.view(id!(heading_no_filters)).set_visible(true);
-
-            // Keyword was removed from the search input
-            if self.search_bar_state == SearchBarState::CollapsedWithFilters ||
-                self.search_bar_state == SearchBarState::ExpandedWithFilters {
-                    self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
-                    self.search_bar(id!(search_bar)).expand(cx);
-                    self.sorting(id!(sorting)).set_visible(cx, false);
-            }
-    }
+        }
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -169,16 +150,58 @@ impl WidgetMatchEvent for LandingScreen {
                     }
                 }
                 ModelListAction::ScrolledNotAtTop => {
-                    if self.search_bar_state == SearchBarState::ExpandedWithoutFilters {
-                        self.search_bar_state = SearchBarState::CollapsedWithoutFilters;
-                    } else if self.search_bar_state == SearchBarState::ExpandedWithFilters {
-                        self.search_bar_state = SearchBarState::CollapsedWithFilters;
+                    let collapse: bool;
+                    match self.search_bar_state {
+                        SearchBarState::ExpandedWithoutFilters => {
+                            self.search_bar_state = SearchBarState::CollapsedWithoutFilters;
+                            collapse = true;
+                        }
+                        SearchBarState::ExpandedWithFilters => {
+                            self.search_bar_state = SearchBarState::CollapsedWithFilters;
+                            collapse = true;
+                        }
+                        _ => {
+                            collapse = false;
+                        }
                     }
-                    let store = scope.data.get::<Store>();
-                    self.search_bar(id!(search_bar)).collapse(cx, store.sorted_by);
-                    self.sorting(id!(sorting)).set_visible(cx, false);
-                    self.redraw(cx);
+
+                    if collapse {
+                        let store = scope.data.get::<Store>();
+                        self.search_bar(id!(search_bar)).collapse(cx, store.sorted_by);
+                        self.sorting(id!(sorting)).set_visible(cx, false);
+                        self.redraw(cx);
+                    }
                 }
+                _ => {}
+            }
+
+            match action.as_widget_action().cast() {
+                StoreAction::Search(_keywords) => {
+                    match self.search_bar_state {
+                        SearchBarState::CollapsedWithoutFilters => {
+                            self.search_bar_state = SearchBarState::CollapsedWithFilters;
+                        }
+                        SearchBarState::ExpandedWithoutFilters => {
+                            self.search_bar_state = SearchBarState::ExpandedWithFilters;
+
+                            let store = scope.data.get::<Store>();
+                            let sorting_ref = self.sorting(id!(sorting));
+                            sorting_ref.set_visible(cx, true);
+                            sorting_ref.set_selected_item(store.sorted_by);
+                        }
+                        _ => {}
+                    }
+                }
+                StoreAction::ResetSearch => {
+                    match self.search_bar_state {
+                        SearchBarState::ExpandedWithFilters | SearchBarState::CollapsedWithFilters => {
+                            self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
+                            self.search_bar(id!(search_bar)).expand(cx);
+                            self.sorting(id!(sorting)).set_visible(cx, false);
+                        }
+                        _ => {}
+                    }
+                },
                 _ => {}
             }
         }
