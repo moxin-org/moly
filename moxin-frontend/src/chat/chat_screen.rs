@@ -141,16 +141,21 @@ impl Widget for ChatScreen {
 
         if let Event::Signal = event {
             let store = scope.data.get_mut::<Store>();
-            store.update_chat_history();
+            store.update_chat_messages();
             self.redraw(cx);
-            dbg!("model response arrived");
+
+            // TODO check this logic
             self.enabled = true;
         }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>();
-        let chat_history = &store.chat_history;
+        let chat_history = if let Some(chat) = &store.current_chat {
+            chat.messages.clone()
+        } else {
+            vec![]
+        };
         let chats_count = chat_history.len();
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step(){
@@ -161,7 +166,7 @@ impl Widget for ChatScreen {
 
                     if item_id < chats_count {
                         let model_data = &chat_history[item_id];
-                        item.label(id!(label)).set_text(model_data);
+                        item.label(id!(label)).set_text(model_data.trim());
                         item.draw_all(cx, &mut Scope::with_data(&mut model_data.clone()));
                     }
                 }
@@ -190,8 +195,7 @@ impl WidgetMatchEvent for ChatScreen {
                 match action.as_widget_action().cast() {
                     TextInputAction::Return(prompt) => {
                         let store = scope.data.get_mut::<Store>();
-                        store.send_chat(prompt.clone());
-                        dbg!("waiting for model response");
+                        store.send_chat_message(prompt.clone());
                         self.redraw(cx);
                     }
                     _ => {}

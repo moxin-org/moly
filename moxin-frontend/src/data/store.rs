@@ -1,11 +1,10 @@
 use chrono::Utc;
 use moxin_protocol::data::{Model, File};
 use moxin_protocol::protocol::{Command, LoadModelOptions};
-use moxin_protocol::open_ai::*;
 use moxin_backend::Backend;
-use std::sync::mpsc::{channel, Receiver};
-use makepad_widgets::{DefaultNone, SignalToUI};
-use std::thread;
+use std::sync::mpsc::channel;
+use makepad_widgets::DefaultNone;
+use crate::data::chat::Chat;
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum StoreAction {
@@ -23,10 +22,6 @@ pub enum SortCriteria {
     LeastLikes,
 }
 
-pub enum ChatHistoryUpdate {
-    Append(String),
-}
-
 #[derive(Default)]
 pub struct Store {
     // This is the backend representation, including the sender and receiver ends of the channels to
@@ -39,8 +34,7 @@ pub struct Store {
     pub keyword: Option<String>,
     pub sorted_by: SortCriteria,
 
-    pub chat_history: Vec<String>,
-    pub chat_update_receiver: Option<Receiver<ChatHistoryUpdate>>,
+    pub current_chat: Option<Chat>,
 }
 
 impl Store {
@@ -50,8 +44,7 @@ impl Store {
             backend: Backend::default(),
             keyword: None,
             sorted_by: SortCriteria::MostDownloads,
-            chat_history: vec![],
-            chat_update_receiver: None
+            current_chat: None,
         };
         //store.load_featured_models();
         //store.sort_models(SortCriteria::MostDownloads);
@@ -130,84 +123,14 @@ impl Store {
         };
     }
 
-    pub fn send_chat(&mut self, prompt: String) {
-        let (tx, rx) = channel();
-        let mut messages:Vec<_> = self.chat_history.iter().enumerate().map(|(i, message)| {
-            let role = if i % 2 == 0 { Role::User } else { Role::Assistant };
-            Message {
-                content: message.clone(),
-                role: role,
-                name: None,
-            }
-        }).collect();
-        messages.push(Message {
-            content: prompt.clone(),
-            role: Role::User,
-            name: None,
-        });
-
-        let cmd = Command::Chat(
-            ChatRequestData {
-                messages: messages,
-                model: "llama-2-7b-chat.Q5_K_M".to_string(),
-                frequency_penalty: None,
-                logprobs: None,
-                top_logprobs: None,
-                max_tokens: None,
-                presence_penalty: None,
-                seed: None,
-                stop: None,
-                stream: Some(true),
-                temperature: None,
-                top_p: None,
-                n: None,
-                logit_bias: None,
-            },
-            tx,
-        );
-
-        self.chat_history.push(prompt.clone());
-        self.chat_history.push("".to_string());
-
-        let (store_chat_tx, store_chat_rx) = channel();
-        self.chat_update_receiver = Some(store_chat_rx);
-
-        self
-            .backend
-            .command_sender
-            .send(cmd)
-            .unwrap();
-
-        thread::spawn(move || {
-            loop {
-                if let Ok(response) = rx.recv() {
-                    match response {
-                        Ok(ChatResponse::ChatResponseChunk(data)) => {
-                            store_chat_tx.send(ChatHistoryUpdate::Append(
-                                data.choices[0].delta.content.clone()
-                            )).unwrap();
-
-                            SignalToUI::set_ui_signal();
-
-                            if let Some(_reason) = &data.choices[0].finish_reason {
-                                break;
-                            }
-                        },
-                        Err(err) => eprintln!("Error sending prompt: {:?}", err),
-                        _ => (),
-                    }
-                };
-            }
-        });
+    pub fn send_chat_message(&mut self, prompt: String) {
+        let chat = &mut self.current_chat.get_or_insert(Chat::new());
+        chat.send_message_to_model(prompt, &self.backend);
     }
 
-    pub fn update_chat_history(&mut self) {
-        if let Some(rx) = &self.chat_update_receiver {
-            if let Ok(ChatHistoryUpdate::Append(mut response)) = rx.recv() {
-                let last = self.chat_history.last_mut().unwrap();
-                last.push_str(&mut response);
-            }
-        }
+    pub fn update_chat_messages(&mut self) {
+        let Some(ref mut chat) = self.current_chat else { return };
+        chat.update_messages();
     }
 
     pub fn sort_models(&mut self, criteria: SortCriteria) {
