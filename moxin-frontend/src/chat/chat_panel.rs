@@ -1,0 +1,330 @@
+use makepad_widgets::*;
+use crate::data::store::Store;
+
+live_design! {
+    import makepad_widgets::base::*;
+    import makepad_widgets::theme_desktop_dark::*;
+
+    import crate::shared::styles::*;
+    import makepad_draw::shader::std::*;
+
+    ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
+
+    ChatLine = <View> {
+        margin: {bottom: 5},
+        padding: 20,
+        width: Fill,
+        height: Fit,
+
+        show_bg: true,
+        draw_bg: {
+            color: #ddd
+        }
+
+        <RoundedView> {
+            width: 100,
+            height: 50,
+            padding: 10,
+            margin: {right: 10},
+
+            show_bg: true,
+            draw_bg: {
+                color: #a66
+            }
+
+            align: {x: 0.5, y: 0.5},
+
+            role = <Label> {
+                width: Fit,
+                height: Fit,
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 12},
+                    color: #000,
+                    word: Wrap,
+                }
+            }
+        }
+
+        label = <Label> {
+            width: Fill,
+            height: Fit,
+            draw_text:{
+                text_style: <REGULAR_FONT>{font_size: 12},
+                color: #000,
+                word: Wrap,
+            }
+            text: "Chat Line"
+        }
+    }
+
+    ChatPromptInput = <RoundedView> {
+        width: Fill,
+        height: 50,
+
+        show_bg: true,
+        draw_bg: {
+            color: #fff
+        }
+
+        padding: {top: 3, bottom: 3, left: 4, right: 10}
+
+        spacing: 4,
+        align: {x: 0.0, y: 0.5},
+
+        draw_bg: {
+            radius: 2.0,
+            border_color: #D0D5DD,
+            border_width: 1.0,
+        }
+
+        prompt = <TextInput> {
+            width: Fill,
+            height: Fit,
+
+            empty_message: "Search Model by Keyword"
+            draw_bg: {
+                color: #fff
+            }
+            draw_text: {
+                text_style:<REGULAR_FONT>{font_size: 10},
+
+                instance prompt_enabled: 0.0
+                fn get_color(self) -> vec4 {
+                    return mix(
+                        #D0D5DD,
+                        #000,
+                        self.prompt_enabled
+                    )
+                }
+            }
+
+            // TODO find a way to override colors
+            draw_cursor: {
+                instance focus: 0.0
+                uniform border_radius: 0.5
+                fn pixel(self) -> vec4 {
+                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                    sdf.box(
+                        0.,
+                        0.,
+                        self.rect_size.x,
+                        self.rect_size.y,
+                        self.border_radius
+                    )
+                    sdf.fill(mix(#fff, #bbb, self.focus));
+                    return sdf.result
+                }
+            }
+
+            // TODO find a way to override colors
+            draw_select: {
+                instance hover: 0.0
+                instance focus: 0.0
+                uniform border_radius: 2.0
+                fn pixel(self) -> vec4 {
+                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                    sdf.box(
+                        0.,
+                        0.,
+                        self.rect_size.x,
+                        self.rect_size.y,
+                        self.border_radius
+                    )
+                    sdf.fill(mix(#eee, #ddd, self.focus)); // Pad color
+                    return sdf.result
+                }
+            }
+        }
+
+        prompt_icon = <RoundedView> {
+            width: 30,
+            height: 30,
+            show_bg: true,
+            draw_bg: {
+                color: #D0D5DD
+            }
+
+            padding: {right: 4},
+            align: {x: 0.5, y: 0.5},
+
+            <Icon> {
+                draw_icon: {
+                    svg_file: (ICON_PROMPT),
+                    fn get_color(self) -> vec4 {
+                        return #fff;
+                    }
+                }
+                icon_walk: {width: 12, height: 12}
+            }
+        }
+    }
+
+    ChatPanel = {{ChatPanel}} {
+        width: Fill,
+        height: Fill,
+        margin: 20,
+        spacing: 30,
+
+        flow: Down,
+
+        load_button = <Button> {
+            width: Fill,
+            height: 30,
+            text: "Load Model"
+        }
+
+        main = <View> {
+            visible: false
+
+            width: Fill,
+            height: Fill,
+
+            spacing: 30,
+            flow: Down,
+
+            chat = <PortalList> {
+                width: Fill,
+                height: Fill,
+
+                ChatLine = <ChatLine> {}
+            }
+
+            <ChatPromptInput> {}
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ChatPanel {
+    #[deref]
+    view: View,
+
+    #[rust]
+    loaded: bool,
+
+    #[rust(true)]
+    prompt_enabled: bool
+}
+
+impl Widget for ChatPanel {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+
+        if let Event::Signal = event {
+            let store = scope.data.get_mut::<Store>();
+            store.update_chat_messages();
+            self.redraw(cx);
+
+            self.prompt_enabled = !store.current_chat.as_ref().unwrap().is_streaming;
+            if self.prompt_enabled {
+                self.enable_prompt_input(cx);
+            } else {
+                self.disable_prompt_input(cx);
+            }
+        }
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get_mut::<Store>();
+        let chat_history = if let Some(chat) = &store.current_chat {
+            chat.messages.clone()
+        } else {
+            vec![]
+        };
+        let chats_count = chat_history.len();
+
+        while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step(){
+            if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
+                list.set_item_range(cx, 0, chats_count);
+                while let Some(item_id) = list.next_visible_item(cx) {
+                    let item = list.item(cx, item_id, live_id!(ChatLine)).unwrap();
+
+                    if item_id < chats_count {
+                        let model_data = &chat_history[item_id];
+                        item.label(id!(label)).set_text(&model_data.content.trim());
+                        item.label(id!(role)).set_text(&model_data.role_to_string());
+                        item.draw_all(cx, &mut Scope::with_data(&mut model_data.clone()));
+                    }
+                }
+            }
+        }
+
+        DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for ChatPanel {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if !self.loaded && self.button(id!(load_button)).clicked(&actions) {
+            self.loaded = true;
+            self.view(id!(main)).set_visible(true);
+
+            let store = scope.data.get_mut::<Store>();
+            store.load_model();
+
+            self.button(id!(load_button)).set_text("Model loaded");
+            self.redraw(cx);
+        }
+
+        if let Some(text) = self.text_input(id!(prompt)).changed(actions) {
+            let enabled_color = vec3(0.0, 0.0, 0.0);
+            let disabled_color = vec3(0.816, 0.835, 0.867);
+            if self.prompt_enabled && text.len() > 0 {
+                self.enable_prompt_input(cx);
+            } else {
+                self.disable_prompt_input(cx);
+            }
+        }
+
+        if self.prompt_enabled {
+            for action in actions.iter() {
+                match action.as_widget_action().cast() {
+                    TextInputAction::Return(prompt) => {
+                        if prompt.trim().is_empty() {
+                            return;
+                        }
+
+                        self.prompt_enabled = false;
+                        self.disable_prompt_input(cx);
+                        let store = scope.data.get_mut::<Store>();
+                        store.send_chat_message(prompt.clone());
+
+                        self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+impl ChatPanel {
+    fn enable_prompt_input(&mut self, cx: &mut Cx) {
+        let enabled_color = vec3(0.0, 0.0, 0.0);
+        self.view(id!(prompt_icon)).apply_over(cx, live!{
+            draw_bg: {
+                color: (enabled_color)
+            }
+        });
+        self.text_input(id!(prompt)).apply_over(cx, live!{
+            draw_text: {
+                prompt_enabled: 1.0
+            }
+        });
+    }
+
+    fn disable_prompt_input(&mut self, cx: &mut Cx) {
+        let disabled_color = vec3(0.816, 0.835, 0.867);
+        self.view(id!(prompt_icon)).apply_over(cx, live!{
+            draw_bg: {
+                color: (disabled_color)
+            }
+        });
+        self.text_input(id!(prompt)).apply_over(cx, live!{
+            draw_text: {
+                prompt_enabled: 0.0
+            }
+        });
+    }
+}
