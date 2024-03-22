@@ -1,5 +1,5 @@
-use moxin_protocol::data::{Author, File, Model};
 use chrono::NaiveDate;
+use moxin_protocol::data::{Author, File, Model};
 
 pub fn get_models() -> Vec<Model> {
     let open_hermes_files = vec![
@@ -121,18 +121,16 @@ pub fn get_models() -> Vec<Model> {
         },
     ];
 
-    let qwen_files = vec![
-        File {
-            id: "12".to_string(),
-            name: "qwen1_5-7b-chat-q5_k_m.gguf".to_string(),
-            size: "2.30 GB".to_string(),
-            quantization: "Q5_K_M".to_string(),
-            downloaded: false,
-            downloaded_path: None,
-            tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
-            featured: true,
-        },
-    ];
+    let qwen_files = vec![File {
+        id: "12".to_string(),
+        name: "qwen1_5-7b-chat-q5_k_m.gguf".to_string(),
+        size: "2.30 GB".to_string(),
+        quantization: "Q5_K_M".to_string(),
+        downloaded: false,
+        downloaded_path: None,
+        tags: vec!["Less Compressed".to_string(), "Might be slower".to_string()],
+        featured: true,
+    }];
 
     vec![
         Model {
