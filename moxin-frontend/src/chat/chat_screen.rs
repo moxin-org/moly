@@ -1,5 +1,4 @@
 use makepad_widgets::*;
-use crate::data::store::Store;
 
 live_design! {
     import makepad_widgets::base::*;

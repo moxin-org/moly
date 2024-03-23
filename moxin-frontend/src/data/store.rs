@@ -1,6 +1,6 @@
 use chrono::Utc;
 use moxin_protocol::data::{Model, File};
-use moxin_protocol::protocol::{Command, LoadModelOptions};
+use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use moxin_backend::Backend;
 use std::sync::mpsc::channel;
 use makepad_widgets::DefaultNone;
@@ -34,6 +34,7 @@ pub struct Store {
     pub keyword: Option<String>,
     pub sorted_by: SortCriteria,
 
+    pub loaded_model_file: Option<String>,
     pub current_chat: Option<Chat>,
 }
 
@@ -44,6 +45,7 @@ impl Store {
             backend: Backend::default(),
             keyword: None,
             sorted_by: SortCriteria::MostDownloads,
+            loaded_model_file: None,
             current_chat: None,
         };
         //store.load_featured_models();
@@ -117,8 +119,11 @@ impl Store {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(response) => {
-                    makepad_widgets::log!("Model loaded");
-                    dbg!(response);
+                    let LoadModelResponse::Completed(loaded_model) = response else {
+                        eprintln!("Error loading model");
+                        return;
+                    };
+                    self.loaded_model_file = Some(loaded_model.file_id);
                 },
                 Err(err) => eprintln!("Error loading model: {:?}", err),
             }
@@ -128,8 +133,13 @@ impl Store {
     // Chat specific commands
 
     pub fn send_chat_message(&mut self, prompt: String) {
-        let chat = &mut self.current_chat.get_or_insert(Chat::new());
-        chat.send_message_to_model(prompt, &self.backend);
+        if let Some(model_file) = &self.loaded_model_file {
+            let chat = &mut self.current_chat.get_or_insert(
+                Chat::new(model_file.clone())
+            );
+            chat.send_message_to_model(prompt, &self.backend);
+        }
+        // TODO: Handle error case
     }
 
     pub fn update_chat_messages(&mut self) {

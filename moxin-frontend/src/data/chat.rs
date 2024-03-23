@@ -17,16 +17,13 @@ pub struct ChatMessage {
 }
 
 impl ChatMessage {
-    pub fn role_to_string(&self) -> String {
-        match self.role {
-            Role::User => "User".to_string(),
-            Role::Assistant => "Assistant".to_string(),
-            Role::System => "System".to_string(),
-        }
+    pub fn is_assistant(&self) -> bool {
+        self.role == Role::Assistant
     }
 }
 
 pub struct Chat {
+    pub model_filename: String,
     pub messages: Vec<ChatMessage>,
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
@@ -34,9 +31,10 @@ pub struct Chat {
 }
 
 impl Chat {
-    pub fn new() -> Self {
+    pub fn new(filename: String) -> Self {
         let (tx, rx) = channel();
         let chat = Self {
+            model_filename: filename,
             messages: vec![],
             messages_update_sender: tx,
             messages_update_receiver: rx,
