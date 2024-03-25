@@ -16,7 +16,7 @@ impl Default for Backend {
 
 impl Backend {
     pub fn new() -> Backend {
-        let command_sender = backend_impls::BackendImpl::new(".".to_string());
+        let command_sender = backend_impls::BackendImpl::build_command_sender(".".to_string());
         Backend { command_sender }
     }
 }

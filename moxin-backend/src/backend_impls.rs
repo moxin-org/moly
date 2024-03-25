@@ -534,7 +534,7 @@ fn test_chat() {
     use moxin_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::new(format!("{home}/ai"));
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai"));
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -610,7 +610,7 @@ impl BackendImpl {
     /// # Argument
     ///
     /// * `models_dir` - The download path of the model.
-    pub fn new(models_dir: String) -> Sender<Command> {
+    pub fn build_command_sender(models_dir: String) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
         chat_ui::nn_preload(&models_dir);
 
