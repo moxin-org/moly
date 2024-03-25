@@ -1,7 +1,8 @@
 use std::sync::mpsc::{Receiver, Sender};
 
+use chrono::Utc;
 use moxin_protocol::{
-    data::{Author, DownloadedFile, File, FileID, Model},
+    data::{Author, CompatibilityGuess, DownloadedFile, File, FileID, Model},
     open_ai::{ChatRequestData, ChatResponse},
     protocol::{
         Command, FileDownloadResponse, LoadModelOptions, LoadModelResponse, LocalServerConfig,
@@ -190,7 +191,7 @@ mod chat_ui {
                 &mut self.chat_completion_message,
                 &mut self.token_tx,
             ) {
-                (Ok(token), Some(chat_completion_message), Some(tx)) => {
+                (Ok(token), Some(chat_completion_message), Some(_tx)) => {
                     chat_completion_message.extend_from_slice(token);
                     true
                 }
@@ -542,7 +543,7 @@ fn test_chat() {
     use moxin_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai"));
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -608,6 +609,43 @@ fn test_chat() {
     rx.recv().unwrap().unwrap();
 }
 
+#[test]
+fn test_download_file() {
+    let home = std::env::var("HOME").unwrap();
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::SearchModels("llama".to_string(), tx);
+    bk.send(cmd).unwrap();
+    let models = rx.recv().unwrap();
+    assert!(models.is_ok());
+    let models = models.unwrap();
+    println!("{models:?}");
+
+    let file = models[0].files[0].clone();
+    println!("{file:?}");
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::DownloadFile(file.id, tx);
+    bk.send(cmd).unwrap();
+
+    while let Ok(r) = rx.recv() {
+        match r {
+            Ok(FileDownloadResponse::Progress(_, progress)) => {
+                println!("progress: {:.2}%", progress);
+            }
+            Ok(FileDownloadResponse::Completed(file)) => {
+                println!("Completed {file:?}");
+                break;
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                break;
+            }
+        }
+    }
+}
+
 pub struct BackendImpl {
     models_dir: String,
     pub rx: Receiver<Command>,
@@ -637,9 +675,60 @@ impl BackendImpl {
     fn handle_command(&mut self, wasm_module: &Module, built_in_cmd: BuiltInCommand) {
         match built_in_cmd {
             BuiltInCommand::Model(file) => match file {
-                ModelManagementCommand::GetFeaturedModels(_) => todo!(),
-                ModelManagementCommand::SearchModels(_, _) => todo!(),
-                ModelManagementCommand::DownloadFile(_, _) => todo!(),
+                ModelManagementCommand::GetFeaturedModels(tx) => {
+                    // TODO: Featured Models have not been set up yet, so return an empty list here.
+                    let _ = tx.send(Ok(vec![]));
+                }
+                ModelManagementCommand::SearchModels(search_text, tx) => {
+                    let res = super::model_manager::search(&search_text, 100, 0);
+                    let _ = tx.send(res.map_err(|e| anyhow::anyhow!("search models error: {e}")));
+                }
+                ModelManagementCommand::DownloadFile(file_id, tx) => {
+                    let mut send_progress = |progress| {
+                        let _ = tx.send(Ok(FileDownloadResponse::Progress(
+                            file_id.clone(),
+                            progress as f32,
+                        )));
+                    };
+
+                    if let Some((id, file)) = file_id.split_once("#") {
+                        let r = super::model_manager::download_file_from_huggingface(
+                            id,
+                            file,
+                            &self.models_dir,
+                            0.5,
+                            &mut send_progress,
+                        );
+
+                        match r {
+                            Ok(_) => {
+                                let local_path = format!("{}/{}", self.models_dir, file);
+
+                                let _ =
+                                    tx.send(Ok(FileDownloadResponse::Completed(DownloadedFile {
+                                        file: File {
+                                            id: file_id.clone(),
+                                            name: file.to_string(),
+                                            size: String::new(),
+                                            quantization: String::new(),
+                                            downloaded: true,
+                                            downloaded_path: Some(local_path),
+                                            tags: Vec::new(),
+                                            featured: false,
+                                        },
+                                        model: Model::default(),
+                                        downloaded_at: Utc::now().date_naive(),
+                                        compatibility_guess: CompatibilityGuess::PossiblySupported,
+                                        information: String::new(),
+                                    })));
+                            }
+                            Err(e) => tx
+                                .send(Err(anyhow::anyhow!("Download failed: {e}")))
+                                .unwrap(),
+                        }
+                    };
+                }
+
                 ModelManagementCommand::GetDownloadedFiles(tx) => {
                     let files = chat_ui::list_models(&self.models_dir)
                         .into_iter()

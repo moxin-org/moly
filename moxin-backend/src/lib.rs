@@ -1,5 +1,6 @@
 mod backend_impls;
 mod fake_data;
+mod model_manager;
 
 use moxin_protocol::protocol::Command;
 use std::sync::mpsc;
