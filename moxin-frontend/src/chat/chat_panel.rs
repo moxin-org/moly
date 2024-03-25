@@ -1,5 +1,6 @@
 use makepad_widgets::*;
 use crate::data::store::Store;
+use crate::data::chat::Chat;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -250,6 +251,8 @@ pub struct ChatPanel {
 
     #[rust]
     auto_scroll_pending: bool,
+    #[rust]
+    auto_scroll_cancellable: bool,
 
     #[rust(true)]
     prompt_enabled: bool
@@ -265,18 +268,26 @@ impl Widget for ChatPanel {
             store.update_chat_messages();
             self.redraw(cx);
 
-            if self.auto_scroll_pending {
-                if let Some(chat) = &store.current_chat {
-                    self.portal_list(id!(chat)).set_first_id(chat.messages.len() - 1);
-                    self.auto_scroll_pending = false;
-                }
-            }
+            if let Some(chat) = &store.current_chat {
+                self.auto_scroll_cancellable = true;
+                let list = self.portal_list(id!(chat));
 
-            self.prompt_enabled = !store.current_chat.as_ref().unwrap().is_streaming;
-            if self.prompt_enabled {
-                self.enable_prompt_input(cx);
+                self.prompt_enabled = !store.current_chat.as_ref().unwrap().is_streaming;
+                if self.prompt_enabled {
+                    // Scroll to the bottom when streaming is done
+                    self.scroll_messages_to_bottom(&list, chat);
+                    self.auto_scroll_pending = false;
+                    self.enable_prompt_input(cx);
+                } else {
+                    self.disable_prompt_input(cx);
+                }
+
+                if self.auto_scroll_pending {
+                    // Scroll to the bottom
+                    self.scroll_messages_to_bottom(&list, chat);
+                }
             } else {
-                self.disable_prompt_input(cx);
+                panic!("Unexpected error in the model chat session");
             }
         }
     }
@@ -336,13 +347,17 @@ impl WidgetMatchEvent for ChatPanel {
         }
 
         if let Some(text) = self.text_input(id!(prompt)).changed(actions) {
-            let enabled_color = vec3(0.0, 0.0, 0.0);
-            let disabled_color = vec3(0.816, 0.835, 0.867);
             if self.prompt_enabled && text.len() > 0 {
                 self.enable_prompt_input(cx);
             } else {
                 self.disable_prompt_input(cx);
             }
+        }
+
+        let list = self.portal_list(id!(chat));
+        if self.auto_scroll_cancellable && list.scrolled(actions) {
+            // Cancel auto-scrolling if the user scrolls up
+            self.auto_scroll_pending = false;
         }
 
         if self.prompt_enabled {
@@ -359,7 +374,14 @@ impl WidgetMatchEvent for ChatPanel {
                         store.send_chat_message(prompt.clone());
 
                         self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
+
+                        // Scroll to the bottom when the message is sent
+                        if let Some(chat) = &store.current_chat {
+                            self.scroll_messages_to_bottom(&list, chat);
+                        }
                         self.auto_scroll_pending = true;
+                        self.auto_scroll_cancellable = false;
+
                     }
                     _ => {}
                 }
@@ -384,7 +406,7 @@ impl ChatPanel {
     }
 
     fn disable_prompt_input(&mut self, cx: &mut Cx) {
-        let disabled_color = vec3(0.816, 0.835, 0.867);
+        let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
         self.view(id!(prompt_icon)).apply_over(cx, live!{
             draw_bg: {
                 color: (disabled_color)
@@ -395,5 +417,10 @@ impl ChatPanel {
                 prompt_enabled: 0.0
             }
         });
+    }
+
+    fn scroll_messages_to_bottom(&mut self, list: &PortalListRef, chat: &Chat) {
+        let list = self.portal_list(id!(chat));
+        list.set_first_id_and_scroll(chat.messages.len() - 1, 0.0);
     }
 }
