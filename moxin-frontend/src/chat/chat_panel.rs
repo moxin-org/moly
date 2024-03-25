@@ -9,6 +9,8 @@ live_design! {
     import crate::shared::styles::*;
     import makepad_draw::shader::std::*;
 
+    import crate::chat::model_selector::ModelSelector;
+
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
 
     ChatLineBody = <View> {
@@ -209,11 +211,12 @@ live_design! {
         margin: 20,
         spacing: 30,
 
-        flow: Down,
+        flow: Overlay,
 
         load_button = <Button> {
             width: Fill,
             height: 30,
+            margin: {top: 60},
             text: "Load Model"
         }
 
@@ -223,6 +226,7 @@ live_design! {
             width: Fill,
             height: Fill,
 
+            margin: { top: 120 }
             spacing: 30,
             flow: Down,
 
@@ -238,6 +242,8 @@ live_design! {
 
             <ChatPromptInput> {}
         }
+
+        <ModelSelector> {}
     }
 }
 
@@ -420,7 +426,6 @@ impl ChatPanel {
     }
 
     fn scroll_messages_to_bottom(&mut self, list: &PortalListRef, chat: &Chat) {
-        let list = self.portal_list(id!(chat));
         list.set_first_id_and_scroll(chat.messages.len() - 1, 0.0);
     }
 }

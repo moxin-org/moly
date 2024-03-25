@@ -154,6 +154,7 @@ impl LiveRegister for App {
         crate::landing::sorting::live_design(cx);
 
         crate::chat::chat_screen::live_design(cx);
+        crate::chat::model_selector::live_design(cx);
         crate::chat::chat_panel::live_design(cx);
     }
 }
