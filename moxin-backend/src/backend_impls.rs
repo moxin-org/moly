@@ -464,7 +464,7 @@ mod chat_ui {
 }
 
 #[derive(Clone, Debug)]
-enum FileManagementCommand {
+enum ModelManagementCommand {
     GetFeaturedModels(Sender<anyhow::Result<Vec<Model>>>),
     SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
     DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
@@ -472,7 +472,7 @@ enum FileManagementCommand {
 }
 
 #[derive(Clone, Debug)]
-enum ModelManagementCommand {
+enum ModelInteractionCommand {
     LoadModel(
         FileID,
         LoadModelOptions,
@@ -492,38 +492,40 @@ enum ModelManagementCommand {
 
 #[derive(Clone, Debug)]
 enum BuiltInCommand {
-    File(FileManagementCommand),
     Model(ModelManagementCommand),
+    Interaction(ModelInteractionCommand),
 }
 
 impl From<Command> for BuiltInCommand {
     fn from(value: Command) -> Self {
         match value {
             Command::GetFeaturedModels(tx) => {
-                Self::File(FileManagementCommand::GetFeaturedModels(tx))
+                Self::Model(ModelManagementCommand::GetFeaturedModels(tx))
             }
             Command::SearchModels(request, tx) => {
-                Self::File(FileManagementCommand::SearchModels(request, tx))
+                Self::Model(ModelManagementCommand::SearchModels(request, tx))
             }
             Command::DownloadFile(file_id, tx) => {
-                Self::File(FileManagementCommand::DownloadFile(file_id, tx))
+                Self::Model(ModelManagementCommand::DownloadFile(file_id, tx))
             }
             Command::GetDownloadedFiles(tx) => {
-                Self::File(FileManagementCommand::GetDownloadedFiles(tx))
+                Self::Model(ModelManagementCommand::GetDownloadedFiles(tx))
             }
             Command::LoadModel(file_id, options, tx) => {
-                Self::Model(ModelManagementCommand::LoadModel(file_id, options, tx))
+                Self::Interaction(ModelInteractionCommand::LoadModel(file_id, options, tx))
             }
-            Command::EjectModel(tx) => Self::Model(ModelManagementCommand::EjectModel(tx)),
-            Command::Chat(request, tx) => Self::Model(ModelManagementCommand::Chat(request, tx)),
+            Command::EjectModel(tx) => Self::Interaction(ModelInteractionCommand::EjectModel(tx)),
+            Command::Chat(request, tx) => {
+                Self::Interaction(ModelInteractionCommand::Chat(request, tx))
+            }
             Command::StopChatCompletion(tx) => {
-                Self::Model(ModelManagementCommand::StopChatCompletion(tx))
+                Self::Interaction(ModelInteractionCommand::StopChatCompletion(tx))
             }
             Command::StartLocalServer(config, tx) => {
-                Self::Model(ModelManagementCommand::StartLocalServer(config, tx))
+                Self::Interaction(ModelInteractionCommand::StartLocalServer(config, tx))
             }
             Command::StopLocalServer(tx) => {
-                Self::Model(ModelManagementCommand::StopLocalServer(tx))
+                Self::Interaction(ModelInteractionCommand::StopLocalServer(tx))
             }
         }
     }
@@ -628,11 +630,11 @@ impl BackendImpl {
 
     fn handle_command(&mut self, wasm_module: &Module, built_in_cmd: BuiltInCommand) {
         match built_in_cmd {
-            BuiltInCommand::File(file) => match file {
-                FileManagementCommand::GetFeaturedModels(_) => todo!(),
-                FileManagementCommand::SearchModels(_, _) => todo!(),
-                FileManagementCommand::DownloadFile(_, _) => todo!(),
-                FileManagementCommand::GetDownloadedFiles(tx) => {
+            BuiltInCommand::Model(file) => match file {
+                ModelManagementCommand::GetFeaturedModels(_) => todo!(),
+                ModelManagementCommand::SearchModels(_, _) => todo!(),
+                ModelManagementCommand::DownloadFile(_, _) => todo!(),
+                ModelManagementCommand::GetDownloadedFiles(tx) => {
                     let files = chat_ui::list_models(&self.models_dir)
                         .into_iter()
                         .enumerate()
@@ -673,28 +675,28 @@ impl BackendImpl {
                     let _ = tx.send(Ok(files));
                 }
             },
-            BuiltInCommand::Model(model_cmd) => match model_cmd {
-                ModelManagementCommand::LoadModel(file_id, options, tx) => {
+            BuiltInCommand::Interaction(model_cmd) => match model_cmd {
+                ModelInteractionCommand::LoadModel(file_id, options, tx) => {
                     chat_ui::nn_preload(&self.models_dir);
                     let model = chat_ui::Model::new(wasm_module.clone(), file_id, options, tx);
                     self.model = Some(model);
                 }
-                ModelManagementCommand::EjectModel(tx) => {
+                ModelInteractionCommand::EjectModel(tx) => {
                     if let Some(model) = self.model.take() {
                         model.stop();
                     }
                     let _ = tx.send(Ok(()));
                 }
-                ModelManagementCommand::Chat(data, tx) => {
+                ModelInteractionCommand::Chat(data, tx) => {
                     if let Some(model) = &self.model {
                         model.chat(data, tx);
                     } else {
                         let _ = tx.send(Err(anyhow::anyhow!("Model not loaded")));
                     }
                 }
-                ModelManagementCommand::StopChatCompletion(_) => todo!(),
-                ModelManagementCommand::StartLocalServer(_, _) => todo!(),
-                ModelManagementCommand::StopLocalServer(_) => todo!(),
+                ModelInteractionCommand::StopChatCompletion(_) => todo!(),
+                ModelInteractionCommand::StartLocalServer(_, _) => todo!(),
+                ModelInteractionCommand::StopLocalServer(_) => todo!(),
             },
         }
     }
