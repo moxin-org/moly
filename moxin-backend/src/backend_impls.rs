@@ -61,6 +61,7 @@ mod chat_ui {
     pub struct ChatBotUi {
         pub current_req: std::io::Cursor<Vec<u8>>,
         pub request_rx: Receiver<(ChatRequestData, Sender<anyhow::Result<ChatResponse>>)>,
+        request_id: uuid::Uuid,
         chat_completion_message: Option<Vec<u8>>,
         pub token_tx: Option<Sender<anyhow::Result<ChatResponse>>>,
         pub load_model_state: Option<(
@@ -81,6 +82,7 @@ mod chat_ui {
         ) -> Self {
             Self {
                 request_rx,
+                request_id: uuid::Uuid::new_v4(),
                 token_tx: None,
                 current_req: std::io::Cursor::new(vec![]),
                 load_model_state: Some(load_module_req),
@@ -98,6 +100,7 @@ mod chat_ui {
                 }
                 *self.current_req.get_mut() = serde_json::to_vec(&req).unwrap();
                 self.current_req.set_position(0);
+                self.request_id = uuid::Uuid::new_v4();
                 self.token_tx = Some(tx);
                 Ok(())
             } else {
@@ -116,12 +119,13 @@ mod chat_ui {
 
         fn send_completion_output(
             token_tx: &mut Sender<anyhow::Result<ChatResponse>>,
+            id: String,
             stop_reason: StopReason,
             chat_completion_message: &mut Option<Vec<u8>>,
         ) -> bool {
             if let Some(chat_completion_message) = chat_completion_message.take() {
                 let _ = token_tx.send(Ok(ChatResponse::ChatFinalResponseData(ChatResponseData {
-                    id: String::new(),
+                    id,
                     choices: vec![ChoiceData {
                         finish_reason: stop_reason,
                         index: 0,
@@ -164,10 +168,11 @@ mod chat_ui {
 
         fn send_streamed_output(
             token_tx: &mut Sender<anyhow::Result<ChatResponse>>,
+            id: String,
             token: &[u8],
         ) -> bool {
             let _ = token_tx.send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
-                id: String::new(),
+                id,
                 choices: vec![ChunkChoiceData {
                     finish_reason: None,
                     index: 0,
@@ -186,6 +191,7 @@ mod chat_ui {
         }
 
         fn send_output(&mut self, output: Result<&[u8], TokenError>) -> bool {
+            let id = self.request_id.to_string();
             match (
                 output,
                 &mut self.chat_completion_message,
@@ -195,9 +201,14 @@ mod chat_ui {
                     chat_completion_message.extend_from_slice(token);
                     true
                 }
-                (Ok(token), None, Some(tx)) => Self::send_streamed_output(tx, token),
+                (Ok(token), None, Some(tx)) => Self::send_streamed_output(tx, id, token),
                 (Err(token_error), chat_completion_message, Some(tx)) => {
-                    Self::send_completion_output(tx, token_error.into(), chat_completion_message)
+                    Self::send_completion_output(
+                        tx,
+                        id,
+                        token_error.into(),
+                        chat_completion_message,
+                    )
                 }
                 (_, _, None) => false,
             }
