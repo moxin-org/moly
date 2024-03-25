@@ -113,87 +113,93 @@ mod chat_ui {
             Ok(n)
         }
 
-        fn send_output(&mut self, output: Result<&[u8], TokenError>) -> bool {
-            if self.token_tx.is_none() {
-                return false;
-            }
-
-            match (output, &mut self.chat_completion_message) {
-                (Ok(token), Some(chat_completion_message)) => {
-                    chat_completion_message.extend_from_slice(token);
-                }
-                (Ok(token), None) => {
-                    let _ =
-                        self.token_tx
-                            .as_mut()
-                            .unwrap()
-                            .send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
-                                id: String::new(),
-                                choices: vec![ChunkChoiceData {
-                                    finish_reason: None,
-                                    index: 0,
-                                    delta: MessageData {
-                                        content: String::from_utf8_lossy(token).to_string(),
-                                        role: Role::Assistant,
-                                    },
-                                    logprobs: None,
-                                }],
-                                created: 0,
-                                model: String::new(),
-                                system_fingerprint: String::new(),
-                                object: "chat.completion.chunk".to_string(),
-                            })));
-                }
-                (Err(token_error), chat_completion_message) => {
-                    if let Some(chat_completion_message) = chat_completion_message.take() {
-                        let _ = self.token_tx.as_mut().unwrap().send(Ok(
-                            ChatResponse::ChatFinalResponseData(ChatResponseData {
-                                id: String::new(),
-                                choices: vec![ChoiceData {
-                                    finish_reason: token_error.into(),
-                                    index: 0,
-                                    message: MessageData {
-                                        content: String::from_utf8_lossy(&chat_completion_message)
-                                            .to_string(),
-                                        role: Role::Assistant,
-                                    },
-                                    logprobs: None,
-                                }],
-                                created: 0,
-                                model: String::new(),
-                                system_fingerprint: String::new(),
-                                usage: UsageData {
-                                    completion_tokens: 0,
-                                    prompt_tokens: 0,
-                                    total_tokens: 0,
-                                },
-                                object: "chat.completion".to_string(),
-                            }),
-                        ));
-                    } else {
-                        let _ = self.token_tx.as_mut().unwrap().send(Ok(
-                            ChatResponse::ChatResponseChunk(ChatResponseChunkData {
-                                id: String::new(),
-                                choices: vec![ChunkChoiceData {
-                                    finish_reason: Some(token_error.into()),
-                                    index: 0,
-                                    delta: MessageData {
-                                        content: String::new(),
-                                        role: Role::Assistant,
-                                    },
-                                    logprobs: None,
-                                }],
-                                created: 0,
-                                model: String::new(),
-                                system_fingerprint: String::new(),
-                                object: "chat.completion.chunk".to_string(),
-                            }),
-                        ));
-                    }
-                }
-            }
-
+        fn send_completion_output(
+            token_tx: &mut Sender<anyhow::Result<ChatResponse>>,
+            stop_reason: StopReason,
+            chat_completion_message: &mut Option<Vec<u8>>,
+        ) -> bool {
+            if let Some(chat_completion_message) = chat_completion_message.take() {
+                let _ = token_tx.send(Ok(ChatResponse::ChatFinalResponseData(ChatResponseData {
+                    id: String::new(),
+                    choices: vec![ChoiceData {
+                        finish_reason: stop_reason,
+                        index: 0,
+                        message: MessageData {
+                            content: String::from_utf8_lossy(&chat_completion_message).to_string(),
+                            role: Role::Assistant,
+                        },
+                        logprobs: None,
+                    }],
+                    created: 0,
+                    model: String::new(),
+                    system_fingerprint: String::new(),
+                    usage: UsageData {
+                        completion_tokens: 0,
+                        prompt_tokens: 0,
+                        total_tokens: 0,
+                    },
+                    object: "chat.completion".to_string(),
+                })));
+            } else {
+                let _ = token_tx.send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
+                    id: String::new(),
+                    choices: vec![ChunkChoiceData {
+                        finish_reason: Some(stop_reason),
+                        index: 0,
+                        delta: MessageData {
+                            content: String::new(),
+                            role: Role::Assistant,
+                        },
+                        logprobs: None,
+                    }],
+                    created: 0,
+                    model: String::new(),
+                    system_fingerprint: String::new(),
+                    object: "chat.completion.chunk".to_string(),
+                })));
+            };
             true
+        }
+
+        fn send_streamed_output(
+            token_tx: &mut Sender<anyhow::Result<ChatResponse>>,
+            token: &[u8],
+        ) -> bool {
+            let _ = token_tx.send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
+                id: String::new(),
+                choices: vec![ChunkChoiceData {
+                    finish_reason: None,
+                    index: 0,
+                    delta: MessageData {
+                        content: String::from_utf8_lossy(token).to_string(),
+                        role: Role::Assistant,
+                    },
+                    logprobs: None,
+                }],
+                created: 0,
+                model: String::new(),
+                system_fingerprint: String::new(),
+                object: "chat.completion.chunk".to_string(),
+            })));
+            true
+        }
+
+        fn send_output(&mut self, output: Result<&[u8], TokenError>) -> bool {
+            match (
+                output,
+                &mut self.chat_completion_message,
+                &mut self.token_tx,
+            ) {
+                (Ok(token), Some(chat_completion_message), Some(tx)) => {
+                    chat_completion_message.extend_from_slice(token);
+                    true
+                }
+                (Ok(token), None, Some(tx)) => Self::send_streamed_output(tx, token),
+                (Err(token_error), chat_completion_message, Some(tx)) => {
+                    Self::send_completion_output(tx, token_error.into(), chat_completion_message)
+                }
+                (_, _, None) => false,
+            }
         }
     }
 
@@ -656,7 +662,7 @@ impl BackendImpl {
                                 size: format!("size of {file_stem}"),
                                 requires: String::new(),
                                 architecture: String::new(),
-                                released_at: chrono::Utc::now().date_naive(),
+                                released_at: Utc::now(),
                                 files: vec![],
                                 author: Author {
                                     name: format!("author of {file_stem}"),
