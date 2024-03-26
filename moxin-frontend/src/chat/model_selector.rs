@@ -1,5 +1,7 @@
 use makepad_widgets::*;
-use moxin_protocol::data::Model;
+use crate::data::store::Store;
+use moxin_protocol::data::DownloadedFile;
+use std::collections::HashMap;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -19,7 +21,7 @@ live_design! {
         }
 
         caption = <Label> {
-            draw_text:{
+            draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9},
                 color: #fff
             }
@@ -33,8 +35,6 @@ live_design! {
         spacing: 5,
         align: {x: 0.0, y: 0.5},
 
-        cursor: Hand,
-
         show_bg: true,
         draw_bg: {
             instance hover: 0.0,
@@ -46,7 +46,7 @@ live_design! {
             }
         }
 
-        tag1 = <ModelAttributeTag> {
+        architecture_tag = <ModelAttributeTag> {
             caption = {
                 text: "StableLM"
             }
@@ -55,7 +55,7 @@ live_design! {
             }
         }
 
-        tag2 = <ModelAttributeTag> {
+        params_size_tag = <ModelAttributeTag> {
             caption = {
                 text: "3B"
             }
@@ -64,7 +64,7 @@ live_design! {
             }
         }
 
-        tag3 = <ModelAttributeTag> {
+        file_size_tag = <ModelAttributeTag> {
             caption = {
                 text: "1.62 GB",
                 draw_text:{
@@ -90,6 +90,9 @@ live_design! {
     ModelSelectorList = {{ModelSelectorList}} {
         flow: Down,
         template: <ModelInfo> {
+            // This is mandatory to listen for touch/click events
+            cursor: Hand,
+
             animator: {
                 hover = {
                     default: off
@@ -147,6 +150,7 @@ live_design! {
             selected = <ModelInfo> {
                 width: Fit,
                 height: Fit,
+                show_bg: false,
                 visible: false
             }
         }
@@ -197,16 +201,48 @@ impl Widget for ModelSelector {
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(fe) = self.view(id!(button)).finger_up(&actions) {
-            if fe.was_tap() {
+        if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
+            if fd.tap_count == 1 {
                 self.open = !self.open;
+                dbg!(self.open);
                 self.view(id!(options)).apply_over(cx, live!{
                     visible: (self.open)
                 });
                 self.redraw(cx);
             }
         }
+
+        for action in actions {
+            match action.as_widget_action().cast() {
+                ModelSelectorAction::Selected(downloaded_file) => {
+                    self.open = false;
+                    self.view(id!(options)).apply_over(cx, live!{
+                        visible: (self.open)
+                    });
+                    self.view(id!(choose)).apply_over(cx, live!{
+                        visible: false
+                    });
+                    let filename = downloaded_file.file.name;
+                    let architecture = downloaded_file.model.architecture;
+                    let size = downloaded_file.model.size;
+                    self.view(id!(selected)).apply_over(cx, live!{
+                        visible: true
+                        label = { text: (filename) }
+                        architecture_tag = { caption = { text: (architecture) }}
+                        params_size_tag = { caption = { text: (size) }}
+                    });
+                    self.redraw(cx);
+                },
+                _ => {}
+            }
+        }
     }
+}
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum ModelSelectorAction {
+    Selected(DownloadedFile),
+    None,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -228,31 +264,35 @@ pub struct ModelSelectorList {
 
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
+
+    #[rust]
+    map_to_downloaded_files: HashMap<LiveId, DownloadedFile>
 }
 
 impl Widget for ModelSelectorList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let widget_uid = self.widget_uid();
         for (id, item) in self.items.iter_mut() {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.as_view().finger_down(&actions) {
                 if fd.tap_count == 1 {
-                    dbg!("tapped", id);
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        ModelSelectorAction::Selected(self.map_to_downloaded_files.get(id).unwrap().clone()),
+                    );
                 }
             }
         }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        //let model = scope.data.get::<Model>();
-        let items = [
-            "stablelm-zephy-3b.Q5_K_M.gguf".to_string(),
-            "Nexusraven-v2-13b.Q6_K.gguf".to_string(),
-            "phi2.Q4_K_S.gguf".to_string(),
-        ].to_vec();
+        let store = scope.data.get::<Store>();
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {
-            self.draw_items(cx, &items);
+            let downloaded_files = store.downloaded_files();
+            self.draw_items(cx, &downloaded_files);
         }
         cx.end_turtle_with_area(&mut self.area);
 
@@ -261,16 +301,22 @@ impl Widget for ModelSelectorList {
 }
 
 impl ModelSelectorList {
-    fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<String>) {
+    fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<DownloadedFile>) {
+        self.map_to_downloaded_files = HashMap::new();
         for i in 0..items.len() {
             let item_id = LiveId(i as u64).into();
             let item_widget = self.items.get_or_insert(cx, item_id, | cx | {
                 WidgetRef::new_from_ptr(cx, self.template)
             });
-            let caption = &items[i];
-            dbg!(caption);
+            self.map_to_downloaded_files.insert(item_id, items[i].clone());
+
+            let caption = &items[i].file.name;
+            let architecture = &items[i].model.architecture;
+            let param_size = &items[i].model.size;
             item_widget.apply_over(cx, live!{
                 label = { text: (caption) }
+                architecture_tag = { caption = { text: (architecture) } }
+                params_size_tag = { caption = { text: (param_size) } }
             });
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());

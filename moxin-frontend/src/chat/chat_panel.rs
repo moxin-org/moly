@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 use crate::data::store::Store;
 use crate::data::chat::Chat;
+use crate::chat::model_selector::ModelSelectorAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -213,20 +214,13 @@ live_design! {
 
         flow: Overlay,
 
-        load_button = <Button> {
-            width: Fill,
-            height: 30,
-            margin: {top: 60},
-            text: "Load Model"
-        }
-
         main = <View> {
             visible: false
 
             width: Fill,
             height: Fill,
 
-            margin: { top: 120 }
+            margin: { top: 60 }
             spacing: 30,
             flow: Down,
 
@@ -312,7 +306,7 @@ impl Widget for ChatPanel {
         };
         let chats_count = chat_history.len();
 
-        while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step(){
+        while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step(){
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, chats_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
@@ -341,15 +335,17 @@ impl Widget for ChatPanel {
 
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if !self.loaded && self.button(id!(load_button)).clicked(&actions) {
-            self.loaded = true;
-            self.view(id!(main)).set_visible(true);
+        for action in actions {
+            match action.as_widget_action().cast() {
+                ModelSelectorAction::Selected(downloaded_file) => {
+                    self.loaded = true;
+                    self.view(id!(main)).set_visible(true);
 
-            let store = scope.data.get_mut::<Store>();
-            store.load_model();
-
-            self.button(id!(load_button)).set_text("Model loaded");
-            self.redraw(cx);
+                    let store = scope.data.get_mut::<Store>();
+                    store.load_model(&downloaded_file.file);
+                },
+                _ => {}
+            }
         }
 
         if let Some(text) = self.text_input(id!(prompt)).changed(actions) {

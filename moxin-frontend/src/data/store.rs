@@ -1,5 +1,5 @@
-use chrono::Utc;
-use moxin_protocol::data::{Model, File};
+use chrono::{Utc, NaiveDate};
+use moxin_protocol::data::{Model, File, DownloadedFile, CompatibilityGuess};
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use moxin_backend::Backend;
 use std::sync::mpsc::channel;
@@ -30,7 +30,6 @@ pub struct Store {
 
     // Local cache for the list of models
     pub models: Vec<Model>,
-
     pub keyword: Option<String>,
     pub sorted_by: SortCriteria,
 
@@ -93,10 +92,10 @@ impl Store {
         };
     }
 
-    pub fn load_model(&mut self) {
+    pub fn load_model(&mut self, file: &File) {
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(
-            "llama-2-7b-chat.Q4_K_M".to_string(),
+            file.name.clone().trim_end_matches(".gguf").to_string(),
             LoadModelOptions {
                 prompt_template: None,
                 gpu_layers: moxin_protocol::protocol::GPULayers::Max,
@@ -179,5 +178,21 @@ impl Store {
 
     pub fn model_other_files(model: &Model) -> Vec<File> {
         model.files.iter().filter(|f| !f.featured).cloned().collect()
+    }
+
+    pub fn downloaded_files(&self) -> Vec<DownloadedFile> {
+        // TODO Replace with actual call to backend when it is ready
+        let models = moxin_fake_backend::fake_data::get_models();
+        models.iter()
+            .flat_map(|m| {
+                m.files.iter().filter(|f| f.downloaded).map(move |file| DownloadedFile {
+                    file: file.clone(),
+                    model: m.clone(),
+                    compatibility_guess: CompatibilityGuess::PossiblySupported,
+                    downloaded_at: NaiveDate::from_ymd_opt(2024, 2, 3).unwrap(),
+                    information: "".to_string(),
+                })
+            })
+            .collect()
     }
 }
