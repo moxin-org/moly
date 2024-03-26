@@ -204,7 +204,6 @@ impl WidgetMatchEvent for ModelSelector {
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
             if fd.tap_count == 1 {
                 self.open = !self.open;
-                dbg!(self.open);
                 self.view(id!(options)).apply_over(cx, live!{
                     visible: (self.open)
                 });

@@ -33,7 +33,6 @@ pub struct Store {
     pub keyword: Option<String>,
     pub sorted_by: SortCriteria,
 
-    pub loaded_model_file: Option<String>,
     pub current_chat: Option<Chat>,
 }
 
@@ -44,7 +43,6 @@ impl Store {
             backend: Backend::default(),
             keyword: None,
             sorted_by: SortCriteria::MostDownloads,
-            loaded_model_file: None,
             current_chat: None,
         };
         //store.load_featured_models();
@@ -108,7 +106,7 @@ impl Store {
             },
             tx,
         );
-        
+
         self
             .backend
             .command_sender
@@ -122,7 +120,7 @@ impl Store {
                         eprintln!("Error loading model");
                         return;
                     };
-                    self.loaded_model_file = Some(loaded_model.file_id);
+                    self.current_chat = Some(Chat::new(loaded_model.file_id.clone()));
                 },
                 Err(err) => eprintln!("Error loading model: {:?}", err),
             }
@@ -132,10 +130,7 @@ impl Store {
     // Chat specific commands
 
     pub fn send_chat_message(&mut self, prompt: String) {
-        if let Some(model_file) = &self.loaded_model_file {
-            let chat = &mut self.current_chat.get_or_insert(
-                Chat::new(model_file.clone())
-            );
+        if let Some(chat) = &mut self.current_chat {
             chat.send_message_to_model(prompt, &self.backend);
         }
         // TODO: Handle error case
