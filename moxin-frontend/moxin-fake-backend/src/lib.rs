@@ -1,4 +1,4 @@
-mod fake_data;
+pub mod fake_data;
 
 use std::sync::mpsc;
 use moxin_protocol::protocol::Command;

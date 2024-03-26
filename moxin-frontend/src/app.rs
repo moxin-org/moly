@@ -7,6 +7,7 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::landing::landing_screen::LandingScreen;
+    import crate::chat::chat_screen::ChatScreen;
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
@@ -111,7 +112,7 @@ live_design! {
                     height: Fill,
 
                     tab1_frame = <LandingScreen> {visible: true}
-                    tab2_frame = <MyModelsView> {visible: false}
+                    tab2_frame = <ChatScreen> {visible: false}
                     tab3_frame = <MyModelsView> {visible: false}
                 }
             }
@@ -151,6 +152,10 @@ impl LiveRegister for App {
         crate::landing::landing_screen::live_design(cx);
         crate::landing::search_bar::live_design(cx);
         crate::landing::sorting::live_design(cx);
+
+        crate::chat::chat_screen::live_design(cx);
+        crate::chat::model_selector::live_design(cx);
+        crate::chat::chat_panel::live_design(cx);
     }
 }
 
