@@ -1,7 +1,8 @@
 use std::sync::mpsc::{Receiver, Sender};
 
+use chrono::Utc;
 use moxin_protocol::{
-    data::{Author, DownloadedFile, File, FileID, Model},
+    data::{Author, CompatibilityGuess, DownloadedFile, File, FileID, Model},
     open_ai::{ChatRequestData, ChatResponse},
     protocol::{
         Command, FileDownloadResponse, LoadModelOptions, LoadModelResponse, LocalServerConfig,
@@ -60,6 +61,7 @@ mod chat_ui {
     pub struct ChatBotUi {
         pub current_req: std::io::Cursor<Vec<u8>>,
         pub request_rx: Receiver<(ChatRequestData, Sender<anyhow::Result<ChatResponse>>)>,
+        request_id: uuid::Uuid,
         chat_completion_message: Option<Vec<u8>>,
         pub token_tx: Option<Sender<anyhow::Result<ChatResponse>>>,
         pub load_model_state: Option<(
@@ -80,6 +82,7 @@ mod chat_ui {
         ) -> Self {
             Self {
                 request_rx,
+                request_id: uuid::Uuid::new_v4(),
                 token_tx: None,
                 current_req: std::io::Cursor::new(vec![]),
                 load_model_state: Some(load_module_req),
@@ -97,6 +100,7 @@ mod chat_ui {
                 }
                 *self.current_req.get_mut() = serde_json::to_vec(&req).unwrap();
                 self.current_req.set_position(0);
+                self.request_id = uuid::Uuid::new_v4();
                 self.token_tx = Some(tx);
                 Ok(())
             } else {
@@ -113,87 +117,101 @@ mod chat_ui {
             Ok(n)
         }
 
-        fn send_output(&mut self, output: Result<&[u8], TokenError>) -> bool {
-            if self.token_tx.is_none() {
-                return false;
-            }
-
-            match (output, &mut self.chat_completion_message) {
-                (Ok(token), Some(chat_completion_message)) => {
-                    chat_completion_message.extend_from_slice(token);
-                }
-                (Ok(token), None) => {
-                    let _ =
-                        self.token_tx
-                            .as_mut()
-                            .unwrap()
-                            .send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
-                                id: String::new(),
-                                choices: vec![ChunkChoiceData {
-                                    finish_reason: None,
-                                    index: 0,
-                                    delta: MessageData {
-                                        content: String::from_utf8_lossy(token).to_string(),
-                                        role: Role::Assistant,
-                                    },
-                                    logprobs: None,
-                                }],
-                                created: 0,
-                                model: String::new(),
-                                system_fingerprint: String::new(),
-                                object: "chat.completion.chunk".to_string(),
-                            })));
-                }
-                (Err(token_error), chat_completion_message) => {
-                    if let Some(chat_completion_message) = chat_completion_message.take() {
-                        let _ = self.token_tx.as_mut().unwrap().send(Ok(
-                            ChatResponse::ChatFinalResponseData(ChatResponseData {
-                                id: String::new(),
-                                choices: vec![ChoiceData {
-                                    finish_reason: token_error.into(),
-                                    index: 0,
-                                    message: MessageData {
-                                        content: String::from_utf8_lossy(&chat_completion_message)
-                                            .to_string(),
-                                        role: Role::Assistant,
-                                    },
-                                    logprobs: None,
-                                }],
-                                created: 0,
-                                model: String::new(),
-                                system_fingerprint: String::new(),
-                                usage: UsageData {
-                                    completion_tokens: 0,
-                                    prompt_tokens: 0,
-                                    total_tokens: 0,
-                                },
-                                object: "chat.completion".to_string(),
-                            }),
-                        ));
-                    } else {
-                        let _ = self.token_tx.as_mut().unwrap().send(Ok(
-                            ChatResponse::ChatResponseChunk(ChatResponseChunkData {
-                                id: String::new(),
-                                choices: vec![ChunkChoiceData {
-                                    finish_reason: Some(token_error.into()),
-                                    index: 0,
-                                    delta: MessageData {
-                                        content: String::new(),
-                                        role: Role::Assistant,
-                                    },
-                                    logprobs: None,
-                                }],
-                                created: 0,
-                                model: String::new(),
-                                system_fingerprint: String::new(),
-                                object: "chat.completion.chunk".to_string(),
-                            }),
-                        ));
-                    }
-                }
-            }
-
+        fn send_completion_output(
+            token_tx: &mut Sender<anyhow::Result<ChatResponse>>,
+            id: String,
+            stop_reason: StopReason,
+            chat_completion_message: &mut Option<Vec<u8>>,
+        ) -> bool {
+            if let Some(chat_completion_message) = chat_completion_message.take() {
+                let _ = token_tx.send(Ok(ChatResponse::ChatFinalResponseData(ChatResponseData {
+                    id,
+                    choices: vec![ChoiceData {
+                        finish_reason: stop_reason,
+                        index: 0,
+                        message: MessageData {
+                            content: String::from_utf8_lossy(&chat_completion_message).to_string(),
+                            role: Role::Assistant,
+                        },
+                        logprobs: None,
+                    }],
+                    created: 0,
+                    model: String::new(),
+                    system_fingerprint: String::new(),
+                    usage: UsageData {
+                        completion_tokens: 0,
+                        prompt_tokens: 0,
+                        total_tokens: 0,
+                    },
+                    object: "chat.completion".to_string(),
+                })));
+            } else {
+                let _ = token_tx.send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
+                    id: String::new(),
+                    choices: vec![ChunkChoiceData {
+                        finish_reason: Some(stop_reason),
+                        index: 0,
+                        delta: MessageData {
+                            content: String::new(),
+                            role: Role::Assistant,
+                        },
+                        logprobs: None,
+                    }],
+                    created: 0,
+                    model: String::new(),
+                    system_fingerprint: String::new(),
+                    object: "chat.completion.chunk".to_string(),
+                })));
+            };
             true
+        }
+
+        fn send_streamed_output(
+            token_tx: &mut Sender<anyhow::Result<ChatResponse>>,
+            id: String,
+            token: &[u8],
+        ) -> bool {
+            let _ = token_tx.send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
+                id,
+                choices: vec![ChunkChoiceData {
+                    finish_reason: None,
+                    index: 0,
+                    delta: MessageData {
+                        content: String::from_utf8_lossy(token).to_string(),
+                        role: Role::Assistant,
+                    },
+                    logprobs: None,
+                }],
+                created: 0,
+                model: String::new(),
+                system_fingerprint: String::new(),
+                object: "chat.completion.chunk".to_string(),
+            })));
+            true
+        }
+
+        fn send_output(&mut self, output: Result<&[u8], TokenError>) -> bool {
+            let id = self.request_id.to_string();
+            match (
+                output,
+                &mut self.chat_completion_message,
+                &mut self.token_tx,
+            ) {
+                (Ok(token), Some(chat_completion_message), Some(_tx)) => {
+                    chat_completion_message.extend_from_slice(token);
+                    true
+                }
+                (Ok(token), None, Some(tx)) => Self::send_streamed_output(tx, id, token),
+                (Err(token_error), chat_completion_message, Some(tx)) => {
+                    Self::send_completion_output(
+                        tx,
+                        id,
+                        token_error.into(),
+                        chat_completion_message,
+                    )
+                }
+                (_, _, None) => false,
+            }
         }
     }
 
@@ -464,7 +482,7 @@ mod chat_ui {
 }
 
 #[derive(Clone, Debug)]
-enum FileManagementCommand {
+enum ModelManagementCommand {
     GetFeaturedModels(Sender<anyhow::Result<Vec<Model>>>),
     SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
     DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
@@ -472,7 +490,7 @@ enum FileManagementCommand {
 }
 
 #[derive(Clone, Debug)]
-enum ModelManagementCommand {
+enum ModelInteractionCommand {
     LoadModel(
         FileID,
         LoadModelOptions,
@@ -492,38 +510,40 @@ enum ModelManagementCommand {
 
 #[derive(Clone, Debug)]
 enum BuiltInCommand {
-    File(FileManagementCommand),
     Model(ModelManagementCommand),
+    Interaction(ModelInteractionCommand),
 }
 
 impl From<Command> for BuiltInCommand {
     fn from(value: Command) -> Self {
         match value {
             Command::GetFeaturedModels(tx) => {
-                Self::File(FileManagementCommand::GetFeaturedModels(tx))
+                Self::Model(ModelManagementCommand::GetFeaturedModels(tx))
             }
             Command::SearchModels(request, tx) => {
-                Self::File(FileManagementCommand::SearchModels(request, tx))
+                Self::Model(ModelManagementCommand::SearchModels(request, tx))
             }
             Command::DownloadFile(file_id, tx) => {
-                Self::File(FileManagementCommand::DownloadFile(file_id, tx))
+                Self::Model(ModelManagementCommand::DownloadFile(file_id, tx))
             }
             Command::GetDownloadedFiles(tx) => {
-                Self::File(FileManagementCommand::GetDownloadedFiles(tx))
+                Self::Model(ModelManagementCommand::GetDownloadedFiles(tx))
             }
             Command::LoadModel(file_id, options, tx) => {
-                Self::Model(ModelManagementCommand::LoadModel(file_id, options, tx))
+                Self::Interaction(ModelInteractionCommand::LoadModel(file_id, options, tx))
             }
-            Command::EjectModel(tx) => Self::Model(ModelManagementCommand::EjectModel(tx)),
-            Command::Chat(request, tx) => Self::Model(ModelManagementCommand::Chat(request, tx)),
+            Command::EjectModel(tx) => Self::Interaction(ModelInteractionCommand::EjectModel(tx)),
+            Command::Chat(request, tx) => {
+                Self::Interaction(ModelInteractionCommand::Chat(request, tx))
+            }
             Command::StopChatCompletion(tx) => {
-                Self::Model(ModelManagementCommand::StopChatCompletion(tx))
+                Self::Interaction(ModelInteractionCommand::StopChatCompletion(tx))
             }
             Command::StartLocalServer(config, tx) => {
-                Self::Model(ModelManagementCommand::StartLocalServer(config, tx))
+                Self::Interaction(ModelInteractionCommand::StartLocalServer(config, tx))
             }
             Command::StopLocalServer(tx) => {
-                Self::Model(ModelManagementCommand::StopLocalServer(tx))
+                Self::Interaction(ModelInteractionCommand::StopLocalServer(tx))
             }
         }
     }
@@ -534,7 +554,7 @@ fn test_chat() {
     use moxin_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::new(format!("{home}/ai"));
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -600,6 +620,43 @@ fn test_chat() {
     rx.recv().unwrap().unwrap();
 }
 
+#[test]
+fn test_download_file() {
+    let home = std::env::var("HOME").unwrap();
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::SearchModels("llama".to_string(), tx);
+    bk.send(cmd).unwrap();
+    let models = rx.recv().unwrap();
+    assert!(models.is_ok());
+    let models = models.unwrap();
+    println!("{models:?}");
+
+    let file = models[0].files[0].clone();
+    println!("{file:?}");
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::DownloadFile(file.id, tx);
+    bk.send(cmd).unwrap();
+
+    while let Ok(r) = rx.recv() {
+        match r {
+            Ok(FileDownloadResponse::Progress(_, progress)) => {
+                println!("progress: {:.2}%", progress);
+            }
+            Ok(FileDownloadResponse::Completed(file)) => {
+                println!("Completed {file:?}");
+                break;
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                break;
+            }
+        }
+    }
+}
+
 pub struct BackendImpl {
     models_dir: String,
     pub rx: Receiver<Command>,
@@ -610,7 +667,7 @@ impl BackendImpl {
     /// # Argument
     ///
     /// * `models_dir` - The download path of the model.
-    pub fn new(models_dir: String) -> Sender<Command> {
+    pub fn build_command_sender(models_dir: String) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
         chat_ui::nn_preload(&models_dir);
 
@@ -628,11 +685,62 @@ impl BackendImpl {
 
     fn handle_command(&mut self, wasm_module: &Module, built_in_cmd: BuiltInCommand) {
         match built_in_cmd {
-            BuiltInCommand::File(file) => match file {
-                FileManagementCommand::GetFeaturedModels(_) => todo!(),
-                FileManagementCommand::SearchModels(_, _) => todo!(),
-                FileManagementCommand::DownloadFile(_, _) => todo!(),
-                FileManagementCommand::GetDownloadedFiles(tx) => {
+            BuiltInCommand::Model(file) => match file {
+                ModelManagementCommand::GetFeaturedModels(tx) => {
+                    // TODO: Featured Models have not been set up yet, so return an empty list here.
+                    let _ = tx.send(Ok(vec![]));
+                }
+                ModelManagementCommand::SearchModels(search_text, tx) => {
+                    let res = super::model_manager::search(&search_text, 100, 0);
+                    let _ = tx.send(res.map_err(|e| anyhow::anyhow!("search models error: {e}")));
+                }
+                ModelManagementCommand::DownloadFile(file_id, tx) => {
+                    let mut send_progress = |progress| {
+                        let _ = tx.send(Ok(FileDownloadResponse::Progress(
+                            file_id.clone(),
+                            progress as f32,
+                        )));
+                    };
+
+                    if let Some((id, file)) = file_id.split_once("#") {
+                        let r = super::model_manager::download_file_from_huggingface(
+                            id,
+                            file,
+                            &self.models_dir,
+                            0.5,
+                            &mut send_progress,
+                        );
+
+                        match r {
+                            Ok(_) => {
+                                let local_path = format!("{}/{}", self.models_dir, file);
+
+                                let _ =
+                                    tx.send(Ok(FileDownloadResponse::Completed(DownloadedFile {
+                                        file: File {
+                                            id: file_id.clone(),
+                                            name: file.to_string(),
+                                            size: String::new(),
+                                            quantization: String::new(),
+                                            downloaded: true,
+                                            downloaded_path: Some(local_path),
+                                            tags: Vec::new(),
+                                            featured: false,
+                                        },
+                                        model: Model::default(),
+                                        downloaded_at: Utc::now().date_naive(),
+                                        compatibility_guess: CompatibilityGuess::PossiblySupported,
+                                        information: String::new(),
+                                    })));
+                            }
+                            Err(e) => tx
+                                .send(Err(anyhow::anyhow!("Download failed: {e}")))
+                                .unwrap(),
+                        }
+                    };
+                }
+
+                ModelManagementCommand::GetDownloadedFiles(tx) => {
                     let files = chat_ui::list_models(&self.models_dir)
                         .into_iter()
                         .enumerate()
@@ -654,7 +762,7 @@ impl BackendImpl {
                                 size: format!("size of {file_stem}"),
                                 requires: String::new(),
                                 architecture: String::new(),
-                                released_at: chrono::Utc::now().date_naive(),
+                                released_at: Utc::now(),
                                 files: vec![],
                                 author: Author {
                                     name: format!("author of {file_stem}"),
@@ -673,28 +781,28 @@ impl BackendImpl {
                     let _ = tx.send(Ok(files));
                 }
             },
-            BuiltInCommand::Model(model_cmd) => match model_cmd {
-                ModelManagementCommand::LoadModel(file_id, options, tx) => {
+            BuiltInCommand::Interaction(model_cmd) => match model_cmd {
+                ModelInteractionCommand::LoadModel(file_id, options, tx) => {
                     chat_ui::nn_preload(&self.models_dir);
                     let model = chat_ui::Model::new(wasm_module.clone(), file_id, options, tx);
                     self.model = Some(model);
                 }
-                ModelManagementCommand::EjectModel(tx) => {
+                ModelInteractionCommand::EjectModel(tx) => {
                     if let Some(model) = self.model.take() {
                         model.stop();
                     }
                     let _ = tx.send(Ok(()));
                 }
-                ModelManagementCommand::Chat(data, tx) => {
+                ModelInteractionCommand::Chat(data, tx) => {
                     if let Some(model) = &self.model {
                         model.chat(data, tx);
                     } else {
                         let _ = tx.send(Err(anyhow::anyhow!("Model not loaded")));
                     }
                 }
-                ModelManagementCommand::StopChatCompletion(_) => todo!(),
-                ModelManagementCommand::StartLocalServer(_, _) => todo!(),
-                ModelManagementCommand::StopLocalServer(_) => todo!(),
+                ModelInteractionCommand::StopChatCompletion(_) => todo!(),
+                ModelInteractionCommand::StartLocalServer(_, _) => todo!(),
+                ModelInteractionCommand::StopLocalServer(_) => todo!(),
             },
         }
     }

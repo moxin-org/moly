@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::Utc;
 use moxin_protocol::data::{Author, File, Model};
 
 pub fn get_models() -> Vec<Model> {
@@ -139,7 +139,7 @@ pub fn get_models() -> Vec<Model> {
             summary: "OpenHermes 2.5 Mistral 7B is an advanced iteration of the OpenHermes 2 language model, enhanced by training on a significant proportion of code datasets. This additional training improved performance across several benchmarks, notably TruthfulQA, AGIEval, and the GPT4All suite, while slightly decreasing the BigBench score. Notably, the model's ability to handle code-related tasks, measured by the humaneval score...".to_string(),
             size: "7B params".to_string(),
             requires: "8GB+ RAM".to_string(),
-            released_at: NaiveDate::from_ymd_opt(2023, 10, 29).unwrap(),
+            released_at: Utc::now(),
             architecture: "Mistral".to_string(),
             files: open_hermes_files,
             author: Author {
@@ -157,7 +157,7 @@ pub fn get_models() -> Vec<Model> {
             size: "13B params".to_string(),
             requires: "16GB+ RAM".to_string(),
             architecture: "LLaMa".to_string(),
-            released_at: NaiveDate::from_ymd_opt(2023, 12, 11).unwrap(),
+            released_at: Utc::now(),
             files: nexus_raven_files,
             author: Author {
                 name: "Nexusflow".to_string(),
@@ -173,7 +173,7 @@ pub fn get_models() -> Vec<Model> {
             summary: "StableLM Zephyr 3B is an English-language, auto-regressive language model with 3 billion parameters, developed by Stability AI. It's an instruction-tuned model influenced by HuggingFace's Zephyr 7B training approach and is built on transformer decoder architecture. It was trained using a mix of public and synthetic datasets, including SFT and Preference Datasets from the HuggingFace Hub with Direct Preference Optimization (DPO). Its performance has been evaluated using the MT Bench and Alpaca Benchmark, achieving a score of 6.64 and a win rate of 76% respectively. For fine-tuning, it utilizes the StabilityAI's stablelm-3b-4e1t model and is available under the StabilityAI Non-Commercial Research Community License. Commercial use requires contacting Stability AI for more information. The model was trained on a Stability AI cluster with 8 nodes, each equipped with 8 A100 80GB GPUs, using internal scripts for SFT steps and HuggingFace's Alignment Handbook scripts for DPO training.".to_string(),
             size: "3B params".to_string(),
             requires: "8GB+ RAM".to_string(),
-            released_at: NaiveDate::from_ymd_opt(2023, 11, 21).unwrap(),
+            released_at: Utc::now(),
             architecture: "StableLM".to_string(),
             files: stable_lm_files,
             author: Author {
@@ -190,7 +190,7 @@ pub fn get_models() -> Vec<Model> {
             summary: "Qwen1.5 is the large language model series developed by Qwen Team, Alibaba Group. It is a transformer-based decoder-only language model pretrained on large-scale multilingual data covering a wide range of domains and it is aligned with human preferences.".to_string(),
             size: "3B params".to_string(),
             requires: "8GB+ RAM".to_string(),
-            released_at: NaiveDate::from_ymd_opt(2024, 2, 3).unwrap(),
+            released_at: Utc::now(),
             architecture: "qwen2".to_string(),
             files: qwen_files,
             author: Author {

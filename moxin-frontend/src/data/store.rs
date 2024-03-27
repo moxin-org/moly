@@ -162,8 +162,8 @@ impl Store {
     }
 
     pub fn formatted_model_release_date(model: &Model) -> String {
-        let released_at = model.released_at.format("%b %-d, %C%y");
-        let days_ago = (Utc::now().date_naive() - model.released_at).num_days();
+        let released_at = model.released_at.naive_local().format("%b %-d, %C%y");
+        let days_ago = (Utc::now() - model.released_at).num_days();
         format!("{} ({} days ago)", released_at, days_ago)
     }
 
