@@ -43,7 +43,7 @@ pub struct MessageData {
     pub role: Role,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Role {
     #[serde(rename = "system")]
     System,
