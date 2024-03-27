@@ -1,10 +1,14 @@
 use chrono::{Utc, NaiveDate};
-use moxin_protocol::data::{Model, File, DownloadedFile, CompatibilityGuess};
-use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
+use moxin_protocol::data::{Model, File, FileID, DownloadedFile, CompatibilityGuess};
+use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse, FileDownloadResponse};
 use moxin_backend::Backend;
 use std::sync::mpsc::channel;
 use makepad_widgets::DefaultNone;
-use crate::data::chat::Chat;
+use crate::data::{
+    chat::Chat,
+    download::Download
+};
+use std::collections::HashMap;
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum StoreAction {
@@ -34,6 +38,7 @@ pub struct Store {
     pub sorted_by: SortCriteria,
 
     pub current_chat: Option<Chat>,
+    pub current_downloads: HashMap<FileID, Download>,
 }
 
 impl Store {
@@ -44,6 +49,7 @@ impl Store {
             keyword: None,
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
+            current_downloads: HashMap::new(),
         };
         //store.load_featured_models();
         //store.sort_models(SortCriteria::MostDownloads);
@@ -90,6 +96,10 @@ impl Store {
         };
     }
 
+    pub fn download_file(&mut self, file: &File) {
+        self.current_downloads.insert(file.id.clone(), Download::new(file.clone(), &self.backend));
+    }
+
     pub fn load_model(&mut self, file: &File) {
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(
@@ -127,7 +137,7 @@ impl Store {
         };
     }
 
-    // Chat specific commands
+    // Chat
 
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(chat) = &mut self.current_chat {
@@ -139,6 +149,14 @@ impl Store {
     pub fn update_chat_messages(&mut self) {
         let Some(ref mut chat) = self.current_chat else { return };
         chat.update_messages();
+    }
+
+    // Download files
+
+    pub fn update_downloads(&mut self) {
+        for download in self.current_downloads.values_mut() {
+            download.update_download_progress();
+        }
     }
 
     // Utility functions

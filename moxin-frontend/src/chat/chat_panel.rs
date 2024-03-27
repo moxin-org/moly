@@ -265,8 +265,6 @@ impl Widget for ChatPanel {
 
         if let Event::Signal = event {
             let store = scope.data.get_mut::<Store>();
-            store.update_chat_messages();
-            self.redraw(cx);
 
             if let Some(chat) = &store.current_chat {
                 self.auto_scroll_cancellable = true;
@@ -287,8 +285,11 @@ impl Widget for ChatPanel {
                     self.scroll_messages_to_bottom(&list, chat);
                 }
             } else {
-                panic!("Unexpected error in the model chat session");
+                //panic!("Unexpected error in the model chat session");
             }
+
+            // Redraw because we expect to see new or updated chat entries
+            self.redraw(cx);
         }
     }
 

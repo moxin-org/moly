@@ -1,5 +1,6 @@
 use makepad_widgets::*;
 use crate::data::store::*;
+use crate::landing::model_files_list::ModelFileItemsAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -164,6 +165,12 @@ impl AppMain for App {
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
+
+        // Process all possible store incoming events
+        if let Event::Signal = event {
+            self.store.update_chat_messages();
+            self.store.update_downloads();
+        }
     }
 }
 
@@ -195,6 +202,13 @@ impl MatchEvent for App {
                 }
                 StoreAction::Sort(criteria) => {
                     self.store.sort_models(criteria);
+                }
+                _ => {}
+            }
+
+            match action.as_widget_action().cast() {
+                ModelFileItemsAction::Download(file) => {
+                    self.store.download_file(&file);
                 }
                 _ => {}
             }
