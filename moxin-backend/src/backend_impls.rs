@@ -660,6 +660,7 @@ fn test_download_file() {
 pub struct BackendImpl {
     models_dir: String,
     pub rx: Receiver<Command>,
+    download_tx: Sender<(FileID, String, Sender<anyhow::Result<FileDownloadResponse>>)>,
     model: Option<chat_ui::Model>,
 }
 
@@ -671,16 +672,70 @@ impl BackendImpl {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
         chat_ui::nn_preload(&models_dir);
 
+        let (download_tx, download_rx) = std::sync::mpsc::channel();
         let (tx, rx) = std::sync::mpsc::channel();
         let mut backend = Self {
             models_dir,
             rx,
+            download_tx,
             model: None,
         };
+        std::thread::spawn(move || {
+            Self::download_file_loop(download_rx);
+        });
         std::thread::spawn(move || {
             backend.run_loop();
         });
         tx
+    }
+
+    fn download_file_loop(
+        rx: Receiver<(FileID, String, Sender<anyhow::Result<FileDownloadResponse>>)>,
+    ) {
+        while let Ok((file_id, models_dir, tx)) = rx.recv() {
+            let mut send_progress = |progress| {
+                let _ = tx.send(Ok(FileDownloadResponse::Progress(
+                    file_id.clone(),
+                    progress as f32,
+                )));
+            };
+
+            if let Some((id, file)) = file_id.split_once("#") {
+                let r = super::model_manager::download_file_from_huggingface(
+                    id,
+                    file,
+                    &models_dir,
+                    0.5,
+                    &mut send_progress,
+                );
+
+                match r {
+                    Ok(_) => {
+                        let local_path = format!("{}/{}", models_dir, file);
+
+                        let _ = tx.send(Ok(FileDownloadResponse::Completed(DownloadedFile {
+                            file: File {
+                                id: file_id.clone(),
+                                name: file.to_string(),
+                                size: String::new(),
+                                quantization: String::new(),
+                                downloaded: true,
+                                downloaded_path: Some(local_path),
+                                tags: Vec::new(),
+                                featured: false,
+                            },
+                            model: Model::default(),
+                            downloaded_at: Utc::now().date_naive(),
+                            compatibility_guess: CompatibilityGuess::PossiblySupported,
+                            information: String::new(),
+                        })));
+                    }
+                    Err(e) => tx
+                        .send(Err(anyhow::anyhow!("Download failed: {e}")))
+                        .unwrap(),
+                }
+            };
+        }
     }
 
     fn handle_command(&mut self, wasm_module: &Module, built_in_cmd: BuiltInCommand) {
@@ -695,49 +750,9 @@ impl BackendImpl {
                     let _ = tx.send(res.map_err(|e| anyhow::anyhow!("search models error: {e}")));
                 }
                 ModelManagementCommand::DownloadFile(file_id, tx) => {
-                    let mut send_progress = |progress| {
-                        let _ = tx.send(Ok(FileDownloadResponse::Progress(
-                            file_id.clone(),
-                            progress as f32,
-                        )));
-                    };
-
-                    if let Some((id, file)) = file_id.split_once("#") {
-                        let r = super::model_manager::download_file_from_huggingface(
-                            id,
-                            file,
-                            &self.models_dir,
-                            0.5,
-                            &mut send_progress,
-                        );
-
-                        match r {
-                            Ok(_) => {
-                                let local_path = format!("{}/{}", self.models_dir, file);
-
-                                let _ =
-                                    tx.send(Ok(FileDownloadResponse::Completed(DownloadedFile {
-                                        file: File {
-                                            id: file_id.clone(),
-                                            name: file.to_string(),
-                                            size: String::new(),
-                                            quantization: String::new(),
-                                            downloaded: true,
-                                            downloaded_path: Some(local_path),
-                                            tags: Vec::new(),
-                                            featured: false,
-                                        },
-                                        model: Model::default(),
-                                        downloaded_at: Utc::now().date_naive(),
-                                        compatibility_guess: CompatibilityGuess::PossiblySupported,
-                                        information: String::new(),
-                                    })));
-                            }
-                            Err(e) => tx
-                                .send(Err(anyhow::anyhow!("Download failed: {e}")))
-                                .unwrap(),
-                        }
-                    };
+                    let _ = self
+                        .download_tx
+                        .send((file_id, self.models_dir.clone(), tx));
                 }
 
                 ModelManagementCommand::GetDownloadedFiles(tx) => {
