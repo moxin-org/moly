@@ -24,7 +24,6 @@ fn download_file(
     step: f64,
     report_fn: &mut dyn FnMut(f64),
 ) -> io::Result<f64> {
-    println!("download_file_to {local_path}");
     let mut file = File::options()
         .write(true)
         .create(true)
@@ -33,10 +32,6 @@ fn download_file(
     let file_length = file.metadata()?.len();
 
     if file_length < content_length {
-        println!(
-            "Resuming download from byte {}:{}",
-            file_length, content_length
-        );
         file.seek(io::SeekFrom::End(0))?;
 
         let range = format!("bytes={}-", file_length);
@@ -114,7 +109,6 @@ fn fill_data(model: &mut Model) {
 
 pub fn search(search_text: &str, limit: usize, offset: usize) -> reqwest::Result<Vec<Model>> {
     let url = format!("https://code.flows.network/webhook/DsbnEK45sK3NUzFUyZ9C/models?status=published&trace_status=tracing&order=most_likes&offset={offset}&limit={limit}&search={search_text}");
-    println!("get {url}");
     let response = reqwest::blocking::get(&url)?;
     let mut models: Vec<Model> = response.json()?;
     for model in &mut models {
