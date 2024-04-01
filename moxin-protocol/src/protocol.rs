@@ -2,11 +2,10 @@ use crate::data::*;
 use crate::open_ai::*;
 use anyhow::Result;
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub enum FileDownloadResponse {
-    Progress(Arc<FileID>, f32),
+    Progress(FileID, f32),
     Completed(DownloadedFile),
 }
 

@@ -202,7 +202,7 @@ pub fn download_file_loop(
         let file_id = file.id.clone();
         let mut send_progress = |progress| {
             let _ = tx.send(Ok(FileDownloadResponse::Progress(
-                file_id.clone(),
+                file_id.as_ref().clone(),
                 progress as f32,
             )));
         };
