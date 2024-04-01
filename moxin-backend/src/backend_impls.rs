@@ -1,8 +1,11 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc, Mutex,
+};
 
 use chrono::Utc;
 use moxin_protocol::{
-    data::{Author, CompatibilityGuess, DownloadedFile, File, FileID, Model},
+    data::{DownloadedFile, FileID, Model},
     open_ai::{ChatRequestData, ChatResponse},
     protocol::{
         Command, FileDownloadResponse, LoadModelOptions, LoadModelResponse, LocalServerConfig,
@@ -10,6 +13,8 @@ use moxin_protocol::{
     },
 };
 use wasmedge_sdk::Module;
+
+use crate::store::{self, RemoteModel};
 
 mod chat_ui {
 
@@ -639,6 +644,7 @@ fn test_download_file() {
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::DownloadFile(file.id, tx);
     bk.send(cmd).unwrap();
+    println!();
 
     while let Ok(r) = rx.recv() {
         match r {
@@ -657,10 +663,29 @@ fn test_download_file() {
     }
 }
 
+#[test]
+fn test_get_download_file() {
+    let home = std::env::var("HOME").unwrap();
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::GetDownloadedFiles(tx);
+    let _ = bk.send(cmd);
+
+    let files = rx.recv().unwrap();
+
+    println!("{files:?}");
+}
+
 pub struct BackendImpl {
+    sql_conn: Arc<Mutex<rusqlite::Connection>>,
     models_dir: String,
     pub rx: Receiver<Command>,
-    download_tx: Sender<(FileID, String, Sender<anyhow::Result<FileDownloadResponse>>)>,
+    download_tx: Sender<(
+        store::models::Model,
+        store::download_files::DownloadedFile,
+        Sender<anyhow::Result<FileDownloadResponse>>,
+    )>,
     model: Option<chat_ui::Model>,
 }
 
@@ -672,70 +697,29 @@ impl BackendImpl {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
         chat_ui::nn_preload(&models_dir);
 
+        let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
+        let _ = store::models::create_table_models(&sql_conn);
+        let _ = store::download_files::create_table_download_files(&sql_conn);
+
+        let sql_conn = Arc::new(Mutex::new(sql_conn));
+        let sql_conn_ = sql_conn.clone();
+
         let (download_tx, download_rx) = std::sync::mpsc::channel();
         let (tx, rx) = std::sync::mpsc::channel();
         let mut backend = Self {
+            sql_conn,
             models_dir,
             rx,
             download_tx,
             model: None,
         };
         std::thread::spawn(move || {
-            Self::download_file_loop(download_rx);
+            store::download_file_loop(sql_conn_, download_rx);
         });
         std::thread::spawn(move || {
             backend.run_loop();
         });
         tx
-    }
-
-    fn download_file_loop(
-        rx: Receiver<(FileID, String, Sender<anyhow::Result<FileDownloadResponse>>)>,
-    ) {
-        while let Ok((file_id, models_dir, tx)) = rx.recv() {
-            let mut send_progress = |progress| {
-                let _ = tx.send(Ok(FileDownloadResponse::Progress(
-                    file_id.clone(),
-                    progress as f32,
-                )));
-            };
-
-            if let Some((id, file)) = file_id.split_once("#") {
-                let r = super::model_manager::download_file_from_huggingface(
-                    id,
-                    file,
-                    &models_dir,
-                    0.5,
-                    &mut send_progress,
-                );
-
-                match r {
-                    Ok(_) => {
-                        let local_path = format!("{}/{}", models_dir, file);
-
-                        let _ = tx.send(Ok(FileDownloadResponse::Completed(DownloadedFile {
-                            file: File {
-                                id: file_id.clone(),
-                                name: file.to_string(),
-                                size: String::new(),
-                                quantization: String::new(),
-                                downloaded: true,
-                                downloaded_path: Some(local_path),
-                                tags: Vec::new(),
-                                featured: false,
-                            },
-                            model: Model::default(),
-                            downloaded_at: Utc::now().date_naive(),
-                            compatibility_guess: CompatibilityGuess::PossiblySupported,
-                            information: String::new(),
-                        })));
-                    }
-                    Err(e) => tx
-                        .send(Err(anyhow::anyhow!("Download failed: {e}")))
-                        .unwrap(),
-                }
-            };
-        }
     }
 
     fn handle_command(&mut self, wasm_module: &Module, built_in_cmd: BuiltInCommand) {
@@ -746,54 +730,145 @@ impl BackendImpl {
                     let _ = tx.send(Ok(vec![]));
                 }
                 ModelManagementCommand::SearchModels(search_text, tx) => {
-                    let res = super::model_manager::search(&search_text, 100, 0);
-                    let _ = tx.send(res.map_err(|e| anyhow::anyhow!("search models error: {e}")));
+                    let res = store::search(&search_text, 100, 0);
+                    match res {
+                        Ok(remote_model) => {
+                            let sql_conn = self.sql_conn.lock().unwrap();
+                            let models = RemoteModel::to_model(&remote_model, &sql_conn)
+                                .map_err(|e| anyhow::anyhow!("search models error: {e}"));
+
+                            let _ = tx.send(models);
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(anyhow::anyhow!("search models error: {e}")));
+                        }
+                    }
                 }
                 ModelManagementCommand::DownloadFile(file_id, tx) => {
-                    let _ = self
-                        .download_tx
-                        .send((file_id, self.models_dir.clone(), tx));
+                    //search model from remote
+                    let search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile)> {
+                        let (model_id, file) = file_id
+                            .split_once("#")
+                            .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
+                        let mut res = store::search(&model_id, 10, 0)
+                            .map_err(|e| anyhow::anyhow!("search models error: {e}"))?;
+                        let remote_model = res
+                            .pop()
+                            .ok_or_else(|| anyhow::anyhow!("model not found"))?;
+
+                        let remote_file = remote_model
+                            .files
+                            .into_iter()
+                            .find(|f| f.name == file)
+                            .ok_or_else(|| anyhow::anyhow!("file not found"))?;
+
+                        let download_model = crate::store::models::Model {
+                            id: Arc::new(remote_model.id),
+                            name: remote_model.name,
+                            summary: remote_model.summary,
+                            size: remote_model.size,
+                            requires: remote_model.requires,
+                            architecture: remote_model.architecture,
+                            released_at: remote_model.released_at,
+                            prompt_template: remote_model.prompt_template.clone(),
+                            reverse_prompt: remote_model.reverse_prompt.clone(),
+                            author: Arc::new(crate::store::models::Author {
+                                name: remote_model.author.name,
+                                url: remote_model.author.url,
+                                description: remote_model.author.description,
+                            }),
+                            like_count: remote_model.like_count,
+                            download_count: remote_model.download_count,
+                        };
+
+                        let download_file = crate::store::download_files::DownloadedFile {
+                            id: Arc::new(file_id.clone()),
+                            model_id: model_id.to_string(),
+                            name: file.to_string(),
+                            size: remote_file.size,
+                            quantization: remote_file.quantization,
+                            prompt_template: remote_model.prompt_template,
+                            reverse_prompt: remote_model.reverse_prompt,
+                            downloaded: true,
+                            downloaded_path: format!("{}/{}/{}",self.models_dir,model_id,file),
+                            downloaded_at: Utc::now(),
+                            tags:remote_file.tags,
+                            featured: false,
+                        };
+
+                        Ok((download_model,download_file))
+                    };
+
+                    match search_model_from_remote() {
+                        Ok((model, file)) => {
+                            let _ = self.download_tx.send((model, file, tx));
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(e));
+                        }
+                    }
                 }
 
                 ModelManagementCommand::GetDownloadedFiles(tx) => {
-                    let files = chat_ui::list_models(&self.models_dir)
-                        .into_iter()
-                        .enumerate()
-                        .map(|(id, (path, file_stem))| DownloadedFile {
-                            file: File {
-                                id: id.to_string(),
-                                name: path,
-                                size: "3.08 GB".to_string(),
-                                quantization: String::new(),
-                                downloaded: true,
-                                downloaded_path: None,
-                                tags: vec![],
-                                featured: true,
-                            },
-                            model: Model {
-                                id: id.to_string(),
-                                name: file_stem.clone(),
-                                summary: format!("summary of {file_stem}"),
-                                size: format!("size of {file_stem}"),
-                                requires: String::new(),
-                                architecture: String::new(),
-                                released_at: Utc::now(),
-                                files: vec![],
-                                author: Author {
-                                    name: format!("author of {file_stem}"),
-                                    url: String::new(),
-                                    description: String::new(),
-                                },
-                                like_count: 0,
-                                download_count: 0,
-                            },
-                            downloaded_at: chrono::Utc::now().date_naive(),
-                            compatibility_guess:
-                                moxin_protocol::data::CompatibilityGuess::PossiblySupported,
-                            information: String::new(),
-                        })
-                        .collect();
-                    let _ = tx.send(Ok(files));
+                    let get_all_download_file =
+                        || -> rusqlite::Result<Vec<moxin_protocol::data::DownloadedFile>> {
+                            let conn = self.sql_conn.lock().unwrap();
+                            let files = store::download_files::DownloadedFile::get_all(&conn)?;
+                            let models = store::models::Model::get_all(&conn)?;
+
+                            let mut downloaded_files = Vec::with_capacity(files.len());
+
+                            for (_id, file) in files {
+                                let model = if let Some(model) = models.get(&file.model_id) {
+                                    Model {
+                                        id: model.id.to_string(),
+                                        name: model.name.clone(),
+                                        summary: model.summary.clone(),
+                                        size: model.size.clone(),
+                                        requires: model.requires.clone(),
+                                        architecture: model.architecture.clone(),
+                                        released_at: model.released_at.clone(),
+                                        files: vec![],
+                                        author: moxin_protocol::data::Author {
+                                            name: model.author.name.clone(),
+                                            url: model.author.url.clone(),
+                                            description: model.author.description.clone(),
+                                        },
+                                        like_count: model.like_count,
+                                        download_count: model.download_count,
+                                    }
+                                } else {
+                                    Model::default()
+                                };
+
+                                let downloaded_file = DownloadedFile {
+                                    file: moxin_protocol::data::File {
+                                        id: file.id.to_string(),
+                                        name: file.name,
+                                        size: file.size,
+                                        quantization: file.quantization,
+                                        downloaded: true,
+                                        downloaded_path: Some(file.downloaded_path),
+                                        tags: file.tags,
+                                        featured: false,
+                                    },
+                                    model,
+                                    downloaded_at: file.downloaded_at,
+                                    compatibility_guess:
+                                        moxin_protocol::data::CompatibilityGuess::PossiblySupported,
+                                    information: String::new(),
+                                };
+
+                                downloaded_files.push(downloaded_file);
+                            }
+
+                            Ok(downloaded_files)
+                        };
+
+                    let _ = tx.send(
+                        get_all_download_file()
+                            .map_err(|e| anyhow::anyhow!("get download file error: {e}")),
+                    );
                 }
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {

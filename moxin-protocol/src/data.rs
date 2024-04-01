@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 
 pub type FileID = String;
 pub type ModelID = String;
@@ -36,7 +36,7 @@ pub enum CompatibilityGuess {
 pub struct DownloadedFile {
     pub file: File,
     pub model: Model,
-    pub downloaded_at: NaiveDate,
+    pub downloaded_at: DateTime<Utc>,
     pub compatibility_guess: CompatibilityGuess,
     pub information: String,
 }
