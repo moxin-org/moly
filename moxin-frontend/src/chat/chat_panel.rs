@@ -364,30 +364,24 @@ impl WidgetMatchEvent for ChatPanel {
         }
 
         if self.prompt_enabled {
-            for action in actions.iter() {
-                match action.as_widget_action().cast() {
-                    TextInputAction::Return(prompt) => {
-                        if prompt.trim().is_empty() {
-                            return;
-                        }
-
-                        self.prompt_enabled = false;
-                        self.disable_prompt_input(cx);
-                        let store = scope.data.get_mut::<Store>();
-                        store.send_chat_message(prompt.clone());
-
-                        self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
-
-                        // Scroll to the bottom when the message is sent
-                        if let Some(chat) = &store.current_chat {
-                            self.scroll_messages_to_bottom(&list, chat);
-                        }
-                        self.auto_scroll_pending = true;
-                        self.auto_scroll_cancellable = false;
-
-                    }
-                    _ => {}
+            if let Some(prompt) = self.text_input(id!(prompt)).returned(actions) {
+                if prompt.trim().is_empty() {
+                    return;
                 }
+
+                self.prompt_enabled = false;
+                self.disable_prompt_input(cx);
+                let store = scope.data.get_mut::<Store>();
+                store.send_chat_message(prompt.clone());
+
+                self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
+
+                // Scroll to the bottom when the message is sent
+                if let Some(chat) = &store.current_chat {
+                    self.scroll_messages_to_bottom(&list, chat);
+                }
+                self.auto_scroll_pending = true;
+                self.auto_scroll_cancellable = false;
             }
         }
     }
