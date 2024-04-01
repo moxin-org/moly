@@ -168,8 +168,8 @@ impl AppMain for App {
 
         // Process all possible store incoming events
         if let Event::Signal = event {
-            self.store.update_chat_messages();
-            self.store.update_downloads();
+            self.store.process_event_signal();
+            self.ui.redraw(cx);
         }
     }
 }

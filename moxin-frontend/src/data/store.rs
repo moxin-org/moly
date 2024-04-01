@@ -6,7 +6,8 @@ use std::sync::mpsc::channel;
 use makepad_widgets::DefaultNone;
 use crate::data::{
     chat::Chat,
-    download::Download
+    download::Download,
+    search::Search,
 };
 use std::collections::HashMap;
 
@@ -34,13 +35,17 @@ pub struct Store {
 
     // Local cache for the list of models
     pub models: Vec<Model>,
+    pub downloaded_files: Vec<DownloadedFile>,
+
+    pub search: Search,
+
     pub keyword: Option<String>,
     pub sorted_by: SortCriteria,
 
     pub current_chat: Option<Chat>,
     pub current_downloads: HashMap<FileID, Download>,
 
-    pub downloaded_files: Vec<DownloadedFile>,
+    
 }
 
 impl Store {
@@ -48,6 +53,7 @@ impl Store {
         let mut store = Self {
             models: vec![],
             backend: Backend::default(),
+            search: Search::new(),
             keyword: None,
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
@@ -55,8 +61,8 @@ impl Store {
             downloaded_files: vec![],
         };
         store.load_downloaded_files();
-        //store.load_featured_models();
-        //store.sort_models(SortCriteria::MostDownloads);
+        store.load_featured_models();
+        store.sort_models(SortCriteria::MostDownloads);
         store
     }
 
@@ -82,22 +88,9 @@ impl Store {
     }
 
     pub fn load_search_results(&mut self, query: String) {
-        let (tx, rx) = channel();
-        self
-            .backend
-            .command_sender
-            .send(Command::SearchModels(query.clone(), tx))
-            .unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(models) => {
-                    self.models = models;
-                    self.keyword = Some(query.clone());
-                },
-                Err(err) => eprintln!("Error fetching models: {:?}", err),
-            }
-        };
+        self.search.run_or_enqueue(query.clone(), &self.backend);
+        // TODO remove this
+        self.keyword = Some(query);
     }
 
     pub fn load_downloaded_files(&mut self) {
@@ -159,8 +152,6 @@ impl Store {
         };
     }
 
-    // Chat
-
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(chat) = &mut self.current_chat {
             chat.send_message_to_model(prompt, &self.backend);
@@ -168,18 +159,30 @@ impl Store {
         // TODO: Handle error case
     }
 
-    pub fn update_chat_messages(&mut self) {
+    pub fn process_event_signal(&mut self) {
+        self.update_downloads();
+        self.update_chat_messages();
+        self.update_search_results();
+    }
+
+    fn update_search_results(&mut self) {
+        if let Ok(models) = self.search.process_results(&self.backend) {
+            self.models = models;
+        }
+    }
+
+    fn update_chat_messages(&mut self) {
         let Some(ref mut chat) = self.current_chat else { return };
         chat.update_messages();
     }
 
-    // Download files
-
-    pub fn update_downloads(&mut self) {
+    fn update_downloads(&mut self) {
         for download in self.current_downloads.values_mut() {
             download.update_download_progress();
         }
     }
+
+
 
     // Utility functions
 
