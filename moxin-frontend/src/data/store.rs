@@ -93,7 +93,7 @@ impl Store {
     pub fn load_model(&mut self, file: &File) {
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(
-            file.name.clone().trim_end_matches(".gguf").to_string(),
+            file.id.clone(),
             LoadModelOptions {
                 prompt_template: None,
                 gpu_layers: moxin_protocol::protocol::GPULayers::Max,

@@ -133,8 +133,8 @@ pub fn get_models() -> Vec<Model> {
             featured: true,
         },
         File {
-            id: "13".to_string(),
-            name: "llama-2-7b-chat.Q4_K_M.gguf".to_string(),
+            id: "TheBloke/Llama-2-7B-Chat-GGUF#llama-2-7b-chat.Q2_K.gguf".to_string(),
+            name: "llama-2-7b-chat.Q2_K.gguf".to_string(),
             size: "2.30 GB".to_string(),
             quantization: "Q6_K".to_string(),
             downloaded: true,
