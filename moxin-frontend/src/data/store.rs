@@ -1,4 +1,4 @@
-use chrono::{Utc, NaiveDate};
+use chrono::{Utc, DateTime, TimeZone};
 use moxin_protocol::data::{Model, File, FileID, DownloadedFile, CompatibilityGuess};
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse, FileDownloadResponse};
 use moxin_backend::Backend;
@@ -39,18 +39,22 @@ pub struct Store {
 
     pub current_chat: Option<Chat>,
     pub current_downloads: HashMap<FileID, Download>,
+
+    pub downloaded_files: Vec<DownloadedFile>,
 }
 
 impl Store {
     pub fn new() -> Self {
-        let store = Self {
+        let mut store = Self {
             models: vec![],
             backend: Backend::default(),
             keyword: None,
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
             current_downloads: HashMap::new(),
+            downloaded_files: vec![],
         };
+        store.load_downloaded_files();
         //store.load_featured_models();
         //store.sort_models(SortCriteria::MostDownloads);
         store
@@ -96,6 +100,24 @@ impl Store {
         };
     }
 
+    pub fn load_downloaded_files(&mut self) {
+        let (tx, rx) = channel();
+        self
+            .backend
+            .command_sender
+            .send(Command::GetDownloadedFiles(tx))
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(files) => {
+                    self.downloaded_files = files;
+                },
+                Err(err) => eprintln!("Error fetching downloaded files: {:?}", err),
+            }
+        };
+    }
+
     pub fn download_file(&mut self, file: &File) {
         self.current_downloads.insert(file.id.clone(), Download::new(file.clone(), &self.backend));
     }
@@ -103,7 +125,7 @@ impl Store {
     pub fn load_model(&mut self, file: &File) {
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(
-            file.name.clone().trim_end_matches(".gguf").to_string(),
+            file.id.clone(),
             LoadModelOptions {
                 prompt_template: None,
                 gpu_layers: moxin_protocol::protocol::GPULayers::Max,
@@ -191,21 +213,5 @@ impl Store {
 
     pub fn model_other_files(model: &Model) -> Vec<File> {
         model.files.iter().filter(|f| !f.featured).cloned().collect()
-    }
-
-    pub fn downloaded_files(&self) -> Vec<DownloadedFile> {
-        // TODO Replace with actual call to backend when it is ready
-        let models = moxin_fake_backend::fake_data::get_models();
-        models.iter()
-            .flat_map(|m| {
-                m.files.iter().filter(|f| f.downloaded).map(move |file| DownloadedFile {
-                    file: file.clone(),
-                    model: m.clone(),
-                    compatibility_guess: CompatibilityGuess::PossiblySupported,
-                    downloaded_at: NaiveDate::from_ymd_opt(2024, 2, 3).unwrap(),
-                    information: "".to_string(),
-                })
-            })
-            .collect()
     }
 }
