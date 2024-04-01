@@ -326,7 +326,7 @@ mod chat_ui {
     }
 
     fn create_wasi(
-        module_alias: &str,
+        file: &DownloadedFile,
         load_model: &LoadModelOptions,
     ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
         let ctx_size = if load_model.n_ctx > 0 {
@@ -346,7 +346,18 @@ mod chat_ui {
             None
         };
 
-        let prompt_template = load_model.prompt_template.clone();
+        let mut prompt_template = load_model.prompt_template.clone();
+        if prompt_template.is_none() && !file.prompt_template.is_empty() {
+            prompt_template = Some(file.prompt_template.clone());
+        }
+
+        let reverse_prompt = if file.reverse_prompt.is_empty() {
+            None
+        } else {
+            Some(file.reverse_prompt.clone())
+        };
+
+        let module_alias = file.name.as_ref();
 
         let mut args = vec!["chat_ui.wasm", "-a", module_alias];
 
@@ -363,6 +374,7 @@ mod chat_ui {
         add_args!("-g", n_gpu_layers);
         add_args!("-b", batch_size);
         add_args!("-p", prompt_template);
+        add_args!("-r", reverse_prompt);
 
         WasiModule::create(Some(args), None, None)
     }
@@ -389,7 +401,7 @@ mod chat_ui {
 
         let mut instances: HashMap<String, &mut (dyn SyncInst)> = HashMap::new();
 
-        let mut wasi = create_wasi(&file.name, &load_model).unwrap();
+        let mut wasi = create_wasi(&file, &load_model).unwrap();
         let mut chatui = module(ChatBotUi::new(request_rx, file, load_model, tx)).unwrap();
 
         instances.insert(wasi.name().to_string(), wasi.as_mut());
@@ -657,7 +669,6 @@ impl BackendImpl {
     /// * `models_dir` - The download path of the model.
     pub fn build_command_sender(models_dir: String) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
-        // chat_ui::nn_preload(&models_dir);
 
         let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
         let _ = store::models::create_table_models(&sql_conn);
