@@ -18,7 +18,8 @@ pub struct ChatMessage {
 
 impl ChatMessage {
     pub fn is_assistant(&self) -> bool {
-        self.role == Role::Assistant
+        // self.role == Role::Assistant
+        matches!(self.role, Role::Assistant)
     }
 }
 
