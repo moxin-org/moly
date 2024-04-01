@@ -290,8 +290,7 @@ impl Widget for ModelSelectorList {
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {
-            let downloaded_files = store.downloaded_files();
-            self.draw_items(cx, &downloaded_files);
+            self.draw_items(cx, &store.downloaded_files);
         }
         cx.end_turtle_with_area(&mut self.area);
 

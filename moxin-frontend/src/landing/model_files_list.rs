@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 use crate::data::store::{Store, StoreAction};
 use moxin_protocol::data::{Model, File};
+use std::collections::HashMap;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -79,6 +80,7 @@ live_design! {
     }
 
     DownloadButton = <ModelCardButton> {
+        cursor: Hand,
         button_label = { text: "Download" }
         button_icon = { draw_icon: {
             svg_file: (ICON_DOWNLOAD),
@@ -181,7 +183,7 @@ live_design! {
 
         template_download: <ModelFilesRowWithData> {
             cell4 = {
-                <DownloadButton> {}
+                download_button = <DownloadButton> {}
             }
         }
     }
@@ -315,6 +317,12 @@ live_design! {
     }
 }
 
+#[derive(Clone, DefaultNone, Debug)]
+pub enum ModelFileItemsAction {
+    Download(File),
+    None,
+}
+
 #[derive(Live, LiveHook, LiveRegisterWidget, WidgetRef)]
 pub struct ModelFilesItems {
     #[rust]
@@ -342,12 +350,25 @@ pub struct ModelFilesItems {
 
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
+
+    #[rust]
+    map_to_files: HashMap<LiveId, File>,
 }
 
 impl Widget for ModelFilesItems {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        for (_id, item) in self.items.iter_mut() {
-            item.handle_event(cx, event, scope);
+        for (id, item) in self.items.iter_mut() {
+            let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
+            if let Some(fd) = item.view(id!(download_button)).finger_down(&actions) {
+                if fd.tap_count == 1 {
+                    let widget_uid = item.widget_uid();
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        ModelFileItemsAction::Download(self.map_to_files.get(id).unwrap().clone()),
+                    );
+                }
+            }
         }
     }
 
@@ -385,6 +406,9 @@ impl WidgetNode for ModelFilesItems {
 
 impl ModelFilesItems {
     fn draw_files(&mut self, cx: &mut Cx2d, files: &Vec<File>) {
+        // TODO check if using proper ids in the items collections is better than having this mapping
+        self.map_to_files.clear();
+
         for i in 0..files.len() {
             let template = if files[i].downloaded {
                 self.template_downloaded
@@ -395,6 +419,8 @@ impl ModelFilesItems {
             let item_widget = self.items.get_or_insert(cx, item_id, | cx | {
                 WidgetRef::new_from_ptr(cx, template)
             });
+            self.map_to_files.insert(item_id, files[i].clone());
+
             let filename = &files[i].name;
             let size = &files[i].size;
             let quantization = &files[i].quantization;
