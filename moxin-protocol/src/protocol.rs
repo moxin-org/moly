@@ -1,7 +1,7 @@
-use std::sync::mpsc::Sender;
-use anyhow::Result;
 use crate::data::*;
 use crate::open_ai::*;
+use anyhow::Result;
+use std::sync::mpsc::Sender;
 
 #[derive(Clone, Debug)]
 pub enum FileDownloadResponse {
@@ -34,7 +34,7 @@ pub struct LoadModelOptions {
 
     // TBD Not really sure if this is something backend manages or if it is matter of
     // the client (if it is done by tweaking the JSON payload for the chat completition)
-    pub context_overflow_policy: ContextOverflowPolicy
+    pub context_overflow_policy: ContextOverflowPolicy,
 }
 
 #[derive(Clone, Debug)]
