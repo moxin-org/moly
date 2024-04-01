@@ -95,6 +95,12 @@ impl DownloadedFile {
 
         Ok(files)
     }
+
+    pub fn get_by_id(conn: &rusqlite::Connection, id: &str) -> rusqlite::Result<Self> {
+        conn.query_row("SELECT * FROM download_files WHERE id = ?1", [id], |row| {
+            Self::from_row(row)
+        })
+    }
 }
 
 pub fn create_table_download_files(conn: &rusqlite::Connection) -> rusqlite::Result<()> {

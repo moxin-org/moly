@@ -49,7 +49,6 @@ mod chat_ui {
     };
 
     use moxin_protocol::{
-        data::FileID,
         open_ai::{
             ChatRequestData, ChatResponse, ChatResponseChunkData, ChatResponseData, ChoiceData,
             ChunkChoiceData, MessageData, Role, StopReason, UsageData,
@@ -62,6 +61,8 @@ mod chat_ui {
         CallingFrame, ImportObject, Instance, Module, Store, Vm, WasmValue,
     };
 
+    use crate::store::download_files::DownloadedFile;
+
     #[derive(Debug)]
     pub struct ChatBotUi {
         pub current_req: std::io::Cursor<Vec<u8>>,
@@ -70,7 +71,7 @@ mod chat_ui {
         chat_completion_message: Option<Vec<u8>>,
         pub token_tx: Option<Sender<anyhow::Result<ChatResponse>>>,
         pub load_model_state: Option<(
-            FileID,
+            DownloadedFile,
             LoadModelOptions,
             Sender<anyhow::Result<LoadModelResponse>>,
         )>,
@@ -79,18 +80,16 @@ mod chat_ui {
     impl ChatBotUi {
         pub fn new(
             request_rx: Receiver<(ChatRequestData, Sender<anyhow::Result<ChatResponse>>)>,
-            load_module_req: (
-                FileID,
-                LoadModelOptions,
-                Sender<anyhow::Result<LoadModelResponse>>,
-            ),
+            file: DownloadedFile,
+            load_model: LoadModelOptions,
+            tx: Sender<anyhow::Result<LoadModelResponse>>,
         ) -> Self {
             Self {
                 request_rx,
                 request_id: uuid::Uuid::new_v4(),
                 token_tx: None,
                 current_req: std::io::Cursor::new(vec![]),
-                load_model_state: Some(load_module_req),
+                load_model_state: Some((file, load_model, tx)),
                 chat_completion_message: None,
             }
         }
@@ -239,9 +238,9 @@ mod chat_ui {
                 .ok_or(CoreError::Execution(CoreExecutionError::MemoryOutOfBounds))?;
 
             if data.current_req.get_ref().is_empty() {
-                if let Some((file_id, _, tx)) = data.load_model_state.take() {
-                    let file_id = file_id.clone();
-                    let model_id = file_id.clone();
+                if let Some((file, _, tx)) = data.load_model_state.take() {
+                    let file_id = file.id.as_ref().clone();
+                    let model_id = file.model_id;
                     let _ = tx.send(Ok(LoadModelResponse::Completed(LoadedModelInfo {
                         file_id,
                         model_id,
@@ -368,62 +367,30 @@ mod chat_ui {
         WasiModule::create(Some(args), None, None)
     }
 
-    pub fn list_models(models_dir: &str) -> Vec<(String, String)> {
-        let mut r = vec![];
-
-        if let Ok(read_dir) = std::fs::read_dir(models_dir) {
-            for dir_entry in read_dir {
-                if let Ok(dir_entry) = dir_entry {
-                    let path = dir_entry.path();
-                    if path.is_file() && "gguf" == path.extension().unwrap_or_default() {
-                        let file_stem = path.file_stem().unwrap_or(path.as_os_str());
-
-                        r.push((
-                            format!("{}", path.display()),
-                            format!("{}", file_stem.to_string_lossy()),
-                        ));
-                    }
-                }
-            }
-        }
-        r
+    pub fn nn_preload_file(file: &DownloadedFile) {
+        let preloads = wasmedge_sdk::plugin::NNPreload::new(
+            file.name.clone(),
+            wasmedge_sdk::plugin::GraphEncoding::GGML,
+            wasmedge_sdk::plugin::ExecutionTarget::AUTO,
+            file.downloaded_path.clone(),
+        );
+        wasmedge_sdk::plugin::PluginManager::nn_preload(vec![preloads]);
     }
 
-    pub fn nn_preload(models_dir: &str) {
-        let models = list_models(models_dir);
-
-        let preloads = models
-            .into_iter()
-            .map(|(path, file_stem)| {
-                wasmedge_sdk::plugin::NNPreload::new(
-                    file_stem,
-                    wasmedge_sdk::plugin::GraphEncoding::GGML,
-                    wasmedge_sdk::plugin::ExecutionTarget::AUTO,
-                    path,
-                )
-            })
-            .collect();
-
-        wasmedge_sdk::plugin::PluginManager::nn_preload(preloads);
-    }
-
-    pub fn run_wasm(
+    pub fn run_wasm_by_downloaded_file(
         wasm_module: Module,
         request_rx: Receiver<(ChatRequestData, Sender<anyhow::Result<ChatResponse>>)>,
-        model_id: String,
-        load_model_commond: (
-            FileID,
-            LoadModelOptions,
-            Sender<anyhow::Result<LoadModelResponse>>,
-        ),
+        file: DownloadedFile,
+        load_model: LoadModelOptions,
+        tx: Sender<anyhow::Result<LoadModelResponse>>,
     ) {
         use wasmedge_sdk::vm::SyncInst;
         use wasmedge_sdk::AsInstance;
 
         let mut instances: HashMap<String, &mut (dyn SyncInst)> = HashMap::new();
 
-        let mut wasi = create_wasi(&model_id, &load_model_commond.1).unwrap();
-        let mut chatui = module(ChatBotUi::new(request_rx, load_model_commond)).unwrap();
+        let mut wasi = create_wasi(&file.name, &load_model).unwrap();
+        let mut chatui = module(ChatBotUi::new(request_rx, file, load_model, tx)).unwrap();
 
         instances.insert(wasi.name().to_string(), wasi.as_mut());
         let mut wasi_nn = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().unwrap();
@@ -445,21 +412,16 @@ mod chat_ui {
     }
 
     impl Model {
-        pub fn new(
+        pub fn new_by_downloaded_file(
             wasm_module: Module,
-            file_id: FileID,
+            file: DownloadedFile,
             options: LoadModelOptions,
             tx: Sender<anyhow::Result<LoadModelResponse>>,
         ) -> Self {
             let (model_tx, request_rx) = std::sync::mpsc::channel();
 
-            let model_thread = std::thread::spawn(|| {
-                run_wasm(
-                    wasm_module,
-                    request_rx,
-                    file_id.clone(),
-                    (file_id, options, tx),
-                )
+            let model_thread = std::thread::spawn(move || {
+                run_wasm_by_downloaded_file(wasm_module, request_rx, file, options, tx)
             });
             Self {
                 model_tx,
@@ -695,7 +657,7 @@ impl BackendImpl {
     /// * `models_dir` - The download path of the model.
     pub fn build_command_sender(models_dir: String) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
-        chat_ui::nn_preload(&models_dir);
+        // chat_ui::nn_preload(&models_dir);
 
         let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
         let _ = store::models::create_table_models(&sql_conn);
@@ -873,9 +835,25 @@ impl BackendImpl {
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {
                 ModelInteractionCommand::LoadModel(file_id, options, tx) => {
-                    chat_ui::nn_preload(&self.models_dir);
-                    let model = chat_ui::Model::new(wasm_module.clone(), file_id, options, tx);
-                    self.model = Some(model);
+                    let conn = self.sql_conn.lock().unwrap();
+                    let download_file =
+                        store::download_files::DownloadedFile::get_by_id(&conn, &file_id);
+
+                    match download_file {
+                        Ok(file) => {
+                            chat_ui::nn_preload_file(&file);
+                            let model = chat_ui::Model::new_by_downloaded_file(
+                                wasm_module.clone(),
+                                file,
+                                options,
+                                tx,
+                            );
+                            self.model = Some(model);
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(anyhow::anyhow!("Load model error: {e}")));
+                        }
+                    }
                 }
                 ModelInteractionCommand::EjectModel(tx) => {
                     if let Some(model) = self.model.take() {
