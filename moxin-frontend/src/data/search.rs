@@ -10,11 +10,18 @@ pub enum SearchAction {
     Results(Vec<Model>),
 }
 
+pub enum SearchCommand {
+    Search(String),
+    LoadFeaturedModels,
+}
+
 pub struct Search {
     pub keyword: Option<String>,
-    pub next_keyword: Option<String>,
+    pub current_command: Option<SearchCommand>,
+    pub next_command: Option<SearchCommand>,
     pub sender: Sender<SearchAction>,
     pub receiver: Receiver<SearchAction>,
+    pending: bool,
 }
 
 impl Default for Search {
@@ -28,20 +35,54 @@ impl Search {
         let (tx, rx) = channel();
         let search = Self {
             keyword: None,
-            next_keyword: None,
+            current_command: None,
+            next_command: None,
             sender: tx,
             receiver: rx,
+            pending: false,
         };
         search
     }
 
-    pub fn run_or_enqueue(&mut self, keyword: String, backend: &Backend) {
-        if self.keyword.is_some() {
-            self.next_keyword = Some(keyword);
+    pub fn load_featured_models(&mut self, backend: &Backend) {
+        if self.pending {
+            self.next_command = Some(SearchCommand::LoadFeaturedModels);
             return;
         } else {
-            self.keyword = Some(keyword.clone());
-            self.next_keyword = None;
+            self.pending = true;
+            self.keyword = None;
+            self.next_command = None;
+        }
+
+        let (tx, rx) = channel();
+
+        let store_search_tx = self.sender.clone();
+        backend
+            .command_sender
+            .send(Command::GetFeaturedModels(tx))
+            .unwrap();
+
+        thread::spawn(move || {
+            if let Ok(response) = rx.recv() {
+                match response {
+                    Ok(models) => {
+                        store_search_tx.send(SearchAction::Results(models)).unwrap();
+                    },
+                    Err(err) => eprintln!("Error fetching models: {:?}", err),
+                }
+                SignalToUI::set_ui_signal();
+            }
+        });
+    }
+
+    pub fn run_or_enqueue(&mut self, keyword: String, backend: &Backend) {
+        if self.pending {
+            self.next_command = Some(SearchCommand::Search(keyword));
+            return;
+        } else {
+            self.pending = true;
+            self.current_command = Some(SearchCommand::Search(keyword.clone()));
+            self.next_command = None;
         }
 
         let (tx, rx) = channel();
@@ -56,7 +97,6 @@ impl Search {
             if let Ok(response) = rx.recv() {
                 match response {
                     Ok(models) => {
-                        dbg!("got models", &models);
                         store_search_tx.send(SearchAction::Results(models)).unwrap();
                     },
                     Err(err) => eprintln!("Error fetching models: {:?}", err),
@@ -70,10 +110,18 @@ impl Search {
         for msg in self.receiver.try_iter() {
             match msg {
                 SearchAction::Results(models) => {
-                    dbg!("models procesados", &models);
-                    self.keyword = None;
-                    if let Some(next_keyword) = self.next_keyword.take() {
-                        self.run_or_enqueue(next_keyword, backend);
+                    self.pending = false;
+                    if let Some(SearchCommand::Search(keyword)) = self.current_command.take() {
+                        self.keyword = Some(keyword);
+                    }
+                    match self.next_command.take() {
+                        Some(SearchCommand::Search(next_keyword)) => {
+                            self.run_or_enqueue(next_keyword, backend);
+                        }
+                        Some(SearchCommand::LoadFeaturedModels) => {
+                            self.load_featured_models(backend);
+                        },
+                        None => {}
                     }
                     return Ok(models)
                 }

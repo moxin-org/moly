@@ -1,6 +1,6 @@
-use chrono::{Utc, DateTime, TimeZone};
-use moxin_protocol::data::{Model, File, FileID, DownloadedFile, CompatibilityGuess};
-use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse, FileDownloadResponse};
+use chrono::Utc;
+use moxin_protocol::data::{Model, File, FileID, DownloadedFile};
+use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use moxin_backend::Backend;
 use std::sync::mpsc::channel;
 use makepad_widgets::DefaultNone;
@@ -38,8 +38,6 @@ pub struct Store {
     pub downloaded_files: Vec<DownloadedFile>,
 
     pub search: Search,
-
-    pub keyword: Option<String>,
     pub sorted_by: SortCriteria,
 
     pub current_chat: Option<Chat>,
@@ -54,7 +52,6 @@ impl Store {
             models: vec![],
             backend: Backend::default(),
             search: Search::new(),
-            keyword: None,
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
             current_downloads: HashMap::new(),
@@ -69,28 +66,11 @@ impl Store {
     // Commands to the backend
 
     pub fn load_featured_models(&mut self) {
-        let (tx, rx) = channel();
-        self
-            .backend
-            .command_sender
-            .send(Command::GetFeaturedModels(tx))
-            .unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(models) => {
-                    self.models = models;
-                    self.keyword = None;
-                },
-                Err(err) => eprintln!("Error fetching models: {:?}", err),
-            }
-        };
+        self.search.load_featured_models(&self.backend);
     }
 
     pub fn load_search_results(&mut self, query: String) {
         self.search.run_or_enqueue(query.clone(), &self.backend);
-        // TODO remove this
-        self.keyword = Some(query);
     }
 
     pub fn load_downloaded_files(&mut self) {
@@ -156,7 +136,6 @@ impl Store {
         if let Some(chat) = &mut self.current_chat {
             chat.send_message_to_model(prompt, &self.backend);
         }
-        // TODO: Handle error case
     }
 
     pub fn process_event_signal(&mut self) {
@@ -168,6 +147,7 @@ impl Store {
     fn update_search_results(&mut self) {
         if let Ok(models) = self.search.process_results(&self.backend) {
             self.models = models;
+            self.sort_models_by_current_criteria(); 
         }
     }
 
@@ -202,6 +182,10 @@ impl Store {
             }
         }
         self.sorted_by = criteria;
+    }
+
+    fn sort_models_by_current_criteria(&mut self) {
+        self.sort_models(self.sorted_by);
     }
 
     pub fn formatted_model_release_date(model: &Model) -> String {

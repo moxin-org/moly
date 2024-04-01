@@ -265,7 +265,6 @@ impl Widget for ChatPanel {
 
         if let Event::Signal = event {
             let store = scope.data.get_mut::<Store>();
-
             if let Some(chat) = &store.current_chat {
                 self.auto_scroll_cancellable = true;
                 let list = self.portal_list(id!(chat));
@@ -344,6 +343,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                     let store = scope.data.get_mut::<Store>();
                     store.load_model(&downloaded_file.file);
+                    self.prompt_enabled = true;
                 },
                 _ => {}
             }
@@ -423,6 +423,9 @@ impl ChatPanel {
     }
 
     fn scroll_messages_to_bottom(&mut self, list: &PortalListRef, chat: &Chat) {
+        if chat.messages.is_empty() {
+            return;
+        }
         list.set_first_id_and_scroll(chat.messages.len() - 1, 0.0);
     }
 }
