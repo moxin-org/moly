@@ -286,7 +286,7 @@ impl Widget for ModelSelectorList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>();
+        let store = scope.data.get::<Store>().unwrap();
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {

@@ -40,7 +40,7 @@ impl Widget for ModelList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>();
+        let store = scope.data.get::<Store>().unwrap();
         let models = &store.models;
         let models_count = models.len();
 

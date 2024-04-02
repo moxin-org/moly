@@ -373,7 +373,7 @@ impl Widget for ModelFilesItems {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = scope.data.get::<Model>();
+        let model = scope.data.get::<Model>().unwrap();
         let files = if self.show_featured {
             Store::model_featured_files(model)
         } else {
@@ -528,7 +528,7 @@ impl Widget for ModelFilesList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = scope.data.get::<Model>();
+        let model = scope.data.get::<Model>().unwrap();
         let files_count = model.files.len();
         let all_files_link = self.view(id!(all_files_link.link));
         all_files_link.set_text(&format!("Show All Files ({})", files_count));

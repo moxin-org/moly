@@ -251,7 +251,7 @@ impl Widget for ModelCard {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = scope.data.get::<Model>();
+        let model = scope.data.get::<Model>().unwrap();
 
         self.model_id = model.id.clone();
 

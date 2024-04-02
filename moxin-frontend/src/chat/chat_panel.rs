@@ -264,7 +264,7 @@ impl Widget for ChatPanel {
         self.widget_match_event(cx, event, scope);
 
         if let Event::Signal = event {
-            let store = scope.data.get_mut::<Store>();
+            let store = scope.data.get_mut::<Store>().unwrap();
             if let Some(chat) = &store.current_chat {
                 self.auto_scroll_cancellable = true;
                 let list = self.portal_list(id!(chat));
@@ -293,7 +293,7 @@ impl Widget for ChatPanel {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get_mut::<Store>();
+        let store = scope.data.get_mut::<Store>().unwrap();
         let chat_history; 
         let model_filename;
 
@@ -341,7 +341,7 @@ impl WidgetMatchEvent for ChatPanel {
                     self.loaded = true;
                     self.view(id!(main)).set_visible(true);
 
-                    let store = scope.data.get_mut::<Store>();
+                    let store = scope.data.get_mut::<Store>().unwrap();
                     store.load_model(&downloaded_file.file);
                     self.prompt_enabled = true;
                 },
@@ -371,7 +371,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                 self.prompt_enabled = false;
                 self.disable_prompt_input(cx);
-                let store = scope.data.get_mut::<Store>();
+                let store = scope.data.get_mut::<Store>().unwrap();
                 store.send_chat_message(prompt.clone());
 
                 self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
