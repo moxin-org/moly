@@ -34,7 +34,7 @@ live_design! {
             }
         }
 
-        label = <Label> {
+        chat_label = <Label> {
             width: Fill,
             height: Fit,
             padding: {top: 12, bottom: 12},
@@ -68,6 +68,28 @@ live_design! {
         <ChatLineBody> {}
     }
 
+    ChatAgentAvatar = <RoundedView> {
+        width: 20,
+        height: 20,
+
+        show_bg: true,
+        draw_bg: {
+            color: #444D9A
+        }
+
+        align: {x: 0.5, y: 0.5},
+
+        avatar_label = <Label> {
+            width: Fit,
+            height: Fit,
+            draw_text:{
+                text_style: <BOLD_FONT>{font_size: 10},
+                color: #fff,
+            }
+            text: "P"
+        }
+    }
+
     ModelChatLine = <View> {
         margin: {top: 20, bottom: 5},
         width: Fill,
@@ -78,27 +100,7 @@ live_design! {
             height: Fit,
             margin: {left: 20, right: 20},
 
-            <RoundedView> {
-                width: 20,
-                height: 20,
-
-                show_bg: true,
-                draw_bg: {
-                    color: #444D9A
-                }
-
-                align: {x: 0.5, y: 0.5},
-
-                <Label> {
-                    width: Fit,
-                    height: Fit,
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 10},
-                        color: #fff,
-                    }
-                    text: "P"
-                }
-            }
+            <ChatAgentAvatar> {}
         }
 
         <ChatLineBody> {}
@@ -214,6 +216,50 @@ live_design! {
 
         flow: Overlay,
 
+        no_model = <View> {
+            width: Fill,
+            height: Fill,
+
+            flow: Down,
+            spacing: 30,
+            align: {x: 0.5, y: 0.5},
+
+            <Icon> {
+                draw_icon: {
+                    svg_file: dep("crate://self/resources/icons/chat.svg"),
+                    color: #D0D5DD
+                }
+                icon_walk: {width: 128, height: 128}
+            }
+            <Label> {
+                draw_text: {
+                    text_style: <REGULAR_FONT>{font_size: 14},
+                    color: #667085
+                }
+                text: "Start chatting by choosing a model from above"
+            }
+        }
+
+        empty_conversation = <View> {
+            visible: false,
+
+            width: Fill,
+            height: Fill,
+
+            flow: Down,
+            spacing: 30,
+            align: {x: 0.5, y: 0.5},
+
+            <ChatAgentAvatar> {}
+            <Label> {
+                draw_text: {
+                    text_style: <REGULAR_FONT>{font_size: 14},
+                    color: #101828
+                }
+                text: "How can I help you?"
+            }
+        }
+
         main = <View> {
             visible: false
 
@@ -296,15 +342,29 @@ impl Widget for ChatPanel {
         let store = scope.data.get_mut::<Store>().unwrap();
         let chat_history;
         let model_filename;
+        let initial_letter;
 
         if let Some(chat) = &store.current_chat {
             chat_history = chat.messages.clone();
             model_filename = chat.model_filename.clone();
+            initial_letter = model_filename
+                .chars()
+                .next()
+                .unwrap()
+                .to_uppercase()
+                .to_string();
         } else {
             chat_history = vec![];
             model_filename = "".to_string();
+            initial_letter = "".to_string();
         };
         let chats_count = chat_history.len();
+
+        if chats_count == 0 {
+            self.view(id!(empty_conversation))
+                .label(id!(avatar_label))
+                .set_text(initial_letter.as_str());
+        }
 
         while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
@@ -317,13 +377,16 @@ impl Widget for ChatPanel {
                         if chat_line_data.is_assistant() {
                             item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
                             item.label(id!(role)).set_text(&model_filename);
+                            item.label(id!(avatar_label))
+                                .set_text(initial_letter.as_str());
                         } else {
                             item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
                             item.label(id!(role)).set_text("You");
                         };
 
-                        item.label(id!(label))
+                        item.label(id!(chat_label))
                             .set_text(&chat_line_data.content.trim());
+
                         item.draw_all(cx, &mut Scope::with_data(&mut chat_line_data.clone()));
                     }
                 }
@@ -341,6 +404,8 @@ impl WidgetMatchEvent for ChatPanel {
                 ModelSelectorAction::Selected(downloaded_file) => {
                     self.loaded = true;
                     self.view(id!(main)).set_visible(true);
+                    self.view(id!(empty_conversation)).set_visible(true);
+                    self.view(id!(no_model)).set_visible(false);
 
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.load_model(&downloaded_file.file);
@@ -376,6 +441,7 @@ impl WidgetMatchEvent for ChatPanel {
                 store.send_chat_message(prompt.clone());
 
                 self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
+                self.view(id!(empty_conversation)).set_visible(false);
 
                 // Scroll to the bottom when the message is sent
                 if let Some(chat) = &store.current_chat {
