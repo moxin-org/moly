@@ -1,7 +1,7 @@
-use makepad_widgets::*;
-use crate::data::store::Store;
-use crate::data::chat::Chat;
 use crate::chat::model_selector::ModelSelectorAction;
+use crate::data::chat::Chat;
+use crate::data::store::Store;
+use makepad_widgets::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -57,7 +57,7 @@ live_design! {
             width: Fit,
             height: Fit,
             margin: {left: 20, right: 20},
-    
+
             <Image> {
                 source: dep("crate://self/resources/images/chat_user_icon.png"),
                 width: 20,
@@ -77,7 +77,7 @@ live_design! {
             width: Fit,
             height: Fit,
             margin: {left: 20, right: 20},
-    
+
             <RoundedView> {
                 width: 20,
                 height: 20,
@@ -255,7 +255,7 @@ pub struct ChatPanel {
     auto_scroll_cancellable: bool,
 
     #[rust(true)]
-    prompt_enabled: bool
+    prompt_enabled: bool,
 }
 
 impl Widget for ChatPanel {
@@ -294,7 +294,7 @@ impl Widget for ChatPanel {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let chat_history; 
+        let chat_history;
         let model_filename;
 
         if let Some(chat) = &store.current_chat {
@@ -306,7 +306,7 @@ impl Widget for ChatPanel {
         };
         let chats_count = chat_history.len();
 
-        while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step(){
+        while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, chats_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
@@ -322,7 +322,8 @@ impl Widget for ChatPanel {
                             item.label(id!(role)).set_text("You");
                         };
 
-                        item.label(id!(label)).set_text(&chat_line_data.content.trim());
+                        item.label(id!(label))
+                            .set_text(&chat_line_data.content.trim());
                         item.draw_all(cx, &mut Scope::with_data(&mut chat_line_data.clone()));
                     }
                 }
@@ -344,7 +345,7 @@ impl WidgetMatchEvent for ChatPanel {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.load_model(&downloaded_file.file);
                     self.prompt_enabled = true;
-                },
+                }
                 _ => {}
             }
         }
@@ -390,30 +391,42 @@ impl WidgetMatchEvent for ChatPanel {
 impl ChatPanel {
     fn enable_prompt_input(&mut self, cx: &mut Cx) {
         let enabled_color = vec3(0.0, 0.0, 0.0);
-        self.view(id!(prompt_icon)).apply_over(cx, live!{
-            draw_bg: {
-                color: (enabled_color)
-            }
-        });
-        self.text_input(id!(prompt)).apply_over(cx, live!{
-            draw_text: {
-                prompt_enabled: 1.0
-            }
-        });
+        self.view(id!(prompt_icon)).apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: (enabled_color)
+                }
+            },
+        );
+        self.text_input(id!(prompt)).apply_over(
+            cx,
+            live! {
+                draw_text: {
+                    prompt_enabled: 1.0
+                }
+            },
+        );
     }
 
     fn disable_prompt_input(&mut self, cx: &mut Cx) {
         let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
-        self.view(id!(prompt_icon)).apply_over(cx, live!{
-            draw_bg: {
-                color: (disabled_color)
-            }
-        });
-        self.text_input(id!(prompt)).apply_over(cx, live!{
-            draw_text: {
-                prompt_enabled: 0.0
-            }
-        });
+        self.view(id!(prompt_icon)).apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: (disabled_color)
+                }
+            },
+        );
+        self.text_input(id!(prompt)).apply_over(
+            cx,
+            live! {
+                draw_text: {
+                    prompt_enabled: 0.0
+                }
+            },
+        );
     }
 
     fn scroll_messages_to_bottom(&mut self, list: &PortalListRef, chat: &Chat) {

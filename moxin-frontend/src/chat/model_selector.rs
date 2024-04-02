@@ -1,5 +1,5 @@
-use makepad_widgets::*;
 use crate::data::store::Store;
+use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 use std::collections::HashMap;
 
@@ -102,7 +102,7 @@ live_design! {
                             draw_bg: {hover: 0.0}
                         }
                     }
-    
+
                     on = {
                         from: {all: Snap}
                         apply: {
@@ -184,7 +184,7 @@ pub struct ModelSelector {
     view: View,
 
     #[rust]
-    open: bool
+    open: bool,
 }
 
 impl Widget for ModelSelector {
@@ -198,15 +198,17 @@ impl Widget for ModelSelector {
     }
 }
 
-
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
             if fd.tap_count == 1 {
                 self.open = !self.open;
-                self.view(id!(options)).apply_over(cx, live!{
-                    visible: (self.open)
-                });
+                self.view(id!(options)).apply_over(
+                    cx,
+                    live! {
+                        visible: (self.open)
+                    },
+                );
                 self.redraw(cx);
             }
         }
@@ -215,23 +217,32 @@ impl WidgetMatchEvent for ModelSelector {
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
                     self.open = false;
-                    self.view(id!(options)).apply_over(cx, live!{
-                        visible: (self.open)
-                    });
-                    self.view(id!(choose)).apply_over(cx, live!{
-                        visible: false
-                    });
+                    self.view(id!(options)).apply_over(
+                        cx,
+                        live! {
+                            visible: (self.open)
+                        },
+                    );
+                    self.view(id!(choose)).apply_over(
+                        cx,
+                        live! {
+                            visible: false
+                        },
+                    );
                     let filename = downloaded_file.file.name;
                     let architecture = downloaded_file.model.architecture;
                     let size = downloaded_file.model.size;
-                    self.view(id!(selected)).apply_over(cx, live!{
-                        visible: true
-                        label = { text: (filename) }
-                        architecture_tag = { caption = { text: (architecture) }}
-                        params_size_tag = { caption = { text: (size) }}
-                    });
+                    self.view(id!(selected)).apply_over(
+                        cx,
+                        live! {
+                            visible: true
+                            label = { text: (filename) }
+                            architecture_tag = { caption = { text: (architecture) }}
+                            params_size_tag = { caption = { text: (size) }}
+                        },
+                    );
                     self.redraw(cx);
-                },
+                }
                 _ => {}
             }
         }
@@ -246,7 +257,8 @@ pub enum ModelSelectorAction {
 
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelSelectorList {
-    #[redraw] #[rust]
+    #[redraw]
+    #[rust]
     area: Area,
 
     #[walk]
@@ -265,7 +277,7 @@ pub struct ModelSelectorList {
     items: ComponentMap<LiveId, WidgetRef>,
 
     #[rust]
-    map_to_downloaded_files: HashMap<LiveId, DownloadedFile>
+    map_to_downloaded_files: HashMap<LiveId, DownloadedFile>,
 }
 
 impl Widget for ModelSelectorList {
@@ -278,7 +290,9 @@ impl Widget for ModelSelectorList {
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
-                        ModelSelectorAction::Selected(self.map_to_downloaded_files.get(id).unwrap().clone()),
+                        ModelSelectorAction::Selected(
+                            self.map_to_downloaded_files.get(id).unwrap().clone(),
+                        ),
                     );
                 }
             }
@@ -303,19 +317,23 @@ impl ModelSelectorList {
         self.map_to_downloaded_files = HashMap::new();
         for i in 0..items.len() {
             let item_id = LiveId(i as u64).into();
-            let item_widget = self.items.get_or_insert(cx, item_id, | cx | {
-                WidgetRef::new_from_ptr(cx, self.template)
-            });
-            self.map_to_downloaded_files.insert(item_id, items[i].clone());
+            let item_widget = self
+                .items
+                .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, self.template));
+            self.map_to_downloaded_files
+                .insert(item_id, items[i].clone());
 
             let caption = &items[i].file.name;
             let architecture = &items[i].model.architecture;
             let param_size = &items[i].model.size;
-            item_widget.apply_over(cx, live!{
-                label = { text: (caption) }
-                architecture_tag = { caption = { text: (architecture) } }
-                params_size_tag = { caption = { text: (param_size) } }
-            });
+            item_widget.apply_over(
+                cx,
+                live! {
+                    label = { text: (caption) }
+                    architecture_tag = { caption = { text: (architecture) } }
+                    params_size_tag = { caption = { text: (param_size) } }
+                },
+            );
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
         }

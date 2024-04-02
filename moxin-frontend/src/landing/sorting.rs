@@ -1,5 +1,5 @@
+use crate::data::store::{SortCriteria, StoreAction};
 use makepad_widgets::*;
-use crate::data::store::{StoreAction, SortCriteria};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -134,7 +134,7 @@ live_design! {
             }
             text: "SORT BY"
         }
-        
+
         options = <ModelsDropDown> {
             width: 220,
             height: Fit,
@@ -150,7 +150,7 @@ live_design! {
 #[derive(Live, LiveHook, Widget)]
 pub struct Sorting {
     #[deref]
-    view: View
+    view: View,
 }
 
 impl Widget for Sorting {
@@ -164,7 +164,6 @@ impl Widget for Sorting {
     }
 }
 
-
 impl WidgetMatchEvent for Sorting {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(item_selected) = self.drop_down(id!(options)).selected(&actions) {
@@ -174,29 +173,32 @@ impl WidgetMatchEvent for Sorting {
                 1 => SortCriteria::LeastDownloads,
                 2 => SortCriteria::MostLikes,
                 3 => SortCriteria::LeastLikes,
-                4_usize.. => panic!()
+                4_usize.. => panic!(),
             };
 
             let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                StoreAction::Sort(criteria),
-            );
+            cx.widget_action(widget_uid, &scope.path, StoreAction::Sort(criteria));
         }
     }
 }
 
 impl SortingRef {
     pub fn set_visible(&self, cx: &mut Cx, visible: bool) {
-        let Some(mut inner) = self.borrow_mut() else { return };
-        inner.apply_over(cx, live!{
-            visible: (visible)
-        });
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.apply_over(
+            cx,
+            live! {
+                visible: (visible)
+            },
+        );
     }
 
     pub fn set_selected_item(&self, criteria: SortCriteria) {
-        let Some(mut inner) = self.borrow_mut() else { return };
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
         let criteria_id = match criteria {
             SortCriteria::MostDownloads => 0,
             SortCriteria::LeastDownloads => 1,

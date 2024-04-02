@@ -1,9 +1,9 @@
-use std::sync::mpsc::{Sender, Receiver, channel};
-use moxin_backend::Backend;
 use makepad_widgets::SignalToUI;
-use std::thread;
+use moxin_backend::Backend;
 use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread;
 
 pub enum ChatTokenArrivalAction {
     AppendDelta(String),
@@ -45,13 +45,15 @@ impl Chat {
 
     pub fn send_message_to_model(&mut self, prompt: String, backend: &Backend) {
         let (tx, rx) = channel();
-        let mut messages: Vec<_> = self.messages.iter().map(|message| {
-            Message {
+        let mut messages: Vec<_> = self
+            .messages
+            .iter()
+            .map(|message| Message {
                 content: message.content.clone(),
                 role: message.role.clone(),
                 name: None,
-            }
-        }).collect();
+            })
+            .collect();
 
         messages.push(Message {
             content: prompt.clone(),
@@ -79,36 +81,46 @@ impl Chat {
             tx,
         );
 
-        self.messages.push(ChatMessage{role: Role::User, content: prompt.clone()});
-        self.messages.push(ChatMessage{role: Role::Assistant, content: "".to_string()});
+        self.messages.push(ChatMessage {
+            role: Role::User,
+            content: prompt.clone(),
+        });
+        self.messages.push(ChatMessage {
+            role: Role::Assistant,
+            content: "".to_string(),
+        });
 
         let store_chat_tx = self.messages_update_sender.clone();
         backend.command_sender.send(cmd).unwrap();
         self.is_streaming = true;
-        thread::spawn(move || {
-            loop {
-                if let Ok(response) = rx.recv() {
-                    match response {
-                        Ok(ChatResponse::ChatResponseChunk(data)) => {
-                            let mut is_done = false;
+        thread::spawn(move || loop {
+            if let Ok(response) = rx.recv() {
+                match response {
+                    Ok(ChatResponse::ChatResponseChunk(data)) => {
+                        let mut is_done = false;
 
-                            store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
-                                data.choices[0].delta.content.clone()
-                            )).unwrap();
+                        store_chat_tx
+                            .send(ChatTokenArrivalAction::AppendDelta(
+                                data.choices[0].delta.content.clone(),
+                            ))
+                            .unwrap();
 
-                            if let Some(_reason) = &data.choices[0].finish_reason {
-                                is_done = true;
-                                store_chat_tx.send(ChatTokenArrivalAction::StreamingDone).unwrap();
-                            }
+                        if let Some(_reason) = &data.choices[0].finish_reason {
+                            is_done = true;
+                            store_chat_tx
+                                .send(ChatTokenArrivalAction::StreamingDone)
+                                .unwrap();
+                        }
 
-                            SignalToUI::set_ui_signal();
-                            if is_done { break; }
-                        },
-                        Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
-                        _ => (),
+                        SignalToUI::set_ui_signal();
+                        if is_done {
+                            break;
+                        }
                     }
-                };
-            }
+                    Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
+                    _ => (),
+                }
+            };
         });
     }
 
@@ -118,10 +130,10 @@ impl Chat {
                 ChatTokenArrivalAction::AppendDelta(response) => {
                     let last = self.messages.last_mut().unwrap();
                     last.content.push_str(&response);
-                },
+                }
                 ChatTokenArrivalAction::StreamingDone => {
                     self.is_streaming = false;
-                },
+                }
             }
         }
     }

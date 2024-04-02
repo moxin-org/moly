@@ -1,10 +1,10 @@
-use std::sync::mpsc::{Sender, Receiver, channel};
-use moxin_backend::Backend;
+use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
-use std::thread;
+use moxin_backend::Backend;
 use moxin_protocol::data::*;
 use moxin_protocol::protocol::Command;
-use anyhow::{Result, anyhow};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread;
 
 pub enum SearchAction {
     Results(Vec<Model>),
@@ -67,7 +67,7 @@ impl Search {
                 match response {
                     Ok(models) => {
                         store_search_tx.send(SearchAction::Results(models)).unwrap();
-                    },
+                    }
                     Err(err) => eprintln!("Error fetching models: {:?}", err),
                 }
                 SignalToUI::set_ui_signal();
@@ -98,7 +98,7 @@ impl Search {
                 match response {
                     Ok(models) => {
                         store_search_tx.send(SearchAction::Results(models)).unwrap();
-                    },
+                    }
                     Err(err) => eprintln!("Error fetching models: {:?}", err),
                 }
                 SignalToUI::set_ui_signal();
@@ -106,7 +106,7 @@ impl Search {
         });
     }
 
-    pub fn process_results(&mut self, backend: &Backend) -> Result<Vec<Model>>{
+    pub fn process_results(&mut self, backend: &Backend) -> Result<Vec<Model>> {
         for msg in self.receiver.try_iter() {
             match msg {
                 SearchAction::Results(models) => {
@@ -120,10 +120,10 @@ impl Search {
                         }
                         Some(SearchCommand::LoadFeaturedModels) => {
                             self.load_featured_models(backend);
-                        },
+                        }
                         None => {}
                     }
-                    return Ok(models)
+                    return Ok(models);
                 }
             }
         }

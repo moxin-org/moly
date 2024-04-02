@@ -1,6 +1,6 @@
 pub mod app;
 
-mod shared;
+mod chat;
 mod data;
 mod landing;
-mod chat;
+mod shared;

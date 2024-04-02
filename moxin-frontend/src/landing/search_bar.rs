@@ -1,6 +1,6 @@
-use makepad_widgets::*;
-use crate::data::store::{StoreAction, SortCriteria};
+use crate::data::store::{SortCriteria, StoreAction};
 use crate::landing::sorting::SortingWidgetExt;
+use makepad_widgets::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -31,7 +31,7 @@ live_design! {
 
                 let distance_vec = self.pos - vec2(0.8, 1.1);
                 let norm_distance = length(vec2(distance_vec.x, distance_vec.y * coef) * 2.2);
-                
+
                 if pow(norm_distance, 1.4) > 1.0 {
                     return self.color;
                 } else {
@@ -176,7 +176,7 @@ pub struct SearchBar {
     animator: Animator,
 
     #[rust]
-    collapsed: bool
+    collapsed: bool,
 }
 
 impl Widget for SearchBar {
@@ -193,7 +193,6 @@ impl Widget for SearchBar {
     }
 }
 
-
 impl WidgetMatchEvent for SearchBar {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(keywords) = self.text_input(id!(input)).changed(actions) {
@@ -206,11 +205,7 @@ impl WidgetMatchEvent for SearchBar {
                 );
             } else {
                 let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    StoreAction::ResetSearch,
-                );
+                cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
             }
         }
     }
@@ -218,36 +213,52 @@ impl WidgetMatchEvent for SearchBar {
 
 impl SearchBarRef {
     pub fn collapse(&self, cx: &mut Cx, selected_sort: SortCriteria) {
-        let Some(mut inner) = self.borrow_mut() else { return };
-        if inner.collapsed { return; }
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        if inner.collapsed {
+            return;
+        }
         inner.collapsed = true;
 
-        inner.apply_over(cx, live!{
-            flow: Right,
-            title = { visible: false }
-            align: {x: 0.0, y: 0.5},
-            padding: {left: 20},
-            spacing: 80,
-            search_sorting = { visible: true }
-        });
+        inner.apply_over(
+            cx,
+            live! {
+                flow: Right,
+                title = { visible: false }
+                align: {x: 0.0, y: 0.5},
+                padding: {left: 20},
+                spacing: 80,
+                search_sorting = { visible: true }
+            },
+        );
 
-        inner.sorting(id!(search_sorting)).set_selected_item(selected_sort);
+        inner
+            .sorting(id!(search_sorting))
+            .set_selected_item(selected_sort);
         inner.animator_play(cx, id!(search_bar.collapsed));
     }
 
     pub fn expand(&self, cx: &mut Cx) {
-        let Some(mut inner) = self.borrow_mut() else { return };
-        if !inner.collapsed { return; }
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        if !inner.collapsed {
+            return;
+        }
         inner.collapsed = false;
 
-        inner.apply_over(cx, live!{
-            flow: Down,
-            title = { visible: true }
-            align: {x: 0.5, y: 0.5},
-            padding: {left: 0},
-            spacing: 50,
-            search_sorting = { visible: false }
-        });
+        inner.apply_over(
+            cx,
+            live! {
+                flow: Down,
+                title = { visible: true }
+                align: {x: 0.5, y: 0.5},
+                padding: {left: 0},
+                spacing: 50,
+                search_sorting = { visible: false }
+            },
+        );
 
         inner.animator_play(cx, id!(search_bar.expanded));
     }

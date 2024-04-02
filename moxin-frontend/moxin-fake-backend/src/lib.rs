@@ -1,7 +1,7 @@
 pub mod fake_data;
 
-use std::sync::mpsc;
 use moxin_protocol::protocol::Command;
+use std::sync::mpsc;
 
 pub struct Backend {
     pub command_sender: mpsc::Sender<Command>,

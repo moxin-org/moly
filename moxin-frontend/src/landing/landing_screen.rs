@@ -1,8 +1,8 @@
-use makepad_widgets::*;
 use crate::data::store::{Store, StoreAction};
+use crate::landing::model_list::ModelListAction;
 use crate::landing::search_bar::SearchBarWidgetExt;
 use crate::landing::sorting::SortingWidgetExt;
-use crate::landing::model_list::ModelListAction;
+use makepad_widgets::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -97,10 +97,11 @@ live_design! {
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum SearchBarState {
-    #[default] ExpandedWithoutFilters,
+    #[default]
+    ExpandedWithoutFilters,
     ExpandedWithFilters,
     CollapsedWithoutFilters,
-    CollapsedWithFilters
+    CollapsedWithFilters,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -109,7 +110,7 @@ pub struct LandingScreen {
     view: View,
 
     #[rust]
-    search_bar_state: SearchBarState
+    search_bar_state: SearchBarState,
 }
 
 impl Widget for LandingScreen {
@@ -126,8 +127,10 @@ impl Widget for LandingScreen {
 
             let models = &store.models;
             let models_count = models.len();
-            self.label(id!(heading_with_filters.results)).set_text(&format!("{} Results", models_count));
-            self.label(id!(heading_with_filters.keyword)).set_text(&format!(" for \"{}\"", keyword));
+            self.label(id!(heading_with_filters.results))
+                .set_text(&format!("{} Results", models_count));
+            self.label(id!(heading_with_filters.keyword))
+                .set_text(&format!(" for \"{}\"", keyword));
         } else {
             self.view(id!(heading_with_filters)).set_visible(false);
             self.view(id!(heading_no_filters)).set_visible(true);
@@ -167,7 +170,8 @@ impl WidgetMatchEvent for LandingScreen {
 
                     if collapse {
                         let store = scope.data.get::<Store>().unwrap();
-                        self.search_bar(id!(search_bar)).collapse(cx, store.sorted_by);
+                        self.search_bar(id!(search_bar))
+                            .collapse(cx, store.sorted_by);
                         self.sorting(id!(sorting)).set_visible(cx, false);
                         self.redraw(cx);
                     }
@@ -176,31 +180,27 @@ impl WidgetMatchEvent for LandingScreen {
             }
 
             match action.as_widget_action().cast() {
-                StoreAction::Search(_keywords) => {
-                    match self.search_bar_state {
-                        SearchBarState::CollapsedWithoutFilters => {
-                            self.search_bar_state = SearchBarState::CollapsedWithFilters;
-                        }
-                        SearchBarState::ExpandedWithoutFilters => {
-                            self.search_bar_state = SearchBarState::ExpandedWithFilters;
+                StoreAction::Search(_keywords) => match self.search_bar_state {
+                    SearchBarState::CollapsedWithoutFilters => {
+                        self.search_bar_state = SearchBarState::CollapsedWithFilters;
+                    }
+                    SearchBarState::ExpandedWithoutFilters => {
+                        self.search_bar_state = SearchBarState::ExpandedWithFilters;
 
-                            let store = scope.data.get::<Store>().unwrap();
-                            let sorting_ref = self.sorting(id!(sorting));
-                            sorting_ref.set_visible(cx, true);
-                            sorting_ref.set_selected_item(store.sorted_by);
-                        }
-                        _ => {}
+                        let store = scope.data.get::<Store>().unwrap();
+                        let sorting_ref = self.sorting(id!(sorting));
+                        sorting_ref.set_visible(cx, true);
+                        sorting_ref.set_selected_item(store.sorted_by);
                     }
-                }
-                StoreAction::ResetSearch => {
-                    match self.search_bar_state {
-                        SearchBarState::ExpandedWithFilters | SearchBarState::CollapsedWithFilters => {
-                            self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
-                            self.search_bar(id!(search_bar)).expand(cx);
-                            self.sorting(id!(sorting)).set_visible(cx, false);
-                        }
-                        _ => {}
+                    _ => {}
+                },
+                StoreAction::ResetSearch => match self.search_bar_state {
+                    SearchBarState::ExpandedWithFilters | SearchBarState::CollapsedWithFilters => {
+                        self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
+                        self.search_bar(id!(search_bar)).expand(cx);
+                        self.sorting(id!(sorting)).set_visible(cx, false);
                     }
+                    _ => {}
                 },
                 _ => {}
             }

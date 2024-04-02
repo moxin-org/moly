@@ -1,6 +1,6 @@
-use makepad_widgets::*;
 use crate::data::store::{Store, StoreAction};
-use moxin_protocol::data::{Model, File};
+use makepad_widgets::*;
+use moxin_protocol::data::{File, Model};
 use std::collections::HashMap;
 
 live_design! {
@@ -154,7 +154,7 @@ live_design! {
                     border_width: 0.5,
                     color: #FFF,
                 }
-        
+
                 quantization = <Label> {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 9},
@@ -389,11 +389,11 @@ impl Widget for ModelFilesItems {
 }
 
 impl WidgetNode for ModelFilesItems {
-    fn walk(&mut self, _cx:&mut Cx) -> Walk{
+    fn walk(&mut self, _cx: &mut Cx) -> Walk {
         self.walk
     }
 
-    fn redraw(&mut self, cx: &mut Cx){
+    fn redraw(&mut self, cx: &mut Cx) {
         self.area.redraw(cx)
     }
 
@@ -416,26 +416,31 @@ impl ModelFilesItems {
                 self.template_download
             };
             let item_id = LiveId(i as u64).into();
-            let item_widget = self.items.get_or_insert(cx, item_id, | cx | {
-                WidgetRef::new_from_ptr(cx, template)
-            });
+            let item_widget = self
+                .items
+                .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, template));
             self.map_to_files.insert(item_id, files[i].clone());
 
             let filename = &files[i].name;
             let size = &files[i].size;
             let quantization = &files[i].quantization;
-            item_widget.apply_over(cx, live!{
-                cell1 = {
-                    filename = { text: (filename) }
-                }
-                cell2 = { full_size = { text: (size) }}
-                cell3 = {
-                    quantization_tag = { quantization = { text: (quantization) }}
-                 }
-            });
+            item_widget.apply_over(
+                cx,
+                live! {
+                    cell1 = {
+                        filename = { text: (filename) }
+                    }
+                    cell2 = { full_size = { text: (size) }}
+                    cell3 = {
+                        quantization_tag = { quantization = { text: (quantization) }}
+                     }
+                },
+            );
 
             if self.show_tags {
-                item_widget.model_files_tags(id!(tags)).set_tags(cx, &files[i].tags);
+                item_widget
+                    .model_files_tags(id!(tags))
+                    .set_tags(cx, &files[i].tags);
             }
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
@@ -445,14 +450,17 @@ impl ModelFilesItems {
 
 impl ModelFilesItemsRef {
     fn get_height(&mut self, cx: &mut Cx) -> f64 {
-        let Some(inner) = self.borrow_mut() else { return 0.0 };
+        let Some(inner) = self.borrow_mut() else {
+            return 0.0;
+        };
         inner.area.rect(cx).size.y
     }
 }
 
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelFilesTags {
-    #[redraw] #[rust]
+    #[redraw]
+    #[rust]
     area: Area,
 
     #[walk]
@@ -477,7 +485,7 @@ impl Widget for ModelFilesTags {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         cx.begin_turtle(walk, self.layout);
-        for (_id, item) in self.items.iter_mut() { 
+        for (_id, item) in self.items.iter_mut() {
             let _ = item.draw_walk(cx, scope, walk);
         }
         cx.end_turtle_with_area(&mut self.area);
@@ -487,12 +495,14 @@ impl Widget for ModelFilesTags {
 
 impl ModelFilesTagsRef {
     pub fn set_tags(&self, cx: &mut Cx, tags: &Vec<String>) {
-        let Some(mut tags_widget) = self.borrow_mut() else { return };
+        let Some(mut tags_widget) = self.borrow_mut() else {
+            return;
+        };
         tags_widget.items.clear();
         for (i, tag) in tags.iter().enumerate() {
             let item_id = LiveId(i as u64).into();
             let item_widget = WidgetRef::new_from_ptr(cx, tags_widget.template);
-            item_widget.apply_over(cx, live!{label = { text: (tag) }});
+            item_widget.apply_over(cx, live! {label = { text: (tag) }});
             tags_widget.items.insert(item_id, item_widget);
         }
     }
@@ -500,7 +510,8 @@ impl ModelFilesTagsRef {
 
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelFilesList {
-    #[deref] view: View,
+    #[deref]
+    view: View,
 
     #[live]
     show_all_animation_progress: f64,
@@ -521,7 +532,7 @@ impl Widget for ModelFilesList {
             if let Some(total_height) = self.actual_height {
                 let height = self.show_all_animation_progress * total_height;
                 self.view(id!(remaining_files_wrapper))
-                    .apply_over(cx, live!{height: (height)});
+                    .apply_over(cx, live! {height: (height)});
                 self.redraw(cx);
             }
         }
@@ -575,7 +586,9 @@ impl WidgetMatchEvent for ModelFilesList {
 
 impl ModelFilesList {
     fn apply_links_visibility(&mut self, cx: &mut Cx, show_all: bool) {
-        self.view(id!(all_files_link)).apply_over(cx, live!{visible: (!show_all)});
-        self.view(id!(only_recommended_link)).apply_over(cx, live!{visible: (show_all)});
+        self.view(id!(all_files_link))
+            .apply_over(cx, live! {visible: (!show_all)});
+        self.view(id!(only_recommended_link))
+            .apply_over(cx, live! {visible: (show_all)});
     }
 }

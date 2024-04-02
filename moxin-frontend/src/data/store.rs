@@ -1,15 +1,11 @@
+use crate::data::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
-use moxin_protocol::data::{Model, File, FileID, DownloadedFile};
-use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
-use moxin_backend::Backend;
-use std::sync::mpsc::channel;
 use makepad_widgets::DefaultNone;
-use crate::data::{
-    chat::Chat,
-    download::Download,
-    search::Search,
-};
+use moxin_backend::Backend;
+use moxin_protocol::data::{DownloadedFile, File, FileID, Model};
+use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::collections::HashMap;
+use std::sync::mpsc::channel;
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum StoreAction {
@@ -21,7 +17,8 @@ pub enum StoreAction {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub enum SortCriteria {
-    #[default] MostDownloads,
+    #[default]
+    MostDownloads,
     LeastDownloads,
     MostLikes,
     LeastLikes,
@@ -42,8 +39,6 @@ pub struct Store {
 
     pub current_chat: Option<Chat>,
     pub current_downloads: HashMap<FileID, Download>,
-
-    
 }
 
 impl Store {
@@ -75,8 +70,7 @@ impl Store {
 
     pub fn load_downloaded_files(&mut self) {
         let (tx, rx) = channel();
-        self
-            .backend
+        self.backend
             .command_sender
             .send(Command::GetDownloadedFiles(tx))
             .unwrap();
@@ -85,14 +79,15 @@ impl Store {
             match response {
                 Ok(files) => {
                     self.downloaded_files = files;
-                },
+                }
                 Err(err) => eprintln!("Error fetching downloaded files: {:?}", err),
             }
         };
     }
 
     pub fn download_file(&mut self, file: &File) {
-        self.current_downloads.insert(file.id.clone(), Download::new(file.clone(), &self.backend));
+        self.current_downloads
+            .insert(file.id.clone(), Download::new(file.clone(), &self.backend));
     }
 
     pub fn load_model(&mut self, file: &File) {
@@ -107,16 +102,13 @@ impl Store {
                 n_ctx: 512,
                 rope_freq_scale: 0.0,
                 rope_freq_base: 0.0,
-                context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+                context_overflow_policy:
+                    moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
             },
             tx,
         );
 
-        self
-            .backend
-            .command_sender
-            .send(cmd)
-            .unwrap();
+        self.backend.command_sender.send(cmd).unwrap();
 
         if let Ok(response) = rx.recv() {
             match response {
@@ -126,7 +118,7 @@ impl Store {
                         return;
                     };
                     self.current_chat = Some(Chat::new(loaded_model.file_id.clone()));
-                },
+                }
                 Err(err) => eprintln!("Error loading model: {:?}", err),
             }
         };
@@ -147,12 +139,14 @@ impl Store {
     fn update_search_results(&mut self) {
         if let Ok(models) = self.search.process_results(&self.backend) {
             self.models = models;
-            self.sort_models_by_current_criteria(); 
+            self.sort_models_by_current_criteria();
         }
     }
 
     fn update_chat_messages(&mut self) {
-        let Some(ref mut chat) = self.current_chat else { return };
+        let Some(ref mut chat) = self.current_chat else {
+            return;
+        };
         chat.update_messages();
     }
 
@@ -162,17 +156,17 @@ impl Store {
         }
     }
 
-
-
     // Utility functions
 
     pub fn sort_models(&mut self, criteria: SortCriteria) {
         match criteria {
             SortCriteria::MostDownloads => {
-                self.models.sort_by(|a, b| b.download_count.cmp(&a.download_count));
+                self.models
+                    .sort_by(|a, b| b.download_count.cmp(&a.download_count));
             }
             SortCriteria::LeastDownloads => {
-                self.models.sort_by(|a, b| a.download_count.cmp(&b.download_count));
+                self.models
+                    .sort_by(|a, b| a.download_count.cmp(&b.download_count));
             }
             SortCriteria::MostLikes => {
                 self.models.sort_by(|a, b| b.like_count.cmp(&a.like_count));
@@ -199,6 +193,11 @@ impl Store {
     }
 
     pub fn model_other_files(model: &Model) -> Vec<File> {
-        model.files.iter().filter(|f| !f.featured).cloned().collect()
+        model
+            .files
+            .iter()
+            .filter(|f| !f.featured)
+            .cloned()
+            .collect()
     }
 }

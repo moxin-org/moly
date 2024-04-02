@@ -1,6 +1,6 @@
-use makepad_widgets::*;
 use crate::data::store::*;
 use crate::landing::model_files_list::ModelFileItemsAction;
+use makepad_widgets::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -175,22 +175,23 @@ impl AppMain for App {
 }
 
 impl MatchEvent for App {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions){
-        self.ui.radio_button_set(ids!(
-            sidebar_menu.tab1,
-            sidebar_menu.tab2,
-            sidebar_menu.tab3,
-        ))
-        .selected_to_visible(
-            cx,
-            &self.ui,
-            &actions,
-            ids!(
-                application_pages.tab1_frame,
-                application_pages.tab2_frame,
-                application_pages.tab3_frame,
-            ),
-        );
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        self.ui
+            .radio_button_set(ids!(
+                sidebar_menu.tab1,
+                sidebar_menu.tab2,
+                sidebar_menu.tab3,
+            ))
+            .selected_to_visible(
+                cx,
+                &self.ui,
+                &actions,
+                ids!(
+                    application_pages.tab1_frame,
+                    application_pages.tab2_frame,
+                    application_pages.tab3_frame,
+                ),
+            );
 
         for action in actions.iter() {
             match action.as_widget_action().cast() {

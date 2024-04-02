@@ -1,5 +1,5 @@
-use makepad_widgets::*;
 use crate::data::store::{Store, StoreAction};
+use makepad_widgets::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -30,7 +30,7 @@ live_design! {
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelList {
     #[deref]
-    view: View
+    view: View,
 }
 
 impl Widget for ModelList {
@@ -44,7 +44,7 @@ impl Widget for ModelList {
         let models = &store.models;
         let models_count = models.len();
 
-        while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step(){
+        while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, models_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
@@ -88,19 +88,12 @@ impl WidgetMatchEvent for ModelList {
 
         if portal_list_ref.scrolled(actions) {
             let widget_uid = self.widget_uid();
-            if portal_list_ref.first_id() == 0 &&
-                portal_list_ref.scroll_position() > SCROLLING_AT_TOP_THRESHOLD {
-                    cx.widget_action(
-                        widget_uid,
-                        &scope.path,
-                        ModelListAction::ScrolledAtTop,
-                    );
+            if portal_list_ref.first_id() == 0
+                && portal_list_ref.scroll_position() > SCROLLING_AT_TOP_THRESHOLD
+            {
+                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledAtTop);
             } else {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ModelListAction::ScrolledNotAtTop,
-                );
+                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledNotAtTop);
             }
         }
     }

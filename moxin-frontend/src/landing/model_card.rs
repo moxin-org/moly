@@ -1,6 +1,6 @@
+use crate::data::store::Store;
 use makepad_widgets::*;
 use moxin_protocol::data::Model;
-use crate::data::store::Store;
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
@@ -114,7 +114,7 @@ live_design! {
                 model_released_at_tag = <ModelAttributeTag> {
                     width: Fit,
                     height: Fit,
-    
+
                     draw_bg: {
                         color: #0000,
                         border_color: #98A2B3,
@@ -259,24 +259,31 @@ impl Widget for ModelCard {
         self.label(id!(model_name)).set_text(name);
 
         let download_count = &model.download_count;
-        self.label(id!(model_download_count)).set_text(&format!("{}", download_count));
+        self.label(id!(model_download_count))
+            .set_text(&format!("{}", download_count));
 
         let like_count = &model.like_count;
-        self.label(id!(model_like_count)).set_text(&format!("{}", like_count));
+        self.label(id!(model_like_count))
+            .set_text(&format!("{}", like_count));
 
         let size = &model.size;
         self.label(id!(model_size_tag.attr_value)).set_text(size);
 
         let requires = &model.requires;
-        self.label(id!(model_requires_tag.attr_value)).set_text(requires);
+        self.label(id!(model_requires_tag.attr_value))
+            .set_text(requires);
 
         let architecture = &model.architecture;
-        self.label(id!(model_architecture_tag.attr_value)).set_text(architecture);
+        self.label(id!(model_architecture_tag.attr_value))
+            .set_text(architecture);
 
         let summary = &model.summary;
         const MAX_SUMMARY_LENGTH: usize = 500;
         let trimmed_summary = if summary.len() > MAX_SUMMARY_LENGTH {
-            let trimmed = summary.graphemes(true).take(MAX_SUMMARY_LENGTH).collect::<String>();
+            let trimmed = summary
+                .graphemes(true)
+                .take(MAX_SUMMARY_LENGTH)
+                .collect::<String>();
             format!("{}...", trimmed)
         } else {
             summary.to_string()
@@ -287,10 +294,12 @@ impl Widget for ModelCard {
         self.link_label(id!(author_name.link)).set_text(author_name);
 
         let author_description = &model.author.description;
-        self.label(id!(author_description)).set_text(&author_description);
+        self.label(id!(author_description))
+            .set_text(&author_description);
 
         let released_at_str = Store::formatted_model_release_date(model);
-        self.label(id!(model_released_at_tag.attr_value)).set_text(&released_at_str);
+        self.label(id!(model_released_at_tag.attr_value))
+            .set_text(&released_at_str);
 
         self.view.draw_walk(cx, scope, walk)
     }

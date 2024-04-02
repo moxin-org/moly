@@ -1,9 +1,9 @@
-use std::sync::mpsc::{Sender, Receiver, channel};
-use moxin_backend::Backend;
 use makepad_widgets::SignalToUI;
-use std::thread;
+use moxin_backend::Backend;
 use moxin_protocol::data::*;
 use moxin_protocol::protocol::{Command, FileDownloadResponse};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread;
 
 pub enum DownloadFileAction {
     Progress(FileID, f32),
@@ -36,33 +36,32 @@ impl Download {
 
         let store_download_tx = self.sender.clone();
         let cmd = Command::DownloadFile(self.file.id.clone(), tx);
-        backend
-            .command_sender
-            .send(cmd)
-            .unwrap();
+        backend.command_sender.send(cmd).unwrap();
 
-        thread::spawn(move || {
-            loop {
-                let mut is_done = false;
-                if let Ok(response) = rx.recv() {
-                    match response {
-                        Ok(response) => {
-                            match response {
-                                FileDownloadResponse::Completed(_completed) => {
-                                    is_done = true;
-                                    store_download_tx.send(DownloadFileAction::StreamingDone).unwrap();
-                                }
-                                FileDownloadResponse::Progress(file, value) => {
-                                    store_download_tx.send(DownloadFileAction::Progress(file, value)).unwrap();
-                                }
-                            }
-                        },
-                        Err(err) => eprintln!("Error downloading file: {:?}", err),
-                    }
-                };
+        thread::spawn(move || loop {
+            let mut is_done = false;
+            if let Ok(response) = rx.recv() {
+                match response {
+                    Ok(response) => match response {
+                        FileDownloadResponse::Completed(_completed) => {
+                            is_done = true;
+                            store_download_tx
+                                .send(DownloadFileAction::StreamingDone)
+                                .unwrap();
+                        }
+                        FileDownloadResponse::Progress(file, value) => {
+                            store_download_tx
+                                .send(DownloadFileAction::Progress(file, value))
+                                .unwrap();
+                        }
+                    },
+                    Err(err) => eprintln!("Error downloading file: {:?}", err),
+                }
+            };
 
-                SignalToUI::set_ui_signal();
-                if is_done { break; }
+            SignalToUI::set_ui_signal();
+            if is_done {
+                break;
             }
         });
     }
@@ -73,10 +72,10 @@ impl Download {
                 DownloadFileAction::StreamingDone => {
                     self.done = true;
                     println!("Download complete");
-                },
+                }
                 DownloadFileAction::Progress(file, value) => {
                     println!("Download {:?} progress: {:?}", file, value);
-                },
+                }
             }
         }
     }

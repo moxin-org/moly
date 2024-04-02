@@ -17,7 +17,7 @@ live_design! {
             width: 200,
             height: Fill,
         }
-    
+
         chat_panel = <ChatPanel> {
             width: Fill,
             height: Fill,
@@ -26,8 +26,8 @@ live_design! {
         <View> {
             width: 200,
             height: Fill,
-        }   
-    }    
+        }
+    }
 }
 
 #[derive(Live, LiveHook, Widget)]
