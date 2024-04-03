@@ -820,6 +820,7 @@ impl BackendImpl {
                                         },
                                         like_count: model.like_count,
                                         download_count: model.download_count,
+                                        metrics: Default::default(),
                                     }
                                 } else {
                                     Model::default()

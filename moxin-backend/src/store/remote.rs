@@ -38,6 +38,8 @@ pub struct RemoteModel {
     pub author: Author,
     pub like_count: u32,
     pub download_count: u32,
+    #[serde(default)]
+    pub metrics: HashMap<String, f32>,
 }
 
 impl RemoteModel {
@@ -109,6 +111,7 @@ impl RemoteModel {
                 },
                 like_count: remote_m.like_count.clone(),
                 download_count: remote_m.download_count.clone(),
+                metrics: remote_m.metrics.clone(),
             };
 
             models.push(model);
