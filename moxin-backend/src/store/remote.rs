@@ -41,6 +41,18 @@ pub struct RemoteModel {
 }
 
 impl RemoteModel {
+    pub fn search(search_text: &str, limit: usize, offset: usize) -> reqwest::Result<Vec<Self>> {
+        let url = format!("https://code.flows.network/webhook/DsbnEK45sK3NUzFUyZ9C/models?status=published&trace_status=tracing&order=most_likes&offset={offset}&limit={limit}&search={search_text}");
+        let response = reqwest::blocking::get(&url)?;
+        response.json()
+    }
+
+    pub fn get_featured_model(limit: usize, offset: usize) -> reqwest::Result<Vec<Self>> {
+        let url = format!("https://code.flows.network/webhook/DsbnEK45sK3NUzFUyZ9C/models?status=published&trace_status=tracing&order=most_likes&offset={offset}&limit={limit}&featured=featured");
+        let response = reqwest::blocking::get(&url)?;
+        response.json()
+    }
+
     pub fn to_model(
         remote_models: &[Self],
         conn: &rusqlite::Connection,
@@ -265,14 +277,8 @@ fn test_download_file_from_huggingface() {
     .unwrap();
 }
 
-pub fn search(search_text: &str, limit: usize, offset: usize) -> reqwest::Result<Vec<RemoteModel>> {
-    let url = format!("https://code.flows.network/webhook/DsbnEK45sK3NUzFUyZ9C/models?status=published&trace_status=tracing&order=most_likes&offset={offset}&limit={limit}&search={search_text}");
-    let response = reqwest::blocking::get(&url)?;
-    response.json()
-}
-
 #[test]
 fn test_search() {
-    let models = search("llama", 100, 0).unwrap();
+    let models = RemoteModel::search("llama", 100, 0).unwrap();
     println!("{:?}", models);
 }

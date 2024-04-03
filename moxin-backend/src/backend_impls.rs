@@ -699,11 +699,22 @@ impl BackendImpl {
         match built_in_cmd {
             BuiltInCommand::Model(file) => match file {
                 ModelManagementCommand::GetFeaturedModels(tx) => {
-                    // TODO: Featured Models have not been set up yet, so return an empty list here.
-                    let _ = tx.send(Ok(vec![]));
+                    let res = store::RemoteModel::get_featured_model(100, 0);
+                    match res {
+                        Ok(remote_model) => {
+                            let sql_conn = self.sql_conn.lock().unwrap();
+                            let models = RemoteModel::to_model(&remote_model, &sql_conn)
+                                .map_err(|e| anyhow::anyhow!("get featured error: {e}"));
+
+                            let _ = tx.send(models);
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(anyhow::anyhow!("get featured models error: {e}")));
+                        }
+                    }
                 }
                 ModelManagementCommand::SearchModels(search_text, tx) => {
-                    let res = store::search(&search_text, 100, 0);
+                    let res = store::RemoteModel::search(&search_text, 100, 0);
                     match res {
                         Ok(remote_model) => {
                             let sql_conn = self.sql_conn.lock().unwrap();
@@ -723,7 +734,7 @@ impl BackendImpl {
                         let (model_id, file) = file_id
                             .split_once("#")
                             .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
-                        let mut res = store::search(&model_id, 10, 0)
+                        let mut res = store::RemoteModel::search(&model_id, 10, 0)
                             .map_err(|e| anyhow::anyhow!("search models error: {e}"))?;
                         let remote_model = res
                             .pop()
