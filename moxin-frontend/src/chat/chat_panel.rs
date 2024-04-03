@@ -1,3 +1,4 @@
+use crate::chat::chat_line::*;
 use crate::chat::model_selector::ModelSelectorAction;
 use crate::data::chat::Chat;
 use crate::data::store::Store;
@@ -374,6 +375,7 @@ impl Widget for ChatPanel {
                         item.label(id!(chat_label))
                             .set_text(&chat_line_data.content.trim());
 
+                        item.as_chat_line().set_message_id(chat_line_data.id);
                         item.draw_all(cx, &mut Scope::with_data(&mut chat_line_data.clone()));
                     }
                 }
@@ -397,6 +399,15 @@ impl WidgetMatchEvent for ChatPanel {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.load_model(&downloaded_file.file);
                     self.prompt_enabled = true;
+                }
+                _ => {}
+            }
+
+            match action.as_widget_action().cast() {
+                ChatLineAction::Delete(id) => {
+                    let store = scope.data.get_mut::<Store>().unwrap();
+                    store.delete_chat_message(id);
+                    self.redraw(cx);
                 }
                 _ => {}
             }

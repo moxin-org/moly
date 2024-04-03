@@ -130,6 +130,12 @@ impl Store {
         }
     }
 
+    pub fn delete_chat_message(&mut self, message_id: usize) {
+        if let Some(chat) = &mut self.current_chat {
+            chat.delete_message(message_id);
+        }
+    }
+
     pub fn process_event_signal(&mut self) {
         self.update_downloads();
         self.update_chat_messages();
