@@ -288,8 +288,8 @@ pub struct ChatPanel {
     #[rust]
     auto_scroll_cancellable: bool,
 
-    #[rust(true)]
-    prompt_enabled: bool,
+    #[rust]
+    is_chat_streaming: bool,
 }
 
 impl Widget for ChatPanel {
@@ -303,14 +303,14 @@ impl Widget for ChatPanel {
                 self.auto_scroll_cancellable = true;
                 let list = self.portal_list(id!(chat));
 
-                self.prompt_enabled = !store.current_chat.as_ref().unwrap().is_streaming;
-                if self.prompt_enabled {
+                self.is_chat_streaming = store.current_chat.as_ref().unwrap().is_streaming;
+                if self.is_chat_streaming {
+                    self.disable_prompt_input(cx);
+                } else {
                     // Scroll to the bottom when streaming is done
                     self.scroll_messages_to_bottom(&list, chat);
                     self.auto_scroll_pending = false;
                     self.enable_prompt_input(cx);
-                } else {
-                    self.disable_prompt_input(cx);
                 }
 
                 if self.auto_scroll_pending {
@@ -375,7 +375,16 @@ impl Widget for ChatPanel {
                         item.label(id!(chat_label))
                             .set_text(&chat_line_data.content.trim());
 
-                        item.as_chat_line().set_message_id(chat_line_data.id);
+                        let mut chat_line_item = item.as_chat_line();
+                        chat_line_item.set_message_id(chat_line_data.id);
+
+                        // Disable actions for the last chat line when model is streaming
+                        if self.is_chat_streaming && item_id == chats_count - 1 {
+                            chat_line_item.set_actions_enabled(false);
+                        } else {
+                            chat_line_item.set_actions_enabled(true);
+                        }
+
                         item.draw_all(cx, &mut Scope::with_data(&mut chat_line_data.clone()));
                     }
                 }
@@ -398,7 +407,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.load_model(&downloaded_file.file);
-                    self.prompt_enabled = true;
+                    self.is_chat_streaming = false;
                 }
                 _ => {}
             }
@@ -414,7 +423,7 @@ impl WidgetMatchEvent for ChatPanel {
         }
 
         if let Some(text) = self.text_input(id!(prompt)).changed(actions) {
-            if self.prompt_enabled && text.len() > 0 {
+            if !self.is_chat_streaming && text.len() > 0 {
                 self.enable_prompt_input(cx);
             } else {
                 self.disable_prompt_input(cx);
@@ -427,13 +436,13 @@ impl WidgetMatchEvent for ChatPanel {
             self.auto_scroll_pending = false;
         }
 
-        if self.prompt_enabled {
+        if !self.is_chat_streaming {
             if let Some(prompt) = self.text_input(id!(prompt)).returned(actions) {
                 if prompt.trim().is_empty() {
                     return;
                 }
 
-                self.prompt_enabled = false;
+                self.is_chat_streaming = true;
                 self.disable_prompt_input(cx);
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.send_chat_message(prompt.clone());

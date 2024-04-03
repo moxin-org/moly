@@ -1,8 +1,5 @@
 use makepad_widgets::*;
 
-use crate::data::chat::ChatMessage;
-use crate::data::store::Store;
-
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
@@ -93,15 +90,20 @@ pub struct ChatLine {
 
     #[rust]
     message_id: usize,
+
+    #[rust]
+    actions_enabled: bool,
 }
 
 impl Widget for ChatLine {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let actions = cx.capture_actions(|cx| self.view.handle_event(cx, event, scope));
         if let Some(action) = actions.find_widget_action(self.view.widget_uid()) {
-            if let ViewAction::FingerHoverIn(_) = action.cast() {
-                self.view(id!(actions_section.actions)).set_visible(true);
-                self.redraw(cx);
+            if self.actions_enabled {
+                if let ViewAction::FingerHoverIn(_) = action.cast() {
+                    self.view(id!(actions_section.actions)).set_visible(true);
+                    self.redraw(cx);
+                }
             }
             if let ViewAction::FingerHoverOut(_) = action.cast() {
                 self.view(id!(actions_section.actions)).set_visible(false);
@@ -130,5 +132,12 @@ impl ChatLineRef {
             return;
         };
         inner.message_id = message_id;
+    }
+
+    pub fn set_actions_enabled(&mut self, enabled: bool) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.actions_enabled = enabled;
     }
 }
