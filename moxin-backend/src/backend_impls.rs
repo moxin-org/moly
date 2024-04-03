@@ -794,66 +794,13 @@ impl BackendImpl {
                 }
 
                 ModelManagementCommand::GetDownloadedFiles(tx) => {
-                    let get_all_download_file =
-                        || -> rusqlite::Result<Vec<moxin_protocol::data::DownloadedFile>> {
-                            let conn = self.sql_conn.lock().unwrap();
-                            let files = store::download_files::DownloadedFile::get_all(&conn)?;
-                            let models = store::models::Model::get_all(&conn)?;
+                    let downloads = {
+                        let conn = self.sql_conn.lock().unwrap();
+                        store::get_all_download_file(&conn)
+                            .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
+                    };
 
-                            let mut downloaded_files = Vec::with_capacity(files.len());
-
-                            for (_id, file) in files {
-                                let model = if let Some(model) = models.get(&file.model_id) {
-                                    Model {
-                                        id: model.id.to_string(),
-                                        name: model.name.clone(),
-                                        summary: model.summary.clone(),
-                                        size: model.size.clone(),
-                                        requires: model.requires.clone(),
-                                        architecture: model.architecture.clone(),
-                                        released_at: model.released_at.clone(),
-                                        files: vec![],
-                                        author: moxin_protocol::data::Author {
-                                            name: model.author.name.clone(),
-                                            url: model.author.url.clone(),
-                                            description: model.author.description.clone(),
-                                        },
-                                        like_count: model.like_count,
-                                        download_count: model.download_count,
-                                        metrics: Default::default(),
-                                    }
-                                } else {
-                                    Model::default()
-                                };
-
-                                let downloaded_file = DownloadedFile {
-                                    file: moxin_protocol::data::File {
-                                        id: file.id.to_string(),
-                                        name: file.name,
-                                        size: file.size,
-                                        quantization: file.quantization,
-                                        downloaded: true,
-                                        downloaded_path: Some(file.downloaded_path),
-                                        tags: file.tags,
-                                        featured: false,
-                                    },
-                                    model,
-                                    downloaded_at: file.downloaded_at,
-                                    compatibility_guess:
-                                        moxin_protocol::data::CompatibilityGuess::PossiblySupported,
-                                    information: String::new(),
-                                };
-
-                                downloaded_files.push(downloaded_file);
-                            }
-
-                            Ok(downloaded_files)
-                        };
-
-                    let _ = tx.send(
-                        get_all_download_file()
-                            .map_err(|e| anyhow::anyhow!("get download file error: {e}")),
-                    );
+                    let _ = tx.send(downloads);
                 }
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {
