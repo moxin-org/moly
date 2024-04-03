@@ -11,6 +11,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::chat::model_selector::ModelSelector;
+    import crate::chat::chat_line::ChatLine;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
 
@@ -48,26 +49,6 @@ live_design! {
         }
     }
 
-    UserChatLine = <View> {
-        margin: {top: 20, bottom: 5},
-        width: Fill,
-        height: Fit,
-
-        <View> {
-            width: Fit,
-            height: Fit,
-            margin: {left: 20, right: 20},
-
-            <Image> {
-                source: dep("crate://self/resources/images/chat_user_icon.png"),
-                width: 20,
-                height: 20,
-            }
-        }
-
-        <ChatLineBody> {}
-    }
-
     ChatAgentAvatar = <RoundedView> {
         width: 20,
         height: 20,
@@ -90,20 +71,26 @@ live_design! {
         }
     }
 
-    ModelChatLine = <View> {
-        margin: {top: 20, bottom: 5},
-        width: Fill,
-        height: Fit,
+    UserChatLine = <ChatLine> {
+        avatar_section = {
+            <Image> {
+                source: dep("crate://self/resources/images/chat_user_icon.png"),
+                width: 20,
+                height: 20,
+            }
+        }
+        main_section = {
+            body_section =  <ChatLineBody> {}
+        }
+    }
 
-        <View> {
-            width: Fit,
-            height: Fit,
-            margin: {left: 20, right: 20},
-
+    ModelChatLine = <ChatLine> {
+        avatar_section = {
             <ChatAgentAvatar> {}
         }
-
-        <ChatLineBody> {}
+        main_section = {
+            body_section = <ChatLineBody> {}
+        }
     }
 
     ChatPromptInput = <RoundedView> {
