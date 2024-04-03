@@ -16,7 +16,7 @@ pub struct RemoteFile {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct Author {
     pub name: String,
     pub url: String,
