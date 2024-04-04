@@ -16,7 +16,7 @@ pub struct RemoteFile {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct Author {
     pub name: String,
     pub url: String,
@@ -38,9 +38,23 @@ pub struct RemoteModel {
     pub author: Author,
     pub like_count: u32,
     pub download_count: u32,
+    #[serde(default)]
+    pub metrics: Option<HashMap<String, f32>>,
 }
 
 impl RemoteModel {
+    pub fn search(search_text: &str, limit: usize, offset: usize) -> reqwest::Result<Vec<Self>> {
+        let url = format!("https://code.flows.network/webhook/DsbnEK45sK3NUzFUyZ9C/models?status=published&trace_status=tracing&order=most_likes&offset={offset}&limit={limit}&search={search_text}");
+        let response = reqwest::blocking::get(&url)?;
+        response.json()
+    }
+
+    pub fn get_featured_model(limit: usize, offset: usize) -> reqwest::Result<Vec<Self>> {
+        let url = format!("https://code.flows.network/webhook/DsbnEK45sK3NUzFUyZ9C/models?status=published&trace_status=tracing&order=most_likes&offset={offset}&limit={limit}&featured=featured");
+        let response = reqwest::blocking::get(&url)?;
+        response.json()
+    }
+
     pub fn to_model(
         remote_models: &[Self],
         conn: &rusqlite::Connection,
@@ -97,6 +111,7 @@ impl RemoteModel {
                 },
                 like_count: remote_m.like_count.clone(),
                 download_count: remote_m.download_count.clone(),
+                metrics: remote_m.metrics.clone().unwrap_or_default(),
             };
 
             models.push(model);
@@ -265,14 +280,8 @@ fn test_download_file_from_huggingface() {
     .unwrap();
 }
 
-pub fn search(search_text: &str, limit: usize, offset: usize) -> reqwest::Result<Vec<RemoteModel>> {
-    let url = format!("https://code.flows.network/webhook/DsbnEK45sK3NUzFUyZ9C/models?status=published&trace_status=tracing&order=most_likes&offset={offset}&limit={limit}&search={search_text}");
-    let response = reqwest::blocking::get(&url)?;
-    response.json()
-}
-
 #[test]
 fn test_search() {
-    let models = search("llama", 100, 0).unwrap();
+    let models = RemoteModel::search("llama", 100, 0).unwrap();
     println!("{:?}", models);
 }

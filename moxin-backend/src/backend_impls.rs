@@ -699,11 +699,22 @@ impl BackendImpl {
         match built_in_cmd {
             BuiltInCommand::Model(file) => match file {
                 ModelManagementCommand::GetFeaturedModels(tx) => {
-                    // TODO: Featured Models have not been set up yet, so return an empty list here.
-                    let _ = tx.send(Ok(vec![]));
+                    let res = store::RemoteModel::get_featured_model(100, 0);
+                    match res {
+                        Ok(remote_model) => {
+                            let sql_conn = self.sql_conn.lock().unwrap();
+                            let models = RemoteModel::to_model(&remote_model, &sql_conn)
+                                .map_err(|e| anyhow::anyhow!("get featured error: {e}"));
+
+                            let _ = tx.send(models);
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(anyhow::anyhow!("get featured models error: {e}")));
+                        }
+                    }
                 }
                 ModelManagementCommand::SearchModels(search_text, tx) => {
-                    let res = store::search(&search_text, 100, 0);
+                    let res = store::RemoteModel::search(&search_text, 100, 0);
                     match res {
                         Ok(remote_model) => {
                             let sql_conn = self.sql_conn.lock().unwrap();
@@ -723,7 +734,7 @@ impl BackendImpl {
                         let (model_id, file) = file_id
                             .split_once("#")
                             .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
-                        let mut res = store::search(&model_id, 10, 0)
+                        let mut res = store::RemoteModel::search(&model_id, 10, 0)
                             .map_err(|e| anyhow::anyhow!("search models error: {e}"))?;
                         let remote_model = res
                             .pop()
@@ -783,65 +794,13 @@ impl BackendImpl {
                 }
 
                 ModelManagementCommand::GetDownloadedFiles(tx) => {
-                    let get_all_download_file =
-                        || -> rusqlite::Result<Vec<moxin_protocol::data::DownloadedFile>> {
-                            let conn = self.sql_conn.lock().unwrap();
-                            let files = store::download_files::DownloadedFile::get_all(&conn)?;
-                            let models = store::models::Model::get_all(&conn)?;
+                    let downloads = {
+                        let conn = self.sql_conn.lock().unwrap();
+                        store::get_all_download_file(&conn)
+                            .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
+                    };
 
-                            let mut downloaded_files = Vec::with_capacity(files.len());
-
-                            for (_id, file) in files {
-                                let model = if let Some(model) = models.get(&file.model_id) {
-                                    Model {
-                                        id: model.id.to_string(),
-                                        name: model.name.clone(),
-                                        summary: model.summary.clone(),
-                                        size: model.size.clone(),
-                                        requires: model.requires.clone(),
-                                        architecture: model.architecture.clone(),
-                                        released_at: model.released_at.clone(),
-                                        files: vec![],
-                                        author: moxin_protocol::data::Author {
-                                            name: model.author.name.clone(),
-                                            url: model.author.url.clone(),
-                                            description: model.author.description.clone(),
-                                        },
-                                        like_count: model.like_count,
-                                        download_count: model.download_count,
-                                    }
-                                } else {
-                                    Model::default()
-                                };
-
-                                let downloaded_file = DownloadedFile {
-                                    file: moxin_protocol::data::File {
-                                        id: file.id.to_string(),
-                                        name: file.name,
-                                        size: file.size,
-                                        quantization: file.quantization,
-                                        downloaded: true,
-                                        downloaded_path: Some(file.downloaded_path),
-                                        tags: file.tags,
-                                        featured: false,
-                                    },
-                                    model,
-                                    downloaded_at: file.downloaded_at,
-                                    compatibility_guess:
-                                        moxin_protocol::data::CompatibilityGuess::PossiblySupported,
-                                    information: String::new(),
-                                };
-
-                                downloaded_files.push(downloaded_file);
-                            }
-
-                            Ok(downloaded_files)
-                        };
-
-                    let _ = tx.send(
-                        get_all_download_file()
-                            .map_err(|e| anyhow::anyhow!("get download file error: {e}")),
-                    );
+                    let _ = tx.send(downloads);
                 }
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {

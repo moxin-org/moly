@@ -10,13 +10,16 @@ pub struct Backend {
 
 impl Default for Backend {
     fn default() -> Self {
-        Backend::new()
+        Backend::new(".".to_string())
     }
 }
 
 impl Backend {
-    pub fn new() -> Backend {
-        let command_sender = backend_impls::BackendImpl::build_command_sender(".".to_string());
+    /// # Argument
+    ///
+    /// * `models_dir` - The download path of the model.
+    pub fn new(models_dir: String) -> Backend {
+        let command_sender = backend_impls::BackendImpl::build_command_sender(models_dir);
         Backend { command_sender }
     }
 }
