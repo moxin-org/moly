@@ -322,23 +322,19 @@ impl Widget for ChatPanel {
                         let chat_line_data = &chat_history[item_id];
 
                         let item;
+                        let mut chat_line_item;
                         if chat_line_data.is_assistant() {
                             item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
-                            // TODO move to ChatLine widget
-                            item.label(id!(role)).set_text(&model_filename);
-                            item.label(id!(avatar_label))
-                                .set_text(initial_letter.as_str());
+                            chat_line_item = item.as_chat_line();
+                            chat_line_item.set_role(&model_filename);
+                            chat_line_item.set_avatar_text(&initial_letter);
                         } else {
                             item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
-                            // TODO move to ChatLine widget
-                            item.label(id!(role)).set_text("You");
+                            chat_line_item = item.as_chat_line();
+                            chat_line_item.set_role("You");
                         };
 
-                        // TODO move to ChatLine widget
-                        item.label(id!(chat_label))
-                            .set_text(&chat_line_data.content.trim());
-
-                        let mut chat_line_item = item.as_chat_line();
+                        chat_line_item.set_message_text(&chat_line_data.content);
                         chat_line_item.set_message_id(chat_line_data.id);
 
                         // Disable actions for the last chat line when model is streaming
@@ -348,7 +344,7 @@ impl Widget for ChatPanel {
                             chat_line_item.set_actions_enabled(true);
                         }
 
-                        item.draw_all(cx, &mut Scope::with_data(&mut chat_line_data.clone()));
+                        item.draw_all(cx, &mut Scope::empty());
                     }
                 }
             }

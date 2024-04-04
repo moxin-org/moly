@@ -321,6 +321,29 @@ impl ChatLine {
 }
 
 impl ChatLineRef {
+    pub fn set_role(&mut self, text: &str) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.label(id!(role)).set_text(text);
+    }
+
+    pub fn set_avatar_text(&mut self, text: &str) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.label(id!(avatar_label)).set_text(text);
+    }
+
+    pub fn set_message_text(&mut self, text: &str) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner
+            .label(id!(chat_message.chat_label))
+            .set_text(text.trim());
+    }
+
     pub fn set_message_id(&mut self, message_id: usize) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
