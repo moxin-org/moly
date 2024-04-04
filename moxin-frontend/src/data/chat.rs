@@ -145,4 +145,10 @@ impl Chat {
     pub fn delete_message(&mut self, message_id: usize) {
         self.messages.retain(|message| message.id != message_id);
     }
+
+    pub fn edit_message(&mut self, message_id: usize, updated_message: String) {
+        if let Some(message) = self.messages.iter_mut().find(|m| m.id == message_id) {
+            message.content = updated_message;
+        }
+    }
 }

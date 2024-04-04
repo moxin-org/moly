@@ -11,6 +11,160 @@ live_design! {
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
+    ChatLineEditButton = <RoundedView> {
+        width: 56,
+        height: 31,
+        align: {x: 0.5, y: 0.5}
+        spacing: 6,
+
+        cursor: Hand,
+
+        draw_bg: { color: #099250 }
+
+        button_label = <Label> {
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 9},
+                fn get_color(self) -> vec4 {
+                    return #fff;
+                }
+            }
+        }
+    }
+
+    SaveButton = <ChatLineEditButton> {
+        button_label = {
+            text: "Save"
+        }
+    }
+
+    CancelButton = <ChatLineEditButton> {
+        draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
+
+        button_label = {
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 9},
+                fn get_color(self) -> vec4 {
+                    return #000;
+                }
+            }
+            text: "Cancel"
+        }
+    }
+
+    EditTextInput = <TextInput> {
+        width: Fill,
+        height: Fit,
+        padding: 0,
+
+        draw_bg: {
+            color: #fff
+        }
+        draw_text: {
+            text_style:<REGULAR_FONT>{font_size: 10},
+            word: Wrap,
+
+            instance prompt_enabled: 0.0
+            fn get_color(self) -> vec4 {
+                return #000;
+            }
+        }
+
+        // TODO find a way to override colors
+        draw_cursor: {
+            instance focus: 0.0
+            uniform border_radius: 0.5
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                sdf.box(
+                    0.,
+                    0.,
+                    self.rect_size.x,
+                    self.rect_size.y,
+                    self.border_radius
+                )
+                sdf.fill(mix(#fff, #000, self.focus));
+                return sdf.result
+            }
+        }
+
+        // TODO find a way to override colors
+        draw_select: {
+            instance hover: 0.0
+            instance focus: 0.0
+            uniform border_radius: 2.0
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                sdf.box(
+                    0.,
+                    0.,
+                    self.rect_size.x,
+                    self.rect_size.y,
+                    self.border_radius
+                )
+                sdf.fill(mix(#eee, #ddd, self.focus)); // Pad color
+                return sdf.result
+            }
+        }
+    }
+
+    ChatLineBody = <View> {
+        width: Fill,
+        height: Fit,
+        spacing: 5,
+        flow: Down,
+
+        <View> {
+            height: 20,
+            align: {x: 0.0, y: 0.5},
+
+            role = <Label> {
+                width: Fit,
+                height: Fit,
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 10},
+                    color: #000
+                }
+            }
+        }
+
+        chat_message = <View> {
+            width: Fill,
+            height: Fit,
+            chat_label = <Label> {
+                width: Fill,
+                height: Fit,
+                padding: {top: 12, bottom: 12},
+
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 10},
+                    color: #000,
+                    word: Wrap,
+                }
+            }
+        }
+
+        chat_edit = <View> {
+            visible: false,
+            width: Fill,
+            height: Fit,
+            flow: Down,
+            padding: {top: 12, bottom: 12},
+            align: {x: 0.5, y: 0.0},
+
+            input = <EditTextInput> {
+            }
+
+            <View> {
+                width: Fit,
+                height: Fit,
+                margin: {top: 10},
+                spacing: 6,
+                save = <SaveButton> {}
+                cancel = <CancelButton> {}
+            }
+        }
+    }
+
     ChatLineActionButton = <Button> {
         draw_icon: {
             fn get_color(self) -> vec4 {
@@ -48,7 +202,7 @@ live_design! {
             flow: Down,
             spacing: 8,
 
-            body_section = <View> {}
+            body_section =  <ChatLineBody> {}
 
             actions_section = <View> {
                 width: Fill,
@@ -59,11 +213,11 @@ live_design! {
                     visible: false,
                     spacing: 6,
 
-                    <ChatLineActionButton> {
-                        draw_icon: { svg_file: (ICON_EDIT) }
-                    }
-                    <ChatLineActionButton> {
+                    copy_button = <ChatLineActionButton> {
                         draw_icon: { svg_file: (ICON_COPY) }
+                    }
+                    edit_button = <ChatLineActionButton> {
+                        draw_icon: { svg_file: (ICON_EDIT) }
                     }
                     delete_button = <ChatLineActionButton> {
                         draw_icon: { svg_file: (ICON_DELETE) }
@@ -78,7 +232,7 @@ live_design! {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ChatLineAction {
     Delete(usize),
-    Edit(usize),
+    Edit(usize, String),
     Copy(usize),
     None,
 }
@@ -119,10 +273,50 @@ impl Widget for ChatLine {
                 ChatLineAction::Delete(self.message_id),
             );
         }
+
+        if self.button(id!(edit_button)).clicked(&actions) {
+            self.set_edit_mode(cx, true);
+        }
+
+        if let Some(fe) = self.view(id!(save)).finger_up(&actions) {
+            if fe.was_tap() {
+                let updated_message = self.text_input(id!(chat_edit.input)).text();
+
+                let widget_id = self.view.widget_uid();
+                cx.widget_action(
+                    widget_id,
+                    &scope.path,
+                    ChatLineAction::Edit(self.message_id, updated_message),
+                );
+
+                self.set_edit_mode(cx, false);
+            }
+        }
+
+        if let Some(fe) = self.view(id!(cancel)).finger_up(&actions) {
+            if fe.was_tap() {
+                self.set_edit_mode(cx, false);
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl ChatLine {
+    pub fn set_edit_mode(&mut self, cx: &mut Cx, enabled: bool) {
+        self.view(id!(chat_message)).set_visible(!enabled);
+        self.view(id!(chat_edit)).set_visible(enabled);
+
+        if enabled {
+            let message = self.label(id!(chat_message.chat_label)).text();
+            self.text_input(id!(chat_edit.input))
+                .set_text(message.as_str());
+        }
+
+        self.redraw(cx);
     }
 }
 

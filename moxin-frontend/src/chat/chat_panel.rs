@@ -16,40 +16,6 @@ live_design! {
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
 
-    ChatLineBody = <View> {
-        width: Fill,
-        height: Fit,
-        spacing: 5,
-        flow: Down,
-
-        <View> {
-            height: 20,
-            align: {x: 0.0, y: 0.5},
-
-            role = <Label> {
-                width: Fit,
-                height: Fit,
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 10},
-                    color: #000
-                }
-            }
-        }
-
-        chat_label = <Label> {
-            width: Fill,
-            height: Fit,
-            padding: {top: 12, bottom: 12},
-
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 10},
-                color: #000,
-                word: Wrap,
-            }
-            text: "Chat Line"
-        }
-    }
-
     ChatAgentAvatar = <RoundedView> {
         width: 20,
         height: 20,
@@ -80,17 +46,11 @@ live_design! {
                 height: 20,
             }
         }
-        main_section = {
-            body_section =  <ChatLineBody> {}
-        }
     }
 
     ModelChatLine = <ChatLine> {
         avatar_section = {
             <ChatAgentAvatar> {}
-        }
-        main_section = {
-            body_section = <ChatLineBody> {}
         }
     }
 
@@ -364,14 +324,17 @@ impl Widget for ChatPanel {
                         let item;
                         if chat_line_data.is_assistant() {
                             item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
+                            // TODO move to ChatLine widget
                             item.label(id!(role)).set_text(&model_filename);
                             item.label(id!(avatar_label))
                                 .set_text(initial_letter.as_str());
                         } else {
                             item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
+                            // TODO move to ChatLine widget
                             item.label(id!(role)).set_text("You");
                         };
 
+                        // TODO move to ChatLine widget
                         item.label(id!(chat_label))
                             .set_text(&chat_line_data.content.trim());
 
@@ -416,6 +379,11 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatLineAction::Delete(id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.delete_chat_message(id);
+                    self.redraw(cx);
+                }
+                ChatLineAction::Edit(id, updated) => {
+                    let store = scope.data.get_mut::<Store>().unwrap();
+                    store.edit_chat_message(id, updated);
                     self.redraw(cx);
                 }
                 _ => {}

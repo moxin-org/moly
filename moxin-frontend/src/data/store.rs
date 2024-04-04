@@ -136,6 +136,12 @@ impl Store {
         }
     }
 
+    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
+        if let Some(chat) = &mut self.current_chat {
+            chat.edit_message(message_id, updated_message);
+        }
+    }
+
     pub fn process_event_signal(&mut self) {
         self.update_downloads();
         self.update_chat_messages();
