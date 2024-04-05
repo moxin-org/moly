@@ -288,24 +288,22 @@ impl Widget for ChatPanel {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let chat_history;
-        let model_filename;
-        let initial_letter;
 
-        if let Some(chat) = &store.current_chat {
-            chat_history = chat.messages.clone();
-            model_filename = chat.model_filename.clone();
-            initial_letter = model_filename
-                .chars()
-                .next()
-                .unwrap()
-                .to_uppercase()
-                .to_string();
-        } else {
-            chat_history = vec![];
-            model_filename = "".to_string();
-            initial_letter = "".to_string();
-        };
+        let (chat_history, model_filename, initial_letter) =
+            store
+                .current_chat
+                .as_ref()
+                .map_or((vec![], "".to_string(), "".to_string()), |chat| {
+                    let model_filename = chat.model_filename.clone();
+                    let initial_letter = model_filename
+                        .chars()
+                        .next()
+                        .unwrap_or_default()
+                        .to_uppercase()
+                        .to_string();
+                    (chat.messages.clone(), model_filename, initial_letter)
+                });
+
         let chats_count = chat_history.len();
 
         if chats_count == 0 {
