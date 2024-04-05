@@ -10,8 +10,9 @@ pub enum ChatTokenArrivalAction {
     StreamingDone,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ChatMessage {
+    pub id: usize,
     pub role: Role,
     pub content: String,
 }
@@ -81,11 +82,14 @@ impl Chat {
             tx,
         );
 
+        let next_id = self.messages.last().map(|m| m.id).unwrap_or(0) + 1;
         self.messages.push(ChatMessage {
+            id: next_id,
             role: Role::User,
             content: prompt.clone(),
         });
         self.messages.push(ChatMessage {
+            id: next_id + 1,
             role: Role::Assistant,
             content: "".to_string(),
         });
@@ -135,6 +139,16 @@ impl Chat {
                     self.is_streaming = false;
                 }
             }
+        }
+    }
+
+    pub fn delete_message(&mut self, message_id: usize) {
+        self.messages.retain(|message| message.id != message_id);
+    }
+
+    pub fn edit_message(&mut self, message_id: usize, updated_message: String) {
+        if let Some(message) = self.messages.iter_mut().find(|m| m.id == message_id) {
+            message.content = updated_message;
         }
     }
 }
