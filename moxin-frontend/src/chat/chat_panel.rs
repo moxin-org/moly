@@ -3,6 +3,7 @@ use crate::chat::model_selector::ModelSelectorAction;
 use crate::data::chat::Chat;
 use crate::data::store::Store;
 use makepad_widgets::*;
+use moxin_protocol::data::DownloadedFile;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -235,21 +236,24 @@ live_design! {
     }
 }
 
+#[derive(Default, PartialEq)]
+enum ChatPanelState {
+    #[default]
+    Unload,
+    Idle,
+    Streaming {
+        auto_scroll_pending: bool,
+        auto_scroll_cancellable: bool,
+    },
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatPanel {
     #[deref]
     view: View,
 
     #[rust]
-    loaded: bool,
-
-    #[rust]
-    auto_scroll_pending: bool,
-    #[rust]
-    auto_scroll_cancellable: bool,
-
-    #[rust]
-    is_chat_streaming: bool,
+    state: ChatPanelState,
 }
 
 impl Widget for ChatPanel {
@@ -259,30 +263,38 @@ impl Widget for ChatPanel {
 
         if let Event::Signal = event {
             let store = scope.data.get_mut::<Store>().unwrap();
+
             if let Some(chat) = &store.current_chat {
-                self.auto_scroll_cancellable = true;
-                let list = self.portal_list(id!(chat));
+                match self.state {
+                    ChatPanelState::Streaming {
+                        auto_scroll_pending,
+                        auto_scroll_cancellable: _,
+                    } => {
+                        self.state = ChatPanelState::Streaming {
+                            auto_scroll_pending,
+                            auto_scroll_cancellable: true,
+                        };
 
-                self.is_chat_streaming = store.current_chat.as_ref().unwrap().is_streaming;
-                if self.is_chat_streaming {
-                    self.disable_prompt_input(cx);
-                } else {
-                    // Scroll to the bottom when streaming is done
-                    self.scroll_messages_to_bottom(&list, chat);
-                    self.auto_scroll_pending = false;
-                    self.enable_prompt_input(cx);
-                }
+                        let still_streaming = store.current_chat.as_ref().unwrap().is_streaming;
+                        if still_streaming {
+                            self.disable_prompt_input(cx);
 
-                if self.auto_scroll_pending {
-                    // Scroll to the bottom
-                    self.scroll_messages_to_bottom(&list, chat);
+                            if auto_scroll_pending {
+                                self.scroll_messages_to_bottom(chat);
+                            }
+                        } else {
+                            // Scroll to the bottom when streaming is done
+                            self.scroll_messages_to_bottom(chat);
+                            self.enable_prompt_input(cx);
+                            self.state = ChatPanelState::Idle;
+                        }
+
+                        // Redraw because we expect to see new or updated chat entries
+                        self.redraw(cx);
+                    }
+                    _ => {}
                 }
-            } else {
-                //panic!("Unexpected error in the model chat session");
             }
-
-            // Redraw because we expect to see new or updated chat entries
-            self.redraw(cx);
         }
     }
 
@@ -336,7 +348,9 @@ impl Widget for ChatPanel {
                         chat_line_item.set_message_id(chat_line_data.id);
 
                         // Disable actions for the last chat line when model is streaming
-                        if self.is_chat_streaming && item_id == chats_count - 1 {
+                        if matches!(self.state, ChatPanelState::Streaming { .. })
+                            && item_id == chats_count - 1
+                        {
                             chat_line_item.set_actions_enabled(false);
                         } else {
                             chat_line_item.set_actions_enabled(true);
@@ -357,14 +371,8 @@ impl WidgetMatchEvent for ChatPanel {
         for action in actions {
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
-                    self.loaded = true;
-                    self.view(id!(main)).set_visible(true);
-                    self.view(id!(empty_conversation)).set_visible(true);
-                    self.view(id!(no_model)).set_visible(false);
-
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    store.load_model(&downloaded_file.file);
-                    self.is_chat_streaming = false;
+                    self.load_model(store, downloaded_file);
                 }
                 _ => {}
             }
@@ -384,41 +392,24 @@ impl WidgetMatchEvent for ChatPanel {
             }
         }
 
-        if let Some(text) = self.text_input(id!(prompt)).changed(actions) {
-            if !self.is_chat_streaming && text.len() > 0 {
-                self.enable_prompt_input(cx);
-            } else {
-                self.disable_prompt_input(cx);
+        match self.state {
+            ChatPanelState::Idle => {
+                self.handle_prompt_input_actions(cx, actions, scope);
             }
-        }
-
-        let list = self.portal_list(id!(chat));
-        if self.auto_scroll_cancellable && list.scrolled(actions) {
-            // Cancel auto-scrolling if the user scrolls up
-            self.auto_scroll_pending = false;
-        }
-
-        if !self.is_chat_streaming {
-            if let Some(prompt) = self.text_input(id!(prompt)).returned(actions) {
-                if prompt.trim().is_empty() {
-                    return;
+            ChatPanelState::Streaming {
+                auto_scroll_pending: _,
+                auto_scroll_cancellable,
+            } => {
+                let list = self.portal_list(id!(chat));
+                if auto_scroll_cancellable && list.scrolled(actions) {
+                    // Cancel auto-scrolling if the user scrolls up
+                    self.state = ChatPanelState::Streaming {
+                        auto_scroll_pending: false,
+                        auto_scroll_cancellable,
+                    };
                 }
-
-                self.is_chat_streaming = true;
-                self.disable_prompt_input(cx);
-                let store = scope.data.get_mut::<Store>().unwrap();
-                store.send_chat_message(prompt.clone());
-
-                self.text_input(id!(prompt)).set_text_and_redraw(cx, "");
-                self.view(id!(empty_conversation)).set_visible(false);
-
-                // Scroll to the bottom when the message is sent
-                if let Some(chat) = &store.current_chat {
-                    self.scroll_messages_to_bottom(&list, chat);
-                }
-                self.auto_scroll_pending = true;
-                self.auto_scroll_cancellable = false;
             }
+            ChatPanelState::Unload => {}
         }
     }
 }
@@ -464,10 +455,55 @@ impl ChatPanel {
         );
     }
 
-    fn scroll_messages_to_bottom(&mut self, list: &PortalListRef, chat: &Chat) {
+    fn scroll_messages_to_bottom(&mut self, chat: &Chat) {
         if chat.messages.is_empty() {
             return;
         }
+        let list = self.portal_list(id!(chat));
         list.set_first_id_and_scroll(chat.messages.len() - 1, 0.0);
+    }
+
+    fn load_model(&mut self, store: &mut Store, downloaded_file: DownloadedFile) {
+        self.state = ChatPanelState::Idle;
+        self.view(id!(main)).set_visible(true);
+        self.view(id!(empty_conversation)).set_visible(true);
+        self.view(id!(no_model)).set_visible(false);
+
+        store.load_model(&downloaded_file.file);
+    }
+
+    fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let prompt_input = self.text_input(id!(prompt));
+
+        if let Some(text) = prompt_input.changed(actions) {
+            if text.len() > 0 {
+                self.enable_prompt_input(cx);
+            } else {
+                self.disable_prompt_input(cx);
+            }
+        }
+
+        if let Some(prompt) = prompt_input.returned(actions) {
+            if prompt.trim().is_empty() {
+                return;
+            }
+
+            self.disable_prompt_input(cx);
+            let store = scope.data.get_mut::<Store>().unwrap();
+            store.send_chat_message(prompt.clone());
+
+            prompt_input.set_text_and_redraw(cx, "");
+            self.view(id!(empty_conversation)).set_visible(false);
+
+            // Scroll to the bottom when the message is sent
+            if let Some(chat) = &store.current_chat {
+                self.scroll_messages_to_bottom(chat);
+            }
+
+            self.state = ChatPanelState::Streaming {
+                auto_scroll_pending: true,
+                auto_scroll_cancellable: false,
+            };
+        }
     }
 }
