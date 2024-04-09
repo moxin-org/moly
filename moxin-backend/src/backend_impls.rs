@@ -818,7 +818,9 @@ impl BackendImpl {
                                 options,
                                 tx,
                             );
-                            self.model = Some(model);
+                            if let Some(old_model) = self.model.replace(model) {
+                                old_model.stop();
+                            }
                         }
                         Err(e) => {
                             let _ = tx.send(Err(anyhow::anyhow!("Load model error: {e}")));
