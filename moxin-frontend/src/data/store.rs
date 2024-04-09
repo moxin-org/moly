@@ -117,7 +117,7 @@ impl Store {
                         eprintln!("Error loading model");
                         return;
                     };
-                    self.current_chat = Some(Chat::new(loaded_model.file_id.clone()));
+                    self.current_chat = Some(Chat::new(file.name.clone()));
                 }
                 Err(err) => eprintln!("Error loading model: {:?}", err),
             }
