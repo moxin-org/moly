@@ -17,6 +17,7 @@ live_design! {
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
+    ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
     ChatAgentAvatar = <RoundedView> {
         width: 20,
@@ -53,6 +54,43 @@ live_design! {
     ModelChatLine = <ChatLine> {
         avatar_section = {
             <ChatAgentAvatar> {}
+        }
+    }
+
+    JumpToButtom = <View> {
+        width: Fill,
+        height: Fill,
+        align: {x: 0.5, y: 1.0},
+
+        jump_to_bottom = <CircleView> {
+            width: 34,
+            height: 34,
+            align: {x: 0.5, y: 0.5},
+
+            cursor: Hand,
+
+            show_bg: true,
+
+            draw_bg: {
+                radius: 14.0,
+                color: #fff,
+                border_width: 2.0,
+                border_color: #ccc,
+            }
+
+            <Icon> {
+                padding: 0,
+                // These margins are used to center the icon inside the circle
+                // Not sure why the icon is not centered by default
+                margin: { top: 6, right: 4 },
+                draw_icon: {
+                    svg_file: (ICON_JUMP_TO_BOTTOM),
+                    fn get_color(self) -> vec4 {
+                        return #1C1B1F;
+                    }
+                }
+                icon_walk: {width: 12, height: 12}
+            }
         }
     }
 
@@ -239,17 +277,25 @@ live_design! {
             height: Fill,
 
             margin: { top: 60 }
-            spacing: 30,
+            spacing: 4,
             flow: Down,
 
-            chat = <PortalList> {
+            <View> {
                 width: Fill,
                 height: Fill,
 
-                auto_tail: true,
+                flow: Overlay
+                chat = <PortalList> {
+                    width: Fill,
+                    height: Fill,
 
-                UserChatLine = <UserChatLine> {}
-                ModelChatLine = <ModelChatLine> {}
+                    auto_tail: true,
+
+                    UserChatLine = <UserChatLine> {}
+                    ModelChatLine = <ModelChatLine> {}
+                }
+
+                <JumpToButtom> {}
             }
 
             <ChatPromptInput> {}
@@ -414,6 +460,8 @@ impl WidgetMatchEvent for ChatPanel {
             }
         }
 
+        self.jump_to_bottom_actions(cx, actions, scope);
+
         match self.state {
             ChatPanelState::Idle => {
                 self.handle_prompt_input_actions(cx, actions, scope);
@@ -444,6 +492,38 @@ impl WidgetMatchEvent for ChatPanel {
 }
 
 impl ChatPanel {
+    fn jump_to_bottom_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if let Some(fe) = self.view(id!(jump_to_bottom)).finger_up(actions) {
+            if fe.was_tap() {
+                let store = scope.data.get_mut::<Store>().unwrap();
+                if let Some(chat) = &store.current_chat {
+                    self.scroll_messages_to_bottom(chat);
+                    self.redraw(cx);
+                }
+            }
+        }
+
+        let jump_to_bottom = self.view(id!(jump_to_bottom));
+        match self.state {
+            ChatPanelState::Idle | ChatPanelState::Streaming { .. } => {
+                let store = scope.data.get_mut::<Store>().unwrap();
+                let has_messages = store
+                    .current_chat
+                    .as_ref()
+                    .map_or(false, |chat| chat.messages.len() > 0);
+
+                let list = self.portal_list(id!(chat));
+
+                // TODO make it visible only when scrolling up
+                // (we need to improve PortalList API for this)
+                jump_to_bottom.set_visible(has_messages);
+            }
+            ChatPanelState::Unload => {
+                jump_to_bottom.set_visible(false);
+            }
+        }
+    }
+
     fn update_prompt_input(&mut self, cx: &mut Cx) {
         match self.state {
             ChatPanelState::Idle => {
