@@ -16,6 +16,7 @@ live_design! {
     import crate::chat::chat_line::ChatLine;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
+    ICON_STOP = dep("crate://self/resources/icons/stop.svg")
 
     ChatAgentAvatar = <RoundedView> {
         width: 20,
@@ -57,17 +58,17 @@ live_design! {
 
     ChatPromptInput = <RoundedView> {
         width: Fill,
-        height: 50,
+        height: Fit,
 
         show_bg: true,
         draw_bg: {
             color: #fff
         }
 
-        padding: {top: 3, bottom: 3, left: 4, right: 10}
+        padding: {top: 6, bottom: 6, left: 4, right: 10}
 
         spacing: 4,
-        align: {x: 0.0, y: 0.5},
+        align: {x: 0.0, y: 1.0},
 
         draw_bg: {
             radius: 2.0,
@@ -135,24 +136,46 @@ live_design! {
         }
 
         prompt_icon = <RoundedView> {
-            width: 30,
-            height: 30,
+            width: 28,
+            height: 28,
             show_bg: true,
             draw_bg: {
                 color: #D0D5DD
             }
 
+            cursor: Hand,
+
             padding: {right: 4},
+            margin: {bottom: 2},
             align: {x: 0.5, y: 0.5},
 
-            <Icon> {
-                draw_icon: {
-                    svg_file: (ICON_PROMPT),
-                    fn get_color(self) -> vec4 {
-                        return #fff;
+            icon_send = <View> {
+                width: Fit,
+                height: Fit,
+                <Icon> {
+                    draw_icon: {
+                        svg_file: (ICON_PROMPT),
+                        fn get_color(self) -> vec4 {
+                            return #fff;
+                        }
                     }
+                    icon_walk: {width: 12, height: 12}
                 }
-                icon_walk: {width: 12, height: 12}
+            }
+            icon_stop = <View> {
+                width: Fit,
+                height: Fit,
+                visible: false,
+
+                <Icon> {
+                    draw_icon: {
+                        svg_file: (ICON_STOP),
+                        fn get_color(self) -> vec4 {
+                            return #fff;
+                        }
+                    }
+                    icon_walk: {width: 12, height: 12}
+                }
             }
         }
     }
@@ -277,17 +300,16 @@ impl Widget for ChatPanel {
 
                         let still_streaming = store.current_chat.as_ref().unwrap().is_streaming;
                         if still_streaming {
-                            self.disable_prompt_input(cx);
-
                             if auto_scroll_pending {
                                 self.scroll_messages_to_bottom(chat);
                             }
                         } else {
                             // Scroll to the bottom when streaming is done
                             self.scroll_messages_to_bottom(chat);
-                            self.enable_prompt_input(cx);
                             self.state = ChatPanelState::Idle;
                         }
+
+                        self.update_prompt_input(cx);
 
                         // Redraw because we expect to see new or updated chat entries
                         self.redraw(cx);
@@ -408,6 +430,13 @@ impl WidgetMatchEvent for ChatPanel {
                         auto_scroll_cancellable,
                     };
                 }
+
+                if let Some(fe) = self.view(id!(prompt_icon)).finger_up(&actions) {
+                    if fe.was_tap() {
+                        let store = scope.data.get_mut::<Store>().unwrap();
+                        store.cancel_chat_streaming();
+                    }
+                }
             }
             ChatPanelState::Unload => {}
         }
@@ -415,7 +444,73 @@ impl WidgetMatchEvent for ChatPanel {
 }
 
 impl ChatPanel {
-    fn enable_prompt_input(&mut self, cx: &mut Cx) {
+    fn update_prompt_input(&mut self, cx: &mut Cx) {
+        match self.state {
+            ChatPanelState::Idle => {
+                self.enable_or_disable_prompt_input(cx);
+                self.show_prompt_input_send_icon(cx);
+            }
+            ChatPanelState::Streaming {
+                auto_scroll_pending: _,
+                auto_scroll_cancellable: _,
+            } => {
+                let prompt_input = self.text_input(id!(prompt));
+                prompt_input.apply_over(
+                    cx,
+                    live! {
+                        draw_text: { prompt_enabled: 0.0 }
+                    },
+                );
+                self.show_prompt_input_stop_icon(cx);
+            }
+            ChatPanelState::Unload => {}
+        }
+    }
+
+    fn enable_or_disable_prompt_input(&mut self, cx: &mut Cx) {
+        let prompt_input = self.text_input(id!(prompt));
+        let enable = if prompt_input.text().len() > 0 {
+            1.0
+        } else {
+            0.0
+        };
+
+        prompt_input.apply_over(
+            cx,
+            live! {
+                draw_text: { prompt_enabled: (enable) }
+            },
+        );
+    }
+
+    fn show_prompt_input_send_icon(&mut self, cx: &mut Cx) {
+        self.view(id!(prompt_icon)).apply_over(
+            cx,
+            live! {
+                icon_send = { visible: true }
+                icon_stop = { visible: false }
+            },
+        );
+        let prompt_input = self.text_input(id!(prompt));
+        if prompt_input.text().len() > 0 {
+            self.enable_prompt_input_icon(cx);
+        } else {
+            self.disable_prompt_input_icon(cx);
+        }
+    }
+
+    fn show_prompt_input_stop_icon(&mut self, cx: &mut Cx) {
+        self.view(id!(prompt_icon)).apply_over(
+            cx,
+            live! {
+                icon_send = { visible: false }
+                icon_stop = { visible: true }
+            },
+        );
+        self.enable_prompt_input_icon(cx);
+    }
+
+    fn enable_prompt_input_icon(&mut self, cx: &mut Cx) {
         let enabled_color = vec3(0.0, 0.0, 0.0);
         self.view(id!(prompt_icon)).apply_over(
             cx,
@@ -425,31 +520,15 @@ impl ChatPanel {
                 }
             },
         );
-        self.text_input(id!(prompt)).apply_over(
-            cx,
-            live! {
-                draw_text: {
-                    prompt_enabled: 1.0
-                }
-            },
-        );
     }
 
-    fn disable_prompt_input(&mut self, cx: &mut Cx) {
+    fn disable_prompt_input_icon(&mut self, cx: &mut Cx) {
         let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
         self.view(id!(prompt_icon)).apply_over(
             cx,
             live! {
                 draw_bg: {
                     color: (disabled_color)
-                }
-            },
-        );
-        self.text_input(id!(prompt)).apply_over(
-            cx,
-            live! {
-                draw_text: {
-                    prompt_enabled: 0.0
                 }
             },
         );
@@ -475,35 +554,44 @@ impl ChatPanel {
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt_input = self.text_input(id!(prompt));
 
-        if let Some(text) = prompt_input.changed(actions) {
-            if text.len() > 0 {
-                self.enable_prompt_input(cx);
-            } else {
-                self.disable_prompt_input(cx);
+        if let Some(_text) = prompt_input.changed(actions) {
+            self.update_prompt_input(cx);
+        }
+
+        if let Some(fe) = self.view(id!(prompt_icon)).finger_up(&actions) {
+            if fe.was_tap() {
+                self.send_message(cx, scope, prompt_input.text());
             }
         }
 
         if let Some(prompt) = prompt_input.returned(actions) {
-            if prompt.trim().is_empty() {
-                return;
-            }
-
-            self.disable_prompt_input(cx);
-            let store = scope.data.get_mut::<Store>().unwrap();
-            store.send_chat_message(prompt.clone());
-
-            prompt_input.set_text_and_redraw(cx, "");
-            self.view(id!(empty_conversation)).set_visible(false);
-
-            // Scroll to the bottom when the message is sent
-            if let Some(chat) = &store.current_chat {
-                self.scroll_messages_to_bottom(chat);
-            }
-
-            self.state = ChatPanelState::Streaming {
-                auto_scroll_pending: true,
-                auto_scroll_cancellable: false,
-            };
+            self.send_message(cx, scope, prompt);
         }
+    }
+
+    fn send_message(&mut self, cx: &mut Cx, scope: &mut Scope, prompt: String) {
+        if prompt.trim().is_empty() {
+            return;
+        }
+
+        self.show_prompt_input_stop_icon(cx);
+        let store = scope.data.get_mut::<Store>().unwrap();
+        store.send_chat_message(prompt.clone());
+
+        let prompt_input = self.text_input(id!(prompt));
+        prompt_input.set_text_and_redraw(cx, "");
+        self.update_prompt_input(cx);
+
+        self.view(id!(empty_conversation)).set_visible(false);
+
+        // Scroll to the bottom when the message is sent
+        if let Some(chat) = &store.current_chat {
+            self.scroll_messages_to_bottom(chat);
+        }
+
+        self.state = ChatPanelState::Streaming {
+            auto_scroll_pending: true,
+            auto_scroll_cancellable: false,
+        };
     }
 }

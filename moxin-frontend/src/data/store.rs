@@ -130,6 +130,12 @@ impl Store {
         }
     }
 
+    pub fn cancel_chat_streaming(&mut self) {
+        if let Some(chat) = &mut self.current_chat {
+            chat.cancel_streaming(&self.backend);
+        }
+    }
+
     pub fn delete_chat_message(&mut self, message_id: usize) {
         if let Some(chat) = &mut self.current_chat {
             chat.delete_message(message_id);
