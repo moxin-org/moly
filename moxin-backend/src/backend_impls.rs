@@ -44,7 +44,11 @@ mod chat_ui {
     use std::{
         collections::HashMap,
         io::Read,
-        sync::mpsc::{Receiver, Sender},
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            mpsc::{Receiver, Sender},
+            Arc,
+        },
         thread::JoinHandle,
     };
 
@@ -70,6 +74,7 @@ mod chat_ui {
         request_id: uuid::Uuid,
         chat_completion_message: Option<Vec<u8>>,
         pub token_tx: Option<Sender<anyhow::Result<ChatResponse>>>,
+        running_controller: Arc<AtomicBool>,
         pub load_model_state: Option<(
             DownloadedFile,
             LoadModelOptions,
@@ -80,6 +85,7 @@ mod chat_ui {
     impl ChatBotUi {
         pub fn new(
             request_rx: Receiver<(ChatRequestData, Sender<anyhow::Result<ChatResponse>>)>,
+            running_controller: Arc<AtomicBool>,
             file: DownloadedFile,
             load_model: LoadModelOptions,
             tx: Sender<anyhow::Result<LoadModelResponse>>,
@@ -88,6 +94,7 @@ mod chat_ui {
                 request_rx,
                 request_id: uuid::Uuid::new_v4(),
                 token_tx: None,
+                running_controller,
                 current_req: std::io::Cursor::new(vec![]),
                 load_model_state: Some((file, load_model, tx)),
                 chat_completion_message: None,
@@ -106,6 +113,7 @@ mod chat_ui {
                 self.current_req.set_position(0);
                 self.request_id = uuid::Uuid::new_v4();
                 self.token_tx = Some(tx);
+                self.running_controller.store(true, Ordering::Release);
                 Ok(())
             } else {
                 Err(())
@@ -267,6 +275,10 @@ mod chat_ui {
         frame: &mut CallingFrame,
         args: Vec<WasmValue>,
     ) -> Result<Vec<WasmValue>, CoreError> {
+        if !data.running_controller.load(Ordering::Acquire) {
+            return Ok(vec![WasmValue::from_i32(-1)]);
+        }
+
         let mem = frame
             .memory_mut(0)
             .ok_or(CoreError::Execution(CoreExecutionError::MemoryOutOfBounds))?;
@@ -392,6 +404,7 @@ mod chat_ui {
     pub fn run_wasm_by_downloaded_file(
         wasm_module: Module,
         request_rx: Receiver<(ChatRequestData, Sender<anyhow::Result<ChatResponse>>)>,
+        model_running_controller: Arc<AtomicBool>,
         file: DownloadedFile,
         load_model: LoadModelOptions,
         tx: Sender<anyhow::Result<LoadModelResponse>>,
@@ -402,7 +415,14 @@ mod chat_ui {
         let mut instances: HashMap<String, &mut (dyn SyncInst)> = HashMap::new();
 
         let mut wasi = create_wasi(&file, &load_model).unwrap();
-        let mut chatui = module(ChatBotUi::new(request_rx, file, load_model, tx)).unwrap();
+        let mut chatui = module(ChatBotUi::new(
+            request_rx,
+            model_running_controller,
+            file,
+            load_model,
+            tx,
+        ))
+        .unwrap();
 
         instances.insert(wasi.name().to_string(), wasi.as_mut());
         let mut wasi_nn = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().unwrap();
@@ -420,6 +440,7 @@ mod chat_ui {
 
     pub struct Model {
         pub model_tx: Sender<(ChatRequestData, Sender<anyhow::Result<ChatResponse>>)>,
+        pub model_running_controller: Arc<AtomicBool>,
         pub model_thread: JoinHandle<()>,
     }
 
@@ -431,13 +452,23 @@ mod chat_ui {
             tx: Sender<anyhow::Result<LoadModelResponse>>,
         ) -> Self {
             let (model_tx, request_rx) = std::sync::mpsc::channel();
+            let model_running_controller = Arc::new(AtomicBool::new(false));
+            let model_running_controller_ = model_running_controller.clone();
 
             let model_thread = std::thread::spawn(move || {
-                run_wasm_by_downloaded_file(wasm_module, request_rx, file, options, tx)
+                run_wasm_by_downloaded_file(
+                    wasm_module,
+                    request_rx,
+                    model_running_controller_,
+                    file,
+                    options,
+                    tx,
+                )
             });
             Self {
                 model_tx,
                 model_thread,
+                model_running_controller,
             }
         }
 
@@ -449,10 +480,16 @@ mod chat_ui {
             self.model_tx.send((data, tx)).is_ok()
         }
 
+        pub fn stop_chat(&self) {
+            self.model_running_controller
+                .store(false, Ordering::Release);
+        }
+
         pub fn stop(self) {
             let Self {
                 model_tx,
                 model_thread,
+                ..
             } = self;
             drop(model_tx);
             let _ = model_thread.join();
@@ -546,7 +583,7 @@ fn test_chat() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::LoadModel(
-        file.model.name.clone(),
+        file.file.id.clone(),
         LoadModelOptions {
             prompt_template: None,
             gpu_layers: moxin_protocol::protocol::GPULayers::Max,
@@ -591,6 +628,92 @@ fn test_chat() {
     bk.send(cmd).unwrap();
     if let Ok(Ok(ChatResponse::ChatFinalResponseData(data))) = rx.recv() {
         println!("{:?}", data.choices[0].message);
+    }
+
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    bk.send(Command::EjectModel(tx)).unwrap();
+    rx.recv().unwrap().unwrap();
+}
+
+#[test]
+fn test_chat_stop() {
+    use moxin_protocol::open_ai::*;
+
+    let home = std::env::var("HOME").unwrap();
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::GetDownloadedFiles(tx);
+    bk.send(cmd).unwrap();
+    let files = rx.recv().unwrap();
+    assert!(files.is_ok());
+    let files = files.unwrap();
+    let file = files.first().unwrap();
+    println!("{} {}", &file.file.id, &file.model.name);
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::LoadModel(
+        file.file.id.clone(),
+        LoadModelOptions {
+            prompt_template: None,
+            gpu_layers: moxin_protocol::protocol::GPULayers::Max,
+            use_mlock: false,
+            n_batch: 512,
+            n_ctx: 512,
+            rope_freq_scale: 0.0,
+            rope_freq_base: 0.0,
+            context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+        },
+        tx,
+    );
+    bk.send(cmd).unwrap();
+    let r = rx.recv();
+    assert!(r.is_ok());
+    assert!(r.unwrap().is_ok());
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::Chat(
+        ChatRequestData {
+            messages: vec![Message {
+                content: "hello".to_string(),
+                role: Role::User,
+                name: None,
+            }],
+            model: "llama-2-7b-chat.Q5_K_M".to_string(),
+            frequency_penalty: None,
+            logprobs: None,
+            top_logprobs: None,
+            max_tokens: None,
+            presence_penalty: None,
+            seed: None,
+            stop: None,
+            stream: Some(true),
+            temperature: None,
+            top_p: None,
+            n: None,
+            logit_bias: None,
+        },
+        tx,
+    );
+    bk.send(cmd).unwrap();
+
+    let mut i = 0;
+    while let Ok(Ok(ChatResponse::ChatResponseChunk(data))) = rx.recv() {
+        i += 1;
+        println!(
+            "{:?} {:?}",
+            data.choices[0].delta, data.choices[0].finish_reason
+        );
+        if i == 5 {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let cmd = Command::StopChatCompletion(tx);
+            bk.send(cmd).unwrap();
+            rx.recv().unwrap().unwrap();
+        }
+        if matches!(data.choices[0].finish_reason, Some(StopReason::Stop)) {
+            break;
+        }
     }
 
     let (tx, rx) = std::sync::mpsc::channel();
@@ -840,7 +963,10 @@ impl BackendImpl {
                         let _ = tx.send(Err(anyhow::anyhow!("Model not loaded")));
                     }
                 }
-                ModelInteractionCommand::StopChatCompletion(_) => todo!(),
+                ModelInteractionCommand::StopChatCompletion(tx) => {
+                    self.model.as_ref().map(|model| model.stop_chat());
+                    let _ = tx.send(Ok(()));
+                }
                 ModelInteractionCommand::StartLocalServer(_, _) => todo!(),
                 ModelInteractionCommand::StopLocalServer(_) => todo!(),
             },
