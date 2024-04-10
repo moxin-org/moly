@@ -10,7 +10,7 @@ pub struct Backend {
 
 impl Default for Backend {
     fn default() -> Self {
-        Backend::new(".".to_string())
+        Backend::new(".".to_string(), 3)
     }
 }
 
@@ -18,8 +18,10 @@ impl Backend {
     /// # Argument
     ///
     /// * `models_dir` - The download path of the model.
-    pub fn new(models_dir: String) -> Backend {
-        let command_sender = backend_impls::BackendImpl::build_command_sender(models_dir);
+    /// * `max_download_threads` - Maximum limit on simultaneous file downloads.
+    pub fn new(models_dir: String, max_download_threads: usize) -> Backend {
+        let command_sender =
+            backend_impls::BackendImpl::build_command_sender(models_dir, max_download_threads);
         Backend { command_sender }
     }
 }

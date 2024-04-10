@@ -570,7 +570,7 @@ fn test_chat() {
     use moxin_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -641,7 +641,7 @@ fn test_chat_stop() {
     use moxin_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -725,7 +725,7 @@ fn test_chat_stop() {
 #[test]
 fn test_download_file() {
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::SearchModels("llama".to_string(), tx);
@@ -736,21 +736,27 @@ fn test_download_file() {
     println!("{models:?}");
 
     let file = models[0].files[0].clone();
-    println!("{file:?}");
+    println!("download {file:?}");
 
     let (tx, rx) = std::sync::mpsc::channel();
+    let cmd = Command::DownloadFile(file.id, tx.clone());
+    bk.send(cmd).unwrap();
+
+    let file = models[0].files[1].clone();
+    println!("download {file:?}");
+
     let cmd = Command::DownloadFile(file.id, tx);
     bk.send(cmd).unwrap();
+
     println!();
 
     while let Ok(r) = rx.recv() {
         match r {
-            Ok(FileDownloadResponse::Progress(_, progress)) => {
-                println!("progress: {:.2}%", progress);
+            Ok(FileDownloadResponse::Progress(file_id, progress)) => {
+                println!("{file_id} progress: {:.2}%", progress);
             }
             Ok(FileDownloadResponse::Completed(file)) => {
                 println!("Completed {file:?}");
-                break;
             }
             Err(e) => {
                 eprintln!("{e}");
@@ -763,7 +769,7 @@ fn test_download_file() {
 #[test]
 fn test_get_download_file() {
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"));
+    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -778,7 +784,7 @@ pub struct BackendImpl {
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
     models_dir: String,
     pub rx: Receiver<Command>,
-    download_tx: Sender<(
+    download_tx: crossbeam::channel::Sender<(
         store::models::Model,
         store::download_files::DownloadedFile,
         Sender<anyhow::Result<FileDownloadResponse>>,
@@ -790,7 +796,11 @@ impl BackendImpl {
     /// # Argument
     ///
     /// * `models_dir` - The download path of the model.
-    pub fn build_command_sender(models_dir: String) -> Sender<Command> {
+    /// * `max_download_threads` - Maximum limit on simultaneous file downloads.
+    pub fn build_command_sender(
+        models_dir: String,
+        max_download_threads: usize,
+    ) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
 
         let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
@@ -798,10 +808,20 @@ impl BackendImpl {
         let _ = store::download_files::create_table_download_files(&sql_conn);
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
-        let sql_conn_ = sql_conn.clone();
 
-        let (download_tx, download_rx) = std::sync::mpsc::channel();
+        let (download_tx, download_rx) = crossbeam::channel::unbounded();
+        let download_rx = Arc::new(download_rx);
         let (tx, rx) = std::sync::mpsc::channel();
+
+        for _ in 0..max_download_threads.max(1) {
+            let sql_conn_ = sql_conn.clone();
+            let download_rx_ = download_rx.clone();
+
+            std::thread::spawn(move || {
+                store::download_file_loop(sql_conn_, download_rx_);
+            });
+        }
+
         let mut backend = Self {
             sql_conn,
             models_dir,
@@ -809,9 +829,7 @@ impl BackendImpl {
             download_tx,
             model: None,
         };
-        std::thread::spawn(move || {
-            store::download_file_loop(sql_conn_, download_rx);
-        });
+
         std::thread::spawn(move || {
             backend.run_loop();
         });

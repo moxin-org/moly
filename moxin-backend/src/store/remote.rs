@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Read, Seek, Write};
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
@@ -187,6 +187,7 @@ fn download_file(
 }
 
 pub fn download_file_from_remote(
+    client: &reqwest::blocking::Client,
     model_id: &str,
     file: &str,
     local_path: &str,
@@ -198,8 +199,7 @@ pub fn download_file_from_remote(
         model_id, file
     );
 
-    let client = reqwest::blocking::Client::new();
-    let content_length = get_file_content_length(&client, &url)
+    let content_length = get_file_content_length(client, &url)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     download_file(&client, content_length, &url, local_path, step, report_fn)
@@ -207,12 +207,16 @@ pub fn download_file_from_remote(
 
 pub fn download_file_loop(
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
-    rx: Receiver<(
-        super::models::Model,
-        super::download_files::DownloadedFile,
-        Sender<anyhow::Result<FileDownloadResponse>>,
-    )>,
+    rx: Arc<
+        crossbeam::channel::Receiver<(
+            super::models::Model,
+            super::download_files::DownloadedFile,
+            Sender<anyhow::Result<FileDownloadResponse>>,
+        )>,
+    >,
 ) {
+    let client = reqwest::blocking::Client::new();
+
     while let Ok((model, mut file, tx)) = rx.recv() {
         let file_id = file.id.clone();
         let mut send_progress = |progress| {
@@ -223,6 +227,7 @@ pub fn download_file_loop(
         };
 
         let r = download_file_from_remote(
+            &client,
             &model.id,
             &file.name,
             &file.downloaded_path,
@@ -268,7 +273,9 @@ pub fn download_file_loop(
 
 #[test]
 fn test_download_file_from_huggingface() {
+    let client = reqwest::blocking::Client::new();
     download_file_from_remote(
+        &client,
         "TheBloke/Llama-2-7B-Chat-GGUF",
         "llama-2-7b-chat.Q3_K_M.gguf",
         "/home/csh/ai/models/TheBloke/Llama-2-7B-Chat-GGUF/llama-2-7b-chat.Q3_K_M.gguf",
