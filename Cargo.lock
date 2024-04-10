@@ -712,7 +712,7 @@ checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
 [[package]]
 name = "jni-sys"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 
 [[package]]
 name = "js-sys"
@@ -793,7 +793,7 @@ checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 [[package]]
 name = "makepad-derive-live"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -802,7 +802,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -810,7 +810,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-widget"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -819,7 +819,7 @@ dependencies = [
 [[package]]
 name = "makepad-draw"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "ab_glyph_rasterizer",
  "makepad-html",
@@ -833,17 +833,17 @@ dependencies = [
 [[package]]
 name = "makepad-futures"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 
 [[package]]
 name = "makepad-futures-legacy"
 version = "0.7.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 
 [[package]]
 name = "makepad-html"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-live-id",
 ]
@@ -851,12 +851,12 @@ dependencies = [
 [[package]]
 name = "makepad-http"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 
 [[package]]
 name = "makepad-live-compiler"
 version = "0.5.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -866,7 +866,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-live-id-macros",
 ]
@@ -874,7 +874,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id-macros"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -882,7 +882,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-tokenizer"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -892,7 +892,7 @@ dependencies = [
 [[package]]
 name = "makepad-markdown"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-live-id",
 ]
@@ -900,17 +900,17 @@ dependencies = [
 [[package]]
 name = "makepad-math"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 
 [[package]]
 name = "makepad-micro-serde"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-micro-serde-derive",
 ]
@@ -918,7 +918,7 @@ dependencies = [
 [[package]]
 name = "makepad-micro-serde-derive"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -926,12 +926,12 @@ dependencies = [
 [[package]]
 name = "makepad-objc-sys"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 
 [[package]]
 name = "makepad-platform"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "jni-sys",
  "makepad-futures",
@@ -947,7 +947,7 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "0.5.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-live-compiler",
 ]
@@ -955,7 +955,7 @@ dependencies = [
 [[package]]
 name = "makepad-vector"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "ttf-parser",
 ]
@@ -963,7 +963,7 @@ dependencies = [
 [[package]]
 name = "makepad-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -972,7 +972,7 @@ dependencies = [
 [[package]]
 name = "makepad-widgets"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
@@ -985,7 +985,7 @@ dependencies = [
 [[package]]
 name = "makepad-windows"
 version = "0.51.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "windows-core 0.51.1",
  "windows-targets 0.48.5",
@@ -994,7 +994,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-core"
 version = "0.2.14"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "bitflags 2.4.2",
 ]
@@ -1002,7 +1002,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-inflate"
 version = "0.2.54"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "simd-adler32",
 ]
@@ -1010,7 +1010,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-jpeg"
 version = "0.3.17"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-zune-core",
 ]
@@ -1018,7 +1018,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.2.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "makepad-zune-core",
  "makepad-zune-inflate",
@@ -2225,7 +2225,7 @@ checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
 [[package]]
 name = "windows-core"
 version = "0.51.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#30ab86b3c3cb473a460af7624fbe4885a0acbf30"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-changes#9b1a361bdce7acf2af620b5be37aeb27def6166f"
 dependencies = [
  "windows-targets 0.48.5",
 ]
