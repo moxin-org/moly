@@ -131,8 +131,7 @@ impl Chat {
     pub fn cancel_streaming(&mut self, backend: &Backend) {
         let (tx, _rx) = channel();
         let cmd = Command::StopChatCompletion(tx);
-        // TODO Waiting for backend to implement this
-        //backend.command_sender.send(cmd).unwrap();
+        backend.command_sender.send(cmd).unwrap();
 
         makepad_widgets::log!("Cancel streaming");
     }
