@@ -161,6 +161,7 @@ pub fn get_models() -> Vec<Model> {
             },
             like_count: 100,
             download_count: 503,
+            metrics: Default::default(),
         },
         Model {
             id: "Nexusflow/NexusRaven-V2-13B".to_string(),
@@ -178,6 +179,7 @@ pub fn get_models() -> Vec<Model> {
             },
             like_count: 14,
             download_count: 2003,
+            metrics: Default::default(),
         },
         Model {
             id: "stabilityai/stablelm-zephyr-3b".to_string(),
@@ -195,6 +197,7 @@ pub fn get_models() -> Vec<Model> {
             },
             like_count: 160,
             download_count: 5003,
+            metrics: Default::default(),
         },
         Model {
             id: "Qwen/Qwen1.5-7B-Chat-GGUF".to_string(),
@@ -212,6 +215,7 @@ pub fn get_models() -> Vec<Model> {
             },
             like_count: 98,
             download_count: 903,
+            metrics: Default::default(),
         },
     ]
 }

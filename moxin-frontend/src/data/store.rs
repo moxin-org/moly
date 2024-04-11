@@ -117,7 +117,7 @@ impl Store {
                         eprintln!("Error loading model");
                         return;
                     };
-                    self.current_chat = Some(Chat::new(loaded_model.file_id.clone()));
+                    self.current_chat = Some(Chat::new(file.name.clone()));
                 }
                 Err(err) => eprintln!("Error loading model: {:?}", err),
             }
@@ -127,6 +127,24 @@ impl Store {
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(chat) = &mut self.current_chat {
             chat.send_message_to_model(prompt, &self.backend);
+        }
+    }
+
+    pub fn cancel_chat_streaming(&mut self) {
+        if let Some(chat) = &mut self.current_chat {
+            chat.cancel_streaming(&self.backend);
+        }
+    }
+
+    pub fn delete_chat_message(&mut self, message_id: usize) {
+        if let Some(chat) = &mut self.current_chat {
+            chat.delete_message(message_id);
+        }
+    }
+
+    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
+        if let Some(chat) = &mut self.current_chat {
+            chat.edit_message(message_id, updated_message);
         }
     }
 
