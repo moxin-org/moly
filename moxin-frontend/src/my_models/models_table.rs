@@ -47,7 +47,7 @@ live_design! {
         width: Fill
         height: Fit
         padding: {top: 10, bottom: 10, left: 20, right: 20}
-        // Heads-up: the spacing and row header widths match the row values
+        // Heads-up: the spacing and row header widths need to match the row values
         spacing: 30,
         show_bg: true
         draw_bg: {
@@ -212,17 +212,16 @@ impl Widget for ModelsTable {
                                 let downloaded_files =
                                     &scope.data.get::<Store>().unwrap().downloaded_files;
 
-                                // TODO: error handling
-                                let file = downloaded_files
-                                    .iter()
-                                    .find(|f| f.file.id.eq(item_id))
-                                    .unwrap();
-
-                                cx.widget_action(
-                                    widget_uid,
-                                    &scope.path,
-                                    ModelAction::StartChat(file.clone()),
-                                );
+                                let downloaded_file = downloaded_files.iter().find(|f| f.file.id.eq(item_id));
+                                if let Some(file) = downloaded_file { 
+                                    cx.widget_action(
+                                        widget_uid,
+                                        &scope.path,
+                                        ModelAction::StartChat(file.clone()),
+                                    );
+                                } else {
+                                    error!("A play action was dispatched for a model that does not longer exist in the local store");
+                                }
                             }
                         }
                         RowAction::InfoClicked => {
@@ -288,7 +287,6 @@ impl Widget for ModelsTable {
                             .set_text(&parameters);
 
                         // Version tag
-                        // let filename = human_readable_name(&model_data.file.name);
                         let filename = &model_data.file.name.replace(".gguf", "").replace(".GGUF", "");
                         item.label(id!(wrapper.model_version_tag.version))
                         .set_text(&filename);

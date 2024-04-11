@@ -171,7 +171,6 @@ live_design! {
         show_bg: true
         draw_bg: {
             color: #cccccc33,
-            // color: #F2F4F7 // todo: fix this color
             instance color2: #AF56DA55
             fn get_color(self) -> vec4 {
                 let coef = self.rect_size.y / self.rect_size.x;
