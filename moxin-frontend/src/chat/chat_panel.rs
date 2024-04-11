@@ -1,7 +1,9 @@
 use crate::chat::model_selector::ModelSelectorAction;
 use crate::data::chat::Chat;
 use crate::data::store::Store;
+use crate::my_models::models_table::ModelAction;
 use makepad_widgets::*;
+use moxin_protocol::data::DownloadedFile;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -339,12 +341,14 @@ impl WidgetMatchEvent for ChatPanel {
         for action in actions {
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
-                    self.loaded = true;
-                    self.view(id!(main)).set_visible(true);
+                    self.load_model_from_file(scope, downloaded_file);
+                }
+                _ => {}
+            }
 
-                    let store = scope.data.get_mut::<Store>().unwrap();
-                    store.load_model(&downloaded_file.file);
-                    self.prompt_enabled = true;
+            match action.as_widget_action().cast() {
+                ModelAction::StartChat(downloaded_file) => {
+                    self.load_model_from_file(scope, downloaded_file);
                 }
                 _ => {}
             }
@@ -365,7 +369,7 @@ impl WidgetMatchEvent for ChatPanel {
         }
 
         if self.prompt_enabled {
-            if let Some(prompt) = self.text_input(id!(prompt)).returned(actions) {
+            if let Some(prompt) = self.text_input(id!(prompt)).return_key(actions) {
                 if prompt.trim().is_empty() {
                     return;
                 }
@@ -427,6 +431,15 @@ impl ChatPanel {
                 }
             },
         );
+    }
+
+    fn load_model_from_file(&mut self, scope: &mut Scope, downloaded_file: DownloadedFile) {
+        self.loaded = true;
+        self.view(id!(main)).set_visible(true);
+
+        let store = scope.data.get_mut::<Store>().unwrap();
+        store.load_model(&downloaded_file.file);
+        self.prompt_enabled = true;
     }
 
     fn scroll_messages_to_bottom(&mut self, list: &PortalListRef, chat: &Chat) {
