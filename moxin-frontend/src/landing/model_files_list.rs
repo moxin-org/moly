@@ -1,4 +1,7 @@
-use crate::data::store::{Store, StoreAction};
+use crate::{
+    data::store::{Store, StoreAction},
+    shared::utils::format_model_size,
+};
 use makepad_widgets::*;
 use moxin_protocol::data::{File, Model};
 use std::collections::HashMap;
@@ -422,7 +425,7 @@ impl ModelFilesItems {
             self.map_to_files.insert(item_id, files[i].clone());
 
             let filename = &files[i].name;
-            let size = &files[i].size;
+            let size = format_model_size(&files[i].size).unwrap_or("-".to_string());
             let quantization = &files[i].quantization;
             item_widget.apply_over(
                 cx,

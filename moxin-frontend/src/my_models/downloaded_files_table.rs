@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::data::store::Store;
+use crate::{data::store::Store, shared::utils::format_model_size};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -259,9 +259,10 @@ impl Widget for DownloadedFilesTable {
                             .set_text(quantization);
 
                         // File size tag
-                        let file_size = dash_if_empty(&file_data.file.size);
+                        let file_size =
+                            format_model_size(&file_data.file.size).unwrap_or("-".to_string());
                         item.label(id!(wrapper.file_size_tag.file_size))
-                            .set_text(file_size);
+                            .set_text(&file_size);
 
                         // Compatibility guess tag
                         item.label(id!(wrapper.compatibility_guess_tag.compatibility.attr_name))
