@@ -202,50 +202,8 @@ pub struct DownloadedFilesTable {
 
 impl Widget for DownloadedFilesTable {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-        for list_action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
-            if let Some(action) = list_action.as_widget_action() {
-                if let Some(group) = &action.group {
-                    match list_action.as_widget_action().cast() {
-                        RowAction::PlayClicked => {
-                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
-                                let downloaded_files =
-                                    &scope.data.get::<Store>().unwrap().downloaded_files;
-
-                                let downloaded_file =
-                                    downloaded_files.iter().find(|f| f.file.id.eq(item_id));
-                                if let Some(file) = downloaded_file {
-                                    cx.widget_action(
-                                        widget_uid,
-                                        &scope.path,
-                                        DownloadedFileAction::StartChat(file.clone()),
-                                    );
-                                } else {
-                                    error!("A play action was dispatched for a model that does not longer exist in the local store");
-                                }
-                            }
-                        }
-                        RowAction::InfoClicked => {
-                            let widget_action = list_action.as_widget_action().unwrap();
-
-                            if let Some(_item_id) =
-                                self.file_item_map.get(&widget_action.widget_uid.0)
-                            {
-                            }
-                        }
-                        RowAction::DeleteClicked => {
-                            let widget_action = list_action.as_widget_action().unwrap();
-
-                            if let Some(_item_id) =
-                                self.file_item_map.get(&widget_action.widget_uid.0)
-                            {
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
-        }
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -325,6 +283,45 @@ impl Widget for DownloadedFilesTable {
             }
         }
         DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for DownloadedFilesTable {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let widget_uid = self.widget_uid();
+        for action in actions.iter() {
+            if let Some(action) = action.as_widget_action() {
+                if let Some(group) = &action.group {
+                    match action.cast() {
+                        RowAction::PlayClicked => {
+                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
+                                let downloaded_files =
+                                    &scope.data.get::<Store>().unwrap().downloaded_files;
+
+                                let downloaded_file =
+                                    downloaded_files.iter().find(|f| f.file.id.eq(item_id));
+                                if let Some(file) = downloaded_file {
+                                    cx.widget_action(
+                                        widget_uid,
+                                        &scope.path,
+                                        DownloadedFileAction::StartChat(file.clone()),
+                                    );
+                                } else {
+                                    error!("A play action was dispatched for a model that does not longer exist in the local store");
+                                }
+                            }
+                        }
+                        RowAction::InfoClicked => {
+                            if let Some(_item_id) = self.file_item_map.get(&action.widget_uid.0) {}
+                        }
+                        RowAction::DeleteClicked => {
+                            if let Some(_item_id) = self.file_item_map.get(&action.widget_uid.0) {}
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
     }
 }
 
