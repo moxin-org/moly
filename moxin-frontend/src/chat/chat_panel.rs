@@ -2,6 +2,7 @@ use crate::chat::chat_line::*;
 use crate::chat::model_selector::ModelSelectorAction;
 use crate::data::chat::Chat;
 use crate::data::store::Store;
+use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
@@ -439,6 +440,14 @@ impl WidgetMatchEvent for ChatPanel {
         for action in actions {
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
+                    let store = scope.data.get_mut::<Store>().unwrap();
+                    self.load_model(store, downloaded_file);
+                }
+                _ => {}
+            }
+
+            match action.as_widget_action().cast() {
+                DownloadedFileAction::StartChat(downloaded_file) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     self.load_model(store, downloaded_file);
                 }
