@@ -1,4 +1,5 @@
 use crate::data::store::*;
+use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_list::ModelFileItemsAction;
 use makepad_widgets::*;
 
@@ -7,8 +8,11 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::modal::*;
     import crate::landing::landing_screen::LandingScreen;
+    import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
+
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
@@ -67,54 +71,68 @@ live_design! {
             pass: {clear_color: #fff}
 
             body = {
+                flow: Overlay
                 width: Fill,
                 height: Fill,
 
-                sidebar_menu = <View> {
-                    width: 100,
-                    flow: Down, spacing: 20.0,
-                    padding: { top: 80 }
-
-                    align: {x: 0.5, y: 0.0},
-
-                    show_bg: true,
-                    draw_bg: {
-                        color: #EDEEF0,
-                    }
-
-                    tab1 = <SidebarMenuButton> {
-                        animator: {selected = {default: on}}
-                        label: "Discover",
-                        draw_icon: {
-                            svg_file: (ICON_DISCOVER),
-                        }
-                    }
-                    tab2 = <SidebarMenuButton> {
-                        label: "Chat",
-                        draw_icon: {
-                            svg_file: (ICON_CHAT),
-                        }
-                    }
-                    tab3 = <SidebarMenuButton> {
-                        label: "My Models",
-                        draw_icon: {
-                            svg_file: (ICON_MY_MODELS),
-                        }
-                    }
-                }
-
-                application_pages = <View> {
-                    margin: 0.0,
-                    padding: 0.0,
-
-                    flow: Overlay,
-
+                root = <View> {
                     width: Fill,
                     height: Fill,
 
-                    tab1_frame = <LandingScreen> {visible: true}
-                    tab2_frame = <ChatScreen> {visible: false}
-                    tab3_frame = <MyModelsView> {visible: false}
+                    sidebar_menu = <View> {
+                        width: 100,
+                        flow: Down, spacing: 20.0,
+                        padding: { top: 80 }
+
+                        align: {x: 0.5, y: 0.0},
+
+                        show_bg: true,
+                        draw_bg: {
+                            color: #EDEEF0,
+                        }
+
+                        tab1 = <SidebarMenuButton> {
+                            animator: {selected = {default: on}}
+                            label: "Discover",
+                            draw_icon: {
+                            svg_file: (ICON_DISCOVER),
+                            }
+                        }
+                        tab2 = <SidebarMenuButton> {
+                            label: "Chat",
+                            draw_icon: {
+                            svg_file: (ICON_CHAT),
+                            }
+                        }
+                        tab3 = <SidebarMenuButton> {
+                            label: "My Models",
+                            draw_icon: {
+                            svg_file: (ICON_MY_MODELS),
+                            }
+                        }
+                    }
+
+                    application_pages = <View> {
+                        margin: 0.0,
+                        padding: 0.0,
+
+                        flow: Overlay,
+
+                        width: Fill,
+                        height: Fill,
+
+                        tab1_frame = <LandingScreen> {visible: true}
+                        tab2_frame = <ChatScreen> {visible: false}
+                        tab3_frame = <MyModelsView> {visible: false}
+                    }
+                }
+
+                modal_root = <Modal> {
+                    model_card_view_all_modal_view = <ModalView> {
+                        content = {
+                            model_card_view_all_modal = <ModelCardViewAllModal> {}
+                        }
+                    }
                 }
             }
         }
@@ -145,6 +163,7 @@ impl LiveRegister for App {
         crate::shared::styles::live_design(cx);
         crate::shared::widgets::live_design(cx);
         crate::shared::icon::live_design(cx);
+        crate::shared::modal::live_design(cx);
 
         crate::landing::shared::live_design(cx);
         crate::landing::model_files_list::live_design(cx);
@@ -207,11 +226,16 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
-                ModelFileItemsAction::Download(file) => {
-                    self.store.download_file(&file);
-                }
-                _ => {}
+            if let ModelFileItemsAction::Download(file) = action.as_widget_action().cast() {
+                self.store.download_file(&file);
+            }
+
+            // Set modal viewall model id
+            if let ViewAllModalAction::ModelSelected(model_id) = action.as_widget_action().cast() {
+                let mut modal = self
+                    .ui
+                    .model_card_view_all_modal(id!(model_card_view_all_modal));
+                modal.set_model_id(model_id);
             }
         }
     }

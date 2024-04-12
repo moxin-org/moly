@@ -1,6 +1,7 @@
 use crate::data::store::Store;
+use crate::shared::modal::ModalAction;
 use makepad_widgets::*;
-use moxin_protocol::data::Model;
+use moxin_protocol::data::{Model, ModelID};
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
@@ -17,6 +18,7 @@ live_design! {
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
     ICON_EXTERNAL_LINK = dep("crate://self/resources/icons/external_link.svg")
+    ICON_CLOSE = dep("crate://self/resources/icons/close.svg")
 
     ModelHeading = <View> {
         flow: Down,
@@ -157,7 +159,7 @@ live_design! {
             }
         }
 
-        <ModelLink> {
+        view_all_button = <ModelLink> {
             link = { text: "View All" }
         }
     }
@@ -209,6 +211,86 @@ live_design! {
         <ModelDetails> {}
     }
 
+
+    ModelCardViewAllModal = {{ModelCardViewAllModal}} {
+        width: Fit
+        height: Fit
+
+        <RoundedView> {
+            flow: Down
+            width: 600
+            height: Fit
+            padding: {top: 30, right: 30 bottom: 50 left: 50}
+            spacing: 10
+
+            show_bg: true
+            draw_bg: {
+                color: #fff
+                radius: 3
+            }
+
+            <View> {
+                width: Fill,
+                height: Fit,
+                filler_x = <View> {width: Fill, height: Fit}
+
+                close_button = <RoundedView> {
+                    width: Fit,
+                    height: Fit,
+                    align: {x: 0.5, y: 0.5}
+                    cursor: Hand
+
+                    button_icon = <Icon> {
+                        draw_icon: {
+                            svg_file: (ICON_CLOSE),
+                            fn get_color(self) -> vec4 {
+                                return #000;
+                            }
+                        }
+                        icon_walk: {width: 12, height: 12}
+                    }
+                }
+            }
+
+            <View> {
+                width: Fill,
+                height: Fit,
+                padding: {bottom: 20}
+
+                model_name = <Label> {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 16},
+                        color: #000
+                    }
+                }
+            }
+
+            <View> {
+                width: Fill,
+                height: Fit,
+                flow: Down,
+                spacing: 10,
+
+                <Label> {
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 9},
+                        color: #000
+                    }
+                    text: "Model Description"
+                }
+                model_summary = <Label> {
+                    width: Fill,
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 9},
+                        word: Wrap,
+                        color: #000
+                    }
+                }
+            }
+        }
+    }
+
+
     ModelCard = {{ModelCard}} {
         width: Fill,
         height: Fit,
@@ -248,6 +330,7 @@ pub struct ModelCard {
 impl Widget for ModelCard {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -302,5 +385,83 @@ impl Widget for ModelCard {
             .set_text(&released_at_str);
 
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for ModelCard {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let widget_uid = self.widget_uid();
+
+        if self.link_label(id!(view_all_button.link)).clicked(actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ModalAction::ShowModalView(id!(model_card_view_all_modal_view)[0]),
+            );
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ViewAllModalAction::ModelSelected(self.model_id.clone()),
+            );
+        }
+    }
+}
+
+// TODO: Make it so this action and setting the model id from the outside isnt needed
+//       find a way to pass the data inside the Modal action itself.
+#[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
+pub enum ViewAllModalAction {
+    None,
+    ModelSelected(ModelID),
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ModelCardViewAllModal {
+    #[deref]
+    view: View,
+    #[rust]
+    model_id: ModelID,
+}
+
+impl Widget for ModelCardViewAllModal {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get::<Store>().unwrap();
+        let model = store.models.iter().find(|model| model.id == self.model_id);
+
+        if let Some(model) = model {
+            let name = &model.name;
+            self.label(id!(model_name)).set_text(name);
+
+            let summary = &model.summary;
+            self.label(id!(model_summary)).set_text(summary);
+        }
+
+        self.view
+            .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
+    }
+}
+
+impl WidgetMatchEvent for ModelCardViewAllModal {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let widget_uid = self.widget_uid();
+
+        if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
+            if fe.was_tap() {
+                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            }
+        }
+    }
+}
+
+impl ModelCardViewAllModalRef {
+    pub fn set_model_id(&mut self, model_id: ModelID) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.model_id = model_id;
+        }
     }
 }
