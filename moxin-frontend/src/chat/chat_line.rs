@@ -251,7 +251,17 @@ pub struct ChatLine {
 
 impl Widget for ChatLine {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let actions = cx.capture_actions(|cx| self.view.handle_event(cx, event, scope));
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for ChatLine {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(action) = actions.find_widget_action(self.view.widget_uid()) {
             if self.actions_enabled {
                 if let ViewAction::FingerHoverIn(_) = action.cast() {
@@ -298,10 +308,6 @@ impl Widget for ChatLine {
                 self.set_edit_mode(cx, false);
             }
         }
-    }
-
-    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view.draw_walk(cx, scope, walk)
     }
 }
 
