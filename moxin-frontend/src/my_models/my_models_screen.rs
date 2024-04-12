@@ -272,7 +272,7 @@ fn generate_models_summary(downloaded_files: &Vec<DownloadedFile>) -> String {
     let disk_space_label = if total_diskspace_mb >= 1024.0 {
         format!("{:.2} GB Diskspace", total_diskspace_mb / 1024.0)
     } else {
-        format!("{:.2} MB Diskspace", total_diskspace_mb)
+        format!("{} MB Diskspace", total_diskspace_mb as i32)
     };
 
     let model_label = if downloaded_files.len() == 1 {
@@ -291,7 +291,6 @@ fn generate_models_summary(downloaded_files: &Vec<DownloadedFile>) -> String {
 
 fn total_files_disk_space(files: &Vec<DownloadedFile>) -> f64 {
     files.iter().fold(0., |acc, file| {
-        log!("FILE SIZE: {}", file.file.size);
         let file_size_bytes = file.file.size.parse::<f64>();
         match file_size_bytes {
             Ok(size_bytes) => acc + (size_bytes / BYTES_PER_MB),

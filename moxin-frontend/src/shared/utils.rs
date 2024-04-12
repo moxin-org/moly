@@ -8,6 +8,6 @@ pub fn format_model_size(size: &str) -> Result<String> {
     if size_mb >= 1024.0 {
         Ok(format!("{:.2} GB", size_mb / 1024.0))
     } else {
-        Ok(format!("{:.2} MB", size_mb))
+        Ok(format!("{:.2} MB", size_mb as i32))
     }
 }

@@ -259,7 +259,8 @@ impl Widget for DownloadedFilesTable {
                             .set_text(quantization);
 
                         // File size tag
-                        let file_size = format_model_size(&file_data.file.size).unwrap_or("-".to_string());
+                        let file_size =
+                            format_model_size(&file_data.file.size).unwrap_or("-".to_string());
                         item.label(id!(wrapper.file_size_tag.file_size))
                             .set_text(&file_size);
 
