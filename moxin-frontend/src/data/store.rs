@@ -1,11 +1,17 @@
 use crate::data::{chat::Chat, download::Download, search::Search};
+use anyhow::{Context, Result};
 use chrono::Utc;
 use makepad_widgets::DefaultNone;
 use moxin_backend::Backend;
 use moxin_protocol::data::{DownloadedFile, File, FileID, Model};
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::mpsc::channel;
+use std::{env, fs};
+
+const DEFAULT_DOWNLOADS_FOLDER: &str = "moxin/model_downloads";
+const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum StoreAction {
@@ -24,7 +30,6 @@ pub enum SortCriteria {
     LeastLikes,
 }
 
-#[derive(Default)]
 pub struct Store {
     // This is the backend representation, including the sender and receiver ends of the channels to
     // communicate with the backend thread.
@@ -39,27 +44,35 @@ pub struct Store {
 
     pub current_chat: Option<Chat>,
     pub current_downloads: HashMap<FileID, Download>,
+    pub downloaded_files_folder: String,
 }
 
-impl Store {
-    pub fn new() -> Self {
+impl Default for Store {
+    fn default() -> Self {
+        let downloads_dir = setup_model_downloads_folder().unwrap_or_else(|e| {
+            eprintln!("Failed to set up the model downloads directory: {}", e);
+            ".".to_string() // Use current directory as fallback
+        });
+
         let mut store = Self {
             models: vec![],
-            backend: Backend::default(),
+            backend: Backend::new(downloads_dir.clone(), DEFAULT_MAX_DOWNLOAD_THREADS),
             search: Search::new(),
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
             current_downloads: HashMap::new(),
             downloaded_files: vec![],
+            downloaded_files_folder: downloads_dir,
         };
         store.load_downloaded_files();
         store.load_featured_models();
         store.sort_models(SortCriteria::MostDownloads);
         store
     }
+}
 
+impl Store {
     // Commands to the backend
-
     pub fn load_featured_models(&mut self) {
         self.search.load_featured_models(&self.backend);
     }
@@ -113,7 +126,7 @@ impl Store {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(response) => {
-                    let LoadModelResponse::Completed(loaded_model) = response else {
+                    let LoadModelResponse::Completed(_loaded_model) = response else {
                         eprintln!("Error loading model");
                         return;
                     };
@@ -232,4 +245,16 @@ impl Store {
             .cloned()
             .collect()
     }
+}
+
+fn setup_model_downloads_folder() -> Result<String> {
+    let home_dir = env::var("HOME") // Unix-like systems
+        .or_else(|_| env::var("USERPROFILE")) // Windows
+        .context("Home directory not found")?;
+
+    let downloads_dir = PathBuf::from(home_dir).join(DEFAULT_DOWNLOADS_FOLDER);
+
+    fs::create_dir_all(&downloads_dir)?;
+
+    Ok(downloads_dir.to_string_lossy().to_string())
 }

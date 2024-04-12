@@ -108,7 +108,7 @@ live_design! {
         }
 
         input = <TextInput> {
-            width: 260,
+            width: 250,
             height: Fit,
 
             empty_message: "Search Model by Keyword"
@@ -219,6 +219,7 @@ live_design! {
             align: {x: 0.0, y: 0.5}
 
             <Label> {
+                width: Fit, height: Fit
                 draw_text:{
                     text_style: <REGULAR_FONT>{font_size: 11}
                     color: #000
@@ -226,16 +227,17 @@ live_design! {
                 text: "Local Models Folder"
             }
             local_models_folder = <Label> {
+                width: 300, height: Fit
                 draw_text:{
                     text_style: <REGULAR_FONT>{font_size: 11}
                     color: #222
+                    wrap: Ellipsis
                 }
-                text: "/Users/name/.cache/lm-studio/models"
             }
 
             <DownloadLocation> {}
             <ReviewInFinder> {}
-            <View> { width: Fill, height: Fit }
+            <View> { width: Fill }
             <SearchBar> {}
         }
 
@@ -257,11 +259,14 @@ impl Widget for MyModelsScreen {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope.data.get::<Store>().unwrap().downloaded_files;
+        let store = &scope.data.get::<Store>().unwrap();
 
-        let summary = generate_models_summary(&downloaded_files);
+        let summary = generate_models_summary(&&store.downloaded_files);
         let models_summary_label = self.view.label(id!(header.models_summary));
         models_summary_label.set_text(&summary);
+
+        let models_folder_label = self.view.label(id!(sub_header.local_models_folder));
+        models_folder_label.set_text(&store.downloaded_files_folder);
 
         self.view.draw_walk(cx, scope, walk)
     }
