@@ -159,10 +159,7 @@ impl Widget for Modal {
 }
 
 impl LiveHook for Modal {
-    fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        self.show_modal_view_by_id(cx, (id!(model_card_view_all_modal_view))[0])
-            .unwrap();
-    }
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {}
 }
 
 impl WidgetNode for Modal {
