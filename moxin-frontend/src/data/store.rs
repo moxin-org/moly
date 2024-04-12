@@ -10,7 +10,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::{env, fs};
 
-const DEFAULT_DOWNLOADS_FOLDER: &str = "moxin/model_downloads";
+// Note that .moxin will create a hidden folder in unix-like systems.
+// However in Windows the folder will be visible by default.
+const DEFAULT_DOWNLOADS_FOLDER: &str = ".moxin/model_downloads";
 const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
 #[derive(Clone, DefaultNone, Debug)]
@@ -183,19 +185,19 @@ impl Store {
 
     fn update_downloads(&mut self) {
         let mut completed_downloads = Vec::new();
-    
+
         for (id, download) in &mut self.current_downloads {
             download.process_download_progress();
             if download.done {
                 completed_downloads.push(id.clone());
             }
         }
-    
+
         // Fetch new downloads if any just completed
         if !completed_downloads.is_empty() {
             self.load_downloaded_files();
         }
-    
+
         for id in completed_downloads {
             self.current_downloads.remove(&id);
         }
@@ -248,13 +250,16 @@ impl Store {
 }
 
 fn setup_model_downloads_folder() -> Result<String> {
-    let home_dir = env::var("HOME") // Unix-like systems
-        .or_else(|_| env::var("USERPROFILE")) // Windows
+    let home_dir = env::var("HOME"). // Unix-like systems
+        or_else(|_| env::var("USERPROFILE")) // Windows
         .context("Home directory not found")?;
 
     let downloads_dir = PathBuf::from(home_dir).join(DEFAULT_DOWNLOADS_FOLDER);
 
-    fs::create_dir_all(&downloads_dir)?;
+    fs::create_dir_all(&downloads_dir).context(format!(
+        "Failed to create directory '{}'",
+        downloads_dir.display()
+    ))?;
 
     Ok(downloads_dir.to_string_lossy().to_string())
 }
