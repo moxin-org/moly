@@ -161,6 +161,7 @@ impl LiveRegister for App {
         crate::landing::landing_screen::live_design(cx);
         crate::landing::search_bar::live_design(cx);
         crate::landing::sorting::live_design(cx);
+        crate::landing::downloads::live_design(cx);
 
         // Chat
         crate::chat::chat_screen::live_design(cx);
