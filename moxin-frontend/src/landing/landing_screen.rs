@@ -1,4 +1,5 @@
 use crate::data::store::{Store, StoreAction};
+use crate::landing::downloads::DownloadsWidgetExt;
 use crate::landing::model_list::ModelListAction;
 use crate::landing::search_bar::SearchBarWidgetExt;
 use crate::landing::sorting::SortingWidgetExt;
@@ -79,20 +80,18 @@ live_design! {
             height: Fill,
             flow: Down,
 
-            spacing: 30,
-
             search_bar = <SearchBar> {}
-            <View> {
+            models = <View> {
                 width: Fill,
                 height: Fill,
                 flow: Down,
                 spacing: 30,
-                margin: { left: 50, right: 50 },
+                margin: { left: 50, right: 50, top: 30 },
 
                 <Heading> {}
                 <ModelList> {}
             }
-            <Downloads> {}
+            downloads = <Downloads> {}
         }
     }
 }
@@ -117,6 +116,8 @@ pub struct LandingScreen {
 
 impl Widget for LandingScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.collapse_downloads_if_discarded(event, cx);
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
@@ -139,6 +140,24 @@ impl Widget for LandingScreen {
         }
 
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl LandingScreen {
+    fn collapse_downloads_if_discarded(&mut self, event: &Event, cx: &mut Cx) {
+        let outside_areas = vec![
+            self.search_bar(id!(search_bar)).area(),
+            self.view(id!(models)).area(),
+        ];
+
+        if outside_areas.iter().any(|area| {
+            matches!(
+                event.hits_with_capture_overload(cx, *area, true),
+                Hit::FingerDown(_)
+            )
+        }) {
+            self.downloads(id!(downloads)).collapse(cx);
+        }
     }
 }
 
