@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::data::store::Store;
+use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -259,25 +259,43 @@ impl Widget for MyModelsScreen {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let downloaded_files = &scope.data.get::<Store>().unwrap().downloaded_files;
 
-        let total_diskspace = total_files_disk_space(downloaded_files);
+        let summary = generate_models_summary(&downloaded_files);
         let models_summary_label = self.view.label(id!(header.models_summary));
-        let summary = &format!(
-            "{} Models, {} GB Diskspace",
-            downloaded_files.len(),
-            total_diskspace
-        );
-        models_summary_label.set_text(summary);
+        models_summary_label.set_text(&summary);
 
         self.view.draw_walk(cx, scope, walk)
     }
 }
 
+fn generate_models_summary(downloaded_files: &Vec<DownloadedFile>) -> String {
+    let total_diskspace_mb = total_files_disk_space(downloaded_files);
+    let disk_space_label = if total_diskspace_mb >= 1024.0 {
+        format!("{:.2} GB Diskspace", total_diskspace_mb / 1024.0)
+    } else {
+        format!("{:.2} MB Diskspace", total_diskspace_mb)
+    };
+
+    let model_label = if downloaded_files.len() == 1 {
+        "Model"
+    } else {
+        "Models"
+    };
+
+    format!(
+        "{} {}, {}",
+        downloaded_files.len(),
+        model_label,
+        disk_space_label
+    )
+}
+
 fn total_files_disk_space(files: &Vec<DownloadedFile>) -> f64 {
     files.iter().fold(0., |acc, file| {
-        let file_size_gb = file.file.size.replace("GB", "").parse::<f64>();
-        if let Ok(size_gb) = file_size_gb {
-            return acc + size_gb;
+        log!("FILE SIZE: {}", file.file.size);
+        let file_size_bytes = file.file.size.parse::<f64>();
+        match file_size_bytes {
+            Ok(size_bytes) => acc + (size_bytes / BYTES_PER_MB),
+            Err(_) => acc,
         }
-        return acc;
     })
 }
