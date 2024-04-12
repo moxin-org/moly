@@ -1,4 +1,4 @@
-use crate::data::store::Store;
+use crate::{data::store::Store, my_models::downloaded_files_table::DownloadedFileAction};
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 use std::collections::HashMap;
@@ -216,36 +216,49 @@ impl WidgetMatchEvent for ModelSelector {
         for action in actions {
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
-                    self.open = false;
-                    self.view(id!(options)).apply_over(
-                        cx,
-                        live! {
-                            visible: (self.open)
-                        },
-                    );
-                    self.view(id!(choose)).apply_over(
-                        cx,
-                        live! {
-                            visible: false
-                        },
-                    );
-                    let filename = downloaded_file.file.name;
-                    let architecture = downloaded_file.model.architecture;
-                    let size = downloaded_file.model.size;
-                    self.view(id!(selected)).apply_over(
-                        cx,
-                        live! {
-                            visible: true
-                            label = { text: (filename) }
-                            architecture_tag = { caption = { text: (architecture) }}
-                            params_size_tag = { caption = { text: (size) }}
-                        },
-                    );
-                    self.redraw(cx);
+                    self.update_ui_with_file(cx, downloaded_file);
+                }
+                _ => {}
+            }
+
+            match action.as_widget_action().cast() {
+                DownloadedFileAction::StartChat(downloaded_file) => {
+                    self.update_ui_with_file(cx, downloaded_file);
                 }
                 _ => {}
             }
         }
+    }
+}
+
+impl ModelSelector {
+    fn update_ui_with_file(&mut self, cx: &mut Cx, downloaded_file: DownloadedFile) {
+        self.open = false;
+        self.view(id!(options)).apply_over(
+            cx,
+            live! {
+                visible: (self.open)
+            },
+        );
+        self.view(id!(choose)).apply_over(
+            cx,
+            live! {
+                visible: false
+            },
+        );
+        let filename = downloaded_file.file.name;
+        let architecture = downloaded_file.model.architecture;
+        let size = downloaded_file.model.size;
+        self.view(id!(selected)).apply_over(
+            cx,
+            live! {
+                visible: true
+                label = { text: (filename) }
+                architecture_tag = { caption = { text: (architecture) }}
+                params_size_tag = { caption = { text: (size) }}
+            },
+        );
+        self.redraw(cx);
     }
 }
 

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 
 pub type FileID = String;
@@ -26,13 +28,23 @@ pub struct Author {
     pub description: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum CompatibilityGuess {
+    #[default]
     PossiblySupported,
     NotSupported,
 }
 
-#[derive(Clone, Debug)]
+impl CompatibilityGuess {
+    pub fn as_str(&self) -> &str {
+        match self {
+            CompatibilityGuess::PossiblySupported => "Possibly Supported",
+            CompatibilityGuess::NotSupported => "Not Supported",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct DownloadedFile {
     pub file: File,
     pub model: Model,
@@ -57,4 +69,5 @@ pub struct Model {
     pub author: Author,
     pub like_count: u32,
     pub download_count: u32,
+    pub metrics: HashMap<String, f32>,
 }

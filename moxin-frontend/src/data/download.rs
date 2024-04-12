@@ -66,7 +66,7 @@ impl Download {
         });
     }
 
-    pub fn update_download_progress(&mut self) {
+    pub fn process_download_progress(&mut self) {
         for msg in self.receiver.try_iter() {
             match msg {
                 DownloadFileAction::StreamingDone => {

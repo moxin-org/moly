@@ -3,6 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use chrono::{DateTime, Utc};
 use rusqlite::params;
 
+pub use super::remote::Author;
+
 pub fn create_table_models(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS models (
@@ -15,20 +17,15 @@ pub fn create_table_models(conn: &rusqlite::Connection) -> rusqlite::Result<()> 
             released_at TEXT NOT NULL,
             prompt_template TEXT DEFAULT '',
             reverse_prompt TEXT DEFAULT '',
-            author TEXT NOT NULL,
+            author_name TEXT NOT NULL,
+            author_url TEXT NOT NULL,
+            author_description TEXT NOT NULL,
             like_count INTEGER NOT NULL,
             download_count INTEGER NOT NULL
         )",
-        (), // empty list of parameters.
+        (),
     )?;
     Ok(())
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct Author {
-    pub name: String,
-    pub url: String,
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -49,10 +46,9 @@ pub struct Model {
 
 impl Model {
     pub fn save_to_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
-        let autor = serde_json::to_string(self.author.as_ref()).unwrap();
         conn.execute(
-            "INSERT INTO models (id, name, summary, size, requires, architecture, released_at, prompt_template, reverse_prompt, author, like_count, download_count)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            "INSERT INTO models (id, name, summary, size, requires, architecture, released_at, prompt_template, reverse_prompt, author_name, author_url, author_description, like_count, download_count)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![
                 self.id,
                 self.name,
@@ -63,7 +59,9 @@ impl Model {
                 self.released_at.to_rfc3339(),
                 self.prompt_template,
                 self.reverse_prompt,
-                autor,
+                self.author.name,
+                self.author.url,
+                self.author.description,
                 self.like_count,
                 self.download_count
             ],
@@ -81,8 +79,11 @@ impl Model {
                 .map(|s| s.to_utc())
                 .unwrap_or_default();
 
-            let author =
-                Arc::new(serde_json::from_str(&row.get::<_, String>(9)?).unwrap_or_default());
+            let author = Arc::new(Author {
+                name: row.get(9)?,
+                url: row.get(10)?,
+                description: row.get(11)?,
+            });
 
             let id = row.get::<_, String>(0)?;
 
@@ -99,8 +100,8 @@ impl Model {
                     prompt_template: row.get(7)?,
                     reverse_prompt: row.get(8)?,
                     author,
-                    like_count: row.get(10)?,
-                    download_count: row.get(11)?,
+                    like_count: row.get(12)?,
+                    download_count: row.get(13)?,
                 },
             );
         }
