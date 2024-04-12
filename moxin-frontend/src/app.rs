@@ -1,6 +1,6 @@
 use crate::data::store::*;
 use crate::landing::model_files_list::ModelFileItemsAction;
-use crate::my_models::models_table::ModelAction;
+use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use makepad_widgets::*;
 
 live_design! {
@@ -150,7 +150,7 @@ impl LiveRegister for App {
 
         // My Models
         crate::my_models::my_models_screen::live_design(cx);
-        crate::my_models::models_table::live_design(cx);
+        crate::my_models::downloaded_files_table::live_design(cx);
     }
 }
 
@@ -209,10 +209,10 @@ impl MatchEvent for App {
             }
 
             match action.as_widget_action().cast() {
-                ModelAction::StartChat(_) => {
+                DownloadedFileAction::StartChat(_) => {
                     let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                     chat_radio_button.select(cx, &mut Scope::empty());
-                },
+                }
                 _ => {}
             }
         }

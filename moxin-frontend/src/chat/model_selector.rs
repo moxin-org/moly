@@ -1,4 +1,4 @@
-use crate::{data::store::Store, my_models::models_table::ModelAction};
+use crate::{data::store::Store, my_models::downloaded_files_table::DownloadedFileAction};
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 use std::collections::HashMap;
@@ -222,7 +222,7 @@ impl WidgetMatchEvent for ModelSelector {
             }
 
             match action.as_widget_action().cast() {
-                ModelAction::StartChat(downloaded_file) => {
+                DownloadedFileAction::StartChat(downloaded_file) => {
                     self.update_ui_with_file(cx, downloaded_file);
                 }
                 _ => {}

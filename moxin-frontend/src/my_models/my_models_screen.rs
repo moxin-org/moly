@@ -10,7 +10,7 @@ live_design! {
 
     import crate::shared::styles::*;
 
-    import crate::my_models::models_table::ModelsTable;
+    import crate::my_models::downloaded_files_table::DownloadedFilesTable;
 
     ICON_EDIT_FOLDER = dep("crate://self/resources/icons/edit_folder.svg")
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
@@ -239,7 +239,7 @@ live_design! {
             <SearchBar> {}
         }
 
-        table = <ModelsTable> {
+        table = <DownloadedFilesTable> {
             margin: {top: 20}
         }
     }

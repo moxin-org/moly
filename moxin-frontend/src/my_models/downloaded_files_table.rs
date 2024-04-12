@@ -66,7 +66,7 @@ live_design! {
 
     Row = <View> {
         // Heads-up: rows break the Portal List without fixed height
-        height: 55, 
+        height: 55,
         flow: Down
         width: Fill
         align: {x: 0.0, y: 0.5}
@@ -179,7 +179,7 @@ live_design! {
         }
     }
 
-    ModelsTable = {{ModelsTable}} <RoundedView> {
+    DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedView> {
         width: Fill,
         height: Fill,
         align: {x: 0.5, y: 0.5}
@@ -193,14 +193,14 @@ live_design! {
 }
 
 #[derive(Live, LiveHook, Widget)]
-pub struct ModelsTable {
+pub struct DownloadedFilesTable {
     #[deref]
     view: View,
     #[rust]
-    model_item_map: HashMap<u64, String>,
+    file_item_map: HashMap<u64, String>,
 }
 
-impl Widget for ModelsTable {
+impl Widget for DownloadedFilesTable {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
         for list_action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
@@ -208,16 +208,17 @@ impl Widget for ModelsTable {
                 if let Some(group) = &action.group {
                     match list_action.as_widget_action().cast() {
                         RowAction::PlayClicked => {
-                            if let Some(item_id) = self.model_item_map.get(&group.item_uid.0) {
+                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
                                 let downloaded_files =
                                     &scope.data.get::<Store>().unwrap().downloaded_files;
 
-                                let downloaded_file = downloaded_files.iter().find(|f| f.file.id.eq(item_id));
-                                if let Some(file) = downloaded_file { 
+                                let downloaded_file =
+                                    downloaded_files.iter().find(|f| f.file.id.eq(item_id));
+                                if let Some(file) = downloaded_file {
                                     cx.widget_action(
                                         widget_uid,
                                         &scope.path,
-                                        ModelAction::StartChat(file.clone()),
+                                        DownloadedFileAction::StartChat(file.clone()),
                                     );
                                 } else {
                                     error!("A play action was dispatched for a model that does not longer exist in the local store");
@@ -228,7 +229,7 @@ impl Widget for ModelsTable {
                             let widget_action = list_action.as_widget_action().unwrap();
 
                             if let Some(_item_id) =
-                                self.model_item_map.get(&widget_action.widget_uid.0)
+                                self.file_item_map.get(&widget_action.widget_uid.0)
                             {
                             }
                         }
@@ -236,7 +237,7 @@ impl Widget for ModelsTable {
                             let widget_action = list_action.as_widget_action().unwrap();
 
                             if let Some(_item_id) =
-                                self.model_item_map.get(&widget_action.widget_uid.0)
+                                self.file_item_map.get(&widget_action.widget_uid.0)
                             {
                             }
                         }
@@ -271,43 +272,45 @@ impl Widget for ModelsTable {
                         template = live_id!(ItemRow);
                         let item = list.item(cx, item_id, template).unwrap();
 
-                        let model_data = &downloaded_files[item_id - 1];
+                        let file_data = &downloaded_files[item_id - 1];
 
-                        self.model_item_map
-                            .insert(item.widget_uid().0, model_data.file.id.clone());
+                        self.file_item_map
+                            .insert(item.widget_uid().0, file_data.file.id.clone());
 
                         // Name tag
-                        let model_name = human_readable_name(&model_data.model.name);
-                        item.label(id!(wrapper.name_tag.name))
-                            .set_text(&model_name);
+                        let model_name = human_readable_name(&file_data.model.name);
+                        item.label(id!(wrapper.name_tag.name)).set_text(&model_name);
 
                         // Parameters tag
-                        let parameters = dash_if_empty(&model_data.model.size);
+                        let parameters = dash_if_empty(&file_data.model.size);
                         item.label(id!(wrapper.parameters_tag.parameters.attr_name))
                             .set_text(&parameters);
 
                         // Version tag
-                        let filename = &model_data.file.name.replace(".gguf", "").replace(".GGUF", "");
+                        let filename = &file_data
+                            .file
+                            .name
+                            .replace(".gguf", "")
+                            .replace(".GGUF", "");
                         item.label(id!(wrapper.model_version_tag.version))
-                        .set_text(&filename);
+                            .set_text(&filename);
 
                         // Quantization tag
-                        let quantization = dash_if_empty(&model_data.file.quantization);
+                        let quantization = dash_if_empty(&file_data.file.quantization);
                         item.label(id!(wrapper.quantization_tag.quantization.attr_name))
                             .set_text(quantization);
 
                         // File size tag
-                        let file_size = dash_if_empty(&model_data.file.size);
+                        let file_size = dash_if_empty(&file_data.file.size);
                         item.label(id!(wrapper.file_size_tag.file_size))
                             .set_text(file_size);
 
                         // Compatibility guess tag
                         item.label(id!(wrapper.compatibility_guess_tag.compatibility.attr_name))
-                            .set_text(model_data.compatibility_guess.as_str());
+                            .set_text(file_data.compatibility_guess.as_str());
 
                         // Added date tag
-                        let formatted_date =
-                            model_data.downloaded_at.format("%d/%m/%Y").to_string();
+                        let formatted_date = file_data.downloaded_at.format("%d/%m/%Y").to_string();
                         item.label(id!(wrapper.date_added_tag.date_added))
                             .set_text(&formatted_date);
 
@@ -383,14 +386,15 @@ impl Widget for ActionButton {
 }
 
 #[derive(Clone, DefaultNone, Debug)]
-pub enum ModelAction {
+pub enum DownloadedFileAction {
     StartChat(DownloadedFile),
     None,
 }
 
 /// Removes dashes, file extension, and capitalizes the first letter of each word.
 fn human_readable_name(name: &str) -> String {
-    let name = name.to_lowercase()
+    let name = name
+        .to_lowercase()
         .replace("-", " ")
         .replace("gguf", "")
         .replace("chat", "");
@@ -409,7 +413,6 @@ fn human_readable_name(name: &str) -> String {
 
     name
 }
-
 
 fn dash_if_empty(input: &str) -> &str {
     if input.is_empty() {
