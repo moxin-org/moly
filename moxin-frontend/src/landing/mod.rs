@@ -1,3 +1,4 @@
+pub mod download_item;
 pub mod downloads;
 pub mod landing_screen;
 pub mod model_card;

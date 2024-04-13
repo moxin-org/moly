@@ -7,14 +7,17 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
+    import crate::landing::download_item::DownloadItem;
+
     Header = <View> {
         width: Fill,
         height: Fit,
-        spacing: 15,
+        spacing: 25,
 
         <Label> {
+            margin: {right: 20.0},
             draw_text:{
-                text_style: <BOLD_FONT>{font_size: 11},
+                text_style: <BOLD_FONT>{font_size: 9},
                 color: #000
             }
             text: "Model Downloads"
@@ -22,7 +25,7 @@ live_design! {
 
         <Label> {
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 color: #099250
             }
             text: "1 downloading"
@@ -30,7 +33,7 @@ live_design! {
 
         <Label> {
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 color: #667085
             }
             text: "1 paused"
@@ -38,7 +41,7 @@ live_design! {
 
         <Label> {
             draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
+                text_style: <REGULAR_FONT>{font_size: 9},
                 color: #667085
             }
             text: "5 completed"
@@ -49,30 +52,11 @@ live_design! {
         width: Fill,
         height: 350,
 
-        flow: Down,
+        list = <PortalList> {
+            width: Fill,
+            height: Fill,
 
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
-                color: #667085
-            }
-            text: "Downloading"
-        }
-
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
-                color: #667085
-            }
-            text: "Paused"
-        }
-
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
-                color: #667085
-            }
-            text: "Completed"
+            DownloadItem = <DownloadItem> {}
         }
     }
 
@@ -89,11 +73,11 @@ live_design! {
         // TODO there is a better way to have only top-border?
         <Line> { draw_bg: { color: #EAECF0 }}
         <Header> {
-            padding: {top: 12.0, bottom: 12.0, left: 43.0},
+            padding: {top: 20.0, bottom: 20.0, left: 43.0},
         }
         content = <Content> {
             height: 0,
-            padding: {top: 12.0, bottom: 12.0, left: 43.0},
+            padding: {top: 12.0, bottom: 12.0, left: 43.0, right: 43.0},
         }
 
         animator: {
@@ -143,8 +127,24 @@ impl Widget for Downloads {
         }
     }
 
-    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view.draw_walk(cx, scope, walk)
+    fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
+        let downloads_count = 4;
+
+        while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
+            if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
+                list.set_item_range(cx, 0, downloads_count);
+                while let Some(item_id) = list.next_visible_item(cx) {
+                    let item = list.item(cx, item_id, live_id!(DownloadItem)).unwrap();
+
+                    if item_id < downloads_count {
+                        // item.draw_all(cx, &mut Scope::with_data(&mut model_data.clone()));
+                        item.draw_all(cx, &mut Scope::with_data(&mut Scope::empty()));
+                    }
+                }
+            }
+        }
+
+        DrawStep::done()
     }
 }
 

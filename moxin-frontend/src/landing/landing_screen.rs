@@ -116,10 +116,10 @@ pub struct LandingScreen {
 
 impl Widget for LandingScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.collapse_downloads_if_discarded(event, cx);
-
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        self.collapse_downloads_if_discarded(event, cx);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
