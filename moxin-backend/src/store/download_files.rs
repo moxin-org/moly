@@ -12,8 +12,7 @@ pub struct DownloadedFile {
     pub quantization: String,
     pub prompt_template: String,
     pub reverse_prompt: String,
-    pub downloaded: bool,
-    pub downloaded_path: String,
+    pub download_dir: String,
     pub downloaded_at: DateTime<Utc>,
     pub tags: Vec<String>,
     pub featured: bool,
@@ -22,7 +21,7 @@ pub struct DownloadedFile {
 impl DownloadedFile {
     pub fn save_to_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(
-            "INSERT INTO download_files (id, model_id, name, size, quantization, prompt_template, reverse_prompt, downloaded, downloaded_path, downloaded_at, tags, featured) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            "INSERT INTO download_files (id, model_id, name, size, quantization, prompt_template, reverse_prompt, download_dir, downloaded_at, tags, featured) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             rusqlite::params![
                 self.id,
                 self.model_id,
@@ -31,8 +30,7 @@ impl DownloadedFile {
                 self.quantization,
                 self.prompt_template,
                 self.reverse_prompt,
-                self.downloaded,
-                self.downloaded_path,
+                self.download_dir,
                 self.downloaded_at.to_rfc3339(),
                 serde_json::to_string(&self.tags).unwrap(),
                 self.featured,
@@ -42,11 +40,11 @@ impl DownloadedFile {
     }
 
     fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
-        let downloaded_at = chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
+        let downloaded_at = chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(8)?)
             .map(|s| s.to_utc())
             .unwrap_or_default();
 
-        let tags = serde_json::from_str(row.get::<_, String>(10)?.as_str()).unwrap_or_default();
+        let tags = serde_json::from_str(row.get::<_, String>(9)?.as_str()).unwrap_or_default();
 
         Ok(DownloadedFile {
             id: Arc::new(row.get(0)?),
@@ -56,11 +54,10 @@ impl DownloadedFile {
             quantization: row.get(4)?,
             prompt_template: row.get(5)?,
             reverse_prompt: row.get(6)?,
-            downloaded: row.get(7)?,
-            downloaded_path: row.get(8)?,
+            download_dir: row.get(7)?,
             downloaded_at,
             tags,
-            featured: row.get(11)?,
+            featured: row.get(10)?,
         })
     }
 
@@ -114,8 +111,7 @@ pub fn create_table_download_files(conn: &rusqlite::Connection) -> rusqlite::Res
             quantization TEXT NOT NULL,
             prompt_template TEXT DEFAULT '',
             reverse_prompt TEXT DEFAULT '',
-            downloaded INTEGER DEFAULT 0,
-            downloaded_path TEXT NOT NULL,
+            download_dir TEXT NOT NULL,
             downloaded_at TEXT NOT NULL,
             tags TEXT NOT NULL,
             featured INTEGER DEFAULT 0
@@ -141,8 +137,7 @@ fn test_sql() {
         quantization: "test".to_string(),
         prompt_template: "test".to_string(),
         reverse_prompt: "test".to_string(),
-        downloaded: false,
-        downloaded_path: "test".to_string(),
+        download_dir: "test".to_string(),
         downloaded_at: Utc::now(),
         tags: vec!["test".to_string()],
         featured: false,

@@ -170,19 +170,19 @@ impl Store {
 
     fn update_downloads(&mut self) {
         let mut completed_downloads = Vec::new();
-    
+
         for (id, download) in &mut self.current_downloads {
             download.process_download_progress();
             if download.done {
                 completed_downloads.push(id.clone());
             }
         }
-    
+
         // Fetch new downloads if any just completed
         if !completed_downloads.is_empty() {
             self.load_downloaded_files();
         }
-    
+
         for id in completed_downloads {
             self.current_downloads.remove(&id);
         }
