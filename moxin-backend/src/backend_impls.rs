@@ -508,6 +508,7 @@ enum ModelManagementCommand {
     SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
     DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
     GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
+    MoveDownloadedFile(FileID, Sender<anyhow::Result<()>>),
 }
 
 #[derive(Clone, Debug)]
@@ -549,6 +550,9 @@ impl From<Command> for BuiltInCommand {
             }
             Command::GetDownloadedFiles(tx) => {
                 Self::Model(ModelManagementCommand::GetDownloadedFiles(tx))
+            }
+            Command::MoveDownloadedFile(file_id, tx) => {
+                Self::Model(ModelManagementCommand::MoveDownloadedFile(file_id, tx))
             }
             Command::LoadModel(file_id, options, tx) => {
                 Self::Interaction(ModelInteractionCommand::LoadModel(file_id, options, tx))
@@ -798,7 +802,24 @@ fn test_get_download_file() {
 
     let files = rx.recv().unwrap();
 
-    println!("{files:?}");
+    println!("{files:#?}");
+
+    if let Ok(files) = files {
+        for f in files {
+            if !f
+                .file
+                .downloaded_path
+                .unwrap_or_default()
+                .starts_with(&format!("{home}/ai/models"))
+            {
+                println!("move {}", f.file.id);
+                let (tx, rx) = std::sync::mpsc::channel();
+                let cmd = Command::MoveDownloadedFile(f.file.id, tx);
+                let _ = bk.send(cmd);
+                println!("{:?}", rx.recv().unwrap());
+            }
+        }
+    }
 }
 
 pub struct BackendImpl {
@@ -860,6 +881,21 @@ impl BackendImpl {
             backend.run_loop();
         });
         tx
+    }
+
+    fn move_download_file(&mut self, file_id: FileID) -> anyhow::Result<()> {
+        let conn = self.sql_conn.lock().unwrap();
+        let file = store::download_files::DownloadedFile::get_by_id(&conn, &file_id).unwrap();
+        let file_path = std::path::Path::new(&file.download_dir)
+            .join(&file.model_id)
+            .join(&file.name);
+        let new_file_path = std::path::Path::new(&self.models_dir)
+            .join(&file.model_id)
+            .join(&file.name);
+        std::fs::create_dir_all(new_file_path.parent().unwrap())?;
+        std::fs::rename(file_path, new_file_path)?;
+        file.move_to_dir(&conn, &self.models_dir).unwrap();
+        Ok(())
     }
 
     fn handle_command(&mut self, wasm_module: &Module, built_in_cmd: BuiltInCommand) {
@@ -967,6 +1003,9 @@ impl BackendImpl {
                     };
 
                     let _ = tx.send(downloads);
+                }
+                ModelManagementCommand::MoveDownloadedFile(file_id, tx) => {
+                    let _ = tx.send(self.move_download_file(file_id));
                 }
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {

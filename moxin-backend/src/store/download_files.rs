@@ -39,6 +39,18 @@ impl DownloadedFile {
         Ok(())
     }
 
+    pub fn move_to_dir(
+        &self,
+        conn: &rusqlite::Connection,
+        download_dir: &str,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "UPDATE download_files SET download_dir = ?1 WHERE id = ?2",
+            rusqlite::params![download_dir, self.id],
+        )?;
+        Ok(())
+    }
+
     fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
         let downloaded_at = chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(8)?)
             .map(|s| s.to_utc())

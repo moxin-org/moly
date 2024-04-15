@@ -83,7 +83,7 @@ pub enum Command {
 
     DownloadFile(FileID, Sender<Result<FileDownloadResponse>>),
     GetDownloadedFiles(Sender<Result<Vec<DownloadedFile>>>),
-
+    MoveDownloadedFile(FileID, Sender<Result<()>>),
     LoadModel(FileID, LoadModelOptions, Sender<Result<LoadModelResponse>>),
 
     // Eject currently loaded model, if any is provided
