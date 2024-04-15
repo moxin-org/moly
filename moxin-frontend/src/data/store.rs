@@ -1,4 +1,4 @@
-use crate::data::{chat::Chat, download::Download, search::Search};
+use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
 use makepad_widgets::DefaultNone;
 use moxin_backend::Backend;
@@ -22,6 +22,14 @@ pub enum SortCriteria {
     LeastDownloads,
     MostLikes,
     LeastLikes,
+}
+
+#[derive(Clone, Debug)]
+pub struct DownloadInfo {
+    pub file: File,
+    pub model: Model,
+    pub progress: f32,
+    pub done: bool,
 }
 
 #[derive(Default)]
@@ -85,9 +93,9 @@ impl Store {
         };
     }
 
-    pub fn download_file(&mut self, file: &File) {
+    pub fn download_file(&mut self, file: File, model: Model) {
         self.current_downloads
-            .insert(file.id.clone(), Download::new(file.clone(), &self.backend));
+            .insert(file.id.clone(), Download::new(file, model, &self.backend));
     }
 
     pub fn load_model(&mut self, file: &File) {
@@ -170,19 +178,19 @@ impl Store {
 
     fn update_downloads(&mut self) {
         let mut completed_downloads = Vec::new();
-    
+
         for (id, download) in &mut self.current_downloads {
             download.process_download_progress();
             if download.done {
                 completed_downloads.push(id.clone());
             }
         }
-    
+
         // Fetch new downloads if any just completed
         if !completed_downloads.is_empty() {
             self.load_downloaded_files();
         }
-    
+
         for id in completed_downloads {
             self.current_downloads.remove(&id);
         }
@@ -230,6 +238,18 @@ impl Store {
             .iter()
             .filter(|f| !f.featured)
             .cloned()
+            .collect()
+    }
+
+    pub fn current_downloads_info(&self) -> Vec<DownloadInfo> {
+        self.current_downloads
+            .iter()
+            .map(|(id, download)| DownloadInfo {
+                file: download.file.clone(),
+                model: download.model.clone(),
+                progress: download.progress,
+                done: download.done,
+            })
             .collect()
     }
 }

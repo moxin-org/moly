@@ -12,16 +12,20 @@ pub enum DownloadFileAction {
 
 pub struct Download {
     pub file: File,
+    pub model: Model,
     pub sender: Sender<DownloadFileAction>,
     pub receiver: Receiver<DownloadFileAction>,
+    pub progress: f32,
     pub done: bool,
 }
 
 impl Download {
-    pub fn new(file: File, backend: &Backend) -> Self {
+    pub fn new(file: File, model: Model, backend: &Backend) -> Self {
         let (tx, rx) = channel();
         let mut download = Self {
             file: file,
+            model: model,
+            progress: 0.0,
             sender: tx,
             receiver: rx,
             done: false,
@@ -74,6 +78,7 @@ impl Download {
                     println!("Download complete");
                 }
                 DownloadFileAction::Progress(file, value) => {
+                    self.progress = value;
                     println!("Download {:?} progress: {:?}", file, value);
                 }
             }

@@ -223,8 +223,8 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            if let ModelFileItemsAction::Download(file) = action.as_widget_action().cast() {
-                self.store.download_file(&file);
+            if let ModelFileItemsAction::Download(file, model) = action.as_widget_action().cast() {
+                self.store.download_file(file, model);
             }
 
             // Set modal viewall model id

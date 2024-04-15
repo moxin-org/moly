@@ -1,3 +1,4 @@
+use crate::data::store::DownloadInfo;
 use makepad_widgets::*;
 
 live_design! {
@@ -30,7 +31,7 @@ live_design! {
     }
 
     Information = <View> {
-        width: Fit,
+        width: 380,
         height: Fit,
         flow: Right,
         spacing: 12,
@@ -78,7 +79,7 @@ live_design! {
 
             flow: Right,
 
-            <Label> {
+            progress = <Label> {
                 draw_text: {
                     text_style: <BOLD_FONT>{font_size: 9},
                     color: #099250
@@ -110,8 +111,8 @@ live_design! {
                 }
             }
 
-            <RoundedView> {
-                width: 174,
+            progress_bar = <RoundedView> {
+                width: 0,
                 height: Fill,
                 draw_bg: {
                     color: #099250,
@@ -170,7 +171,7 @@ live_design! {
         }
     }
 
-    DownloadItem = <RoundedView> {
+    DownloadItem = {{DownloadItem}}<RoundedView> {
         width: Fill,
         height: Fit,
 
@@ -188,5 +189,42 @@ live_design! {
         <Information> {}
         <Progress> {}
         <Actions> {}
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct DownloadItem {
+    #[deref]
+    view: View,
+}
+
+impl Widget for DownloadItem {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let download = scope.data.get::<DownloadInfo>().unwrap();
+        self.label(id!(filename))
+            .set_text(download.file.name.as_str());
+
+        self.label(id!(architecture_tag.caption))
+            .set_text(download.model.architecture.as_str());
+
+        self.label(id!(params_size_tag.caption))
+            .set_text(&&download.model.requires.as_str());
+
+        self.label(id!(progress))
+            .set_text(&format!("Downloading {:.1}%", download.progress));
+
+        let bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
+        self.view(id!(progress_bar)).apply_over(
+            cx,
+            live! {
+                width: (bar_width)
+            },
+        );
+
+        self.view.draw_walk(cx, scope, walk)
     }
 }

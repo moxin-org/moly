@@ -322,7 +322,7 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelFileItemsAction {
-    Download(File),
+    Download(File, Model),
     None,
 }
 
@@ -356,6 +356,9 @@ pub struct ModelFilesItems {
 
     #[rust]
     map_to_files: HashMap<LiveId, File>,
+
+    #[rust]
+    model: Option<Model>,
 }
 
 impl Widget for ModelFilesItems {
@@ -368,7 +371,10 @@ impl Widget for ModelFilesItems {
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
-                        ModelFileItemsAction::Download(self.map_to_files.get(id).unwrap().clone()),
+                        ModelFileItemsAction::Download(
+                            self.map_to_files.get(id).unwrap().clone(),
+                            self.model.clone().unwrap(),
+                        ),
                     );
                 }
             }
@@ -384,6 +390,7 @@ impl Widget for ModelFilesItems {
         };
         cx.begin_turtle(walk, self.layout);
 
+        self.model.get_or_insert(model.clone());
         self.draw_files(cx, &files);
         cx.end_turtle_with_area(&mut self.area);
 

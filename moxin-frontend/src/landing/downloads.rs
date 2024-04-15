@@ -1,3 +1,4 @@
+use crate::data::store::Store;
 use makepad_widgets::*;
 
 live_design! {
@@ -127,8 +128,10 @@ impl Widget for Downloads {
         }
     }
 
-    fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloads_count = 4;
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get::<Store>().unwrap();
+        let current_downloads = store.current_downloads_info();
+        let downloads_count = current_downloads.len();
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
@@ -137,8 +140,8 @@ impl Widget for Downloads {
                     let item = list.item(cx, item_id, live_id!(DownloadItem)).unwrap();
 
                     if item_id < downloads_count {
-                        // item.draw_all(cx, &mut Scope::with_data(&mut model_data.clone()));
-                        item.draw_all(cx, &mut Scope::with_data(&mut Scope::empty()));
+                        let download = &current_downloads[item_id];
+                        item.draw_all(cx, &mut Scope::with_data(&mut download.clone()));
                     }
                 }
             }
