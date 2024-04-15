@@ -13,16 +13,17 @@ pub struct DownloadedFile {
     pub prompt_template: String,
     pub reverse_prompt: String,
     pub downloaded: bool,
-    pub downloaded_path: String,
-    pub downloaded_at: DateTime<Utc>,
+    pub downloaded_path: Option<String>,
+    pub downloaded_at: Option<DateTime<Utc>>,
     pub tags: Vec<String>,
     pub featured: bool,
 }
 
 impl DownloadedFile {
-    pub fn save_to_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+    pub fn insert_into_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+        dbg!("sesdsaee");
         conn.execute(
-            "INSERT INTO download_files (id, model_id, name, size, quantization, prompt_template, reverse_prompt, downloaded, downloaded_path, downloaded_at, tags, featured) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            "INSERT INTO download_files (id, model_id, name, size, quantization, prompt_template, reverse_prompt, downloaded, tags, featured) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             rusqlite::params![
                 self.id,
                 self.model_id,
@@ -31,20 +32,44 @@ impl DownloadedFile {
                 self.quantization,
                 self.prompt_template,
                 self.reverse_prompt,
-                self.downloaded,
-                self.downloaded_path,
-                self.downloaded_at.to_rfc3339(),
+                false,
                 serde_json::to_string(&self.tags).unwrap(),
                 self.featured,
+            ],
+        )?;
+
+        dbg!("seee");
+        Ok(())
+    }
+
+    pub fn save_to_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+        conn.execute(
+            "UPDATE download_files
+                SET downloaded = true,
+                    downloaded_path = ?2,
+                    downloaded_at = ?3
+                WHERE id = ?1",
+            rusqlite::params![
+                self.id,
+                self.downloaded_path,
+                self.downloaded_at.unwrap().to_rfc3339(),
             ],
         )?;
         Ok(())
     }
 
     fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
-        let downloaded_at = chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
-            .map(|s| s.to_utc())
-            .unwrap_or_default();
+        let downloaded_at = if let Some(time) = row.get::<_, Option<String>>(9)? {
+            let time = chrono::DateTime::parse_from_rfc3339(&time)
+                .map(|s| s.to_utc())
+                .unwrap_or_default();
+            Some(time)
+        } else {
+            None
+        };
+        // let downloaded_at = chrono::DateTime::parse_from_rfc3339(&)
+        //     .map(|s| s.to_utc())
+        //     .unwrap_or_default();
 
         let tags = serde_json::from_str(row.get::<_, String>(10)?.as_str()).unwrap_or_default();
 
@@ -115,8 +140,8 @@ pub fn create_table_download_files(conn: &rusqlite::Connection) -> rusqlite::Res
             prompt_template TEXT DEFAULT '',
             reverse_prompt TEXT DEFAULT '',
             downloaded INTEGER DEFAULT 0,
-            downloaded_path TEXT NOT NULL,
-            downloaded_at TEXT NOT NULL,
+            downloaded_path TEXT,
+            downloaded_at TEXT,
             tags TEXT NOT NULL,
             featured INTEGER DEFAULT 0
         );
@@ -142,8 +167,8 @@ fn test_sql() {
         prompt_template: "test".to_string(),
         reverse_prompt: "test".to_string(),
         downloaded: false,
-        downloaded_path: "test".to_string(),
-        downloaded_at: Utc::now(),
+        downloaded_path: Some("test".to_string()),
+        downloaded_at: Some(Utc::now()),
         tags: vec!["test".to_string()],
         featured: false,
     };

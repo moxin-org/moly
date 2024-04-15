@@ -8,6 +8,8 @@ use chrono::{DateTime, Utc};
 use moxin_protocol::data::Model;
 use moxin_protocol::protocol::FileDownloadResponse;
 
+use super::pending_downloads::{PendingDownloads, PendingDownloadsStatus};
+
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct RemoteFile {
     pub name: String,
@@ -81,7 +83,7 @@ impl RemoteModel {
                     size: remote_f.size.clone(),
                     quantization: remote_f.quantization.clone(),
                     downloaded: downloaded_path.is_some(),
-                    downloaded_path,
+                    downloaded_path: downloaded_path.unwrap(),
                     tags: remote_f.tags.clone(),
                     featured: false,
                 };
@@ -219,30 +221,41 @@ pub fn download_file_loop(
 
     while let Ok((model, mut file, tx)) = rx.recv() {
         let file_id = file.id.clone();
+        let conn = sql_conn.lock().unwrap();
+
         let mut send_progress = |progress| {
             let _ = tx.send(Ok(FileDownloadResponse::Progress(
                 file_id.as_ref().clone(),
                 progress as f32,
             )));
+
+            // Update our local database
+            let pending_download = PendingDownloads {
+                file_id: file_id.clone(),
+                progress: progress,
+                status: PendingDownloadsStatus::Downloading,
+            };
+            pending_download.save_to_db(&conn).unwrap();
         };
+
+        let _ = PendingDownloads::insert_if_not_exists(file_id.clone(), &conn);
+        let _ = file.insert_into_db(&conn);
+        // TODO rename to insert_if_not_exists or update model
+        let _ = model.save_to_db(&conn);
 
         let r = download_file_from_remote(
             &client,
             &model.id,
             &file.name,
-            &file.downloaded_path,
+            &file.downloaded_path.clone().unwrap(),
             0.5,
             &mut send_progress,
         );
 
         match r {
             Ok(_) => {
-                file.downloaded_at = Utc::now();
-                {
-                    let conn = sql_conn.lock().unwrap();
-                    let _ = file.save_to_db(&conn);
-                    let _ = model.save_to_db(&conn);
-                }
+                file.downloaded_at = Some(Utc::now());
+                let _ = file.save_to_db(&conn);
 
                 let _ = tx.send(Ok(FileDownloadResponse::Completed(
                     moxin_protocol::data::DownloadedFile {
@@ -252,12 +265,12 @@ pub fn download_file_loop(
                             size: file.size.clone(),
                             quantization: file.quantization.clone(),
                             downloaded: true,
-                            downloaded_path: Some(file.downloaded_path.clone()),
+                            downloaded_path: file.downloaded_path,
                             tags: file.tags,
                             featured: false,
                         },
                         model: Model::default(),
-                        downloaded_at: file.downloaded_at,
+                        downloaded_at: file.downloaded_at.unwrap(),
                         compatibility_guess:
                             moxin_protocol::data::CompatibilityGuess::PossiblySupported,
                         information: String::new(),

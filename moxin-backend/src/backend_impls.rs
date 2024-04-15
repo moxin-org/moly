@@ -396,7 +396,7 @@ mod chat_ui {
             file.name.clone(),
             wasmedge_sdk::plugin::GraphEncoding::GGML,
             wasmedge_sdk::plugin::ExecutionTarget::AUTO,
-            file.downloaded_path.clone(),
+            file.downloaded_path.clone().unwrap(),
         );
         wasmedge_sdk::plugin::PluginManager::nn_preload(vec![preloads]);
     }
@@ -806,6 +806,7 @@ impl BackendImpl {
         let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
         let _ = store::models::create_table_models(&sql_conn);
         let _ = store::download_files::create_table_download_files(&sql_conn);
+        let _ = store::pending_downloads::create_table_pending_downloads(&sql_conn);
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
 
@@ -915,8 +916,8 @@ impl BackendImpl {
                             prompt_template: remote_model.prompt_template,
                             reverse_prompt: remote_model.reverse_prompt,
                             downloaded: true,
-                            downloaded_path: format!("{}/{}/{}",self.models_dir,model_id,file),
-                            downloaded_at: Utc::now(),
+                            downloaded_path: Some(format!("{}/{}/{}",self.models_dir,model_id,file)),
+                            downloaded_at: Some(Utc::now()),
                             tags:remote_file.tags,
                             featured: false,
                         };
@@ -940,6 +941,13 @@ impl BackendImpl {
                         store::get_all_download_file(&conn)
                             .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
                     };
+
+                    let pending_downloads = {
+                        let conn = self.sql_conn.lock().unwrap();
+                        store::get_all_pending_downloads(&conn)
+                            .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
+                    };
+                    dbg!(&pending_downloads);
 
                     let _ = tx.send(downloads);
                 }
