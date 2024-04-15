@@ -77,20 +77,20 @@ live_design! {
                             color: #EDEEF0,
                         }
 
-                        tab1 = <SidebarMenuButton> {
+                        discover_tab = <SidebarMenuButton> {
                             animator: {selected = {default: on}}
                             label: "Discover",
                             draw_icon: {
                             svg_file: (ICON_DISCOVER),
                             }
                         }
-                        tab2 = <SidebarMenuButton> {
+                        chat_tab = <SidebarMenuButton> {
                             label: "Chat",
                             draw_icon: {
                             svg_file: (ICON_CHAT),
                             }
                         }
-                        tab3 = <SidebarMenuButton> {
+                        my_models_tab = <SidebarMenuButton> {
                             label: "My Models",
                             draw_icon: {
                             svg_file: (ICON_MY_MODELS),
@@ -107,9 +107,9 @@ live_design! {
                         width: Fill,
                         height: Fill,
 
-                        tab1_frame = <LandingScreen> {visible: true}
-                        tab2_frame = <ChatScreen> {visible: false}
-                        tab3_frame = <MyModelsView> {visible: false}
+                        discover_frame = <LandingScreen> {visible: true}
+                        chat_frame = <ChatScreen> {visible: false}
+                        my_models_frame = <MyModelsScreen> {visible: false}
                     }
                 }
 
@@ -232,12 +232,9 @@ impl MatchEvent for App {
                 modal.set_model_id(model_id);
             }
 
-            match action.as_widget_action().cast() {
-                DownloadedFileAction::StartChat(_) => {
-                    let chat_radio_button = self.ui.radio_button(id!(chat_tab));
-                    chat_radio_button.select(cx, &mut Scope::empty());
-                }
-                _ => {}
+            if let DownloadedFileAction::StartChat(_) = action.as_widget_action().cast() {
+                let chat_radio_button = self.ui.radio_button(id!(chat_tab));
+                chat_radio_button.select(cx, &mut Scope::empty());
             }
         }
     }
