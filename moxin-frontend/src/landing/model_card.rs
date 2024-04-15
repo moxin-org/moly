@@ -396,7 +396,7 @@ impl WidgetMatchEvent for ModelCard {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                ModalAction::ShowModalView(id!(model_card_view_all_modal_view)[0]),
+                ModalAction::ShowModalView(live_id!(model_card_view_all_modal_view)),
             );
             cx.widget_action(
                 widget_uid,
