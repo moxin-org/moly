@@ -9,7 +9,7 @@ pub use remote::*;
 pub fn get_all_download_file(
     conn: &rusqlite::Connection,
 ) -> rusqlite::Result<Vec<moxin_protocol::data::DownloadedFile>> {
-    let files = download_files::DownloadedFile::get_all(&conn)?;
+    let files = download_files::DownloadedFile::get_finished(&conn)?;
     let models = models::Model::get_all(&conn)?;
 
     let mut downloaded_files = Vec::with_capacity(files.len());
@@ -71,12 +71,10 @@ pub fn get_all_pending_downloads(
     let mut result = Vec::with_capacity(pending_downloads.len());
 
     for item in pending_downloads {
-        dbg!(item.file_id.clone());
         let Some(file) = files.get(&item.file_id) else {
             // TODO handle error
             continue;
         };
-        dbg!("alguno?");
         let result_file = moxin_protocol::data::File {
             id: file.id.to_string(),
             name: file.name.clone(),

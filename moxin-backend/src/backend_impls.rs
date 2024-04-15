@@ -5,7 +5,7 @@ use std::sync::{
 
 use chrono::Utc;
 use moxin_protocol::{
-    data::{DownloadedFile, FileID, Model},
+    data::{DownloadedFile, FileID, Model, PendingDownload},
     open_ai::{ChatRequestData, ChatResponse},
     protocol::{
         Command, FileDownloadResponse, LoadModelOptions, LoadModelResponse, LocalServerConfig,
@@ -502,6 +502,7 @@ enum ModelManagementCommand {
     GetFeaturedModels(Sender<anyhow::Result<Vec<Model>>>),
     SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
     DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
+    GetCurrentDownloads(Sender<anyhow::Result<Vec<PendingDownload>>>),
     GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
 }
 
@@ -541,6 +542,9 @@ impl From<Command> for BuiltInCommand {
             }
             Command::DownloadFile(file_id, tx) => {
                 Self::Model(ModelManagementCommand::DownloadFile(file_id, tx))
+            }
+            Command::GetCurrentDownloads(tx) => {
+                Self::Model(ModelManagementCommand::GetCurrentDownloads(tx))
             }
             Command::GetDownloadedFiles(tx) => {
                 Self::Model(ModelManagementCommand::GetDownloadedFiles(tx))
@@ -942,14 +946,16 @@ impl BackendImpl {
                             .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
                     };
 
+                    let _ = tx.send(downloads);
+                }
+
+                ModelManagementCommand::GetCurrentDownloads(tx) => {
                     let pending_downloads = {
                         let conn = self.sql_conn.lock().unwrap();
                         store::get_all_pending_downloads(&conn)
-                            .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
+                            .map_err(|e| anyhow::anyhow!("get pending download file error: {e}"))
                     };
-                    dbg!(&pending_downloads);
-
-                    let _ = tx.send(downloads);
+                    let _ = tx.send(pending_downloads);
                 }
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {

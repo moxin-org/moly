@@ -6,7 +6,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 
 pub enum DownloadFileAction {
-    Progress(FileID, f32),
+    Progress(FileID, f64),
     StreamingDone,
 }
 
@@ -15,7 +15,7 @@ pub struct Download {
     pub model: Model,
     pub sender: Sender<DownloadFileAction>,
     pub receiver: Receiver<DownloadFileAction>,
-    pub progress: f32,
+    pub progress: f64,
     pub done: bool,
 }
 
@@ -55,7 +55,7 @@ impl Download {
                         }
                         FileDownloadResponse::Progress(file, value) => {
                             store_download_tx
-                                .send(DownloadFileAction::Progress(file, value))
+                                .send(DownloadFileAction::Progress(file, value as f64))
                                 .unwrap();
                         }
                     },

@@ -2,7 +2,7 @@ use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
 use makepad_widgets::DefaultNone;
 use moxin_backend::Backend;
-use moxin_protocol::data::{DownloadedFile, File, FileID, Model};
+use moxin_protocol::data::{DownloadedFile, File, FileID, Model, PendingDownload};
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
@@ -28,7 +28,7 @@ pub enum SortCriteria {
 pub struct DownloadInfo {
     pub file: File,
     pub model: Model,
-    pub progress: f32,
+    pub progress: f64,
     pub done: bool,
 }
 
@@ -38,9 +38,10 @@ pub struct Store {
     // communicate with the backend thread.
     pub backend: Backend,
 
-    // Local cache for the list of models
+    // Local cache of backend information
     pub models: Vec<Model>,
     pub downloaded_files: Vec<DownloadedFile>,
+    pub pending_downloads: Vec<PendingDownload>,
 
     pub search: Search,
     pub sorted_by: SortCriteria,
@@ -52,15 +53,21 @@ pub struct Store {
 impl Store {
     pub fn new() -> Self {
         let mut store = Self {
-            models: vec![],
+            // Initialize the backend with the default values
             backend: Backend::default(),
+
+            // Initialize the local cache with empty values
+            models: vec![],
+            downloaded_files: vec![],
+            pending_downloads: vec![],
+
             search: Search::new(),
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
             current_downloads: HashMap::new(),
-            downloaded_files: vec![],
         };
         store.load_downloaded_files();
+        store.load_pending_downloads();
         store.load_featured_models();
         store.sort_models(SortCriteria::MostDownloads);
         store
@@ -89,6 +96,23 @@ impl Store {
                     self.downloaded_files = files;
                 }
                 Err(err) => eprintln!("Error fetching downloaded files: {:?}", err),
+            }
+        };
+    }
+
+    pub fn load_pending_downloads(&mut self) {
+        let (tx, rx) = channel();
+        self.backend
+            .command_sender
+            .send(Command::GetCurrentDownloads(tx))
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(files) => {
+                    self.pending_downloads = files;
+                }
+                Err(err) => eprintln!("Error fetching pending downloads: {:?}", err),
             }
         };
     }
@@ -242,7 +266,9 @@ impl Store {
     }
 
     pub fn current_downloads_info(&self) -> Vec<DownloadInfo> {
-        self.current_downloads
+        // Collect information about current downloads
+        let mut results: Vec<DownloadInfo> = self
+            .current_downloads
             .iter()
             .map(|(id, download)| DownloadInfo {
                 file: download.file.clone(),
@@ -250,6 +276,22 @@ impl Store {
                 progress: download.progress,
                 done: download.done,
             })
-            .collect()
+            .collect();
+
+        // Add files that are still partially downloaded (from previous sessions with the app)
+        let mut partial_downloads: Vec<DownloadInfo> = self
+            .pending_downloads
+            .iter()
+            .filter(|f| !self.current_downloads.contains_key(&f.file.id))
+            .map(|d| DownloadInfo {
+                file: d.file.clone(),
+                model: d.model.clone(),
+                progress: d.progress,
+                done: false,
+            })
+            .collect();
+
+        results.append(&mut partial_downloads);
+        results
     }
 }

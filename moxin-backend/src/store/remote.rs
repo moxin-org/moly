@@ -75,7 +75,10 @@ impl RemoteModel {
             let mut files = vec![];
             for remote_f in remote_files {
                 let file_id = format!("{}#{}", model_id, remote_f.name);
-                let downloaded_path = save_files.get(&file_id).map(|f| f.downloaded_path.clone());
+                let downloaded_path = save_files
+                    .get(&file_id)
+                    .map(|f| f.downloaded_path.clone())
+                    .unwrap_or(None);
 
                 let file = moxin_protocol::data::File {
                     id: file_id,
@@ -83,7 +86,7 @@ impl RemoteModel {
                     size: remote_f.size.clone(),
                     quantization: remote_f.quantization.clone(),
                     downloaded: downloaded_path.is_some(),
-                    downloaded_path: downloaded_path.unwrap(),
+                    downloaded_path,
                     tags: remote_f.tags.clone(),
                     featured: false,
                 };

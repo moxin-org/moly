@@ -102,6 +102,21 @@ impl DownloadedFile {
         Ok(files)
     }
 
+    pub fn get_finished(
+        conn: &rusqlite::Connection,
+    ) -> rusqlite::Result<HashMap<Arc<String>, Self>> {
+        let mut stmt = conn.prepare("SELECT * FROM download_files WHERE downloaded = TRUE")?;
+        let mut rows = stmt.query([])?;
+        let mut files = HashMap::new();
+
+        while let Some(row) = rows.next()? {
+            let file = Self::from_row(row)?;
+            files.insert(file.id.clone(), file);
+        }
+
+        Ok(files)
+    }
+
     pub fn get_by_models<S: AsRef<str>>(
         conn: &rusqlite::Connection,
         ids: &[S],
@@ -109,7 +124,8 @@ impl DownloadedFile {
         let ids = ids.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
         let ids_str = ids.join(",");
 
-        let mut stmt = conn.prepare("SELECT * FROM download_files WHERE model_id IN (?1)")?;
+        let mut stmt = conn
+            .prepare("SELECT * FROM download_files WHERE model_id IN (?1) AND downloaded = TRUE")?;
         let mut rows = stmt.query([ids_str])?;
         let mut files = HashMap::new();
 
