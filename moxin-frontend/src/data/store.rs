@@ -2,7 +2,9 @@ use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
 use makepad_widgets::DefaultNone;
 use moxin_backend::Backend;
-use moxin_protocol::data::{DownloadedFile, File, FileID, Model, PendingDownload};
+use moxin_protocol::data::{
+    DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
+};
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
@@ -25,11 +27,19 @@ pub enum SortCriteria {
 }
 
 #[derive(Clone, Debug)]
+pub enum DownloadInfoStatus {
+    Downloading,
+    Paused,
+    Error,
+    Done,
+}
+
+#[derive(Clone, Debug)]
 pub struct DownloadInfo {
     pub file: File,
     pub model: Model,
     pub progress: f64,
-    pub done: bool,
+    pub status: DownloadInfoStatus,
 }
 
 #[derive(Default)]
@@ -274,7 +284,7 @@ impl Store {
                 file: download.file.clone(),
                 model: download.model.clone(),
                 progress: download.progress,
-                done: download.done,
+                status: DownloadInfoStatus::Downloading,
             })
             .collect();
 
@@ -287,7 +297,9 @@ impl Store {
                 file: d.file.clone(),
                 model: d.model.clone(),
                 progress: d.progress,
-                done: false,
+
+                // TODO: Handle errors and other statuses
+                status: DownloadInfoStatus::Paused,
             })
             .collect();
 

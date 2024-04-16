@@ -811,6 +811,7 @@ impl BackendImpl {
         let _ = store::models::create_table_models(&sql_conn);
         let _ = store::download_files::create_table_download_files(&sql_conn);
         let _ = store::pending_downloads::create_table_pending_downloads(&sql_conn);
+        let _ = store::pending_downloads::mark_pending_downloads_as_paused(&sql_conn);
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
 

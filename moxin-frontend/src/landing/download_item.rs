@@ -1,4 +1,7 @@
-use crate::data::store::DownloadInfo;
+use crate::{
+    data::store::{DownloadInfo, DownloadInfoStatus},
+    shared::utils::{format_model_downloaded_size, format_model_size},
+};
 use makepad_widgets::*;
 
 live_design! {
@@ -87,7 +90,7 @@ live_design! {
                 text: "Downloading 9.7%"
             }
             <View> { width: Fill, height: 1 }
-            <Label> {
+            downloaded_size = <Label> {
                 draw_text: {
                     text_style: <REGULAR_FONT>{font_size: 9},
                     color: #667085
@@ -214,16 +217,55 @@ impl Widget for DownloadItem {
         self.label(id!(params_size_tag.caption))
             .set_text(&&download.model.requires.as_str());
 
-        self.label(id!(progress))
-            .set_text(&format!("Downloading {:.1}%", download.progress));
+        let progress_bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
+        let label = self.label(id!(progress));
+        match download.status {
+            DownloadInfoStatus::Downloading => {
+                let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
 
-        let bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
-        self.view(id!(progress_bar)).apply_over(
-            cx,
-            live! {
-                width: (bar_width)
-            },
-        );
+                label.set_text(&format!("Downloading {:.1}%", download.progress));
+                label.apply_over(
+                    cx,
+                    live! { draw_text: { color: (downloading_color) }
+                    },
+                );
+
+                self.view(id!(progress_bar)).apply_over(
+                    cx,
+                    live! {
+                        width: (progress_bar_width)
+                        draw_bg: { color: (downloading_color) }
+                    },
+                );
+            }
+            DownloadInfoStatus::Paused => {
+                let paused_color = vec3(0.4, 0.44, 0.52); //#667085
+
+                label.set_text("Paused");
+                label.apply_over(
+                    cx,
+                    live! { draw_text: { color: (paused_color) }
+                    },
+                );
+
+                self.view(id!(progress_bar)).apply_over(
+                    cx,
+                    live! {
+                        width: (progress_bar_width)
+                        draw_bg: { color: (paused_color) }
+                    },
+                );
+            }
+            DownloadInfoStatus::Error => {}
+            DownloadInfoStatus::Done => {}
+        }
+
+        let total_size = format_model_size(&download.file.size).unwrap_or("-".to_string());
+        let downloaded_size = format_model_downloaded_size(&download.file.size, download.progress)
+            .unwrap_or("-".to_string());
+
+        self.label(id!(downloaded_size))
+            .set_text(&format!("{} / {}", downloaded_size, total_size));
 
         self.view.draw_walk(cx, scope, walk)
     }

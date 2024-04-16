@@ -224,7 +224,7 @@ pub fn download_file_loop(
 
     while let Ok((model, mut file, tx)) = rx.recv() {
         let file_id = file.id.clone();
-        let conn = sql_conn.lock().unwrap();
+        //let conn = sql_conn.lock().unwrap();
 
         let mut send_progress = |progress| {
             let _ = tx.send(Ok(FileDownloadResponse::Progress(
@@ -233,18 +233,24 @@ pub fn download_file_loop(
             )));
 
             // Update our local database
-            let pending_download = PendingDownloads {
-                file_id: file_id.clone(),
-                progress: progress,
-                status: PendingDownloadsStatus::Downloading,
-            };
-            pending_download.save_to_db(&conn).unwrap();
+            {
+                let conn = sql_conn.lock().unwrap();
+                let pending_download = PendingDownloads {
+                    file_id: file_id.clone(),
+                    progress: progress,
+                    status: PendingDownloadsStatus::Downloading,
+                };
+                pending_download.save_to_db(&conn).unwrap();
+            }
         };
 
-        let _ = PendingDownloads::insert_if_not_exists(file_id.clone(), &conn);
-        let _ = file.insert_into_db(&conn);
-        // TODO rename to insert_if_not_exists or update model
-        let _ = model.save_to_db(&conn);
+        {
+            let conn = sql_conn.lock().unwrap();
+            let _ = PendingDownloads::insert_if_not_exists(file_id.clone(), &conn);
+            let _ = file.insert_into_db(&conn);
+            // TODO rename to insert_if_not_exists or update model
+            let _ = model.save_to_db(&conn);
+        }
 
         let r = download_file_from_remote(
             &client,
@@ -258,8 +264,11 @@ pub fn download_file_loop(
         match r {
             Ok(_) => {
                 file.downloaded_at = Some(Utc::now());
-                let _ = file.save_to_db(&conn);
-                let _ = PendingDownloads::mark_as_downloaded(file_id.clone(), &conn);
+                {
+                    let conn = sql_conn.lock().unwrap();
+                    let _ = file.save_to_db(&conn);
+                    let _ = PendingDownloads::mark_as_downloaded(file_id.clone(), &conn);
+                }
 
                 let _ = tx.send(Ok(FileDownloadResponse::Completed(
                     moxin_protocol::data::DownloadedFile {

@@ -1,4 +1,4 @@
-use crate::data::store::Store;
+use crate::data::store::{DownloadInfoStatus, Store};
 use makepad_widgets::*;
 
 live_design! {
@@ -24,7 +24,7 @@ live_design! {
             text: "Model Downloads"
         }
 
-        <Label> {
+        downloading_count = <Label> {
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 9},
                 color: #099250
@@ -32,7 +32,7 @@ live_design! {
             text: "1 downloading"
         }
 
-        <Label> {
+        paused_count = <Label> {
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 9},
                 color: #667085
@@ -40,13 +40,13 @@ live_design! {
             text: "1 paused"
         }
 
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 9},
-                color: #667085
-            }
-            text: "5 completed"
-        }
+        // <Label> {
+        //     draw_text:{
+        //         text_style: <REGULAR_FONT>{font_size: 9},
+        //         color: #667085
+        //     }
+        //     text: "5 completed"
+        // }
     }
 
     Content = <View> {
@@ -132,6 +132,20 @@ impl Widget for Downloads {
         let store = scope.data.get::<Store>().unwrap();
         let current_downloads = store.current_downloads_info();
         let downloads_count = current_downloads.len();
+
+        let download_count = current_downloads
+            .iter()
+            .filter(|d| matches!(d.status, DownloadInfoStatus::Downloading))
+            .count();
+        self.label(id!(downloading_count))
+            .set_text(&format!("{} downloading", download_count));
+
+        let paused_count = current_downloads
+            .iter()
+            .filter(|d| matches!(d.status, DownloadInfoStatus::Paused))
+            .count();
+        self.label(id!(paused_count))
+            .set_text(&format!("{} paused", paused_count));
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {

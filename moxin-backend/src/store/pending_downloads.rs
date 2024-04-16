@@ -127,3 +127,13 @@ pub fn create_table_pending_downloads(conn: &rusqlite::Connection) -> rusqlite::
 
     Ok(())
 }
+
+pub fn mark_pending_downloads_as_paused(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE pending_downloads
+        SET status = 'paused'
+        WHERE status = 'downloading'",
+        [],
+    )?;
+    Ok(())
+}
