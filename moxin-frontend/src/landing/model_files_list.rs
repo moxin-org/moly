@@ -110,6 +110,7 @@ live_design! {
         }
     }
 
+    // TODO This is a very temporary solution, we will have a better way to handle this.
     DownloadPendingButton = <ModelCardButton> {
         draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
         button_label = {
@@ -387,13 +388,11 @@ pub struct ModelFilesItems {
 
     #[rust]
     model: Option<Model>,
-    // Local state to keep track of the download button state, will be reset when the data changes.
-    // #[rust]
-    // download_started: Vec<LiveId>,
 }
 
 impl Widget for ModelFilesItems {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let mut clicked_item_id = None;
         for (id, item) in self.items.iter_mut() {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.view(id!(download_button)).finger_down(&actions) {
@@ -408,16 +407,22 @@ impl Widget for ModelFilesItems {
                         ),
                     );
 
-                    // self.download_started.push(id.clone());
+                    clicked_item_id = Some(id.clone());
+                    break;
                 }
             }
+        }
+
+        // Remove this item from the list so it gets regenerated on the next redraw
+        if let Some(id) = clicked_item_id {
+            self.items.remove(&id);
+            self.redraw(cx);
         }
 
         // When data changes, we need to reset the items hash, so the PortalList
         // can properly update the items (otherwise the used template widget are never changed).
         if let Event::Signal = event {
             self.items.clear();
-            //self.download_started.clear();
             self.redraw(cx);
         }
     }
@@ -434,7 +439,7 @@ impl Widget for ModelFilesItems {
         };
         cx.begin_turtle(walk, self.layout);
 
-        self.model.get_or_insert(model.clone());
+        self.model = Some(model.clone());
         self.draw_files(cx, &files, pending_downloads);
         cx.end_turtle_with_area(&mut self.area);
 

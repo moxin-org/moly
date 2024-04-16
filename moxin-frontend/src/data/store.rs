@@ -134,8 +134,20 @@ impl Store {
     }
 
     pub fn download_file(&mut self, file: File, model: Model) {
-        self.current_downloads
-            .insert(file.id.clone(), Download::new(file, model, &self.backend));
+        self.current_downloads.insert(
+            file.id.clone(),
+            Download::new(file.clone(), model.clone(), &self.backend),
+        );
+
+        if !self.pending_downloads.iter().any(|d| d.file.id == file.id) {
+            let pending_download = PendingDownload {
+                file: file.clone(),
+                model: model.clone(),
+                progress: 0.0,
+                status: PendingDownloadsStatus::Downloading,
+            };
+            self.pending_downloads.push(pending_download);
+        }
     }
 
     pub fn load_model(&mut self, file: &File) {
@@ -230,10 +242,6 @@ impl Store {
         if !completed_downloads.is_empty() {
             self.load_downloaded_files();
         }
-
-        // TODO We need to force this vector to be updated here
-        // Refactor needed to avoid this
-        self.load_pending_downloads();
 
         for id in completed_downloads {
             self.current_downloads.remove(&id);

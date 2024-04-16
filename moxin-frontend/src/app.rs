@@ -225,6 +225,7 @@ impl MatchEvent for App {
 
             if let ModelFileItemsAction::Download(file, model) = action.as_widget_action().cast() {
                 self.store.download_file(file, model);
+                self.ui.redraw(cx);
             }
 
             // Set modal viewall model id
