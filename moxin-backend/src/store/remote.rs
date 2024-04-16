@@ -259,6 +259,7 @@ pub fn download_file_loop(
             Ok(_) => {
                 file.downloaded_at = Some(Utc::now());
                 let _ = file.save_to_db(&conn);
+                let _ = PendingDownloads::mark_as_downloaded(file_id.clone(), &conn);
 
                 let _ = tx.send(Ok(FileDownloadResponse::Completed(
                     moxin_protocol::data::DownloadedFile {

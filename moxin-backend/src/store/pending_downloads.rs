@@ -45,7 +45,6 @@ impl PendingDownloads {
     }
 
     pub fn save_to_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
-        dbg!(self.status.to_string());
         conn.execute(
             "UPDATE pending_downloads
             SET progress = ?2,
@@ -76,6 +75,17 @@ impl PendingDownloads {
             pending_download.insert_into_db(conn)?;
         }
 
+        Ok(())
+    }
+
+    pub fn mark_as_downloaded(
+        file_id: Arc<String>,
+        conn: &rusqlite::Connection,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "DELETE FROM pending_downloads WHERE file_id = ?1",
+            rusqlite::params![file_id],
+        )?;
         Ok(())
     }
 
