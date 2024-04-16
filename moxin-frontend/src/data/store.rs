@@ -1,6 +1,6 @@
 use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
-use makepad_widgets::DefaultNone;
+use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{
     DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
@@ -40,6 +40,12 @@ pub struct DownloadInfo {
     pub model: Model,
     pub progress: f64,
     pub status: DownloadInfoStatus,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModelWithPendingDownloads {
+    pub model: Model,
+    pub pending_downloads: Vec<PendingDownload>,
 }
 
 #[derive(Default)]
@@ -225,6 +231,10 @@ impl Store {
             self.load_downloaded_files();
         }
 
+        // TODO We need to force this vector to be updated here
+        // Refactor needed to avoid this
+        self.load_pending_downloads();
+
         for id in completed_downloads {
             self.current_downloads.remove(&id);
             self.mark_file_as_downloaded(&id);
@@ -317,5 +327,23 @@ impl Store {
 
         results.append(&mut partial_downloads);
         results
+    }
+
+    pub fn get_model_with_pending_downloads(
+        &self,
+        model_id: &str,
+    ) -> Option<ModelWithPendingDownloads> {
+        let model = self.models.iter().find(|m| m.id == model_id)?;
+        let pending_downloads = self
+            .pending_downloads
+            .iter()
+            .filter(|d| d.model.id == model_id)
+            .cloned()
+            .collect();
+
+        Some(ModelWithPendingDownloads {
+            model: model.clone(),
+            pending_downloads,
+        })
     }
 }

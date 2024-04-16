@@ -1,8 +1,8 @@
+use crate::data::store::{ModelWithPendingDownloads, Store};
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalAction;
-use crate::{data::store::Store, shared::external_link::ExternalLinkRef};
 use makepad_widgets::*;
-use moxin_protocol::data::{Model, ModelID};
+use moxin_protocol::data::ModelID;
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
@@ -336,7 +336,7 @@ impl Widget for ModelCard {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = scope.data.get::<Model>().unwrap();
+        let model = &scope.data.get::<ModelWithPendingDownloads>().unwrap().model;
 
         self.model_id = model.id.clone();
 
@@ -392,7 +392,7 @@ impl Widget for ModelCard {
         self.label(id!(author_description))
             .set_text(author_description);
 
-        let released_at_str = Store::formatted_model_release_date(model);
+        let released_at_str = Store::formatted_model_release_date(&model);
         self.label(id!(model_released_at_tag.attr_value))
             .set_text(&released_at_str);
 
