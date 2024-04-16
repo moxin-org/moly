@@ -114,7 +114,6 @@ pub struct Downloads {
 impl Widget for Downloads {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        //self.widget_match_event(cx, event, scope);
 
         if self.animator_handle_event(cx, event).must_redraw() {
             self.redraw(cx);

@@ -3,6 +3,7 @@ use crate::{
     shared::utils::{format_model_downloaded_size, format_model_size},
 };
 use makepad_widgets::*;
+use moxin_protocol::data::{File, Model};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -129,6 +130,8 @@ live_design! {
         width: 40,
         height: 40,
 
+        cursor: Hand,
+
         align: {x: 0.5, y: 0.5}
 
         draw_bg: {
@@ -165,6 +168,15 @@ live_design! {
 
         }
 
+        play_button = <ActionButton> {
+            icon = {
+                draw_icon: {
+                    svg_file: (ICON_PLAY),
+                }
+            }
+
+        }
+
         cancel_button = <ActionButton> {
             icon = {
                 draw_icon: {
@@ -195,19 +207,36 @@ live_design! {
     }
 }
 
+#[derive(Clone, DefaultNone, Debug)]
+pub enum DownloadItemAction {
+    Download(File, Model),
+    None,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct DownloadItem {
     #[deref]
     view: View,
+
+    #[rust]
+    model: Option<Model>,
+
+    #[rust]
+    file: Option<File>,
 }
 
 impl Widget for DownloadItem {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let download = scope.data.get::<DownloadInfo>().unwrap();
+
+        self.model = Some(download.model.clone());
+        self.file = Some(download.file.clone());
+
         self.label(id!(filename))
             .set_text(download.file.name.as_str());
 
@@ -237,11 +266,14 @@ impl Widget for DownloadItem {
                         draw_bg: { color: (downloading_color) }
                     },
                 );
+
+                self.view(id!(pause_button)).set_visible(true);
+                self.view(id!(play_button)).set_visible(false);
             }
             DownloadInfoStatus::Paused => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
 
-                label.set_text("Paused");
+                label.set_text(&format!("Paused {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (paused_color) }
@@ -255,6 +287,9 @@ impl Widget for DownloadItem {
                         draw_bg: { color: (paused_color) }
                     },
                 );
+
+                self.view(id!(pause_button)).set_visible(false);
+                self.view(id!(play_button)).set_visible(true);
             }
             DownloadInfoStatus::Error => {}
             DownloadInfoStatus::Done => {}
@@ -268,5 +303,22 @@ impl Widget for DownloadItem {
             .set_text(&format!("{} / {}", downloaded_size, total_size));
 
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for DownloadItem {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if let Some(fd) = self.view(id!(play_button)).finger_down(&actions) {
+            let Some(model) = &self.model else { return };
+            let Some(file) = &self.file else { return };
+            if fd.tap_count == 1 {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    DownloadItemAction::Download(file.clone(), model.clone()),
+                );
+            }
+        }
     }
 }

@@ -1,4 +1,5 @@
 use crate::data::store::*;
+use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_list::ModelFileItemsAction;
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
@@ -224,6 +225,11 @@ impl MatchEvent for App {
             }
 
             if let ModelFileItemsAction::Download(file, model) = action.as_widget_action().cast() {
+                self.store.download_file(file, model);
+                self.ui.redraw(cx);
+            }
+
+            if let DownloadItemAction::Download(file, model) = action.as_widget_action().cast() {
                 self.store.download_file(file, model);
                 self.ui.redraw(cx);
             }
