@@ -379,6 +379,13 @@ impl Widget for ModelFilesItems {
                 }
             }
         }
+
+        // When data changes, we need to reset the items hash, so the PortalList
+        // can properly update the items (otherwise the used template widget are never changed).
+        if let Event::Signal = event {
+            self.items.clear();
+            self.redraw(cx);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {

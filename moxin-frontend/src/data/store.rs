@@ -227,6 +227,18 @@ impl Store {
 
         for id in completed_downloads {
             self.current_downloads.remove(&id);
+            self.mark_file_as_downloaded(&id);
+        }
+    }
+
+    fn mark_file_as_downloaded(&mut self, file_id: &FileID) {
+        let model = self
+            .models
+            .iter_mut()
+            .find(|m| m.files.iter().any(|f| f.id == *file_id));
+        if let Some(model) = model {
+            let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
+            file.downloaded = true;
         }
     }
 
