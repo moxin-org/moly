@@ -1,4 +1,5 @@
 use crate::data::store::*;
+use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_list::ModelFileItemsAction;
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use makepad_widgets::*;
@@ -8,9 +9,12 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::modal::*;
     import crate::landing::landing_screen::LandingScreen;
+    import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
+
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
@@ -53,54 +57,68 @@ live_design! {
             pass: {clear_color: #fff}
 
             body = {
+                flow: Overlay
                 width: Fill,
                 height: Fill,
 
-                sidebar_menu = <View> {
-                    width: 100,
-                    flow: Down, spacing: 20.0,
-                    padding: { top: 80 }
-
-                    align: {x: 0.5, y: 0.0},
-
-                    show_bg: true,
-                    draw_bg: {
-                        color: #EDEEF0,
-                    }
-
-                    discover_tab = <SidebarMenuButton> {
-                        animator: {selected = {default: on}}
-                        label: "Discover",
-                        draw_icon: {
-                            svg_file: (ICON_DISCOVER),
-                        }
-                    }
-                    chat_tab = <SidebarMenuButton> {
-                        label: "Chat",
-                        draw_icon: {
-                            svg_file: (ICON_CHAT),
-                        }
-                    }
-                    my_models_tab = <SidebarMenuButton> {
-                        label: "My Models",
-                        draw_icon: {
-                            svg_file: (ICON_MY_MODELS),
-                        }
-                    }
-                }
-
-                application_pages = <View> {
-                    margin: 0.0,
-                    padding: 0.0,
-
-                    flow: Overlay,
-
+                root = <View> {
                     width: Fill,
                     height: Fill,
 
-                    discover_frame = <LandingScreen> {visible: true}
-                    chat_frame = <ChatScreen> {visible: false}
-                    my_models_frame = <MyModelsScreen> {visible: false}
+                    sidebar_menu = <View> {
+                        width: 100,
+                        flow: Down, spacing: 20.0,
+                        padding: { top: 80 }
+
+                        align: {x: 0.5, y: 0.0},
+
+                        show_bg: true,
+                        draw_bg: {
+                            color: #EDEEF0,
+                        }
+
+                        discover_tab = <SidebarMenuButton> {
+                            animator: {selected = {default: on}}
+                            label: "Discover",
+                            draw_icon: {
+                            svg_file: (ICON_DISCOVER),
+                            }
+                        }
+                        chat_tab = <SidebarMenuButton> {
+                            label: "Chat",
+                            draw_icon: {
+                            svg_file: (ICON_CHAT),
+                            }
+                        }
+                        my_models_tab = <SidebarMenuButton> {
+                            label: "My Models",
+                            draw_icon: {
+                            svg_file: (ICON_MY_MODELS),
+                            }
+                        }
+                    }
+
+                    application_pages = <View> {
+                        margin: 0.0,
+                        padding: 0.0,
+
+                        flow: Overlay,
+
+                        width: Fill,
+                        height: Fill,
+
+                        discover_frame = <LandingScreen> {visible: true}
+                        chat_frame = <ChatScreen> {visible: false}
+                        my_models_frame = <MyModelsScreen> {visible: false}
+                    }
+                }
+
+                modal_root = <Modal> {
+                    model_card_view_all_modal_view = <ModalView> {
+                        content = {
+                            model_card_view_all_modal = <ModelCardViewAllModal> {}
+                        }
+                    }
                 }
             }
         }
@@ -132,6 +150,7 @@ impl LiveRegister for App {
         crate::shared::styles::live_design(cx);
         crate::shared::widgets::live_design(cx);
         crate::shared::icon::live_design(cx);
+        crate::shared::modal::live_design(cx);
 
         // Landing
         crate::landing::shared::live_design(cx);
@@ -201,19 +220,21 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
-                ModelFileItemsAction::Download(file) => {
-                    self.store.download_file(&file);
-                }
-                _ => {}
+            if let ModelFileItemsAction::Download(file) = action.as_widget_action().cast() {
+                self.store.download_file(&file);
             }
 
-            match action.as_widget_action().cast() {
-                DownloadedFileAction::StartChat(_) => {
-                    let chat_radio_button = self.ui.radio_button(id!(chat_tab));
-                    chat_radio_button.select(cx, &mut Scope::empty());
-                }
-                _ => {}
+            // Set modal viewall model id
+            if let ViewAllModalAction::ModelSelected(model_id) = action.as_widget_action().cast() {
+                let mut modal = self
+                    .ui
+                    .model_card_view_all_modal(id!(model_card_view_all_modal));
+                modal.set_model_id(model_id);
+            }
+
+            if let DownloadedFileAction::StartChat(_) = action.as_widget_action().cast() {
+                let chat_radio_button = self.ui.radio_button(id!(chat_tab));
+                chat_radio_button.select(cx, &mut Scope::empty());
             }
         }
     }
