@@ -5,8 +5,11 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
+use crossbeam::channel::Receiver;
 use moxin_protocol::data::Model;
 use moxin_protocol::protocol::FileDownloadResponse;
+
+use crate::backend_impls::DownloadControlCommand;
 
 use super::pending_downloads::{PendingDownloads, PendingDownloadsStatus};
 
@@ -151,6 +154,7 @@ fn download_file(
     local_path: &str,
     step: f64,
     report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
+    must_cancel_fn: &dyn Fn() -> bool,
 ) -> io::Result<DownloadResult> {
     use std::path::Path;
     let path: &Path = local_path.as_ref();
@@ -181,6 +185,11 @@ fn download_file(
                 Ok(len) => len,
                 Err(e) => return Err(e),
             };
+
+            if must_cancel_fn() {
+                return Ok(DownloadResult::Stopped(last_progress));
+            }
+
             file.write_all(&buffer[..len])?;
             downloaded += len as u64;
 
@@ -214,6 +223,7 @@ pub fn download_file_from_remote(
     local_path: &str,
     step: f64,
     report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
+    must_cancel_fn: &dyn Fn() -> bool,
 ) -> io::Result<DownloadResult> {
     let url = format!(
         "https://huggingface.co/{}/resolve/main/{}?download=true",
@@ -223,7 +233,15 @@ pub fn download_file_from_remote(
     let content_length = get_file_content_length(client, &url)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-    download_file(&client, content_length, &url, local_path, step, report_fn)
+    download_file(
+        &client,
+        content_length,
+        &url,
+        local_path,
+        step,
+        report_fn,
+        must_cancel_fn,
+    )
 }
 
 pub fn download_file_loop(
@@ -233,12 +251,13 @@ pub fn download_file_loop(
             super::models::Model,
             super::download_files::DownloadedFile,
             Sender<anyhow::Result<FileDownloadResponse>>,
+            std::sync::mpsc::Receiver<DownloadControlCommand>,
         )>,
     >,
 ) {
     let client = reqwest::blocking::Client::new();
 
-    while let Ok((model, mut file, tx)) = rx.recv() {
+    while let Ok((model, mut file, tx, rx_control)) = rx.recv() {
         let file_id = file.id.clone();
 
         let mut send_progress = |progress| {
@@ -264,6 +283,14 @@ pub fn download_file_loop(
             Ok(())
         };
 
+        let mut must_cancel = || {
+            if let Ok(DownloadControlCommand::Stop) = rx_control.try_recv() {
+                true
+            } else {
+                false
+            }
+        };
+
         {
             let conn = sql_conn.lock().unwrap();
             let _ = PendingDownloads::insert_if_not_exists(file_id.clone(), &conn);
@@ -279,6 +306,7 @@ pub fn download_file_loop(
             &file.downloaded_path.clone().unwrap(),
             0.1,
             &mut send_progress,
+            &mut must_cancel,
         );
 
         match r {
@@ -287,7 +315,7 @@ pub fn download_file_loop(
                 {
                     let conn = sql_conn.lock().unwrap();
                     let _ = file.save_to_db(&conn);
-                    let _ = PendingDownloads::mark_as_downloaded(file_id.clone(), &conn);
+                    let _ = PendingDownloads::remove(file_id.clone(), &conn);
                 }
 
                 let _ = tx.send(Ok(FileDownloadResponse::Completed(
@@ -333,6 +361,7 @@ fn test_download_file_from_huggingface() {
             println!("Download progress: {:.2}%", progress);
             Ok(())
         },
+        &|| false,
     )
     .unwrap();
 }

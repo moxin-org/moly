@@ -78,10 +78,7 @@ impl PendingDownloads {
         Ok(())
     }
 
-    pub fn mark_as_downloaded(
-        file_id: Arc<String>,
-        conn: &rusqlite::Connection,
-    ) -> rusqlite::Result<()> {
+    pub fn remove(file_id: Arc<String>, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(
             "DELETE FROM pending_downloads WHERE file_id = ?1",
             rusqlite::params![file_id],

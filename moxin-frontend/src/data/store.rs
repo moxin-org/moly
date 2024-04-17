@@ -157,6 +157,25 @@ impl Store {
         self.current_downloads.remove(&file.id);
     }
 
+    pub fn cancel_download_file(&mut self, file: File) {
+        let (tx, rx) = channel();
+        self.backend
+            .command_sender
+            .send(Command::CancelDownload(file.id.clone(), tx))
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(()) => {
+                    dbg!("cancelamooo");
+                    self.current_downloads.remove(&file.id);
+                    self.pending_downloads.retain(|d| d.file.id != file.id);
+                }
+                Err(err) => eprintln!("Error cancelling download: {:?}", err),
+            }
+        };
+    }
+
     pub fn load_model(&mut self, file: &File) {
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(

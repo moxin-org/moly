@@ -1,6 +1,9 @@
-use std::sync::{
-    mpsc::{Receiver, Sender},
-    Arc, Mutex,
+use std::{
+    collections::HashMap,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Arc, Mutex,
+    },
 };
 
 use chrono::Utc;
@@ -14,7 +17,7 @@ use moxin_protocol::{
 };
 use wasmedge_sdk::Module;
 
-use crate::store::{self, RemoteModel};
+use crate::store::{self, pending_downloads::PendingDownloads, RemoteModel};
 
 mod chat_ui {
 
@@ -502,6 +505,7 @@ enum ModelManagementCommand {
     GetFeaturedModels(Sender<anyhow::Result<Vec<Model>>>),
     SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
     DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
+    CancelDownload(FileID, Sender<anyhow::Result<()>>),
     GetCurrentDownloads(Sender<anyhow::Result<Vec<PendingDownload>>>),
     GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
 }
@@ -542,6 +546,9 @@ impl From<Command> for BuiltInCommand {
             }
             Command::DownloadFile(file_id, tx) => {
                 Self::Model(ModelManagementCommand::DownloadFile(file_id, tx))
+            }
+            Command::CancelDownload(file_id, tx) => {
+                Self::Model(ModelManagementCommand::CancelDownload(file_id, tx))
             }
             Command::GetCurrentDownloads(tx) => {
                 Self::Model(ModelManagementCommand::GetCurrentDownloads(tx))
@@ -784,6 +791,10 @@ fn test_get_download_file() {
     println!("{files:?}");
 }
 
+pub enum DownloadControlCommand {
+    Stop,
+}
+
 pub struct BackendImpl {
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
     models_dir: String,
@@ -792,8 +803,12 @@ pub struct BackendImpl {
         store::models::Model,
         store::download_files::DownloadedFile,
         Sender<anyhow::Result<FileDownloadResponse>>,
+        std::sync::mpsc::Receiver<DownloadControlCommand>,
     )>,
     model: Option<chat_ui::Model>,
+
+    // Channels to control download threads
+    download_control_channels: HashMap<FileID, std::sync::mpsc::Sender<DownloadControlCommand>>,
 }
 
 impl BackendImpl {
@@ -834,6 +849,7 @@ impl BackendImpl {
             rx,
             download_tx,
             model: None,
+            download_control_channels: HashMap::new(),
         };
 
         std::thread::spawn(move || {
@@ -932,12 +948,29 @@ impl BackendImpl {
 
                     match search_model_from_remote() {
                         Ok((model, file)) => {
-                            let _ = self.download_tx.send((model, file, tx));
+                            let (control_tx, control_rx) = std::sync::mpsc::channel();
+                            self.download_control_channels
+                                .insert(file_id.clone(), control_tx);
+                            // TODO how we clean up the hashmap elements?
+
+                            let _ = self.download_tx.send((model, file, tx, control_rx));
                         }
                         Err(e) => {
                             let _ = tx.send(Err(e));
                         }
                     }
+                }
+
+                ModelManagementCommand::CancelDownload(file_id, tx) => {
+                    if let Some(control_tx) = self.download_control_channels.remove(&file_id) {
+                        let _ = control_tx.send(DownloadControlCommand::Stop);
+
+                        let conn = self.sql_conn.lock().unwrap();
+                        let _ = PendingDownloads::remove(file_id.into(), &conn);
+
+                        //TODO delete file from filesystem
+                    }
+                    let _ = tx.send(Ok(()));
                 }
 
                 ModelManagementCommand::GetDownloadedFiles(tx) => {

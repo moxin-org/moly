@@ -239,8 +239,8 @@ impl MatchEvent for App {
                     self.ui.redraw(cx);
                 }
                 DownloadItemAction::Cancel(file) => {
-                    // self.store.cancel_download(file, model);
-                    // self.ui.redraw(cx);
+                    self.store.cancel_download_file(file);
+                    self.ui.redraw(cx);
                 }
                 _ => {}
             }
