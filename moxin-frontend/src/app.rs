@@ -229,9 +229,20 @@ impl MatchEvent for App {
                 self.ui.redraw(cx);
             }
 
-            if let DownloadItemAction::Download(file, model) = action.as_widget_action().cast() {
-                self.store.download_file(file, model);
-                self.ui.redraw(cx);
+            match action.as_widget_action().cast() {
+                DownloadItemAction::Play(file, model) => {
+                    self.store.download_file(file, model);
+                    self.ui.redraw(cx);
+                }
+                DownloadItemAction::Pause(file) => {
+                    self.store.pause_download_file(file);
+                    self.ui.redraw(cx);
+                }
+                DownloadItemAction::Cancel(file) => {
+                    // self.store.cancel_download(file, model);
+                    // self.ui.redraw(cx);
+                }
+                _ => {}
             }
 
             // Set modal viewall model id

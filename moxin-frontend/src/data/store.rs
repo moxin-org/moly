@@ -150,6 +150,10 @@ impl Store {
         }
     }
 
+    pub fn pause_download_file(&mut self, file: File) {
+        self.current_downloads.remove(&file.id);
+    }
+
     pub fn load_model(&mut self, file: &File) {
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(

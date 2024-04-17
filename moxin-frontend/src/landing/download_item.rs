@@ -209,7 +209,9 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum DownloadItemAction {
-    Download(File, Model),
+    Play(File, Model),
+    Pause(File),
+    Cancel(File),
     None,
 }
 
@@ -316,7 +318,31 @@ impl WidgetMatchEvent for DownloadItem {
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    DownloadItemAction::Download(file.clone(), model.clone()),
+                    DownloadItemAction::Play(file.clone(), model.clone()),
+                );
+            }
+        }
+
+        if let Some(fd) = self.view(id!(pause_button)).finger_down(&actions) {
+            let Some(file) = &self.file else { return };
+            if fd.tap_count == 1 {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    DownloadItemAction::Pause(file.clone()),
+                );
+            }
+        }
+
+        if let Some(fd) = self.view(id!(cancel_button)).finger_down(&actions) {
+            let Some(file) = &self.file else { return };
+            if fd.tap_count == 1 {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    DownloadItemAction::Cancel(file.clone()),
                 );
             }
         }

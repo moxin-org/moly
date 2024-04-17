@@ -145,7 +145,7 @@ fn download_file(
     url: &str,
     local_path: &str,
     step: f64,
-    report_fn: &mut dyn FnMut(f64),
+    report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
 ) -> io::Result<f64> {
     use std::path::Path;
     let path: &Path = local_path.as_ref();
@@ -182,7 +182,13 @@ fn download_file(
             let progress = (downloaded as f64 / content_length as f64) * 100.0;
             if progress > last_progress + step {
                 last_progress = progress;
-                report_fn(progress)
+                match report_fn(progress) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        // Frontend has dropped the connection, so we should stop the download
+                        break;
+                    }
+                }
             }
         }
         Ok((downloaded as f64 / content_length as f64) * 100.0)
@@ -197,7 +203,7 @@ pub fn download_file_from_remote(
     file: &str,
     local_path: &str,
     step: f64,
-    report_fn: &mut dyn FnMut(f64),
+    report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
 ) -> io::Result<f64> {
     let url = format!(
         "https://huggingface.co/{}/resolve/main/{}?download=true",
@@ -224,13 +230,15 @@ pub fn download_file_loop(
 
     while let Ok((model, mut file, tx)) = rx.recv() {
         let file_id = file.id.clone();
-        //let conn = sql_conn.lock().unwrap();
 
         let mut send_progress = |progress| {
-            let _ = tx.send(Ok(FileDownloadResponse::Progress(
+            match tx.send(Ok(FileDownloadResponse::Progress(
                 file_id.as_ref().clone(),
                 progress as f32,
-            )));
+            ))) {
+                Ok(_) => {}
+                Err(_) => return Err(anyhow::anyhow!("Download stopped by the receiver")),
+            };
 
             // Update our local database
             {
@@ -242,6 +250,8 @@ pub fn download_file_loop(
                 };
                 pending_download.save_to_db(&conn).unwrap();
             }
+
+            Ok(())
         };
 
         {
@@ -308,6 +318,7 @@ fn test_download_file_from_huggingface() {
         0.5,
         &mut |progress| {
             println!("Download progress: {:.2}%", progress);
+            Ok(())
         },
     )
     .unwrap();
