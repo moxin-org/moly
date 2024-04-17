@@ -6,8 +6,8 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
+    import crate::shared::external_link::*;
 
-    const MODEL_LINK_FONT_COLOR = #x155EEF
 
     ModelLink = <View> {
         width: Fit,

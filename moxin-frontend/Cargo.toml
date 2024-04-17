@@ -13,6 +13,8 @@ moxin-fake-backend = { path = "./moxin-fake-backend", package="moxin-fake-backen
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 
+robius-open = { git = "https://github.com/project-robius/robius-open", branch = "main" }
+
 chrono = "0.4"
 unicode-segmentation = "1.10.1"
 anyhow = "1.0"
