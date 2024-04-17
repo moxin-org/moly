@@ -139,6 +139,11 @@ fn get_file_content_length(client: &reqwest::blocking::Client, url: &str) -> req
     Ok(content_length)
 }
 
+pub enum DownloadResult {
+    Completed(f64),
+    Stopped(f64),
+}
+
 fn download_file(
     client: &reqwest::blocking::Client,
     content_length: u64,
@@ -146,7 +151,7 @@ fn download_file(
     local_path: &str,
     step: f64,
     report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
-) -> io::Result<f64> {
+) -> io::Result<DownloadResult> {
     use std::path::Path;
     let path: &Path = local_path.as_ref();
     std::fs::create_dir_all(path.parent().unwrap())?;
@@ -186,14 +191,19 @@ fn download_file(
                     Ok(_) => {}
                     Err(_) => {
                         // Frontend has dropped the connection, so we should stop the download
-                        break;
+                        dbg!("YO parando");
+                        return Ok(DownloadResult::Stopped(progress));
                     }
                 }
             }
         }
-        Ok((downloaded as f64 / content_length as f64) * 100.0)
+        // TODO I don't know how to handle when it is complete but not 100%
+        // Maybe we should return Completed without any value?
+        Ok(DownloadResult::Completed(
+            (downloaded as f64 / content_length as f64) * 100.0,
+        ))
     } else {
-        Ok(100.0)
+        Ok(DownloadResult::Completed(100.0))
     }
 }
 
@@ -204,7 +214,7 @@ pub fn download_file_from_remote(
     local_path: &str,
     step: f64,
     report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
-) -> io::Result<f64> {
+) -> io::Result<DownloadResult> {
     let url = format!(
         "https://huggingface.co/{}/resolve/main/{}?download=true",
         model_id, file
@@ -267,12 +277,12 @@ pub fn download_file_loop(
             &model.id,
             &file.name,
             &file.downloaded_path.clone().unwrap(),
-            0.5,
+            0.1,
             &mut send_progress,
         );
 
         match r {
-            Ok(_) => {
+            Ok(DownloadResult::Completed(_)) => {
                 file.downloaded_at = Some(Utc::now());
                 {
                     let conn = sql_conn.lock().unwrap();
@@ -300,6 +310,9 @@ pub fn download_file_loop(
                     },
                 )));
             }
+            Ok(DownloadResult::Stopped(_)) => {
+                // TODO Implement file removal when download is stopped, nothing to do when it is paused
+            }
             Err(e) => tx
                 .send(Err(anyhow::anyhow!("Download failed: {e}")))
                 .unwrap(),
@@ -315,7 +328,7 @@ fn test_download_file_from_huggingface() {
         "TheBloke/Llama-2-7B-Chat-GGUF",
         "llama-2-7b-chat.Q3_K_M.gguf",
         "/home/csh/ai/models/TheBloke/Llama-2-7B-Chat-GGUF/llama-2-7b-chat.Q3_K_M.gguf",
-        0.5,
+        0.05,
         &mut |progress| {
             println!("Download progress: {:.2}%", progress);
             Ok(())

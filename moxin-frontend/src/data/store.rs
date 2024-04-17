@@ -134,12 +134,10 @@ impl Store {
     }
 
     pub fn download_file(&mut self, file: File, model: Model) {
-        self.current_downloads.insert(
-            file.id.clone(),
-            Download::new(file.clone(), model.clone(), &self.backend),
-        );
-
-        if !self.pending_downloads.iter().any(|d| d.file.id == file.id) {
+        let mut current_progress = 0.0;
+        if let Some(pending) = self.pending_downloads.iter().find(|d| d.file.id == file.id) {
+            current_progress = pending.progress;
+        } else {
             let pending_download = PendingDownload {
                 file: file.clone(),
                 model: model.clone(),
@@ -148,6 +146,11 @@ impl Store {
             };
             self.pending_downloads.push(pending_download);
         }
+
+        self.current_downloads.insert(
+            file.id.clone(),
+            Download::new(file.clone(), model.clone(), current_progress, &self.backend),
+        );
     }
 
     pub fn pause_download_file(&mut self, file: File) {
@@ -242,8 +245,8 @@ impl Store {
             }
         }
 
-        // Fetch new downloads if any just completed
         if !completed_downloads.is_empty() {
+            // Reload downloaded files
             self.load_downloaded_files();
         }
 
@@ -251,6 +254,10 @@ impl Store {
             self.current_downloads.remove(&id);
             self.mark_file_as_downloaded(&id);
         }
+
+        // TODO This could be optimized to only refresh when needed, but harder to do because
+        // we are pausing/stopping downloads dropping a chain of channels. Needs more thought.
+        self.load_pending_downloads();
     }
 
     fn mark_file_as_downloaded(&mut self, file_id: &FileID) {
