@@ -42,7 +42,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveRegisterWidget, WidgetRef, LiveHook)]
+#[derive(Live, LiveHook, Widget)]
 pub struct ExternalLink {
     #[deref]
     view: View,
@@ -59,20 +59,6 @@ impl Widget for ExternalLink {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
-    }
-}
-
-impl WidgetNode for ExternalLink {
-    fn walk(&mut self, cx: &mut Cx) -> Walk {
-        self.view.walk(cx)
-    }
-
-    fn redraw(&mut self, cx: &mut Cx) {
-        self.view.redraw(cx)
-    }
-
-    fn find_widgets(&mut self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet) {
-        self.view.find_widgets(path, cached, results);
     }
 }
 
