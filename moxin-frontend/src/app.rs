@@ -1,4 +1,5 @@
 use crate::data::store::*;
+use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_list::ModelFileItemsAction;
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
@@ -161,6 +162,8 @@ impl LiveRegister for App {
         crate::landing::landing_screen::live_design(cx);
         crate::landing::search_bar::live_design(cx);
         crate::landing::sorting::live_design(cx);
+        crate::landing::downloads::live_design(cx);
+        crate::landing::download_item::live_design(cx);
 
         // Chat
         crate::chat::chat_screen::live_design(cx);
@@ -221,8 +224,25 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            if let ModelFileItemsAction::Download(file) = action.as_widget_action().cast() {
-                self.store.download_file(&file);
+            if let ModelFileItemsAction::Download(file, model) = action.as_widget_action().cast() {
+                self.store.download_file(file, model);
+                self.ui.redraw(cx);
+            }
+
+            match action.as_widget_action().cast() {
+                DownloadItemAction::Play(file, model) => {
+                    self.store.download_file(file, model);
+                    self.ui.redraw(cx);
+                }
+                DownloadItemAction::Pause(file) => {
+                    self.store.pause_download_file(file);
+                    self.ui.redraw(cx);
+                }
+                DownloadItemAction::Cancel(file) => {
+                    self.store.cancel_download_file(file);
+                    self.ui.redraw(cx);
+                }
+                _ => {}
             }
 
             // Set modal viewall model id

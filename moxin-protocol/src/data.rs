@@ -53,6 +53,22 @@ pub struct DownloadedFile {
     pub information: String,
 }
 
+#[derive(Clone, Debug, Default)]
+pub enum PendingDownloadsStatus {
+    #[default]
+    Downloading,
+    Paused,
+    Error,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PendingDownload {
+    pub file: File,
+    pub model: Model,
+    pub progress: f64,
+    pub status: PendingDownloadsStatus,
+}
+
 // We're using the HuggingFace identifier as the model ID for now
 // We should consider using a different identifier in the future if more
 // models sources are added.

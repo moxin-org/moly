@@ -6,22 +6,26 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 
 pub enum DownloadFileAction {
-    Progress(FileID, f32),
+    Progress(FileID, f64),
     StreamingDone,
 }
 
 pub struct Download {
     pub file: File,
+    pub model: Model,
     pub sender: Sender<DownloadFileAction>,
     pub receiver: Receiver<DownloadFileAction>,
+    pub progress: f64,
     pub done: bool,
 }
 
 impl Download {
-    pub fn new(file: File, backend: &Backend) -> Self {
+    pub fn new(file: File, model: Model, progress: f64, backend: &Backend) -> Self {
         let (tx, rx) = channel();
         let mut download = Self {
             file: file,
+            model: model,
+            progress,
             sender: tx,
             receiver: rx,
             done: false,
@@ -49,11 +53,9 @@ impl Download {
                                 .send(DownloadFileAction::StreamingDone)
                                 .unwrap();
                         }
-                        FileDownloadResponse::Progress(file, value) => {
-                            store_download_tx
-                                .send(DownloadFileAction::Progress(file, value))
-                                .unwrap();
-                        }
+                        FileDownloadResponse::Progress(file, value) => store_download_tx
+                            .send(DownloadFileAction::Progress(file, value as f64))
+                            .unwrap(),
                     },
                     Err(err) => eprintln!("Error downloading file: {:?}", err),
                 }
@@ -71,10 +73,11 @@ impl Download {
             match msg {
                 DownloadFileAction::StreamingDone => {
                     self.done = true;
-                    println!("Download complete");
+                    //println!("Download complete");
                 }
                 DownloadFileAction::Progress(file, value) => {
-                    println!("Download {:?} progress: {:?}", file, value);
+                    self.progress = value;
+                    // println!("Download {:?} progress: {:?}", file, value);
                 }
             }
         }

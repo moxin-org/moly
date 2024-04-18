@@ -14,6 +14,7 @@ live_design! {
     import crate::landing::search_bar::SearchBar;
     import crate::landing::model_list::ModelList;
     import crate::landing::sorting::Sorting;
+    import crate::landing::downloads::Downloads;
 
     Heading = <View> {
         width: Fill,
@@ -78,19 +79,18 @@ live_design! {
             height: Fill,
             flow: Down,
 
-            spacing: 30,
-
             search_bar = <SearchBar> {}
-            <View> {
+            models = <View> {
                 width: Fill,
                 height: Fill,
                 flow: Down,
                 spacing: 30,
-                margin: { left: 50, right: 50 },
+                margin: { left: 50, right: 50, top: 30 },
 
                 <Heading> {}
                 <ModelList> {}
             }
+            downloads = <Downloads> {}
         }
     }
 }

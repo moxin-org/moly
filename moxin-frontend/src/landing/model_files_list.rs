@@ -1,9 +1,9 @@
 use crate::{
-    data::store::{Store, StoreAction},
+    data::store::{ModelWithPendingDownloads, Store, StoreAction},
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, Model};
+use moxin_protocol::data::{File, Model, PendingDownload};
 use std::collections::HashMap;
 
 live_design! {
@@ -110,6 +110,27 @@ live_design! {
         }
     }
 
+    // TODO This is a very temporary solution, we will have a better way to handle this.
+    DownloadPendingButton = <ModelCardButton> {
+        draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
+        button_label = {
+            text: "Downloading..."
+            draw_text: {
+                fn get_color(self) -> vec4 {
+                    return #x155EEF;
+                }
+            }
+        }
+        button_icon = {
+            draw_icon: {
+                fn get_color(self) -> vec4 {
+                    // invisible for now
+                    return #0000;
+                }
+            }
+        }
+    }
+
     ModelFilesTags = {{ModelFilesTags}} {
         width: Fit,
         height: Fit,
@@ -181,6 +202,12 @@ live_design! {
         template_downloaded: <ModelFilesRowWithData> {
             cell4 = {
                 <DownloadedButton> {}
+            }
+        }
+
+        template_download_pending: <ModelFilesRowWithData> {
+            cell4 = {
+                <DownloadPendingButton> {}
             }
         }
 
@@ -322,7 +349,7 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelFileItemsAction {
-    Download(File),
+    Download(File, Model),
     None,
 }
 
@@ -341,6 +368,8 @@ pub struct ModelFilesItems {
     template_downloaded: Option<LivePtr>,
     #[live]
     template_download: Option<LivePtr>,
+    #[live]
+    template_download_pending: Option<LivePtr>,
 
     #[live(true)]
     show_tags: bool,
@@ -356,10 +385,14 @@ pub struct ModelFilesItems {
 
     #[rust]
     map_to_files: HashMap<LiveId, File>,
+
+    #[rust]
+    model: Option<Model>,
 }
 
 impl Widget for ModelFilesItems {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let mut clicked_item_id = None;
         for (id, item) in self.items.iter_mut() {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.view(id!(download_button)).finger_down(&actions) {
@@ -368,15 +401,37 @@ impl Widget for ModelFilesItems {
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
-                        ModelFileItemsAction::Download(self.map_to_files.get(id).unwrap().clone()),
+                        ModelFileItemsAction::Download(
+                            self.map_to_files.get(id).unwrap().clone(),
+                            self.model.clone().unwrap(),
+                        ),
                     );
+
+                    clicked_item_id = Some(id.clone());
+                    break;
                 }
             }
+        }
+
+        // Remove this item from the list so it gets regenerated on the next redraw
+        if let Some(id) = clicked_item_id {
+            self.items.remove(&id);
+            self.redraw(cx);
+        }
+
+        // When data changes, we need to reset the items hash, so the PortalList
+        // can properly update the items (otherwise the used template widget are never changed).
+        if let Event::Signal = event {
+            self.items.clear();
+            self.redraw(cx);
         }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = scope.data.get::<Model>().unwrap();
+        let ModelWithPendingDownloads {
+            model,
+            pending_downloads,
+        } = scope.data.get::<ModelWithPendingDownloads>().unwrap();
         let files = if self.show_featured {
             Store::model_featured_files(model)
         } else {
@@ -384,7 +439,8 @@ impl Widget for ModelFilesItems {
         };
         cx.begin_turtle(walk, self.layout);
 
-        self.draw_files(cx, &files);
+        self.model = Some(model.clone());
+        self.draw_files(cx, &files, pending_downloads);
         cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()
@@ -408,17 +464,30 @@ impl WidgetNode for ModelFilesItems {
 }
 
 impl ModelFilesItems {
-    fn draw_files(&mut self, cx: &mut Cx2d, files: &Vec<File>) {
+    fn draw_files(
+        &mut self,
+        cx: &mut Cx2d,
+        files: &Vec<File>,
+        pending_downloads: &Vec<PendingDownload>,
+    ) {
         // TODO check if using proper ids in the items collections is better than having this mapping
         self.map_to_files.clear();
 
         for i in 0..files.len() {
-            let template = if files[i].downloaded {
+            let item_id = LiveId(i as u64).into();
+
+            let template = if pending_downloads
+                .iter()
+                .find(|f| f.file.id == files[i].id)
+                .is_some()
+            {
+                self.template_download_pending
+            } else if files[i].downloaded {
                 self.template_downloaded
             } else {
                 self.template_download
             };
-            let item_id = LiveId(i as u64).into();
+
             let item_widget = self
                 .items
                 .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, template));
@@ -542,7 +611,7 @@ impl Widget for ModelFilesList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = scope.data.get::<Model>().unwrap();
+        let model = &scope.data.get::<ModelWithPendingDownloads>().unwrap().model;
         let files_count = model.files.len();
         let all_files_link = self.view(id!(all_files_link.link));
         all_files_link.set_text(&format!("Show All Files ({})", files_count));

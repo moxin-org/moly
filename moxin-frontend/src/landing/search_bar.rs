@@ -262,4 +262,11 @@ impl SearchBarRef {
 
         inner.animator_play(cx, id!(search_bar.expanded));
     }
+
+    pub fn area(&self) -> Area {
+        let Some(inner) = self.borrow() else {
+            return Area::Empty;
+        };
+        inner.view.area()
+    }
 }

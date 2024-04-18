@@ -1,11 +1,14 @@
-use std::sync::{
-    mpsc::{Receiver, Sender},
-    Arc, Mutex,
+use std::{
+    collections::HashMap,
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc, Mutex,
+    },
 };
 
 use chrono::Utc;
 use moxin_protocol::{
-    data::{DownloadedFile, FileID, Model},
+    data::{DownloadedFile, FileID, Model, PendingDownload},
     open_ai::{ChatRequestData, ChatResponse},
     protocol::{
         Command, FileDownloadResponse, LoadModelOptions, LoadModelResponse, LocalServerConfig,
@@ -14,7 +17,7 @@ use moxin_protocol::{
 };
 use wasmedge_sdk::Module;
 
-use crate::store::{self, RemoteModel};
+use crate::store::{self, pending_downloads::PendingDownloads, RemoteModel};
 
 mod chat_ui {
 
@@ -396,7 +399,7 @@ mod chat_ui {
             file.name.clone(),
             wasmedge_sdk::plugin::GraphEncoding::GGML,
             wasmedge_sdk::plugin::ExecutionTarget::AUTO,
-            file.downloaded_path.clone(),
+            file.downloaded_path.clone().unwrap(),
         );
         wasmedge_sdk::plugin::PluginManager::nn_preload(vec![preloads]);
     }
@@ -502,6 +505,9 @@ enum ModelManagementCommand {
     GetFeaturedModels(Sender<anyhow::Result<Vec<Model>>>),
     SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
     DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
+    PauseDownload(FileID, Sender<anyhow::Result<()>>),
+    CancelDownload(FileID, Sender<anyhow::Result<()>>),
+    GetCurrentDownloads(Sender<anyhow::Result<Vec<PendingDownload>>>),
     GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
 }
 
@@ -541,6 +547,15 @@ impl From<Command> for BuiltInCommand {
             }
             Command::DownloadFile(file_id, tx) => {
                 Self::Model(ModelManagementCommand::DownloadFile(file_id, tx))
+            }
+            Command::PauseDownload(file_id, tx) => {
+                Self::Model(ModelManagementCommand::PauseDownload(file_id, tx))
+            }
+            Command::CancelDownload(file_id, tx) => {
+                Self::Model(ModelManagementCommand::CancelDownload(file_id, tx))
+            }
+            Command::GetCurrentDownloads(tx) => {
+                Self::Model(ModelManagementCommand::GetCurrentDownloads(tx))
             }
             Command::GetDownloadedFiles(tx) => {
                 Self::Model(ModelManagementCommand::GetDownloadedFiles(tx))
@@ -780,6 +795,10 @@ fn test_get_download_file() {
     println!("{files:?}");
 }
 
+pub enum DownloadControlCommand {
+    Stop,
+}
+
 pub struct BackendImpl {
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
     models_dir: String,
@@ -788,8 +807,12 @@ pub struct BackendImpl {
         store::models::Model,
         store::download_files::DownloadedFile,
         Sender<anyhow::Result<FileDownloadResponse>>,
+        std::sync::mpsc::Receiver<DownloadControlCommand>,
     )>,
     model: Option<chat_ui::Model>,
+
+    // Channels to control download threads
+    download_control_channels: HashMap<FileID, std::sync::mpsc::Sender<DownloadControlCommand>>,
 }
 
 impl BackendImpl {
@@ -804,8 +827,12 @@ impl BackendImpl {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
 
         let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
+
+        // TODO Reorganize these bunch of functions, needs a little more of thought
         let _ = store::models::create_table_models(&sql_conn);
         let _ = store::download_files::create_table_download_files(&sql_conn);
+        let _ = store::pending_downloads::create_table_pending_downloads(&sql_conn);
+        let _ = store::pending_downloads::mark_pending_downloads_as_paused(&sql_conn);
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
 
@@ -828,6 +855,7 @@ impl BackendImpl {
             rx,
             download_tx,
             model: None,
+            download_control_channels: HashMap::new(),
         };
 
         std::thread::spawn(move || {
@@ -915,8 +943,8 @@ impl BackendImpl {
                             prompt_template: remote_model.prompt_template,
                             reverse_prompt: remote_model.reverse_prompt,
                             downloaded: true,
-                            downloaded_path: format!("{}/{}/{}",self.models_dir,model_id,file),
-                            downloaded_at: Utc::now(),
+                            downloaded_path: Some(format!("{}/{}/{}",self.models_dir,model_id,file)),
+                            downloaded_at: Some(Utc::now()),
                             tags:remote_file.tags,
                             featured: false,
                         };
@@ -926,12 +954,41 @@ impl BackendImpl {
 
                     match search_model_from_remote() {
                         Ok((model, file)) => {
-                            let _ = self.download_tx.send((model, file, tx));
+                            let (control_tx, control_rx) = std::sync::mpsc::channel();
+
+                            // TODO We need to define a way to clean up the channel when the download is finished
+                            self.download_control_channels
+                                .insert(file_id.clone(), control_tx);
+
+                            let _ = self.download_tx.send((model, file, tx, control_rx));
                         }
                         Err(e) => {
                             let _ = tx.send(Err(e));
                         }
                     }
+                }
+
+                ModelManagementCommand::PauseDownload(file_id, tx) => {
+                    if let Some(control_tx) = self.download_control_channels.remove(&file_id) {
+                        let _ = control_tx.send(DownloadControlCommand::Stop);
+                    }
+                    let _ = tx.send(Ok(()));
+                }
+
+                ModelManagementCommand::CancelDownload(file_id, tx) => {
+                    if let Some(control_tx) = self.download_control_channels.remove(&file_id) {
+                        let _ = control_tx.send(DownloadControlCommand::Stop);
+                    }
+
+                    let conn = self.sql_conn.lock().unwrap();
+                    let _ = store::download_files::DownloadedFile::remove(
+                        file_id.clone().into(),
+                        &conn,
+                    );
+                    let _ = PendingDownloads::remove(file_id.clone().into(), &conn);
+                    let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
+
+                    let _ = tx.send(Ok(()));
                 }
 
                 ModelManagementCommand::GetDownloadedFiles(tx) => {
@@ -942,6 +999,15 @@ impl BackendImpl {
                     };
 
                     let _ = tx.send(downloads);
+                }
+
+                ModelManagementCommand::GetCurrentDownloads(tx) => {
+                    let pending_downloads = {
+                        let conn = self.sql_conn.lock().unwrap();
+                        store::get_all_pending_downloads(&conn)
+                            .map_err(|e| anyhow::anyhow!("get pending download file error: {e}"))
+                    };
+                    let _ = tx.send(pending_downloads);
                 }
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {

@@ -82,6 +82,10 @@ pub enum Command {
     SearchModels(String, Sender<Result<Vec<Model>>>),
 
     DownloadFile(FileID, Sender<Result<FileDownloadResponse>>),
+    PauseDownload(FileID, Sender<Result<()>>),
+    CancelDownload(FileID, Sender<Result<()>>),
+
+    GetCurrentDownloads(Sender<Result<Vec<PendingDownload>>>),
     GetDownloadedFiles(Sender<Result<Vec<DownloadedFile>>>),
 
     LoadModel(FileID, LoadModelOptions, Sender<Result<LoadModelResponse>>),
