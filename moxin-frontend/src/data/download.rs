@@ -75,7 +75,7 @@ impl Download {
                     self.done = true;
                     //println!("Download complete");
                 }
-                DownloadFileAction::Progress(file, value) => {
+                DownloadFileAction::Progress(_file, value) => {
                     self.progress = value;
                     // println!("Download {:?} progress: {:?}", file, value);
                 }

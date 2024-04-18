@@ -74,6 +74,8 @@ impl Store {
 
             // Initialize the local cache with empty values
             models: vec![],
+
+            // TODO we should unify those two into a single struct
             downloaded_files: vec![],
             pending_downloads: vec![],
 
@@ -164,6 +166,7 @@ impl Store {
             match response {
                 Ok(()) => {
                     self.current_downloads.remove(&file.id);
+                    self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error pausing download: {:?}", err),
             }
@@ -182,6 +185,7 @@ impl Store {
                 Ok(()) => {
                     self.current_downloads.remove(&file.id);
                     self.pending_downloads.retain(|d| d.file.id != file.id);
+                    self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error cancelling download: {:?}", err),
             }
@@ -279,16 +283,13 @@ impl Store {
         if !completed_downloads.is_empty() {
             // Reload downloaded files
             self.load_downloaded_files();
+            self.load_pending_downloads();
         }
 
         for id in completed_downloads {
             self.current_downloads.remove(&id);
             self.mark_file_as_downloaded(&id);
         }
-
-        // TODO This could be optimized to only refresh when needed, but harder to do because
-        // we are pausing/stopping downloads dropping a chain of channels. Needs more thought.
-        self.load_pending_downloads();
     }
 
     fn mark_file_as_downloaded(&mut self, file_id: &FileID) {
