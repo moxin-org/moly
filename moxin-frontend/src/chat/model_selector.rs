@@ -38,6 +38,7 @@ live_design! {
         show_bg: true,
         draw_bg: {
             instance hover: 0.0,
+            instance down: 0.0,
             color: #fff,
             instance color_hover: #F9FAFB,
 
@@ -108,6 +109,25 @@ live_design! {
                         apply: {
                             draw_bg: {hover: 1.0}
                         },
+                    }
+                }
+                down = {
+                    default: off
+                    off = {
+                        from: {all: Forward {duration: 0.5}}
+                        ease: OutExp
+                        apply: {
+                            draw_bg: {down: 0.0}
+                        }
+                    }
+                    on = {
+                        ease: OutExp
+                        from: {
+                            all: Forward {duration: 0.2}
+                        }
+                        apply: {
+                            draw_bg: {down: 1.0}
+                        }
                     }
                 }
             }
