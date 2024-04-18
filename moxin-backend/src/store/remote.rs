@@ -247,7 +247,7 @@ pub fn download_file_loop(
             &mut send_progress,
         );
 
-        println!("Downloaded file: {:?}", r);
+        log::debug!("Downloaded file: {:?}", r);
 
         match r {
             Ok(_) => {
@@ -255,9 +255,9 @@ pub fn download_file_loop(
                 {
                     let conn = sql_conn.lock().unwrap();
                     let r = file.save_to_db(&conn);
-                    println!("Saved file: {:?}", r);
+                    log::debug!("Saved file: {:?}", r);
                     let r = model.save_to_db(&conn);
-                    println!("Saved model: {:?}", r);
+                    log::debug!("Saved model: {:?}", r);
                     conn.cache_flush().unwrap();
                 }
 
