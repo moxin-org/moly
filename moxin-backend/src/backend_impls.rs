@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     sync::{
-        mpsc::{channel, Receiver, Sender},
+        mpsc::{Receiver, Sender},
         Arc, Mutex,
     },
 };
@@ -975,12 +975,12 @@ impl BackendImpl {
                 ModelManagementCommand::CancelDownload(file_id, tx) => {
                     if let Some(control_tx) = self.download_control_channels.remove(&file_id) {
                         let _ = control_tx.send(DownloadControlCommand::Stop);
-
-                        let conn = self.sql_conn.lock().unwrap();
-                        let _ = PendingDownloads::remove(file_id.into(), &conn);
-
-                        //TODO delete file from filesystem
                     }
+
+                    let conn = self.sql_conn.lock().unwrap();
+                    let _ = PendingDownloads::remove(file_id.clone().into(), &conn);
+                    let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
+
                     let _ = tx.send(Ok(()));
                 }
 

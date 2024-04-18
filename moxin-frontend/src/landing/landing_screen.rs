@@ -1,5 +1,4 @@
 use crate::data::store::{Store, StoreAction};
-use crate::landing::downloads::DownloadsWidgetExt;
 use crate::landing::model_list::ModelListAction;
 use crate::landing::search_bar::SearchBarWidgetExt;
 use crate::landing::sorting::SortingWidgetExt;

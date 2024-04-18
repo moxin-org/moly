@@ -5,7 +5,6 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
-use crossbeam::channel::Receiver;
 use moxin_protocol::data::Model;
 use moxin_protocol::protocol::FileDownloadResponse;
 

@@ -73,11 +73,11 @@ impl Download {
             match msg {
                 DownloadFileAction::StreamingDone => {
                     self.done = true;
-                    println!("Download complete");
+                    //println!("Download complete");
                 }
                 DownloadFileAction::Progress(file, value) => {
                     self.progress = value;
-                    println!("Download {:?} progress: {:?}", file, value);
+                    // println!("Download {:?} progress: {:?}", file, value);
                 }
             }
         }

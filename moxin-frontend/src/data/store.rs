@@ -1,6 +1,6 @@
 use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
-use makepad_widgets::{DefaultNone, SignalToUI};
+use makepad_widgets::DefaultNone;
 use moxin_backend::Backend;
 use moxin_protocol::data::{
     DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
@@ -163,7 +163,6 @@ impl Store {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    dbg!("pausamooo");
                     self.current_downloads.remove(&file.id);
                 }
                 Err(err) => eprintln!("Error pausing download: {:?}", err),
@@ -181,7 +180,6 @@ impl Store {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    dbg!("cancelamooo");
                     self.current_downloads.remove(&file.id);
                     self.pending_downloads.retain(|d| d.file.id != file.id);
                 }
@@ -213,7 +211,7 @@ impl Store {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(response) => {
-                    let LoadModelResponse::Completed(loaded_model) = response else {
+                    let LoadModelResponse::Completed(_) = response else {
                         eprintln!("Error loading model");
                         return;
                     };
@@ -354,7 +352,7 @@ impl Store {
         let mut results: Vec<DownloadInfo> = self
             .current_downloads
             .iter()
-            .map(|(id, download)| DownloadInfo {
+            .map(|(_id, download)| DownloadInfo {
                 file: download.file.clone(),
                 model: download.model.clone(),
                 progress: download.progress,
