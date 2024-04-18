@@ -505,6 +505,7 @@ enum ModelManagementCommand {
     GetFeaturedModels(Sender<anyhow::Result<Vec<Model>>>),
     SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
     DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
+    PauseDownload(FileID, Sender<anyhow::Result<()>>),
     CancelDownload(FileID, Sender<anyhow::Result<()>>),
     GetCurrentDownloads(Sender<anyhow::Result<Vec<PendingDownload>>>),
     GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
@@ -546,6 +547,9 @@ impl From<Command> for BuiltInCommand {
             }
             Command::DownloadFile(file_id, tx) => {
                 Self::Model(ModelManagementCommand::DownloadFile(file_id, tx))
+            }
+            Command::PauseDownload(file_id, tx) => {
+                Self::Model(ModelManagementCommand::PauseDownload(file_id, tx))
             }
             Command::CancelDownload(file_id, tx) => {
                 Self::Model(ModelManagementCommand::CancelDownload(file_id, tx))
@@ -959,6 +963,13 @@ impl BackendImpl {
                             let _ = tx.send(Err(e));
                         }
                     }
+                }
+
+                ModelManagementCommand::PauseDownload(file_id, tx) => {
+                    if let Some(control_tx) = self.download_control_channels.remove(&file_id) {
+                        let _ = control_tx.send(DownloadControlCommand::Stop);
+                    }
+                    let _ = tx.send(Ok(()));
                 }
 
                 ModelManagementCommand::CancelDownload(file_id, tx) => {

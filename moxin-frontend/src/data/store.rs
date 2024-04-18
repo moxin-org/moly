@@ -154,7 +154,21 @@ impl Store {
     }
 
     pub fn pause_download_file(&mut self, file: File) {
-        self.current_downloads.remove(&file.id);
+        let (tx, rx) = channel();
+        self.backend
+            .command_sender
+            .send(Command::PauseDownload(file.id.clone(), tx))
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(()) => {
+                    dbg!("pausamooo");
+                    self.current_downloads.remove(&file.id);
+                }
+                Err(err) => eprintln!("Error pausing download: {:?}", err),
+            }
+        };
     }
 
     pub fn cancel_download_file(&mut self, file: File) {

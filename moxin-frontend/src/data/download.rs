@@ -51,16 +51,11 @@ impl Download {
                             is_done = true;
                             store_download_tx
                                 .send(DownloadFileAction::StreamingDone)
-                                // TODO we need to use unwrap_or_default here?
                                 .unwrap();
                         }
                         FileDownloadResponse::Progress(file, value) => store_download_tx
                             .send(DownloadFileAction::Progress(file, value as f64))
-                            .unwrap_or_else(|_| {
-                                // We know this channel can fail when download is paused or stopped
-                                is_done = true;
-                                dbg!("a ver si lo paramooo");
-                            }),
+                            .unwrap(),
                     },
                     Err(err) => eprintln!("Error downloading file: {:?}", err),
                 }

@@ -198,11 +198,7 @@ fn download_file(
                 last_progress = progress;
                 match report_fn(progress) {
                     Ok(_) => {}
-                    Err(_) => {
-                        // Frontend has dropped the connection, so we should stop the download
-                        dbg!("YO parando");
-                        return Ok(DownloadResult::Stopped(progress));
-                    }
+                    Err(_) => {}
                 }
             }
         }

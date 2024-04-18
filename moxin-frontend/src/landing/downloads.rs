@@ -4,16 +4,39 @@ use makepad_widgets::*;
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
+    import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
     import crate::landing::download_item::DownloadItem;
 
+    ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
+
+    CollapseButton = <Button> {
+        padding: 10,
+        draw_icon: {
+            svg_file: (ICON_COLLAPSE),
+            fn get_color(self) -> vec4 {
+                return #667085;
+            }
+        }
+        padding: 0,
+        icon_walk: {width: 18, height: 24}
+        draw_bg: {
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                return sdf.result
+            }
+        }
+        text: ""
+    }
+
     Header = <View> {
         width: Fill,
         height: Fit,
         spacing: 25,
+        padding: {right: 43},
 
         <Label> {
             margin: {right: 20.0},
@@ -47,6 +70,10 @@ live_design! {
         //     }
         //     text: "5 completed"
         // }
+
+        <VerticalFiller> {}
+
+        collapse = <CollapseButton> {}
     }
 
     Content = <View> {
@@ -114,6 +141,7 @@ pub struct Downloads {
 impl Widget for Downloads {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
 
         if self.animator_handle_event(cx, event).must_redraw() {
             self.redraw(cx);
@@ -121,7 +149,9 @@ impl Widget for Downloads {
 
         match event.hits(cx, self.view.area()) {
             Hit::FingerDown(_) => {
-                self.animator_play(cx, id!(content.expand));
+                if self.animator.animator_in_state(cx, id!(content.collapse)) {
+                    self.animator_play(cx, id!(content.expand));
+                }
             }
             _ => {}
         }
@@ -164,11 +194,13 @@ impl Widget for Downloads {
     }
 }
 
-impl DownloadsRef {
-    pub fn collapse(&mut self, cx: &mut Cx) {
-        let Some(mut inner) = self.borrow_mut() else {
-            return;
-        };
-        inner.animator_play(cx, id!(content.collapse));
+impl WidgetMatchEvent for Downloads {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        if self.button(id!(collapse)).clicked(&actions) {
+            dbg!("clicked");
+            if self.animator.animator_in_state(cx, id!(content.expand)) {
+                self.animator_play(cx, id!(content.collapse));
+            }
+        }
     }
 }
