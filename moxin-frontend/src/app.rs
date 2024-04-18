@@ -231,6 +231,9 @@ impl MatchEvent for App {
                     .ui
                     .model_card_view_all_modal(id!(model_card_view_all_modal));
                 modal.set_model_id(model_id);
+                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
+                // this forces the entire ui to rerender, still weird that only happens the first time.
+                self.ui.redraw(cx);
             }
 
             if let DownloadedFileAction::StartChat(_) = action.as_widget_action().cast() {
