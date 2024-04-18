@@ -151,6 +151,7 @@ impl LiveRegister for App {
         crate::shared::widgets::live_design(cx);
         crate::shared::icon::live_design(cx);
         crate::shared::modal::live_design(cx);
+        crate::shared::external_link::live_design(cx);
 
         // Landing
         crate::landing::shared::live_design(cx);

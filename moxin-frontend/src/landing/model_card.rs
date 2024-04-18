@@ -1,5 +1,6 @@
-use crate::data::store::Store;
+use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalAction;
+use crate::{data::store::Store, shared::external_link::ExternalLinkRef};
 use makepad_widgets::*;
 use moxin_protocol::data::{Model, ModelID};
 use unicode_segmentation::UnicodeSegmentation;
@@ -14,6 +15,7 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::landing::shared::*;
     import crate::landing::model_files_list::ModelFilesList;
+    import crate::shared::external_link::*;
 
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
@@ -191,14 +193,14 @@ live_design! {
         <View> {
             width: Fit,
             height: Fit,
-            author_name = <ModelLink> {}
+            author_link = <ExternalLink> {}
             <ExternalLinkIcon> {}
         }
 
         <View> {
             width: Fit,
             height: Fit,
-            <ModelLink> { link = { text: "Hugging Face" } }
+            model_hugging_face_link = <ExternalLink> { link = { text: "Hugging Face" } }
             <ExternalLinkIcon> {}
         }
     }
@@ -374,11 +376,21 @@ impl Widget for ModelCard {
         self.label(id!(model_summary)).set_text(&trimmed_summary);
 
         let author_name = &model.author.name;
-        self.link_label(id!(author_name.link)).set_text(author_name);
+        let author_url = &model.author.url;
+        let mut author_external_link = self.external_link(id!(author_link));
+        author_external_link
+            .link_label(id!(link))
+            .set_text(author_name);
+        author_external_link.set_url(author_url);
+
+        let hugging_face_base_url = "https://huggingface.co";
+        let model_hugging_face_url = hugging_face_base_url.to_owned() + "/" + &model.id;
+        let mut model_hugging_face_external_link = self.external_link(id!(model_hugging_face_link));
+        model_hugging_face_external_link.set_url(&model_hugging_face_url);
 
         let author_description = &model.author.description;
         self.label(id!(author_description))
-            .set_text(&author_description);
+            .set_text(author_description);
 
         let released_at_str = Store::formatted_model_release_date(model);
         self.label(id!(model_released_at_tag.attr_value))
