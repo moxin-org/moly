@@ -197,7 +197,6 @@ impl Widget for Downloads {
 impl WidgetMatchEvent for Downloads {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(collapse)).clicked(&actions) {
-            dbg!("clicked");
             if self.animator.animator_in_state(cx, id!(content.expand)) {
                 self.animator_play(cx, id!(content.collapse));
             }

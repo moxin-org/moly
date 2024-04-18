@@ -35,6 +35,10 @@ pub struct PendingDownloads {
     pub status: PendingDownloadsStatus,
 }
 
+// TODO I'm not 100% convinced that this is the best way to handle this
+// I will attempt to merge PendingDownloads and DownloadedFile into a single table, or
+// at least a single struct, to see if that makes more sense
+
 impl PendingDownloads {
     pub fn insert_into_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(

@@ -827,6 +827,8 @@ impl BackendImpl {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
 
         let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
+
+        // TODO Reorganize these bunch of functions, needs a little more of thought
         let _ = store::models::create_table_models(&sql_conn);
         let _ = store::download_files::create_table_download_files(&sql_conn);
         let _ = store::pending_downloads::create_table_pending_downloads(&sql_conn);
@@ -953,9 +955,10 @@ impl BackendImpl {
                     match search_model_from_remote() {
                         Ok((model, file)) => {
                             let (control_tx, control_rx) = std::sync::mpsc::channel();
+
+                            // TODO We need to define a way to clean up the channel when the download is finished
                             self.download_control_channels
                                 .insert(file_id.clone(), control_tx);
-                            // TODO how we clean up the hashmap elements?
 
                             let _ = self.download_tx.send((model, file, tx, control_rx));
                         }
@@ -978,6 +981,10 @@ impl BackendImpl {
                     }
 
                     let conn = self.sql_conn.lock().unwrap();
+                    let _ = store::download_files::DownloadedFile::remove(
+                        file_id.clone().into(),
+                        &conn,
+                    );
                     let _ = PendingDownloads::remove(file_id.clone().into(), &conn);
                     let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
 

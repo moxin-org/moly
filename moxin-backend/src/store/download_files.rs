@@ -65,9 +65,6 @@ impl DownloadedFile {
         } else {
             None
         };
-        // let downloaded_at = chrono::DateTime::parse_from_rfc3339(&)
-        //     .map(|s| s.to_utc())
-        //     .unwrap_or_default();
 
         let tags = serde_json::from_str(row.get::<_, String>(10)?.as_str()).unwrap_or_default();
 
@@ -139,6 +136,14 @@ impl DownloadedFile {
         conn.query_row("SELECT * FROM download_files WHERE id = ?1", [id], |row| {
             Self::from_row(row)
         })
+    }
+
+    pub fn remove(file_id: Arc<String>, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+        conn.execute(
+            "DELETE FROM download_files WHERE file_id = ?1",
+            rusqlite::params![file_id],
+        )?;
+        Ok(())
     }
 }
 
