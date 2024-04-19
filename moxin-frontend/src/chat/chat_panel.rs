@@ -669,6 +669,7 @@ impl ChatPanel {
 
         let prompt_input = self.text_input(id!(prompt));
         prompt_input.set_text_and_redraw(cx, "");
+        prompt_input.set_cursor(0, 0);
         self.update_prompt_input(cx);
 
         self.view(id!(empty_conversation)).set_visible(false);
