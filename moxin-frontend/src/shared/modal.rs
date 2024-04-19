@@ -159,7 +159,7 @@ impl Widget for Modal {
 }
 
 impl LiveHook for Modal {
-    fn after_new_from_doc(&mut self, cx: &mut Cx) {}
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {}
 }
 
 impl WidgetNode for Modal {

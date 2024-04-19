@@ -521,8 +521,6 @@ impl ChatPanel {
                     .as_ref()
                     .map_or(false, |chat| chat.messages.len() > 0);
 
-                let list = self.portal_list(id!(chat));
-
                 // TODO make it visible only when scrolling up
                 // (we need to improve PortalList API for this)
                 jump_to_bottom.set_visible(has_messages);
