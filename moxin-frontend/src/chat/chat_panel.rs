@@ -222,8 +222,7 @@ live_design! {
     ChatPanel = {{ChatPanel}} {
         width: Fill,
         height: Fill,
-        margin: 20,
-        spacing: 30,
+        margin: {top: 0, left: 20, right: 20, bottom: 20},
 
         flow: Overlay,
 
@@ -277,7 +276,7 @@ live_design! {
             width: Fill,
             height: Fill,
 
-            margin: { top: 60 }
+            margin: { top: 86 }
             spacing: 4,
             flow: Down,
 

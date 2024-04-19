@@ -55,6 +55,7 @@ live_design! {
         width: Fill,
         height: Fit,
         padding: 0,
+        empty_message: ""
 
         draw_bg: {
             color: #fff
