@@ -223,6 +223,14 @@ pub enum ChatLineAction {
     None,
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum ChatLineState {
+    #[default]
+    Editable,
+    NotEditable,
+    OnEdit,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatLine {
     #[deref]
@@ -232,10 +240,10 @@ pub struct ChatLine {
     message_id: usize,
 
     #[rust]
-    actions_enabled: bool,
+    edition_state: ChatLineState,
 
     #[rust]
-    edit_mode: bool,
+    actions_enabled: bool,
 }
 
 impl Widget for ChatLine {
@@ -251,16 +259,43 @@ impl Widget for ChatLine {
 
 impl WidgetMatchEvent for ChatLine {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        match self.edition_state {
+            ChatLineState::Editable => self.handle_editable_actions(cx, actions, scope),
+            ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions, scope),
+            ChatLineState::NotEditable => {}
+        }
+    }
+}
+
+impl ChatLine {
+    pub fn set_edit_mode(&mut self, cx: &mut Cx, enabled: bool) {
+        //self.edit_mode = enabled;
+        self.edition_state = if enabled {
+            ChatLineState::OnEdit
+        } else {
+            ChatLineState::Editable
+        };
+
+        self.view(id!(actions_section.actions)).set_visible(false);
+        self.view(id!(edit_buttons)).set_visible(enabled);
+        self.text_input(id!(input))
+            .apply_over(cx, live! {read_only: (!enabled)});
+
+        self.redraw(cx);
+    }
+
+    pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(action) = actions.find_widget_action(self.view.widget_uid()) {
-            if self.actions_enabled {
-                if let ViewAction::FingerHoverIn(_) = action.cast() {
+            match action.cast() {
+                ViewAction::FingerHoverIn(_) => {
                     self.view(id!(actions_section.actions)).set_visible(true);
                     self.redraw(cx);
                 }
-            }
-            if let ViewAction::FingerHoverOut(_) = action.cast() {
-                self.view(id!(actions_section.actions)).set_visible(false);
-                self.redraw(cx);
+                ViewAction::FingerHoverOut(_) => {
+                    self.view(id!(actions_section.actions)).set_visible(false);
+                    self.redraw(cx);
+                }
+                _ => {}
             }
         }
 
@@ -276,7 +311,9 @@ impl WidgetMatchEvent for ChatLine {
         if self.button(id!(edit_button)).clicked(&actions) {
             self.set_edit_mode(cx, true);
         }
+    }
 
+    pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(fe) = self.view(id!(save)).finger_up(&actions) {
             if fe.was_tap() {
                 let updated_message = self.text_input(id!(input)).text();
@@ -300,18 +337,6 @@ impl WidgetMatchEvent for ChatLine {
     }
 }
 
-impl ChatLine {
-    pub fn set_edit_mode(&mut self, cx: &mut Cx, enabled: bool) {
-        self.edit_mode = enabled;
-
-        self.view(id!(edit_buttons)).set_visible(enabled);
-        self.text_input(id!(input))
-            .apply_over(cx, live! {read_only: (!enabled)});
-
-        self.redraw(cx);
-    }
-}
-
 impl ChatLineRef {
     pub fn set_role(&mut self, text: &str) {
         let Some(mut inner) = self.borrow_mut() else {
@@ -332,8 +357,11 @@ impl ChatLineRef {
             return;
         };
 
-        if !inner.edit_mode {
-            inner.text_input(id!(input)).set_text(text.trim());
+        match inner.edition_state {
+            ChatLineState::Editable | ChatLineState::NotEditable => {
+                inner.text_input(id!(input)).set_text(text.trim());
+            }
+            ChatLineState::OnEdit => {}
         }
     }
 
@@ -348,6 +376,14 @@ impl ChatLineRef {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.actions_enabled = enabled;
+
+        if enabled {
+            if inner.edition_state == ChatLineState::NotEditable {
+                inner.edition_state = ChatLineState::Editable;
+            }
+        } else {
+            inner.edition_state = ChatLineState::NotEditable;
+            inner.view(id!(actions_section.actions)).set_visible(false);
+        }
     }
 }
