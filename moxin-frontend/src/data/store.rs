@@ -1,3 +1,4 @@
+use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
 use makepad_widgets::DefaultNone;
@@ -64,6 +65,8 @@ pub struct Store {
 
     pub current_chat: Option<Chat>,
     pub current_downloads: HashMap<FileID, Download>,
+
+    pub preferences: Preferences,
 }
 
 impl Store {
@@ -83,11 +86,14 @@ impl Store {
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
             current_downloads: HashMap::new(),
+
+            preferences: Preferences::load(),
         };
         store.load_downloaded_files();
         store.load_pending_downloads();
         store.load_featured_models();
         store.sort_models(SortCriteria::MostDownloads);
+
         store
     }
 
@@ -220,6 +226,7 @@ impl Store {
                         return;
                     };
                     self.current_chat = Some(Chat::new(file.name.clone()));
+                    self.preferences.set_current_chat_model(file.id.clone());
                 }
                 Err(err) => eprintln!("Error loading model: {:?}", err),
             }

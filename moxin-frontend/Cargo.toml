@@ -18,3 +18,5 @@ robius-open = { git = "https://github.com/project-robius/robius-open", rev = "b9
 chrono = "0.4"
 unicode-segmentation = "1.10.1"
 anyhow = "1.0"
+serde_json = "1.0"
+serde = { version = "1.0.197", features = ["derive"] }

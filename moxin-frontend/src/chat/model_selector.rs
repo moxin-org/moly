@@ -316,6 +316,24 @@ pub struct ModelSelectorList {
 impl Widget for ModelSelectorList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
+
+        if let Event::Startup = event {
+            let store = scope.data.get_mut::<Store>().unwrap();
+            if let Some(filename) = &store.preferences.current_chat_model {
+                let downloaded_file = store
+                    .downloaded_files
+                    .iter()
+                    .find(|file| &file.file.id == filename)
+                    .unwrap();
+
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    ModelSelectorAction::Selected(downloaded_file.to_owned()),
+                );
+            }
+        }
+
         for (id, item) in self.items.iter_mut() {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.as_view().finger_down(&actions) {
