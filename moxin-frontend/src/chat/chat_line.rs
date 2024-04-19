@@ -127,24 +127,7 @@ live_design! {
             }
         }
 
-        chat_message = <View> {
-            width: Fill,
-            height: Fit,
-            chat_label = <Label> {
-                width: Fill,
-                height: Fit,
-                padding: {top: 12, bottom: 12},
-
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 10},
-                    color: #000,
-                    word: Wrap,
-                }
-            }
-        }
-
-        chat_edit = <View> {
-            visible: false,
+        <View> {
             width: Fill,
             height: Fit,
             flow: Down,
@@ -152,9 +135,11 @@ live_design! {
             align: {x: 0.5, y: 0.0},
 
             input = <EditTextInput> {
+                read_only: true,
             }
 
-            <View> {
+            edit_buttons = <View> {
+                visible: false,
                 width: Fit,
                 height: Fit,
                 margin: {top: 10},
@@ -247,6 +232,9 @@ pub struct ChatLine {
 
     #[rust]
     actions_enabled: bool,
+
+    #[rust]
+    edit_mode: bool,
 }
 
 impl Widget for ChatLine {
@@ -290,7 +278,7 @@ impl WidgetMatchEvent for ChatLine {
 
         if let Some(fe) = self.view(id!(save)).finger_up(&actions) {
             if fe.was_tap() {
-                let updated_message = self.text_input(id!(chat_edit.input)).text();
+                let updated_message = self.text_input(id!(input)).text();
 
                 let widget_id = self.view.widget_uid();
                 cx.widget_action(
@@ -313,14 +301,11 @@ impl WidgetMatchEvent for ChatLine {
 
 impl ChatLine {
     pub fn set_edit_mode(&mut self, cx: &mut Cx, enabled: bool) {
-        self.view(id!(chat_message)).set_visible(!enabled);
-        self.view(id!(chat_edit)).set_visible(enabled);
+        self.edit_mode = enabled;
 
-        if enabled {
-            let message = self.label(id!(chat_message.chat_label)).text();
-            self.text_input(id!(chat_edit.input))
-                .set_text(message.as_str());
-        }
+        self.view(id!(edit_buttons)).set_visible(enabled);
+        self.text_input(id!(input))
+            .apply_over(cx, live! {read_only: (!enabled)});
 
         self.redraw(cx);
     }
@@ -345,9 +330,10 @@ impl ChatLineRef {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner
-            .label(id!(chat_message.chat_label))
-            .set_text(text.trim());
+
+        if !inner.edit_mode {
+            inner.text_input(id!(input)).set_text(text.trim());
+        }
     }
 
     pub fn set_message_id(&mut self, message_id: usize) {

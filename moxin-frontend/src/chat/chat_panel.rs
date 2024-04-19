@@ -290,6 +290,7 @@ live_design! {
                     width: Fill,
                     height: Fill,
 
+                    drag_scrolling: false,
                     auto_tail: true,
 
                     UserChatLine = <UserChatLine> {}
