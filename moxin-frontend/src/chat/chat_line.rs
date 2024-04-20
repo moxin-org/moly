@@ -135,8 +135,12 @@ live_design! {
             padding: {top: 12, bottom: 12},
             align: {x: 0.5, y: 0.0},
 
-            input = <EditTextInput> {
-                read_only: true,
+            input_container = <View> {
+                width: Fill,
+                height: Fit,
+                input = <EditTextInput> {
+                    read_only: true,
+                }
             }
 
             edit_buttons = <View> {
@@ -152,6 +156,8 @@ live_design! {
     }
 
     ChatLineActionButton = <Button> {
+        width: 14
+        height: 14
         draw_icon: {
             fn get_color(self) -> vec4 {
                 return #BDBDBD;
@@ -169,11 +175,11 @@ live_design! {
     }
 
     ChatLine = {{ChatLine}} {
-        margin: {top: 10, bottom: 3},
+        padding: {top: 10, bottom: 3},
         width: Fill,
         height: Fit,
 
-        cursor: Default,
+       // cursor: Default,
 
         avatar_section = <View> {
             width: Fit,
@@ -243,13 +249,28 @@ pub struct ChatLine {
     edition_state: ChatLineState,
 
     #[rust]
-    actions_enabled: bool,
+    hovered: bool,
 }
 
 impl Widget for ChatLine {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        // Current Makepad's processing of the hover events is not enough
+        // in our case because it collapes the hover state of the
+        // children widgets (specially, the text input widget). So, we rely
+        // on this basic mouse over calculation to show the actions buttons.
+        if matches!(self.edition_state, ChatLineState::Editable) {
+            if let Event::MouseMove(e) = event {
+                let hovered = self.view.area().rect(cx).contains(e.abs);
+                if self.hovered != hovered {
+                    self.hovered = hovered;
+                    self.view(id!(actions_section.actions)).set_visible(hovered);
+                    self.redraw(cx);
+                }
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -269,7 +290,6 @@ impl WidgetMatchEvent for ChatLine {
 
 impl ChatLine {
     pub fn set_edit_mode(&mut self, cx: &mut Cx, enabled: bool) {
-        //self.edit_mode = enabled;
         self.edition_state = if enabled {
             ChatLineState::OnEdit
         } else {
@@ -285,20 +305,6 @@ impl ChatLine {
     }
 
     pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(action) = actions.find_widget_action(self.view.widget_uid()) {
-            match action.cast() {
-                ViewAction::FingerHoverIn(_) => {
-                    self.view(id!(actions_section.actions)).set_visible(true);
-                    self.redraw(cx);
-                }
-                ViewAction::FingerHoverOut(_) => {
-                    self.view(id!(actions_section.actions)).set_visible(false);
-                    self.redraw(cx);
-                }
-                _ => {}
-            }
-        }
-
         if self.button(id!(delete_button)).clicked(&actions) {
             let widget_id = self.view.widget_uid();
             cx.widget_action(
@@ -372,7 +378,7 @@ impl ChatLineRef {
         inner.message_id = message_id;
     }
 
-    pub fn set_actions_enabled(&mut self, enabled: bool) {
+    pub fn set_actions_enabled(&mut self, cx: &mut Cx, enabled: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };

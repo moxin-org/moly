@@ -420,9 +420,9 @@ impl Widget for ChatPanel {
                         if matches!(self.state, ChatPanelState::Streaming { .. })
                             && item_id == chats_count - 1
                         {
-                            chat_line_item.set_actions_enabled(false);
+                            chat_line_item.set_actions_enabled(cx, false);
                         } else {
-                            chat_line_item.set_actions_enabled(true);
+                            chat_line_item.set_actions_enabled(cx, true);
                         }
 
                         item.draw_all(cx, &mut Scope::empty());
