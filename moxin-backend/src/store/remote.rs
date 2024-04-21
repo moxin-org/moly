@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{self, Read, Seek, Write};
+use std::io::{self, Seek, Write};
 use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -10,8 +10,6 @@ use moxin_protocol::data::Model;
 use moxin_protocol::protocol::FileDownloadResponse;
 
 use crate::backend_impls::DownloadControlCommand;
-
-use super::pending_downloads::{PendingDownloads, PendingDownloadsStatus};
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct RemoteFile {
@@ -134,8 +132,8 @@ impl RemoteModel {
     }
 }
 
-fn get_file_content_length(client: &reqwest::blocking::Client, url: &str) -> reqwest::Result<u64> {
-    let response = client.head(url).send()?;
+async fn get_file_content_length(client: &reqwest::Client, url: &str) -> reqwest::Result<u64> {
+    let response = client.head(url).send().await?;
 
     let content_length = response
         .headers()
@@ -152,49 +150,43 @@ pub enum DownloadResult {
     Stopped(f64),
 }
 
-fn download_file<P: AsRef<Path>>(
-    client: &reqwest::blocking::Client,
+async fn download_file<P: AsRef<Path>>(
+    client: &reqwest::Client,
     content_length: u64,
     url: &str,
     local_path: P,
     step: f64,
-    report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
-    must_cancel_fn: &dyn Fn() -> bool,
-) -> io::Result<DownloadResult> {
+    report_fn: &mut (dyn FnMut(f64) -> anyhow::Result<()> + Send),
+) -> anyhow::Result<DownloadResult> {
+    use futures_util::stream::StreamExt;
+
     let path: &Path = local_path.as_ref();
     std::fs::create_dir_all(path.parent().unwrap())?;
-    let mut file = File::options()
-        .write(true)
-        .create(true)
-        .open(local_path)
-        .unwrap();
+
+    let mut file = File::options().write(true).create(true).open(local_path)?;
+
     let file_length = file.metadata()?.len();
 
     if file_length < content_length {
         file.seek(io::SeekFrom::End(0))?;
 
         let range = format!("bytes={}-", file_length);
-        let mut resp = client
+        let resp = client
             .get(url)
             .header("Range", range)
             .send()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
 
-        let mut buffer = vec![0; (content_length as usize) / 100];
         let mut downloaded: u64 = file_length;
         let mut last_progress = 0.0;
-        loop {
-            let len = match resp.read(&mut buffer) {
-                Ok(0) => break, // EOF
-                Ok(len) => len,
-                Err(e) => return Err(e),
-            };
 
-            if must_cancel_fn() {
-                return Ok(DownloadResult::Stopped(last_progress));
-            }
+        let mut stream = resp.bytes_stream();
 
-            file.write_all(&buffer[..len])?;
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| anyhow::anyhow!(e))?;
+            let len = chunk.len();
+            file.write_all(&chunk)?;
             downloaded += len as u64;
 
             let progress = (downloaded as f64 / content_length as f64) * 100.0;
@@ -206,6 +198,7 @@ fn download_file<P: AsRef<Path>>(
                 }
             }
         }
+
         // TODO I don't know how to handle when it is complete but not 100%
         // Maybe we should return Completed without any value?
         Ok(DownloadResult::Completed(
@@ -216,122 +209,153 @@ fn download_file<P: AsRef<Path>>(
     }
 }
 
-pub fn download_file_from_remote<P: AsRef<Path>>(
-    client: &reqwest::blocking::Client,
-    model_id: &str,
-    file: &str,
-    local_path: P,
+#[derive(Debug, Clone)]
+pub struct ModelFileDownloader {
+    client: reqwest::Client,
+    sql_conn: Arc<Mutex<rusqlite::Connection>>,
+    control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
     step: f64,
-    report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
-    must_cancel_fn: &dyn Fn() -> bool,
-) -> io::Result<DownloadResult> {
-    let url = format!(
-        "https://huggingface.co/{}/resolve/main/{}?download=true",
-        model_id, file
-    );
-
-    let content_length = get_file_content_length(client, &url)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-    download_file(
-        &client,
-        content_length,
-        &url,
-        local_path,
-        step,
-        report_fn,
-        must_cancel_fn,
-    )
 }
 
-pub fn download_file_loop(
-    sql_conn: Arc<Mutex<rusqlite::Connection>>,
-    rx: Arc<
-        crossbeam::channel::Receiver<(
+impl ModelFileDownloader {
+    pub fn new(
+        client: reqwest::Client,
+        sql_conn: Arc<Mutex<rusqlite::Connection>>,
+        control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
+        step: f64,
+    ) -> Self {
+        Self {
+            client,
+            sql_conn,
+            control_tx,
+            step,
+        }
+    }
+
+    pub async fn run_loop(
+        downloader: Self,
+        max_downloader: usize,
+        mut download_rx: tokio::sync::mpsc::UnboundedReceiver<(
             super::models::Model,
             super::download_files::DownloadedFile,
             Sender<anyhow::Result<FileDownloadResponse>>,
-            std::sync::mpsc::Receiver<DownloadControlCommand>,
         )>,
-    >,
-) {
-    let client = reqwest::blocking::Client::new();
-
-    while let Ok((model, mut file, tx, rx_control)) = rx.recv() {
-        let file_id = file.id.clone();
-
-        let mut send_progress = |progress| {
-            match tx.send(Ok(FileDownloadResponse::Progress(
-                file_id.as_ref().clone(),
-                progress as f32,
-            ))) {
-                Ok(_) => {}
-                Err(_) => return Err(anyhow::anyhow!("Download stopped by the receiver")),
-            };
-
-            // Update our local database
-            {
-                let conn = sql_conn.lock().unwrap();
-                let pending_download = PendingDownloads {
-                    file_id: file_id.clone(),
-                    progress: progress,
-                    status: PendingDownloadsStatus::Downloading,
-                };
-                pending_download.save_to_db(&conn).unwrap();
-            }
-
-            Ok(())
-        };
-
-        let mut must_cancel = || {
-            if let Ok(DownloadControlCommand::Stop) = rx_control.try_recv() {
-                true
-            } else {
-                false
-            }
-        };
-
-        {
-            let conn = sql_conn.lock().unwrap();
-            let _ = PendingDownloads::insert_if_not_exists(file_id.clone(), &conn);
-            let _ = file.insert_into_db(&conn);
-            // TODO rename to insert_if_not_exists or update model
-            let _ = model.save_to_db(&conn);
+    ) {
+        let (token_tx, mut token_rx) = tokio::sync::mpsc::channel::<()>(max_downloader);
+        for _ in 0..max_downloader {
+            let _ = token_tx.send(());
         }
 
-        let downloaded_path = Path::new(&file.download_dir)
+        while let Some((model, file, tx)) = download_rx.recv().await {
+            // take a token
+            let _ = token_rx.recv().await;
+
+            let file_id = file.id.to_string();
+            let downloader_ = downloader.clone();
+            let token_tx_ = token_tx.clone();
+            tokio::spawn(async move {
+                let mut send_progress = |progress| {
+                    let _ = tx.send(Ok(FileDownloadResponse::Progress(
+                        file_id.clone(),
+                        progress as f32,
+                    )));
+
+                    Ok(())
+                };
+
+                let r = downloader_
+                    .download_file_from_remote(model, file, &mut send_progress)
+                    .await;
+
+                match r {
+                    Ok(Some(response)) => {
+                        let _ = tx.send(Ok(response));
+                    }
+                    Ok(None) => {
+                        // TODO Implement file removal when download is stopped, nothing to do when it is paused
+                    }
+                    Err(e) => {
+                        let _ = tx.send(Err(e));
+                    }
+                }
+                let _ = token_tx_.send(());
+            });
+        }
+    }
+
+    async fn download_file_from_remote(
+        &self,
+        model: super::models::Model,
+        mut file: super::download_files::DownloadedFile,
+        report_fn: &mut (dyn FnMut(f64) -> anyhow::Result<()> + Send),
+    ) -> anyhow::Result<Option<FileDownloadResponse>> {
+        let url = format!(
+            "https://huggingface.co/{}/resolve/main/{}?download=true",
+            file.model_id, file.name
+        );
+
+        let content_length = get_file_content_length(&self.client, &url)
+            .await
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+        {
+            file.file_size = content_length;
+            let conn = self.sql_conn.lock().unwrap();
+            // insert a pending download
+            file.insert_into_db(&conn).map_err(|e| anyhow::anyhow!(e))?;
+            model.save_to_db(&conn).map_err(|e| anyhow::anyhow!(e))?;
+        }
+
+        let local_path = Path::new(&file.download_dir)
             .join(&file.model_id)
             .join(&file.name);
 
-        let r = download_file_from_remote(
-            &client,
-            &model.id,
-            &file.name,
-            &downloaded_path,
-            0.1,
-            &mut send_progress,
-            &mut must_cancel,
-        );
+        let file_id_ = file.id.as_ref().clone();
+        let mut control_rx = self.control_tx.subscribe();
+
+        let listen_control_cmd = async {
+            loop {
+                let cmd = control_rx.recv().await;
+                if let Ok(DownloadControlCommand::Stop(file_id)) = cmd {
+                    if file_id == file_id_ {
+                        return DownloadResult::Stopped(0.0);
+                    }
+                }
+            }
+        };
+
+        let r = tokio::select! {
+            r = download_file(
+                &self.client,
+                content_length,
+                &url,
+                &local_path,
+                self.step,
+                report_fn,
+            ) => r?,
+            r = listen_control_cmd => {
+                r
+            }
+        };
 
         match r {
-            Ok(DownloadResult::Completed(_)) => {
+            DownloadResult::Completed(_) => {
                 {
-                    let conn = sql_conn.lock().unwrap();
+                    let conn = self.sql_conn.lock().unwrap();
                     file.mark_downloads();
                     let _ = file.update_downloaded(&conn);
-                    let _ = PendingDownloads::remove(file_id.clone(), &conn);
                 }
 
-                let _ = tx.send(Ok(FileDownloadResponse::Completed(
+                Ok(Some(FileDownloadResponse::Completed(
                     moxin_protocol::data::DownloadedFile {
                         file: moxin_protocol::data::File {
-                            id: file_id.as_ref().clone(),
+                            id: file.id.as_ref().clone(),
                             name: file.name.clone(),
                             size: file.size.clone(),
                             quantization: file.quantization.clone(),
                             downloaded: true,
                             downloaded_path: Some(
-                                downloaded_path
+                                local_path
                                     .to_str()
                                     .map(|s| s.to_string())
                                     .unwrap_or_default(),
@@ -345,14 +369,9 @@ pub fn download_file_loop(
                             moxin_protocol::data::CompatibilityGuess::PossiblySupported,
                         information: String::new(),
                     },
-                )));
+                )))
             }
-            Ok(DownloadResult::Stopped(_)) => {
-                // TODO Implement file removal when download is stopped, nothing to do when it is paused
-            }
-            Err(e) => tx
-                .send(Err(anyhow::anyhow!("Download failed: {e}")))
-                .unwrap(),
+            DownloadResult::Stopped(_) => Ok(None),
         }
     }
 }
@@ -360,19 +379,19 @@ pub fn download_file_loop(
 #[test]
 fn test_download_file_from_huggingface() {
     let client = reqwest::blocking::Client::new();
-    download_file_from_remote(
-        &client,
-        "TheBloke/Llama-2-7B-Chat-GGUF",
-        "llama-2-7b-chat.Q3_K_M.gguf",
-        "/home/csh/ai/models/TheBloke/Llama-2-7B-Chat-GGUF/llama-2-7b-chat.Q3_K_M.gguf",
-        0.05,
-        &mut |progress| {
-            println!("Download progress: {:.2}%", progress);
-            Ok(())
-        },
-        &|| false,
-    )
-    .unwrap();
+    // download_file_from_remote(
+    //     &client,
+    //     "TheBloke/Llama-2-7B-Chat-GGUF",
+    //     "llama-2-7b-chat.Q3_K_M.gguf",
+    //     "/home/csh/ai/models/TheBloke/Llama-2-7B-Chat-GGUF/llama-2-7b-chat.Q3_K_M.gguf",
+    //     0.05,
+    //     &mut |progress| {
+    //         println!("Download progress: {:.2}%", progress);
+    //         Ok(())
+    //     },
+    //     &|| false,
+    // )
+    // .unwrap();
 }
 
 #[test]

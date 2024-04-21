@@ -13,7 +13,7 @@ pub struct DownloadedFile {
     pub prompt_template: String,
     pub reverse_prompt: String,
     pub downloaded: bool,
-    pub file_size: usize,
+    pub file_size: u64,
     pub download_dir: String,
     pub downloaded_at: DateTime<Utc>,
     pub tags: Vec<String>,
@@ -23,7 +23,7 @@ pub struct DownloadedFile {
 impl DownloadedFile {
     pub fn insert_into_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(
-            "INSERT INTO download_files (
+            "INSERT OR IGNORE INTO download_files (
                 id, model_id, name, size, quantization, 
                 prompt_template, reverse_prompt, 
                 downloaded, file_size, download_dir, downloaded_at, tags, featured) 

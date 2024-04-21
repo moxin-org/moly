@@ -15,7 +15,9 @@ log = "0.4.21"
 anyhow = "1.0"
 serde_json = "1.0"
 crossbeam = "0.8"
-reqwest = { version = "0.11", features = ["blocking", "json"] }
+reqwest = { version = "0.11", features = ["blocking", "stream", "json"] }
 uuid = { version = "1.8.0", features = ["v4", "fast-rng"] }
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 serde = "1.0.197"
+tokio = { version = "1", features = ["full"] }
+futures-util = "0.3.30"

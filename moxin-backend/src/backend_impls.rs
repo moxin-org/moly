@@ -1,9 +1,6 @@
-use std::{
-    collections::HashMap,
-    sync::{
-        mpsc::{Receiver, Sender},
-        Arc, Mutex,
-    },
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc, Mutex,
 };
 
 use chrono::Utc;
@@ -17,7 +14,7 @@ use moxin_protocol::{
 };
 use wasmedge_sdk::Module;
 
-use crate::store::{self, pending_downloads::PendingDownloads, RemoteModel};
+use crate::store::{self, ModelFileDownloader, RemoteModel};
 
 mod chat_ui {
 
@@ -816,8 +813,9 @@ fn test_get_download_file() {
     println!("{files:?}");
 }
 
+#[derive(Debug, Clone)]
 pub enum DownloadControlCommand {
-    Stop,
+    Stop(FileID),
 }
 
 pub struct BackendImpl {
@@ -826,16 +824,16 @@ pub struct BackendImpl {
     home_dir: String,
     models_dir: String,
     pub rx: Receiver<Command>,
-    download_tx: crossbeam::channel::Sender<(
+    download_tx: tokio::sync::mpsc::UnboundedSender<(
         store::models::Model,
         store::download_files::DownloadedFile,
         Sender<anyhow::Result<FileDownloadResponse>>,
-        std::sync::mpsc::Receiver<DownloadControlCommand>,
     )>,
     model: Option<chat_ui::Model>,
 
-    // Channels to control download threads
-    download_control_channels: HashMap<FileID, std::sync::mpsc::Sender<DownloadControlCommand>>,
+    #[allow(unused)]
+    async_rt: tokio::runtime::Runtime,
+    control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
 }
 
 impl BackendImpl {
@@ -856,22 +854,27 @@ impl BackendImpl {
         // TODO Reorganize these bunch of functions, needs a little more of thought
         let _ = store::models::create_table_models(&sql_conn);
         let _ = store::download_files::create_table_download_files(&sql_conn);
-        let _ = store::pending_downloads::create_table_pending_downloads(&sql_conn);
-        let _ = store::pending_downloads::mark_pending_downloads_as_paused(&sql_conn);
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
 
-        let (download_tx, download_rx) = crossbeam::channel::unbounded();
-        let download_rx = Arc::new(download_rx);
         let (tx, rx) = std::sync::mpsc::channel();
 
-        for _ in 0..max_download_threads.max(1) {
-            let sql_conn_ = sql_conn.clone();
-            let download_rx_ = download_rx.clone();
+        let async_rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (control_tx, _control_rx) = tokio::sync::broadcast::channel(100);
+        let (download_tx, download_rx) = tokio::sync::mpsc::unbounded_channel();
 
-            std::thread::spawn(move || {
-                store::download_file_loop(sql_conn_, download_rx_);
-            });
+        {
+            let client = reqwest::Client::new();
+            let downloader =
+                ModelFileDownloader::new(client, sql_conn.clone(), control_tx.clone(), 0.1);
+            async_rt.spawn(ModelFileDownloader::run_loop(
+                downloader,
+                max_download_threads.max(3),
+                download_rx,
+            ));
         }
 
         let mut backend = Self {
@@ -881,7 +884,8 @@ impl BackendImpl {
             rx,
             download_tx,
             model: None,
-            download_control_channels: HashMap::new(),
+            async_rt,
+            control_tx,
         };
 
         std::thread::spawn(move || {
@@ -968,7 +972,7 @@ impl BackendImpl {
                             quantization: remote_file.quantization,
                             prompt_template: remote_model.prompt_template,
                             reverse_prompt: remote_model.reverse_prompt,
-                            downloaded: true,
+                            downloaded: false,
                             file_size: 0,
                             download_dir: self.models_dir.clone(),
                             downloaded_at: Utc::now(),
@@ -981,13 +985,7 @@ impl BackendImpl {
 
                     match search_model_from_remote() {
                         Ok((model, file)) => {
-                            let (control_tx, control_rx) = std::sync::mpsc::channel();
-
-                            // TODO We need to define a way to clean up the channel when the download is finished
-                            self.download_control_channels
-                                .insert(file_id.clone(), control_tx);
-
-                            let _ = self.download_tx.send((model, file, tx, control_rx));
+                            let _ = self.download_tx.send((model, file, tx));
                         }
                         Err(e) => {
                             let _ = tx.send(Err(e));
@@ -996,23 +994,22 @@ impl BackendImpl {
                 }
 
                 ModelManagementCommand::PauseDownload(file_id, tx) => {
-                    if let Some(control_tx) = self.download_control_channels.remove(&file_id) {
-                        let _ = control_tx.send(DownloadControlCommand::Stop);
-                    }
+                    let _ = self.control_tx.send(DownloadControlCommand::Stop(file_id));
                     let _ = tx.send(Ok(()));
                 }
 
                 ModelManagementCommand::CancelDownload(file_id, tx) => {
-                    if let Some(control_tx) = self.download_control_channels.remove(&file_id) {
-                        let _ = control_tx.send(DownloadControlCommand::Stop);
-                    }
+                    let _ = self
+                        .control_tx
+                        .send(DownloadControlCommand::Stop(file_id.clone()));
 
-                    let conn = self.sql_conn.lock().unwrap();
-                    let _ = store::download_files::DownloadedFile::remove(
-                        file_id.clone().into(),
-                        &conn,
-                    );
-                    let _ = PendingDownloads::remove(file_id.clone().into(), &conn);
+                    {
+                        let conn = self.sql_conn.lock().unwrap();
+                        let _ = store::download_files::DownloadedFile::remove(
+                            file_id.clone().into(),
+                            &conn,
+                        );
+                    }
                     let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
 
                     let _ = tx.send(Ok(()));
