@@ -4,6 +4,8 @@ pub mod remote;
 
 pub mod pending_downloads;
 
+use std::path::Path;
+
 use moxin_protocol::data::FileID;
 
 pub use remote::*;
@@ -40,6 +42,12 @@ pub fn get_all_download_file(
             moxin_protocol::data::Model::default()
         };
 
+        let downloaded_path = Path::new(&file.download_dir)
+            .join(&file.model_id)
+            .join(&file.name);
+
+        let downloaded_path = downloaded_path.to_str().map(|s| s.to_string());
+
         let downloaded_file = moxin_protocol::data::DownloadedFile {
             file: moxin_protocol::data::File {
                 id: file.id.to_string(),
@@ -47,12 +55,12 @@ pub fn get_all_download_file(
                 size: file.size,
                 quantization: file.quantization,
                 downloaded: true,
-                downloaded_path: file.downloaded_path,
+                downloaded_path,
                 tags: file.tags,
                 featured: false,
             },
             model,
-            downloaded_at: file.downloaded_at.unwrap(),
+            downloaded_at: file.downloaded_at,
             compatibility_guess: moxin_protocol::data::CompatibilityGuess::PossiblySupported,
             information: String::new(),
         };

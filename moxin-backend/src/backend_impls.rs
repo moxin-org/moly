@@ -47,6 +47,7 @@ mod chat_ui {
     use std::{
         collections::HashMap,
         io::Read,
+        path::Path,
         sync::{
             atomic::{AtomicBool, Ordering},
             mpsc::{Receiver, Sender},
@@ -395,11 +396,15 @@ mod chat_ui {
     }
 
     pub fn nn_preload_file(file: &DownloadedFile) {
+        let file_path = Path::new(&file.download_dir)
+            .join(&file.model_id)
+            .join(&file.name);
+
         let preloads = wasmedge_sdk::plugin::NNPreload::new(
             file.name.clone(),
             wasmedge_sdk::plugin::GraphEncoding::GGML,
             wasmedge_sdk::plugin::ExecutionTarget::AUTO,
-            file.downloaded_path.clone().unwrap(),
+            &file_path,
         );
         wasmedge_sdk::plugin::PluginManager::nn_preload(vec![preloads]);
     }
@@ -585,7 +590,11 @@ fn test_chat() {
     use moxin_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
+    let bk = BackendImpl::build_command_sender(
+        format!("{home}/ai/models"),
+        format!("{home}/ai/models"),
+        3,
+    );
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -656,7 +665,11 @@ fn test_chat_stop() {
     use moxin_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
+    let bk = BackendImpl::build_command_sender(
+        format!("{home}/ai/models"),
+        format!("{home}/ai/models"),
+        3,
+    );
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -740,7 +753,11 @@ fn test_chat_stop() {
 #[test]
 fn test_download_file() {
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
+    let bk = BackendImpl::build_command_sender(
+        format!("{home}/ai/models"),
+        format!("{home}/ai/models"),
+        3,
+    );
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::SearchModels("llama".to_string(), tx);
@@ -784,7 +801,11 @@ fn test_download_file() {
 #[test]
 fn test_get_download_file() {
     let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::build_command_sender(format!("{home}/ai/models"), 3);
+    let bk = BackendImpl::build_command_sender(
+        format!("{home}/ai/models"),
+        format!("{home}/ai/models"),
+        3,
+    );
 
     let (tx, rx) = std::sync::mpsc::channel();
     let cmd = Command::GetDownloadedFiles(tx);
@@ -801,6 +822,8 @@ pub enum DownloadControlCommand {
 
 pub struct BackendImpl {
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
+    #[allow(unused)]
+    home_dir: String,
     models_dir: String,
     pub rx: Receiver<Command>,
     download_tx: crossbeam::channel::Sender<(
@@ -818,15 +841,17 @@ pub struct BackendImpl {
 impl BackendImpl {
     /// # Argument
     ///
+    /// * `home_dir` - The home directory of the application.
     /// * `models_dir` - The download path of the model.
     /// * `max_download_threads` - Maximum limit on simultaneous file downloads.
     pub fn build_command_sender(
+        home_dir: String,
         models_dir: String,
         max_download_threads: usize,
     ) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
 
-        let sql_conn = rusqlite::Connection::open(format!("{models_dir}/data.sql")).unwrap();
+        let sql_conn = rusqlite::Connection::open(format!("{home_dir}/data.sql")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
         let _ = store::models::create_table_models(&sql_conn);
@@ -851,6 +876,7 @@ impl BackendImpl {
 
         let mut backend = Self {
             sql_conn,
+            home_dir,
             models_dir,
             rx,
             download_tx,
@@ -943,8 +969,9 @@ impl BackendImpl {
                             prompt_template: remote_model.prompt_template,
                             reverse_prompt: remote_model.reverse_prompt,
                             downloaded: true,
-                            downloaded_path: Some(format!("{}/{}/{}",self.models_dir,model_id,file)),
-                            downloaded_at: Some(Utc::now()),
+                            file_size: 0,
+                            download_dir: self.models_dir.clone(),
+                            downloaded_at: Utc::now(),
                             tags:remote_file.tags,
                             featured: false,
                         };

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Read, Seek, Write};
+use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
@@ -77,10 +78,15 @@ impl RemoteModel {
             let mut files = vec![];
             for remote_f in remote_files {
                 let file_id = format!("{}#{}", model_id, remote_f.name);
-                let downloaded_path = save_files
-                    .get(&file_id)
-                    .map(|f| f.downloaded_path.clone())
-                    .unwrap_or(None);
+                let downloaded_path = save_files.get(&file_id).map(|file| {
+                    let file_path = Path::new(&file.download_dir)
+                        .join(&file.model_id)
+                        .join(&file.name);
+                    file_path
+                        .to_str()
+                        .map(|s| s.to_string())
+                        .unwrap_or_default()
+                });
 
                 let file = moxin_protocol::data::File {
                     id: file_id,
@@ -146,16 +152,15 @@ pub enum DownloadResult {
     Stopped(f64),
 }
 
-fn download_file(
+fn download_file<P: AsRef<Path>>(
     client: &reqwest::blocking::Client,
     content_length: u64,
     url: &str,
-    local_path: &str,
+    local_path: P,
     step: f64,
     report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
     must_cancel_fn: &dyn Fn() -> bool,
 ) -> io::Result<DownloadResult> {
-    use std::path::Path;
     let path: &Path = local_path.as_ref();
     std::fs::create_dir_all(path.parent().unwrap())?;
     let mut file = File::options()
@@ -211,11 +216,11 @@ fn download_file(
     }
 }
 
-pub fn download_file_from_remote(
+pub fn download_file_from_remote<P: AsRef<Path>>(
     client: &reqwest::blocking::Client,
     model_id: &str,
     file: &str,
-    local_path: &str,
+    local_path: P,
     step: f64,
     report_fn: &mut dyn FnMut(f64) -> anyhow::Result<()>,
     must_cancel_fn: &dyn Fn() -> bool,
@@ -294,11 +299,15 @@ pub fn download_file_loop(
             let _ = model.save_to_db(&conn);
         }
 
+        let downloaded_path = Path::new(&file.download_dir)
+            .join(&file.model_id)
+            .join(&file.name);
+
         let r = download_file_from_remote(
             &client,
             &model.id,
             &file.name,
-            &file.downloaded_path.clone().unwrap(),
+            &downloaded_path,
             0.1,
             &mut send_progress,
             &mut must_cancel,
@@ -306,10 +315,10 @@ pub fn download_file_loop(
 
         match r {
             Ok(DownloadResult::Completed(_)) => {
-                file.downloaded_at = Some(Utc::now());
                 {
                     let conn = sql_conn.lock().unwrap();
-                    let _ = file.save_to_db(&conn);
+                    file.mark_downloads();
+                    let _ = file.update_downloaded(&conn);
                     let _ = PendingDownloads::remove(file_id.clone(), &conn);
                 }
 
@@ -321,12 +330,17 @@ pub fn download_file_loop(
                             size: file.size.clone(),
                             quantization: file.quantization.clone(),
                             downloaded: true,
-                            downloaded_path: file.downloaded_path,
+                            downloaded_path: Some(
+                                downloaded_path
+                                    .to_str()
+                                    .map(|s| s.to_string())
+                                    .unwrap_or_default(),
+                            ),
                             tags: file.tags,
                             featured: false,
                         },
                         model: Model::default(),
-                        downloaded_at: file.downloaded_at.unwrap(),
+                        downloaded_at: file.downloaded_at,
                         compatibility_guess:
                             moxin_protocol::data::CompatibilityGuess::PossiblySupported,
                         information: String::new(),
