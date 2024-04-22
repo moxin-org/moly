@@ -1166,6 +1166,8 @@ dependencies = [
  "moxin-fake-backend",
  "moxin-protocol",
  "robius-open",
+ "serde",
+ "serde_json",
  "unicode-segmentation",
 ]
 

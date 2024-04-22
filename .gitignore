@@ -1,1 +1,4 @@
 /target
+preferences.json
+data.*
+.vscode
