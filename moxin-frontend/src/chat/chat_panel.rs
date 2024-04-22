@@ -222,8 +222,7 @@ live_design! {
     ChatPanel = {{ChatPanel}} {
         width: Fill,
         height: Fill,
-        margin: 20,
-        spacing: 30,
+        margin: {top: 0, left: 20, right: 20, bottom: 20},
 
         flow: Overlay,
 
@@ -277,7 +276,7 @@ live_design! {
             width: Fill,
             height: Fill,
 
-            margin: { top: 60 }
+            margin: { top: 86 }
             spacing: 4,
             flow: Down,
 
@@ -290,6 +289,7 @@ live_design! {
                     width: Fill,
                     height: Fill,
 
+                    drag_scrolling: false,
                     auto_tail: true,
 
                     UserChatLine = <UserChatLine> {}
@@ -420,9 +420,9 @@ impl Widget for ChatPanel {
                         if matches!(self.state, ChatPanelState::Streaming { .. })
                             && item_id == chats_count - 1
                         {
-                            chat_line_item.set_actions_enabled(false);
+                            chat_line_item.set_actions_enabled(cx, false);
                         } else {
-                            chat_line_item.set_actions_enabled(true);
+                            chat_line_item.set_actions_enabled(cx, true);
                         }
 
                         item.draw_all(cx, &mut Scope::empty());
@@ -669,6 +669,7 @@ impl ChatPanel {
 
         let prompt_input = self.text_input(id!(prompt));
         prompt_input.set_text_and_redraw(cx, "");
+        prompt_input.set_cursor(0, 0);
         self.update_prompt_input(cx);
 
         self.view(id!(empty_conversation)).set_visible(false);

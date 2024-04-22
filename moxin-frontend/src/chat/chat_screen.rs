@@ -10,7 +10,7 @@ live_design! {
     ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
-        margin: 50,
+        margin: 48,
         spacing: 30,
 
         <View> {

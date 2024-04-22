@@ -5,11 +5,11 @@ live_design! {
 
     REGULAR_FONT = {
         font_size: (12),
-        font: {path: dep("crate://self/resources/fonts/Inter-Regular.ttf")}
+        font: {path: dep("crate://makepad-widgets/resources/GoNotoKurrent-Regular.ttf")}
     }
 
     BOLD_FONT = {
         font_size: (12),
-        font: {path: dep("crate://self/resources/fonts/Inter-Bold.ttf")}
+        font: {path: dep("crate://makepad-widgets/resources/GoNotoKurrent-Bold.ttf")}
     }
 }

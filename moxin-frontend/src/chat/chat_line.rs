@@ -55,6 +55,7 @@ live_design! {
         width: Fill,
         height: Fit,
         padding: 0,
+        empty_message: ""
 
         draw_bg: {
             color: #fff
@@ -127,34 +128,23 @@ live_design! {
             }
         }
 
-        chat_message = <View> {
-            width: Fill,
-            height: Fit,
-            chat_label = <Label> {
-                width: Fill,
-                height: Fit,
-                padding: {top: 12, bottom: 12},
-
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 10},
-                    color: #000,
-                    word: Wrap,
-                }
-            }
-        }
-
-        chat_edit = <View> {
-            visible: false,
+        <View> {
             width: Fill,
             height: Fit,
             flow: Down,
             padding: {top: 12, bottom: 12},
             align: {x: 0.5, y: 0.0},
 
-            input = <EditTextInput> {
+            input_container = <View> {
+                width: Fill,
+                height: Fit,
+                input = <EditTextInput> {
+                    read_only: true,
+                }
             }
 
-            <View> {
+            edit_buttons = <View> {
+                visible: false,
                 width: Fit,
                 height: Fit,
                 margin: {top: 10},
@@ -166,6 +156,8 @@ live_design! {
     }
 
     ChatLineActionButton = <Button> {
+        width: 14
+        height: 14
         draw_icon: {
             fn get_color(self) -> vec4 {
                 return #BDBDBD;
@@ -183,11 +175,11 @@ live_design! {
     }
 
     ChatLine = {{ChatLine}} {
-        margin: {top: 10, bottom: 3},
+        padding: {top: 10, bottom: 3},
         width: Fill,
         height: Fit,
 
-        cursor: Default,
+       // cursor: Default,
 
         avatar_section = <View> {
             width: Fit,
@@ -237,6 +229,14 @@ pub enum ChatLineAction {
     None,
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum ChatLineState {
+    #[default]
+    Editable,
+    NotEditable,
+    OnEdit,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatLine {
     #[deref]
@@ -246,13 +246,31 @@ pub struct ChatLine {
     message_id: usize,
 
     #[rust]
-    actions_enabled: bool,
+    edition_state: ChatLineState,
+
+    #[rust]
+    hovered: bool,
 }
 
 impl Widget for ChatLine {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        // Current Makepad's processing of the hover events is not enough
+        // in our case because it collapes the hover state of the
+        // children widgets (specially, the text input widget). So, we rely
+        // on this basic mouse over calculation to show the actions buttons.
+        if matches!(self.edition_state, ChatLineState::Editable) {
+            if let Event::MouseMove(e) = event {
+                let hovered = self.view.area().rect(cx).contains(e.abs);
+                if self.hovered != hovered {
+                    self.hovered = hovered;
+                    self.view(id!(actions_section.actions)).set_visible(hovered);
+                    self.redraw(cx);
+                }
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -262,19 +280,31 @@ impl Widget for ChatLine {
 
 impl WidgetMatchEvent for ChatLine {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(action) = actions.find_widget_action(self.view.widget_uid()) {
-            if self.actions_enabled {
-                if let ViewAction::FingerHoverIn(_) = action.cast() {
-                    self.view(id!(actions_section.actions)).set_visible(true);
-                    self.redraw(cx);
-                }
-            }
-            if let ViewAction::FingerHoverOut(_) = action.cast() {
-                self.view(id!(actions_section.actions)).set_visible(false);
-                self.redraw(cx);
-            }
+        match self.edition_state {
+            ChatLineState::Editable => self.handle_editable_actions(cx, actions, scope),
+            ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions, scope),
+            ChatLineState::NotEditable => {}
         }
+    }
+}
 
+impl ChatLine {
+    pub fn set_edit_mode(&mut self, cx: &mut Cx, enabled: bool) {
+        self.edition_state = if enabled {
+            ChatLineState::OnEdit
+        } else {
+            ChatLineState::Editable
+        };
+
+        self.view(id!(actions_section.actions)).set_visible(false);
+        self.view(id!(edit_buttons)).set_visible(enabled);
+        self.text_input(id!(input))
+            .apply_over(cx, live! {read_only: (!enabled)});
+
+        self.redraw(cx);
+    }
+
+    pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.button(id!(delete_button)).clicked(&actions) {
             let widget_id = self.view.widget_uid();
             cx.widget_action(
@@ -287,10 +317,12 @@ impl WidgetMatchEvent for ChatLine {
         if self.button(id!(edit_button)).clicked(&actions) {
             self.set_edit_mode(cx, true);
         }
+    }
 
+    pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(fe) = self.view(id!(save)).finger_up(&actions) {
             if fe.was_tap() {
-                let updated_message = self.text_input(id!(chat_edit.input)).text();
+                let updated_message = self.text_input(id!(input)).text();
 
                 let widget_id = self.view.widget_uid();
                 cx.widget_action(
@@ -308,21 +340,6 @@ impl WidgetMatchEvent for ChatLine {
                 self.set_edit_mode(cx, false);
             }
         }
-    }
-}
-
-impl ChatLine {
-    pub fn set_edit_mode(&mut self, cx: &mut Cx, enabled: bool) {
-        self.view(id!(chat_message)).set_visible(!enabled);
-        self.view(id!(chat_edit)).set_visible(enabled);
-
-        if enabled {
-            let message = self.label(id!(chat_message.chat_label)).text();
-            self.text_input(id!(chat_edit.input))
-                .set_text(message.as_str());
-        }
-
-        self.redraw(cx);
     }
 }
 
@@ -345,9 +362,13 @@ impl ChatLineRef {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner
-            .label(id!(chat_message.chat_label))
-            .set_text(text.trim());
+
+        match inner.edition_state {
+            ChatLineState::Editable | ChatLineState::NotEditable => {
+                inner.text_input(id!(input)).set_text(text.trim());
+            }
+            ChatLineState::OnEdit => {}
+        }
     }
 
     pub fn set_message_id(&mut self, message_id: usize) {
@@ -357,10 +378,18 @@ impl ChatLineRef {
         inner.message_id = message_id;
     }
 
-    pub fn set_actions_enabled(&mut self, enabled: bool) {
+    pub fn set_actions_enabled(&mut self, cx: &mut Cx, enabled: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.actions_enabled = enabled;
+
+        if enabled {
+            if inner.edition_state == ChatLineState::NotEditable {
+                inner.edition_state = ChatLineState::Editable;
+            }
+        } else {
+            inner.edition_state = ChatLineState::NotEditable;
+            inner.view(id!(actions_section.actions)).set_visible(false);
+        }
     }
 }
