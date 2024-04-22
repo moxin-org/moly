@@ -119,7 +119,7 @@ live_design! {
             width: Fill,
             height: Fit,
 
-            empty_message: "Search Model by Keyword"
+            empty_message: "Enter a message"
             draw_bg: {
                 color: #fff
             }
