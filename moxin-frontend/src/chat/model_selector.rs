@@ -132,6 +132,22 @@ live_design! {
                 }
             }
         }
+
+        no_models_message: <View> {
+            width: Fill,
+            height: Fit,
+            padding: 14,
+            spacing: 5,
+            align: {x: 0.5, y: 0.5},
+
+            <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 11},
+                    color: #000
+                }
+                text: "No models available. Download a model to get started."
+            }
+        }
     }
 
     ModelSelector = {{ModelSelector}} {
@@ -302,6 +318,8 @@ pub struct ModelSelectorList {
 
     #[live]
     template: Option<LivePtr>,
+    #[live]
+    no_models_message: Option<LivePtr>,
 
     #[live(true)]
     visible: bool,
@@ -320,17 +338,17 @@ impl Widget for ModelSelectorList {
         if let Event::Startup = event {
             let store = scope.data.get_mut::<Store>().unwrap();
             if let Some(filename) = &store.preferences.current_chat_model {
-                let downloaded_file = store
+                if let Some(downloaded_file) = store
                     .downloaded_files
                     .iter()
                     .find(|file| &file.file.id == filename)
-                    .unwrap();
-
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ModelSelectorAction::Selected(downloaded_file.to_owned()),
-                );
+                {
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        ModelSelectorAction::Selected(downloaded_file.to_owned()),
+                    );
+                }
             }
         }
 
@@ -365,6 +383,12 @@ impl Widget for ModelSelectorList {
 
 impl ModelSelectorList {
     fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<DownloadedFile>) {
+        if items.is_empty() {
+            let item_widget = WidgetRef::new_from_ptr(cx, self.no_models_message);
+            let _ = item_widget.draw_all(cx, &mut Scope::empty());
+            return;
+        }
+
         self.map_to_downloaded_files = HashMap::new();
         for i in 0..items.len() {
             let item_id = LiveId(i as u64).into();
