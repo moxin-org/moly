@@ -511,6 +511,14 @@ impl ChatPanel {
 
         let jump_to_bottom = self.view(id!(jump_to_bottom));
         match self.state {
+            ChatPanelState::Streaming {
+                auto_scroll_pending: true,
+                ..
+            } => {
+                // We avoid to show this button when the list is auto-scrolling upon
+                // receiving a new message. Otherwise, the button flicks.
+                jump_to_bottom.set_visible(false);
+            }
             ChatPanelState::Idle | ChatPanelState::Streaming { .. } => {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 let has_messages = store
@@ -518,9 +526,8 @@ impl ChatPanel {
                     .as_ref()
                     .map_or(false, |chat| chat.messages.len() > 0);
 
-                // TODO make it visible only when scrolling up
-                // (we need to improve PortalList API for this)
-                jump_to_bottom.set_visible(has_messages);
+                let list = self.portal_list(id!(chat));
+                jump_to_bottom.set_visible(has_messages && list.scroll_to_bottom_needed());
             }
             ChatPanelState::Unload => {
                 jump_to_bottom.set_visible(false);
