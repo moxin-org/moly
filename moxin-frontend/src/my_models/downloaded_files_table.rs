@@ -3,7 +3,12 @@ use std::collections::HashMap;
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::{data::store::Store, shared::utils::format_model_size};
+use crate::{
+    data::store::Store,
+    shared::{modal::ModalAction, utils::format_model_size},
+};
+
+use super::delete_model_modal::DeleteModelAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -13,7 +18,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
-    ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
+    ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -30,8 +35,19 @@ live_design! {
         }
     }
 
-    ActionButton = {{ActionButton}} {
+    ActionButton = {{ActionButton}}<RoundedView> {
         align: {x: 0.5, y: 0.5}
+        flow: Right
+        width: Fit, height: Fit
+        padding: { top: 15, bottom: 15, left: 8, right: 12}
+        spacing: 10
+        draw_bg: {
+            radius: 2.0,
+            color: #fff,
+            border_width: 1.0,
+            border_color: #ccc,
+        }
+
         icon = <Icon> {
             draw_icon: {
                 fn get_color(self) -> vec4 {
@@ -54,19 +70,15 @@ live_design! {
             color: #F2F4F7;
         }
 
-        <RowHeaderLabel> { width: 150, label = {text: "Model Name"} }
-        <RowHeaderLabel> { width: 80, label = {text: "Parameters"} }
-        <RowHeaderLabel> { width: 245, label = {text: "Model Version"} }
-        <RowHeaderLabel> { width: 80, label = {text: "Quantization"} }
-        <RowHeaderLabel> { width: 80, label = {text: "File Size"} }
-        <RowHeaderLabel> { width: 130, label = {text: "Compatibility Guess"} }
-        <RowHeaderLabel> { width: 80, label = {text: "Date Added"} }
-        <RowHeaderLabel> { width: 80, label = {text: ""} }
+        <RowHeaderLabel> { width: 600, label = {text: "Model File"} }
+        <RowHeaderLabel> { width: 100, label = {text: "File Size"} }
+        <RowHeaderLabel> { width: 100, label = {text: "Added Date"} }
+        <RowHeaderLabel> { width: 250, label = {text: ""} }
     }
 
     Row = <View> {
         // Heads-up: rows break the Portal List without fixed height
-        height: 55,
+        height: 85,
         flow: Down
         width: Fill
         align: {x: 0.0, y: 0.5}
@@ -77,68 +89,67 @@ live_design! {
         }
 
         separator_line = <Line> {}
-        wrapper = <View> {
+        h_wrapper = <View> {
             flow: Right
             width: Fit
             padding: {top: 10, bottom: 10, left: 20, right: 20}
-            spacing: 30,
-
+            spacing: 30
             show_bg: true
             draw_bg: {
                 color: #FFF;
             }
 
-            name_tag = <View> {
-                width: 150
-                align: {x: 0.0, y: 0.5}
-                name = <Label> {
-                    width: Fill
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 9}
-                        color: #x0
-                    }
-                }
-            }
+            model_file = <View> {
+                flow: Down
+                width: 600
 
-            parameters_tag = <View> {
-                width: 80
-                align: {x: 0.0, y: 0.5}
-                parameters = <AttributeTag> {
-                    draw_bg: { color: #44899A },
-                }
-            }
-            model_version_tag = <View> {
-                width: 245
-                align: {x: 0.0, y: 0.5}
-                version = <Label> {
+                h_wrapper = <View> {
+                    flow: Right
                     width: Fill
-                    draw_text: {
-                        wrap: Ellipsis
-                        text_style: <REGULAR_FONT>{font_size: 9}
-                        color: #x0
+                    spacing: 15
+                    name_tag = <View> {
+                        width: Fit
+                        align: {x: 0.0, y: 0.5}
+                        name = <Label> {
+                            width: Fit
+                            draw_text: {
+                                text_style: <BOLD_FONT>{font_size: 9}
+                                color: #x0
+                            }
+                        }
+                    }
+
+                    base_model_tag = <View> {
+                        width: Fit
+                        align: {x: 0.0, y: 0.5}
+                        base_model = <AttributeTag> {
+                            draw_bg: { color: #F9E1FF },
+                        }
+                    }
+                    parameters_tag = <View> {
+                        width: Fit
+                        align: {x: 0.0, y: 0.5}
+                        parameters = <AttributeTag> {
+                            draw_bg: { color: #44899A },
+                        }
                     }
                 }
-            }
-            quantization_tag = <View> {
-                width: 80
-                align: {x: 0.0, y: 0.5}
-                quantization = <AttributeTag> {
-                    draw_bg: {
-                        color: #FFF,
-                        border_color: #B4B4B4,
-                        border_width: 1.0,
-                        instance radius: 2.0,
-                    }
-                    attr_name = {
+                model_version_tag = <View> {
+                    width: Fit
+                    align: {x: 0.0, y: 0.5}
+                    version = <Label> {
+                        width: Fit
                         draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 9}
-                            color: #x0
+                            wrap: Ellipsis
+                            text_style: <REGULAR_FONT>{font_size: 9}
+                            color: #667085
                         }
                     }
                 }
             }
+
             file_size_tag = <View> {
-                width: 80
+                width: 100
                 align: {x: 0.0, y: 0.5}
                 file_size = <Label> {
                     draw_text: {
@@ -147,16 +158,9 @@ live_design! {
                     }
                 }
             }
-            compatibility_guess_tag = <View> {
-                width: 130
-                align: {x: 0.0, y: 0.5}
-                compatibility = <AttributeTag> {
-                    draw_bg: { color: #E6F1EC },
-                    attr_name = { draw_text: { color: #101828} }
-                }
-            }
+
             date_added_tag = <View> {
-                width: 80
+                width: 100
                 align: {x: 0.0, y: 0.5}
                 date_added = <Label> {
                     draw_text: {
@@ -167,14 +171,27 @@ live_design! {
             }
 
             actions = <View> {
-                width: 80
+                width: 250
                 flow: Right
                 spacing: 10
                 align: {x: 0.0, y: 0.5}
 
-                <ActionButton> { type_: Play, icon = { draw_icon: { svg_file: (ICON_PLAY) } } }
-                <ActionButton> { type_: Info, icon = { draw_icon: { svg_file: (ICON_INFO) fn get_color(self) -> vec4 { return #0099FF;} } } }
-                <ActionButton> { type_: Delete, icon = { draw_icon: { svg_file: (ICON_DELETE) fn get_color(self) -> vec4 { return #B42318;} } } }
+                <ActionButton> {
+                    type_: Play,
+                    label = <Label> {
+                        text: "Chat with Model",
+                        draw_text: {
+                            color: #087443
+                            text_style: <REGULAR_FONT>{font_size: 9}
+                        }
+                    }
+                    icon = { draw_icon: { svg_file: (ICON_START_CHAT) } } }
+                <ActionButton> {
+                    type_: Info,
+                    icon = { draw_icon: { svg_file: (ICON_INFO) fn get_color(self) -> vec4 { return #0099FF;} } } }
+                <ActionButton> {
+                    type_: Delete,
+                    icon = { draw_icon: { svg_file: (ICON_DELETE) fn get_color(self) -> vec4 { return #B42318;} } } }
             }
         }
     }
@@ -236,41 +253,42 @@ impl Widget for DownloadedFilesTable {
                             .insert(item.widget_uid().0, file_data.file.id.clone());
 
                         // Name tag
-                        let model_name = human_readable_name(&file_data.model.name);
-                        item.label(id!(wrapper.name_tag.name)).set_text(&model_name);
+                        let name = human_readable_name(&file_data.file.name);
+                        item.label(id!(h_wrapper.model_file.h_wrapper.name_tag.name))
+                            .set_text(&name);
+
+                        // Base model tag
+                        let base_model = dash_if_empty(&file_data.model.architecture);
+                        item.label(id!(h_wrapper
+                            .model_file
+                            .base_model_tag
+                            .base_model
+                            .attr_name))
+                            .set_text(&base_model);
 
                         // Parameters tag
                         let parameters = dash_if_empty(&file_data.model.size);
-                        item.label(id!(wrapper.parameters_tag.parameters.attr_name))
+                        item.label(id!(h_wrapper
+                            .model_file
+                            .parameters_tag
+                            .parameters
+                            .attr_name))
                             .set_text(&parameters);
 
                         // Version tag
-                        let filename = &file_data
-                            .file
-                            .name
-                            .replace(".gguf", "")
-                            .replace(".GGUF", "");
-                        item.label(id!(wrapper.model_version_tag.version))
+                        let filename = format!("{}/{}", file_data.model.name, file_data.file.name);
+                        item.label(id!(h_wrapper.model_file.model_version_tag.version))
                             .set_text(&filename);
-
-                        // Quantization tag
-                        let quantization = dash_if_empty(&file_data.file.quantization);
-                        item.label(id!(wrapper.quantization_tag.quantization.attr_name))
-                            .set_text(quantization);
 
                         // File size tag
                         let file_size =
                             format_model_size(&file_data.file.size).unwrap_or("-".to_string());
-                        item.label(id!(wrapper.file_size_tag.file_size))
+                        item.label(id!(h_wrapper.file_size_tag.file_size))
                             .set_text(&file_size);
-
-                        // Compatibility guess tag
-                        item.label(id!(wrapper.compatibility_guess_tag.compatibility.attr_name))
-                            .set_text(file_data.compatibility_guess.as_str());
 
                         // Added date tag
                         let formatted_date = file_data.downloaded_at.format("%d/%m/%Y").to_string();
-                        item.label(id!(wrapper.date_added_tag.date_added))
+                        item.label(id!(h_wrapper.date_added_tag.date_added))
                             .set_text(&formatted_date);
 
                         // Don't draw separator line on first row
@@ -316,7 +334,18 @@ impl WidgetMatchEvent for DownloadedFilesTable {
                             if let Some(_item_id) = self.file_item_map.get(&action.widget_uid.0) {}
                         }
                         RowAction::DeleteClicked => {
-                            if let Some(_item_id) = self.file_item_map.get(&action.widget_uid.0) {}
+                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
+                                cx.widget_action(
+                                    widget_uid,
+                                    &scope.path,
+                                    DeleteModelAction::FileSelected(item_id.clone()),
+                                );
+                                cx.widget_action(
+                                    widget_uid,
+                                    &scope.path,
+                                    ModalAction::ShowModalView(live_id!(delete_model_modal_view)),
+                                );
+                            }
                         }
                         _ => (),
                     }
@@ -394,7 +423,7 @@ fn human_readable_name(name: &str) -> String {
     let name = name
         .to_lowercase()
         .replace("-", " ")
-        .replace("gguf", "")
+        .replace(".gguf", "")
         .replace("chat", "");
 
     let name = name

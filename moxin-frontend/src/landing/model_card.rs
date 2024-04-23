@@ -12,6 +12,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
+    import crate::shared::resource_imports::*;
     import crate::shared::widgets::*;
     import crate::landing::shared::*;
     import crate::landing::model_files_list::ModelFilesList;
@@ -20,7 +21,6 @@ live_design! {
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
     ICON_EXTERNAL_LINK = dep("crate://self/resources/icons/external_link.svg")
-    ICON_CLOSE = dep("crate://self/resources/icons/close.svg")
 
     ModelHeading = <View> {
         flow: Down,
