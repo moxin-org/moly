@@ -1,4 +1,7 @@
-use crate::{data::store::Store, my_models::downloaded_files_table::DownloadedFileAction};
+use crate::{
+    data::store::Store, my_models::downloaded_files_table::DownloadedFileAction,
+    shared::utils::format_model_size,
+};
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 use std::collections::HashMap;
@@ -23,7 +26,7 @@ live_design! {
         caption = <Label> {
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9},
-                color: #fff
+                color: #1D2939
             }
         }
     }
@@ -31,8 +34,8 @@ live_design! {
     ModelInfo = <View> {
         width: Fill,
         height: Fit,
-        padding: 14,
-        spacing: 5,
+        padding: 16,
+        spacing: 10,
         align: {x: 0.0, y: 0.5},
 
         show_bg: true,
@@ -47,27 +50,27 @@ live_design! {
             }
         }
 
-        architecture_tag = <ModelAttributeTag> {
-            caption = {
-                text: "StableLM"
+        label = <Label> {
+            draw_text:{
+                text_style: <REGULAR_FONT>{font_size: 11},
+                color: #000
             }
+        }
+
+        architecture_tag = <ModelAttributeTag> {
             draw_bg: {
-                color: #A44EBB,
+                color: #DDD7FF,
             }
         }
 
         params_size_tag = <ModelAttributeTag> {
-            caption = {
-                text: "3B"
-            }
             draw_bg: {
-                color: #44899A,
+                color: #D1F4FC,
             }
         }
 
         file_size_tag = <ModelAttributeTag> {
             caption = {
-                text: "1.62 GB",
                 draw_text:{
                     color: #000
                 }
@@ -77,14 +80,6 @@ live_design! {
                 border_color: #B4B4B4,
                 border_width: 1.0,
             }
-        }
-
-        label = <Label> {
-            draw_text:{
-                text_style: <BOLD_FONT>{font_size: 11},
-                color: #000
-            }
-            text: "Model"
         }
     }
 
@@ -160,7 +155,8 @@ live_design! {
             width: Fill,
             height: 54,
 
-            align: {x: 0.5, y: 0.5},
+            align: {x: 0.0, y: 0.5},
+            padding: 16,
 
             draw_bg: {
                 instance radius: 3.0,
@@ -172,8 +168,10 @@ live_design! {
             cursor: Hand,
 
             choose = <View> {
-                width: Fit,
+                width: Fill,
                 height: Fit,
+
+                align: {x: 0.5, y: 0.5},
 
                 <Label> {
                     draw_text:{
@@ -187,7 +185,13 @@ live_design! {
                 width: Fit,
                 height: Fit,
                 show_bg: false,
-                visible: false
+                visible: false,
+
+                label = {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 11},
+                    }
+                }
             }
         }
 
@@ -283,15 +287,24 @@ impl ModelSelector {
             },
         );
         let filename = downloaded_file.file.name;
+
         let architecture = downloaded_file.model.architecture;
-        let size = downloaded_file.model.size;
+        let architecture_visible = !architecture.trim().is_empty();
+
+        let param_size = downloaded_file.model.size;
+        let param_size_visible = !param_size.trim().is_empty();
+
+        let size = format_model_size(&downloaded_file.file.size).unwrap_or("".to_string());
+        let size_visible = !size.trim().is_empty();
+
         self.view(id!(selected)).apply_over(
             cx,
             live! {
                 visible: true
                 label = { text: (filename) }
-                architecture_tag = { caption = { text: (architecture) }}
-                params_size_tag = { caption = { text: (size) }}
+                architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) }}
+                params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) }}
+                file_size_tag = { visible: (size_visible), caption = { text: (size) }}
             },
         );
         self.redraw(cx);
@@ -399,14 +412,23 @@ impl ModelSelectorList {
                 .insert(item_id, items[i].clone());
 
             let caption = &items[i].file.name;
+
             let architecture = &items[i].model.architecture;
+            let architecture_visible = !architecture.trim().is_empty();
+
             let param_size = &items[i].model.size;
+            let param_size_visible = !param_size.trim().is_empty();
+
+            let size = format_model_size(&items[i].file.size).unwrap_or("".to_string());
+            let size_visible = !size.trim().is_empty();
+
             item_widget.apply_over(
                 cx,
                 live! {
                     label = { text: (caption) }
-                    architecture_tag = { caption = { text: (architecture) } }
-                    params_size_tag = { caption = { text: (param_size) } }
+                    architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) } }
+                    params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) } }
+                    file_size_tag = { visible: (size_visible), caption = { text: (size) } }
                 },
             );
 
