@@ -39,7 +39,7 @@ live_design! {
             draw_text:{
                 wrap: Word
                 text_style: <REGULAR_FONT>{font_size: 8},
-                color: #fff
+                color: #x0
             }
         }
     }
