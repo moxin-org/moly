@@ -67,6 +67,7 @@ live_design! {
             width: 34,
             height: 34,
             align: {x: 0.5, y: 0.5},
+            margin: {bottom: 10},
 
             cursor: Hand,
 
@@ -75,8 +76,8 @@ live_design! {
             draw_bg: {
                 radius: 14.0,
                 color: #fff,
-                border_width: 2.0,
-                border_color: #ccc,
+                border_width: 1.0,
+                border_color: #EAECF0,
             }
 
             <Icon> {
@@ -334,35 +335,33 @@ impl Widget for ChatPanel {
         if let Event::Signal = event {
             let store = scope.data.get_mut::<Store>().unwrap();
 
-            if let Some(chat) = &store.current_chat {
-                match self.state {
-                    ChatPanelState::Streaming {
+            match self.state {
+                ChatPanelState::Streaming {
+                    auto_scroll_pending,
+                    auto_scroll_cancellable: _,
+                } => {
+                    self.state = ChatPanelState::Streaming {
                         auto_scroll_pending,
-                        auto_scroll_cancellable: _,
-                    } => {
-                        self.state = ChatPanelState::Streaming {
-                            auto_scroll_pending,
-                            auto_scroll_cancellable: true,
-                        };
+                        auto_scroll_cancellable: true,
+                    };
 
-                        let still_streaming = store.current_chat.as_ref().unwrap().is_streaming;
-                        if still_streaming {
-                            if auto_scroll_pending {
-                                self.scroll_messages_to_bottom(chat);
-                            }
-                        } else {
-                            // Scroll to the bottom when streaming is done
-                            self.scroll_messages_to_bottom(chat);
-                            self.state = ChatPanelState::Idle;
+                    let still_streaming = store.current_chat.as_ref().unwrap().is_streaming;
+                    if still_streaming {
+                        if auto_scroll_pending {
+                            self.scroll_messages_to_bottom(cx);
                         }
-
-                        self.update_prompt_input(cx);
-
-                        // Redraw because we expect to see new or updated chat entries
-                        self.redraw(cx);
+                    } else {
+                        // Scroll to the bottom when streaming is done
+                        self.scroll_messages_to_bottom(cx);
+                        self.state = ChatPanelState::Idle;
                     }
-                    _ => {}
+
+                    self.update_prompt_input(cx);
+
+                    // Redraw because we expect to see new or updated chat entries
+                    self.redraw(cx);
                 }
+                _ => {}
             }
         }
     }
@@ -505,10 +504,8 @@ impl ChatPanel {
         if let Some(fe) = self.view(id!(jump_to_bottom)).finger_up(actions) {
             if fe.was_tap() {
                 let store = scope.data.get_mut::<Store>().unwrap();
-                if let Some(chat) = &store.current_chat {
-                    self.scroll_messages_to_bottom(chat);
-                    self.redraw(cx);
-                }
+                self.scroll_messages_to_bottom(cx);
+                self.redraw(cx);
             }
         }
 
@@ -621,12 +618,9 @@ impl ChatPanel {
         );
     }
 
-    fn scroll_messages_to_bottom(&mut self, chat: &Chat) {
-        if chat.messages.is_empty() {
-            return;
-        }
-        let list = self.portal_list(id!(chat));
-        list.set_first_id_and_scroll(chat.messages.len() - 1, 0.0);
+    fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
+        let mut list = self.portal_list(id!(chat));
+        list.animate_scroll_to_end(cx, 10, 80.0);
     }
 
     fn load_model(&mut self, store: &mut Store, downloaded_file: DownloadedFile) {
@@ -673,9 +667,7 @@ impl ChatPanel {
         self.view(id!(empty_conversation)).set_visible(false);
 
         // Scroll to the bottom when the message is sent
-        if let Some(chat) = &store.current_chat {
-            self.scroll_messages_to_bottom(chat);
-        }
+        self.scroll_messages_to_bottom(cx);
 
         self.state = ChatPanelState::Streaming {
             auto_scroll_pending: true,
