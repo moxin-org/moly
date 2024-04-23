@@ -527,7 +527,7 @@ impl ChatPanel {
                     .map_or(false, |chat| chat.messages.len() > 0);
 
                 let list = self.portal_list(id!(chat));
-                jump_to_bottom.set_visible(has_messages && list.scroll_to_bottom_needed());
+                jump_to_bottom.set_visible(has_messages && list.further_items_bellow_exist());
             }
             ChatPanelState::Unload => {
                 jump_to_bottom.set_visible(false);
@@ -627,7 +627,7 @@ impl ChatPanel {
 
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
         let mut list = self.portal_list(id!(chat));
-        list.animate_scroll_to_end(cx, 10, 80.0);
+        list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
     fn load_model(&mut self, store: &mut Store, downloaded_file: DownloadedFile) {
