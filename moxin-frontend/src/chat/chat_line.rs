@@ -378,7 +378,7 @@ impl ChatLineRef {
         inner.message_id = message_id;
     }
 
-    pub fn set_actions_enabled(&mut self, cx: &mut Cx, enabled: bool) {
+    pub fn set_actions_enabled(&mut self, _cx: &mut Cx, enabled: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
