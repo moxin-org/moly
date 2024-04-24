@@ -225,7 +225,7 @@ live_design! {
 pub enum ChatLineAction {
     Delete(usize),
     Edit(usize, String),
-    Copy(usize),
+    _Copy(usize),
     None,
 }
 
