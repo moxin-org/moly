@@ -1,6 +1,5 @@
 use crate::chat::chat_line::*;
 use crate::chat::model_selector::ModelSelectorAction;
-use crate::data::chat::Chat;
 use crate::data::store::Store;
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use makepad_widgets::*;
@@ -503,7 +502,6 @@ impl ChatPanel {
     fn jump_to_bottom_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(fe) = self.view(id!(jump_to_bottom)).finger_up(actions) {
             if fe.was_tap() {
-                let store = scope.data.get_mut::<Store>().unwrap();
                 self.scroll_messages_to_bottom(cx);
                 self.redraw(cx);
             }
