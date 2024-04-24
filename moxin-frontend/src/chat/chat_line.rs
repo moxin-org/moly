@@ -1,4 +1,7 @@
+use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
+
+use makepad_markdown::parse_markdown;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -52,6 +55,53 @@ live_design! {
         }
     }
 
+    MESSAGE_TEXT_COLOR = #000
+    TEXT_HEIGHT_FACTOR = 1.0
+    LINE_SPACING = 8.0
+    BLOCK_LINE_SPACING = 12.0
+
+    MessageText = <Markdown>{
+        padding: 0,
+        draw_normal: {
+            color: #000
+        }
+
+        line_spacing: (LINE_SPACING),
+        width: Fill, height: Fit,
+        font_size: 10.0,
+        draw_normal: {
+            color: (MESSAGE_TEXT_COLOR),
+            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
+        }
+        draw_italic: {
+            color: (MESSAGE_TEXT_COLOR),
+            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
+        }
+        draw_bold: {
+            color: (MESSAGE_TEXT_COLOR),
+            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
+        }
+        draw_bold_italic: {
+            color: (MESSAGE_TEXT_COLOR),
+            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
+        }
+        draw_fixed: {
+            color: (MESSAGE_TEXT_COLOR),
+            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
+        }
+        draw_block: {
+            line_color: (MESSAGE_TEXT_COLOR)
+            sep_color: (MESSAGE_TEXT_COLOR)
+            quote_bg_color: (#EDEDED)
+            quote_fg_color: (#969696)
+            block_color: (#EDEDED)
+            code_color: (#EDEDED)
+        }
+        list_item_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {left: 5.0, top: 1.0, bottom: 1.0}, }
+        code_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}, }
+        quote_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}, }
+    }
+
     EditTextInput = <MoxinTextInput> {
         width: Fill,
         height: Fit,
@@ -100,10 +150,28 @@ live_design! {
             align: {x: 0.5, y: 0.0},
 
             input_container = <View> {
+                visible: false,
                 width: Fill,
                 height: Fit,
                 input = <EditTextInput> {
-                    read_only: true,
+                }
+            }
+
+            markdown_message_container = <View> {
+                width: Fill,
+                height: Fit,
+                markdown_message = <MessageText> {}
+            }
+            plain_text_message_container = <View> {
+                width: Fill,
+                height: Fit,
+                plain_text_message = <Label> {
+                    width: Fill,
+                    height: Fit,
+                    draw_text: {
+                        text_style: <REGULAR_FONT>{font_size: 10},
+                        color: #000
+                    }
                 }
             }
 
@@ -262,9 +330,22 @@ impl ChatLine {
 
         self.view(id!(actions_section.actions)).set_visible(false);
         self.view(id!(edit_buttons)).set_visible(enabled);
-        self.text_input(id!(input))
-            .apply_over(cx, live! {read_only: (!enabled)});
+        self.view(id!(input_container)).set_visible(enabled);
+        self.show_or_hide_message_label(cx, !enabled);
 
+        self.redraw(cx);
+    }
+
+    pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
+        let text = self.text_input(id!(input)).text();
+        let to_markdown = parse_markdown(&text);
+        // dbg!("RAW", text);
+        let is_plain_text = to_markdown.nodes.len() <= 3;
+
+        self.view(id!(plain_text_message_container))
+            .set_visible(show && is_plain_text);
+        self.view(id!(markdown_message_container))
+            .set_visible(show && !is_plain_text);
         self.redraw(cx);
     }
 
@@ -327,7 +408,7 @@ impl ChatLineRef {
         inner.label(id!(avatar_label)).set_text(text);
     }
 
-    pub fn set_message_text(&mut self, text: &str) {
+    pub fn set_message_text(&mut self, cx: &mut Cx, text: &str) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
@@ -335,6 +416,10 @@ impl ChatLineRef {
         match inner.edition_state {
             ChatLineState::Editable | ChatLineState::NotEditable => {
                 inner.text_input(id!(input)).set_text(text.trim());
+                inner.label(id!(plain_text_message)).set_text(text.trim());
+                inner.markdown(id!(markdown_message)).set_text(text.trim());
+
+                inner.show_or_hide_message_label(cx, true);
             }
             ChatLineState::OnEdit => {}
         }

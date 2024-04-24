@@ -375,7 +375,7 @@ impl Widget for ChatPanel {
                             chat_line_item.set_role("You");
                         };
 
-                        chat_line_item.set_message_text(&chat_line_data.content);
+                        chat_line_item.set_message_text(cx, &chat_line_data.content);
                         chat_line_item.set_message_id(chat_line_data.id);
 
                         // Disable actions for the last chat line when model is streaming
