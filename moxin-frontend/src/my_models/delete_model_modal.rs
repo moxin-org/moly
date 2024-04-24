@@ -17,7 +17,7 @@ live_design! {
 
         wrapper = <RoundedView> {
             flow: Down
-            width: 500
+            width: 600
             height: Fit
             padding: {top: 50, right: 30 bottom: 30 left: 50}
             spacing: 10
@@ -77,7 +77,7 @@ live_design! {
                     width: Fill
                     draw_text: {
                         text_style: <REGULAR_FONT>{
-                            font_size: 10,
+                            font_size: 13,
                             height_factor: 1.3
                         },
                         color: #000
@@ -107,7 +107,7 @@ live_design! {
                         <Label> {
                             text: "Cancel"
                             draw_text:{
-                                text_style: <BOLD_FONT>{font_size: 10},
+                                text_style: <REGULAR_FONT>{font_size: 13},
                                 color: #x0
                             }
                         }
@@ -126,7 +126,7 @@ live_design! {
                         <Label> {
                             text: "Delete"
                             draw_text:{
-                                text_style: <BOLD_FONT>{font_size: 10},
+                                text_style: <REGULAR_FONT>{font_size: 13},
                                 color: #fff
                             }
                         }

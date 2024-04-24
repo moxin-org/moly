@@ -18,9 +18,8 @@ live_design! {
         draw_block: {
             code_color: (#EAECF0)
         }
-        list_item_layout: { line_spacing: (5.0), padding: {left: 5.0, top: 1.0, bottom: 1.0}, }
+        font_size: 12
         code_layout: { line_spacing: (5.0), padding: 15, }
-        quote_layout: { line_spacing: (5.0), padding: {top: 0.0, bottom: 8.0}, }
     }
 
     ModelInfoModal = {{ModelInfoModal}} {
@@ -32,7 +31,7 @@ live_design! {
             width: 800
             height: Fit
             padding: {top: 50, right: 30 bottom: 30 left: 50}
-            spacing: 10
+            spacing: 5
 
             show_bg: true
             draw_bg: {
@@ -82,19 +81,20 @@ live_design! {
                 width: Fill,
                 height: Fit,
                 flow: Right,
-                spacing: 10
+                spacing: 8
                 // Hack to align the text with the html block, 0.5 it not visually centered
                 align: {x: 0.0, y: 0.6}
 
                 <Label> {
                     text: "Read from"
                     draw_text: {
-                        text_style: <BOLD_FONT>{font_size: 13},
+                        text_style: <REGULAR_FONT>{font_size: 13},
                         color: #344054
                     }
                 }
                 path = <MoxinHtml> {
                     width: Fill
+                    font_size: 11
                     code_layout: { line_spacing: (5.0), padding: 9 }
                 }
             }
