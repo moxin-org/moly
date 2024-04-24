@@ -293,8 +293,6 @@ impl Widget for DownloadItem {
                 self.view(id!(pause_button)).set_visible(false);
                 self.view(id!(play_button)).set_visible(true);
             }
-            DownloadInfoStatus::Error => {}
-            DownloadInfoStatus::Done => {}
         }
 
         let total_size = format_model_size(&download.file.size).unwrap_or("-".to_string());

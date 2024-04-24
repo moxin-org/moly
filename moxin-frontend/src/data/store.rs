@@ -31,8 +31,6 @@ pub enum SortCriteria {
 pub enum DownloadInfoStatus {
     Downloading,
     Paused,
-    Error,
-    Done,
 }
 
 #[derive(Clone, Debug)]
