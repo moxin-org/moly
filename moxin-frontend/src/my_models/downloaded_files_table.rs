@@ -8,7 +8,7 @@ use crate::{
     shared::{modal::ModalAction, utils::format_model_size},
 };
 
-use super::delete_model_modal::DeleteModelAction;
+use super::{delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -331,7 +331,18 @@ impl WidgetMatchEvent for DownloadedFilesTable {
                             }
                         }
                         RowAction::InfoClicked => {
-                            if let Some(_item_id) = self.file_item_map.get(&action.widget_uid.0) {}
+                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
+                                cx.widget_action(
+                                    widget_uid,
+                                    &scope.path,
+                                    ModelInfoAction::FileSelected(item_id.clone()),
+                                );
+                                cx.widget_action(
+                                    widget_uid,
+                                    &scope.path,
+                                    ModalAction::ShowModalView(live_id!(model_info_modal_view)),
+                                );
+                            }
                         }
                         RowAction::DeleteClicked => {
                             if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {

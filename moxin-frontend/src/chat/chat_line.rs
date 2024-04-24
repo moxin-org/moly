@@ -6,8 +6,8 @@ live_design! {
 
     import makepad_draw::shader::std::*;
     import crate::shared::styles::*;
+    import crate::shared::resource_imports::*;
 
-    ICON_COPY = dep("crate://self/resources/icons/copy.svg")
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 

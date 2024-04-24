@@ -4,6 +4,7 @@ use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModal
 use crate::landing::model_files_list::ModelFileItemsAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
+use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
 use makepad_widgets::*;
 
 live_design! {
@@ -17,6 +18,7 @@ live_design! {
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
     import crate::my_models::delete_model_modal::DeleteModelModal;
+    import crate::my_models::model_info_modal::ModelInfoModal;
 
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
@@ -128,6 +130,12 @@ live_design! {
                             delete_model_modal = <DeleteModelModal> {}
                         }
                     }
+
+                    model_info_modal_view = <ModalView> {
+                        content = {
+                            model_info_modal = <ModelInfoModal> {}
+                        }
+                    }
                 }
             }
         }
@@ -184,6 +192,7 @@ impl LiveRegister for App {
         crate::my_models::my_models_screen::live_design(cx);
         crate::my_models::downloaded_files_table::live_design(cx);
         crate::my_models::delete_model_modal::live_design(cx);
+        crate::my_models::model_info_modal::live_design(cx);
     }
 }
 
@@ -269,6 +278,14 @@ impl MatchEvent for App {
             // Set modal viewall model id
             if let DeleteModelAction::FileSelected(file_id) = action.as_widget_action().cast() {
                 let mut modal = self.ui.delete_model_modal(id!(delete_model_modal));
+                modal.set_file_id(file_id);
+                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
+                // this forces the entire ui to rerender, still weird that only happens the first time.
+                self.ui.redraw(cx);
+            }
+
+            if let ModelInfoAction::FileSelected(file_id) = action.as_widget_action().cast() {
+                let mut modal = self.ui.model_info_modal(id!(model_info_modal));
                 modal.set_file_id(file_id);
                 // TODO: Hack for error that when you first open the modal, doesnt draw until an event
                 // this forces the entire ui to rerender, still weird that only happens the first time.
