@@ -243,6 +243,7 @@ impl Modal {
     }
 }
 
+#[allow(dead_code)]
 impl ModalRef {
     pub fn show_modal_view_by_id(
         &mut self,
