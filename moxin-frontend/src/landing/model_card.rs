@@ -1,6 +1,7 @@
 use crate::data::store::{ModelWithPendingDownloads, Store};
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalAction;
+use crate::shared::utils::hugging_face_model_url;
 use makepad_widgets::*;
 use moxin_protocol::data::ModelID;
 use unicode_segmentation::UnicodeSegmentation;
@@ -383,8 +384,7 @@ impl Widget for ModelCard {
             .set_text(author_name);
         author_external_link.set_url(author_url);
 
-        let hugging_face_base_url = "https://huggingface.co";
-        let model_hugging_face_url = hugging_face_base_url.to_owned() + "/" + &model.id;
+        let model_hugging_face_url = hugging_face_model_url(&model.id);
         let mut model_hugging_face_external_link = self.external_link(id!(model_hugging_face_link));
         model_hugging_face_external_link.set_url(&model_hugging_face_url);
 
