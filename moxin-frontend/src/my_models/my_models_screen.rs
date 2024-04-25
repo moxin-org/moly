@@ -17,12 +17,13 @@ live_design! {
 
     ICON_EDIT_FOLDER = dep("crate://self/resources/icons/edit_folder.svg")
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
+    ICON_SHOW_IN_FILES = dep("crate://self/resources/icons/visibility.svg")
 
     DownloadLocation = <RoundedView> {
         width: Fit,
         height: Fit,
         padding: {top: 6, bottom: 6, left: 4, right: 14}
-
+        align: {y: 0.5}
         spacing: 8,
 
         draw_bg: {
@@ -37,7 +38,7 @@ live_design! {
                     return #000;
                 }
             }
-            icon_walk: {width: 14, height: 14}
+            icon_walk: {width: 14, height: Fit}
         }
 
         <Label> {
@@ -56,6 +57,7 @@ live_design! {
         padding: {top: 6, bottom: 6, left: 4, right: 10}
         spacing: 8,
         cursor: Hand
+        align: {y: 0.5}
 
         draw_bg: {
             instance radius: 2.0,
@@ -64,12 +66,12 @@ live_design! {
 
         <Icon> {
             draw_icon: {
-                svg_file: (ICON_EDIT_FOLDER),
+                svg_file: (ICON_SHOW_IN_FILES),
                 fn get_color(self) -> vec4 {
                     return #000;
                 }
             }
-            icon_walk: {width: 14, height: 14}
+            icon_walk: {width: 14, height: Fit}
         }
 
         label = <Label> {
@@ -108,7 +110,7 @@ live_design! {
                     return #666;
                 }
             }
-            icon_walk: {width: 14, height: 14}
+            icon_walk: {width: 14, height: Fit}
         }
 
         input = <TextInput> {
@@ -120,7 +122,7 @@ live_design! {
                 color: #fff
             }
             draw_text: {
-                text_style:<REGULAR_FONT>{font_size: 10},
+                text_style:<REGULAR_FONT>{font_size: 11},
                 fn get_color(self) -> vec4 {
                     return #555
                 }
@@ -220,22 +222,8 @@ live_design! {
             width: Fill, height: Fit
             flow: Right
             spacing: 10
+            margin: {top: 10}
             align: {x: 0.0, y: 0.5}
-
-            <Label> {
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 11}
-                    color: #000
-                }
-                text: "Local Models Folder"
-            }
-            local_models_folder = <Label> {
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 11}
-                    color: #222
-                }
-                text: "/Users/name/.cache/lm-studio/models"
-            }
 
             <DownloadLocation> {}
             show_in_files = <ShowInFiles> {}
