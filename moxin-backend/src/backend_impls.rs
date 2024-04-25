@@ -978,6 +978,7 @@ impl BackendImpl {
                             downloaded_at: Utc::now(),
                             tags:remote_file.tags,
                             featured: false,
+                            sha256: remote_file.sha256.unwrap_or_default(),
                         };
 
                         Ok((download_model,download_file))
@@ -999,16 +1000,12 @@ impl BackendImpl {
                 }
 
                 ModelManagementCommand::CancelDownload(file_id, tx) => {
-                    let _ = self
-                        .control_tx
-                        .send(DownloadControlCommand::Stop(file_id.clone()));
+                    let file_id_ = file_id.clone();
+                    let _ = self.control_tx.send(DownloadControlCommand::Stop(file_id_));
 
                     {
                         let conn = self.sql_conn.lock().unwrap();
-                        let _ = store::download_files::DownloadedFile::remove(
-                            file_id.clone().into(),
-                            &conn,
-                        );
+                        let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
                     }
                     let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
 

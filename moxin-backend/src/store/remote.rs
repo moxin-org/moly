@@ -17,6 +17,8 @@ pub struct RemoteFile {
     pub size: String,
     pub quantization: String,
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -163,7 +165,7 @@ async fn download_file<P: AsRef<Path>>(
     let path: &Path = local_path.as_ref();
     std::fs::create_dir_all(path.parent().unwrap())?;
 
-    let mut file = File::options().write(true).create(true).open(local_path)?;
+    let mut file = File::options().write(true).create(true).open(&local_path)?;
 
     let file_length = file.metadata()?.len();
 
@@ -243,7 +245,7 @@ impl ModelFileDownloader {
     ) {
         let (token_tx, mut token_rx) = tokio::sync::mpsc::channel::<()>(max_downloader);
         for _ in 0..max_downloader {
-            let _ = token_tx.send(());
+            let _ = token_tx.send(()).await;
         }
 
         while let Some((model, file, tx)) = download_rx.recv().await {
@@ -255,10 +257,11 @@ impl ModelFileDownloader {
             let token_tx_ = token_tx.clone();
             tokio::spawn(async move {
                 let mut send_progress = |progress| {
-                    let _ = tx.send(Ok(FileDownloadResponse::Progress(
+                    let r = tx.send(Ok(FileDownloadResponse::Progress(
                         file_id.clone(),
                         progress as f32,
                     )));
+                    println!("send progress {progress} {r:?}");
 
                     Ok(())
                 };
@@ -278,7 +281,7 @@ impl ModelFileDownloader {
                         let _ = tx.send(Err(e));
                     }
                 }
-                let _ = token_tx_.send(());
+                let _ = token_tx_.send(()).await;
             });
         }
     }
@@ -293,6 +296,7 @@ impl ModelFileDownloader {
             "https://huggingface.co/{}/resolve/main/{}?download=true",
             file.model_id, file.name
         );
+        println!("download_file_from_remote({url})");
 
         let content_length = get_file_content_length(&self.client, &url)
             .await

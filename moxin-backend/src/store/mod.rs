@@ -127,7 +127,7 @@ pub fn get_all_pending_downloads(
             file: result_file,
             model,
             progress,
-            status: moxin_protocol::data::PendingDownloadsStatus::Downloading,
+            status: moxin_protocol::data::PendingDownloadsStatus::Paused,
             //status: item.status.into(),
         };
 

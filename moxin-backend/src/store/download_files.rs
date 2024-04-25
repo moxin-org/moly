@@ -18,6 +18,7 @@ pub struct DownloadedFile {
     pub downloaded_at: DateTime<Utc>,
     pub tags: Vec<String>,
     pub featured: bool,
+    pub sha256: String,
 }
 
 impl DownloadedFile {
@@ -26,8 +27,8 @@ impl DownloadedFile {
             "INSERT OR IGNORE INTO download_files (
                 id, model_id, name, size, quantization, 
                 prompt_template, reverse_prompt, 
-                downloaded, file_size, download_dir, downloaded_at, tags, featured) 
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                downloaded, file_size, download_dir, downloaded_at, tags, featured, sha256) 
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             rusqlite::params![
                 self.id,
                 self.model_id,
@@ -42,6 +43,7 @@ impl DownloadedFile {
                 self.downloaded_at.to_rfc3339(),
                 serde_json::to_string(&self.tags).unwrap(),
                 self.featured,
+                self.sha256,
             ],
         )?;
 
@@ -87,6 +89,7 @@ impl DownloadedFile {
             downloaded_at,
             tags,
             featured: row.get(12)?,
+            sha256: row.get(13)?,
         })
     }
 
@@ -159,7 +162,7 @@ impl DownloadedFile {
         })
     }
 
-    pub fn remove(file_id: Arc<String>, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+    pub fn remove(file_id: &str, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(
             "DELETE FROM download_files WHERE file_id = ?1",
             rusqlite::params![file_id],
@@ -184,7 +187,8 @@ pub fn create_table_download_files(conn: &rusqlite::Connection) -> rusqlite::Res
             download_dir TEXT NOT NULL,
             downloaded_at TEXT NOT NULL,
             tags TEXT NOT NULL,
-            featured INTEGER DEFAULT 0
+            featured INTEGER DEFAULT 0,
+            sha256 TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS index_model_id ON download_files (model_id);
         CREATE INDEX IF NOT EXISTS index_downloaded ON download_files (downloaded);
@@ -213,6 +217,7 @@ fn test_sql() {
         downloaded_at: Utc::now(),
         tags: vec!["test".to_string()],
         featured: false,
+        sha256: Default::default(),
     };
 
     downloaded_file.insert_into_db(&conn).unwrap();
