@@ -265,17 +265,27 @@ impl Store {
     }
 
     fn set_models(&mut self, models: Vec<Model>) {
-        use lipsum::lipsum;
-        use rand::distributions::{Alphanumeric, DistString};
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        fn random_string(size: usize) -> String {
-            Alphanumeric.sample_string(&mut rand::thread_rng(), size)
+        #[cfg(not(debug_assertions))]
+        {
+            self.models = models;
         }
-        let fill_fake_data = std::env::var("FILL_FAKE_DATA")
-            .is_ok_and(|fill_fake_data| ["true", "t", "1"].iter().any(|&s| s == fill_fake_data));
+        #[cfg(debug_assertions)]
+        {
+            use lipsum::lipsum;
+            use rand::distributions::{Alphanumeric, DistString};
+            use rand::Rng;
+            let mut rng = rand::thread_rng();
+            fn random_string(size: usize) -> String {
+                Alphanumeric.sample_string(&mut rand::thread_rng(), size)
+            }
 
-        if fill_fake_data {
+            let fill_fake_data = std::env::var("FILL_FAKE_DATA").is_ok_and(|fill_fake_data| {
+                ["true", "t", "1"].iter().any(|&s| s == fill_fake_data)
+            });
+
+            if !fill_fake_data {
+                return;
+            }
             let faked_models: Vec<Model> = models
                 .iter()
                 .map(|model| {
@@ -352,8 +362,6 @@ impl Store {
                 })
                 .collect();
             self.models = faked_models;
-        } else {
-            self.models = models;
         }
     }
 
