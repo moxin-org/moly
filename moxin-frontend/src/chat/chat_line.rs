@@ -62,11 +62,8 @@ live_design! {
 
     MessageText = <Markdown>{
         padding: 0,
-        draw_normal: {
-            color: #000
-        }
-
         line_spacing: (LINE_SPACING),
+        paragraph_gap: 4,
         width: Fill, height: Fit,
         font_size: 10.0,
         draw_normal: {
@@ -91,13 +88,13 @@ live_design! {
         }
         draw_block: {
             line_color: (MESSAGE_TEXT_COLOR)
-            sep_color: (MESSAGE_TEXT_COLOR)
+            sep_color: (#EDEDED)
             quote_bg_color: (#EDEDED)
             quote_fg_color: (#969696)
             block_color: (#EDEDED)
             code_color: (#EDEDED)
         }
-        list_item_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {left: 5.0, top: 1.0, bottom: 1.0}, }
+        list_item_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {left: 10.0, right:10, top: 10.0, bottom: 0}, }
         code_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}, }
         quote_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}, }
     }
@@ -339,7 +336,6 @@ impl ChatLine {
     pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
         let text = self.text_input(id!(input)).text();
         let to_markdown = parse_markdown(&text);
-        // dbg!("RAW", text);
         let is_plain_text = to_markdown.nodes.len() <= 3;
 
         self.view(id!(plain_text_message_container))
