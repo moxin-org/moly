@@ -91,9 +91,10 @@ impl Store {
         };
         store.load_downloaded_files();
         store.load_pending_downloads();
-        store.load_featured_models();
-        store.sort_models(SortCriteria::MostDownloads);
 
+        store.load_featured_models();
+
+        store.sort_models(SortCriteria::MostDownloads);
         store
     }
 
@@ -263,9 +264,102 @@ impl Store {
         self.update_search_results();
     }
 
+    fn set_models(&mut self, models: Vec<Model>) {
+        use lipsum::lipsum;
+        use rand::distributions::{Alphanumeric, DistString};
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        fn random_string(size: usize) -> String {
+            Alphanumeric.sample_string(&mut rand::thread_rng(), size)
+        }
+        let fill_fake_data = std::env::var("FILL_FAKE_DATA")
+            .is_ok_and(|fill_fake_data| ["true", "t", "1"].iter().any(|&s| s == fill_fake_data));
+
+        if fill_fake_data {
+            let faked_models: Vec<Model> = models
+                .iter()
+                .map(|model| {
+                    // filling model attributes
+                    let mut new_model = model.clone();
+                    if model.summary.is_empty() {
+                        new_model.summary = lipsum(30);
+                    }
+
+                    if model.name.is_empty() {
+                        // we might need a fancier word generator
+                        new_model.name = format!(
+                            "{}-{}-{}{}-{}-{}",
+                            lipsum(1),
+                            rng.gen_range(0..10),
+                            random_string(1).to_uppercase(),
+                            rng.gen_range(0..10),
+                            lipsum(1),
+                            lipsum(1),
+                        );
+                    }
+
+                    if model.size.is_empty() {
+                        new_model.size = rng.gen_range(100000000..999999999).to_string();
+                    };
+
+                    if model.like_count == 0 {
+                        new_model.like_count = rng.gen_range(1..1000);
+                    };
+
+                    if model.download_count == 0 {
+                        new_model.download_count = rng.gen_range(0..10000);
+                    };
+
+                    // filling files
+                    let new_files: Vec<File> = model
+                        .files
+                        .iter()
+                        .map(|file| {
+                            let mut new_file = file.clone();
+
+                            if new_file.quantization.is_empty() {
+                                new_file.quantization = format!(
+                                    "Q{}_{}_{}",
+                                    rng.gen_range(0..10),
+                                    random_string(1).to_uppercase(),
+                                    random_string(1).to_uppercase()
+                                );
+                            }
+
+                            if file.name.is_empty() {
+                                // we might need a fancier word generator
+                                new_file.name = format!(
+                                    "{}-{}-{}-{}-{}.{}.gguf",
+                                    lipsum(1),
+                                    rng.gen_range(0..10),
+                                    random_string(5),
+                                    lipsum(1),
+                                    new_file.quantization,
+                                    rng.gen_range(0..10),
+                                );
+                            }
+
+                            if file.size.is_empty() {
+                                new_file.size = rng.gen_range(100000000..999999999).to_string();
+                            };
+
+                            new_file
+                        })
+                        .collect();
+
+                    new_model.files = new_files;
+                    new_model
+                })
+                .collect();
+            self.models = faked_models;
+        } else {
+            self.models = models;
+        }
+    }
+
     fn update_search_results(&mut self) {
         if let Ok(models) = self.search.process_results(&self.backend) {
-            self.models = models;
+            self.set_models(models);
             self.sort_models_by_current_criteria();
         }
     }
