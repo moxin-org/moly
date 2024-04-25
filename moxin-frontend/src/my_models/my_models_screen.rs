@@ -1,7 +1,10 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
+use crate::{
+    data::store::Store,
+    shared::utils::{open_folder, BYTES_PER_MB},
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -46,12 +49,13 @@ live_design! {
         }
     }
 
-    ReviewInFinder = <RoundedView> {
+    ShowInFiles = <RoundedView> {
         width: Fit,
         height: Fit,
         margin: {left: 10}
         padding: {top: 6, bottom: 6, left: 4, right: 10}
         spacing: 8,
+        cursor: Hand
 
         draw_bg: {
             instance radius: 2.0,
@@ -68,12 +72,12 @@ live_design! {
             icon_walk: {width: 14, height: 14}
         }
 
-        <Label> {
+        label = <Label> {
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 11},
                 color: #000
             }
-            text: "Review in Finder"
+            text: "Show in finder"
         }
     }
 
@@ -234,7 +238,7 @@ live_design! {
             }
 
             <DownloadLocation> {}
-            <ReviewInFinder> {}
+            show_in_files = <ShowInFiles> {}
             <View> { width: Fill, height: Fit }
             <SearchBar> {}
         }
@@ -254,6 +258,7 @@ pub struct MyModelsScreen {
 impl Widget for MyModelsScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.match_event(cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -263,7 +268,32 @@ impl Widget for MyModelsScreen {
         let models_summary_label = self.view.label(id!(header.models_summary));
         models_summary_label.set_text(&summary);
 
+        self.view
+            .label(id!(show_in_files.label))
+            .set_text(&file_manager_label());
+
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+fn file_manager_label() -> String {
+    if cfg!(target_os = "windows") {
+        "Show in Explorer".to_string()
+    } else if cfg!(target_os = "macos") {
+        "Show in Finder".to_string()
+    } else {
+        "Show in File Manager".to_string()
+    }
+}
+
+impl MatchEvent for MyModelsScreen {
+    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions) {
+        if let Some(fe) = self.view(id!(show_in_files)).finger_up(actions) {
+            if fe.was_tap() {
+                // TODO: replace with actual downloads path in the current store.
+                open_folder(".").expect("Failed to open downloads folder");
+            }
+        }
     }
 }
 
