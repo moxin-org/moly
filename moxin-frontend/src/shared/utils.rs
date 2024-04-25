@@ -1,4 +1,5 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use std::process::Command;
 
 pub const BYTES_PER_MB: f64 = 1_048_576.0; // (1024^2)
 pub const HUGGING_FACE_BASE_URL: &str = "https://huggingface.co";
@@ -25,4 +26,20 @@ pub fn format_model_downloaded_size(size: &str, progress: f64) -> Result<String>
 
 pub fn hugging_face_model_url(model_id: &str) -> String {
     format!("{}/{}", HUGGING_FACE_BASE_URL, model_id)
+}
+
+pub fn open_folder(path: &str) -> Result<()> {
+    let result = if cfg!(target_os = "windows") {
+        Command::new("explorer").arg(path).spawn()
+    } else if cfg!(target_os = "macos") {
+        Command::new("open").arg(path).spawn()
+    } else {
+        // Defaulting to Linux and other Unix-like OS,
+        // this assumes that 'xdg-open' is available.
+        Command::new("xdg-open").arg(path).spawn()
+    };
+
+    result.context(format!("Failed to open folder: {}", path))?;
+
+    Ok(())
 }

@@ -1,7 +1,10 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
+use crate::{
+    data::store::Store,
+    shared::utils::{open_folder, BYTES_PER_MB},
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -52,6 +55,7 @@ live_design! {
         margin: {left: 10}
         padding: {top: 6, bottom: 6, left: 4, right: 10}
         spacing: 8,
+        cursor: Hand
 
         draw_bg: {
             instance radius: 2.0,
@@ -234,7 +238,7 @@ live_design! {
             }
 
             <DownloadLocation> {}
-            <ReviewInFinder> {}
+            review_in_finder = <ReviewInFinder> {}
             <View> { width: Fill, height: Fit }
             <SearchBar> {}
         }
@@ -254,6 +258,7 @@ pub struct MyModelsScreen {
 impl Widget for MyModelsScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.match_event(cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -264,6 +269,17 @@ impl Widget for MyModelsScreen {
         models_summary_label.set_text(&summary);
 
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl MatchEvent for MyModelsScreen {
+    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions) {
+        if let Some(fe) = self.view(id!(review_in_finder)).finger_up(actions) {
+            if fe.was_tap() {
+                // TODO: replace with actual downloads path in the current store.
+                open_folder(".").expect("Failed to open downloads folder");
+            }
+        }
     }
 }
 
