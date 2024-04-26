@@ -852,8 +852,8 @@ impl BackendImpl {
         let sql_conn = rusqlite::Connection::open(format!("{home_dir}/data.sql")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
-        let _ = store::models::create_table_models(&sql_conn);
-        let _ = store::download_files::create_table_download_files(&sql_conn);
+        let _ = store::models::create_table_models(&sql_conn).unwrap();
+        let _ = store::download_files::create_table_download_files(&sql_conn).unwrap();
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
 

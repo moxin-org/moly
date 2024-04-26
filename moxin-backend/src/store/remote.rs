@@ -234,6 +234,46 @@ impl ModelFileDownloader {
         }
     }
 
+    fn get_download_url(&self, file: &super::download_files::DownloadedFile) -> String {
+        format!(
+            "https://huggingface.co/{}/resolve/main/{}",
+            file.model_id, file.name
+        )
+    }
+
+    async fn download(
+        self,
+        file: super::download_files::DownloadedFile,
+        tx: Sender<anyhow::Result<FileDownloadResponse>>,
+    ) {
+        let file_id = file.id.to_string();
+
+        let mut send_progress = |progress| {
+            let r = tx.send(Ok(FileDownloadResponse::Progress(
+                file_id.clone(),
+                progress as f32,
+            )));
+            log::debug!("send progress {file_id} {progress} {r:?}");
+            Ok(())
+        };
+
+        let r = self
+            .download_file_from_remote(file, &mut send_progress)
+            .await;
+
+        match r {
+            Ok(Some(response)) => {
+                let _ = tx.send(Ok(response));
+            }
+            Ok(None) => {
+                // TODO Implement file removal when download is stopped, nothing to do when it is paused
+            }
+            Err(e) => {
+                let _ = tx.send(Err(e));
+            }
+        }
+    }
+
     pub async fn run_loop(
         downloader: Self,
         max_downloader: usize,
@@ -243,72 +283,50 @@ impl ModelFileDownloader {
             Sender<anyhow::Result<FileDownloadResponse>>,
         )>,
     ) {
-        let (token_tx, mut token_rx) = tokio::sync::mpsc::channel::<()>(max_downloader);
-        for _ in 0..max_downloader {
-            let _ = token_tx.send(()).await;
-        }
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(max_downloader));
 
-        while let Some((model, file, tx)) = download_rx.recv().await {
-            // take a token
-            let _ = token_rx.recv().await;
+        while let Some((model, mut file, tx)) = download_rx.recv().await {
+            let url = downloader.get_download_url(&file);
 
-            let file_id = file.id.to_string();
-            let downloader_ = downloader.clone();
-            let token_tx_ = token_tx.clone();
-            tokio::spawn(async move {
-                let mut send_progress = |progress| {
-                    let r = tx.send(Ok(FileDownloadResponse::Progress(
-                        file_id.clone(),
-                        progress as f32,
-                    )));
-                    println!("send progress {progress} {r:?}");
+            let f = async {
+                let content_length = get_file_content_length(&downloader.client, &url)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
 
-                    Ok(())
-                };
-
-                let r = downloader_
-                    .download_file_from_remote(model, file, &mut send_progress)
-                    .await;
-
-                match r {
-                    Ok(Some(response)) => {
-                        let _ = tx.send(Ok(response));
-                    }
-                    Ok(None) => {
-                        // TODO Implement file removal when download is stopped, nothing to do when it is paused
-                    }
-                    Err(e) => {
-                        let _ = tx.send(Err(e));
-                    }
+                {
+                    file.file_size = content_length;
+                    let conn = downloader.sql_conn.lock().unwrap();
+                    // insert a pending download
+                    file.insert_into_db(&conn).map_err(|e| anyhow::anyhow!(e))?;
+                    model.save_to_db(&conn).map_err(|e| anyhow::anyhow!(e))?;
                 }
-                let _ = token_tx_.send(()).await;
+
+                Ok(())
+            };
+
+            let r: anyhow::Result<()> = f.await;
+
+            if let Err(e) = r {
+                let _ = tx.send(Err(e));
+                continue;
+            }
+
+            let downloader_ = downloader.clone();
+            let semaphore_ = semaphore.clone();
+            tokio::spawn(async move {
+                let permit = semaphore_.acquire_owned().await.unwrap();
+                downloader_.download(file, tx).await;
+                drop(permit);
             });
         }
     }
 
     async fn download_file_from_remote(
         &self,
-        model: super::models::Model,
         mut file: super::download_files::DownloadedFile,
         report_fn: &mut (dyn FnMut(f64) -> anyhow::Result<()> + Send),
     ) -> anyhow::Result<Option<FileDownloadResponse>> {
-        let url = format!(
-            "https://huggingface.co/{}/resolve/main/{}?download=true",
-            file.model_id, file.name
-        );
-        println!("download_file_from_remote({url})");
-
-        let content_length = get_file_content_length(&self.client, &url)
-            .await
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-        {
-            file.file_size = content_length;
-            let conn = self.sql_conn.lock().unwrap();
-            // insert a pending download
-            file.insert_into_db(&conn).map_err(|e| anyhow::anyhow!(e))?;
-            model.save_to_db(&conn).map_err(|e| anyhow::anyhow!(e))?;
-        }
+        let url = self.get_download_url(&file);
 
         let local_path = Path::new(&file.download_dir)
             .join(&file.model_id)
@@ -331,7 +349,7 @@ impl ModelFileDownloader {
         let r = tokio::select! {
             r = download_file(
                 &self.client,
-                content_length,
+                file.file_size,
                 &url,
                 &local_path,
                 self.step,

@@ -119,8 +119,11 @@ pub fn get_all_pending_downloads(
             .join(&file.model_id)
             .join(&file.name);
 
-        let file_meta = std::fs::metadata(file_path).unwrap();
-        let downloaded = file_meta.len();
+        let downloaded = if let Ok(file_meta) = std::fs::metadata(file_path) {
+            file_meta.len()
+        } else {
+            0
+        };
         let progress = (downloaded as f64 / file.file_size as f64) * 100.0;
 
         let pending_download = moxin_protocol::data::PendingDownload {
