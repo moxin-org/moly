@@ -240,7 +240,7 @@ live_design! {
             <DownloadLocation> {}
             show_in_files = <ShowInFiles> {}
             <View> { width: Fill, height: Fit }
-            <SearchBar> {}
+            search = <SearchBar> {}
         }
 
         table = <DownloadedFilesTable> {
@@ -287,14 +287,31 @@ fn file_manager_label() -> String {
 }
 
 impl MatchEvent for MyModelsScreen {
-    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         if let Some(fe) = self.view(id!(show_in_files)).finger_up(actions) {
             if fe.was_tap() {
                 // TODO: replace with actual downloads path in the current store.
                 open_folder(".").expect("Failed to open downloads folder");
             }
         }
+
+        if let Some(keywords) = self.text_input(id!(search.input)).changed(actions) {
+            if !keywords.is_empty() {
+                cx.action(
+                    MyModelsSearchAction::Search(keywords.to_string()),
+                );
+            } else {
+                cx.action(MyModelsSearchAction::Reset);
+            }
+        }
     }
+}
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum MyModelsSearchAction {
+    Search(String),
+    Reset,
+    None,
 }
 
 fn generate_models_summary(downloaded_files: &Vec<DownloadedFile>) -> String {
