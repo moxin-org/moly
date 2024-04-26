@@ -8,7 +8,10 @@ use crate::{
     shared::{modal::ModalAction, utils::format_model_size},
 };
 
-use super::{delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction};
+use super::{
+    delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction,
+    my_models_screen::MyModelsSearchAction,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -215,6 +218,12 @@ pub struct DownloadedFilesTable {
     view: View,
     #[rust]
     file_item_map: HashMap<u64, String>,
+    #[rust]
+    current_results: Vec<DownloadedFile>,
+    #[rust]
+    latest_store_fetch_len: usize,
+    #[rust]
+    search_status: SearchStatus,
 }
 
 impl Widget for DownloadedFilesTable {
@@ -224,10 +233,28 @@ impl Widget for DownloadedFilesTable {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let mut downloaded_files = scope.data.get::<Store>().unwrap().downloaded_files.clone();
-        downloaded_files.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
+        let filter = match &self.search_status {
+            SearchStatus::Filtered(keywords) => Some(keywords.clone()),
+            _ => None,
+        };
 
-        let entries_count = downloaded_files.len();
+        // If we're already filtering, re-apply filter over the new store data
+        // only re-filtering if there are new downloads in store
+        match filter {
+            Some(keywords) => {
+                if self.latest_store_fetch_len
+                    != scope.data.get::<Store>().unwrap().downloaded_files.len()
+                {
+                    self.filter_by_keywords(cx, scope, &keywords)
+                }
+            }
+            None => self.fetch_results(scope),
+        };
+
+        self.current_results
+            .sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
+
+        let entries_count = self.current_results.len();
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
 
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
@@ -247,7 +274,7 @@ impl Widget for DownloadedFilesTable {
                         template = live_id!(ItemRow);
                         let item = list.item(cx, item_id, template).unwrap();
 
-                        let file_data = &downloaded_files[item_id - 1];
+                        let file_data = &self.current_results[item_id - 1];
 
                         self.file_item_map
                             .insert(item.widget_uid().0, file_data.file.id.clone());
@@ -362,8 +389,53 @@ impl WidgetMatchEvent for DownloadedFilesTable {
                     }
                 }
             }
+
+            match action.cast() {
+                MyModelsSearchAction::Search(keywords) => {
+                    self.filter_by_keywords(cx, scope, &keywords);
+                }
+                MyModelsSearchAction::Reset => {
+                    self.reset_results(cx, scope);
+                }
+                _ => {}
+            }
         }
     }
+}
+
+impl DownloadedFilesTable {
+    fn fetch_results(&mut self, scope: &mut Scope) {
+        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.latest_store_fetch_len = self.current_results.len();
+    }
+
+    fn filter_by_keywords(&mut self, cx: &mut Cx, scope: &mut Scope, keywords: &str) {
+        let keywords = keywords.to_lowercase();
+        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.latest_store_fetch_len = self.current_results.len();
+
+        self.current_results.retain(|f| {
+            f.file.name.to_lowercase().contains(&keywords)
+                || f.model.name.to_lowercase().contains(&keywords)
+        });
+
+        self.search_status = SearchStatus::Filtered(keywords);
+        self.redraw(cx);
+    }
+
+    fn reset_results(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+
+        self.search_status = SearchStatus::Idle;
+        self.redraw(cx);
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+enum SearchStatus {
+    #[default]
+    Idle,
+    Filtered(String),
 }
 
 #[derive(Clone, DefaultNone, Debug)]
