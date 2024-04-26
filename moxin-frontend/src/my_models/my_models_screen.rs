@@ -119,7 +119,7 @@ live_design! {
             height: Fit,
 
             empty_message: "Search Model by Keyword"
-           
+
             draw_text: {
                 text_style:<REGULAR_FONT>{font_size: 11},
             }
@@ -244,9 +244,7 @@ impl MatchEvent for MyModelsScreen {
 
         if let Some(keywords) = self.text_input(id!(search.input)).changed(actions) {
             if !keywords.is_empty() {
-                cx.action(
-                    MyModelsSearchAction::Search(keywords.to_string()),
-                );
+                cx.action(MyModelsSearchAction::Search(keywords.to_string()));
             } else {
                 cx.action(MyModelsSearchAction::Reset);
             }
