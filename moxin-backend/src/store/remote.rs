@@ -399,24 +399,6 @@ impl ModelFileDownloader {
 }
 
 #[test]
-fn test_download_file_from_huggingface() {
-    let client = reqwest::blocking::Client::new();
-    // download_file_from_remote(
-    //     &client,
-    //     "TheBloke/Llama-2-7B-Chat-GGUF",
-    //     "llama-2-7b-chat.Q3_K_M.gguf",
-    //     "/home/csh/ai/models/TheBloke/Llama-2-7B-Chat-GGUF/llama-2-7b-chat.Q3_K_M.gguf",
-    //     0.05,
-    //     &mut |progress| {
-    //         println!("Download progress: {:.2}%", progress);
-    //         Ok(())
-    //     },
-    //     &|| false,
-    // )
-    // .unwrap();
-}
-
-#[test]
 fn test_search() {
     let models = RemoteModel::search("llama", 100, 0).unwrap();
     println!("{:?}", models);
