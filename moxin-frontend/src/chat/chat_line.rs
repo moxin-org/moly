@@ -37,6 +37,13 @@ live_design! {
         }
     }
 
+    SaveAndRegerateButton = <ChatLineEditButton> {
+        width: 130,
+        button_label = {
+            text: "Save & Regenerate"
+        }
+    }
+
     CancelButton = <ChatLineEditButton> {
         draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
 
@@ -150,6 +157,7 @@ live_design! {
                 margin: {top: 10},
                 spacing: 6,
                 save = <SaveButton> {}
+                save_and_regenerate = <SaveAndRegerateButton> {}
                 cancel = <CancelButton> {}
             }
         }
@@ -224,7 +232,7 @@ live_design! {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ChatLineAction {
     Delete(usize),
-    Edit(usize, String),
+    Edit(usize, String, bool),
     Copy(usize),
     None,
 }
@@ -333,7 +341,22 @@ impl ChatLine {
                 cx.widget_action(
                     widget_id,
                     &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message),
+                    ChatLineAction::Edit(self.message_id, updated_message, false),
+                );
+
+                self.set_edit_mode(cx, false);
+            }
+        }
+
+        if let Some(fe) = self.view(id!(save_and_regenerate)).finger_up(&actions) {
+            if fe.was_tap() {
+                let updated_message = self.text_input(id!(input)).text();
+
+                let widget_id = self.view.widget_uid();
+                cx.widget_action(
+                    widget_id,
+                    &scope.path,
+                    ChatLineAction::Edit(self.message_id, updated_message, true),
                 );
 
                 self.set_edit_mode(cx, false);
@@ -396,5 +419,12 @@ impl ChatLineRef {
             inner.edition_state = ChatLineState::NotEditable;
             inner.view(id!(actions_section.actions)).set_visible(false);
         }
+    }
+
+    pub fn set_regenerate_enabled(&mut self, enabled: bool) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.view(id!(save_and_regenerate)).set_visible(enabled);
     }
 }
