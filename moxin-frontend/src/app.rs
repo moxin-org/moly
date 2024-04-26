@@ -10,9 +10,11 @@ use makepad_widgets::*;
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
+    import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
     import crate::shared::modal::*;
+    import crate::shared::widgets::SidebarMenuButton;
     import crate::landing::landing_screen::LandingScreen;
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
@@ -24,37 +26,6 @@ live_design! {
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
-
-    SidebarMenuButton = <RadioButton> {
-        width: 60,
-        height: 60,
-        icon_walk: {width: 32, height: 32}
-        flow: Down, spacing: 5.0, align: {x: 0.5, y: 0.5}
-        draw_radio: {
-            radio_type: Tab,
-            color_active: #EDEEF0,
-            color_inactive: #EDEEF0,
-        }
-        draw_icon: {
-            fn get_color(self) -> vec4 {
-                return mix(
-                    mix(
-                        #344054,
-                        #636e82,
-                        self.hover
-                    ),
-                    #B258DD,
-                    self.selected
-                )
-            }
-        }
-        draw_text: {
-            color_selected: #B258DD,
-            color_unselected: #344054,
-            color_unselected_hover: #636e82,
-            text_style: <REGULAR_FONT> {font_size: 8}
-        }
-    }
 
     App = {{App}} {
         ui: <Window> {
@@ -72,7 +43,7 @@ live_design! {
 
                     sidebar_menu = <View> {
                         width: 100,
-                        flow: Down, spacing: 20.0,
+                        flow: Down, spacing: 30.0,
                         padding: { top: 80 }
 
                         align: {x: 0.5, y: 0.0},
