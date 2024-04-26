@@ -36,7 +36,7 @@ live_design! {
             draw_bg: {
                 color: #fff,
                 border_width: 1.5,
-                border_color: #EAECF0,
+                //border_color: #EAECF0,
                 radius: 4.0
                 blur: 0.0
             }
