@@ -225,7 +225,7 @@ live_design! {
 pub enum ChatLineAction {
     Delete(usize),
     Edit(usize, String),
-    _Copy(usize),
+    Copy(usize),
     None,
 }
 
@@ -316,6 +316,11 @@ impl ChatLine {
 
         if self.button(id!(edit_button)).clicked(&actions) {
             self.set_edit_mode(cx, true);
+        }
+
+        if self.button(id!(copy_button)).clicked(&actions) {
+            let text_to_copy = self.text_input(id!(input)).text();
+            cx.copy_to_clipboard(&text_to_copy);
         }
     }
 

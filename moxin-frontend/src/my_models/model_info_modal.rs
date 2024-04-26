@@ -238,8 +238,7 @@ impl WidgetMatchEvent for ModelInfoModal {
             .finger_up(actions)
         {
             if fe.was_tap() {
-                // TODO
-                // cx.copy_to_clipboard(&self.stringified_model_data);
+                cx.copy_to_clipboard(&self.stringified_model_data);
             }
         }
 
