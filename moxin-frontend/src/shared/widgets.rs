@@ -43,4 +43,80 @@ live_design! {
             }
         }
     }
+
+    SIDEBAR_COLOR = #344054
+    SIDEBAR_COLOR_HOVER = #636e82
+    SIDEBAR_COLOR_SELECTED = #B258DD
+
+    SidebarMenuButton = <RadioButton> {
+        width: 96,
+        height: 60,
+        padding: 0, margin: 0,
+        flow: Down, spacing: 10.0, align: {x: 0.5, y: 0.5}
+
+        icon_walk: {margin: 0, width: 32, height: 32}
+        label_walk: {margin: 0}
+
+        draw_radio: {
+            radio_type: Tab,
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                sdf.box(
+                    self.rect_size.x-2,
+                    0.0,
+                    self.rect_size.x,
+                    self.rect_size.y,
+                    0.5
+                );
+                sdf.fill(
+                    mix(
+                        mix(
+                            #0000,
+                            (SIDEBAR_COLOR_HOVER),
+                            self.hover
+                        ),
+                        (SIDEBAR_COLOR_SELECTED),
+                        self.selected
+                    )
+                );
+                return sdf.result;
+            }
+        }
+
+        draw_text: {
+            color_unselected: (SIDEBAR_COLOR)
+            color_unselected_hover: (SIDEBAR_COLOR_HOVER)
+            color_selected: (SIDEBAR_COLOR_SELECTED)
+
+            fn get_color(self) -> vec4 {
+                return mix(
+                    mix(
+                        self.color_unselected,
+                        self.color_unselected_hover,
+                        self.hover
+                    ),
+                    self.color_selected,
+                    self.selected
+                )
+            }
+        }
+
+        draw_icon: {
+            instance color_unselected: (SIDEBAR_COLOR)
+            instance color_unselected_hover: (SIDEBAR_COLOR_HOVER)
+            instance color_selected: (SIDEBAR_COLOR_SELECTED)
+            fn get_color(self) -> vec4 {
+                return mix(
+                    mix(
+                        self.color_unselected,
+                        self.color_unselected_hover,
+                        self.hover
+                    ),
+                    self.color_selected,
+                    self.selected
+                )
+            }
+        }
+    }
 }
