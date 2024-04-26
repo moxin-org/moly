@@ -56,14 +56,14 @@ live_design! {
     }
 
     MESSAGE_TEXT_COLOR = #000
-    TEXT_HEIGHT_FACTOR = 1.0
+    TEXT_HEIGHT_FACTOR = 1.3
     LINE_SPACING = 8.0
     BLOCK_LINE_SPACING = 12.0
 
     MessageText = <Markdown>{
         padding: 0,
         line_spacing: (LINE_SPACING),
-        paragraph_gap: 4,
+        paragraph_spacing: 20.0,
         width: Fill, height: Fit,
         font_size: 10.0,
         draw_normal: {
@@ -94,9 +94,10 @@ live_design! {
             block_color: (#EDEDED)
             code_color: (#EDEDED)
         }
-        list_item_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {left: 10.0, right:10, top: 10.0, bottom: 0}, }
-        code_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}, }
-        quote_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}, }
+        list_item_layout: { line_spacing: 5.0, padding: {left: 10.0, right:10, top: 6.0, bottom: 0}, }
+        list_item_walk:{margin:0, height:Fit, width:Fill}
+        code_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}}
+        quote_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}}
     }
 
     EditTextInput = <MoxinTextInput> {
@@ -109,7 +110,7 @@ live_design! {
             color: #fff
         }
         draw_text: {
-            text_style:<REGULAR_FONT>{font_size: 10},
+            text_style:<REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
             word: Wrap,
 
             instance prompt_enabled: 0.0
@@ -166,7 +167,7 @@ live_design! {
                     width: Fill,
                     height: Fit,
                     draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 10},
+                        text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
                         color: #000
                     }
                 }
