@@ -268,7 +268,7 @@ impl Store {
             self.models = models;
         }
         #[cfg(debug_assertions)]
-        {
+        'debug_block: {
             use lipsum::lipsum;
             use rand::distributions::{Alphanumeric, DistString};
             use rand::Rng;
@@ -282,8 +282,10 @@ impl Store {
             });
 
             if !fill_fake_data {
-                return;
+                self.models = models;
+                break 'debug_block;
             }
+
             let faked_models: Vec<Model> = models
                 .iter()
                 .map(|model| {
