@@ -120,8 +120,8 @@ live_design! {
         }
     }
 
-    /// Customized text input
-    /// Removes shadows, focus highlight and the dark theme colors
+    // Customized text input
+    // Removes shadows, focus highlight and the dark theme colors
     MoxinTextInput = <TextInput> {
         draw_bg: {
             color: #fff
