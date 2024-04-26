@@ -10,6 +10,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::*;
     import makepad_draw::shader::std::*;
 
     import crate::chat::model_selector::ModelSelector;
@@ -115,7 +116,7 @@ live_design! {
             border_width: 1.0,
         }
 
-        prompt = <TextInput> {
+        prompt = <MoxinTextInput> {
             width: Fill,
             height: Fit,
 
@@ -133,43 +134,6 @@ live_design! {
                         #000,
                         self.prompt_enabled
                     )
-                }
-            }
-
-            // TODO find a way to override colors
-            draw_cursor: {
-                instance focus: 0.0
-                uniform border_radius: 0.5
-                fn pixel(self) -> vec4 {
-                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                    sdf.box(
-                        0.,
-                        0.,
-                        self.rect_size.x,
-                        self.rect_size.y,
-                        self.border_radius
-                    )
-                    sdf.fill(mix(#fff, #bbb, self.focus));
-                    return sdf.result
-                }
-            }
-
-            // TODO find a way to override colors
-            draw_select: {
-                instance hover: 0.0
-                instance focus: 0.0
-                uniform border_radius: 2.0
-                fn pixel(self) -> vec4 {
-                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                    sdf.box(
-                        0.,
-                        0.,
-                        self.rect_size.x,
-                        self.rect_size.y,
-                        self.border_radius
-                    )
-                    sdf.fill(mix(#eee, #ddd, self.focus)); // Pad color
-                    return sdf.result
                 }
             }
         }

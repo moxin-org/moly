@@ -12,6 +12,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::*;
 
     import crate::my_models::downloaded_files_table::DownloadedFilesTable;
 
@@ -113,56 +114,14 @@ live_design! {
             icon_walk: {width: 14, height: Fit}
         }
 
-        input = <TextInput> {
+        input = <MoxinTextInput> {
             width: 260,
             height: Fit,
 
             empty_message: "Search Model by Keyword"
-            draw_bg: {
-                color: #fff
-            }
+           
             draw_text: {
                 text_style:<REGULAR_FONT>{font_size: 11},
-                fn get_color(self) -> vec4 {
-                    return #555
-                }
-            }
-
-            // TODO find a way to override colors
-            draw_cursor: {
-                instance focus: 0.0
-                uniform border_radius: 0.5
-                fn pixel(self) -> vec4 {
-                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                    sdf.box(
-                        0.,
-                        0.,
-                        self.rect_size.x,
-                        self.rect_size.y,
-                        self.border_radius
-                    )
-                    sdf.fill(mix(#fff, #bbb, self.focus));
-                    return sdf.result
-                }
-            }
-
-            // TODO find a way to override colors
-            draw_select: {
-                instance hover: 0.0
-                instance focus: 0.0
-                uniform border_radius: 2.0
-                fn pixel(self) -> vec4 {
-                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                    sdf.box(
-                        0.,
-                        0.,
-                        self.rect_size.x,
-                        self.rect_size.y,
-                        self.border_radius
-                    )
-                    sdf.fill(mix(#eee, #ddd, self.focus)); // Pad color
-                    return sdf.result
-                }
             }
         }
     }
