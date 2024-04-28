@@ -2,6 +2,10 @@ name: Manual Trigger Workflow
 
 on:
   workflow_dispatch:
+   inputs:
+      tag_id:
+        required: true
+        type: string
 
 jobs:
   create_release:
@@ -15,8 +19,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ inputs.tag_id }}
+          release_name: Release ${{ inputs.tag_id }}
 
   build:
     needs: create_release 
