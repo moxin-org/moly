@@ -15,8 +15,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.triggered_at }}
-          release_name: Release ${{ github.event.triggered_at }}
+          tag_name: ${{ github.run_id }}
+          release_name: Release ${{ github.run_id }}
 
   build:
     needs: create_release 
