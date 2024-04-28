@@ -1,4 +1,4 @@
-name: Manual Trigger Workflow
+name: build_and_release
 
 on:
   workflow_dispatch:
@@ -55,5 +55,5 @@ jobs:
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: moxin
-          asset_name: moxin-${{ matrix.os }}
+          asset_name: moxin-${{ matrix.os }}-${{ runner.arch }}
           asset_content_type: application/octet-stream
