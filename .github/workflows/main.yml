@@ -30,6 +30,14 @@ jobs:
         run: curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml
       - name: Install Rust
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+      - name: Install dependencies 
+        if: ${{ matrix.os != 'macos-latest' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install libssl-dev pkg-config
+          sudo apt-get install llvm clang libclang-dev
+          sudo apt install binfmt-support
+          sudo apt-get install libxcursor-dev libx11-dev libasound2-dev libpulse-dev
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build 
