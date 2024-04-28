@@ -42,6 +42,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: libwasmedge_rustls.zip
+          asset_path: moxin
           asset_name: moxin-${{ matrix.os }}
           asset_content_type: application/octet-stream
