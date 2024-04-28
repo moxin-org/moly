@@ -1,0 +1,47 @@
+name: Manual Trigger Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create_release:
+    runs-on: ubuntu-20.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps: 
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.triggered_at }}
+          release_name: Release ${{ github.event.triggered_at }}
+
+  build:
+    needs: create_release 
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-20.04, ubuntu-22.04]
+
+    steps:
+      - name: Install WasmEdge
+        run: curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml
+      - name: Install Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build 
+        run: |
+          cargo build --release
+          mv .target/release/moxin-frontend moxin
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1  
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: libwasmedge_rustls.zip
+          asset_name: moxin-${{ matrix.os }}
+          asset_content_type: application/octet-stream
