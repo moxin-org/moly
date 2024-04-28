@@ -164,7 +164,7 @@ impl DownloadedFile {
 
     pub fn remove(file_id: &str, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(
-            "DELETE FROM download_files WHERE file_id = ?1",
+            "DELETE FROM download_files WHERE id = ?1",
             rusqlite::params![file_id],
         )?;
         Ok(())
