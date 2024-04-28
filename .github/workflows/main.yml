@@ -35,7 +35,7 @@ jobs:
       - name: Build 
         run: |
           cargo build --release
-          mv .target/release/moxin-frontend moxin
+          mv ./target/release/moxin-frontend moxin
       - name: Upload release asset
         uses: actions/upload-release-asset@v1  
         env:
