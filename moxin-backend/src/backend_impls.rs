@@ -849,7 +849,7 @@ impl BackendImpl {
     ) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
 
-        let sql_conn = rusqlite::Connection::open(format!("{home_dir}/data.sql")).unwrap();
+        let sql_conn = rusqlite::Connection::open(format!("{home_dir}/data.sqlite")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
         let _ = store::models::create_table_models(&sql_conn).unwrap();

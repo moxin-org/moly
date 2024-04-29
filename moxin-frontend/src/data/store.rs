@@ -1,3 +1,4 @@
+use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
@@ -9,6 +10,8 @@ use moxin_protocol::data::{
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
+
+pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum StoreAction {
@@ -65,14 +68,21 @@ pub struct Store {
     pub current_downloads: HashMap<FileID, Download>,
 
     pub preferences: Preferences,
+    pub downloaded_files_dir: String,
 }
 
 impl Store {
     pub fn new() -> Self {
-        let mut store = Self {
-            // Initialize the backend with the default values
-            backend: Backend::default(),
+        let downloaded_files_dir = setup_model_downloads_folder();
+        let moxin_home_dir = moxin_home_dir().to_string_lossy().to_string();
 
+        let backend = Backend::new(
+            moxin_home_dir,
+            downloaded_files_dir.clone(),
+            DEFAULT_MAX_DOWNLOAD_THREADS,
+        );
+        let mut store = Self {
+            backend,
             // Initialize the local cache with empty values
             models: vec![],
 
@@ -86,6 +96,7 @@ impl Store {
             current_downloads: HashMap::new(),
 
             preferences: Preferences::load(),
+            downloaded_files_dir,
         };
         store.load_downloaded_files();
         store.load_pending_downloads();

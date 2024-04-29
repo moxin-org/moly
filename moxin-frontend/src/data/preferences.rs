@@ -1,11 +1,14 @@
 use std::{
     fs::File,
     io::{Read, Write},
-    path::Path,
+    path::PathBuf,
 };
 
 use moxin_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
+
+use super::filesystem::moxin_home_dir;
+const PREFERENCES_FILE: &str = "preferences.json";
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Preferences {
@@ -39,7 +42,7 @@ impl Preferences {
 }
 
 fn read_from_file() -> Result<String, std::io::Error> {
-    let path = Path::new("preferences.json");
+    let path = preferences_path();
 
     let mut file = match File::open(&path) {
         Ok(file) => file,
@@ -54,7 +57,7 @@ fn read_from_file() -> Result<String, std::io::Error> {
 }
 
 fn write_to_file(json: &str) -> Result<(), std::io::Error> {
-    let path = Path::new("preferences.json");
+    let path = preferences_path();
 
     let mut file = match File::create(&path) {
         Ok(file) => file,
@@ -65,4 +68,10 @@ fn write_to_file(json: &str) -> Result<(), std::io::Error> {
         Ok(_) => Ok(()),
         Err(why) => Err(why),
     }
+}
+
+fn preferences_path() -> PathBuf {
+    let home_dir = moxin_home_dir();
+    let preferences_path = PathBuf::from(home_dir).join(PREFERENCES_FILE);
+    preferences_path
 }
