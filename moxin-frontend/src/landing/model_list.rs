@@ -13,6 +13,8 @@ live_design! {
         width: Fill,
         height: Fill,
 
+        flow: Overlay,
+
         content = <View> {
             width: Fill,
             height: Fill,
@@ -34,6 +36,11 @@ live_design! {
             width: Fill,
             height: Fill,
             visible: false,
+
+            show_bg: true,
+            draw_bg: {
+                color: #FFFE,
+            }
             <SearchLoading> {}
         }
     }
@@ -55,7 +62,7 @@ impl Widget for ModelList {
             let is_loading = store.search_is_loading();
 
             self.view(id!(loading)).set_visible(is_loading);
-            self.view(id!(content)).set_visible(!is_loading);
+            //self.view(id!(content)).set_visible(!is_loading);
         }
     }
 
@@ -103,7 +110,7 @@ impl WidgetMatchEvent for ModelList {
             match action.as_widget_action().cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
                     loading.set_visible(true);
-                    content.set_visible(false);
+                    //content.set_visible(false);
                     portal_list.set_first_id_and_scroll(0, 0.0);
 
                     self.redraw(cx);

@@ -124,6 +124,7 @@ impl Widget for LandingScreen {
         if store.search_is_loading() {
             self.view(id!(heading_with_filters)).set_visible(false);
             self.view(id!(heading_no_filters)).set_visible(false);
+            self.sorting(id!(sorting)).set_visible(cx, false);
         } else if let Some(keyword) = store.search.keyword.clone() {
             self.view(id!(heading_with_filters)).set_visible(true);
             self.view(id!(heading_no_filters)).set_visible(false);

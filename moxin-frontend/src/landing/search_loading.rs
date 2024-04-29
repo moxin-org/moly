@@ -7,6 +7,8 @@ live_design! {
     import crate::shared::styles::*;
     import crate::landing::model_card::ModelCard;
 
+    ANIMATION_SPEED = 0.33
+
     SearchLoading = {{SearchLoading}} {
         width: Fill,
         height: Fill,
@@ -18,29 +20,29 @@ live_design! {
         content = <View> {
             width: Fit,
             height: Fit,
-            spacing: 80,
+            spacing: 30,
             circle1 = <CircleView> {
-                width: 48,
-                height: 48,
+                width: 28,
+                height: 28,
                 draw_bg: {
                     color: #D9D9D9,
-                    radius: 24.0,
+                    radius: 14.0,
                 }
             }
             circle2 = <CircleView> {
-                width: 48,
-                height: 48,
+                width: 28,
+                height: 28,
                 draw_bg: {
                     color: #D9D9D9,
-                    radius: 24.0,
+                    radius: 14.0,
                 }
             }
             circle3 = <CircleView> {
-                width: 48,
-                height: 48,
+                width: 28,
+                height: 28,
                 draw_bg: {
                     color: #D9D9D9,
-                    radius: 24.0,
+                    radius: 14.0,
                 }
             }
         }
@@ -58,14 +60,13 @@ live_design! {
                 default: start,
                 start = {
                     redraw: true,
-                    from: {all: Snap}
-                    apply: {content = { circle1 = { draw_bg: {radius: 24.0} }}}
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {content = { circle1 = { draw_bg: {radius: 1.0} }}}
                 }
                 run = {
                     redraw: true,
-                    from: {all: BounceLoop {duration: 0.6, end: 1.0}}
-                    ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {content = { circle1 = { draw_bg: {radius: 0.0} }}}
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {content = { circle1 = { draw_bg: {radius: 14.0} }}}
                 }
             }
 
@@ -73,14 +74,13 @@ live_design! {
                 default: start,
                 start = {
                     redraw: true,
-                    from: {all: Snap}
-                    apply: {content = { circle2 = { draw_bg: {radius: 24.0} }}}
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {content = { circle2 = { draw_bg: {radius: 1.0} }}}
                 }
                 run = {
                     redraw: true,
-                    from: {all: BounceLoop {duration: 0.6, end: 1.0}}
-                    ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {content = { circle2 = { draw_bg: {radius: 0.0} }}}
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {content = { circle2 = { draw_bg: {radius: 14.0} }}}
                 }
             }
 
@@ -88,14 +88,13 @@ live_design! {
                 default: start,
                 start = {
                     redraw: true,
-                    from: {all: Snap}
-                    apply: {content = { circle3 = { draw_bg: {radius: 24.0} }}}
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {content = { circle3 = { draw_bg: {radius: 1.0} }}}
                 }
                 run = {
                     redraw: true,
-                    from: {all: BounceLoop {duration: 0.6, end: 1.0}}
-                    ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {content = { circle3 = { draw_bg: {radius: 0.0} }}}
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {content = { circle3 = { draw_bg: {radius: 14.0} }}}
                 }
             }
         }
@@ -144,23 +143,20 @@ impl SearchLoading {
         match self.current_animated_circle {
             0 => {
                 self.animator_play(cx, id!(circle1.run));
-                self.animator_play(cx, id!(circle2.start));
                 self.animator_play(cx, id!(circle3.start));
             }
             1 => {
                 self.animator_play(cx, id!(circle1.start));
                 self.animator_play(cx, id!(circle2.run));
-                self.animator_play(cx, id!(circle3.start));
             
             }
             2 => {
-                self.animator_play(cx, id!(circle1.start));
                 self.animator_play(cx, id!(circle2.start));
                 self.animator_play(cx, id!(circle3.run));
             }
             _ => unreachable!(),
         };
 
-        self.timer = cx.start_timeout(0.5);
+        self.timer = cx.start_timeout(0.33);
     }
 }
