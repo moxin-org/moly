@@ -3,7 +3,9 @@ use crate::chat::model_selector::ModelSelectorAction;
 use crate::data::store::Store;
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
+use moxin_protocol::data::{DownloadedFile, FileID};
+
+use super::model_selector::ModelSelectorWidgetExt;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -266,7 +268,7 @@ live_design! {
             <ChatPromptInput> {}
         }
 
-        <ModelSelector> {}
+        model_selector = <ModelSelector> {}
     }
 }
 
@@ -434,6 +436,23 @@ impl WidgetMatchEvent for ChatPanel {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.edit_chat_message(id, updated, regenerate);
                     self.redraw(cx);
+                }
+                _ => {}
+            }
+
+            match action.as_widget_action().cast() {
+                ChatPanelAction::UnloadIfActive(file_id) => {
+                    let store = scope.data.get_mut::<Store>().unwrap();
+                    if store
+                        .current_chat
+                        .as_ref()
+                        .map_or(false, |chat| chat.model_filename == file_id)
+                    {
+                        self.unload_model(cx);
+                        store.current_chat = None;
+                        store.eject_model().expect("Failed to eject model");
+                        log!("UNLOADING");
+                    }
                 }
                 _ => {}
             }
@@ -609,6 +628,15 @@ impl ChatPanel {
         store.load_model(&downloaded_file.file);
     }
 
+    fn unload_model(&mut self, cx: &mut Cx) {
+        self.state = ChatPanelState::Unload;
+        self.view(id!(main)).set_visible(false);
+        self.view(id!(empty_conversation)).set_visible(false);
+        self.view(id!(no_model)).set_visible(true);
+        self.model_selector(id!(model_selector)).deselect(cx);
+        self.view.redraw(cx);
+    }
+
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt_input = self.text_input(id!(prompt));
 
@@ -651,4 +679,10 @@ impl ChatPanel {
             auto_scroll_cancellable: false,
         };
     }
+}
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum ChatPanelAction {
+    UnloadIfActive(FileID),
+    None,
 }

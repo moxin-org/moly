@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::ModelID;
 
-use crate::{data::store::Store, shared::modal::ModalAction};
+use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::modal::ModalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -187,7 +187,12 @@ impl WidgetMatchEvent for DeleteModelModal {
         {
             if fe.was_tap() {
                 let store = scope.data.get_mut::<Store>().unwrap();
-                store.delete_file(self.file_id.clone());
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    ChatPanelAction::UnloadIfActive(self.file_id.clone()),
+                );
+                store.delete_file(self.file_id.clone()).expect("Failed to delete file");
                 cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
             }
         }

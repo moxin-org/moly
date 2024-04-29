@@ -1,6 +1,6 @@
 use crate::{
-    data::store::Store, my_models::downloaded_files_table::DownloadedFileAction,
-    shared::utils::format_model_size,
+    data::store::Store,
+    my_models::downloaded_files_table::DownloadedFileAction, shared::utils::format_model_size,
 };
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
@@ -317,6 +317,32 @@ impl ModelSelector {
             },
         );
         self.redraw(cx);
+    }
+
+    fn deselect(&mut self, cx: &mut Cx) {
+        self.open = false;
+        self.view(id!(selected)).apply_over(
+            cx,
+            live! {
+                visible: false
+            },
+        );
+
+        self.view(id!(choose)).apply_over(
+            cx,
+            live! {
+                visible: true
+            },
+        );
+        self.redraw(cx);
+    }
+}
+
+impl ModelSelectorRef {
+    pub fn deselect(&mut self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.deselect(cx);
+        }
     }
 }
 

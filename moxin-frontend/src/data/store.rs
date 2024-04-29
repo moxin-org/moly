@@ -1,6 +1,7 @@
 use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
+use anyhow::{Context, Result};
 use chrono::Utc;
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
@@ -214,24 +215,34 @@ impl Store {
         };
     }
 
-    pub fn delete_file(&mut self, file_id: FileID) {
+    pub fn eject_model(&self) -> Result<()> {
+        let (tx, rx) = channel();
+        self.backend
+            .command_sender
+            .send(Command::EjectModel(tx))
+            .context("Failed to send eject model command")?;
+
+        rx.recv()
+            .context("Failed to receive eject model response")?
+            .context("Eject model operation failed")
+    }
+
+    pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
         let (tx, rx) = channel();
         self.backend
             .command_sender
             .send(Command::DeleteFile(file_id.clone(), tx))
-            .unwrap();
+            .context("Failed to send delete file command")?;
 
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(()) => {
-                    self.set_file_downloaded_state(&file_id, false);
-                    self.load_downloaded_files();
-                    self.load_pending_downloads();
-                    SignalToUI::set_ui_signal();
-                }
-                Err(err) => eprintln!("Error deleting model file: {:?}", err),
-            }
-        };
+        rx.recv()
+            .context("Failed to receive delete file response")?
+            .context("Delete file operation failed")?;
+
+        self.set_file_downloaded_state(&file_id, false);
+        self.load_downloaded_files();
+        self.load_pending_downloads();
+        SignalToUI::set_ui_signal();
+        Ok(())
     }
 
     pub fn load_model(&mut self, file: &File) {
