@@ -47,7 +47,10 @@ pub struct Model {
 impl Model {
     pub fn save_to_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(
-            "INSERT INTO models (id, name, summary, size, requires, architecture, released_at, prompt_template, reverse_prompt, author_name, author_url, author_description, like_count, download_count)
+            "INSERT OR REPLACE INTO models (
+                id, name, summary, size, requires, architecture, released_at, 
+                prompt_template, reverse_prompt, author_name, author_url, 
+                author_description, like_count, download_count)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![
                 self.id,
