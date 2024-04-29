@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
+use moxin_protocol::data::{DownloadedFile, FileID};
 
 use crate::{
     data::store::Store,
@@ -22,6 +22,7 @@ live_design! {
     import crate::shared::widgets::*;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
+    ICON_GO_TO = dep("crate://self/resources/icons/go_to.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -42,7 +43,7 @@ live_design! {
         align: {x: 0.5, y: 0.5}
         flow: Right
         width: Fit, height: Fit
-        padding: { top: 15, bottom: 15, left: 8, right: 12}
+        padding: { top: 15, bottom: 15, left: 8, right: 13}
         spacing: 10
         draw_bg: {
             radius: 2.0,
@@ -179,7 +180,8 @@ live_design! {
                 spacing: 10
                 align: {x: 0.0, y: 0.5}
 
-                <ActionButton> {
+                start_chat = <ActionButton> {
+                    width: 140
                     type_: Play,
                     label = <Label> {
                         text: "Chat with Model",
@@ -188,13 +190,41 @@ live_design! {
                             text_style: <REGULAR_FONT>{font_size: 9}
                         }
                     }
-                    icon = { draw_icon: { svg_file: (ICON_START_CHAT) } } }
+                    icon = { draw_icon: { svg_file: (ICON_START_CHAT) } }
+                }
+
+                resume_chat = <ActionButton> {
+                    width: 140
+                    visible: false
+                    type_: Resume,
+                    show_bg: true
+                    draw_bg: {
+                        color: #087443
+                    }
+                    label = <Label> {
+                        text: "Resume Chat",
+                        draw_text: {
+                            color: #fff
+                            text_style: <BOLD_FONT>{font_size: 9}
+                        }
+                    }
+                    icon = {
+                        draw_icon: { svg_file: (ICON_GO_TO) fn get_color(self) -> vec4 { return #fff;} }
+                        icon_walk: {width: 10, height: 10}
+                    }
+                }
+
+                <View> { width: Fill, height: Fit }
+
                 <ActionButton> {
                     type_: Info,
-                    icon = { draw_icon: { svg_file: (ICON_INFO) fn get_color(self) -> vec4 { return #0099FF;} } } }
+                    icon = { draw_icon: { svg_file: (ICON_INFO) fn get_color(self) -> vec4 { return #0099FF;} } }
+                }
+
                 <ActionButton> {
                     type_: Delete,
-                    icon = { draw_icon: { svg_file: (ICON_DELETE) fn get_color(self) -> vec4 { return #B42318;} } } }
+                    icon = { draw_icon: { svg_file: (ICON_DELETE) fn get_color(self) -> vec4 { return #B42318;} } }
+                }
             }
         }
     }
@@ -257,6 +287,8 @@ impl Widget for DownloadedFilesTable {
         let entries_count = self.current_results.len();
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
 
+        let active_chat_file_id = scope.data.get::<Store>().unwrap().active_chat_file.clone();
+
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, last_item_id);
@@ -318,6 +350,21 @@ impl Widget for DownloadedFilesTable {
                         item.label(id!(h_wrapper.date_added_tag.date_added))
                             .set_text(&formatted_date);
 
+                        let mut start_chat_button =
+                            item.action_button(id!(h_wrapper.actions.start_chat));
+                        let mut resume_chat_button =
+                            item.action_button(id!(h_wrapper.actions.resume_chat));
+
+                        if let Some(file_id) = &active_chat_file_id {
+                            if *file_id == file_data.file.id {
+                                start_chat_button.set_visible(false);
+                                resume_chat_button.set_visible(true);
+                            } else {
+                                start_chat_button.set_visible(true);
+                                resume_chat_button.set_visible(false);
+                            }
+                        }
+
                         // Don't draw separator line on first row
                         if item_id == 1 {
                             item.view(id!(separator_line)).set_visible(false);
@@ -335,22 +382,42 @@ impl Widget for DownloadedFilesTable {
 impl WidgetMatchEvent for DownloadedFilesTable {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
+
         for action in actions.iter() {
             if let Some(action) = action.as_widget_action() {
                 if let Some(group) = &action.group {
                     match action.cast() {
                         RowAction::PlayClicked => {
                             if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
-                                let downloaded_files =
-                                    &scope.data.get::<Store>().unwrap().downloaded_files;
-
+                                let store = scope.data.get::<Store>().unwrap();
+                                let downloaded_files = &store.downloaded_files;
                                 let downloaded_file =
                                     downloaded_files.iter().find(|f| f.file.id.eq(item_id));
-                                if let Some(file) = downloaded_file {
+
+                                if let Some(df) = downloaded_file {
                                     cx.widget_action(
                                         widget_uid,
                                         &scope.path,
-                                        DownloadedFileAction::StartChat(file.clone()),
+                                        DownloadedFileAction::StartChat(df.file.id.clone()),
+                                    );
+                                } else {
+                                    error!("A play action was dispatched for a model that does not longer exist in the local store");
+                                }
+                            }
+                        }
+                        RowAction::ResumeClicked => {
+                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
+                                let store = scope.data.get::<Store>().unwrap();
+                                let downloaded_files = &store.downloaded_files;
+
+                                let downloaded_file =
+                                    downloaded_files.iter().find(|f| f.file.id.eq(item_id));
+
+                                if let Some(df) = downloaded_file {
+                                    cx.widget_action(
+                                        widget_uid,
+                                        &scope.path,
+                                        DownloadedFileAction::ResumeChat(df.file.id.clone()),
                                     );
                                 } else {
                                     error!("A play action was dispatched for a model that does not longer exist in the local store");
@@ -442,6 +509,7 @@ enum SearchStatus {
 pub enum RowAction {
     PlayClicked,
     InfoClicked,
+    ResumeClicked,
     DeleteClicked,
     None,
 }
@@ -451,6 +519,7 @@ pub enum RowAction {
 pub enum ButtonType {
     #[pick]
     Play,
+    Resume,
     Info,
     Delete,
 }
@@ -474,6 +543,7 @@ impl Widget for ActionButton {
                 if fe.was_tap() {
                     let action = match self.type_ {
                         ButtonType::Play => RowAction::PlayClicked,
+                        ButtonType::Resume => RowAction::ResumeClicked,
                         ButtonType::Info => RowAction::InfoClicked,
                         ButtonType::Delete => RowAction::DeleteClicked,
                     };
@@ -495,9 +565,18 @@ impl Widget for ActionButton {
     }
 }
 
+impl ActionButtonRef {
+    pub fn set_visible(&mut self, visible: bool) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.view.visible = visible;
+        }
+    }
+}
+
 #[derive(Clone, DefaultNone, Debug)]
 pub enum DownloadedFileAction {
-    StartChat(DownloadedFile),
+    StartChat(FileID),
+    ResumeChat(FileID),
     None,
 }
 
