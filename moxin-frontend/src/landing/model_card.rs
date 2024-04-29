@@ -188,7 +188,7 @@ live_design! {
                 text_style: <BOLD_FONT>{font_size: 11},
                 color: #000
             }
-            text: "Resouces"
+            text: "Resources"
         }
 
         <View> {
