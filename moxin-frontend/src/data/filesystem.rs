@@ -10,7 +10,7 @@ pub const DEFAULT_DOWNLOADS_DIR: &str = ".moxin/model_downloads";
 pub const MOXIN_HOME_DIR: &str = ".moxin";
 
 pub fn setup_model_downloads_folder() -> String {
-    let home_dir = get_home_dir();
+    let home_dir = home_dir();
     let downloads_dir = PathBuf::from(home_dir).join(DEFAULT_DOWNLOADS_DIR);
 
     if fs::create_dir_all(&downloads_dir).is_err() {
@@ -24,14 +24,14 @@ pub fn setup_model_downloads_folder() -> String {
     }
 }
 
-pub fn get_home_dir() -> String {
+fn home_dir() -> String {
     env::var("HOME"). // Unix-like systems
         or_else(|_| env::var("USERPROFILE")) // Windows
         .unwrap_or_else(|_| ".".to_string())
 }
 
 pub fn moxin_home_dir() -> PathBuf {
-    let home_dir = get_home_dir();
+    let home_dir = home_dir();
     PathBuf::from(home_dir).join(MOXIN_HOME_DIR)
 }
 
