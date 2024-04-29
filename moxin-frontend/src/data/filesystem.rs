@@ -1,5 +1,8 @@
 use std::path::PathBuf;
+use std::process::Command;
 use std::{env, fs};
+
+use anyhow::{Context, Result};
 
 // Note that .moxin will create a hidden folder in unix-like systems.
 // However in Windows the folder will be visible by default.
@@ -30,4 +33,19 @@ pub fn get_home_dir() -> String {
 pub fn moxin_home_dir() -> PathBuf {
     let home_dir = get_home_dir();
     PathBuf::from(home_dir).join(MOXIN_HOME_DIR)
+}
+
+pub fn open_folder(path: &str) -> Result<()> {
+    let result = if cfg!(target_os = "windows") {
+        Command::new("explorer").arg(path).spawn()
+    } else if cfg!(target_os = "macos") {
+        Command::new("open").arg(path).spawn()
+    } else {
+        // Assuming xdg-open is available for Linux and Unix-like systems
+        Command::new("xdg-open").arg(path).spawn()
+    };
+
+    result.context(format!("Failed to open folder: {}", path))?;
+
+    Ok(())
 }
