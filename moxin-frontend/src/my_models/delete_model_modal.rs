@@ -182,6 +182,17 @@ impl WidgetMatchEvent for DeleteModelModal {
         }
 
         if let Some(fe) = self
+            .view(id!(wrapper.body.actions.delete_button))
+            .finger_up(actions)
+        {
+            if fe.was_tap() {
+                let store = scope.data.get_mut::<Store>().unwrap();
+                store.delete_file(self.file_id.clone());
+                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            }
+        }
+
+        if let Some(fe) = self
             .view(id!(wrapper.body.actions.cancel_button))
             .finger_up(actions)
         {

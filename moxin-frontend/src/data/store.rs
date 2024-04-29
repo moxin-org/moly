@@ -2,7 +2,7 @@ use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
-use makepad_widgets::DefaultNone;
+use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{
     DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
@@ -210,6 +210,26 @@ impl Store {
                     self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error cancelling download: {:?}", err),
+            }
+        };
+    }
+
+    pub fn delete_file(&mut self, file_id: FileID) {
+        let (tx, rx) = channel();
+        self.backend
+            .command_sender
+            .send(Command::DeleteFile(file_id.clone(), tx))
+            .unwrap();
+
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(()) => {
+                    self.set_file_downloaded_state(&file_id, false);
+                    self.load_downloaded_files();
+                    self.load_pending_downloads();
+                    SignalToUI::set_ui_signal();
+                }
+                Err(err) => eprintln!("Error deleting model file: {:?}", err),
             }
         };
     }
@@ -423,20 +443,19 @@ impl Store {
 
         for id in completed_downloads {
             self.current_downloads.remove(&id);
-            self.mark_file_as_downloaded(&id);
-
             self.downloaded_files_in_session.push(id.clone());
+            self.set_file_downloaded_state(&id, true);
         }
     }
 
-    fn mark_file_as_downloaded(&mut self, file_id: &FileID) {
+    fn set_file_downloaded_state(&mut self, file_id: &FileID, downloaded: bool) {
         let model = self
             .models
             .iter_mut()
             .find(|m| m.files.iter().any(|f| f.id == *file_id));
         if let Some(model) = model {
             let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
-            file.downloaded = true;
+            file.downloaded = downloaded;
         }
     }
 
