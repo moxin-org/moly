@@ -1,5 +1,6 @@
 use crate::data::store::{SortCriteria, StoreAction};
 use crate::landing::sorting::SortingWidgetExt;
+use makepad_widgets::event::keyboard;
 use makepad_widgets::*;
 
 live_design! {
@@ -131,6 +132,12 @@ pub struct SearchBar {
 
     #[rust]
     collapsed: bool,
+
+    #[rust]
+    search_timer: Timer,
+
+    #[live(0.3)]
+    search_debounce_time: f64,
 }
 
 impl Widget for SearchBar {
@@ -139,6 +146,28 @@ impl Widget for SearchBar {
         self.widget_match_event(cx, event, scope);
         if self.animator_handle_event(cx, event).must_redraw() {
             self.redraw(cx);
+        }
+
+        if self.search_timer.is_event(event).is_some() {
+            self.search_timer = Timer::default();
+
+            let input = self.text_input(id!(input));
+            let keywords = input.text();
+            const MIN_SEARCH_LENGTH: usize = 2;
+
+            dbg!("Search timer ", &keywords);
+
+            if keywords.len() > MIN_SEARCH_LENGTH {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    StoreAction::Search(keywords.to_string()),
+                );
+            } else if keywords.len() == 0 {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
+            }
         }
     }
 
@@ -165,18 +194,9 @@ impl WidgetMatchEvent for SearchBar {
             }
         }
 
-        if let Some(keywords) = input.changed(actions) {
-            if keywords.len() > 3 {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    StoreAction::Search(keywords.to_string()),
-                );
-            } else {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
-            }
+        if let Some(_) = input.changed(actions) {
+            cx.stop_timer(self.search_timer);
+            self.search_timer = cx.start_timeout(self.search_debounce_time);
         }
     }
 }
