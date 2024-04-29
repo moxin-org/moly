@@ -537,4 +537,8 @@ impl Store {
             pending_downloads,
         })
     }
+
+    pub fn search_is_loading(&self) -> bool {
+        self.search.pending
+    }
 }

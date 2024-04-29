@@ -121,7 +121,10 @@ impl Widget for LandingScreen {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        if let Some(keyword) = store.search.keyword.clone() {
+        if store.search_is_loading() {
+            self.view(id!(heading_with_filters)).set_visible(false);
+            self.view(id!(heading_no_filters)).set_visible(false);
+        } else if let Some(keyword) = store.search.keyword.clone() {
             self.view(id!(heading_with_filters)).set_visible(true);
             self.view(id!(heading_no_filters)).set_visible(false);
 
