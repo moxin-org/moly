@@ -149,6 +149,7 @@ impl LiveRegister for App {
         crate::landing::model_list::live_design(cx);
         crate::landing::landing_screen::live_design(cx);
         crate::landing::search_bar::live_design(cx);
+        crate::landing::search_loading::live_design(cx);
         crate::landing::sorting::live_design(cx);
         crate::landing::downloads::live_design(cx);
         crate::landing::download_item::live_design(cx);

@@ -155,8 +155,6 @@ impl Widget for SearchBar {
             let keywords = input.text();
             const MIN_SEARCH_LENGTH: usize = 2;
 
-            dbg!("Search timer ", &keywords);
-
             if keywords.len() > MIN_SEARCH_LENGTH {
                 let widget_uid = self.widget_uid();
                 cx.widget_action(

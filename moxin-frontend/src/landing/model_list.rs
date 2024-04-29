@@ -7,6 +7,7 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::landing::model_card::ModelCard;
+    import crate::landing::search_loading::SearchLoading;
 
     ModelList = {{ModelList}} {
         width: Fill,
@@ -30,19 +31,10 @@ live_design! {
         }
 
         loading = <View> {
-            visible: false,
             width: Fill,
             height: Fill,
-
-            align: {x: 0.5, y: 0.5},
-
-            <Label> {
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 16},
-                    color: #000
-                }
-                text: "Loading..."
-            }
+            visible: false,
+            <SearchLoading> {}
         }
     }
 }
