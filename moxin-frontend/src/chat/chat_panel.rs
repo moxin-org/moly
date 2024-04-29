@@ -409,8 +409,14 @@ impl WidgetMatchEvent for ChatPanel {
             }
 
             match action.as_widget_action().cast() {
-                DownloadedFileAction::StartChat(downloaded_file) => {
+                DownloadedFileAction::StartChat(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
+                    let downloaded_file = store
+                        .downloaded_files
+                        .iter()
+                        .find(|file| file.file.id == file_id)
+                        .expect("Attempted to start chat with a no longer existing file")
+                        .clone();
                     self.load_model(store, downloaded_file);
                 }
                 _ => {}

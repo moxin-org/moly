@@ -239,7 +239,7 @@ impl Widget for ModelSelector {
 }
 
 impl WidgetMatchEvent for ModelSelector {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
             if fd.tap_count == 1 {
                 self.open = !self.open;
@@ -254,15 +254,24 @@ impl WidgetMatchEvent for ModelSelector {
         }
 
         for action in actions {
+            let store = scope.data.get_mut::<Store>().unwrap();
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
+                    store.active_chat_file = Some(downloaded_file.file.id.clone());
                     self.update_ui_with_file(cx, downloaded_file);
                 }
                 _ => {}
             }
 
             match action.as_widget_action().cast() {
-                DownloadedFileAction::StartChat(downloaded_file) => {
+                DownloadedFileAction::StartChat(file_id) => {
+                    store.active_chat_file = Some(file_id.clone());
+                    let downloaded_file = store
+                        .downloaded_files
+                        .iter()
+                        .find(|file| file.file.id == file_id)
+                        .expect("Attempted to start chat with a no longer existing file")
+                        .clone();
                     self.update_ui_with_file(cx, downloaded_file);
                 }
                 _ => {}
@@ -396,6 +405,9 @@ impl Widget for ModelSelectorList {
 
 impl ModelSelectorList {
     fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<DownloadedFile>) {
+        let mut items = items.clone();
+        items.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
+
         if items.is_empty() {
             let item_widget = WidgetRef::new_from_ptr(cx, self.no_models_message);
             let _ = item_widget.draw_all(cx, &mut Scope::empty());

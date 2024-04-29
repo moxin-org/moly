@@ -69,6 +69,8 @@ pub struct Store {
 
     pub preferences: Preferences,
     pub downloaded_files_dir: String,
+
+    pub active_chat_file: Option<FileID>,
 }
 
 impl Store {
@@ -97,6 +99,8 @@ impl Store {
 
             preferences: Preferences::load(),
             downloaded_files_dir,
+
+            active_chat_file: None,
         };
         store.load_downloaded_files();
         store.load_pending_downloads();
