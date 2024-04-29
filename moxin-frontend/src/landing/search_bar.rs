@@ -149,7 +149,23 @@ impl Widget for SearchBar {
 
 impl WidgetMatchEvent for SearchBar {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(keywords) = self.text_input(id!(input)).changed(actions) {
+        let input = self.text_input(id!(input));
+
+        if let Some(keywords) = input.returned(actions) {
+            if keywords.len() > 0 {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    StoreAction::Search(keywords.to_string()),
+                );
+            } else {
+                let widget_uid = self.widget_uid();
+                cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
+            }
+        }
+
+        if let Some(keywords) = input.changed(actions) {
             if keywords.len() > 3 {
                 let widget_uid = self.widget_uid();
                 cx.widget_action(
