@@ -265,9 +265,18 @@ impl Store {
         }
     }
 
-    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
+    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String, regenerate: bool) {
         if let Some(chat) = &mut self.current_chat {
-            chat.edit_message(message_id, updated_message);
+            if regenerate {
+                if chat.is_streaming {
+                    chat.cancel_streaming(&self.backend);
+                }
+
+                chat.remove_messages_from(message_id);
+                chat.send_message_to_model(updated_message, &self.backend);
+            } else {
+                chat.edit_message(message_id, updated_message);
+            }
         }
     }
 
