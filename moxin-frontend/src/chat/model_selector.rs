@@ -1,6 +1,6 @@
 use crate::{
-    data::store::Store,
-    my_models::downloaded_files_table::DownloadedFileAction, shared::utils::format_model_size,
+    data::store::Store, my_models::downloaded_files_table::DownloadedFileAction,
+    shared::utils::format_model_size,
 };
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
@@ -257,7 +257,6 @@ impl WidgetMatchEvent for ModelSelector {
             let store = scope.data.get_mut::<Store>().unwrap();
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
-                    store.active_chat_file = Some(downloaded_file.file.id.clone());
                     self.update_ui_with_file(cx, downloaded_file);
                 }
                 _ => {}
@@ -265,7 +264,6 @@ impl WidgetMatchEvent for ModelSelector {
 
             match action.as_widget_action().cast() {
                 DownloadedFileAction::StartChat(file_id) => {
-                    store.active_chat_file = Some(file_id.clone());
                     let downloaded_file = store
                         .downloaded_files
                         .iter()

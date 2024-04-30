@@ -1,5 +1,6 @@
 use makepad_widgets::SignalToUI;
 use moxin_backend::Backend;
+use moxin_protocol::data::FileID;
 use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -25,6 +26,7 @@ impl ChatMessage {
 
 pub struct Chat {
     pub model_filename: String,
+    pub file_id: FileID,
     pub messages: Vec<ChatMessage>,
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
@@ -32,10 +34,11 @@ pub struct Chat {
 }
 
 impl Chat {
-    pub fn new(filename: String) -> Self {
+    pub fn new(filename: String, file_id: FileID) -> Self {
         let (tx, rx) = channel();
         let chat = Self {
             model_filename: filename,
+            file_id,
             messages: vec![],
             messages_update_sender: tx,
             messages_update_receiver: rx,

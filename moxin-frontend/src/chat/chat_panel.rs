@@ -446,12 +446,11 @@ impl WidgetMatchEvent for ChatPanel {
                     if store
                         .current_chat
                         .as_ref()
-                        .map_or(false, |chat| chat.model_filename == file_id)
+                        .map_or(false, |chat| chat.file_id == file_id)
                     {
                         self.unload_model(cx);
                         store.current_chat = None;
                         store.eject_model().expect("Failed to eject model");
-                        log!("UNLOADING");
                     }
                 }
                 _ => {}
