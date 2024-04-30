@@ -5,5 +5,6 @@ pub mod model_card;
 pub mod model_files_list;
 pub mod model_list;
 pub mod search_bar;
+pub mod search_loading;
 pub mod shared;
 pub mod sorting;

@@ -21,7 +21,7 @@ pub struct Search {
     pub next_command: Option<SearchCommand>,
     pub sender: Sender<SearchAction>,
     pub receiver: Receiver<SearchAction>,
-    pending: bool,
+    pub pending: bool,
 }
 
 impl Default for Search {

@@ -679,6 +679,7 @@ impl WidgetMatchEvent for ModelFilesList {
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
+                    self.hide_immediate(cx);
                     self.actual_height = None;
                 }
                 _ => {}
@@ -693,5 +694,15 @@ impl ModelFilesList {
             .apply_over(cx, live! {visible: (!show_all)});
         self.view(id!(only_recommended_link))
             .apply_over(cx, live! {visible: (show_all)});
+    }
+
+    fn hide_immediate(&mut self, cx: &mut Cx) {
+        self.apply_links_visibility(cx, false);
+        self.view(id!(remaining_files_wrapper)).apply_over(
+            cx,
+            live! {height: 0}
+        );
+        self.show_all_animation_progress = 0.0;
+        self.redraw(cx);
     }
 }

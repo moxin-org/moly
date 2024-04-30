@@ -7,22 +7,41 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::landing::model_card::ModelCard;
+    import crate::landing::search_loading::SearchLoading;
 
     ModelList = {{ModelList}} {
         width: Fill,
         height: Fill,
 
-        list = <PortalList> {
+        flow: Overlay,
+
+        content = <View> {
             width: Fill,
             height: Fill,
+            list = <PortalList> {
+                width: Fill,
+                height: Fill,
 
-            // We need this setting because we will have modal dialogs that should
-            // "capture" the events, so we don't want to handle them here.
-            capture_overload: false,
+                // We need this setting because we will have modal dialogs that should
+                // "capture" the events, so we don't want to handle them here.
+                capture_overload: false,
 
-            Model = <ModelCard> {
-                margin: {bottom: 30},
+                Model = <ModelCard> {
+                    margin: {bottom: 30},
+                }
             }
+        }
+
+        loading = <View> {
+            width: Fill,
+            height: Fill,
+            visible: false,
+
+            show_bg: true,
+            draw_bg: {
+                color: #FFFE,
+            }
+            <SearchLoading> {}
         }
     }
 }
@@ -37,6 +56,14 @@ impl Widget for ModelList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        if let Event::Signal = event {
+            let store = scope.data.get::<Store>().unwrap();
+            let is_loading = store.search_is_loading();
+
+            self.view(id!(loading)).set_visible(is_loading);
+            //self.view(id!(content)).set_visible(!is_loading);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -75,23 +102,27 @@ const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
 
 impl WidgetMatchEvent for ModelList {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let portal_list_ref = self.portal_list(id!(list));
+        let portal_list = self.portal_list(id!(list));
+        let loading = self.view(id!(loading));
+        let content = self.view(id!(content));
+
         for action in actions.iter() {
             match action.as_widget_action().cast() {
-                StoreAction::Search(_keywords) => {
-                    portal_list_ref.set_first_id_and_scroll(0, 0.0);
-                }
-                StoreAction::ResetSearch => {
-                    portal_list_ref.set_first_id_and_scroll(0, 0.0);
+                StoreAction::Search(_) | StoreAction::ResetSearch => {
+                    loading.set_visible(true);
+                    //content.set_visible(false);
+                    portal_list.set_first_id_and_scroll(0, 0.0);
+
+                    self.redraw(cx);
                 }
                 _ => {}
             }
         }
 
-        if portal_list_ref.scrolled(actions) {
+        if portal_list.scrolled(actions) {
             let widget_uid = self.widget_uid();
-            if portal_list_ref.first_id() == 0
-                && portal_list_ref.scroll_position() > SCROLLING_AT_TOP_THRESHOLD
+            if portal_list.first_id() == 0
+                && portal_list.scroll_position() > SCROLLING_AT_TOP_THRESHOLD
             {
                 cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledAtTop);
             } else {

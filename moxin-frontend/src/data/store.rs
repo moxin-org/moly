@@ -362,8 +362,28 @@ impl Store {
                     }
 
                     if model.size.is_empty() {
-                        new_model.size = rng.gen_range(100000000..999999999).to_string();
+                        new_model.size = format!(
+                            "{}B", rng.gen_range(1..10)
+                        );
                     };
+
+                    if model.requires.is_empty() {
+                        new_model.requires = match rng.gen_range(0..3) {
+                            0 => "4GB+ RAM".to_string(),
+                            1 => "8GB+ RAM".to_string(),
+                            2 => "16GB+ RAM".to_string(),
+                            _ => "32GB+ RAM".to_string(),
+                        };
+                    }
+
+                    if model.architecture.is_empty() {
+                        new_model.architecture = match rng.gen_range(0..3) {
+                            0 => "Mistral".to_string(),
+                            1 => "StableLM".to_string(),
+                            2 => "LlaMa".to_string(),
+                            _ => "qwen2".to_string(),
+                        };
+                    }
 
                     if model.like_count == 0 {
                         new_model.like_count = rng.gen_range(1..1000);
@@ -559,5 +579,9 @@ impl Store {
             model: model.clone(),
             pending_downloads,
         })
+    }
+
+    pub fn search_is_loading(&self) -> bool {
+        self.search.pending
     }
 }
