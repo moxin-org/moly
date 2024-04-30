@@ -1,9 +1,9 @@
 use crate::{
     data::store::{ModelWithPendingDownloads, Store, StoreAction},
-    shared::utils::format_model_size,
+    shared::{modal::ModalAction, utils::format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, Model, PendingDownload};
+use moxin_protocol::data::{File, FileID, Model, PendingDownload};
 use std::collections::HashMap;
 
 live_design! {
@@ -350,6 +350,7 @@ live_design! {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelFileItemsAction {
     Download(File, Model),
+    Downloaded(FileID),
     None,
 }
 
@@ -387,11 +388,41 @@ pub struct ModelFilesItems {
     map_to_files: HashMap<LiveId, File>,
 
     #[rust]
+    notified_files: Vec<FileID>,
+
+    #[rust]
     model: Option<Model>,
 }
 
 impl Widget for ModelFilesItems {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let widget_uid = self.widget_uid();
+        let store = scope.data.get::<Store>().unwrap();
+
+        // Notify of a downloaded file.
+        if let Event::Signal = event {
+            if store.downloaded_files_in_session.len() > self.notified_files.len() {
+                for downloaded_file_in_sessison in store.downloaded_files_in_session.iter() {
+                    if self.notified_files.contains(downloaded_file_in_sessison) {
+                        continue;
+                    }
+
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        ModalAction::ShowModalView(live_id!(popup_download_success_modal_view)),
+                    );
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        ModelFileItemsAction::Downloaded(downloaded_file_in_sessison.to_string()),
+                    );
+                    self.notified_files
+                        .push(downloaded_file_in_sessison.to_string());
+                }
+            }
+        }
+
         let mut clicked_item_id = None;
         for (id, item) in self.items.iter_mut() {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));

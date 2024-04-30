@@ -40,6 +40,8 @@ live_design! {
     }
 }
 
+// TODO: look for a way of being able to add custom "ModalView" inside de model
+// (which should become something like "Portal") maybe with traits.
 #[derive(Live, LiveHook, LiveRegisterWidget, WidgetRef)]
 pub struct ModalView {
     #[deref]

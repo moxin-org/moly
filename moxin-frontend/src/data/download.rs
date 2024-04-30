@@ -10,6 +10,7 @@ pub enum DownloadFileAction {
     StreamingDone,
 }
 
+#[derive(Debug)]
 pub struct Download {
     pub file: File,
     pub model: Model,
