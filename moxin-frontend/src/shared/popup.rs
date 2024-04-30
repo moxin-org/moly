@@ -164,6 +164,7 @@ impl WidgetMatchEvent for Popup {
         if view_in_my_models_button.clicked(actions) {
             // TODO: Abstract the navigation actions on a single enum for the whole app.
             cx.widget_action(widget_uid, &scope.path, PopupAction::NavigateToMyModels);
+            cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
         }
 
         if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
