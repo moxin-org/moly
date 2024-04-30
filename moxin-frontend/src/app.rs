@@ -5,6 +5,7 @@ use crate::landing::model_files_list::ModelFileItemsAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
+use crate::shared::popup::{PopupAction, PopupWidgetRefExt};
 use makepad_widgets::*;
 
 live_design! {
@@ -15,6 +16,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::modal::*;
     import crate::shared::widgets::SidebarMenuButton;
+    import crate::shared::popup::*;
     import crate::landing::landing_screen::LandingScreen;
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
@@ -107,6 +109,23 @@ live_design! {
                             model_info_modal = <ModelInfoModal> {}
                         }
                     }
+
+                    popup_download_success_modal_view = <ModalView> {
+                        align: {x: 1, y: 0}
+
+                        // TODO: By setting this on Fit we dissable the closing on click outside of modal
+                        // functionallity. We need to rethink the Modal widget so its more generic,
+                        // kinda like a portal that lets you render stuff from anywhere, for now
+                        // we use it as is, with this little hack.
+                        bg_view = {
+                            width: Fit
+                            height: Fit
+                            show_bg: false
+                        }
+                        content = {
+                            popup_download_success = <PopupDownloadSuccess> {}
+                        }
+                    }
                 }
             }
         }
@@ -141,6 +160,7 @@ impl LiveRegister for App {
         crate::shared::icon::live_design(cx);
         crate::shared::modal::live_design(cx);
         crate::shared::external_link::live_design(cx);
+        crate::shared::popup::live_design(cx);
 
         // Landing
         crate::landing::shared::live_design(cx);
@@ -214,9 +234,16 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            if let ModelFileItemsAction::Download(file, model) = action.as_widget_action().cast() {
-                self.store.download_file(file, model);
-                self.ui.redraw(cx);
+            match action.as_widget_action().cast() {
+                ModelFileItemsAction::Download(file, model) => {
+                    self.store.download_file(file, model);
+                    self.ui.redraw(cx);
+                }
+                ModelFileItemsAction::Downloaded(file_id) => {
+                    let mut popup = self.ui.popup(id!(popup_download_success));
+                    popup.set_file_id(file_id);
+                }
+                _ => {}
             }
 
             match action.as_widget_action().cast() {
@@ -266,6 +293,11 @@ impl MatchEvent for App {
             if let DownloadedFileAction::StartChat(_) = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
+            }
+
+            if let PopupAction::NavigateToMyModels = action.as_widget_action().cast() {
+                let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
+                my_models_radio_button.select(cx, &mut Scope::empty());
             }
         }
     }
