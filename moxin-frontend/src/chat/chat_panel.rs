@@ -368,11 +368,13 @@ impl Widget for ChatPanel {
                             item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
                             chat_line_item = item.as_chat_line();
                             chat_line_item.set_role(&model_filename);
+                            chat_line_item.set_regenerate_enabled(false);
                             chat_line_item.set_avatar_text(&initial_letter);
                         } else {
                             item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
                             chat_line_item = item.as_chat_line();
                             chat_line_item.set_role("You");
+                            chat_line_item.set_regenerate_enabled(true);
                         };
 
                         chat_line_item.set_message_text(cx, &chat_line_data.content);
@@ -409,8 +411,14 @@ impl WidgetMatchEvent for ChatPanel {
             }
 
             match action.as_widget_action().cast() {
-                DownloadedFileAction::StartChat(downloaded_file) => {
+                DownloadedFileAction::StartChat(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
+                    let downloaded_file = store
+                        .downloaded_files
+                        .iter()
+                        .find(|file| file.file.id == file_id)
+                        .expect("Attempted to start chat with a no longer existing file")
+                        .clone();
                     self.load_model(store, downloaded_file);
                 }
                 _ => {}
@@ -422,9 +430,9 @@ impl WidgetMatchEvent for ChatPanel {
                     store.delete_chat_message(id);
                     self.redraw(cx);
                 }
-                ChatLineAction::Edit(id, updated) => {
+                ChatLineAction::Edit(id, updated, regenerate) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    store.edit_chat_message(id, updated);
+                    store.edit_chat_message(id, updated, regenerate);
                     self.redraw(cx);
                 }
                 _ => {}

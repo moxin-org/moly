@@ -56,7 +56,7 @@ pub struct ModelResourcesInfo {
 pub enum LoadModelResponse {
     Progress(FileID, f32),
     Completed(LoadedModelInfo),
-    ModelResoucesUsage(ModelResourcesInfo),
+    ModelResourcesUsage(ModelResourcesInfo),
 }
 
 #[derive(Clone, Debug)]

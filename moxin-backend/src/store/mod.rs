@@ -2,7 +2,9 @@ pub mod download_files;
 pub mod models;
 pub mod remote;
 
-pub mod pending_downloads;
+// pub mod pending_downloads;
+
+use std::path::Path;
 
 use moxin_protocol::data::FileID;
 
@@ -40,6 +42,12 @@ pub fn get_all_download_file(
             moxin_protocol::data::Model::default()
         };
 
+        let downloaded_path = Path::new(&file.download_dir)
+            .join(&file.model_id)
+            .join(&file.name);
+
+        let downloaded_path = downloaded_path.to_str().map(|s| s.to_string());
+
         let downloaded_file = moxin_protocol::data::DownloadedFile {
             file: moxin_protocol::data::File {
                 id: file.id.to_string(),
@@ -47,12 +55,12 @@ pub fn get_all_download_file(
                 size: file.size,
                 quantization: file.quantization,
                 downloaded: true,
-                downloaded_path: file.downloaded_path,
+                downloaded_path,
                 tags: file.tags,
                 featured: false,
             },
             model,
-            downloaded_at: file.downloaded_at.unwrap(),
+            downloaded_at: file.downloaded_at,
             compatibility_guess: moxin_protocol::data::CompatibilityGuess::PossiblySupported,
             information: String::new(),
         };
@@ -66,17 +74,13 @@ pub fn get_all_download_file(
 pub fn get_all_pending_downloads(
     conn: &rusqlite::Connection,
 ) -> rusqlite::Result<Vec<moxin_protocol::data::PendingDownload>> {
-    let pending_downloads = pending_downloads::PendingDownloads::get_all(&conn)?;
-    let files = download_files::DownloadedFile::get_all(&conn)?;
+    let files = download_files::DownloadedFile::get_pending(&conn)?;
+
     let models = models::Model::get_all(&conn)?;
 
-    let mut result = Vec::with_capacity(pending_downloads.len());
+    let mut result = Vec::with_capacity(files.len());
 
-    for item in pending_downloads {
-        let Some(file) = files.get(&item.file_id) else {
-            // TODO handle error
-            continue;
-        };
+    for (_file_id, file) in files {
         let result_file = moxin_protocol::data::File {
             id: file.id.to_string(),
             name: file.name.clone(),
@@ -85,7 +89,7 @@ pub fn get_all_pending_downloads(
             downloaded: false,
             downloaded_path: None,
             tags: file.tags.clone(),
-            featured: false,
+            featured: file.featured,
         };
 
         let model = if let Some(model) = models.get(&file.model_id) {
@@ -111,11 +115,22 @@ pub fn get_all_pending_downloads(
             moxin_protocol::data::Model::default()
         };
 
+        let file_path = Path::new(&file.download_dir)
+            .join(&file.model_id)
+            .join(&file.name);
+
+        let downloaded = if let Ok(file_meta) = std::fs::metadata(file_path) {
+            file_meta.len()
+        } else {
+            0
+        };
+        let progress = (downloaded as f64 / file.file_size as f64) * 100.0;
+
         let pending_download = moxin_protocol::data::PendingDownload {
             file: result_file,
             model,
-            progress: item.progress,
-            status: moxin_protocol::data::PendingDownloadsStatus::Downloading,
+            progress,
+            status: moxin_protocol::data::PendingDownloadsStatus::Paused,
             //status: item.status.into(),
         };
 
@@ -132,6 +147,6 @@ pub fn remove_downloaded_file(models_dir: String, file_id: FileID) -> anyhow::Re
 
     let filename = format!("{}/{}/{}", models_dir, model_id, file);
 
-    println!("Removing file {}", filename);
+    log::info!("Removing file {}", filename);
     Ok(std::fs::remove_file(filename)?)
 }

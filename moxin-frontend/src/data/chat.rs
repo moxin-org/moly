@@ -159,4 +159,9 @@ impl Chat {
             message.content = updated_message;
         }
     }
+
+    pub fn remove_messages_from(&mut self, message_id: usize) {
+        let message_index = self.messages.iter().position(|m| m.id == message_id).unwrap();
+        self.messages.truncate(message_index);
+    }
 }

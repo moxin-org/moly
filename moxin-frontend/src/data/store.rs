@@ -1,3 +1,4 @@
+use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
 use chrono::Utc;
@@ -9,6 +10,8 @@ use moxin_protocol::data::{
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
+
+pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum StoreAction {
@@ -66,14 +69,23 @@ pub struct Store {
     pub downloaded_files_in_session: Vec<FileID>,
 
     pub preferences: Preferences,
+    pub downloaded_files_dir: String,
+
+    pub active_chat_file: Option<FileID>,
 }
 
 impl Store {
     pub fn new() -> Self {
-        let mut store = Self {
-            // Initialize the backend with the default values
-            backend: Backend::default(),
+        let downloaded_files_dir = setup_model_downloads_folder();
+        let moxin_home_dir = moxin_home_dir().to_string_lossy().to_string();
 
+        let backend = Backend::new(
+            moxin_home_dir,
+            downloaded_files_dir.clone(),
+            DEFAULT_MAX_DOWNLOAD_THREADS,
+        );
+        let mut store = Self {
+            backend,
             // Initialize the local cache with empty values
             models: vec![],
 
@@ -88,6 +100,9 @@ impl Store {
             downloaded_files_in_session: vec![],
 
             preferences: Preferences::load(),
+            downloaded_files_dir,
+
+            active_chat_file: None,
         };
         store.load_downloaded_files();
         store.load_pending_downloads();
@@ -252,9 +267,18 @@ impl Store {
         }
     }
 
-    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
+    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String, regenerate: bool) {
         if let Some(chat) = &mut self.current_chat {
-            chat.edit_message(message_id, updated_message);
+            if regenerate {
+                if chat.is_streaming {
+                    chat.cancel_streaming(&self.backend);
+                }
+
+                chat.remove_messages_from(message_id);
+                chat.send_message_to_model(updated_message, &self.backend);
+            } else {
+                chat.edit_message(message_id, updated_message);
+            }
         }
     }
 

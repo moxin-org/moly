@@ -1,10 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::{
-    data::store::Store,
-    shared::utils::{open_folder, BYTES_PER_MB},
-};
+use crate::{data::filesystem::open_folder, data::store::Store, shared::utils::BYTES_PER_MB};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -205,7 +202,7 @@ pub struct MyModelsScreen {
 impl Widget for MyModelsScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.match_event(cx, event);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -233,12 +230,17 @@ fn file_manager_label() -> String {
     }
 }
 
-impl MatchEvent for MyModelsScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+impl WidgetMatchEvent for MyModelsScreen {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(fe) = self.view(id!(show_in_files)).finger_up(actions) {
             if fe.was_tap() {
-                // TODO: replace with actual downloads path in the current store.
-                open_folder(".").expect("Failed to open downloads folder");
+                let models_dir = &scope.data.get::<Store>().unwrap().downloaded_files_dir;
+                open_folder(models_dir).unwrap_or_else(|e| {
+                    println!(
+                        "Failed to open models downloads folder: {}. Check for permissions.",
+                        e
+                    );
+                });
             }
         }
 

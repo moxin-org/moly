@@ -299,6 +299,11 @@ impl MatchEvent for App {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
             }
+
+            if let DownloadedFileAction::ResumeChat(_) = action.as_widget_action().cast() {
+                let chat_radio_button = self.ui.radio_button(id!(chat_tab));
+                chat_radio_button.select(cx, &mut Scope::empty());
+            }
         }
     }
 }

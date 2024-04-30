@@ -174,7 +174,7 @@ live_design! {
                 return (MODEL_LINK_FONT_COLOR);
             }
         }
-        icon_walk: {width: 12, height: 12}
+        icon_walk: {width: 14, height: 14}
     }
 
     ModelDetails = <View> {
@@ -188,10 +188,11 @@ live_design! {
                 text_style: <BOLD_FONT>{font_size: 11},
                 color: #000
             }
-            text: "Resouces"
+            text: "Resources"
         }
 
         <View> {
+            align: {x: 0.5, y: 1.0},
             width: Fit,
             height: Fit,
             author_link = <ExternalLink> {}
@@ -199,6 +200,7 @@ live_design! {
         }
 
         <View> {
+            align: {x: 0.5, y: 1.0},
             width: Fit,
             height: Fit,
             model_hugging_face_link = <ExternalLink> { link = { text: "Hugging Face" } }
