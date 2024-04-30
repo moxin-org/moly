@@ -118,9 +118,9 @@ pub struct SearchLoading {
 
 impl Widget for SearchLoading {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        if let Event::Startup = event {
-            self.update_animation(cx);
-        }
+        // if let Event::Startup = event {
+        //     self.update_animation(cx);
+        // }
         if self.timer.is_event(event).is_some() {
             self.update_animation(cx);
         }
@@ -158,5 +158,21 @@ impl SearchLoading {
         };
 
         self.timer = cx.start_timeout(0.33);
+    }
+}
+
+impl SearchLoadingRef {
+    pub fn animate(&mut self, cx: &mut Cx) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.update_animation(cx);
+    }
+
+    pub fn stop_animation(&mut self, cx: &mut Cx) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.timer = Timer::default();
     }
 }

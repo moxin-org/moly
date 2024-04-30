@@ -196,6 +196,10 @@ impl AppMain for App {
             self.ui.redraw(cx);
         }
 
+        if let Event::Draw(_) = event {
+            dbg!("Draw");
+        }
+
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);

@@ -1,5 +1,6 @@
 use crate::data::store::{Store, StoreAction};
 use makepad_widgets::*;
+use crate::landing::search_loading::SearchLoadingWidgetExt;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -41,7 +42,7 @@ live_design! {
             draw_bg: {
                 color: #FFFE,
             }
-            <SearchLoading> {}
+            search_loading = <SearchLoading> {}
         }
     }
 }
@@ -62,7 +63,11 @@ impl Widget for ModelList {
             let is_loading = store.search_is_loading();
 
             self.view(id!(loading)).set_visible(is_loading);
-            //self.view(id!(content)).set_visible(!is_loading);
+            if is_loading {
+                self.search_loading(id!(search_loading)).animate(cx);
+            } else {
+                self.search_loading(id!(search_loading)).stop_animation(cx);
+            }
         }
     }
 
@@ -103,14 +108,12 @@ const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
 impl WidgetMatchEvent for ModelList {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let portal_list = self.portal_list(id!(list));
-        let loading = self.view(id!(loading));
-        let content = self.view(id!(content));
 
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
-                    loading.set_visible(true);
-                    //content.set_visible(false);
+                    self.view(id!(loading)).set_visible(true);
+                    self.search_loading(id!(search_loading)).animate(cx);
                     portal_list.set_first_id_and_scroll(0, 0.0);
 
                     self.redraw(cx);
