@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::{data::filesystem::open_folder, data::store::Store, shared::utils::BYTES_PER_MB};
+use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -235,12 +235,15 @@ impl WidgetMatchEvent for MyModelsScreen {
         if let Some(fe) = self.view(id!(show_in_files)).finger_up(actions) {
             if fe.was_tap() {
                 let models_dir = &scope.data.get::<Store>().unwrap().downloaded_files_dir;
-                open_folder(models_dir).unwrap_or_else(|e| {
-                    println!(
-                        "Failed to open models downloads folder: {}. Check for permissions.",
-                        e
-                    );
-                });
+                let models_uri = &format!("file:///.{}", models_dir);
+                robius_open::Uri::new(models_uri)
+                    .open()
+                    .unwrap_or_else(|e| {
+                        eprintln!(
+                            "Failed to open models downloads folder: {}. Check for permissions.",
+                            models_uri
+                        );
+                    });
             }
         }
 
