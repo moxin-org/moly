@@ -287,7 +287,10 @@ impl Widget for DownloadedFilesTable {
         let entries_count = self.current_results.len();
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
 
-        let active_chat_file_id = scope.data.get::<Store>().unwrap().active_chat_file.clone();
+        let mut current_chat_file_id = None;
+        if let Some(current_chat) = &scope.data.get::<Store>().unwrap().current_chat {
+            current_chat_file_id = Some(current_chat.file_id.clone());
+        }
 
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
@@ -350,19 +353,25 @@ impl Widget for DownloadedFilesTable {
                         item.label(id!(h_wrapper.date_added_tag.date_added))
                             .set_text(&formatted_date);
 
+                        // Wether to show show a start chat or resume chat button
                         let mut start_chat_button =
                             item.action_button(id!(h_wrapper.actions.start_chat));
                         let mut resume_chat_button =
                             item.action_button(id!(h_wrapper.actions.resume_chat));
+                        let mut show_resume_button = false;
 
-                        if let Some(file_id) = &active_chat_file_id {
+                        if let Some(file_id) = &current_chat_file_id {
                             if *file_id == file_data.file.id {
-                                start_chat_button.set_visible(false);
-                                resume_chat_button.set_visible(true);
-                            } else {
-                                start_chat_button.set_visible(true);
-                                resume_chat_button.set_visible(false);
+                                show_resume_button = true;
                             }
+                        }
+
+                        if show_resume_button {
+                            resume_chat_button.set_visible(true);
+                            start_chat_button.set_visible(false);
+                        } else {
+                            start_chat_button.set_visible(true);
+                            resume_chat_button.set_visible(false);
                         }
 
                         // Don't draw separator line on first row

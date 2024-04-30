@@ -257,7 +257,6 @@ impl WidgetMatchEvent for ModelSelector {
             let store = scope.data.get_mut::<Store>().unwrap();
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
-                    store.active_chat_file = Some(downloaded_file.file.id.clone());
                     self.update_ui_with_file(cx, downloaded_file);
                 }
                 _ => {}
@@ -265,7 +264,6 @@ impl WidgetMatchEvent for ModelSelector {
 
             match action.as_widget_action().cast() {
                 DownloadedFileAction::StartChat(file_id) => {
-                    store.active_chat_file = Some(file_id.clone());
                     let downloaded_file = store
                         .downloaded_files
                         .iter()
@@ -317,6 +315,32 @@ impl ModelSelector {
             },
         );
         self.redraw(cx);
+    }
+
+    fn deselect(&mut self, cx: &mut Cx) {
+        self.open = false;
+        self.view(id!(selected)).apply_over(
+            cx,
+            live! {
+                visible: false
+            },
+        );
+
+        self.view(id!(choose)).apply_over(
+            cx,
+            live! {
+                visible: true
+            },
+        );
+        self.redraw(cx);
+    }
+}
+
+impl ModelSelectorRef {
+    pub fn deselect(&mut self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.deselect(cx);
+        }
     }
 }
 

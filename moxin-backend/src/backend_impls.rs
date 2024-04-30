@@ -511,6 +511,7 @@ enum ModelManagementCommand {
     CancelDownload(FileID, Sender<anyhow::Result<()>>),
     GetCurrentDownloads(Sender<anyhow::Result<Vec<PendingDownload>>>),
     GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
+    DeleteFile(FileID, Sender<anyhow::Result<()>>),
 }
 
 #[derive(Clone, Debug)]
@@ -555,6 +556,9 @@ impl From<Command> for BuiltInCommand {
             }
             Command::CancelDownload(file_id, tx) => {
                 Self::Model(ModelManagementCommand::CancelDownload(file_id, tx))
+            }
+            Command::DeleteFile(file_id, tx) => {
+                Self::Model(ModelManagementCommand::DeleteFile(file_id, tx))
             }
             Command::GetCurrentDownloads(tx) => {
                 Self::Model(ModelManagementCommand::GetCurrentDownloads(tx))
@@ -1009,6 +1013,16 @@ impl BackendImpl {
                     }
                     let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
 
+                    let _ = tx.send(Ok(()));
+                }
+
+                ModelManagementCommand::DeleteFile(file_id, tx) => {
+                    {
+                        let conn = self.sql_conn.lock().unwrap();
+                        let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
+                    }
+
+                    let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
                     let _ = tx.send(Ok(()));
                 }
 

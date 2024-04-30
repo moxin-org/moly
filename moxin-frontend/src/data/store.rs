@@ -1,8 +1,9 @@
 use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
+use anyhow::{Context, Result};
 use chrono::Utc;
-use makepad_widgets::DefaultNone;
+use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{
     DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
@@ -70,8 +71,6 @@ pub struct Store {
 
     pub preferences: Preferences,
     pub downloaded_files_dir: String,
-
-    pub active_chat_file: Option<FileID>,
 }
 
 impl Store {
@@ -101,8 +100,6 @@ impl Store {
 
             preferences: Preferences::load(),
             downloaded_files_dir,
-
-            active_chat_file: None,
         };
         store.load_downloaded_files();
         store.load_pending_downloads();
@@ -214,6 +211,36 @@ impl Store {
         };
     }
 
+    pub fn eject_model(&self) -> Result<()> {
+        let (tx, rx) = channel();
+        self.backend
+            .command_sender
+            .send(Command::EjectModel(tx))
+            .context("Failed to send eject model command")?;
+
+        rx.recv()
+            .context("Failed to receive eject model response")?
+            .context("Eject model operation failed")
+    }
+
+    pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
+        let (tx, rx) = channel();
+        self.backend
+            .command_sender
+            .send(Command::DeleteFile(file_id.clone(), tx))
+            .context("Failed to send delete file command")?;
+
+        rx.recv()
+            .context("Failed to receive delete file response")?
+            .context("Delete file operation failed")?;
+
+        self.set_file_downloaded_state(&file_id, false);
+        self.load_downloaded_files();
+        self.load_pending_downloads();
+        SignalToUI::set_ui_signal();
+        Ok(())
+    }
+
     pub fn load_model(&mut self, file: &File) {
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(
@@ -241,7 +268,7 @@ impl Store {
                         eprintln!("Error loading model");
                         return;
                     };
-                    self.current_chat = Some(Chat::new(file.name.clone()));
+                    self.current_chat = Some(Chat::new(file.name.clone(), file.id.clone()));
                     self.preferences.set_current_chat_model(file.id.clone());
                 }
                 Err(err) => eprintln!("Error loading model: {:?}", err),
@@ -423,20 +450,19 @@ impl Store {
 
         for id in completed_downloads {
             self.current_downloads.remove(&id);
-            self.mark_file_as_downloaded(&id);
-
             self.downloaded_files_in_session.push(id.clone());
+            self.set_file_downloaded_state(&id, true);
         }
     }
 
-    fn mark_file_as_downloaded(&mut self, file_id: &FileID) {
+    fn set_file_downloaded_state(&mut self, file_id: &FileID, downloaded: bool) {
         let model = self
             .models
             .iter_mut()
             .find(|m| m.files.iter().any(|f| f.id == *file_id));
         if let Some(model) = model {
             let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
-            file.downloaded = true;
+            file.downloaded = downloaded;
         }
     }
 
