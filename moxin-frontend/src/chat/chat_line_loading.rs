@@ -54,12 +54,12 @@ live_design! {
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {line1 = { draw_bg: {dither: 0.3} }}
+                    apply: {line1 = { draw_bg: {dither: 0.1} }}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {line1 = { draw_bg: {dither: 1.0} }}
+                    apply: {line1 = { draw_bg: {dither: 0.9} }}
                 }
             }
 
@@ -68,12 +68,12 @@ live_design! {
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {line2 = { draw_bg: {dither: 0.3} }}
+                    apply: {line2 = { draw_bg: {dither: 0.1} }}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {line2 = { draw_bg: {dither: 1.0} }}
+                    apply: {line2 = { draw_bg: {dither: 0.9} }}
                 }
             }
 
@@ -82,12 +82,12 @@ live_design! {
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {line3 = { draw_bg: {dither: 0.3} }}
+                    apply: {line3 = { draw_bg: {dither: 0.1} }}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {line3 = { draw_bg: {dither: 1.0} }}
+                    apply: {line3 = { draw_bg: {dither: 0.9} }}
                 }
             }
         }
@@ -158,7 +158,7 @@ impl ChatLineLoadingRef {
             return;
         };
         if inner.timer.is_empty() {
-            inner.update_animation(cx);
+            inner.timer = cx.start_timeout(0.2);
         }
     }
 
