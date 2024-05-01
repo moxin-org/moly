@@ -1,4 +1,5 @@
 use makepad_widgets::markdown::MarkdownWidgetExt;
+use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
@@ -11,6 +12,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
     import crate::shared::resource_imports::*;
+    import crate::chat::chat_line_loading::ChatLineLoading;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
@@ -162,11 +164,18 @@ live_design! {
                 }
             }
 
+            loading_container = <View> {
+                width: Fill,
+                height: Fit,
+                loading = <ChatLineLoading> {}
+            }
+
             markdown_message_container = <View> {
                 width: Fill,
                 height: Fit,
                 markdown_message = <MessageText> {}
             }
+
             plain_text_message_container = <View> {
                 width: Fill,
                 height: Fit,
@@ -232,7 +241,7 @@ live_design! {
             flow: Down,
             spacing: 8,
 
-            body_section =  <ChatLineBody> {}
+            body_section = <ChatLineBody> {}
 
             actions_section = <View> {
                 width: Fill,
@@ -263,7 +272,6 @@ live_design! {
 pub enum ChatLineAction {
     Delete(usize),
     Edit(usize, String, bool),
-    Copy(usize),
     None,
 }
 
@@ -351,6 +359,11 @@ impl ChatLine {
             .set_visible(show && is_plain_text);
         self.view(id!(markdown_message_container))
             .set_visible(show && !is_plain_text);
+
+        // if !show {
+        //     self.view(id!(loading_container)).set_visible(false);
+        // }
+
         self.redraw(cx);
     }
 
@@ -428,7 +441,7 @@ impl ChatLineRef {
         inner.label(id!(avatar_label)).set_text(text);
     }
 
-    pub fn set_message_text(&mut self, cx: &mut Cx, text: &str) {
+    pub fn set_message_text(&mut self, cx: &mut Cx, text: &str, loading_if_empty: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
@@ -438,6 +451,14 @@ impl ChatLineRef {
                 inner.text_input(id!(input)).set_text(text.trim());
                 inner.label(id!(plain_text_message)).set_text(text.trim());
                 inner.markdown(id!(markdown_message)).set_text(text.trim());
+
+                let show_loading = text.trim().is_empty() && loading_if_empty;
+                inner.view(id!(loading_container)).set_visible(show_loading);
+                if show_loading {
+                    inner.chat_line_loading(id!(loading_container.loading)).animate(cx);
+                } else {
+                    inner.chat_line_loading(id!(loading_container.loading)).stop_animation();
+                }
 
                 inner.show_or_hide_message_label(cx, true);
             }

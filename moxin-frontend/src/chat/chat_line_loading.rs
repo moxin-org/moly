@@ -3,98 +3,91 @@ use makepad_widgets::*;
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
+    import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::*;
     import crate::landing::model_card::ModelCard;
 
     ANIMATION_SPEED = 0.33
 
-    SearchLoading = {{SearchLoading}} {
+    Bar = <View> {
         width: Fill,
-        height: Fill,
+        height: 16,
+        show_bg: true,
+        draw_bg: {
+            instance dither: 0.3
 
-        flow: Down,
-        spacing: 60,
-        align: {x: 0.5, y: 0.5},
+            fn get_color(self) -> vec4 {
+                return mix(
+                    #F3FFA2,
+                    #E3FBFF,
+                    self.pos.x + self.dither
+                )
+            }
 
-        content = <View> {
-            width: Fit,
-            height: Fit,
-            spacing: 30,
-            circle1 = <CircleView> {
-                width: 28,
-                height: 28,
-                draw_bg: {
-                    color: #D9D9D9,
-                    radius: 14.0,
-                }
-            }
-            circle2 = <CircleView> {
-                width: 28,
-                height: 28,
-                draw_bg: {
-                    color: #D9D9D9,
-                    radius: 14.0,
-                }
-            }
-            circle3 = <CircleView> {
-                width: 28,
-                height: 28,
-                draw_bg: {
-                    color: #D9D9D9,
-                    radius: 14.0,
-                }
+            fn pixel(self) -> vec4 {
+                return Pal::premul(self.get_color())
             }
         }
+    }
 
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 14},
-                color: #667085
-            }
-            text: "Searching..."
+    ChatLineLoading = {{ChatLineLoading}} {
+        width: Fill,
+        height: Fit,
+
+        flow: Down,
+        spacing: 4,
+
+        line1 = <Bar> {}
+        line2 = <Bar> {}
+        <View> {
+            width: Fill,
+            height: 16,
+            line3 = <Bar> {}
+            <VerticalFiller> {}
         }
 
         animator: {
-            circle1 = {
+            line1 = {
                 default: start,
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle1 = { draw_bg: {radius: 1.0} }}}
+                    apply: {line1 = { draw_bg: {dither: 0.3} }}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle1 = { draw_bg: {radius: 14.0} }}}
+                    apply: {line1 = { draw_bg: {dither: 1.0} }}
                 }
             }
 
-            circle2 = {
+            line2 = {
                 default: start,
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle2 = { draw_bg: {radius: 1.0} }}}
+                    apply: {line2 = { draw_bg: {dither: 0.3} }}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle2 = { draw_bg: {radius: 14.0} }}}
+                    apply: {line2 = { draw_bg: {dither: 1.0} }}
                 }
             }
 
-            circle3 = {
+            line3 = {
                 default: start,
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle3 = { draw_bg: {radius: 1.0} }}}
+                    apply: {line3 = { draw_bg: {dither: 0.3} }}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle3 = { draw_bg: {radius: 14.0} }}}
+                    apply: {line3 = { draw_bg: {dither: 1.0} }}
                 }
             }
         }
@@ -102,7 +95,7 @@ live_design! {
 }
 
 #[derive(Live, LiveHook, Widget)]
-pub struct SearchLoading {
+pub struct ChatLineLoading {
     #[deref]
     view: View,
 
@@ -113,11 +106,12 @@ pub struct SearchLoading {
     timer: Timer,
 
     #[rust]
-    current_animated_circle: usize,
+    current_animated_bar: usize,
 }
 
-impl Widget for SearchLoading {
+impl Widget for ChatLineLoading {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+
         if self.timer.is_event(event).is_some() {
             self.update_animation(cx);
         }
@@ -133,23 +127,23 @@ impl Widget for SearchLoading {
     }
 }
 
-impl SearchLoading {
+impl ChatLineLoading {
     pub fn update_animation(&mut self, cx: &mut Cx) {
-        self.current_animated_circle = (self.current_animated_circle + 1) % 3;
+        self.current_animated_bar = (self.current_animated_bar + 1) % 3;
 
-        match self.current_animated_circle {
+        match self.current_animated_bar {
             0 => {
-                self.animator_play(cx, id!(circle1.run));
-                self.animator_play(cx, id!(circle3.start));
+                self.animator_play(cx, id!(line1.run));
+                self.animator_play(cx, id!(line3.start));
             }
             1 => {
-                self.animator_play(cx, id!(circle1.start));
-                self.animator_play(cx, id!(circle2.run));
+                self.animator_play(cx, id!(line1.start));
+                self.animator_play(cx, id!(line2.run));
             
             }
             2 => {
-                self.animator_play(cx, id!(circle2.start));
-                self.animator_play(cx, id!(circle3.run));
+                self.animator_play(cx, id!(line2.start));
+                self.animator_play(cx, id!(line3.run));
             }
             _ => unreachable!(),
         };
@@ -158,12 +152,14 @@ impl SearchLoading {
     }
 }
 
-impl SearchLoadingRef {
+impl ChatLineLoadingRef {
     pub fn animate(&mut self, cx: &mut Cx) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.update_animation(cx);
+        if inner.timer.is_empty() {
+            inner.update_animation(cx);
+        }
     }
 
     pub fn stop_animation(&mut self) {
