@@ -191,6 +191,9 @@ live_design! {
 
         cell4 = {
             align: {x: 0.5, y: 0.5},
+            download_button = <DownloadButton> { visible: false }
+            downloaded_button = <DownloadedButton> { visible: false }
+            download_pending_button = <DownloadPendingButton> { visible: false }
         }
     }
 
@@ -199,23 +202,7 @@ live_design! {
         height: Fit,
         flow: Down,
 
-        template_downloaded: <ModelFilesRowWithData> {
-            cell4 = {
-                <DownloadedButton> {}
-            }
-        }
-
-        template_download_pending: <ModelFilesRowWithData> {
-            cell4 = {
-                <DownloadPendingButton> {}
-            }
-        }
-
-        template_download: <ModelFilesRowWithData> {
-            cell4 = {
-                download_button = <DownloadButton> {}
-            }
-        }
+        template: <ModelFilesRowWithData> {}
     }
 
     FooterLink = <View> {
@@ -366,11 +353,7 @@ pub struct ModelFilesItems {
     layout: Layout,
 
     #[live]
-    template_downloaded: Option<LivePtr>,
-    #[live]
-    template_download: Option<LivePtr>,
-    #[live]
-    template_download_pending: Option<LivePtr>,
+    template: Option<LivePtr>,
 
     #[live(true)]
     show_tags: bool,
@@ -423,7 +406,6 @@ impl Widget for ModelFilesItems {
             }
         }
 
-        let mut clicked_item_id = None;
         for (id, item) in self.items.iter_mut() {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.view(id!(download_button)).finger_down(&actions) {
@@ -438,23 +420,9 @@ impl Widget for ModelFilesItems {
                         ),
                     );
 
-                    clicked_item_id = Some(id.clone());
                     break;
                 }
             }
-        }
-
-        // Remove this item from the list so it gets regenerated on the next redraw
-        if let Some(id) = clicked_item_id {
-            self.items.remove(&id);
-            self.redraw(cx);
-        }
-
-        // When data changes, we need to reset the items hash, so the PortalList
-        // can properly update the items (otherwise the used template widget are never changed).
-        if let Event::Signal = event {
-            self.items.clear();
-            self.redraw(cx);
         }
     }
 
@@ -507,21 +475,9 @@ impl ModelFilesItems {
         for i in 0..files.len() {
             let item_id = LiveId(i as u64).into();
 
-            let template = if pending_downloads
-                .iter()
-                .find(|f| f.file.id == files[i].id)
-                .is_some()
-            {
-                self.template_download_pending
-            } else if files[i].downloaded {
-                self.template_downloaded
-            } else {
-                self.template_download
-            };
-
             let item_widget = self
                 .items
-                .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, template));
+                .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, self.template));
             self.map_to_files.insert(item_id, files[i].clone());
 
             let filename = &files[i].name;
@@ -536,9 +492,42 @@ impl ModelFilesItems {
                     cell2 = { full_size = { text: (size) }}
                     cell3 = {
                         quantization_tag = { quantization = { text: (quantization) }}
-                     }
+                    }
                 },
             );
+
+            if pending_downloads
+                .iter()
+                .find(|f| f.file.id == files[i].id)
+                .is_some()
+            {
+                item_widget.apply_over(
+                    cx,
+                    live! { cell4 = {
+                        download_pending_button = { visible: true }
+                        downloaded_button = { visible: false }
+                        download_button = { visible: false }
+                    }}
+                );
+            } else if files[i].downloaded {
+                item_widget.apply_over(
+                    cx,
+                    live! { cell4 = {
+                        download_pending_button = { visible: false }
+                        downloaded_button = { visible: true }
+                        download_button = { visible: false }
+                    }}
+                );
+            } else {
+                item_widget.apply_over(
+                    cx,
+                    live! { cell4 = {
+                        download_pending_button = { visible: false }
+                        downloaded_button = { visible: false }
+                        download_button = { visible: true }
+                    }}
+                );
+            };
 
             if self.show_tags {
                 item_widget

@@ -60,11 +60,13 @@ impl Download {
                     },
                     Err(err) => eprintln!("Error downloading file: {:?}", err),
                 }
-            };
+            } else {
+                break
+            }
 
             SignalToUI::set_ui_signal();
             if is_done {
-                break;
+                break
             }
         });
     }
