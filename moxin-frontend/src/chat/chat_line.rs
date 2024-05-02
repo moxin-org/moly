@@ -388,12 +388,16 @@ impl ChatLine {
             if fe.was_tap() {
                 let updated_message = self.text_input(id!(input)).text();
 
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, false),
-                );
+                // Do not allow to have empty messages for now.
+                // TODO We should disable Save button when the message is empty. 
+                if !updated_message.trim().is_empty() {
+                    let widget_id = self.view.widget_uid();
+                    cx.widget_action(
+                        widget_id,
+                        &scope.path,
+                        ChatLineAction::Edit(self.message_id, updated_message, false),
+                    );
+                }
 
                 self.set_edit_mode(cx, false);
             }
@@ -403,12 +407,15 @@ impl ChatLine {
             if fe.was_tap() {
                 let updated_message = self.text_input(id!(input)).text();
 
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, true),
-                );
+                // TODO We should disable Save and Regenerate button when the message is empty. 
+                if !updated_message.trim().is_empty() {
+                    let widget_id = self.view.widget_uid();
+                    cx.widget_action(
+                        widget_id,
+                        &scope.path,
+                        ChatLineAction::Edit(self.message_id, updated_message, true),
+                    );
+                }
 
                 self.set_edit_mode(cx, false);
             }
@@ -437,7 +444,7 @@ impl ChatLineRef {
         inner.label(id!(avatar_label)).set_text(text);
     }
 
-    pub fn set_message_text(&mut self, cx: &mut Cx, text: &str, loading_if_empty: bool) {
+    pub fn set_message_text(&mut self, cx: &mut Cx, text: &str) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
@@ -448,12 +455,16 @@ impl ChatLineRef {
                 inner.label(id!(plain_text_message)).set_text(text.trim());
                 inner.markdown(id!(markdown_message)).set_text(text.trim());
 
-                let show_loading = text.trim().is_empty() && loading_if_empty;
+                // We know only AI assistant messages could be empty, so it is never
+                // displayed in user's chat lines.
+                let show_loading = text.trim().is_empty();
                 inner.view(id!(loading_container)).set_visible(show_loading);
+
+                let mut loading_widget = inner.chat_line_loading(id!(loading_container.loading));
                 if show_loading {
-                    inner.chat_line_loading(id!(loading_container.loading)).animate(cx);
+                    loading_widget.animate(cx);
                 } else {
-                    inner.chat_line_loading(id!(loading_container.loading)).stop_animation();
+                    loading_widget.stop_animation();
                 }
 
                 inner.show_or_hide_message_label(cx, true);
