@@ -360,10 +360,6 @@ impl ChatLine {
         self.view(id!(markdown_message_container))
             .set_visible(show && !is_plain_text);
 
-        // if !show {
-        //     self.view(id!(loading_container)).set_visible(false);
-        // }
-
         self.redraw(cx);
     }
 
