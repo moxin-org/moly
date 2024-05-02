@@ -252,7 +252,7 @@ live_design! {
                         text_style: <BOLD_FONT>{font_size: 9},
                         color: #667085
                     }
-                    text: "Model File"
+                    text: "File name"
                 }
             }
 
@@ -507,7 +507,7 @@ impl ModelFilesItems {
                         download_pending_button = { visible: true }
                         downloaded_button = { visible: false }
                         download_button = { visible: false }
-                    }}
+                    }},
                 );
             } else if files[i].downloaded {
                 item_widget.apply_over(
@@ -516,7 +516,7 @@ impl ModelFilesItems {
                         download_pending_button = { visible: false }
                         downloaded_button = { visible: true }
                         download_button = { visible: false }
-                    }}
+                    }},
                 );
             } else {
                 item_widget.apply_over(
@@ -525,7 +525,7 @@ impl ModelFilesItems {
                         download_pending_button = { visible: false }
                         downloaded_button = { visible: false }
                         download_button = { visible: true }
-                    }}
+                    }},
                 );
             };
 
@@ -687,10 +687,8 @@ impl ModelFilesList {
 
     fn hide_immediate(&mut self, cx: &mut Cx) {
         self.apply_links_visibility(cx, false);
-        self.view(id!(remaining_files_wrapper)).apply_over(
-            cx,
-            live! {height: 0}
-        );
+        self.view(id!(remaining_files_wrapper))
+            .apply_over(cx, live! {height: 0});
         self.show_all_animation_progress = 0.0;
         self.redraw(cx);
     }

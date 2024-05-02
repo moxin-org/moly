@@ -47,20 +47,20 @@ live_design! {
 
         spacing: 5,
         draw_bg: {
-            instance radius: 2.0,
+            instance radius: 3.0,
         }
 
         attr_name = <Label> {
             draw_text:{
                 text_style: <REGULAR_FONT>{font_size: 9},
-                color: #fff
+                color: #x0
             }
         }
 
         attr_value = <Label> {
             draw_text:{
                 text_style: <BOLD_FONT>{font_size: 9},
-                color: #fff
+                color: #x0
             }
         }
     }
@@ -68,20 +68,20 @@ live_design! {
     ModelAttributes = <View> {
         width: Fit,
         height: Fit,
-        spacing: 10,
+        spacing: 8,
 
         model_size_tag = <ModelAttributeTag> {
-            draw_bg: { color: #44899A },
+            draw_bg: { color: #D4E6F7 },
             attr_name = { text: "Model Size" }
         }
 
         model_requires_tag = <ModelAttributeTag> {
-            draw_bg: { color: #5CAA74 },
+            draw_bg: { color: #D6F5EB },
             attr_name = { text: "Requires" }
         }
 
         model_architecture_tag = <ModelAttributeTag> {
-            draw_bg: { color: #A44EBB },
+            draw_bg: { color: #F0D6F5 },
             attr_name = { text: "Architecture" }
         }
     }
