@@ -136,16 +136,22 @@ impl DownloadedFile {
         Ok(files)
     }
 
-    pub fn get_by_models<S: AsRef<str>>(
+    pub fn get_by_models<S: AsRef<str> + rusqlite::ToSql>(
         conn: &rusqlite::Connection,
         ids: &[S],
     ) -> rusqlite::Result<HashMap<Arc<String>, Self>> {
-        let ids = ids.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
-        let ids_str = ids.join(",");
+        let placeholders = std::iter::repeat("?")
+            .take(ids.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!(
+            "SELECT * FROM download_files WHERE model_id IN ({}) AND downloaded = TRUE",
+            placeholders
+        );
 
-        let mut stmt = conn
-            .prepare("SELECT * FROM download_files WHERE model_id IN (?1) AND downloaded = TRUE")?;
-        let mut rows = stmt.query([ids_str])?;
+        let mut stmt = conn.prepare(&sql)?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(ids))?;
+
         let mut files = HashMap::new();
 
         while let Some(row) = rows.next()? {
