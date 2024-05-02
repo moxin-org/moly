@@ -45,14 +45,14 @@ live_design! {
 
                     sidebar_menu = <View> {
                         width: 100,
-                        flow: Down, spacing: 30.0,
+                        flow: Down, spacing: 20.0,
                         padding: { top: 80 }
 
                         align: {x: 0.5, y: 0.0},
 
                         show_bg: true,
                         draw_bg: {
-                            color: #EDEEF0,
+                            color: (SIDEBAR_BG_COLOR),
                         }
 
                         discover_tab = <SidebarMenuButton> {

@@ -44,50 +44,67 @@ live_design! {
         }
     }
 
-    SIDEBAR_COLOR = #344054
-    SIDEBAR_COLOR_HOVER = #636e82
-    SIDEBAR_COLOR_SELECTED = #B258DD
+    SIDEBAR_FONT_COLOR = #344054
+    SIDEBAR_FONT_COLOR_HOVER = #344054
+    SIDEBAR_FONT_COLOR_SELECTED = #127487
+
+    SIDEBAR_BG_COLOR_HOVER = #E2F1F199
+    SIDEBAR_BG_COLOR_SELECTED = #E2F1F199
 
     SidebarMenuButton = <RadioButton> {
-        width: 96,
-        height: 60,
+        width: 80,
+        height: 70,
         padding: 0, margin: 0,
-        flow: Down, spacing: 10.0, align: {x: 0.5, y: 0.5}
+        flow: Down, spacing: 8.0, align: {x: 0.5, y: 0.5}
 
-        icon_walk: {margin: 0, width: 32, height: 32}
+        icon_walk: {margin: 0, width: 30, height: 30}
         label_walk: {margin: 0}
 
         draw_radio: {
             radio_type: Tab,
 
-            fn pixel(self) -> vec4 {
-                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                sdf.box(
-                    self.rect_size.x-2,
-                    0.0,
-                    self.rect_size.x,
-                    self.rect_size.y,
-                    0.5
-                );
-                sdf.fill(
+            instance border_width: 0.0
+            instance border_color: #0000
+            instance inset: vec4(0.0, 0.0, 0.0, 0.0)
+            instance radius: 2.5
+
+            fn get_color(self) -> vec4 {
+                return mix(
                     mix(
-                        mix(
-                            #0000,
-                            (SIDEBAR_COLOR_HOVER),
-                            self.hover
-                        ),
-                        (SIDEBAR_COLOR_SELECTED),
-                        self.selected
-                    )
-                );
+                        (SIDEBAR_BG_COLOR),
+                        (SIDEBAR_BG_COLOR_HOVER),
+                        self.hover
+                    ),
+                    (SIDEBAR_BG_COLOR_SELECTED),
+                    self.selected
+                )
+            }
+
+            fn get_border_color(self) -> vec4 {
+                return self.border_color
+            }
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                sdf.box(
+                    self.inset.x + self.border_width,
+                    self.inset.y + self.border_width,
+                    self.rect_size.x - (self.inset.x + self.inset.z + self.border_width * 2.0),
+                    self.rect_size.y - (self.inset.y + self.inset.w + self.border_width * 2.0),
+                    max(1.0, self.radius)
+                )
+                sdf.fill_keep(self.get_color())
+                if self.border_width > 0.0 {
+                    sdf.stroke(self.get_border_color(), self.border_width)
+                }
                 return sdf.result;
             }
         }
 
         draw_text: {
-            color_unselected: (SIDEBAR_COLOR)
-            color_unselected_hover: (SIDEBAR_COLOR_HOVER)
-            color_selected: (SIDEBAR_COLOR_SELECTED)
+            color_unselected: (SIDEBAR_FONT_COLOR)
+            color_unselected_hover: (SIDEBAR_FONT_COLOR_HOVER)
+            color_selected: (SIDEBAR_FONT_COLOR_SELECTED)
 
             fn get_color(self) -> vec4 {
                 return mix(
@@ -103,9 +120,9 @@ live_design! {
         }
 
         draw_icon: {
-            instance color_unselected: (SIDEBAR_COLOR)
-            instance color_unselected_hover: (SIDEBAR_COLOR_HOVER)
-            instance color_selected: (SIDEBAR_COLOR_SELECTED)
+            instance color_unselected: (SIDEBAR_FONT_COLOR)
+            instance color_unselected_hover: (SIDEBAR_FONT_COLOR_HOVER)
+            instance color_selected: (SIDEBAR_FONT_COLOR_SELECTED)
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
