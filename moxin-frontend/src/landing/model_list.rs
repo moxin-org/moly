@@ -66,7 +66,7 @@ impl Widget for ModelList {
             if is_loading {
                 self.search_loading(id!(search_loading)).animate(cx);
             } else {
-                self.search_loading(id!(search_loading)).stop_animation(cx);
+                self.search_loading(id!(search_loading)).stop_animation();
             }
         }
     }

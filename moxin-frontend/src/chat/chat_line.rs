@@ -1,4 +1,5 @@
 use makepad_widgets::markdown::MarkdownWidgetExt;
+use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
@@ -11,6 +12,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
     import crate::shared::resource_imports::*;
+    import crate::chat::chat_line_loading::ChatLineLoading;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
@@ -162,11 +164,18 @@ live_design! {
                 }
             }
 
+            loading_container = <View> {
+                width: Fill,
+                height: Fit,
+                loading = <ChatLineLoading> {}
+            }
+
             markdown_message_container = <View> {
                 width: Fill,
                 height: Fit,
                 markdown_message = <MessageText> {}
             }
+
             plain_text_message_container = <View> {
                 width: Fill,
                 height: Fit,
@@ -232,7 +241,7 @@ live_design! {
             flow: Down,
             spacing: 8,
 
-            body_section =  <ChatLineBody> {}
+            body_section = <ChatLineBody> {}
 
             actions_section = <View> {
                 width: Fill,
@@ -263,7 +272,6 @@ live_design! {
 pub enum ChatLineAction {
     Delete(usize),
     Edit(usize, String, bool),
-    Copy(usize),
     None,
 }
 
@@ -351,6 +359,7 @@ impl ChatLine {
             .set_visible(show && is_plain_text);
         self.view(id!(markdown_message_container))
             .set_visible(show && !is_plain_text);
+
         self.redraw(cx);
     }
 
@@ -379,12 +388,16 @@ impl ChatLine {
             if fe.was_tap() {
                 let updated_message = self.text_input(id!(input)).text();
 
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, false),
-                );
+                // Do not allow to have empty messages for now.
+                // TODO We should disable Save button when the message is empty. 
+                if !updated_message.trim().is_empty() {
+                    let widget_id = self.view.widget_uid();
+                    cx.widget_action(
+                        widget_id,
+                        &scope.path,
+                        ChatLineAction::Edit(self.message_id, updated_message, false),
+                    );
+                }
 
                 self.set_edit_mode(cx, false);
             }
@@ -394,12 +407,15 @@ impl ChatLine {
             if fe.was_tap() {
                 let updated_message = self.text_input(id!(input)).text();
 
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, true),
-                );
+                // TODO We should disable Save and Regenerate button when the message is empty. 
+                if !updated_message.trim().is_empty() {
+                    let widget_id = self.view.widget_uid();
+                    cx.widget_action(
+                        widget_id,
+                        &scope.path,
+                        ChatLineAction::Edit(self.message_id, updated_message, true),
+                    );
+                }
 
                 self.set_edit_mode(cx, false);
             }
@@ -438,6 +454,18 @@ impl ChatLineRef {
                 inner.text_input(id!(input)).set_text(text.trim());
                 inner.label(id!(plain_text_message)).set_text(text.trim());
                 inner.markdown(id!(markdown_message)).set_text(text.trim());
+
+                // We know only AI assistant messages could be empty, so it is never
+                // displayed in user's chat lines.
+                let show_loading = text.trim().is_empty();
+                inner.view(id!(loading_container)).set_visible(show_loading);
+
+                let mut loading_widget = inner.chat_line_loading(id!(loading_container.loading));
+                if show_loading {
+                    loading_widget.animate(cx);
+                } else {
+                    loading_widget.stop_animation();
+                }
 
                 inner.show_or_hide_message_label(cx, true);
             }
