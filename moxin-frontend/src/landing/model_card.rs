@@ -48,21 +48,21 @@ live_design! {
                 }
             }
 
-            <RoundedView> {
+
+            <VerticalFiller> {}
+
+            model_like_count = <ModelAttributeTag> {
                 width: Fit,
                 height: Fit,
-                padding: {top: 6, bottom: 6, left: 4, right: 10}
-                margin: {left: 30}
 
-                spacing: 4,
-                align: {x: 0.0, y: 0.5},
+                padding: {top: 6, bottom: 6, left: 6, right: 10}
 
                 draw_bg: {
-                    instance radius: 2.0,
-                    color: #FFEDED,
-                }
-
-                <Icon> {
+                    color: #0000,
+                    border_color: #98A2B3,
+                    border_width: 1.0,
+                },
+                attr_name = <Icon> {
                     draw_icon: {
                         svg_file: (ICON_FAVORITE),
                         fn get_color(self) -> vec4 {
@@ -72,46 +72,45 @@ live_design! {
                     icon_walk: {width: 14, height: 14}
                 }
 
-                model_like_count = <Label> {
-                    draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 10},
-                        color: #1C1917
+                attr_value = {
+                    margin: {left: 5},
+                    draw_text: {
+                        color: #000
+                        text_style: <REGULAR_FONT>{font_size: 9},
                     }
                 }
             }
 
-            <RoundedView> {
+            model_download_count = <ModelAttributeTag> {
                 width: Fit,
                 height: Fit,
-                padding: {top: 6, bottom: 6, left: 4, right: 10}
 
-                spacing: 4,
-                align: {x: 0.0, y: 0.5},
+                padding: {top: 6, bottom: 6, left: 6, right: 10}
 
                 draw_bg: {
-                    instance radius: 2.0,
-                    color: #DCF6E6,
-                }
-
-                <Icon> {
+                    color: #0000,
+                    border_color: #98A2B3,
+                    border_width: 1.0,
+                },
+                attr_name = <Icon> {
                     draw_icon: {
                         svg_file: (ICON_DOWNLOADS),
                         fn get_color(self) -> vec4 {
-                            return #000;
+                        return #000;
                         }
                     }
                     icon_walk: {width: 12, height: 12}
                 }
 
-                model_download_count = <Label> {
-                    draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 10},
-                        color: #1C1917
+                attr_value = {
+                    margin: {left: 5},
+                    draw_text: {
+                        color: #000
+                        text_style: <REGULAR_FONT>{font_size: 9},
                     }
                 }
             }
 
-            <VerticalFiller> {}
 
             <View> {
                 width: 260,
@@ -347,11 +346,11 @@ impl Widget for ModelCard {
         self.label(id!(model_name)).set_text(name);
 
         let download_count = &model.download_count;
-        self.label(id!(model_download_count))
+        self.label(id!(model_download_count.attr_value))
             .set_text(&format!("{}", download_count));
 
         let like_count = &model.like_count;
-        self.label(id!(model_like_count))
+        self.label(id!(model_like_count.attr_value))
             .set_text(&format!("{}", like_count));
 
         let size = &model.size;
