@@ -9,6 +9,20 @@ live_design! {
 
     ANIMATION_SPEED = 0.33
 
+    LoadingBall = <CircleView> {
+        width: 28
+        height: 28
+        draw_bg: {
+            radius: 14.0
+            fn get_color(self) -> vec4 {
+                let top_color = #E6F2D8;
+                let bottom_color = #A4E0EF;
+                let gradient_ratio = self.pos.y;
+                return mix(top_color, bottom_color, gradient_ratio);
+            }
+        }    
+    }
+
     SearchLoading = {{SearchLoading}} {
         width: Fill,
         height: Fill,
@@ -21,30 +35,9 @@ live_design! {
             width: Fit,
             height: Fit,
             spacing: 30,
-            circle1 = <CircleView> {
-                width: 28,
-                height: 28,
-                draw_bg: {
-                    color: #D9D9D9,
-                    radius: 14.0,
-                }
-            }
-            circle2 = <CircleView> {
-                width: 28,
-                height: 28,
-                draw_bg: {
-                    color: #D9D9D9,
-                    radius: 14.0,
-                }
-            }
-            circle3 = <CircleView> {
-                width: 28,
-                height: 28,
-                draw_bg: {
-                    color: #D9D9D9,
-                    radius: 14.0,
-                }
-            }
+            circle1 = <LoadingBall> {}
+            circle2 = <LoadingBall> {}
+            circle3 = <LoadingBall> {}
         }
 
         <Label> {
