@@ -13,6 +13,7 @@ live_design! {
 
     import crate::my_models::downloaded_files_table::DownloadedFilesTable;
 
+    BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT_FOLDER = dep("crate://self/resources/icons/edit_folder.svg")
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_SHOW_IN_FILES = dep("crate://self/resources/icons/visibility.svg")
@@ -126,69 +127,58 @@ live_design! {
     MyModelsScreen = {{MyModelsScreen}} {
         width: Fill
         height: Fill
-        padding: 60
-        spacing: 20
-        flow: Down
+        flow: Overlay
 
-        show_bg: true
-        draw_bg: {
-            color: #cccccc33,
-            instance color2: #AF56DA55
-            fn get_color(self) -> vec4 {
-                let coef = self.rect_size.y / self.rect_size.x;
+        <Image> {
+            source: (BG_IMAGE),
+            width: Fill,
+            height: Fill,
+        }
 
-                let distance_vec = self.pos - vec2(0.8, 0.8);
-                let norm_distance = length(vec2(distance_vec.x, distance_vec.y * coef) * 1.8);
+        <View> {
+            width: Fill, height: Fill
+            flow: Down
+            align: {x: 0.5, y: 0.5}
+            padding: 60
 
-                if pow(norm_distance, 1.4) > 1.0 {
-                    return self.color;
-                } else {
-                    return mix(self.color2, self.color, pow(norm_distance, 1.4));
+            header = <View> {
+                width: Fill, height: Fit
+                spacing: 15
+                flow: Right
+                align: {x: 0.0, y: 1.0}
+
+                title = <Label> {
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 30}
+                        color: #000
+                    }
+                    text: "My Models"
+                }
+
+                models_summary = <Label> {
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 20}
+                        color: #555
+                    }
                 }
             }
 
-            fn pixel(self) -> vec4 {
-                return Pal::premul(self.get_color());
-            }
-        }
+            sub_header = <View> {
+                width: Fill, height: Fit
+                flow: Right
+                spacing: 10
+                margin: {top: 10}
+                align: {x: 0.0, y: 0.5}
 
-        header = <View> {
-            width: Fill, height: Fit
-            spacing: 15
-            flow: Right
-            align: {x: 0.0, y: 1.0}
-
-            title = <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 30}
-                    color: #000
-                }
-                text: "My Models"
+                <DownloadLocation> {}
+                show_in_files = <ShowInFiles> {}
+                <View> { width: Fill, height: Fit }
+                search = <SearchBar> {}
             }
 
-            models_summary = <Label> {
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 20}
-                    color: #555
-                }
+            table = <DownloadedFilesTable> {
+                margin: {top: 20}
             }
-        }
-
-        sub_header = <View> {
-            width: Fill, height: Fit
-            flow: Right
-            spacing: 10
-            margin: {top: 10}
-            align: {x: 0.0, y: 0.5}
-
-            <DownloadLocation> {}
-            show_in_files = <ShowInFiles> {}
-            <View> { width: Fill, height: Fit }
-            search = <SearchBar> {}
-        }
-
-        table = <DownloadedFilesTable> {
-            margin: {top: 20}
         }
     }
 }

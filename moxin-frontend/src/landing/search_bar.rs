@@ -1,6 +1,5 @@
 use crate::data::store::{SortCriteria, StoreAction};
 use crate::landing::sorting::SortingWidgetExt;
-use makepad_widgets::event::keyboard;
 use makepad_widgets::*;
 
 live_design! {
@@ -26,8 +25,8 @@ live_design! {
         show_bg: true,
 
         draw_bg: {
-            color: #cccccc33,
-            instance color2: #AF56DA55,
+            color: #EBFCFF,
+            instance color2: #CBE3E8,
             fn get_color(self) -> vec4 {
                 let coef = self.rect_size.y / self.rect_size.x;
 
