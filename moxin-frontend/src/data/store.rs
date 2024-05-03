@@ -9,7 +9,7 @@ use moxin_protocol::data::{
     DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
 };
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
-use std::collections::HashMap;
+use std::collections::{VecDeque, HashMap};
 use std::sync::mpsc::channel;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
@@ -67,7 +67,7 @@ pub struct Store {
 
     pub current_chat: Option<Chat>,
     pub current_downloads: HashMap<FileID, Download>,
-    pub downloaded_files_in_session: Vec<FileID>,
+    pub downloaded_files_to_notify: VecDeque<FileID>,
 
     pub preferences: Preferences,
     pub downloaded_files_dir: String,
@@ -96,7 +96,8 @@ impl Store {
             sorted_by: SortCriteria::MostDownloads,
             current_chat: None,
             current_downloads: HashMap::new(),
-            downloaded_files_in_session: vec![],
+
+            downloaded_files_to_notify: VecDeque::new(),
 
             preferences: Preferences::load(),
             downloaded_files_dir,
@@ -470,7 +471,7 @@ impl Store {
 
         for id in completed_downloads {
             self.current_downloads.remove(&id);
-            self.downloaded_files_in_session.push(id.clone());
+            self.downloaded_files_to_notify.push_back(id.clone());
             self.set_file_downloaded_state(&id, true);
         }
     }

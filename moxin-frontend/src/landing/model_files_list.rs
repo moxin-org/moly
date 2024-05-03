@@ -371,25 +371,17 @@ pub struct ModelFilesItems {
     map_to_files: HashMap<LiveId, File>,
 
     #[rust]
-    notified_files: Vec<FileID>,
-
-    #[rust]
     model: Option<Model>,
 }
 
 impl Widget for ModelFilesItems {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
-        let store = scope.data.get::<Store>().unwrap();
+        let mut store: &mut Store = scope.data.get_mut::<Store>().unwrap();
 
         // Notify of a downloaded file.
         if let Event::Signal = event {
-            if store.downloaded_files_in_session.len() > self.notified_files.len() {
-                for downloaded_file_in_sessison in store.downloaded_files_in_session.iter() {
-                    if self.notified_files.contains(downloaded_file_in_sessison) {
-                        continue;
-                    }
-
+            if let Some(downloaded_file) = store.downloaded_files_to_notify.pop_front() {
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
@@ -398,11 +390,8 @@ impl Widget for ModelFilesItems {
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
-                        ModelFileItemsAction::Downloaded(downloaded_file_in_sessison.to_string()),
+                        ModelFileItemsAction::Downloaded(downloaded_file.clone()),
                     );
-                    self.notified_files
-                        .push(downloaded_file_in_sessison.to_string());
-                }
             }
         }
 
