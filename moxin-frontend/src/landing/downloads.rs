@@ -212,7 +212,7 @@ impl Downloads {
     }
 
     fn set_collapse_button_open(&mut self, cx: &mut Cx, is_open: bool) {
-        let rotation_angle = if is_open { 180.0 } else { 0.0 };
+        let rotation_angle = if is_open { 0.0 } else { 180.0 };
         self.icon(id!(collapse.icon))
         .apply_over(cx, 
             live! {
