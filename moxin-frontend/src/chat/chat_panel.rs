@@ -237,7 +237,7 @@ live_design! {
                 width: Fill, height: Fit
                 flow: Down,
                 align: {x: 0.5, y: 0.5},
-                chat_input = <ChatPromptInput> {}
+                no_downloaded_model_prompt_input = <ChatPromptInput> {}
             }
 
         }
@@ -277,7 +277,7 @@ live_design! {
                 width: Fill, height: Fit
                 flow: Down,
                 align: {x: 0.5, y: 0.5},
-                chat_input = <ChatPromptInput> {}
+                no_model_prompt_input = <ChatPromptInput> {}
             }
 
         }
@@ -331,7 +331,7 @@ live_design! {
                 <JumpToButtom> {}
             }
 
-            <ChatPromptInput> {}
+            main_prompt_input = <ChatPromptInput> {}
         }
 
         model_selector = <ModelSelector> {}
@@ -624,7 +624,7 @@ impl ChatPanel {
                 auto_scroll_pending: _,
                 auto_scroll_cancellable: _,
             } => {
-                let prompt_input = self.text_input(id!(prompt));
+                let prompt_input = self.text_input(id!(main_prompt_input.prompt));
                 prompt_input.apply_over(
                     cx,
                     live! {
@@ -640,7 +640,7 @@ impl ChatPanel {
     }
 
     fn enable_or_disable_prompt_input(&mut self, cx: &mut Cx) {
-        let prompt_input = self.text_input(id!(prompt));
+        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         let enable = if prompt_input.text().len() > 0 {
             1.0
         } else {
@@ -753,7 +753,7 @@ impl ChatPanel {
     }
 
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let prompt_input = self.text_input(id!(prompt));
+        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
 
         if let Some(_text) = prompt_input.changed(actions) {
             self.update_prompt_input(cx);
@@ -779,7 +779,7 @@ impl ChatPanel {
         let store = scope.data.get_mut::<Store>().unwrap();
         store.send_chat_message(prompt.clone());
 
-        let prompt_input = self.text_input(id!(prompt));
+        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         prompt_input.set_text_and_redraw(cx, "");
         prompt_input.set_cursor(0, 0);
         self.update_prompt_input(cx);
