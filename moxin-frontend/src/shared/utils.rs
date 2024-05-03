@@ -26,3 +26,27 @@ pub fn format_model_downloaded_size(size: &str, progress: f64) -> Result<String>
 pub fn hugging_face_model_url(model_id: &str) -> String {
     format!("{}/{}", HUGGING_FACE_BASE_URL, model_id)
 }
+
+/// Removes dashes, file extension, and capitalizes the first letter of each word.
+pub fn human_readable_model_name(name: &str) -> String {
+    let name = name
+        .to_lowercase()
+        .replace("-", " ")
+        .replace("gguf", "")
+        .replace(".gguf", "")
+        .replace("chat", "");
+
+    let name = name
+        .split_whitespace()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first_char) => first_char.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ");
+
+    name
+}

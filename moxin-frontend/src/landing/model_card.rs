@@ -1,7 +1,7 @@
 use crate::data::store::{ModelWithPendingDownloads, Store};
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalAction;
-use crate::shared::utils::hugging_face_model_url;
+use crate::shared::utils::{hugging_face_model_url, human_readable_model_name};
 use makepad_widgets::*;
 use moxin_protocol::data::ModelID;
 use unicode_segmentation::UnicodeSegmentation;
@@ -342,7 +342,7 @@ impl Widget for ModelCard {
 
         self.model_id = model.id.clone();
 
-        let name = &model.name;
+        let name = &human_readable_model_name(&model.name);
         self.label(id!(model_name)).set_text(name);
 
         let download_count = &model.download_count;

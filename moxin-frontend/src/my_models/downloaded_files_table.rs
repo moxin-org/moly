@@ -5,7 +5,10 @@ use moxin_protocol::data::{DownloadedFile, FileID};
 
 use crate::{
     data::store::Store,
-    shared::{modal::ModalAction, utils::format_model_size},
+    shared::{
+        modal::ModalAction,
+        utils::{format_model_size, human_readable_model_name},
+    },
 };
 
 use super::{
@@ -315,7 +318,7 @@ impl Widget for DownloadedFilesTable {
                             .insert(item.widget_uid().0, file_data.file.id.clone());
 
                         // Name tag
-                        let name = human_readable_name(&file_data.file.name);
+                        let name = human_readable_model_name(&file_data.file.name);
                         item.label(id!(h_wrapper.model_file.h_wrapper.name_tag.name))
                             .set_text(&name);
 
@@ -587,29 +590,6 @@ pub enum DownloadedFileAction {
     StartChat(FileID),
     ResumeChat(FileID),
     None,
-}
-
-/// Removes dashes, file extension, and capitalizes the first letter of each word.
-fn human_readable_name(name: &str) -> String {
-    let name = name
-        .to_lowercase()
-        .replace("-", " ")
-        .replace(".gguf", "")
-        .replace("chat", "");
-
-    let name = name
-        .split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first_char) => first_char.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(" ");
-
-    name
 }
 
 fn dash_if_empty(input: &str) -> &str {

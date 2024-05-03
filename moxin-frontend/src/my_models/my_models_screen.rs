@@ -238,7 +238,7 @@ impl WidgetMatchEvent for MyModelsScreen {
                 let models_uri = &format!("file:///.{}", models_dir);
                 robius_open::Uri::new(models_uri)
                     .open()
-                    .unwrap_or_else(|e| {
+                    .unwrap_or_else(|_e| {
                         eprintln!(
                             "Failed to open models downloads folder: {}. Check for permissions.",
                             models_uri
