@@ -192,28 +192,94 @@ live_design! {
 
         flow: Overlay,
 
+        no_downloaded_model = <View> {
+            width: Fill,
+            height: Fill,
+
+            flow: Down,
+            align: {x: 0.5, y: 0.5},
+
+            <View> {
+                width: Fill,
+                height: Fill,
+                flow: Down,
+                spacing: 30,
+                align: {x: 0.5, y: 0.5},
+
+                <Label> {
+                    draw_text: {
+                        text_style: <REGULAR_FONT>{font_size: 12},
+                        color: #667085
+                    }
+                    text: "You haven’t downloaded any models yet."
+                }
+                go_to_discover_button = <RoundedView> {
+                    width: Fit,
+                    height: Fit,
+                    cursor: Arrow,
+
+                    draw_bg: { color: #fff, border_color: #D0D5DD, border_width: 1}
+
+                    button_label = <Label> {
+                        margin: {top: 14, right: 12, bottom: 14, left: 12}
+                        text: "Go To Discover"
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 12},
+                            fn get_color(self) -> vec4 {
+                                return #087443;
+                            }
+                        }
+                    }
+                }
+            }
+
+            <View> {
+                width: Fill, height: Fit
+                flow: Down,
+                align: {x: 0.5, y: 0.5},
+                no_downloaded_model_prompt_input = <ChatPromptInput> {}
+            }
+
+        }
+
         no_model = <View> {
             width: Fill,
             height: Fill,
 
             flow: Down,
-            spacing: 30,
             align: {x: 0.5, y: 0.5},
 
-            <Icon> {
-                draw_icon: {
-                    svg_file: dep("crate://self/resources/icons/chat.svg"),
-                    color: #D0D5DD
+            <View> {
+                width: Fill,
+                height: Fill,
+                flow: Down,
+                spacing: 30,
+                align: {x: 0.5, y: 0.5},
+
+                <Icon> {
+                    draw_icon: {
+                        svg_file: dep("crate://self/resources/icons/chat.svg"),
+                        color: #D0D5DD
+                    }
+                    icon_walk: {width: 128, height: 128}
                 }
-                icon_walk: {width: 128, height: 128}
-            }
-            <Label> {
-                draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 14},
-                    color: #667085
+
+                <Label> {
+                    draw_text: {
+                        text_style: <REGULAR_FONT>{font_size: 14},
+                        color: #667085
+                    }
+                    text: "Start chatting by choosing a model from above"
                 }
-                text: "Start chatting by choosing a model from above"
             }
+
+            <View> {
+                width: Fill, height: Fit
+                flow: Down,
+                align: {x: 0.5, y: 0.5},
+                no_model_prompt_input = <ChatPromptInput> {}
+            }
+
         }
 
         empty_conversation = <View> {
@@ -265,22 +331,31 @@ live_design! {
                 <JumpToButtom> {}
             }
 
-            <ChatPromptInput> {}
+            main_prompt_input = <ChatPromptInput> {}
         }
 
         model_selector = <ModelSelector> {}
     }
 }
 
-#[derive(Default, PartialEq)]
+#[derive(PartialEq)]
 enum ChatPanelState {
-    #[default]
-    Unload,
+    Unload {
+        downloaded_model_empty: bool,
+    },
     Idle,
     Streaming {
         auto_scroll_pending: bool,
         auto_scroll_cancellable: bool,
     },
+}
+
+impl Default for ChatPanelState {
+    fn default() -> ChatPanelState {
+        ChatPanelState::Unload {
+            downloaded_model_empty: true,
+        }
+    }
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -326,6 +401,9 @@ impl Widget for ChatPanel {
                     // Redraw because we expect to see new or updated chat entries
                     self.redraw(cx);
                 }
+                ChatPanelState::Unload {
+                    downloaded_model_empty: _,
+                } => self.unload_model(cx, store),
                 _ => {}
             }
         }
@@ -403,6 +481,8 @@ impl Widget for ChatPanel {
 
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let widget_uid = self.widget_uid();
+
         for action in actions {
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
@@ -448,7 +528,7 @@ impl WidgetMatchEvent for ChatPanel {
                         .as_ref()
                         .map_or(false, |chat| chat.file_id == file_id)
                     {
-                        self.unload_model(cx);
+                        self.unload_model(cx, store);
                         store.current_chat = None;
                         store.eject_model().expect("Failed to eject model");
                     }
@@ -483,7 +563,16 @@ impl WidgetMatchEvent for ChatPanel {
                     }
                 }
             }
-            ChatPanelState::Unload => {}
+            _ => {}
+        }
+
+        if let Some(fe) = self
+            .view(id!(no_downloaded_model.go_to_discover_button))
+            .finger_up(actions)
+        {
+            if fe.was_tap() {
+                cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
+            }
         }
     }
 }
@@ -517,7 +606,9 @@ impl ChatPanel {
                 let list = self.portal_list(id!(chat));
                 jump_to_bottom.set_visible(has_messages && list.further_items_bellow_exist());
             }
-            ChatPanelState::Unload => {
+            ChatPanelState::Unload {
+                downloaded_model_empty: _,
+            } => {
                 jump_to_bottom.set_visible(false);
             }
         }
@@ -533,7 +624,7 @@ impl ChatPanel {
                 auto_scroll_pending: _,
                 auto_scroll_cancellable: _,
             } => {
-                let prompt_input = self.text_input(id!(prompt));
+                let prompt_input = self.text_input(id!(main_prompt_input.prompt));
                 prompt_input.apply_over(
                     cx,
                     live! {
@@ -542,12 +633,14 @@ impl ChatPanel {
                 );
                 self.show_prompt_input_stop_icon(cx);
             }
-            ChatPanelState::Unload => {}
+            ChatPanelState::Unload {
+                downloaded_model_empty: _,
+            } => {}
         }
     }
 
     fn enable_or_disable_prompt_input(&mut self, cx: &mut Cx) {
-        let prompt_input = self.text_input(id!(prompt));
+        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         let enable = if prompt_input.text().len() > 0 {
             1.0
         } else {
@@ -623,21 +716,42 @@ impl ChatPanel {
         self.view(id!(main)).set_visible(true);
         self.view(id!(empty_conversation)).set_visible(true);
         self.view(id!(no_model)).set_visible(false);
+        self.view(id!(no_downloaded_model)).set_visible(false);
 
         store.load_model(&downloaded_file.file);
     }
 
-    fn unload_model(&mut self, cx: &mut Cx) {
-        self.state = ChatPanelState::Unload;
+    fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {
+        let downloaded_model_empty = store.downloaded_files.is_empty();
+        self.state = ChatPanelState::Unload {
+            downloaded_model_empty,
+        };
+
         self.view(id!(main)).set_visible(false);
         self.view(id!(empty_conversation)).set_visible(false);
-        self.view(id!(no_model)).set_visible(true);
+
+        match self.state {
+            ChatPanelState::Unload {
+                downloaded_model_empty: true,
+            } => {
+                self.view(id!(no_downloaded_model)).set_visible(true);
+                self.view(id!(no_model)).set_visible(false);
+            }
+            ChatPanelState::Unload {
+                downloaded_model_empty: false,
+            } => {
+                self.view(id!(no_model)).set_visible(true);
+                self.view(id!(no_downloaded_model)).set_visible(false)
+            }
+            _ => {}
+        }
+
         self.model_selector(id!(model_selector)).deselect(cx);
         self.view.redraw(cx);
     }
 
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let prompt_input = self.text_input(id!(prompt));
+        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
 
         if let Some(_text) = prompt_input.changed(actions) {
             self.update_prompt_input(cx);
@@ -663,7 +777,7 @@ impl ChatPanel {
         let store = scope.data.get_mut::<Store>().unwrap();
         store.send_chat_message(prompt.clone());
 
-        let prompt_input = self.text_input(id!(prompt));
+        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         prompt_input.set_text_and_redraw(cx, "");
         prompt_input.set_cursor(0, 0);
         self.update_prompt_input(cx);
@@ -683,5 +797,6 @@ impl ChatPanel {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ChatPanelAction {
     UnloadIfActive(FileID),
+    NavigateToDiscover,
     None,
 }

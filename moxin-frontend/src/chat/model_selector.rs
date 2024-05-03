@@ -173,7 +173,7 @@ live_design! {
 
                 align: {x: 0.5, y: 0.5},
 
-                <Label> {
+                label = <Label> {
                     draw_text:{
                         text_style: <BOLD_FONT>{font_size: 11},
                         color: #000
@@ -234,6 +234,35 @@ impl Widget for ModelSelector {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get::<Store>().unwrap();
+
+        let downloaded_model_empty = store.downloaded_files.is_empty();
+        let choose_label = self.label(id!(choose.label));
+
+        if downloaded_model_empty {
+            choose_label.set_text("No Available Models");
+            let color = vec3(0.596, 0.635, 0.702);
+            choose_label.apply_over(
+                cx,
+                live! {
+                    draw_text: {
+                        color: (color)
+                    }
+                },
+            );
+        } else {
+            choose_label.set_text("Choose a Model");
+            let color = vec3(0.0, 0.0, 0.0);
+            choose_label.apply_over(
+                cx,
+                live! {
+                    draw_text: {
+                        color: (color)
+                    }
+                },
+            );
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
