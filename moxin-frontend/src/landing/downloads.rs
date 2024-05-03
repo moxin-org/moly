@@ -8,28 +8,24 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
+    import crate::shared::icon::*;
 
     import crate::landing::download_item::DownloadItem;
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
 
-    CollapseButton = <Button> {
-        padding: 10,
-        draw_icon: {
-            svg_file: (ICON_COLLAPSE),
-            fn get_color(self) -> vec4 {
-                return #667085;
+    CollapseButton = <View> {
+        cursor: Hand
+        width: Fit, height: Fit
+        icon = <Icon> {
+            draw_icon: {
+                svg_file: (ICON_COLLAPSE)
+                fn get_color(self) -> vec4 {
+                    return #667085;
+                }
             }
+            icon_walk: {width: 18, height: Fit}
         }
-        padding: 0,
-        icon_walk: {width: 18, height: 24}
-        draw_bg: {
-            fn pixel(self) -> vec4 {
-                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                return sdf.result
-            }
-        }
-        text: ""
     }
 
     Header = <View> {
@@ -148,9 +144,9 @@ impl Widget for Downloads {
         }
 
         match event.hits(cx, self.view.area()) {
-            Hit::FingerDown(_) => {
-                if self.animator.animator_in_state(cx, id!(content.collapse)) {
-                    self.animator_play(cx, id!(content.expand));
+            Hit::FingerUp(fe) => {
+                if fe.was_tap() {
+                    self.toggle_collapse(cx);
                 }
             }
             _ => {}
@@ -196,10 +192,32 @@ impl Widget for Downloads {
 
 impl WidgetMatchEvent for Downloads {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.button(id!(collapse)).clicked(&actions) {
-            if self.animator.animator_in_state(cx, id!(content.expand)) {
-                self.animator_play(cx, id!(content.collapse));
+        if let Some(fe) = self.view(id!(collapse)).finger_up(&actions) {
+            if fe.was_tap() {
+                self.toggle_collapse(cx);
             }
         }
+    }
+}
+
+impl Downloads {
+    fn toggle_collapse(&mut self, cx: &mut Cx) {
+        if self.animator.animator_in_state(cx, id!(content.collapse)) {
+            self.animator_play(cx, id!(content.expand));
+            self.set_collapse_button_open(cx, true)
+        } else {
+            self.animator_play(cx, id!(content.collapse));
+            self.set_collapse_button_open(cx, false)
+        }
+    }
+
+    fn set_collapse_button_open(&mut self, cx: &mut Cx, is_open: bool) {
+        let rotation_angle = if is_open { 180.0 } else { 0.0 };
+        self.icon(id!(collapse.icon))
+        .apply_over(cx, 
+            live! {
+                draw_icon: { rotation_angle: (rotation_angle) }
+            },
+        );
     }
 }
