@@ -227,7 +227,6 @@ live_design! {
                 width: Fill, height: Fit
                 flow: Down,
                 align: {x: 0.5, y: 0.5},
-                filler = <View> { width: Fill, height: Fill }
                 chat_input = <ChatPromptInput> {}
             }
 
