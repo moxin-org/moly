@@ -22,7 +22,7 @@ live_design! {
     import crate::shared::widgets::*;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
-    ICON_GO_TO = dep("crate://self/resources/icons/go_to.svg")
+    ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -209,7 +209,7 @@ live_design! {
                         }
                     }
                     icon = {
-                        draw_icon: { svg_file: (ICON_GO_TO) fn get_color(self) -> vec4 { return #fff;} }
+                        draw_icon: { svg_file: (ICON_PLAY) fn get_color(self) -> vec4 { return #fff;} }
                         icon_walk: {width: 10, height: 10}
                     }
                 }
