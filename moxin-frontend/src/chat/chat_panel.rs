@@ -722,11 +722,9 @@ impl ChatPanel {
     }
 
     fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {
-        let mut downloaded_files = store.downloaded_files.clone();
-        downloaded_files.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
-
+        let downloaded_model_empty = store.downloaded_files.is_empty();
         self.state = ChatPanelState::Unload {
-            downloaded_model_empty: downloaded_files.is_empty(),
+            downloaded_model_empty,
         };
 
         self.view(id!(main)).set_visible(false);

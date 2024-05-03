@@ -236,11 +236,10 @@ impl Widget for ModelSelector {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
 
-        let mut downloaded_files = store.downloaded_files.clone();
-        downloaded_files.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
-
+        let downloaded_model_empty = store.downloaded_files.is_empty();
         let choose_label = self.label(id!(choose.label));
-        if downloaded_files.is_empty() {
+
+        if downloaded_model_empty {
             choose_label.set_text("No Available Models");
             let color = vec3(0.596, 0.635, 0.702);
             choose_label.apply_over(
