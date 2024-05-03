@@ -25,6 +25,7 @@ live_design! {
     ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
+    MODEL_CTA_COLOR = #127487
 
     RowHeaderLabel = <View> {
         width: 100
@@ -186,11 +187,18 @@ live_design! {
                     label = <Label> {
                         text: "Chat with Model",
                         draw_text: {
-                            color: #087443
+                            color: (MODEL_CTA_COLOR)
                             text_style: <REGULAR_FONT>{font_size: 9}
                         }
                     }
-                    icon = { draw_icon: { svg_file: (ICON_START_CHAT) } }
+                    icon = { 
+                        draw_icon: { 
+                            svg_file: (ICON_START_CHAT) 
+                            draw_bg: {
+                                fn get_color(self) -> vec4 { return (MODEL_CTA_COLOR);}
+                            }
+                        } 
+                    }
                 }
 
                 resume_chat = <ActionButton> {
@@ -199,7 +207,7 @@ live_design! {
                     type_: Resume,
                     show_bg: true
                     draw_bg: {
-                        color: #087443
+                        color: (MODEL_CTA_COLOR)
                     }
                     label = <Label> {
                         text: "Resume Chat",
