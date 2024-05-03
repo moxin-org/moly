@@ -197,23 +197,40 @@ live_design! {
             height: Fill,
 
             flow: Down,
-            spacing: 30,
             align: {x: 0.5, y: 0.5},
 
-            <Icon> {
-                draw_icon: {
-                    svg_file: dep("crate://self/resources/icons/chat.svg"),
-                    color: #D0D5DD
+            <View> {
+                width: Fill,
+                height: Fill,
+                flow: Down,
+                spacing: 30,
+                align: {x: 0.5, y: 0.5},
+
+                <Icon> {
+                    draw_icon: {
+                        svg_file: dep("crate://self/resources/icons/chat.svg"),
+                        color: #D0D5DD
+                    }
+                    icon_walk: {width: 128, height: 128}
                 }
-                icon_walk: {width: 128, height: 128}
-            }
-            <Label> {
-                draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 14},
-                    color: #667085
+
+                <Label> {
+                    draw_text: {
+                        text_style: <REGULAR_FONT>{font_size: 14},
+                        color: #667085
+                    }
+                    text: "Start chatting by choosing a model from above"
                 }
-                text: "Start chatting by choosing a model from above"
             }
+
+            <View> {
+                width: Fill, height: Fit
+                flow: Down,
+                align: {x: 0.5, y: 0.5},
+                filler = <View> { width: Fill, height: Fill }
+                chat_input = <ChatPromptInput> {}
+            }
+
         }
 
         empty_conversation = <View> {
