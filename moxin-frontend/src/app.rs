@@ -1,3 +1,4 @@
+use crate::chat::chat_panel::ChatPanelAction;
 use crate::data::store::*;
 use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
@@ -300,6 +301,11 @@ impl MatchEvent for App {
             if let PopupAction::NavigateToMyModels = action.as_widget_action().cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
+            }
+
+            if let ChatPanelAction::NavigateToDiscover = action.as_widget_action().cast() {
+                let discover_radio_button = self.ui.radio_button(id!(discover_tab));
+                discover_radio_button.select(cx, &mut Scope::empty());
             }
 
             if let DownloadedFileAction::ResumeChat(_) = action.as_widget_action().cast() {
