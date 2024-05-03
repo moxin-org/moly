@@ -43,7 +43,7 @@ live_design! {
                     width: Fill,
                     height: Fill,
 
-                    sidebar_menu = <View> {
+                    sidebar_menu = <RoundedView> {
                         width: 100,
                         flow: Down, spacing: 20.0,
                         padding: { top: 80 }
@@ -53,6 +53,9 @@ live_design! {
                         show_bg: true,
                         draw_bg: {
                             color: (SIDEBAR_BG_COLOR),
+                            instance radius: 0.0,
+                            border_color: #EAECF0,
+                            border_width: 1.2,
                         }
 
                         discover_tab = <SidebarMenuButton> {
