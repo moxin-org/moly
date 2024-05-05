@@ -515,6 +515,21 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatLineAction::Edit(id, updated, regenerate) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.edit_chat_message(id, updated, regenerate);
+
+                    if regenerate {
+                        self.state = ChatPanelState::Streaming {
+                            auto_scroll_pending: true,
+                            auto_scroll_cancellable: false,
+                        };
+
+                        self.show_prompt_input_stop_icon(cx);
+
+                        let prompt_input = self.text_input(id!(prompt));
+                        prompt_input.set_text_and_redraw(cx, "");
+                        prompt_input.set_cursor(0, 0);
+                        self.update_prompt_input(cx);
+
+                    }
                     self.redraw(cx);
                 }
                 _ => {}
