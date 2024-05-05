@@ -116,7 +116,7 @@ live_design! {
             width: 260,
             height: Fit,
 
-            empty_message: "Search Model by Keyword"
+            empty_message: "Filter files"
 
             draw_text: {
                 text_style:<REGULAR_FONT>{font_size: 11},
@@ -228,7 +228,7 @@ impl WidgetMatchEvent for MyModelsScreen {
                 let models_uri = &format!("file:///.{}", models_dir);
                 robius_open::Uri::new(models_uri)
                     .open()
-                    .unwrap_or_else(|e| {
+                    .unwrap_or_else(|_| {
                         eprintln!(
                             "Failed to open models downloads folder: {}. Check for permissions.",
                             models_uri

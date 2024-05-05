@@ -377,7 +377,7 @@ pub struct ModelFilesItems {
 impl Widget for ModelFilesItems {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
-        let mut store: &mut Store = scope.data.get_mut::<Store>().unwrap();
+        let store: &mut Store = scope.data.get_mut::<Store>().unwrap();
 
         // Notify of a downloaded file.
         if let Event::Signal = event {
