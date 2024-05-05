@@ -18,7 +18,7 @@ live_design! {
         draw_block: {
             code_color: (#EAECF0)
         }
-        font_size: 12
+        font_size: 10
         code_layout: { line_spacing: (5.0), padding: 15, }
     }
 
@@ -51,7 +51,7 @@ live_design! {
 
                     filename = <Label> {
                         draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 15},
+                            text_style: <BOLD_FONT>{font_size: 13},
                             color: #000
                         }
                     }
@@ -80,7 +80,7 @@ live_design! {
             file_dir = <View> {
                 width: Fill,
                 height: Fit,
-                flow: Right,
+                flow: Down,
                 spacing: 8
                 // Hack to align the text with the html block, 0.5 it not visually centered
                 align: {x: 0.0, y: 0.6}
@@ -88,13 +88,13 @@ live_design! {
                 <Label> {
                     text: "Read from"
                     draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 13},
+                        text_style: <REGULAR_FONT>{font_size: 10},
                         color: #344054
                     }
                 }
                 path = <MoxinHtml> {
                     width: Fill
-                    font_size: 11
+                    font_size: 10
                     code_layout: { line_spacing: (5.0), padding: 9 }
                 }
             }
@@ -140,7 +140,7 @@ live_design! {
                         <Label> {
                             text: "Copy to Clipboard"
                             draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 13},
+                                text_style: <REGULAR_FONT>{font_size: 10},
                                 color: #x0
                             }
                         }
@@ -161,7 +161,7 @@ live_design! {
                         <Label> {
                             text: "Model Card on Hugging Face"
                             draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 13},
+                                text_style: <REGULAR_FONT>{font_size: 10},
                                 color: #x0
                             }
                         }
