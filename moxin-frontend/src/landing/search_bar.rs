@@ -58,7 +58,7 @@ live_design! {
         }
 
         input_container = <RoundedView> {
-            width: Fit,
+            width: 800,
             height: Fit,
 
             show_bg: true,
@@ -67,6 +67,7 @@ live_design! {
             }
 
             padding: {top: 3, bottom: 3, left: 20, right: 20}
+            margin: {left: 30, right: 30}
 
             spacing: 4,
             align: {x: 0.0, y: 0.5},
@@ -88,7 +89,7 @@ live_design! {
             }
 
             input = <MoxinTextInput> {
-                width: 600,
+                width: Fill,
                 height: Fit,
                 empty_message: "Search Model by Keyword"
             }
@@ -96,8 +97,9 @@ live_design! {
 
         search_sorting = <View> {
             visible: false,
-            width: Fit,
+            width: 300,
             height: Fit,
+            margin: {left: 30, right: 30},
             <Sorting> {}
         }
 
@@ -216,6 +218,7 @@ impl SearchBarRef {
                 align: {x: 0.0, y: 0.5},
                 padding: {left: 20},
                 spacing: 80,
+                input_container = { width: Fill }
                 search_sorting = { visible: true }
             },
         );
@@ -243,6 +246,7 @@ impl SearchBarRef {
                 align: {x: 0.5, y: 0.5},
                 padding: {left: 0},
                 spacing: 50,
+                input_container = { width: 800 }
                 search_sorting = { visible: false }
             },
         );

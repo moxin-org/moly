@@ -529,7 +529,6 @@ impl WidgetMatchEvent for ChatPanel {
                         .map_or(false, |chat| chat.file_id == file_id)
                     {
                         self.unload_model(cx, store);
-                        store.current_chat = None;
                         store.eject_model().expect("Failed to eject model");
                     }
                 }

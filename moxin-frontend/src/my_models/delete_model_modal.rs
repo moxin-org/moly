@@ -41,7 +41,7 @@ live_design! {
                     model_name = <Label> {
                         text: "Delete Model"
                         draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 16},
+                            text_style: <BOLD_FONT>{font_size: 13},
                             color: #000
                         }
                     }
@@ -77,7 +77,7 @@ live_design! {
                     width: Fill
                     draw_text: {
                         text_style: <REGULAR_FONT>{
-                            font_size: 13,
+                            font_size: 10,
                             height_factor: 1.3
                         },
                         color: #000
@@ -107,7 +107,7 @@ live_design! {
                         <Label> {
                             text: "Cancel"
                             draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 13},
+                                text_style: <REGULAR_FONT>{font_size: 10},
                                 color: #x0
                             }
                         }
@@ -126,7 +126,7 @@ live_design! {
                         <Label> {
                             text: "Delete"
                             draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 13},
+                                text_style: <REGULAR_FONT>{font_size: 10},
                                 color: #fff
                             }
                         }

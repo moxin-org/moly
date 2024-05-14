@@ -212,16 +212,19 @@ impl Store {
         };
     }
 
-    pub fn eject_model(&self) -> Result<()> {
+    pub fn eject_model(&mut self) -> Result<()> {
         let (tx, rx) = channel();
         self.backend
             .command_sender
             .send(Command::EjectModel(tx))
             .context("Failed to send eject model command")?;
 
-        rx.recv()
+        let _ = rx.recv()
             .context("Failed to receive eject model response")?
-            .context("Eject model operation failed")
+            .context("Eject model operation failed");
+
+        self.current_chat = None;
+        Ok(())
     }
 
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {

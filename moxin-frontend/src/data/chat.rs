@@ -106,17 +106,15 @@ impl Chat {
                     Ok(ChatResponse::ChatResponseChunk(data)) => {
                         let mut is_done = false;
 
-                        store_chat_tx
+                        let _ = store_chat_tx
                             .send(ChatTokenArrivalAction::AppendDelta(
                                 data.choices[0].delta.content.clone(),
-                            ))
-                            .unwrap();
+                            ));
 
                         if let Some(_reason) = &data.choices[0].finish_reason {
                             is_done = true;
-                            store_chat_tx
-                                .send(ChatTokenArrivalAction::StreamingDone)
-                                .unwrap();
+                            let _ = store_chat_tx
+                                .send(ChatTokenArrivalAction::StreamingDone);
                         }
 
                         SignalToUI::set_ui_signal();
