@@ -2,7 +2,7 @@ use crate::chat::chat_panel::ChatPanelAction;
 use crate::data::store::*;
 use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
-use crate::landing::model_files_list::ModelFileItemsAction;
+use crate::landing::model_files_items::ModelFileItemsAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
@@ -168,7 +168,9 @@ impl LiveRegister for App {
 
         // Landing
         crate::landing::shared::live_design(cx);
+        crate::landing::model_files_items::live_design(cx);
         crate::landing::model_files_list::live_design(cx);
+        crate::landing::model_files_tags::live_design(cx);
         crate::landing::model_card::live_design(cx);
         crate::landing::model_list::live_design(cx);
         crate::landing::landing_screen::live_design(cx);
