@@ -3,7 +3,7 @@ use crate::data::store::*;
 use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
-use crate::landing::model_files_items::ModelFileItemsAction;
+use crate::landing::model_files_list::ModelFilesListAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
@@ -169,10 +169,10 @@ impl LiveRegister for App {
 
         // Landing
         crate::landing::shared::live_design(cx);
-        crate::landing::model_files_items::live_design(cx);
+        crate::landing::model_files_tags::live_design(cx);
         crate::landing::model_files_item::live_design(cx);
         crate::landing::model_files_list::live_design(cx);
-        crate::landing::model_files_tags::live_design(cx);
+        crate::landing::model_files::live_design(cx);
         crate::landing::model_card::live_design(cx);
         crate::landing::model_list::live_design(cx);
         crate::landing::landing_screen::live_design(cx);
@@ -253,7 +253,7 @@ impl MatchEvent for App {
             }
 
             match action.as_widget_action().cast() {
-                ModelFileItemsAction::Downloaded(file_id) => {
+                ModelFilesListAction::Downloaded(file_id) => {
                     let mut popup = self.ui.popup(id!(popup_download_success));
                     popup.set_file_id(file_id);
                 }
