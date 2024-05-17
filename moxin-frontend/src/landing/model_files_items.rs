@@ -4,9 +4,8 @@ use crate::{
 };
 use makepad_widgets::*;
 use moxin_protocol::data::{File, FileID, Model, PendingDownload};
-use std::collections::HashMap;
 
-use super::model_files_tags::ModelFilesTagsWidgetRefExt;
+use super::{model_files_item::ModelFilesItemWidgetRefExt, model_files_tags::ModelFilesTagsWidgetRefExt};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -18,172 +17,19 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::landing::shared::*;
 
-    import crate::landing::model_files_tags::ModelFilesTags;
-
-    ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
-    ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
-
-    ModelFilesRow = <RoundedYView> {
-        width: Fill,
-        height: Fit,
-
-        show_bg: true,
-        draw_bg: {
-            color: #00f
-            radius: vec2(1.0, 1.0)
-        }
-
-        cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell2 = <View> { width: 140, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell3 = <View> { width: 340, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-    }
-
-    ModelCardButton = <RoundedView> {
-        width: 140,
-        height: 32,
-        align: {x: 0.5, y: 0.5}
-        spacing: 6,
-
-        draw_bg: { color: #099250 }
-
-        button_icon = <Icon> {
-            draw_icon: {
-                fn get_color(self) -> vec4 {
-                    return #fff;
-                }
-            }
-            icon_walk: {width: Fit, height: Fit}
-        }
-
-        button_label = <Label> {
-            draw_text: {
-                text_style: <REGULAR_FONT>{font_size: 9},
-                fn get_color(self) -> vec4 {
-                    return #fff;
-                }
-            }
-        }
-    }
-
-    DownloadButton = <ModelCardButton> {
-        cursor: Hand,
-        button_label = { text: "Download" }
-        button_icon = { draw_icon: {
-            svg_file: (ICON_DOWNLOAD),
-        }}
-    }
-
-    DownloadedButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #099250, border_width: 0.5}
-        button_label = {
-            text: "Downloaded"
-            draw_text: {
-                fn get_color(self) -> vec4 {
-                    return #099250;
-                }
-            }
-        }
-        button_icon = {
-            draw_icon: {
-                svg_file: (ICON_DOWNLOAD_DONE),
-                fn get_color(self) -> vec4 {
-                    return #099250;
-                }
-            }
-        }
-    }
-
-    // TODO This is a very temporary solution, we will have a better way to handle this.
-    DownloadPendingButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
-        button_label = {
-            text: "Downloading..."
-            draw_text: {
-                fn get_color(self) -> vec4 {
-                    return #x155EEF;
-                }
-            }
-        }
-        button_icon = {
-            draw_icon: {
-                fn get_color(self) -> vec4 {
-                    // invisible for now
-                    return #0000;
-                }
-            }
-        }
-    }
-
-    ModelFilesRowWithData = <ModelFilesRow> {
-        show_bg: true,
-        draw_bg: {
-            color: #fff
-        }
-
-        cell1 = {
-            spacing: 10,
-            filename = <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 9},
-                    color: #000
-                }
-            }
-        }
-
-        cell2 = {
-            full_size = <Label> {
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 9},
-                    color: #000
-                }
-            }
-        }
-
-        cell3 = {
-            spacing: 6,
-            quantization_tag = <RoundedView> {
-                width: Fit,
-                height: Fit,
-                padding: {top: 6, bottom: 6, left: 10, right: 10}
-
-                draw_bg: {
-                    instance radius: 2.0,
-                    border_color: #B4B4B4,
-                    border_width: 0.5,
-                    color: #FFF,
-                }
-
-                quantization = <Label> {
-                    draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 9},
-                        color: #000
-                    }
-                }
-            }
-            tags = <ModelFilesTags> {}
-        }
-
-        cell4 = {
-            align: {x: 0.5, y: 0.5},
-            download_button = <DownloadButton> { visible: false }
-            downloaded_button = <DownloadedButton> { visible: false }
-            download_pending_button = <DownloadPendingButton> { visible: false }
-        }
-    }
+    import crate::landing::model_files_item::ModelFilesItem;
 
     ModelFilesItems = {{ModelFilesItems}} {
         width: Fill,
         height: Fit,
         flow: Down,
 
-        template: <ModelFilesRowWithData> {}
+        template: <ModelFilesItem> {}
     }
 }
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelFileItemsAction {
-    Download(File, Model),
     Downloaded(FileID),
     None,
 }
@@ -213,12 +59,6 @@ pub struct ModelFilesItems {
 
     #[rust]
     items: ComponentMap<LiveId, WidgetRef>,
-
-    #[rust]
-    map_to_files: HashMap<LiveId, File>,
-
-    #[rust]
-    model: Option<Model>,
 }
 
 impl Widget for ModelFilesItems {
@@ -242,23 +82,8 @@ impl Widget for ModelFilesItems {
             }
         }
 
-        for (id, item) in self.items.iter_mut() {
-            let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
-            if let Some(fd) = item.view(id!(download_button)).finger_down(&actions) {
-                if fd.tap_count == 1 {
-                    let widget_uid = item.widget_uid();
-                    cx.widget_action(
-                        widget_uid,
-                        &scope.path,
-                        ModelFileItemsAction::Download(
-                            self.map_to_files.get(id).unwrap().clone(),
-                            self.model.clone().unwrap(),
-                        ),
-                    );
-
-                    break;
-                }
-            }
+        for (_id, item) in self.items.iter_mut() {
+            item.handle_event(cx, event, scope);
         }
     }
 
@@ -274,8 +99,7 @@ impl Widget for ModelFilesItems {
         };
         cx.begin_turtle(walk, self.layout);
 
-        self.model = Some(model.clone());
-        self.draw_files(cx, &files, pending_downloads);
+        self.draw_files(cx, &model, &files, pending_downloads);
         cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()
@@ -302,19 +126,18 @@ impl ModelFilesItems {
     fn draw_files(
         &mut self,
         cx: &mut Cx2d,
+        model: &Model,
         files: &Vec<File>,
         pending_downloads: &Vec<PendingDownload>,
     ) {
-        // TODO check if using proper ids in the items collections is better than having this mapping
-        self.map_to_files.clear();
-
         for i in 0..files.len() {
             let item_id = LiveId(i as u64).into();
 
             let item_widget = self
                 .items
                 .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, self.template));
-            self.map_to_files.insert(item_id, files[i].clone());
+
+            item_widget.as_model_files_item().set_model_and_file(model.clone(), files[i].clone());
 
             let filename = &files[i].name;
             let size = format_model_size(&files[i].size).unwrap_or("-".to_string());

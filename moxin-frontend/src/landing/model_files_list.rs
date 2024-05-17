@@ -14,7 +14,7 @@ live_design! {
     import crate::landing::shared::*;
 
     import crate::landing::model_files_items::ModelFilesItems;
-    import crate::landing::model_files_items::ModelFilesRow;
+    import crate::landing::model_files_item::ModelFilesRow;
     import crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_ADD = dep("crate://self/resources/icons/add.svg")

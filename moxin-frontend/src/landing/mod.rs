@@ -4,6 +4,7 @@ pub mod landing_screen;
 pub mod model_card;
 pub mod model_files_list;
 pub mod model_files_items;
+pub mod model_files_item;
 pub mod model_files_tags;
 pub mod model_list;
 pub mod search_bar;
