@@ -515,6 +515,21 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatLineAction::Edit(id, updated, regenerate) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     store.edit_chat_message(id, updated, regenerate);
+
+                    if regenerate {
+                        self.state = ChatPanelState::Streaming {
+                            auto_scroll_pending: true,
+                            auto_scroll_cancellable: false,
+                        };
+
+                        self.show_prompt_input_stop_icon(cx);
+
+                        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
+                        prompt_input.set_text_and_redraw(cx, "");
+                        prompt_input.set_cursor(0, 0);
+                        self.update_prompt_input(cx);
+
+                    }
                     self.redraw(cx);
                 }
                 _ => {}
@@ -555,7 +570,7 @@ impl WidgetMatchEvent for ChatPanel {
                     };
                 }
 
-                if let Some(fe) = self.view(id!(prompt_icon)).finger_up(&actions) {
+                if let Some(fe) = self.view(id!(main_prompt_input.prompt_icon)).finger_up(&actions) {
                     if fe.was_tap() {
                         let store = scope.data.get_mut::<Store>().unwrap();
                         store.cancel_chat_streaming();
@@ -655,14 +670,14 @@ impl ChatPanel {
     }
 
     fn show_prompt_input_send_icon(&mut self, cx: &mut Cx) {
-        self.view(id!(prompt_icon)).apply_over(
+        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
             cx,
             live! {
                 icon_send = { visible: true }
                 icon_stop = { visible: false }
             },
         );
-        let prompt_input = self.text_input(id!(prompt));
+        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         if prompt_input.text().len() > 0 {
             self.enable_prompt_input_icon(cx);
         } else {
@@ -671,7 +686,7 @@ impl ChatPanel {
     }
 
     fn show_prompt_input_stop_icon(&mut self, cx: &mut Cx) {
-        self.view(id!(prompt_icon)).apply_over(
+        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
             cx,
             live! {
                 icon_send = { visible: false }
@@ -683,7 +698,7 @@ impl ChatPanel {
 
     fn enable_prompt_input_icon(&mut self, cx: &mut Cx) {
         let enabled_color = vec3(0.0, 0.0, 0.0);
-        self.view(id!(prompt_icon)).apply_over(
+        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
             cx,
             live! {
                 draw_bg: {
@@ -695,7 +710,7 @@ impl ChatPanel {
 
     fn disable_prompt_input_icon(&mut self, cx: &mut Cx) {
         let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
-        self.view(id!(prompt_icon)).apply_over(
+        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
             cx,
             live! {
                 draw_bg: {
@@ -756,7 +771,7 @@ impl ChatPanel {
             self.update_prompt_input(cx);
         }
 
-        if let Some(fe) = self.view(id!(prompt_icon)).finger_up(&actions) {
+        if let Some(fe) = self.view(id!(main_prompt_input.prompt_icon)).finger_up(&actions) {
             if fe.was_tap() {
                 self.send_message(cx, scope, prompt_input.text());
             }
