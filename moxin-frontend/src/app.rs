@@ -325,7 +325,7 @@ impl App {
         if let Some(downloaded_file) = self.store.downloaded_files_to_notify.pop_front() {
             let mut popup = self.ui.popup(id!(popup_download_success));
             popup.set_file_id(downloaded_file);
-            
+
             let mut modal = self.ui.modal(id!(modal_root));
             let _ = modal.show_modal_view_by_id(cx, live_id!(popup_download_success_modal_view));
         }

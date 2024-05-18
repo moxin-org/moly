@@ -103,7 +103,11 @@ impl ModelFilesList {
                 .items
                 .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, self.template));
 
-            item_widget.as_model_files_item().set_model_and_file(cx, model.clone(), files[i].clone());
+            item_widget.as_model_files_item().set_model_and_file(
+                cx,
+                model.clone(),
+                files[i].clone(),
+            );
 
             let filename = &files[i].name;
             let size = format_model_size(&files[i].size).unwrap_or("-".to_string());

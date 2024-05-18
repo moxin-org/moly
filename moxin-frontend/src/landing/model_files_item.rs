@@ -182,7 +182,6 @@ pub struct ModelFilesItem {
     file: Option<File>,
 }
 
-
 impl Widget for ModelFilesItem {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
@@ -205,9 +204,7 @@ impl WidgetMatchEvent for ModelFilesItem {
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    ModelFileItemAction::Download(
-                        file.clone(), model.clone(),
-                    ),
+                    ModelFileItemAction::Download(file.clone(), model.clone()),
                 );
             }
         }
