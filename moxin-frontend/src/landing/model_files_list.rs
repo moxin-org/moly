@@ -1,9 +1,9 @@
 use crate::{
     data::store::{ModelWithPendingDownloads, Store},
-    shared::{modal::ModalAction, utils::format_model_size},
+    shared::utils::format_model_size,
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID, Model, PendingDownload};
+use moxin_protocol::data::{File, Model, PendingDownload};
 
 use super::model_files_item::ModelFilesItemWidgetRefExt;
 
@@ -20,12 +20,6 @@ live_design! {
 
         template: <ModelFilesItem> {}
     }
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum ModelFilesListAction {
-    Downloaded(FileID),
-    None,
 }
 
 #[derive(Live, LiveHook, LiveRegisterWidget, WidgetRef)]
@@ -54,25 +48,6 @@ pub struct ModelFilesList {
 
 impl Widget for ModelFilesList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-        let store: &mut Store = scope.data.get_mut::<Store>().unwrap();
-
-        // Notify of a downloaded file.
-        if let Event::Signal = event {
-            if let Some(downloaded_file) = store.downloaded_files_to_notify.pop_front() {
-                    cx.widget_action(
-                        widget_uid,
-                        &scope.path,
-                        ModalAction::ShowModalView(live_id!(popup_download_success_modal_view)),
-                    );
-                    cx.widget_action(
-                        widget_uid,
-                        &scope.path,
-                        ModelFilesListAction::Downloaded(downloaded_file.clone()),
-                    );
-            }
-        }
-
         for (_id, item) in self.items.iter_mut() {
             item.handle_event(cx, event, scope);
         }
