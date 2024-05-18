@@ -5,17 +5,11 @@ use crate::{
 use makepad_widgets::*;
 use moxin_protocol::data::{File, FileID, Model, PendingDownload};
 
-use super::{model_files_item::ModelFilesItemWidgetRefExt, model_files_tags::ModelFilesTagsWidgetRefExt};
+use super::model_files_item::ModelFilesItemWidgetRefExt;
 
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
-
-    import makepad_draw::shader::std::*;
-
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::landing::shared::*;
 
     import crate::landing::model_files_item::ModelFilesItem;
 
@@ -47,9 +41,6 @@ pub struct ModelFilesList {
 
     #[live]
     template: Option<LivePtr>,
-
-    #[live(true)]
-    show_tags: bool,
 
     #[live(false)]
     show_featured: bool,
@@ -137,7 +128,7 @@ impl ModelFilesList {
                 .items
                 .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, self.template));
 
-            item_widget.as_model_files_item().set_model_and_file(model.clone(), files[i].clone());
+            item_widget.as_model_files_item().set_model_and_file(cx, model.clone(), files[i].clone());
 
             let filename = &files[i].name;
             let size = format_model_size(&files[i].size).unwrap_or("-".to_string());
@@ -187,12 +178,6 @@ impl ModelFilesList {
                     }},
                 );
             };
-
-            if self.show_tags {
-                item_widget
-                    .model_files_tags(id!(tags))
-                    .set_tags(cx, &files[i].tags);
-            }
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
         }

@@ -7,33 +7,56 @@ live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
-    import makepad_draw::shader::std::*;
-
     import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::landing::shared::*;
 
-    import crate::landing::model_files_tags::ModelFilesTags;
     import crate::landing::model_files_item::ModelFilesRow;
     import crate::landing::model_files_list::ModelFilesList;
 
     ICON_ADD = dep("crate://self/resources/icons/add.svg")
     ICON_REMOVE = dep("crate://self/resources/icons/remove.svg")
 
-    ModelFilesRow = <RoundedYView> {
-        width: Fill,
-        height: Fit,
-
+    ModelFilesHeader = <ModelFilesRow> {
         show_bg: true,
         draw_bg: {
-            color: #00f
-            radius: vec2(1.0, 1.0)
+            color: #F2F4F7
+            radius: vec2(3.0, 0.5)
         }
 
-        cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell2 = <View> { width: 140, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell3 = <View> { width: 340, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
-        cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
+        cell1 = {
+            height: 40
+            <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 9},
+                    color: #667085
+                }
+                text: "File name"
+            }
+        }
+
+        cell2 = {
+            height: 40
+            <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 9},
+                    color: #667085
+                }
+                text: "Full Size"
+            }
+        }
+
+        cell3 = {
+            height: 40
+            <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 9},
+                    color: #667085
+                }
+                text: "Quantization"
+            }
+        }
+        cell4 = {
+            height: 40
+        }
     }
 
     FooterLink = <View> {
@@ -58,6 +81,30 @@ live_design! {
         }
     }
 
+    ModelFilesFooter = <RoundedYView> {
+        width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
+
+        show_bg: true,
+        draw_bg: {
+            color: #fff
+            radius: vec2(1.0, 3.0)
+        }
+
+        all_files_link = <FooterLink> {
+            icon = { draw_icon: { svg_file: (ICON_ADD) }}
+            link = { text: "Show All Files (12)" }
+        }
+
+        only_recommended_link = <FooterLink> {
+            visible: false,
+            icon = {
+                padding: { top: 10 }
+                draw_icon: { svg_file: (ICON_REMOVE) }
+            }
+            link = { text: "Show Only Recommended Files" }
+        }
+    }
+
     ModelFiles = {{ModelFiles}}<RoundedView> {
         width: Fill,
         height: Fit,
@@ -69,80 +116,16 @@ live_design! {
             radius: 3.0
         }
 
-        <ModelFilesRow> {
-            show_bg: true,
-            draw_bg: {
-                color: #F2F4F7
-                radius: vec2(3.0, 0.5)
-            }
-
-            cell1 = {
-                height: 40
-                <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 9},
-                        color: #667085
-                    }
-                    text: "File name"
-                }
-            }
-
-            cell2 = {
-                height: 40
-                <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 9},
-                        color: #667085
-                    }
-                    text: "Full Size"
-                }
-            }
-
-            cell3 = {
-                height: 40
-                <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 9},
-                        color: #667085
-                    }
-                    text: "Quantization"
-                }
-            }
-            cell4 = {
-                height: 40
-            }
-        }
-
+        <ModelFilesHeader> {}
         <ModelFilesList> { show_featured: true}
+
         remaining_files_wrapper = <View> {
             width: Fill,
             height: 0,
             remaining_files = <ModelFilesList> { show_featured: false}
         }
 
-        footer = <RoundedYView> {
-            width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
-
-            show_bg: true,
-            draw_bg: {
-                color: #fff
-                radius: vec2(1.0, 3.0)
-            }
-
-            all_files_link = <FooterLink> {
-                icon = { draw_icon: { svg_file: (ICON_ADD) }}
-                link = { text: "Show All Files (12)" }
-            }
-
-            only_recommended_link = <FooterLink> {
-                visible: false,
-                icon = {
-                    padding: { top: 10 }
-                    draw_icon: { svg_file: (ICON_REMOVE) }
-                }
-                link = { text: "Show Only Recommended Files" }
-            }
-        }
+        footer = <ModelFilesFooter> {}
 
         show_all_animation_progress: 0.0,
         animator: {

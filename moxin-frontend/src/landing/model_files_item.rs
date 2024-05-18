@@ -1,15 +1,13 @@
 use makepad_widgets::*;
 use moxin_protocol::data::{File, Model};
 
+use super::model_files_tags::ModelFilesTagsWidgetExt;
+
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
-    import makepad_draw::shader::std::*;
-
     import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::landing::shared::*;
 
     import crate::landing::model_files_tags::ModelFilesTags;
 
@@ -217,12 +215,16 @@ impl WidgetMatchEvent for ModelFilesItem {
 }
 
 impl ModelFilesItemRef {
-    pub fn set_model_and_file(&mut self, model: Model, file: File) {
+    pub fn set_model_and_file(&mut self, cx: &mut Cx, model: Model, file: File) {
         let Some(mut item_widget) = self.borrow_mut() else {
             return;
         };
 
         item_widget.model = Some(model);
-        item_widget.file = Some(file);
+        item_widget.file = Some(file.clone());
+
+        item_widget
+            .model_files_tags(id!(tags))
+            .set_tags(cx, &file.tags);
     }
 }
