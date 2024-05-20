@@ -8,11 +8,20 @@ use std::thread;
 
 pub enum SearchAction {
     Results(Vec<Model>),
+    Error,
 }
 
 pub enum SearchCommand {
     Search(String),
     LoadFeaturedModels,
+}
+
+#[derive(Default)]
+pub enum SearchState {
+    #[default]
+    Idle,
+    Pending,
+    Errored,
 }
 
 pub struct Search {
@@ -21,7 +30,7 @@ pub struct Search {
     pub next_command: Option<SearchCommand>,
     pub sender: Sender<SearchAction>,
     pub receiver: Receiver<SearchAction>,
-    pub pending: bool,
+    pub state: SearchState,
 }
 
 impl Default for Search {
@@ -39,19 +48,22 @@ impl Search {
             next_command: None,
             sender: tx,
             receiver: rx,
-            pending: false,
+            state: SearchState::Idle,
         };
         search
     }
 
     pub fn load_featured_models(&mut self, backend: &Backend) {
-        if self.pending {
-            self.next_command = Some(SearchCommand::LoadFeaturedModels);
-            return;
-        } else {
-            self.pending = true;
-            self.keyword = None;
-            self.next_command = None;
+        match self.state {
+            SearchState::Pending => {
+                self.next_command = Some(SearchCommand::LoadFeaturedModels);
+                return;
+            }
+            SearchState::Idle | SearchState::Errored => {
+                self.state = SearchState::Pending;
+                self.keyword = None;
+                self.next_command = None;
+            }
         }
 
         let (tx, rx) = channel();
@@ -68,7 +80,10 @@ impl Search {
                     Ok(models) => {
                         store_search_tx.send(SearchAction::Results(models)).unwrap();
                     }
-                    Err(err) => eprintln!("Error fetching models: {:?}", err),
+                    Err(err) => {
+                        eprintln!("Error fetching models: {:?}", err);
+                        store_search_tx.send(SearchAction::Error).unwrap();
+                    }
                 }
                 SignalToUI::set_ui_signal();
             }
@@ -76,13 +91,16 @@ impl Search {
     }
 
     pub fn run_or_enqueue(&mut self, keyword: String, backend: &Backend) {
-        if self.pending {
-            self.next_command = Some(SearchCommand::Search(keyword));
-            return;
-        } else {
-            self.pending = true;
-            self.current_command = Some(SearchCommand::Search(keyword.clone()));
-            self.next_command = None;
+        match self.state {
+            SearchState::Pending => {
+                self.next_command = Some(SearchCommand::Search(keyword));
+                return;
+            }
+            SearchState::Idle | SearchState::Errored => {
+                self.state = SearchState::Pending;
+                self.current_command = Some(SearchCommand::Search(keyword.clone()));
+                self.next_command = None;
+            }
         }
 
         let (tx, rx) = channel();
@@ -99,7 +117,10 @@ impl Search {
                     Ok(models) => {
                         store_search_tx.send(SearchAction::Results(models)).unwrap();
                     }
-                    Err(err) => eprintln!("Error fetching models: {:?}", err),
+                    Err(err) => {
+                        eprintln!("Error fetching models: {:?}", err);
+                        store_search_tx.send(SearchAction::Error).unwrap();
+                    }
                 }
                 SignalToUI::set_ui_signal();
             }
@@ -110,7 +131,7 @@ impl Search {
         for msg in self.receiver.try_iter() {
             match msg {
                 SearchAction::Results(models) => {
-                    self.pending = false;
+                    self.state = SearchState::Idle;
                     if let Some(SearchCommand::Search(keyword)) = self.current_command.take() {
                         self.keyword = Some(keyword);
                     }
@@ -125,8 +146,20 @@ impl Search {
                     }
                     return Ok(models);
                 }
+                SearchAction::Error => {
+                    self.state = SearchState::Errored;
+                    return Err(anyhow!("Error fetching models from the server"));
+                }
             }
         }
-        Err(anyhow!("No results found"))
+        Err(anyhow!("Unkown error fetching models from the server"))
+    }
+
+    pub fn is_pending(&self) -> bool {
+        matches!(self.state, SearchState::Pending)
+    }
+
+    pub fn was_error(&self) -> bool {
+        matches!(self.state, SearchState::Errored)
     }
 }

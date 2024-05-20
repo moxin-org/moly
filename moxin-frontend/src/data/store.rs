@@ -446,6 +446,8 @@ impl Store {
         if let Ok(models) = self.search.process_results(&self.backend) {
             self.set_models(models);
             self.sort_models_by_current_criteria();
+        } else {
+            self.set_models(vec![]);
         }
     }
 
@@ -586,6 +588,10 @@ impl Store {
     }
 
     pub fn search_is_loading(&self) -> bool {
-        self.search.pending
+        self.search.is_pending()
+    }
+
+    pub fn search_is_errored(&self) -> bool {
+        self.search.was_error()
     }
 }
