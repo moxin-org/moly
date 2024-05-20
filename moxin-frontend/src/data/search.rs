@@ -24,7 +24,6 @@ pub enum SearchState {
     Pending(SearchCommand, Option<SearchCommand>),
     Errored,
 }
-
 pub struct Search {
     pub keyword: Option<String>,
     pub sender: Sender<SearchAction>,
@@ -121,7 +120,7 @@ impl Search {
         });
     }
 
-    pub fn process_results(&mut self, backend: &Backend) -> Result<Vec<Model>> {
+    pub fn process_results(&mut self, backend: &Backend) -> Result<Option<Vec<Model>>> {
         for msg in self.receiver.try_iter() {
             match msg {
                 SearchAction::Results(models) => {
@@ -142,7 +141,7 @@ impl Search {
                             }
                             None => {}
                         }
-                        return Ok(models);
+                        return Ok(Some(models));
                     } else {
                         return Err(anyhow!("Client was not expecting to receive results"));
                     }
@@ -153,7 +152,7 @@ impl Search {
                 }
             }
         }
-        Err(anyhow!("Unkown error fetching models from the server"))
+        return Ok(None)
     }
 
     pub fn is_pending(&self) -> bool {
