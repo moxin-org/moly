@@ -1,7 +1,4 @@
-use crate::{
-    data::store::Store,
-    shared::utils::format_model_size,
-};
+use crate::{data::store::Store, shared::utils::format_model_size};
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 use std::collections::HashMap;
@@ -108,6 +105,9 @@ pub struct ModelSelectorList {
 
     #[rust]
     map_to_downloaded_files: HashMap<LiveId, DownloadedFile>,
+
+    #[rust]
+    total_height: Option<f64>,
 }
 
 impl Widget for ModelSelectorList {
@@ -154,6 +154,7 @@ impl Widget for ModelSelectorList {
         if self.visible {
             self.draw_items(cx, &store.downloaded_files);
         }
+
         cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()
@@ -172,6 +173,7 @@ impl ModelSelectorList {
         }
 
         self.map_to_downloaded_files = HashMap::new();
+        let mut total_height = 0.0;
         for i in 0..items.len() {
             let item_id = LiveId(i as u64).into();
             let item_widget = self
@@ -202,6 +204,18 @@ impl ModelSelectorList {
             );
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
+
+            total_height += item_widget.as_view().area().rect(cx).size.y;
         }
+        self.total_height = Some(total_height);
+    }
+}
+
+impl ModelSelectorListRef {
+    pub fn get_height(&self) -> f64 {
+        let Some(inner) = self.borrow_mut() else {
+            return 0.0;
+        };
+        inner.total_height.unwrap_or(0.0)
     }
 }

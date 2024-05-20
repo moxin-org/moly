@@ -1,12 +1,11 @@
 use crate::{
-    data::store::Store,
-    my_models::downloaded_files_table::DownloadedFileAction,
+    data::store::Store, my_models::downloaded_files_table::DownloadedFileAction,
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use super::model_selector_list::ModelSelectorAction;
+use super::model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -64,7 +63,6 @@ live_design! {
     ModelSelectorOptions = <RoundedView> {
         width: Fill,
         height: Fit,
-        visible: false
 
         margin: { top: 5 },
         padding: 5,
@@ -76,9 +74,15 @@ live_design! {
             border_width: 1.0,
         }
 
-        <ModelSelectorList> {
+        list_container = <View> {
             width: Fill,
-            height: Fit,
+            height: 0,
+            scroll_bars: <ScrollBars> {}
+
+            list = <ModelSelectorList> {
+                width: Fill,
+                height: Fit,
+            }
         }
     }
 
@@ -90,6 +94,25 @@ live_design! {
 
         button = <ModelSelectorButton> {}
         options = <ModelSelectorOptions> {}
+
+        open_animation_progress: 0.0,
+        animator: {
+            open = {
+                default: hide,
+                show = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {open_animation_progress: 1.0}
+                }
+                hide = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {open_animation_progress: 0.0}
+                }
+            }
+        }
     }
 }
 
@@ -100,12 +123,39 @@ pub struct ModelSelector {
 
     #[rust]
     open: bool,
+
+    #[animator]
+    animator: Animator,
+
+    #[live]
+    open_animation_progress: f64,
+
+    #[rust]
+    hide_animation_timer: Timer,
+
+    #[rust]
+    options_list_height: Option<f64>,
 }
 
 impl Widget for ModelSelector {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        if self.hide_animation_timer.is_event(event).is_some() {
+            // When closing animation is done, hide the wrapper element
+            self.view(id!(options)).apply_over(cx, live! { height: 0 });
+            self.redraw(cx);
+        }
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            if let Some(total_height) = self.options_list_height {
+                let height = self.open_animation_progress * total_height;
+                self.view(id!(options.list_container))
+                    .apply_over(cx, live! {height: (height)});
+                self.redraw(cx);
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -142,18 +192,35 @@ impl Widget for ModelSelector {
     }
 }
 
+const MAX_OPTIONS_HEIGHT: f64 = 200.0;
+
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
             if fd.tap_count == 1 {
                 self.open = !self.open;
-                self.view(id!(options)).apply_over(
-                    cx,
-                    live! {
-                        visible: (self.open)
-                    },
-                );
-                self.redraw(cx);
+
+                if self.open {
+                    let list = self.model_selector_list(id!(options.list_container.list));
+                    let height = list.get_height();
+                    if height > MAX_OPTIONS_HEIGHT {
+                        self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
+                    } else {
+                        self.options_list_height = Some(height);
+                    }
+
+                    self.view(id!(options)).apply_over(
+                        cx,
+                        live! {
+                            height: Fit,
+                        },
+                    );
+
+                    self.animator_play(cx, id!(open.show));
+                } else {
+                    self.hide_animation_timer = cx.start_timeout(0.3);
+                    self.animator_play(cx, id!(open.hide));
+                }
             }
         }
 
@@ -185,12 +252,9 @@ impl WidgetMatchEvent for ModelSelector {
 impl ModelSelector {
     fn update_ui_with_file(&mut self, cx: &mut Cx, downloaded_file: DownloadedFile) {
         self.open = false;
-        self.view(id!(options)).apply_over(
-            cx,
-            live! {
-                visible: (self.open)
-            },
-        );
+        self.view(id!(options)).apply_over(cx, live! { height: 0 });
+        self.animator_cut(cx, id!(open.hide));
+
         self.view(id!(choose)).apply_over(
             cx,
             live! {
