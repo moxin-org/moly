@@ -192,7 +192,7 @@ impl Widget for ModelSelector {
     }
 }
 
-const MAX_OPTIONS_HEIGHT: f64 = 200.0;
+const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
