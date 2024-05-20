@@ -11,23 +11,22 @@ pub enum SearchAction {
     Error,
 }
 
+#[derive(Clone)]
 pub enum SearchCommand {
     Search(String),
     LoadFeaturedModels,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum SearchState {
     #[default]
     Idle,
-    Pending,
+    Pending(SearchCommand, Option<SearchCommand>),
     Errored,
 }
 
 pub struct Search {
     pub keyword: Option<String>,
-    pub current_command: Option<SearchCommand>,
-    pub next_command: Option<SearchCommand>,
     pub sender: Sender<SearchAction>,
     pub receiver: Receiver<SearchAction>,
     pub state: SearchState,
@@ -44,8 +43,6 @@ impl Search {
         let (tx, rx) = channel();
         let search = Self {
             keyword: None,
-            current_command: None,
-            next_command: None,
             sender: tx,
             receiver: rx,
             state: SearchState::Idle,
@@ -55,14 +52,13 @@ impl Search {
 
     pub fn load_featured_models(&mut self, backend: &Backend) {
         match self.state {
-            SearchState::Pending => {
-                self.next_command = Some(SearchCommand::LoadFeaturedModels);
+            SearchState::Pending(_, ref mut next_command) => {
+                *next_command = Some(SearchCommand::LoadFeaturedModels);
                 return;
             }
             SearchState::Idle | SearchState::Errored => {
-                self.state = SearchState::Pending;
+                self.state = SearchState::Pending(SearchCommand::LoadFeaturedModels, None);
                 self.keyword = None;
-                self.next_command = None;
             }
         }
 
@@ -92,14 +88,12 @@ impl Search {
 
     pub fn run_or_enqueue(&mut self, keyword: String, backend: &Backend) {
         match self.state {
-            SearchState::Pending => {
-                self.next_command = Some(SearchCommand::Search(keyword));
+            SearchState::Pending(_, ref mut next_command) => {
+                *next_command = Some(SearchCommand::Search(keyword));
                 return;
             }
             SearchState::Idle | SearchState::Errored => {
-                self.state = SearchState::Pending;
-                self.current_command = Some(SearchCommand::Search(keyword.clone()));
-                self.next_command = None;
+                self.state = SearchState::Pending(SearchCommand::Search(keyword.clone()), None);
             }
         }
 
@@ -131,20 +125,27 @@ impl Search {
         for msg in self.receiver.try_iter() {
             match msg {
                 SearchAction::Results(models) => {
+                    let previous_state = self.state.to_owned();
                     self.state = SearchState::Idle;
-                    if let Some(SearchCommand::Search(keyword)) = self.current_command.take() {
-                        self.keyword = Some(keyword);
-                    }
-                    match self.next_command.take() {
-                        Some(SearchCommand::Search(next_keyword)) => {
-                            self.run_or_enqueue(next_keyword, backend);
+
+                    if let SearchState::Pending(current_command, next_command) = previous_state {
+                        if let SearchCommand::Search(keyword) = current_command {
+                            self.keyword = Some(keyword.clone());
                         }
-                        Some(SearchCommand::LoadFeaturedModels) => {
-                            self.load_featured_models(backend);
+
+                        match next_command {
+                            Some(SearchCommand::Search(next_keyword)) => {
+                                self.run_or_enqueue(next_keyword.clone(), backend);
+                            }
+                            Some(SearchCommand::LoadFeaturedModels) => {
+                                self.load_featured_models(backend);
+                            }
+                            None => {}
                         }
-                        None => {}
+                        return Ok(models);
+                    } else {
+                        return Err(anyhow!("Client was not expecting to receive results"));
                     }
-                    return Ok(models);
                 }
                 SearchAction::Error => {
                     self.state = SearchState::Errored;
@@ -156,7 +157,7 @@ impl Search {
     }
 
     pub fn is_pending(&self) -> bool {
-        matches!(self.state, SearchState::Pending)
+        matches!(self.state, SearchState::Pending(_, _))
     }
 
     pub fn was_error(&self) -> bool {
