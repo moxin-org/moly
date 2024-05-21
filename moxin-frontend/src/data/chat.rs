@@ -5,6 +5,7 @@ use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub enum ChatTokenArrivalAction {
     AppendDelta(String),
@@ -24,7 +25,10 @@ impl ChatMessage {
     }
 }
 
+#[derive(Debug)]
 pub struct Chat {
+    /// Unix timestamp in ms.
+    pub id: u128,
     pub model_filename: String,
     pub file_id: FileID,
     pub messages: Vec<ChatMessage>,
@@ -36,7 +40,15 @@ pub struct Chat {
 impl Chat {
     pub fn new(filename: String, file_id: FileID) -> Self {
         let (tx, rx) = channel();
+
+        // Get Unix timestamp in ms for id.
+        let id = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Couldn't get Unix timestamp, time went backwards")
+            .as_millis();
+
         let chat = Self {
+            id,
             model_filename: filename,
             file_id,
             messages: vec![],
@@ -44,6 +56,7 @@ impl Chat {
             messages_update_receiver: rx,
             is_streaming: false,
         };
+
         chat
     }
 
@@ -106,15 +119,13 @@ impl Chat {
                     Ok(ChatResponse::ChatResponseChunk(data)) => {
                         let mut is_done = false;
 
-                        let _ = store_chat_tx
-                            .send(ChatTokenArrivalAction::AppendDelta(
-                                data.choices[0].delta.content.clone(),
-                            ));
+                        let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
+                            data.choices[0].delta.content.clone(),
+                        ));
 
                         if let Some(_reason) = &data.choices[0].finish_reason {
                             is_done = true;
-                            let _ = store_chat_tx
-                                .send(ChatTokenArrivalAction::StreamingDone);
+                            let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
                         }
 
                         SignalToUI::set_ui_signal();
@@ -164,7 +175,11 @@ impl Chat {
     }
 
     pub fn remove_messages_from(&mut self, message_id: usize) {
-        let message_index = self.messages.iter().position(|m| m.id == message_id).unwrap();
+        let message_index = self
+            .messages
+            .iter()
+            .position(|m| m.id == message_id)
+            .unwrap();
         self.messages.truncate(message_index);
     }
 }

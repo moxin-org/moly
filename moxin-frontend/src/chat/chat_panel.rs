@@ -385,7 +385,7 @@ impl Widget for ChatPanel {
                         auto_scroll_cancellable: true,
                     };
 
-                    let still_streaming = store.current_chat.as_ref().unwrap().is_streaming;
+                    let still_streaming = store.get_current_chat().unwrap().borrow().is_streaming;
                     if still_streaming {
                         if auto_scroll_pending {
                             self.scroll_messages_to_bottom(cx);
@@ -414,17 +414,20 @@ impl Widget for ChatPanel {
 
         let (chat_history, model_filename, initial_letter) =
             store
-                .current_chat
-                .as_ref()
+                .get_current_chat()
                 .map_or((vec![], "".to_string(), "".to_string()), |chat| {
-                    let model_filename = chat.model_filename.clone();
+                    let model_filename = chat.borrow().model_filename.clone();
                     let initial_letter = model_filename
                         .chars()
                         .next()
                         .unwrap_or_default()
                         .to_uppercase()
                         .to_string();
-                    (chat.messages.clone(), model_filename, initial_letter)
+                    (
+                        chat.borrow().messages.clone(),
+                        model_filename,
+                        initial_letter,
+                    )
                 });
 
         let chats_count = chat_history.len();
@@ -528,7 +531,6 @@ impl WidgetMatchEvent for ChatPanel {
                         prompt_input.set_text_and_redraw(cx, "");
                         prompt_input.set_cursor(0, 0);
                         self.update_prompt_input(cx);
-
                     }
                     self.redraw(cx);
                 }
@@ -539,9 +541,8 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatPanelAction::UnloadIfActive(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     if store
-                        .current_chat
-                        .as_ref()
-                        .map_or(false, |chat| chat.file_id == file_id)
+                        .get_current_chat()
+                        .map_or(false, |chat| chat.borrow().file_id == file_id)
                     {
                         self.unload_model(cx, store);
                         store.eject_model().expect("Failed to eject model");
@@ -570,7 +571,10 @@ impl WidgetMatchEvent for ChatPanel {
                     };
                 }
 
-                if let Some(fe) = self.view(id!(main_prompt_input.prompt_icon)).finger_up(&actions) {
+                if let Some(fe) = self
+                    .view(id!(main_prompt_input.prompt_icon))
+                    .finger_up(actions)
+                {
                     if fe.was_tap() {
                         let store = scope.data.get_mut::<Store>().unwrap();
                         store.cancel_chat_streaming();
@@ -613,9 +617,8 @@ impl ChatPanel {
             ChatPanelState::Idle | ChatPanelState::Streaming { .. } => {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 let has_messages = store
-                    .current_chat
-                    .as_ref()
-                    .map_or(false, |chat| chat.messages.len() > 0);
+                    .get_current_chat()
+                    .map_or(false, |chat| !chat.borrow().messages.is_empty());
 
                 let list = self.portal_list(id!(chat));
                 jump_to_bottom.set_visible(has_messages && list.further_items_bellow_exist());
@@ -655,7 +658,7 @@ impl ChatPanel {
 
     fn enable_or_disable_prompt_input(&mut self, cx: &mut Cx) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        let enable = if prompt_input.text().len() > 0 {
+        let enable = if !prompt_input.text().is_empty() {
             1.0
         } else {
             0.0
@@ -678,7 +681,7 @@ impl ChatPanel {
             },
         );
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        if prompt_input.text().len() > 0 {
+        if !prompt_input.text().is_empty() {
             self.enable_prompt_input_icon(cx);
         } else {
             self.disable_prompt_input_icon(cx);
@@ -771,7 +774,10 @@ impl ChatPanel {
             self.update_prompt_input(cx);
         }
 
-        if let Some(fe) = self.view(id!(main_prompt_input.prompt_icon)).finger_up(&actions) {
+        if let Some(fe) = self
+            .view(id!(main_prompt_input.prompt_icon))
+            .finger_up(&actions)
+        {
             if fe.was_tap() {
                 self.send_message(cx, scope, prompt_input.text());
             }
