@@ -1,11 +1,13 @@
-use crate::chat::chat_line::*;
-use crate::chat::model_selector::ModelSelectorAction;
-use crate::data::store::Store;
-use crate::my_models::downloaded_files_table::DownloadedFileAction;
+
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
-
-use super::model_selector::ModelSelectorWidgetExt;
+use crate::data::store::Store;
+use crate::my_models::downloaded_files_table::DownloadedFileAction;
+use crate::chat::{
+    chat_line::{ChatLineAction, ChatLineWidgetRefExt},
+    model_selector::ModelSelectorWidgetExt,
+    model_selector_list::ModelSelectorAction,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -528,7 +530,6 @@ impl WidgetMatchEvent for ChatPanel {
                         prompt_input.set_text_and_redraw(cx, "");
                         prompt_input.set_cursor(0, 0);
                         self.update_prompt_input(cx);
-
                     }
                     self.redraw(cx);
                 }
@@ -570,7 +571,10 @@ impl WidgetMatchEvent for ChatPanel {
                     };
                 }
 
-                if let Some(fe) = self.view(id!(main_prompt_input.prompt_icon)).finger_up(&actions) {
+                if let Some(fe) = self
+                    .view(id!(main_prompt_input.prompt_icon))
+                    .finger_up(&actions)
+                {
                     if fe.was_tap() {
                         let store = scope.data.get_mut::<Store>().unwrap();
                         store.cancel_chat_streaming();
@@ -771,7 +775,10 @@ impl ChatPanel {
             self.update_prompt_input(cx);
         }
 
-        if let Some(fe) = self.view(id!(main_prompt_input.prompt_icon)).finger_up(&actions) {
+        if let Some(fe) = self
+            .view(id!(main_prompt_input.prompt_icon))
+            .finger_up(&actions)
+        {
             if fe.was_tap() {
                 self.send_message(cx, scope, prompt_input.text());
             }
