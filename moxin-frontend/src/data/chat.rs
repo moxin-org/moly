@@ -47,7 +47,7 @@ impl Chat {
             .expect("Couldn't get Unix timestamp, time went backwards")
             .as_millis();
 
-        let chat = Self {
+        Self {
             id,
             model_filename: filename,
             file_id,
@@ -55,9 +55,7 @@ impl Chat {
             messages_update_sender: tx,
             messages_update_receiver: rx,
             is_streaming: false,
-        };
-
-        chat
+        }
     }
 
     pub fn send_message_to_model(&mut self, prompt: String, backend: &Backend) {
@@ -80,7 +78,7 @@ impl Chat {
 
         let cmd = Command::Chat(
             ChatRequestData {
-                messages: messages,
+                messages,
                 model: "llama-2-7b-chat.Q5_K_M".to_string(),
                 frequency_penalty: None,
                 logprobs: None,
