@@ -443,9 +443,17 @@ impl Store {
     }
 
     fn update_search_results(&mut self) {
-        if let Ok(models) = self.search.process_results(&self.backend) {
-            self.set_models(models);
-            self.sort_models_by_current_criteria();
+        match self.search.process_results(&self.backend) {
+            Ok(Some(models)) => {
+                self.set_models(models);
+                self.sort_models_by_current_criteria();
+            }
+            Ok(None) => {
+                // No results arrived, do nothing
+            }
+            Err(_) => {
+                self.set_models(vec![]);
+            }
         }
     }
 
@@ -586,6 +594,10 @@ impl Store {
     }
 
     pub fn search_is_loading(&self) -> bool {
-        self.search.pending
+        self.search.is_pending()
+    }
+
+    pub fn search_is_errored(&self) -> bool {
+        self.search.was_error()
     }
 }
