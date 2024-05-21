@@ -1,6 +1,6 @@
 use crate::data::store::{Store, StoreAction};
-use makepad_widgets::*;
 use crate::landing::search_loading::SearchLoadingWidgetExt;
+use makepad_widgets::*;
 
 live_design! {
     import makepad_widgets::base::*;
