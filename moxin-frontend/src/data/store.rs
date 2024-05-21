@@ -125,16 +125,6 @@ impl Store {
         }
     }
 
-    //  pub fn get_current_chat_mut(&mut self) -> Option<&mut Chat> {
-    //      if let Some(current_chat_id) = self.current_chat_id {
-    //          self.saved_chats
-    //              .iter_mut()
-    //              .find(|c| c.id == current_chat_id)
-    //      } else {
-    //          None
-    //      }
-    //  }
-
     // Commands to the backend
 
     pub fn load_featured_models(&mut self) {
