@@ -247,6 +247,10 @@ impl MatchEvent for App {
                     self.store.download_file(file, model);
                     self.ui.redraw(cx);
                 }
+                ModelFileItemAction::Chat => {
+                    let chat_radio_button = self.ui.radio_button(id!(chat_tab));
+                    chat_radio_button.select(cx, &mut Scope::empty());
+                }
                 _ => {}
             }
 

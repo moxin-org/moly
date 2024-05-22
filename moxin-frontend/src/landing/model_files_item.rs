@@ -2,13 +2,14 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, Model};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
+use crate::shared::widgets::c_button::{CButtonSetWidgetExt, CButtonWidgetExt};
 
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-
+    import crate::shared::widgets::c_button::*;
     import crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
@@ -30,7 +31,7 @@ live_design! {
         cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
-    ModelCardButton = <RoundedView> {
+    ModelCardButton = <CButton> {
         width: 140,
         height: 32,
         align: {x: 0.5, y: 0.5}
@@ -68,7 +69,7 @@ live_design! {
     DownloadedButton = <ModelCardButton> {
         draw_bg: { color: #fff, border_color: #099250, border_width: 0.5}
         button_label = {
-            text: "Downloaded"
+            text: "Chat with Model"
             draw_text: {
                 fn get_color(self) -> vec4 {
                     return #099250;
@@ -167,6 +168,7 @@ live_design! {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelFileItemAction {
     Download(File, Model),
+    Chat,
     None,
 }
 
@@ -195,18 +197,20 @@ impl Widget for ModelFilesItem {
 
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(download_button)).finger_down(&actions) {
-            if fd.tap_count == 1 {
-                let widget_uid = self.widget_uid();
-                let Some(model) = &self.model else { return };
-                let Some(file) = &self.file else { return };
+        if self.cbutton(id!(download_button)).tapped(&actions) {
+            let widget_uid = self.widget_uid();
+            let Some(model) = &self.model else { return };
+            let Some(file) = &self.file else { return };
 
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ModelFileItemAction::Download(file.clone(), model.clone()),
-                );
-            }
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ModelFileItemAction::Download(file.clone(), model.clone()),
+            );
+        }
+
+        if self.cbutton(id!(downloaded_button)).tapped(&actions) {
+            cx.widget_action(self.widget_uid(), &scope.path, ModelFileItemAction::Chat);
         }
     }
 }
