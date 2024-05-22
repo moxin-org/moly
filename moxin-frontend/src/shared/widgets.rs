@@ -1,3 +1,5 @@
+pub mod c_button;
+
 use makepad_widgets::*;
 
 live_design! {
