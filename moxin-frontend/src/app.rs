@@ -159,13 +159,7 @@ impl LiveRegister for App {
         makepad_widgets::live_design(cx);
 
         // Shared
-        crate::shared::styles::live_design(cx);
-        crate::shared::resource_imports::live_design(cx);
-        crate::shared::widgets::live_design(cx);
-        crate::shared::icon::live_design(cx);
-        crate::shared::modal::live_design(cx);
-        crate::shared::external_link::live_design(cx);
-        crate::shared::popup::live_design(cx);
+        crate::shared::live_design(cx);
 
         // Landing
         crate::landing::shared::live_design(cx);
