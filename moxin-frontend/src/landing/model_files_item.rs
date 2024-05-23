@@ -2,7 +2,10 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, Model};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
-use crate::shared::widgets::c_button::{CButtonSetWidgetExt, CButtonWidgetExt};
+use crate::{
+    data::store::Store,
+    shared::widgets::c_button::{CButtonSetWidgetExt, CButtonWidgetExt},
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -13,7 +16,8 @@ live_design! {
     import crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
-    ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
+    START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
+    RESUME_CHAT = dep("crate://self/resources/icons/play_arrow.svg")
 
     ModelFilesRow = <RoundedYView> {
         width: Fill,
@@ -39,16 +43,16 @@ live_design! {
 
         draw_bg: { color: #099250 }
 
-        button_icon = <Icon> {
+        icon = <Icon> {
             draw_icon: {
                 fn get_color(self) -> vec4 {
                     return #fff;
                 }
             }
-            icon_walk: {width: Fit, height: Fit}
+            icon_walk: {width: 14, height: 14}
         }
 
-        button_label = <Label> {
+        label = <Label> {
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9},
                 fn get_color(self) -> vec4 {
@@ -60,15 +64,15 @@ live_design! {
 
     DownloadButton = <ModelCardButton> {
         cursor: Hand,
-        button_label = { text: "Download" }
-        button_icon = { draw_icon: {
+        label = { text: "Download" }
+        icon = { draw_icon: {
             svg_file: (ICON_DOWNLOAD),
         }}
     }
 
-    DownloadedButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #099250, border_width: 0.5}
-        button_label = {
+    StartChatButton = <ModelCardButton> {
+        draw_bg: { color: #fff, border_color: #099250, border_width: 1}
+        label = {
             text: "Chat with Model"
             draw_text: {
                 fn get_color(self) -> vec4 {
@@ -76,9 +80,29 @@ live_design! {
                 }
             }
         }
-        button_icon = {
+        icon = {
             draw_icon: {
-                svg_file: (ICON_DOWNLOAD_DONE),
+                svg_file: (START_CHAT),
+                fn get_color(self) -> vec4 {
+                    return #099250;
+                }
+            }
+        }
+    }
+
+    ResumeChatButton = <ModelCardButton> {
+        draw_bg: { color: #fff, border_color: #099250, border_width: 1}
+        label = {
+            text: "Resume Chat"
+            draw_text: {
+                fn get_color(self) -> vec4 {
+                    return #099250;
+                }
+            }
+        }
+        icon = {
+            draw_icon: {
+                svg_file: (RESUME_CHAT),
                 fn get_color(self) -> vec4 {
                     return #099250;
                 }
@@ -89,7 +113,7 @@ live_design! {
     // TODO This is a very temporary solution, we will have a better way to handle this.
     DownloadPendingButton = <ModelCardButton> {
         draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
-        button_label = {
+        label = {
             text: "Downloading..."
             draw_text: {
                 fn get_color(self) -> vec4 {
@@ -97,7 +121,7 @@ live_design! {
                 }
             }
         }
-        button_icon = {
+        icon = {
             draw_icon: {
                 fn get_color(self) -> vec4 {
                     // invisible for now
@@ -159,7 +183,8 @@ live_design! {
         cell4 = {
             align: {x: 0.5, y: 0.5},
             download_button = <DownloadButton> { visible: false }
-            downloaded_button = <DownloadedButton> { visible: false }
+            start_chat_button = <StartChatButton> { visible: false }
+            resume_chat_button = <ResumeChatButton> { visible: false }
             download_pending_button = <DownloadPendingButton> { visible: false }
         }
     }
@@ -191,14 +216,29 @@ impl Widget for ModelFilesItem {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if let Some(store) = scope.data.get::<Store>() {
+            if let Some(current_chat) = &store.current_chat {
+                if let Some(file) = &self.file {
+                    if current_chat.file_id == file.id {
+                        self.cbutton(id!(start_chat_button)).set_visible(false);
+                        self.cbutton(id!(resume_chat_button)).set_visible(true);
+                    } else {
+                        self.cbutton(id!(start_chat_button)).set_visible(true);
+                        self.cbutton(id!(resume_chat_button)).set_visible(false);
+                    }
+                }
+            }
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
 
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let widget_uid = self.widget_uid();
+
         if self.cbutton(id!(download_button)).tapped(&actions) {
-            let widget_uid = self.widget_uid();
             let Some(model) = &self.model else { return };
             let Some(file) = &self.file else { return };
 
@@ -209,8 +249,12 @@ impl WidgetMatchEvent for ModelFilesItem {
             );
         }
 
-        if self.cbutton(id!(downloaded_button)).tapped(&actions) {
-            cx.widget_action(self.widget_uid(), &scope.path, ModelFileItemAction::Chat);
+        if self.cbutton(id!(start_chat_button)).tapped(&actions) {
+            cx.widget_action(widget_uid, &scope.path, ModelFileItemAction::Chat);
+        }
+
+        if self.cbutton(id!(resume_chat_button)).tapped(&actions) {
+            cx.widget_action(widget_uid, &scope.path, ModelFileItemAction::Chat);
         }
     }
 }

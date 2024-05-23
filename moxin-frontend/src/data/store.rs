@@ -51,6 +51,7 @@ pub struct DownloadInfo {
 pub struct ModelWithPendingDownloads {
     pub model: Model,
     pub pending_downloads: Vec<PendingDownload>,
+    pub current_file_id: Option<FileID>,
 }
 
 #[derive(Default)]
@@ -611,10 +612,20 @@ impl Store {
             .filter(|d| d.model.id == model_id)
             .cloned()
             .collect();
+        let current_file_id = model
+            .files
+            .iter()
+            .find(|f| {
+                self.current_chat
+                    .as_ref()
+                    .map_or(false, |c| c.file_id == f.id)
+            })
+            .map(|f| f.id.clone());
 
         Some(ModelWithPendingDownloads {
             model: model.clone(),
             pending_downloads,
+            current_file_id,
         })
     }
 
