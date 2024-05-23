@@ -93,8 +93,12 @@ impl Chat {
                 let ellipsis = "...";
 
                 let title = if message.content.len() > max_char_length {
-                    let mut truncated: String =
-                        message.content.chars().take(max_char_length).collect();
+                    let mut truncated = message
+                        .content
+                        .chars()
+                        .take(max_char_length)
+                        .collect::<String>()
+                        .replace('\n', " ");
                     truncated.push_str(ellipsis);
                     truncated
                 } else {
