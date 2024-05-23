@@ -2,10 +2,11 @@ use crate::chat::chat_panel::ChatPanelAction;
 use crate::data::store::*;
 use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
-use crate::landing::model_files_list::ModelFileItemsAction;
+use crate::landing::model_files_item::ModelFileItemAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
 use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
+use crate::shared::modal::ModalWidgetRefExt;
 use crate::shared::popup::{PopupAction, PopupWidgetRefExt};
 use makepad_widgets::*;
 
@@ -168,7 +169,10 @@ impl LiveRegister for App {
 
         // Landing
         crate::landing::shared::live_design(cx);
+        crate::landing::model_files_tags::live_design(cx);
+        crate::landing::model_files_item::live_design(cx);
         crate::landing::model_files_list::live_design(cx);
+        crate::landing::model_files::live_design(cx);
         crate::landing::model_card::live_design(cx);
         crate::landing::model_list::live_design(cx);
         crate::landing::landing_screen::live_design(cx);
@@ -180,11 +184,13 @@ impl LiveRegister for App {
 
         // Chat
         crate::chat::chat_screen::live_design(cx);
-        crate::chat::model_selector::live_design(cx);
         crate::chat::chat_panel::live_design(cx);
         crate::chat::chat_line::live_design(cx);
         crate::chat::chat_line_loading::live_design(cx);
         crate::chat::chat_history::live_design(cx);
+        crate::chat::model_info::live_design(cx);
+        crate::chat::model_selector::live_design(cx);
+        crate::chat::model_selector_list::live_design(cx);
 
         // My Models
         crate::my_models::my_models_screen::live_design(cx);
@@ -199,6 +205,7 @@ impl AppMain for App {
         // Process all possible store incoming events
         if let Event::Signal = event {
             self.store.process_event_signal();
+            self.notify_downloaded_files(cx);
             self.ui.redraw(cx);
         }
 
@@ -242,13 +249,9 @@ impl MatchEvent for App {
             }
 
             match action.as_widget_action().cast() {
-                ModelFileItemsAction::Download(file, model) => {
+                ModelFileItemAction::Download(file, model) => {
                     self.store.download_file(file, model);
                     self.ui.redraw(cx);
-                }
-                ModelFileItemsAction::Downloaded(file_id) => {
-                    let mut popup = self.ui.popup(id!(popup_download_success));
-                    popup.set_file_id(file_id);
                 }
                 _ => {}
             }
@@ -316,6 +319,18 @@ impl MatchEvent for App {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
+        }
+    }
+}
+
+impl App {
+    fn notify_downloaded_files(&mut self, cx: &mut Cx) {
+        if let Some(downloaded_file) = self.store.downloaded_files_to_notify.pop_front() {
+            let mut popup = self.ui.popup(id!(popup_download_success));
+            popup.set_file_id(downloaded_file);
+
+            let mut modal = self.ui.modal(id!(modal_root));
+            let _ = modal.show_modal_view_by_id(cx, live_id!(popup_download_success_modal_view));
         }
     }
 }

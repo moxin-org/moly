@@ -1,6 +1,6 @@
 use crate::data::store::{Store, StoreAction};
-use makepad_widgets::*;
 use crate::landing::search_loading::SearchLoadingWidgetExt;
+use makepad_widgets::*;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -44,6 +44,21 @@ live_design! {
             }
             search_loading = <SearchLoading> {}
         }
+
+        search_error = <View> {
+            width: Fill,
+            height: Fill,
+            visible: false,
+            align: {x: 0.5, y: 0.5},
+    
+            <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 13},
+                    color: #000
+                }
+                text: "Error fetching models. Please check your internet connection and try again."
+            }
+        }
     }
 }
 
@@ -51,6 +66,9 @@ live_design! {
 pub struct ModelList {
     #[deref]
     view: View,
+
+    #[rust]
+    loading_delay: Timer,
 }
 
 impl Widget for ModelList {
@@ -59,15 +77,11 @@ impl Widget for ModelList {
         self.widget_match_event(cx, event, scope);
 
         if let Event::Signal = event {
-            let store = scope.data.get::<Store>().unwrap();
-            let is_loading = store.search_is_loading();
+            self.loading_delay = cx.start_timeout(0.2);
+        }
 
-            self.view(id!(loading)).set_visible(is_loading);
-            if is_loading {
-                self.search_loading(id!(search_loading)).animate(cx);
-            } else {
-                self.search_loading(id!(search_loading)).stop_animation();
-            }
+        if self.loading_delay.is_event(event).is_some() {
+            self.update_loading_and_error_message(cx, scope);
         }
     }
 
@@ -112,6 +126,7 @@ impl WidgetMatchEvent for ModelList {
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
+                    self.view(id!(search_error)).set_visible(false);
                     self.view(id!(loading)).set_visible(true);
                     self.search_loading(id!(search_loading)).animate(cx);
                     portal_list.set_first_id_and_scroll(0, 0.0);
@@ -132,5 +147,21 @@ impl WidgetMatchEvent for ModelList {
                 cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledNotAtTop);
             }
         }
+    }
+}
+
+impl ModelList {
+    fn update_loading_and_error_message(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        let store = scope.data.get::<Store>().unwrap();
+        let is_loading = store.search_is_loading();
+        self.view(id!(loading)).set_visible(is_loading);
+        if is_loading {
+            self.search_loading(id!(search_loading)).animate(cx);
+        } else {
+            self.search_loading(id!(search_loading)).stop_animation();
+        }
+
+        let is_errored = store.search_is_errored();
+        self.view(id!(search_error)).set_visible(is_errored);
     }
 }

@@ -16,7 +16,7 @@ live_design! {
     import crate::shared::resource_imports::*;
     import crate::shared::widgets::*;
     import crate::landing::shared::*;
-    import crate::landing::model_files_list::ModelFilesList;
+    import crate::landing::model_files::ModelFiles;
     import crate::shared::external_link::*;
 
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
@@ -317,7 +317,7 @@ live_design! {
             <ModelHeading> {}
             <Line> {}
             <ModelInformation> {}
-            <ModelFilesList> {}
+            <ModelFiles> {}
         }
     }
 }
