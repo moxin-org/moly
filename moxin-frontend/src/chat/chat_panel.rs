@@ -495,7 +495,6 @@ impl WidgetMatchEvent for ChatPanel {
 
         for action in actions {
             if let ChatHistoryAction::ChatSelected(_) = action.as_widget_action().cast() {
-                let store = scope.data.get_mut::<Store>().unwrap();
                 self.view(id!(empty_conversation)).set_visible(false);
                 self.redraw(cx);
             }
