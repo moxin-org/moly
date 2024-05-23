@@ -292,18 +292,17 @@ impl MatchEvent for App {
 
 impl App {
     fn notify_downloaded_files(&mut self, cx: &mut Cx) {
-        if let Some(file_id) = self.store.downloaded_files_to_notify.pop_front() {
+        if let Some(notification) = self.store.next_download_notification() {
             let mut popup = self.ui.download_notification_popup(id!(popup_download_success));
 
-            let downloaded_file = self
-                .store
-                .downloaded_files
-                .iter()
-                .filter(|df| df.file.id == file_id)
-                .next()
-                .unwrap();
-
-            popup.set_data(downloaded_file.file.clone(), DownloadResult::Success);
+            match notification {
+                DownloadPendingNotification::DownloadedFile(file) => {
+                    popup.set_data(file.clone(), DownloadResult::Success);
+                },
+                DownloadPendingNotification::DownloadErrored(file) => {
+                    popup.set_data(file.clone(), DownloadResult::Failure);
+                },
+            }
 
             let mut modal = self.ui.modal(id!(modal_root));
             let _ = modal.show_modal_view_by_id(cx, live_id!(popup_download_success_modal_view));

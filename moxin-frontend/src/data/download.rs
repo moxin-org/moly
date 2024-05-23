@@ -26,6 +26,7 @@ pub struct Download {
     pub sender: Sender<DownloadFileAction>,
     pub receiver: Receiver<DownloadFileAction>,
     pub state: DownloadState,
+    pub notification_pending: bool,
 }
 
 impl Download {
@@ -36,7 +37,8 @@ impl Download {
             model: model,
             sender: tx,
             receiver: rx,
-            state: DownloadState::Downloading(progress)
+            state: DownloadState::Downloading(progress),
+            notification_pending: false,
         };
 
         download.start(backend);
@@ -88,7 +90,8 @@ impl Download {
         for msg in self.receiver.try_iter() {
             match msg {
                 DownloadFileAction::StreamingDone => {
-                    self.state = DownloadState::Completed
+                    self.state = DownloadState::Completed;
+                    self.notification_pending = true;
                 }
                 DownloadFileAction::Progress(value) => {
                     self.state = DownloadState::Downloading(value)
@@ -96,6 +99,7 @@ impl Download {
                 DownloadFileAction::Error => {
                     let current_progress = self.get_progress();
                     self.state = DownloadState::Errored(current_progress);
+                    self.notification_pending = true;
                 }
             }
         }
@@ -105,12 +109,25 @@ impl Download {
         matches!(self.state, DownloadState::Completed)
     }
 
+    pub fn is_errored(&self) -> bool {
+        matches!(self.state, DownloadState::Errored(_))
+    }
+
     pub fn get_progress(&self) -> f64 {
         match self.state {
             DownloadState::Downloading(progress) => progress,
             DownloadState::Errored(progress) => progress,
             DownloadState::Paused(progress) => progress,
             DownloadState::Completed => 1.0,
+        }
+    }
+
+    pub fn must_show_notification(&mut self) -> bool {
+        if self.notification_pending {
+            self.notification_pending = false;
+            true
+        } else {
+            false
         }
     }
 }

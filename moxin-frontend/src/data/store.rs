@@ -59,6 +59,11 @@ pub struct ModelWithPendingDownloads {
     pub current_file_id: Option<FileID>,
 }
 
+pub enum DownloadPendingNotification {
+    DownloadedFile(File),
+    DownloadErrored(File),
+}
+
 #[derive(Default)]
 pub struct Store {
     /// This is the backend representation, including the sender and receiver ends of the channels to
@@ -77,7 +82,6 @@ pub struct Store {
     pub saved_chats: Vec<RefCell<Chat>>,
     pub current_chat_id: Option<ChatID>,
     pub current_downloads: HashMap<FileID, Download>,
-    pub downloaded_files_to_notify: VecDeque<FileID>,
 
     pub preferences: Preferences,
     pub downloaded_files_dir: String,
@@ -107,8 +111,6 @@ impl Store {
             saved_chats: vec![],
             current_chat_id: None,
             current_downloads: HashMap::new(),
-
-            downloaded_files_to_notify: VecDeque::new(),
 
             preferences: Preferences::load(),
             downloaded_files_dir,
@@ -496,25 +498,23 @@ impl Store {
     }
 
     fn update_downloads(&mut self) {
-        let mut completed_downloads = Vec::new();
+        let mut downloaded_files_id = Vec::new();
 
-        for (id, download) in &mut self.current_downloads {
+        for (_, download) in &mut self.current_downloads {
             download.process_download_progress();
             if download.is_complete() {
-                completed_downloads.push(id.clone());
+                downloaded_files_id.push(download.file.id.clone());
             }
         }
 
-        if !completed_downloads.is_empty() {
+        if !downloaded_files_id.is_empty() {
             // Reload downloaded files
             self.load_downloaded_files();
             self.load_pending_downloads();
         }
 
-        for id in completed_downloads {
-            self.current_downloads.remove(&id);
-            self.downloaded_files_to_notify.push_back(id.clone());
-            self.set_file_downloaded_state(&id, true);
+        for file_id in downloaded_files_id {
+            self.set_file_downloaded_state(&file_id, true);
         }
     }
 
@@ -527,6 +527,25 @@ impl Store {
             let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
             file.downloaded = downloaded;
         }
+    }
+
+    pub fn next_download_notification(&mut self) -> Option<DownloadPendingNotification> {
+        self.current_downloads.iter_mut().filter_map(|(_, download)| {
+            if download.must_show_notification() {
+                if download.is_errored() {
+                    return Some(DownloadPendingNotification::DownloadErrored(
+                        download.file.clone(),
+                    ));
+                } else if download.is_complete() {
+                    return Some(DownloadPendingNotification::DownloadedFile(
+                        download.file.clone(),
+                    ));
+                } else {
+                    return None;
+                }
+            }
+            None
+        }).next()
     }
 
     // Utility functions
@@ -575,18 +594,25 @@ impl Store {
     }
 
     pub fn current_downloads_info(&self) -> Vec<DownloadInfo> {
-        // Collect information about current downloads
+        // Collect information about downloads triggered in this session
         let mut results: Vec<DownloadInfo> = self
             .current_downloads
             .iter()
-            .map(|(_id, download)| DownloadInfo {
-                file: download.file.clone(),
-                model: download.model.clone(),
-                state: download.state,
+            .filter_map(|(_id, download)| {
+                if !download.is_complete() {
+                    Some(DownloadInfo {
+                        file: download.file.clone(),
+                        model: download.model.clone(),
+                        state: download.state,
+                    })
+                } else {
+                    None
+                }
             })
             .collect();
 
         // Add files that are still partially downloaded (from previous sessions with the app)
+        // TODO: Get rid of this list, merge into `current_downloads`
         let mut partial_downloads: Vec<DownloadInfo> = self
             .pending_downloads
             .iter()
