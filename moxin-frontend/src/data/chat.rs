@@ -89,7 +89,7 @@ impl Chat {
         // one as title. Else we just return the default one.
         if matches!(self.title_state, TitleState::Default) {
             if let Some(message) = self.messages.first() {
-                let max_char_length = 18;
+                let max_char_length = 25;
                 let ellipsis = "...";
 
                 let title = if message.content.len() > max_char_length {
