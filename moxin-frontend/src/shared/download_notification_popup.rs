@@ -13,10 +13,9 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     SUCCESS_ICON = dep("crate://self/resources/images/success_icon.png")
+    ERROR_ICON = dep("crate://self/resources/images/error_icon.png")
 
-
-    // TODO: abstract for more popups
-    PopupDownloadSuccess = {{Popup}} {
+    DownloadNotificationPopup = {{DownloadNotificationPopup}} {
         width: Fit
         height: Fit
 
@@ -127,7 +126,7 @@ pub enum PopupAction {
 }
 
 #[derive(Live, LiveHook, Widget)]
-pub struct Popup {
+pub struct DownloadNotificationPopup {
     #[deref]
     view: View,
     #[layout]
@@ -136,7 +135,7 @@ pub struct Popup {
     file_id: FileID,
 }
 
-impl Widget for Popup {
+impl Widget for DownloadNotificationPopup {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
@@ -156,7 +155,7 @@ impl Widget for Popup {
     }
 }
 
-impl WidgetMatchEvent for Popup {
+impl WidgetMatchEvent for DownloadNotificationPopup {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
@@ -175,13 +174,13 @@ impl WidgetMatchEvent for Popup {
     }
 }
 
-impl Popup {
+impl DownloadNotificationPopup {
     pub fn set_file_id(&mut self, file_id: FileID) {
         self.file_id = file_id;
     }
 }
 
-impl PopupRef {
+impl DownloadNotificationPopupRef {
     pub fn set_file_id(&mut self, file_id: FileID) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_file_id(file_id)

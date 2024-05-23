@@ -7,7 +7,7 @@ use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWi
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
 use crate::shared::actions::ChatAction;
 use crate::shared::modal::ModalWidgetRefExt;
-use crate::shared::popup::{PopupAction, PopupWidgetRefExt};
+use crate::shared::download_notification_popup::{PopupAction, DownloadNotificationPopupWidgetRefExt};
 use makepad_widgets::*;
 
 live_design! {
@@ -18,7 +18,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::modal::*;
     import crate::shared::widgets::SidebarMenuButton;
-    import crate::shared::popup::*;
+    import crate::shared::download_notification_popup::DownloadNotificationPopup;
     import crate::landing::landing_screen::LandingScreen;
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
@@ -128,7 +128,7 @@ live_design! {
                             show_bg: false
                         }
                         content = {
-                            popup_download_success = <PopupDownloadSuccess> {}
+                            popup_download_success = <DownloadNotificationPopup> {}
                         }
                     }
                 }
@@ -291,7 +291,7 @@ impl MatchEvent for App {
 impl App {
     fn notify_downloaded_files(&mut self, cx: &mut Cx) {
         if let Some(downloaded_file) = self.store.downloaded_files_to_notify.pop_front() {
-            let mut popup = self.ui.popup(id!(popup_download_success));
+            let mut popup = self.ui.download_notification_popup(id!(popup_download_success));
             popup.set_file_id(downloaded_file);
 
             let mut modal = self.ui.modal(id!(modal_root));
