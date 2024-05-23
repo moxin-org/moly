@@ -1,5 +1,5 @@
 use crate::{
-    data::store::{DownloadInfo, DownloadInfoStatus},
+    data::{download::DownloadState, store::DownloadInfo},
     shared::utils::{format_model_downloaded_size, format_model_size},
 };
 use makepad_widgets::*;
@@ -177,6 +177,14 @@ live_design! {
 
         }
 
+        retry_button = <ActionButton> {
+            icon = {
+                draw_icon: {
+                    svg_file: (ICON_RETRY),
+                }
+            }
+        }
+
         cancel_button = <ActionButton> {
             icon = {
                 draw_icon: {
@@ -248,13 +256,13 @@ impl Widget for DownloadItem {
         self.label(id!(params_size_tag.caption))
             .set_text(&&download.model.requires.as_str());
 
-        let progress_bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
+        let progress_bar_width = download.get_progress() * 6.0; // 6.0 = 600px / 100%
         let label = self.label(id!(progress));
-        match download.status {
-            DownloadInfoStatus::Downloading => {
+        match download.state {
+            DownloadState::Downloading(progress) => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
 
-                label.set_text(&format!("Downloading {:.1}%", download.progress));
+                label.set_text(&format!("Downloading {:.1}%", progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (downloading_color) }
@@ -271,11 +279,12 @@ impl Widget for DownloadItem {
 
                 self.view(id!(pause_button)).set_visible(true);
                 self.view(id!(play_button)).set_visible(false);
+                self.view(id!(retry_button)).set_visible(false);
             }
-            DownloadInfoStatus::Paused => {
+            DownloadState::Paused(progress) => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
 
-                label.set_text(&format!("Paused {:.1}%", download.progress));
+                label.set_text(&format!("Paused {:.1}%", progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (paused_color) }
@@ -292,11 +301,35 @@ impl Widget for DownloadItem {
 
                 self.view(id!(pause_button)).set_visible(false);
                 self.view(id!(play_button)).set_visible(true);
+                self.view(id!(retry_button)).set_visible(false);
             }
+            DownloadState::Errored(progress) => {
+                let failed_color = vec3(0.7, 0.11, 0.09); // #B42318
+
+                label.set_text(&format!("Error {:.1}%", progress));
+                label.apply_over(
+                    cx,
+                    live! { draw_text: { color: (failed_color) }
+                    },
+                );
+
+                self.view(id!(progress_bar)).apply_over(
+                    cx,
+                    live! {
+                        width: (progress_bar_width)
+                        draw_bg: { color: (failed_color) }
+                    },
+                );
+
+                self.view(id!(pause_button)).set_visible(false);
+                self.view(id!(play_button)).set_visible(false);
+                self.view(id!(retry_button)).set_visible(true);
+            }
+            DownloadState::Completed => ()
         }
 
         let total_size = format_model_size(&download.file.size).unwrap_or("-".to_string());
-        let downloaded_size = format_model_downloaded_size(&download.file.size, download.progress)
+        let downloaded_size = format_model_downloaded_size(&download.file.size, download.get_progress())
             .unwrap_or("-".to_string());
 
         self.label(id!(downloaded_size))
@@ -308,16 +341,18 @@ impl Widget for DownloadItem {
 
 impl WidgetMatchEvent for DownloadItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(play_button)).finger_down(&actions) {
-            let Some(model) = &self.model else { return };
-            let Some(file) = &self.file else { return };
-            if fd.tap_count == 1 {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    DownloadItemAction::Play(file.clone(), model.clone()),
-                );
+        for button_id in [id!(play_button), id!(retry_button)] {
+            if let Some(fd) = self.view(button_id).finger_down(&actions) {
+                let Some(model) = &self.model else { return };
+                let Some(file) = &self.file else { return };
+                if fd.tap_count == 1 {
+                    let widget_uid = self.widget_uid();
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        DownloadItemAction::Play(file.clone(), model.clone()),
+                    );
+                }
             }
         }
 

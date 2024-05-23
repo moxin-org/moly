@@ -6,8 +6,17 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 
 pub enum DownloadFileAction {
-    Progress(FileID, f64),
+    Progress(f64),
+    Error,
     StreamingDone,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum DownloadState {
+    Downloading(f64),
+    Errored(f64),
+    Paused(f64),
+    Completed,
 }
 
 #[derive(Debug)]
@@ -16,8 +25,7 @@ pub struct Download {
     pub model: Model,
     pub sender: Sender<DownloadFileAction>,
     pub receiver: Receiver<DownloadFileAction>,
-    pub progress: f64,
-    pub done: bool,
+    pub state: DownloadState,
 }
 
 impl Download {
@@ -26,10 +34,9 @@ impl Download {
         let mut download = Self {
             file: file,
             model: model,
-            progress,
             sender: tx,
             receiver: rx,
-            done: false,
+            state: DownloadState::Downloading(progress)
         };
 
         download.start(backend);
@@ -54,11 +61,17 @@ impl Download {
                                 .send(DownloadFileAction::StreamingDone)
                                 .unwrap();
                         }
-                        FileDownloadResponse::Progress(file, value) => store_download_tx
-                            .send(DownloadFileAction::Progress(file, value as f64))
+                        FileDownloadResponse::Progress(_file, value) => store_download_tx
+                            .send(DownloadFileAction::Progress(value as f64))
                             .unwrap(),
                     },
-                    Err(err) => eprintln!("Error downloading file: {:?}", err),
+                    Err(err) => {
+                        store_download_tx
+                            .send(DownloadFileAction::Error)
+                            .unwrap();
+
+                        eprintln!("Error downloading file: {:?}", err)
+                    },
                 }
             } else {
                 break
@@ -75,14 +88,29 @@ impl Download {
         for msg in self.receiver.try_iter() {
             match msg {
                 DownloadFileAction::StreamingDone => {
-                    self.done = true;
-                    //println!("Download complete");
+                    self.state = DownloadState::Completed
                 }
-                DownloadFileAction::Progress(_file, value) => {
-                    self.progress = value;
-                    // println!("Download {:?} progress: {:?}", file, value);
+                DownloadFileAction::Progress(value) => {
+                    self.state = DownloadState::Downloading(value)
+                }
+                DownloadFileAction::Error => {
+                    let current_progress = self.get_progress();
+                    self.state = DownloadState::Errored(current_progress);
                 }
             }
+        }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        matches!(self.state, DownloadState::Completed)
+    }
+
+    pub fn get_progress(&self) -> f64 {
+        match self.state {
+            DownloadState::Downloading(progress) => progress,
+            DownloadState::Errored(progress) => progress,
+            DownloadState::Paused(progress) => progress,
+            DownloadState::Completed => 1.0,
         }
     }
 }

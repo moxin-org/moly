@@ -1,4 +1,5 @@
 use super::chat::ChatID;
+use super::download::DownloadState;
 use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
@@ -34,17 +35,21 @@ pub enum SortCriteria {
 }
 
 #[derive(Clone, Debug)]
-pub enum DownloadInfoStatus {
-    Downloading,
-    Paused,
-}
-
-#[derive(Clone, Debug)]
 pub struct DownloadInfo {
     pub file: File,
     pub model: Model,
-    pub progress: f64,
-    pub status: DownloadInfoStatus,
+    pub state: DownloadState,
+}
+
+impl DownloadInfo {
+    pub fn get_progress(&self) -> f64 {
+        match self.state {
+            DownloadState::Downloading(progress) => progress,
+            DownloadState::Errored(progress) => progress,
+            DownloadState::Paused(progress) => progress,
+            DownloadState::Completed => 100.0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -495,7 +500,7 @@ impl Store {
 
         for (id, download) in &mut self.current_downloads {
             download.process_download_progress();
-            if download.done {
+            if download.is_complete() {
                 completed_downloads.push(id.clone());
             }
         }
@@ -577,8 +582,7 @@ impl Store {
             .map(|(_id, download)| DownloadInfo {
                 file: download.file.clone(),
                 model: download.model.clone(),
-                progress: download.progress,
-                status: DownloadInfoStatus::Downloading,
+                state: download.state,
             })
             .collect();
 
@@ -590,10 +594,7 @@ impl Store {
             .map(|d| DownloadInfo {
                 file: d.file.clone(),
                 model: d.model.clone(),
-                progress: d.progress,
-
-                // TODO: Handle errors and other statuses
-                status: DownloadInfoStatus::Paused,
+                state: DownloadState::Paused(d.progress),
             })
             .collect();
 

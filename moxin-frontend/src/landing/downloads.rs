@@ -1,4 +1,4 @@
-use crate::data::store::{DownloadInfoStatus, Store};
+use crate::data::{download::DownloadState, store::Store};
 use makepad_widgets::*;
 
 live_design! {
@@ -59,13 +59,13 @@ live_design! {
             text: "1 paused"
         }
 
-        // <Label> {
-        //     draw_text:{
-        //         text_style: <REGULAR_FONT>{font_size: 9},
-        //         color: #667085
-        //     }
-        //     text: "5 completed"
-        // }
+        failed_count = <Label> {
+            draw_text:{
+                text_style: <REGULAR_FONT>{font_size: 9},
+                color: #B42318
+            }
+            text: "1 failed"
+        }
 
         <VerticalFiller> {}
 
@@ -160,17 +160,28 @@ impl Widget for Downloads {
 
         let download_count = current_downloads
             .iter()
-            .filter(|d| matches!(d.status, DownloadInfoStatus::Downloading))
+            .filter(|d| matches!(d.state, DownloadState::Downloading(_)))
             .count();
         self.label(id!(downloading_count))
             .set_text(&format!("{} downloading", download_count));
 
         let paused_count = current_downloads
             .iter()
-            .filter(|d| matches!(d.status, DownloadInfoStatus::Paused))
+            .filter(|d| matches!(d.state, DownloadState::Paused(_)))
             .count();
         self.label(id!(paused_count))
             .set_text(&format!("{} paused", paused_count));
+
+        let failed_count = current_downloads
+            .iter()
+            .filter(|d| matches!(d.state, DownloadState::Errored(_)))
+            .count();
+
+        if failed_count > 0 {
+            self.label(id!(failed_count)).set_text(&format!("{} failed", failed_count));
+        } else {
+            self.label(id!(failed_count)).set_text("");
+        }
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
