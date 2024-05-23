@@ -1,3 +1,4 @@
+pub mod chat_history;
 pub mod chat_line;
 pub mod chat_line_loading;
 pub mod chat_panel;

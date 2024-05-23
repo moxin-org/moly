@@ -218,11 +218,11 @@ impl Modal {
         &mut self,
         cx: &mut Cx,
         modal_view_id: LiveId,
-    ) -> Result<(), String> {
+    ) -> Result<(), &'static str> {
         let mut modal_view_ref = self.modal_view(&[modal_view_id]);
 
         if modal_view_ref.is_empty() {
-            return Err(format!("ModalView with id '{modal_view_id}' not found"));
+            return Err("ModalView not found");
         }
 
         if let Some(mut current_active_modal_view_ref) = self.get_active_modal_view(cx) {
@@ -251,20 +251,20 @@ impl ModalRef {
         &mut self,
         cx: &mut Cx,
         stack_view_id: LiveId,
-    ) -> Result<(), String> {
+    ) -> Result<(), &'static str> {
         if let Some(mut inner) = self.borrow_mut() {
             inner.show_modal_view_by_id(cx, stack_view_id)
         } else {
-            Err("Widget not found in the document".to_string())
+            Err("Widget not found in the document")
         }
     }
 
-    pub fn close(&mut self, cx: &mut Cx) -> Result<(), String> {
+    pub fn close(&mut self, cx: &mut Cx) -> Result<(), &'static str> {
         if let Some(mut inner) = self.borrow_mut() {
             inner.close(cx);
             Ok(())
         } else {
-            Err("Widget not found in the document".to_string())
+            Err("Widget not found in the document")
         }
     }
 }

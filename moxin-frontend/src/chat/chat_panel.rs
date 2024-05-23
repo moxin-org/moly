@@ -5,7 +5,7 @@ use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
 
-use super::model_selector::ModelSelectorWidgetExt;
+use super::{chat_history::ChatHistoryAction, model_selector::ModelSelectorWidgetExt};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -412,6 +412,8 @@ impl Widget for ChatPanel {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
 
+        // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
+        // can be confused with the actual Chat type.
         let (chat_history, model_filename, initial_letter) =
             store
                 .get_current_chat()
@@ -432,8 +434,11 @@ impl Widget for ChatPanel {
 
         let chats_count = chat_history.len();
 
-        if chats_count == 0 {
-            self.view(id!(empty_conversation))
+        let chat_is_empty = chats_count == 0;
+        let empty_conversation_view = self.view(id!(empty_conversation));
+        empty_conversation_view.set_visible(chat_is_empty);
+        if chat_is_empty {
+            empty_conversation_view
                 .label(id!(avatar_label))
                 .set_text(initial_letter.as_str());
         }
@@ -487,6 +492,12 @@ impl WidgetMatchEvent for ChatPanel {
         let widget_uid = self.widget_uid();
 
         for action in actions {
+            if let ChatHistoryAction::ChatSelected(_) = action.as_widget_action().cast() {
+                let store = scope.data.get_mut::<Store>().unwrap();
+                self.view(id!(empty_conversation)).set_visible(false);
+                self.redraw(cx);
+            }
+
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
                     let store = scope.data.get_mut::<Store>().unwrap();

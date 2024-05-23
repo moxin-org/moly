@@ -1,3 +1,4 @@
+use super::chat::ChatID;
 use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
@@ -68,7 +69,7 @@ pub struct Store {
 
     /// Locally saved chats
     pub saved_chats: Vec<RefCell<Chat>>,
-    pub current_chat_id: Option<u128>,
+    pub current_chat_id: Option<ChatID>,
     pub current_downloads: HashMap<FileID, Download>,
     pub downloaded_files_to_notify: VecDeque<FileID>,
 
