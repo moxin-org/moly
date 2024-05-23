@@ -50,7 +50,7 @@ live_design! {
             height: Fill,
             visible: false,
             align: {x: 0.5, y: 0.5},
-    
+
             <Label> {
                 draw_text:{
                     text_style: <REGULAR_FONT>{font_size: 13},

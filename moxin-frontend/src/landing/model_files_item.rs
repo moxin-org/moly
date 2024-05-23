@@ -2,10 +2,7 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, Model};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
-use crate::{
-    data::store::Store,
-    shared::widgets::c_button::{CButtonSetWidgetExt, CButtonWidgetExt},
-};
+use crate::shared::{actions::DownloadedFileAction, widgets::c_button::CButtonWidgetExt};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -193,7 +190,6 @@ live_design! {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelFileItemAction {
     Download(File, Model),
-    Chat,
     None,
 }
 
@@ -216,20 +212,6 @@ impl Widget for ModelFilesItem {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        if let Some(store) = scope.data.get::<Store>() {
-            if let Some(current_chat) = &store.current_chat {
-                if let Some(file) = &self.file {
-                    if current_chat.file_id == file.id {
-                        self.cbutton(id!(start_chat_button)).set_visible(false);
-                        self.cbutton(id!(resume_chat_button)).set_visible(true);
-                    } else {
-                        self.cbutton(id!(start_chat_button)).set_visible(true);
-                        self.cbutton(id!(resume_chat_button)).set_visible(false);
-                    }
-                }
-            }
-        }
-
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -250,11 +232,19 @@ impl WidgetMatchEvent for ModelFilesItem {
         }
 
         if self.cbutton(id!(start_chat_button)).tapped(&actions) {
-            cx.widget_action(widget_uid, &scope.path, ModelFileItemAction::Chat);
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadedFileAction::StartChat(self.file.as_ref().unwrap().id.clone()),
+            );
         }
 
         if self.cbutton(id!(resume_chat_button)).tapped(&actions) {
-            cx.widget_action(widget_uid, &scope.path, ModelFileItemAction::Chat);
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadedFileAction::ResumeChat(self.file.as_ref().unwrap().id.clone()),
+            );
         }
     }
 }

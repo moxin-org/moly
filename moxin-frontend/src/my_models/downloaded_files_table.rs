@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
 use makepad_widgets::*;
-use moxin_protocol::data::{DownloadedFile, FileID};
+use moxin_protocol::data::DownloadedFile;
 
 use crate::{
     data::store::Store,
-    shared::{modal::ModalAction, utils::format_model_size, widgets::c_button::CButton},
+    shared::{
+        actions::DownloadedFileAction, modal::ModalAction, utils::format_model_size,
+        widgets::c_button::CButton,
+    },
 };
 
 use super::{
@@ -561,13 +564,6 @@ impl ActionButtonRef {
             inner.deref.visible = visible;
         }
     }
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum DownloadedFileAction {
-    StartChat(FileID),
-    ResumeChat(FileID),
-    None,
 }
 
 /// Removes dashes, file extension, and capitalizes the first letter of each word.

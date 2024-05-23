@@ -2,12 +2,15 @@ use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
 
 use super::{chat_history::ChatHistoryAction, model_selector::ModelSelectorWidgetExt};
-use crate::chat::{
-    chat_line::{ChatLineAction, ChatLineWidgetRefExt},
-    model_selector_list::ModelSelectorAction,
+use crate::{
+    chat::{
+        chat_line::{ChatLineAction, ChatLineWidgetRefExt},
+        model_selector::ModelSelectorWidgetExt,
+        model_selector_list::ModelSelectorAction,
+    },
+    data::store::Store,
+    shared::actions::DownloadedFileAction,
 };
-use crate::data::store::Store;
-use crate::my_models::downloaded_files_table::DownloadedFileAction;
 
 live_design! {
     import makepad_widgets::base::*;

@@ -1,6 +1,6 @@
 use crate::{
-    data::store::Store, my_models::downloaded_files_table::DownloadedFileAction,
-    shared::utils::format_model_size,
+    data::store::Store,
+    shared::{actions::DownloadedFileAction, utils::format_model_size},
 };
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;

@@ -4,8 +4,8 @@ use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
-use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
+use crate::shared::actions::DownloadedFileAction;
 use crate::shared::modal::ModalWidgetRefExt;
 use crate::shared::popup::{PopupAction, PopupWidgetRefExt};
 use makepad_widgets::*;
@@ -246,10 +246,6 @@ impl MatchEvent for App {
                 ModelFileItemAction::Download(file, model) => {
                     self.store.download_file(file, model);
                     self.ui.redraw(cx);
-                }
-                ModelFileItemAction::Chat => {
-                    let chat_radio_button = self.ui.radio_button(id!(chat_tab));
-                    chat_radio_button.select(cx, &mut Scope::empty());
                 }
                 _ => {}
             }
