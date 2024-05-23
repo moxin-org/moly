@@ -44,7 +44,19 @@ live_design! {
         }
     }
 
-    ActionButton = {{ActionButton}} {}
+    ActionButton = {{ActionButton}} {
+        draw_bg: {
+            border_color: #ccc,
+        }
+
+        icon = {
+            draw_icon: {
+                fn get_color(self) -> vec4 {
+                    return #087443;
+                }
+            }
+        }
+    }
 
     HeaderRow = <View> {
         align: {x: 0.0, y: 0.5}

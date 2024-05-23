@@ -35,12 +35,9 @@ live_design! {
     ModelCardButton = <CButton> {
         width: 140,
         height: 32,
-        align: {x: 0.5, y: 0.5}
         spacing: 6,
 
-        draw_bg: { color: #099250 }
-
-        icon = <Icon> {
+        icon = {
             draw_icon: {
                 fn get_color(self) -> vec4 {
                     return #fff;
@@ -49,7 +46,7 @@ live_design! {
             icon_walk: {width: 14, height: 14}
         }
 
-        label = <Label> {
+        label = {
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9},
                 fn get_color(self) -> vec4 {
@@ -60,7 +57,7 @@ live_design! {
     }
 
     DownloadButton = <ModelCardButton> {
-        cursor: Hand,
+        draw_bg: { color: #099250, border_color: #099250 }
         label = { text: "Download" }
         icon = { draw_icon: {
             svg_file: (ICON_DOWNLOAD),
@@ -68,12 +65,12 @@ live_design! {
     }
 
     StartChatButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #099250, border_width: 1}
+        draw_bg: { color: #fff, border_color: #d0d5dd }
         label = {
             text: "Chat with Model"
             draw_text: {
                 fn get_color(self) -> vec4 {
-                    return #099250;
+                    return #087443;
                 }
             }
         }
@@ -81,19 +78,19 @@ live_design! {
             draw_icon: {
                 svg_file: (START_CHAT),
                 fn get_color(self) -> vec4 {
-                    return #099250;
+                    return #087443;
                 }
             }
         }
     }
 
     ResumeChatButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #099250, border_width: 1}
+        draw_bg: { color: #087443, border_color: #087443 }
         label = {
             text: "Resume Chat"
             draw_text: {
                 fn get_color(self) -> vec4 {
-                    return #099250;
+                    return #fff;
                 }
             }
         }
@@ -101,7 +98,7 @@ live_design! {
             draw_icon: {
                 svg_file: (RESUME_CHAT),
                 fn get_color(self) -> vec4 {
-                    return #099250;
+                    return #fff;
                 }
             }
         }

@@ -16,13 +16,13 @@ live_design!(
             radius: 2.0,
             color: #fff,
             border_width: 1.0,
-            border_color: #ccc,
+            border_color: #000,
         }
 
         icon = <Icon> {
             draw_icon: {
                 fn get_color(self) -> vec4 {
-                    return #087443;
+                    return #000;
                 }
             }
             icon_walk: {width: 12, height: 12}
@@ -79,10 +79,6 @@ impl CButton {
             CButtonAction::Tapped
         )
     }
-
-    pub fn set_visible(&mut self, visible: bool) {
-        self.deref.visible = visible;
-    }
 }
 
 impl CButtonRef {
@@ -91,12 +87,6 @@ impl CButtonRef {
             widget.tapped(actions)
         } else {
             false
-        }
-    }
-
-    pub fn set_visible(&mut self, visible: bool) {
-        if let Some(mut widget) = self.borrow_mut() {
-            widget.set_visible(visible);
         }
     }
 }
