@@ -266,6 +266,7 @@ impl Widget for DownloadedFilesTable {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.file_item_map.clear();
         let filter = match &self.search_status {
             SearchStatus::Filtered(keywords) => Some(keywords.clone()),
             _ => None,
