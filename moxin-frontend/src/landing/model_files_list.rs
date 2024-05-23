@@ -150,8 +150,8 @@ impl ModelFilesList {
                         cx,
                         live! { cell4 = {
                             download_pending_button = { visible: false }
-                            start_chat_button = { visible: true }
-                            resume_chat_button = { visible: false }
+                            start_chat_button = { visible: false }
+                            resume_chat_button = { visible: true }
                             download_button = { visible: false }
                         }},
                     );
@@ -160,8 +160,8 @@ impl ModelFilesList {
                         cx,
                         live! { cell4 = {
                             download_pending_button = { visible: false }
-                            start_chat_button = { visible: false }
-                            resume_chat_button = { visible: true }
+                            start_chat_button = { visible: true }
+                            resume_chat_button = { visible: false }
                             download_button = { visible: false }
                         }},
                     );

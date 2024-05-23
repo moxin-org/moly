@@ -512,6 +512,7 @@ impl WidgetMatchEvent for ChatPanel {
 
             match action.as_widget_action().cast() {
                 DownloadedFileAction::StartChat(file_id) => {
+                    println!("Start chat with file_id: {:?}", file_id);
                     let store = scope.data.get_mut::<Store>().unwrap();
                     let downloaded_file = store
                         .downloaded_files
