@@ -175,7 +175,7 @@ live_design! {
                 text: "Retry"
             }
 
-            calcel_link = <PopupSecondaryActionLink> {
+            cancel_link = <PopupSecondaryActionLink> {
                 text: "Cancel"
             }
         }
@@ -263,7 +263,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
             cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
         }
 
-        if self.link_label(id!(calcel_link)).clicked(actions) {
+        if self.link_label(id!(cancel_link)).clicked(actions) {
             let Some(file_id) = &self.file_id else { return };
             cx.widget_action(
                 widget_uid,
