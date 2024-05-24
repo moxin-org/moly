@@ -525,22 +525,22 @@ impl Store {
     }
 
     fn update_downloads(&mut self) {
-        let mut downloaded_files_id = Vec::new();
+        let mut completed_download_ids = Vec::new();
 
-        for (_, download) in &mut self.current_downloads {
+        for (id, download) in &mut self.current_downloads {
             download.process_download_progress();
             if download.is_complete() {
-                downloaded_files_id.push(download.file.id.clone());
+                completed_download_ids.push(id.clone());
             }
         }
 
-        if !downloaded_files_id.is_empty() {
+        if !completed_download_ids.is_empty() {
             // Reload downloaded files
             self.load_downloaded_files();
             self.load_pending_downloads();
         }
 
-        for file_id in downloaded_files_id {
+        for file_id in completed_download_ids {
             self.set_file_downloaded_state(&file_id, true);
         }
     }
