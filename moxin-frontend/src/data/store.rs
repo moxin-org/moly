@@ -616,9 +616,9 @@ impl Store {
             .files
             .iter()
             .find(|f| {
-                self.current_chat
+                self.get_current_chat()
                     .as_ref()
-                    .map_or(false, |c| c.file_id == f.id)
+                    .map_or(false, |c| c.borrow().file_id == f.id)
             })
             .map(|f| f.id.clone());
 

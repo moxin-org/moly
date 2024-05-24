@@ -1,9 +1,9 @@
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
 
-use super::{chat_history::ChatHistoryAction, model_selector::ModelSelectorWidgetExt};
 use crate::{
     chat::{
+        chat_history::ChatHistoryAction,
         chat_line::{ChatLineAction, ChatLineWidgetRefExt},
         model_selector::ModelSelectorWidgetExt,
         model_selector_list::ModelSelectorAction,
