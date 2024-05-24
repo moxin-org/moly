@@ -1,5 +1,5 @@
-use makepad_widgets::markdown::MarkdownWidgetExt;
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
+use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
@@ -389,7 +389,7 @@ impl ChatLine {
                 let updated_message = self.text_input(id!(input)).text();
 
                 // Do not allow to have empty messages for now.
-                // TODO We should disable Save button when the message is empty. 
+                // TODO We should disable Save button when the message is empty.
                 if !updated_message.trim().is_empty() {
                     let widget_id = self.view.widget_uid();
                     cx.widget_action(
@@ -407,7 +407,7 @@ impl ChatLine {
             if fe.was_tap() {
                 let updated_message = self.text_input(id!(input)).text();
 
-                // TODO We should disable Save and Regenerate button when the message is empty. 
+                // TODO We should disable Save and Regenerate button when the message is empty.
                 if !updated_message.trim().is_empty() {
                     let widget_id = self.view.widget_uid();
                     cx.widget_action(

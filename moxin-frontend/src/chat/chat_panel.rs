@@ -1,13 +1,13 @@
-
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
-use crate::data::store::Store;
-use crate::my_models::downloaded_files_table::DownloadedFileAction;
+
+use super::{chat_history::ChatHistoryAction, model_selector::ModelSelectorWidgetExt};
 use crate::chat::{
     chat_line::{ChatLineAction, ChatLineWidgetRefExt},
-    model_selector::ModelSelectorWidgetExt,
     model_selector_list::ModelSelectorAction,
 };
+use crate::data::store::Store;
+use crate::my_models::downloaded_files_table::DownloadedFileAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -387,7 +387,7 @@ impl Widget for ChatPanel {
                         auto_scroll_cancellable: true,
                     };
 
-                    let still_streaming = store.current_chat.as_ref().unwrap().is_streaming;
+                    let still_streaming = store.get_current_chat().unwrap().borrow().is_streaming;
                     if still_streaming {
                         if auto_scroll_pending {
                             self.scroll_messages_to_bottom(cx);
@@ -414,25 +414,33 @@ impl Widget for ChatPanel {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
 
+        // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
+        // can be confused with the actual Chat type.
         let (chat_history, model_filename, initial_letter) =
             store
-                .current_chat
-                .as_ref()
+                .get_current_chat()
                 .map_or((vec![], "".to_string(), "".to_string()), |chat| {
-                    let model_filename = chat.model_filename.clone();
+                    let model_filename = chat.borrow().model_filename.clone();
                     let initial_letter = model_filename
                         .chars()
                         .next()
                         .unwrap_or_default()
                         .to_uppercase()
                         .to_string();
-                    (chat.messages.clone(), model_filename, initial_letter)
+                    (
+                        chat.borrow().messages.clone(),
+                        model_filename,
+                        initial_letter,
+                    )
                 });
 
         let chats_count = chat_history.len();
 
-        if chats_count == 0 {
-            self.view(id!(empty_conversation))
+        let chat_is_empty = chats_count == 0;
+        let empty_conversation_view = self.view(id!(empty_conversation));
+        empty_conversation_view.set_visible(chat_is_empty);
+        if chat_is_empty {
+            empty_conversation_view
                 .label(id!(avatar_label))
                 .set_text(initial_letter.as_str());
         }
@@ -486,6 +494,11 @@ impl WidgetMatchEvent for ChatPanel {
         let widget_uid = self.widget_uid();
 
         for action in actions {
+            if let ChatHistoryAction::ChatSelected(_) = action.as_widget_action().cast() {
+                self.view(id!(empty_conversation)).set_visible(false);
+                self.redraw(cx);
+            }
+
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
@@ -540,9 +553,8 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatPanelAction::UnloadIfActive(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     if store
-                        .current_chat
-                        .as_ref()
-                        .map_or(false, |chat| chat.file_id == file_id)
+                        .get_current_chat()
+                        .map_or(false, |chat| chat.borrow().file_id == file_id)
                     {
                         self.unload_model(cx, store);
                         store.eject_model().expect("Failed to eject model");
@@ -573,7 +585,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                 if let Some(fe) = self
                     .view(id!(main_prompt_input.prompt_icon))
-                    .finger_up(&actions)
+                    .finger_up(actions)
                 {
                     if fe.was_tap() {
                         let store = scope.data.get_mut::<Store>().unwrap();
@@ -617,9 +629,8 @@ impl ChatPanel {
             ChatPanelState::Idle | ChatPanelState::Streaming { .. } => {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 let has_messages = store
-                    .current_chat
-                    .as_ref()
-                    .map_or(false, |chat| chat.messages.len() > 0);
+                    .get_current_chat()
+                    .map_or(false, |chat| !chat.borrow().messages.is_empty());
 
                 let list = self.portal_list(id!(chat));
                 jump_to_bottom.set_visible(has_messages && list.further_items_bellow_exist());
@@ -659,7 +670,7 @@ impl ChatPanel {
 
     fn enable_or_disable_prompt_input(&mut self, cx: &mut Cx) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        let enable = if prompt_input.text().len() > 0 {
+        let enable = if !prompt_input.text().is_empty() {
             1.0
         } else {
             0.0
@@ -682,7 +693,7 @@ impl ChatPanel {
             },
         );
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        if prompt_input.text().len() > 0 {
+        if !prompt_input.text().is_empty() {
             self.enable_prompt_input_icon(cx);
         } else {
             self.disable_prompt_input_icon(cx);

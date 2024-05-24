@@ -6,16 +6,19 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::chat::chat_panel::ChatPanel;
+    import crate::chat::chat_history::ChatHistory;
 
     ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
-        margin: 48,
-        spacing: 30,
+        margin: {top: 48, right: 48, bottom: 48, left: 20},
+        spacing: 50,
 
         <View> {
-            width: 200,
+            width: 270,
             height: Fill,
+
+            chat_history = <ChatHistory> {}
         }
 
         chat_panel = <ChatPanel> {
