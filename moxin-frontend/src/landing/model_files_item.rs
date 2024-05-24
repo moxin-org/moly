@@ -217,7 +217,7 @@ impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
-        if self.cbutton(id!(download_button)).tapped(&actions) {
+        if self.cbutton(id!(download_button)).clicked(&actions) {
             let Some(model) = &self.model else { return };
             let Some(file) = &self.file else { return };
 
@@ -228,7 +228,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             );
         }
 
-        if self.cbutton(id!(start_chat_button)).tapped(&actions) {
+        if self.cbutton(id!(start_chat_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
@@ -236,7 +236,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             );
         }
 
-        if self.cbutton(id!(resume_chat_button)).tapped(&actions) {
+        if self.cbutton(id!(resume_chat_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,

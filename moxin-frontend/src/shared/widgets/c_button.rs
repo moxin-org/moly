@@ -51,7 +51,7 @@ impl Widget for CButton {
             }
             Hit::FingerUp(up) => {
                 if up.was_tap() {
-                    cx.widget_action(self.widget_uid(), &scope.path, CButtonAction::Tapped);
+                    cx.widget_action(self.widget_uid(), &scope.path, CButtonAction::Clicked);
                 }
             }
             Hit::FingerHoverIn(_) => {
@@ -67,24 +67,24 @@ impl Widget for CButton {
 
 #[derive(Clone, Debug, DefaultNone)]
 pub enum CButtonAction {
-    Tapped,
+    Clicked,
     /// Needed to support `.cast()`.
     None,
 }
 
 impl CButton {
-    pub fn tapped(&self, actions: &Actions) -> bool {
+    pub fn clicked(&self, actions: &Actions) -> bool {
         matches!(
             actions.find_widget_action(self.widget_uid()).cast(),
-            CButtonAction::Tapped
+            CButtonAction::Clicked
         )
     }
 }
 
 impl CButtonRef {
-    pub fn tapped(&self, actions: &Actions) -> bool {
+    pub fn clicked(&self, actions: &Actions) -> bool {
         if let Some(widget) = self.borrow() {
-            widget.tapped(actions)
+            widget.clicked(actions)
         } else {
             false
         }

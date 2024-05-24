@@ -558,7 +558,7 @@ impl Widget for ActionButton {
 
 impl WidgetMatchEvent for ActionButton {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.deref.tapped(actions) {
+        if self.deref.clicked(actions) {
             let uid = self.widget_uid().clone();
             let action = match self.type_ {
                 ButtonType::Play => RowAction::PlayClicked,
