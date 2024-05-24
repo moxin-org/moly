@@ -9,7 +9,7 @@ use crate::{
         model_selector_list::ModelSelectorAction,
     },
     data::store::Store,
-    shared::actions::DownloadedFileAction,
+    shared::actions::ChatAction,
 };
 
 live_design! {
@@ -511,7 +511,7 @@ impl WidgetMatchEvent for ChatPanel {
             }
 
             match action.as_widget_action().cast() {
-                DownloadedFileAction::StartChat(file_id) => {
+                ChatAction::Start(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     let downloaded_file = store
                         .downloaded_files

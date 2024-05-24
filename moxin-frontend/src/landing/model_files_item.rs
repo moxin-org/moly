@@ -2,7 +2,7 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, Model};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
-use crate::shared::{actions::DownloadedFileAction, widgets::c_button::CButtonWidgetExt};
+use crate::shared::{actions::ChatAction, widgets::c_button::CButtonWidgetExt};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -232,7 +232,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadedFileAction::StartChat(self.file.as_ref().unwrap().id.clone()),
+                ChatAction::Start(self.file.as_ref().unwrap().id.clone()),
             );
         }
 
@@ -240,7 +240,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadedFileAction::ResumeChat(self.file.as_ref().unwrap().id.clone()),
+                ChatAction::Resume(self.file.as_ref().unwrap().id.clone()),
             );
         }
     }

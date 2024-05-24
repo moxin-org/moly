@@ -6,7 +6,7 @@ use moxin_protocol::data::DownloadedFile;
 use crate::{
     data::store::Store,
     shared::{
-        actions::DownloadedFileAction, modal::ModalAction, utils::format_model_size,
+        actions::ChatAction, modal::ModalAction, utils::format_model_size,
         widgets::c_button::CButton,
     },
 };
@@ -411,7 +411,7 @@ impl WidgetMatchEvent for DownloadedFilesTable {
                                     cx.widget_action(
                                         widget_uid,
                                         &scope.path,
-                                        DownloadedFileAction::StartChat(df.file.id.clone()),
+                                        ChatAction::Start(df.file.id.clone()),
                                     );
                                 } else {
                                     error!("A play action was dispatched for a model that does not longer exist in the local store");
@@ -430,7 +430,7 @@ impl WidgetMatchEvent for DownloadedFilesTable {
                                     cx.widget_action(
                                         widget_uid,
                                         &scope.path,
-                                        DownloadedFileAction::ResumeChat(df.file.id.clone()),
+                                        ChatAction::Resume(df.file.id.clone()),
                                     );
                                 } else {
                                     error!("A play action was dispatched for a model that does not longer exist in the local store");

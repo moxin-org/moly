@@ -5,7 +5,7 @@ use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModal
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
-use crate::shared::actions::DownloadedFileAction;
+use crate::shared::actions::ChatAction;
 use crate::shared::modal::ModalWidgetRefExt;
 use crate::shared::popup::{PopupAction, PopupWidgetRefExt};
 use makepad_widgets::*;
@@ -265,7 +265,7 @@ impl MatchEvent for App {
                 self.ui.redraw(cx);
             }
 
-            if let DownloadedFileAction::StartChat(_) = action.as_widget_action().cast() {
+            if let ChatAction::Start(_) = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
@@ -280,7 +280,7 @@ impl MatchEvent for App {
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let DownloadedFileAction::ResumeChat(_) = action.as_widget_action().cast() {
+            if let ChatAction::Resume(_) = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
