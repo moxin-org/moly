@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::File;
+use moxin_protocol::data::{File, FileID};
 
 use crate::landing::download_item::DownloadItemAction;
 
@@ -217,7 +217,9 @@ pub struct DownloadNotificationPopup {
     #[rust]
     download_result: DownloadResult,
     #[rust]
-    file: Option<File>,
+    file_id: Option<FileID>,
+    #[rust]
+    filename: String,
 }
 
 impl Widget for DownloadNotificationPopup {
@@ -252,22 +254,21 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
         }
         
         if self.link_label(id!(retry_link)).clicked(actions) {
-            let Some(file) = &self.file else { return };
+            let Some(file_id) = &self.file_id else { return };
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadItemAction::Cancel(file.clone()),
+                DownloadItemAction::Play(file_id.clone()),
             );
-            // TODO
             cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
         }
 
         if self.link_label(id!(calcel_link)).clicked(actions) {
-            let Some(file) = &self.file else { return };
+            let Some(file_id) = &self.file_id else { return };
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadItemAction::Cancel(file.clone()),
+                DownloadItemAction::Cancel(file_id.clone()),
             );
             cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
         }
@@ -292,10 +293,8 @@ impl DownloadNotificationPopup {
         self.label(id!(title))
             .set_text("Model Downloaded Successfully");
 
-        let Some(file) = &self.file else { return; };
-        let filename = file.name.clone();
         self.label(id!(summary))
-            .set_text(&(format!("{} successfuly downloaded.", &filename)));
+            .set_text(&(format!("{} successfuly downloaded.", &self.filename)));
     }
 
     fn show_failure_content(&mut self) {
@@ -308,17 +307,16 @@ impl DownloadNotificationPopup {
         self.label(id!(title))
             .set_text("Errors while downloading models");
 
-        let Some(file) = &self.file else { return; };
-        let filename = file.name.clone();
         self.label(id!(summary))
-            .set_text(&(format!("{} encountered some errors when downloading.", &filename)));
+            .set_text(&(format!("{} encountered some errors when downloading.", &self.filename)));
     }
 }
 
 impl DownloadNotificationPopupRef {
-    pub fn set_data(&mut self, file: File, download_result: DownloadResult) {
+    pub fn set_data(&mut self, file: &File, download_result: DownloadResult) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.file = Some(file);
+            inner.file_id = Some(file.id.clone());
+            inner.filename = file.name.clone();
             inner.download_result = download_result;
 
             inner.update_content();

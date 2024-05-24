@@ -216,24 +216,24 @@ impl MatchEvent for App {
             }
 
             match action.as_widget_action().cast() {
-                ModelFileItemAction::Download(file, model) => {
-                    self.store.download_file(file, model);
+                ModelFileItemAction::Download(file_id) => {
+                    self.store.download_file(file_id);
                     self.ui.redraw(cx);
                 }
                 _ => {}
             }
 
             match action.as_widget_action().cast() {
-                DownloadItemAction::Play(file, model) => {
-                    self.store.download_file(file, model);
+                DownloadItemAction::Play(file_id) => {
+                    self.store.download_file(file_id);
                     self.ui.redraw(cx);
                 }
-                DownloadItemAction::Pause(file) => {
-                    self.store.pause_download_file(file);
+                DownloadItemAction::Pause(file_id) => {
+                    self.store.pause_download_file(file_id);
                     self.ui.redraw(cx);
                 }
-                DownloadItemAction::Cancel(file) => {
-                    self.store.cancel_download_file(file);
+                DownloadItemAction::Cancel(file_id) => {
+                    self.store.cancel_download_file(file_id);
                     self.ui.redraw(cx);
                 }
                 _ => {}
@@ -297,10 +297,10 @@ impl App {
 
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
-                    popup.set_data(file.clone(), DownloadResult::Success);
+                    popup.set_data(&file, DownloadResult::Success);
                 },
                 DownloadPendingNotification::DownloadErrored(file) => {
-                    popup.set_data(file.clone(), DownloadResult::Failure);
+                    popup.set_data(&file, DownloadResult::Failure);
                 },
             }
 

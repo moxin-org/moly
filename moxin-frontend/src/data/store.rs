@@ -12,7 +12,7 @@ use moxin_protocol::data::{
 };
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::sync::mpsc::channel;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
@@ -70,7 +70,7 @@ pub struct Store {
     /// communicate with the backend thread.
     pub backend: Backend,
 
-    /// Local cache of backend information
+    /// Local cache of search results and downloaded files
     pub models: Vec<Model>,
     pub downloaded_files: Vec<DownloadedFile>,
     pub pending_downloads: Vec<PendingDownload>,
@@ -178,9 +178,36 @@ impl Store {
         };
     }
 
-    pub fn download_file(&mut self, file: File, model: Model) {
+    fn get_model_and_file_download(&self, file_id: &str) -> (Model, File) {
+        if let Some(result) = self.get_model_and_file_for_pending_download(file_id) {
+            result
+        } else {
+            self.get_model_and_file_from_search_results(file_id).unwrap()
+        }
+    }
+
+    fn get_model_and_file_from_search_results(&self, file_id: &str) -> Option<(Model, File)> {
+        self.models
+            .iter()
+            .find_map(|m| m.files.iter().find(|f| f.id == file_id).map(|f| (m.clone(), f.clone()))
+        )
+    }
+
+    fn get_model_and_file_for_pending_download(&self, file_id: &str) -> Option<(Model, File)> {
+        self.pending_downloads.iter().find_map(|d| {
+            if d.file.id == file_id {
+                Some((d.model.clone(), d.file.clone()))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn download_file(&mut self, file_id: FileID) {
+        let (model, file) = self.get_model_and_file_download(&file_id);
         let mut current_progress = 0.0;
-        if let Some(pending) = self.pending_downloads.iter().find(|d| d.file.id == file.id) {
+
+        if let Some(pending) = self.pending_downloads.iter().find(|d| d.file.id == file_id) {
             current_progress = pending.progress;
         } else {
             let pending_download = PendingDownload {
@@ -193,22 +220,22 @@ impl Store {
         }
 
         self.current_downloads.insert(
-            file.id.clone(),
-            Download::new(file.clone(), model.clone(), current_progress, &self.backend),
+            file_id.clone(),
+            Download::new(file, model, current_progress, &self.backend),
         );
     }
 
-    pub fn pause_download_file(&mut self, file: File) {
+    pub fn pause_download_file(&mut self, file_id: FileID) {
         let (tx, rx) = channel();
         self.backend
             .command_sender
-            .send(Command::PauseDownload(file.id.clone(), tx))
+            .send(Command::PauseDownload(file_id.clone(), tx))
             .unwrap();
 
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    self.current_downloads.remove(&file.id);
+                    self.current_downloads.remove(&file_id);
                     self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error pausing download: {:?}", err),
@@ -216,18 +243,18 @@ impl Store {
         };
     }
 
-    pub fn cancel_download_file(&mut self, file: File) {
+    pub fn cancel_download_file(&mut self, file_id: FileID) {
         let (tx, rx) = channel();
         self.backend
             .command_sender
-            .send(Command::CancelDownload(file.id.clone(), tx))
+            .send(Command::CancelDownload(file_id.clone(), tx))
             .unwrap();
 
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    self.current_downloads.remove(&file.id);
-                    self.pending_downloads.retain(|d| d.file.id != file.id);
+                    self.current_downloads.remove(&file_id);
+                    self.pending_downloads.retain(|d| d.file.id != file_id);
                     self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error cancelling download: {:?}", err),

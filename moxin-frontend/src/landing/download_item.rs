@@ -3,7 +3,7 @@ use crate::{
     shared::utils::{format_model_downloaded_size, format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, Model};
+use moxin_protocol::data::FileID;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -217,9 +217,9 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum DownloadItemAction {
-    Play(File, Model),
-    Pause(File),
-    Cancel(File),
+    Play(FileID),
+    Pause(FileID),
+    Cancel(FileID),
     None,
 }
 
@@ -229,10 +229,7 @@ pub struct DownloadItem {
     view: View,
 
     #[rust]
-    model: Option<Model>,
-
-    #[rust]
-    file: Option<File>,
+    file_id: Option<FileID>,
 }
 
 impl Widget for DownloadItem {
@@ -243,9 +240,7 @@ impl Widget for DownloadItem {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let download = scope.data.get::<DownloadInfo>().unwrap();
-
-        self.model = Some(download.model.clone());
-        self.file = Some(download.file.clone());
+        self.file_id = Some(download.file.id.clone());
 
         self.label(id!(filename))
             .set_text(download.file.name.as_str());
@@ -343,39 +338,38 @@ impl WidgetMatchEvent for DownloadItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for button_id in [id!(play_button), id!(retry_button)] {
             if let Some(fd) = self.view(button_id).finger_down(&actions) {
-                let Some(model) = &self.model else { return };
-                let Some(file) = &self.file else { return };
+                let Some(file_id) = &self.file_id else { return };
                 if fd.tap_count == 1 {
                     let widget_uid = self.widget_uid();
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
-                        DownloadItemAction::Play(file.clone(), model.clone()),
+                        DownloadItemAction::Play(file_id.clone()),
                     );
                 }
             }
         }
 
         if let Some(fd) = self.view(id!(pause_button)).finger_down(&actions) {
-            let Some(file) = &self.file else { return };
+            let Some(file_id) = &self.file_id else { return };
             if fd.tap_count == 1 {
                 let widget_uid = self.widget_uid();
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    DownloadItemAction::Pause(file.clone()),
+                    DownloadItemAction::Pause(file_id.clone()),
                 );
             }
         }
 
         if let Some(fd) = self.view(id!(cancel_button)).finger_down(&actions) {
-            let Some(file) = &self.file else { return };
+            let Some(file_id) = &self.file_id else { return };
             if fd.tap_count == 1 {
                 let widget_uid = self.widget_uid();
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    DownloadItemAction::Cancel(file.clone()),
+                    DownloadItemAction::Cancel(file_id.clone()),
                 );
             }
         }

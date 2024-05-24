@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{File, Model};
+use moxin_protocol::data::{File, FileID};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::shared::{actions::ChatAction, widgets::c_button::CButtonWidgetExt};
@@ -186,7 +186,7 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelFileItemAction {
-    Download(File, Model),
+    Download(FileID),
     None,
 }
 
@@ -196,10 +196,7 @@ pub struct ModelFilesItem {
     view: View,
 
     #[rust]
-    model: Option<Model>,
-
-    #[rust]
-    file: Option<File>,
+    file_id: Option<FileID>,
 }
 
 impl Widget for ModelFilesItem {
@@ -216,15 +213,13 @@ impl Widget for ModelFilesItem {
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
+        let Some(file_id) = self.file_id.clone() else { return; };
 
         if self.cbutton(id!(download_button)).clicked(&actions) {
-            let Some(model) = &self.model else { return };
-            let Some(file) = &self.file else { return };
-
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                ModelFileItemAction::Download(file.clone(), model.clone()),
+                ModelFileItemAction::Download(file_id.clone()),
             );
         }
 
@@ -232,7 +227,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                ChatAction::Start(self.file.as_ref().unwrap().id.clone()),
+                ChatAction::Start(file_id.clone()),
             );
         }
 
@@ -240,20 +235,19 @@ impl WidgetMatchEvent for ModelFilesItem {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                ChatAction::Resume(self.file.as_ref().unwrap().id.clone()),
+                ChatAction::Resume(file_id),
             );
         }
     }
 }
 
 impl ModelFilesItemRef {
-    pub fn set_model_and_file(&mut self, cx: &mut Cx, model: Model, file: File) {
+    pub fn set_file(&mut self, cx: &mut Cx, file: File) {
         let Some(mut item_widget) = self.borrow_mut() else {
             return;
         };
 
-        item_widget.model = Some(model);
-        item_widget.file = Some(file.clone());
+        item_widget.file_id = Some(file.id.clone());
 
         item_widget
             .model_files_tags(id!(tags))
