@@ -85,7 +85,7 @@ live_design! {
     }
 
     ResumeChatButton = <ModelCardButton> {
-        draw_bg: { color: #087443, border_color: #087443 }
+        draw_bg: { color: #099250, border_color: #099250 }
         label = {
             text: "Resume Chat"
             draw_text: {
