@@ -1,13 +1,16 @@
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
 
-use super::{chat_history::ChatHistoryAction, model_selector::ModelSelectorWidgetExt};
-use crate::chat::{
-    chat_line::{ChatLineAction, ChatLineWidgetRefExt},
-    model_selector_list::ModelSelectorAction,
+use crate::{
+    chat::{
+        chat_history::ChatHistoryAction,
+        chat_line::{ChatLineAction, ChatLineWidgetRefExt},
+        model_selector::ModelSelectorWidgetExt,
+        model_selector_list::ModelSelectorAction,
+    },
+    data::store::Store,
+    shared::actions::ChatAction,
 };
-use crate::data::store::Store;
-use crate::my_models::downloaded_files_table::DownloadedFileAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -508,7 +511,7 @@ impl WidgetMatchEvent for ChatPanel {
             }
 
             match action.as_widget_action().cast() {
-                DownloadedFileAction::StartChat(file_id) => {
+                ChatAction::Start(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     let downloaded_file = store
                         .downloaded_files

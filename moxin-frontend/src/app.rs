@@ -4,8 +4,8 @@ use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
-use crate::my_models::downloaded_files_table::DownloadedFileAction;
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
+use crate::shared::actions::ChatAction;
 use crate::shared::modal::ModalWidgetRefExt;
 use crate::shared::popup::{PopupAction, PopupWidgetRefExt};
 use makepad_widgets::*;
@@ -158,45 +158,10 @@ impl LiveRegister for App {
     fn live_register(cx: &mut Cx) {
         makepad_widgets::live_design(cx);
 
-        // Shared
-        crate::shared::styles::live_design(cx);
-        crate::shared::resource_imports::live_design(cx);
-        crate::shared::widgets::live_design(cx);
-        crate::shared::icon::live_design(cx);
-        crate::shared::modal::live_design(cx);
-        crate::shared::external_link::live_design(cx);
-        crate::shared::popup::live_design(cx);
-
-        // Landing
-        crate::landing::shared::live_design(cx);
-        crate::landing::model_files_tags::live_design(cx);
-        crate::landing::model_files_item::live_design(cx);
-        crate::landing::model_files_list::live_design(cx);
-        crate::landing::model_files::live_design(cx);
-        crate::landing::model_card::live_design(cx);
-        crate::landing::model_list::live_design(cx);
-        crate::landing::landing_screen::live_design(cx);
-        crate::landing::search_bar::live_design(cx);
-        crate::landing::search_loading::live_design(cx);
-        crate::landing::sorting::live_design(cx);
-        crate::landing::downloads::live_design(cx);
-        crate::landing::download_item::live_design(cx);
-
-        // Chat
-        crate::chat::chat_screen::live_design(cx);
-        crate::chat::chat_panel::live_design(cx);
-        crate::chat::chat_line::live_design(cx);
-        crate::chat::chat_line_loading::live_design(cx);
-        crate::chat::chat_history::live_design(cx);
-        crate::chat::model_info::live_design(cx);
-        crate::chat::model_selector::live_design(cx);
-        crate::chat::model_selector_list::live_design(cx);
-
-        // My Models
-        crate::my_models::my_models_screen::live_design(cx);
-        crate::my_models::downloaded_files_table::live_design(cx);
-        crate::my_models::delete_model_modal::live_design(cx);
-        crate::my_models::model_info_modal::live_design(cx);
+        crate::shared::live_design(cx);
+        crate::landing::live_design(cx);
+        crate::chat::live_design(cx);
+        crate::my_models::live_design(cx);
     }
 }
 
@@ -300,7 +265,7 @@ impl MatchEvent for App {
                 self.ui.redraw(cx);
             }
 
-            if let DownloadedFileAction::StartChat(_) = action.as_widget_action().cast() {
+            if let ChatAction::Start(_) = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
@@ -315,7 +280,7 @@ impl MatchEvent for App {
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let DownloadedFileAction::ResumeChat(_) = action.as_widget_action().cast() {
+            if let ChatAction::Resume(_) = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }

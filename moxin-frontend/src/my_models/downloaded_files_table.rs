@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
 use makepad_widgets::*;
-use moxin_protocol::data::{DownloadedFile, FileID};
+use moxin_protocol::data::DownloadedFile;
 
 use crate::{
     data::store::Store,
-    shared::{modal::ModalAction, utils::format_model_size},
+    shared::{
+        actions::ChatAction, modal::ModalAction, utils::format_model_size,
+        widgets::c_button::CButton,
+    },
 };
 
 use super::{
@@ -20,6 +23,7 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
+    import crate::shared::widgets::c_button::*;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
@@ -40,26 +44,17 @@ live_design! {
         }
     }
 
-    ActionButton = {{ActionButton}}<RoundedView> {
-        align: {x: 0.5, y: 0.5}
-        flow: Right
-        width: Fit, height: Fit
-        padding: { top: 15, bottom: 15, left: 8, right: 13}
-        spacing: 10
+    ActionButton = {{ActionButton}} {
         draw_bg: {
-            radius: 2.0,
-            color: #fff,
-            border_width: 1.0,
             border_color: #ccc,
         }
 
-        icon = <Icon> {
+        icon = {
             draw_icon: {
                 fn get_color(self) -> vec4 {
                     return #087443;
                 }
             }
-            icon_walk: {width: 12, height: 12}
         }
     }
 
@@ -271,6 +266,7 @@ impl Widget for DownloadedFilesTable {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.file_item_map.clear();
         let filter = match &self.search_status {
             SearchStatus::Filtered(keywords) => Some(keywords.clone()),
             _ => None,
@@ -415,7 +411,7 @@ impl WidgetMatchEvent for DownloadedFilesTable {
                                     cx.widget_action(
                                         widget_uid,
                                         &scope.path,
-                                        DownloadedFileAction::StartChat(df.file.id.clone()),
+                                        ChatAction::Start(df.file.id.clone()),
                                     );
                                 } else {
                                     error!("A play action was dispatched for a model that does not longer exist in the local store");
@@ -434,7 +430,7 @@ impl WidgetMatchEvent for DownloadedFilesTable {
                                     cx.widget_action(
                                         widget_uid,
                                         &scope.path,
-                                        DownloadedFileAction::ResumeChat(df.file.id.clone()),
+                                        ChatAction::Resume(df.file.id.clone()),
                                     );
                                 } else {
                                     error!("A play action was dispatched for a model that does not longer exist in the local store");
@@ -544,57 +540,43 @@ pub enum ButtonType {
 #[derive(Live, LiveHook, Widget)]
 pub struct ActionButton {
     #[deref]
-    view: View,
+    cbutton: CButton,
     #[live]
     type_: ButtonType,
 }
 
 impl Widget for ActionButton {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let uid = self.widget_uid().clone();
-        match event.hits(cx, self.view.area()) {
-            Hit::FingerDown(_) => {
-                cx.set_key_focus(self.view.area());
-            }
-            Hit::FingerUp(fe) => {
-                if fe.was_tap() {
-                    let action = match self.type_ {
-                        ButtonType::Play => RowAction::PlayClicked,
-                        ButtonType::Resume => RowAction::ResumeClicked,
-                        ButtonType::Info => RowAction::InfoClicked,
-                        ButtonType::Delete => RowAction::DeleteClicked,
-                    };
-                    cx.widget_action(uid, &scope.path, action);
-                }
-            }
-            Hit::FingerHoverIn(_) => {
-                cx.set_cursor(MouseCursor::Hand);
-            }
-            Hit::FingerHoverOut(_) => {
-                cx.set_cursor(MouseCursor::Arrow);
-            }
-            _ => (),
-        }
+        self.cbutton.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view.draw_walk(cx, scope, walk)
+        self.cbutton.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for ActionButton {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if self.cbutton.clicked(actions) {
+            let uid = self.widget_uid().clone();
+            let action = match self.type_ {
+                ButtonType::Play => RowAction::PlayClicked,
+                ButtonType::Resume => RowAction::ResumeClicked,
+                ButtonType::Info => RowAction::InfoClicked,
+                ButtonType::Delete => RowAction::DeleteClicked,
+            };
+            cx.widget_action(uid, &scope.path, action);
+        }
     }
 }
 
 impl ActionButtonRef {
     pub fn set_visible(&mut self, visible: bool) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.view.visible = visible;
+            inner.cbutton.visible = visible;
         }
     }
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum DownloadedFileAction {
-    StartChat(FileID),
-    ResumeChat(FileID),
-    None,
 }
 
 /// Removes dashes, file extension, and capitalizes the first letter of each word.

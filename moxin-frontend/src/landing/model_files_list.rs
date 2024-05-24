@@ -3,7 +3,7 @@ use crate::{
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, Model, PendingDownload};
+use moxin_protocol::data::{File, FileID, Model, PendingDownload};
 
 use super::model_files_item::ModelFilesItemWidgetRefExt;
 
@@ -57,6 +57,7 @@ impl Widget for ModelFilesList {
         let ModelWithPendingDownloads {
             model,
             pending_downloads,
+            current_file_id,
         } = scope.data.get::<ModelWithPendingDownloads>().unwrap();
         let files = if self.show_featured {
             Store::model_featured_files(model)
@@ -65,7 +66,7 @@ impl Widget for ModelFilesList {
         };
         cx.begin_turtle(walk, self.layout);
 
-        self.draw_files(cx, &model, &files, pending_downloads);
+        self.draw_files(cx, &model, &files, pending_downloads, current_file_id);
         cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()
@@ -95,6 +96,7 @@ impl ModelFilesList {
         model: &Model,
         files: &Vec<File>,
         pending_downloads: &Vec<PendingDownload>,
+        current_file_id: &Option<FileID>,
     ) {
         for i in 0..files.len() {
             let item_id = LiveId(i as u64).into();
@@ -134,25 +136,43 @@ impl ModelFilesList {
                     cx,
                     live! { cell4 = {
                         download_pending_button = { visible: true }
-                        downloaded_button = { visible: false }
+                        start_chat_button = { visible: false }
+                        resume_chat_button = { visible: false }
                         download_button = { visible: false }
                     }},
                 );
             } else if files[i].downloaded {
-                item_widget.apply_over(
-                    cx,
-                    live! { cell4 = {
-                        download_pending_button = { visible: false }
-                        downloaded_button = { visible: true }
-                        download_button = { visible: false }
-                    }},
-                );
+                if current_file_id
+                    .as_ref()
+                    .map_or(false, |id| *id == files[i].id)
+                {
+                    item_widget.apply_over(
+                        cx,
+                        live! { cell4 = {
+                            download_pending_button = { visible: false }
+                            start_chat_button = { visible: false }
+                            resume_chat_button = { visible: true }
+                            download_button = { visible: false }
+                        }},
+                    );
+                } else {
+                    item_widget.apply_over(
+                        cx,
+                        live! { cell4 = {
+                            download_pending_button = { visible: false }
+                            start_chat_button = { visible: true }
+                            resume_chat_button = { visible: false }
+                            download_button = { visible: false }
+                        }},
+                    );
+                }
             } else {
                 item_widget.apply_over(
                     cx,
                     live! { cell4 = {
                         download_pending_button = { visible: false }
-                        downloaded_button = { visible: false }
+                        start_chat_button = { visible: false }
+                        resume_chat_button = { visible: false }
                         download_button = { visible: true }
                     }},
                 );

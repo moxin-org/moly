@@ -2,17 +2,19 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, Model};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
+use crate::shared::{actions::ChatAction, widgets::c_button::CButtonWidgetExt};
 
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-
+    import crate::shared::widgets::c_button::*;
     import crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
-    ICON_DOWNLOAD_DONE = dep("crate://self/resources/icons/download_done.svg")
+    START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
+    RESUME_CHAT = dep("crate://self/resources/icons/play_arrow.svg")
 
     ModelFilesRow = <RoundedYView> {
         width: Fill,
@@ -30,24 +32,21 @@ live_design! {
         cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
-    ModelCardButton = <RoundedView> {
+    ModelCardButton = <CButton> {
         width: 140,
         height: 32,
-        align: {x: 0.5, y: 0.5}
         spacing: 6,
 
-        draw_bg: { color: #099250 }
-
-        button_icon = <Icon> {
+        icon = {
             draw_icon: {
                 fn get_color(self) -> vec4 {
                     return #fff;
                 }
             }
-            icon_walk: {width: Fit, height: Fit}
+            icon_walk: {width: 14, height: 14}
         }
 
-        button_label = <Label> {
+        label = {
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9},
                 fn get_color(self) -> vec4 {
@@ -58,28 +57,48 @@ live_design! {
     }
 
     DownloadButton = <ModelCardButton> {
-        cursor: Hand,
-        button_label = { text: "Download" }
-        button_icon = { draw_icon: {
+        draw_bg: { color: #099250, border_color: #099250 }
+        label = { text: "Download" }
+        icon = { draw_icon: {
             svg_file: (ICON_DOWNLOAD),
         }}
     }
 
-    DownloadedButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #099250, border_width: 0.5}
-        button_label = {
-            text: "Downloaded"
+    StartChatButton = <ModelCardButton> {
+        draw_bg: { color: #fff, border_color: #d0d5dd }
+        label = {
+            text: "Chat with Model"
             draw_text: {
                 fn get_color(self) -> vec4 {
-                    return #099250;
+                    return #087443;
                 }
             }
         }
-        button_icon = {
+        icon = {
             draw_icon: {
-                svg_file: (ICON_DOWNLOAD_DONE),
+                svg_file: (START_CHAT),
                 fn get_color(self) -> vec4 {
-                    return #099250;
+                    return #087443;
+                }
+            }
+        }
+    }
+
+    ResumeChatButton = <ModelCardButton> {
+        draw_bg: { color: #099250, border_color: #099250 }
+        label = {
+            text: "Resume Chat"
+            draw_text: {
+                fn get_color(self) -> vec4 {
+                    return #fff;
+                }
+            }
+        }
+        icon = {
+            draw_icon: {
+                svg_file: (RESUME_CHAT),
+                fn get_color(self) -> vec4 {
+                    return #fff;
                 }
             }
         }
@@ -88,7 +107,7 @@ live_design! {
     // TODO This is a very temporary solution, we will have a better way to handle this.
     DownloadPendingButton = <ModelCardButton> {
         draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
-        button_label = {
+        label = {
             text: "Downloading..."
             draw_text: {
                 fn get_color(self) -> vec4 {
@@ -96,7 +115,7 @@ live_design! {
                 }
             }
         }
-        button_icon = {
+        icon = {
             draw_icon: {
                 fn get_color(self) -> vec4 {
                     // invisible for now
@@ -158,7 +177,8 @@ live_design! {
         cell4 = {
             align: {x: 0.5, y: 0.5},
             download_button = <DownloadButton> { visible: false }
-            downloaded_button = <DownloadedButton> { visible: false }
+            start_chat_button = <StartChatButton> { visible: false }
+            resume_chat_button = <ResumeChatButton> { visible: false }
             download_pending_button = <DownloadPendingButton> { visible: false }
         }
     }
@@ -195,18 +215,33 @@ impl Widget for ModelFilesItem {
 
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(download_button)).finger_down(&actions) {
-            if fd.tap_count == 1 {
-                let widget_uid = self.widget_uid();
-                let Some(model) = &self.model else { return };
-                let Some(file) = &self.file else { return };
+        let widget_uid = self.widget_uid();
 
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ModelFileItemAction::Download(file.clone(), model.clone()),
-                );
-            }
+        if self.cbutton(id!(download_button)).clicked(&actions) {
+            let Some(model) = &self.model else { return };
+            let Some(file) = &self.file else { return };
+
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ModelFileItemAction::Download(file.clone(), model.clone()),
+            );
+        }
+
+        if self.cbutton(id!(start_chat_button)).clicked(&actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ChatAction::Start(self.file.as_ref().unwrap().id.clone()),
+            );
+        }
+
+        if self.cbutton(id!(resume_chat_button)).clicked(&actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ChatAction::Resume(self.file.as_ref().unwrap().id.clone()),
+            );
         }
     }
 }
