@@ -74,7 +74,7 @@ impl Chat {
         }
     }
 
-    pub fn get_title(&self) -> &String {
+    pub fn get_title(&self) -> &str {
         &self.title
     }
 
