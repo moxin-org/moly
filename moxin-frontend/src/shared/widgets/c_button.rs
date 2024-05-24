@@ -36,18 +36,18 @@ live_design!(
 #[derive(Widget, Live, LiveHook)]
 pub struct CButton {
     #[deref]
-    deref: View,
+    view: View,
 }
 
 impl Widget for CButton {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.deref.draw_walk(cx, scope, walk)
+        self.view.draw_walk(cx, scope, walk)
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         match event.hits(cx, self.area()) {
             Hit::FingerDown(_) => {
-                cx.set_key_focus(self.deref.area());
+                cx.set_key_focus(self.view.area());
             }
             Hit::FingerUp(up) => {
                 if up.was_tap() {

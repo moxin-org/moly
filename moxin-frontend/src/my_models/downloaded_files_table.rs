@@ -540,25 +540,25 @@ pub enum ButtonType {
 #[derive(Live, LiveHook, Widget)]
 pub struct ActionButton {
     #[deref]
-    deref: CButton,
+    cbutton: CButton,
     #[live]
     type_: ButtonType,
 }
 
 impl Widget for ActionButton {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.deref.handle_event(cx, event, scope);
+        self.cbutton.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.deref.draw_walk(cx, scope, walk)
+        self.cbutton.draw_walk(cx, scope, walk)
     }
 }
 
 impl WidgetMatchEvent for ActionButton {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.deref.clicked(actions) {
+        if self.cbutton.clicked(actions) {
             let uid = self.widget_uid().clone();
             let action = match self.type_ {
                 ButtonType::Play => RowAction::PlayClicked,
@@ -574,7 +574,7 @@ impl WidgetMatchEvent for ActionButton {
 impl ActionButtonRef {
     pub fn set_visible(&mut self, visible: bool) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.deref.visible = visible;
+            inner.cbutton.visible = visible;
         }
     }
 }
