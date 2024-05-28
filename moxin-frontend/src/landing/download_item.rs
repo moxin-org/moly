@@ -1,9 +1,9 @@
 use crate::{
-    data::store::{DownloadInfo, DownloadInfoStatus},
+    data::{download::DownloadState, store::DownloadInfo},
     shared::utils::{format_model_downloaded_size, format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, Model};
+use moxin_protocol::data::FileID;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -177,6 +177,14 @@ live_design! {
 
         }
 
+        retry_button = <ActionButton> {
+            icon = {
+                draw_icon: {
+                    svg_file: (ICON_RETRY),
+                }
+            }
+        }
+
         cancel_button = <ActionButton> {
             icon = {
                 draw_icon: {
@@ -209,9 +217,9 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum DownloadItemAction {
-    Play(File, Model),
-    Pause(File),
-    Cancel(File),
+    Play(FileID),
+    Pause(FileID),
+    Cancel(FileID),
     None,
 }
 
@@ -221,10 +229,7 @@ pub struct DownloadItem {
     view: View,
 
     #[rust]
-    model: Option<Model>,
-
-    #[rust]
-    file: Option<File>,
+    file_id: Option<FileID>,
 }
 
 impl Widget for DownloadItem {
@@ -235,9 +240,7 @@ impl Widget for DownloadItem {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let download = scope.data.get::<DownloadInfo>().unwrap();
-
-        self.model = Some(download.model.clone());
-        self.file = Some(download.file.clone());
+        self.file_id = Some(download.file.id.clone());
 
         self.label(id!(filename))
             .set_text(download.file.name.as_str());
@@ -248,13 +251,13 @@ impl Widget for DownloadItem {
         self.label(id!(params_size_tag.caption))
             .set_text(&&download.model.requires.as_str());
 
-        let progress_bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
+        let progress_bar_width = download.get_progress() * 6.0; // 6.0 = 600px / 100%
         let label = self.label(id!(progress));
-        match download.status {
-            DownloadInfoStatus::Downloading => {
+        match download.state {
+            DownloadState::Downloading(progress) => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
 
-                label.set_text(&format!("Downloading {:.1}%", download.progress));
+                label.set_text(&format!("Downloading {:.1}%", progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (downloading_color) }
@@ -271,11 +274,12 @@ impl Widget for DownloadItem {
 
                 self.view(id!(pause_button)).set_visible(true);
                 self.view(id!(play_button)).set_visible(false);
+                self.view(id!(retry_button)).set_visible(false);
             }
-            DownloadInfoStatus::Paused => {
+            DownloadState::Paused(progress) => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
 
-                label.set_text(&format!("Paused {:.1}%", download.progress));
+                label.set_text(&format!("Paused {:.1}%", progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (paused_color) }
@@ -292,11 +296,35 @@ impl Widget for DownloadItem {
 
                 self.view(id!(pause_button)).set_visible(false);
                 self.view(id!(play_button)).set_visible(true);
+                self.view(id!(retry_button)).set_visible(false);
             }
+            DownloadState::Errored(progress) => {
+                let failed_color = vec3(0.7, 0.11, 0.09); // #B42318
+
+                label.set_text(&format!("Error {:.1}%", progress));
+                label.apply_over(
+                    cx,
+                    live! { draw_text: { color: (failed_color) }
+                    },
+                );
+
+                self.view(id!(progress_bar)).apply_over(
+                    cx,
+                    live! {
+                        width: (progress_bar_width)
+                        draw_bg: { color: (failed_color) }
+                    },
+                );
+
+                self.view(id!(pause_button)).set_visible(false);
+                self.view(id!(play_button)).set_visible(false);
+                self.view(id!(retry_button)).set_visible(true);
+            }
+            DownloadState::Completed => ()
         }
 
         let total_size = format_model_size(&download.file.size).unwrap_or("-".to_string());
-        let downloaded_size = format_model_downloaded_size(&download.file.size, download.progress)
+        let downloaded_size = format_model_downloaded_size(&download.file.size, download.get_progress())
             .unwrap_or("-".to_string());
 
         self.label(id!(downloaded_size))
@@ -308,39 +336,40 @@ impl Widget for DownloadItem {
 
 impl WidgetMatchEvent for DownloadItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(play_button)).finger_down(&actions) {
-            let Some(model) = &self.model else { return };
-            let Some(file) = &self.file else { return };
-            if fd.tap_count == 1 {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    DownloadItemAction::Play(file.clone(), model.clone()),
-                );
+        for button_id in [id!(play_button), id!(retry_button)] {
+            if let Some(fd) = self.view(button_id).finger_down(&actions) {
+                let Some(file_id) = &self.file_id else { return };
+                if fd.tap_count == 1 {
+                    let widget_uid = self.widget_uid();
+                    cx.widget_action(
+                        widget_uid,
+                        &scope.path,
+                        DownloadItemAction::Play(file_id.clone()),
+                    );
+                }
             }
         }
 
         if let Some(fd) = self.view(id!(pause_button)).finger_down(&actions) {
-            let Some(file) = &self.file else { return };
+            let Some(file_id) = &self.file_id else { return };
             if fd.tap_count == 1 {
                 let widget_uid = self.widget_uid();
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    DownloadItemAction::Pause(file.clone()),
+                    DownloadItemAction::Pause(file_id.clone()),
                 );
             }
         }
 
         if let Some(fd) = self.view(id!(cancel_button)).finger_down(&actions) {
-            let Some(file) = &self.file else { return };
+            let Some(file_id) = &self.file_id else { return };
             if fd.tap_count == 1 {
                 let widget_uid = self.widget_uid();
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    DownloadItemAction::Cancel(file.clone()),
+                    DownloadItemAction::Cancel(file_id.clone()),
                 );
             }
         }

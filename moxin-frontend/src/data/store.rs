@@ -1,4 +1,5 @@
 use super::chat::ChatID;
+use super::download::DownloadState;
 use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
@@ -11,7 +12,7 @@ use moxin_protocol::data::{
 };
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::sync::mpsc::channel;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
@@ -34,17 +35,21 @@ pub enum SortCriteria {
 }
 
 #[derive(Clone, Debug)]
-pub enum DownloadInfoStatus {
-    Downloading,
-    Paused,
-}
-
-#[derive(Clone, Debug)]
 pub struct DownloadInfo {
     pub file: File,
     pub model: Model,
-    pub progress: f64,
-    pub status: DownloadInfoStatus,
+    pub state: DownloadState,
+}
+
+impl DownloadInfo {
+    pub fn get_progress(&self) -> f64 {
+        match self.state {
+            DownloadState::Downloading(progress) => progress,
+            DownloadState::Errored(progress) => progress,
+            DownloadState::Paused(progress) => progress,
+            DownloadState::Completed => 100.0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -54,13 +59,18 @@ pub struct ModelWithPendingDownloads {
     pub current_file_id: Option<FileID>,
 }
 
+pub enum DownloadPendingNotification {
+    DownloadedFile(File),
+    DownloadErrored(File),
+}
+
 #[derive(Default)]
 pub struct Store {
     /// This is the backend representation, including the sender and receiver ends of the channels to
     /// communicate with the backend thread.
     pub backend: Backend,
 
-    /// Local cache of backend information
+    /// Local cache of search results and downloaded files
     pub models: Vec<Model>,
     pub downloaded_files: Vec<DownloadedFile>,
     pub pending_downloads: Vec<PendingDownload>,
@@ -72,7 +82,6 @@ pub struct Store {
     pub saved_chats: Vec<RefCell<Chat>>,
     pub current_chat_id: Option<ChatID>,
     pub current_downloads: HashMap<FileID, Download>,
-    pub downloaded_files_to_notify: VecDeque<FileID>,
 
     pub preferences: Preferences,
     pub downloaded_files_dir: String,
@@ -102,8 +111,6 @@ impl Store {
             saved_chats: vec![],
             current_chat_id: None,
             current_downloads: HashMap::new(),
-
-            downloaded_files_to_notify: VecDeque::new(),
 
             preferences: Preferences::load(),
             downloaded_files_dir,
@@ -171,9 +178,36 @@ impl Store {
         };
     }
 
-    pub fn download_file(&mut self, file: File, model: Model) {
+    fn get_model_and_file_download(&self, file_id: &str) -> (Model, File) {
+        if let Some(result) = self.get_model_and_file_for_pending_download(file_id) {
+            result
+        } else {
+            self.get_model_and_file_from_search_results(file_id).unwrap()
+        }
+    }
+
+    fn get_model_and_file_from_search_results(&self, file_id: &str) -> Option<(Model, File)> {
+        self.models
+            .iter()
+            .find_map(|m| m.files.iter().find(|f| f.id == file_id).map(|f| (m.clone(), f.clone()))
+        )
+    }
+
+    fn get_model_and_file_for_pending_download(&self, file_id: &str) -> Option<(Model, File)> {
+        self.pending_downloads.iter().find_map(|d| {
+            if d.file.id == file_id {
+                Some((d.model.clone(), d.file.clone()))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn download_file(&mut self, file_id: FileID) {
+        let (model, file) = self.get_model_and_file_download(&file_id);
         let mut current_progress = 0.0;
-        if let Some(pending) = self.pending_downloads.iter().find(|d| d.file.id == file.id) {
+
+        if let Some(pending) = self.pending_downloads.iter().find(|d| d.file.id == file_id) {
             current_progress = pending.progress;
         } else {
             let pending_download = PendingDownload {
@@ -186,22 +220,22 @@ impl Store {
         }
 
         self.current_downloads.insert(
-            file.id.clone(),
-            Download::new(file.clone(), model.clone(), current_progress, &self.backend),
+            file_id.clone(),
+            Download::new(file, model, current_progress, &self.backend),
         );
     }
 
-    pub fn pause_download_file(&mut self, file: File) {
+    pub fn pause_download_file(&mut self, file_id: FileID) {
         let (tx, rx) = channel();
         self.backend
             .command_sender
-            .send(Command::PauseDownload(file.id.clone(), tx))
+            .send(Command::PauseDownload(file_id.clone(), tx))
             .unwrap();
 
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    self.current_downloads.remove(&file.id);
+                    self.current_downloads.remove(&file_id);
                     self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error pausing download: {:?}", err),
@@ -209,18 +243,18 @@ impl Store {
         };
     }
 
-    pub fn cancel_download_file(&mut self, file: File) {
+    pub fn cancel_download_file(&mut self, file_id: FileID) {
         let (tx, rx) = channel();
         self.backend
             .command_sender
-            .send(Command::CancelDownload(file.id.clone(), tx))
+            .send(Command::CancelDownload(file_id.clone(), tx))
             .unwrap();
 
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    self.current_downloads.remove(&file.id);
-                    self.pending_downloads.retain(|d| d.file.id != file.id);
+                    self.current_downloads.remove(&file_id);
+                    self.pending_downloads.retain(|d| d.file.id != file_id);
                     self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error cancelling download: {:?}", err),
@@ -491,25 +525,23 @@ impl Store {
     }
 
     fn update_downloads(&mut self) {
-        let mut completed_downloads = Vec::new();
+        let mut completed_download_ids = Vec::new();
 
         for (id, download) in &mut self.current_downloads {
             download.process_download_progress();
-            if download.done {
-                completed_downloads.push(id.clone());
+            if download.is_complete() {
+                completed_download_ids.push(id.clone());
             }
         }
 
-        if !completed_downloads.is_empty() {
+        if !completed_download_ids.is_empty() {
             // Reload downloaded files
             self.load_downloaded_files();
             self.load_pending_downloads();
         }
 
-        for id in completed_downloads {
-            self.current_downloads.remove(&id);
-            self.downloaded_files_to_notify.push_back(id.clone());
-            self.set_file_downloaded_state(&id, true);
+        for file_id in completed_download_ids {
+            self.set_file_downloaded_state(&file_id, true);
         }
     }
 
@@ -522,6 +554,25 @@ impl Store {
             let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
             file.downloaded = downloaded;
         }
+    }
+
+    pub fn next_download_notification(&mut self) -> Option<DownloadPendingNotification> {
+        self.current_downloads.iter_mut().filter_map(|(_, download)| {
+            if download.must_show_notification() {
+                if download.is_errored() {
+                    return Some(DownloadPendingNotification::DownloadErrored(
+                        download.file.clone(),
+                    ));
+                } else if download.is_complete() {
+                    return Some(DownloadPendingNotification::DownloadedFile(
+                        download.file.clone(),
+                    ));
+                } else {
+                    return None;
+                }
+            }
+            None
+        }).next()
     }
 
     // Utility functions
@@ -570,19 +621,25 @@ impl Store {
     }
 
     pub fn current_downloads_info(&self) -> Vec<DownloadInfo> {
-        // Collect information about current downloads
+        // Collect information about downloads triggered in this session
         let mut results: Vec<DownloadInfo> = self
             .current_downloads
             .iter()
-            .map(|(_id, download)| DownloadInfo {
-                file: download.file.clone(),
-                model: download.model.clone(),
-                progress: download.progress,
-                status: DownloadInfoStatus::Downloading,
+            .filter_map(|(_id, download)| {
+                if !download.is_complete() {
+                    Some(DownloadInfo {
+                        file: download.file.clone(),
+                        model: download.model.clone(),
+                        state: download.state,
+                    })
+                } else {
+                    None
+                }
             })
             .collect();
 
         // Add files that are still partially downloaded (from previous sessions with the app)
+        // TODO: Get rid of this list, merge into `current_downloads`
         let mut partial_downloads: Vec<DownloadInfo> = self
             .pending_downloads
             .iter()
@@ -590,10 +647,7 @@ impl Store {
             .map(|d| DownloadInfo {
                 file: d.file.clone(),
                 model: d.model.clone(),
-                progress: d.progress,
-
-                // TODO: Handle errors and other statuses
-                status: DownloadInfoStatus::Paused,
+                state: DownloadState::Paused(d.progress),
             })
             .collect();
 

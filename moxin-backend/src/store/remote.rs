@@ -6,6 +6,8 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
+use tokio::time::timeout;
+use std::time::Duration;
 use moxin_protocol::data::Model;
 use moxin_protocol::protocol::FileDownloadResponse;
 
@@ -185,18 +187,26 @@ async fn download_file<P: AsRef<Path>>(
 
         let mut stream = resp.bytes_stream();
 
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|e| anyhow::anyhow!(e))?;
-            let len = chunk.len();
-            file.write_all(&chunk)?;
-            downloaded += len as u64;
+        loop {
+            match timeout(Duration::from_secs(10), stream.next()).await? {
+                Some(chunk) => {
+                    let chunk = chunk.map_err(|e| anyhow::anyhow!(e))?;
+                    let len = chunk.len();
+                    file.write_all(&chunk)?;
+                    downloaded += len as u64;
 
-            let progress = (downloaded as f64 / content_length as f64) * 100.0;
-            if progress > last_progress + step {
-                last_progress = progress;
-                match report_fn(progress) {
-                    Ok(_) => {}
-                    Err(_) => {}
+                    let progress = (downloaded as f64 / content_length as f64) * 100.0;
+                    if progress > last_progress + step {
+                        last_progress = progress;
+                        match report_fn(progress) {
+                            Ok(_) => {}
+                            Err(_) => {}
+                        }
+                    }
+                },
+                None => {
+                    // Download is complete
+                    break;
                 }
             }
         }

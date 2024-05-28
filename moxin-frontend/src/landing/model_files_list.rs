@@ -66,7 +66,7 @@ impl Widget for ModelFilesList {
         };
         cx.begin_turtle(walk, self.layout);
 
-        self.draw_files(cx, &model, &files, pending_downloads, current_file_id);
+        self.draw_files(cx, &files, pending_downloads, current_file_id);
         cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()
@@ -93,7 +93,6 @@ impl ModelFilesList {
     fn draw_files(
         &mut self,
         cx: &mut Cx2d,
-        model: &Model,
         files: &Vec<File>,
         pending_downloads: &Vec<PendingDownload>,
         current_file_id: &Option<FileID>,
@@ -105,11 +104,7 @@ impl ModelFilesList {
                 .items
                 .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, self.template));
 
-            item_widget.as_model_files_item().set_model_and_file(
-                cx,
-                model.clone(),
-                files[i].clone(),
-            );
+            item_widget.as_model_files_item().set_file(cx, files[i].clone());
 
             let filename = &files[i].name;
             let size = format_model_size(&files[i].size).unwrap_or("-".to_string());
