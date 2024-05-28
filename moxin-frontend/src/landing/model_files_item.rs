@@ -69,21 +69,14 @@ live_design! {
         }
     }
 
-    // TODO This is a very temporary solution, we will have a better way to handle this.
     DownloadPendingButton = <ModelCardButton> {
         draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
         text: "Downloading..."
-
-        // Button disabled
-        grab_key_focus: false
+        enabled: false
 
         draw_text: {
             color: #x155EEF;
         }
-        // draw_icon: {
-        //     // invisible for now
-        //     color: #0000
-        // }
     }
 
     ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {
@@ -137,30 +130,10 @@ live_design! {
 
         cell4 = {
             align: {x: 0.5, y: 0.5},
-            download_button_container = <View> {
-                width: Fit,
-                height: Fit,
-                visible: false
-                download_button = <DownloadButton> { }
-            }
-            start_chat_button_container = <View> {
-                width: Fit,
-                height: Fit,
-                visible: false
-                start_chat_button = <StartChatButton> { }
-            }
-            resume_chat_button_container = <View> {
-                width: Fit,
-                height: Fit,
-                visible: false
-                resume_chat_button = <ResumeChatButton> { }
-            }
-            download_pending_button_container = <View> {
-                width: Fit,
-                height: Fit,
-                visible: false
-                download_pending_button = <DownloadPendingButton> { }
-            }
+            download_button = <DownloadButton> { visible: false }
+            start_chat_button = <StartChatButton> { visible: false }
+            resume_chat_button = <ResumeChatButton> { visible: false }
+            download_pending_button = <DownloadPendingButton> { visible: false }
         }
     }
 }

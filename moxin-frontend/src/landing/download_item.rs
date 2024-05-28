@@ -135,15 +135,13 @@ live_design! {
             border_color: #EAECF0,
             border_width: 1.0,
             color: #fff,
-            color_hover: #E2F1F199,
+            color_hover: #E2F1F1,
             radius: 2.0,
         }
 
         draw_icon: {
             color: #667085;
         }
-
-        icon_walk: { margin: { left: 6 } }
     }
 
     Actions = <View> {
@@ -158,12 +156,14 @@ live_design! {
             draw_icon: {
                 svg_file: (ICON_PAUSE),
             }
+            icon_walk: { margin: { left: 6 } }
         }
 
         play_button = <ActionButton> {
             draw_icon: {
                 svg_file: (ICON_PLAY),
             }
+            icon_walk: { margin: { left: 6 } }
         }
 
         retry_button = <ActionButton> {
@@ -176,6 +176,7 @@ live_design! {
             draw_icon: {
                 svg_file: (ICON_CANCEL),
             }
+            icon_walk: { margin: 0 }
         }
     }
 
@@ -257,9 +258,9 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.view(id!(pause_button)).set_visible(true);
-                self.view(id!(play_button)).set_visible(false);
-                self.view(id!(retry_button)).set_visible(false);
+                self.button(id!(pause_button)).set_visible(true);
+                self.button(id!(play_button)).set_visible(false);
+                self.button(id!(retry_button)).set_visible(false);
             }
             DownloadState::Paused(progress) => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
@@ -279,9 +280,9 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.view(id!(pause_button)).set_visible(false);
-                self.view(id!(play_button)).set_visible(true);
-                self.view(id!(retry_button)).set_visible(false);
+                self.button(id!(pause_button)).set_visible(false);
+                self.button(id!(play_button)).set_visible(true);
+                self.button(id!(retry_button)).set_visible(false);
             }
             DownloadState::Errored(progress) => {
                 let failed_color = vec3(0.7, 0.11, 0.09); // #B42318
@@ -301,9 +302,9 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.view(id!(pause_button)).set_visible(false);
-                self.view(id!(play_button)).set_visible(false);
-                self.view(id!(retry_button)).set_visible(true);
+                self.button(id!(pause_button)).set_visible(false);
+                self.button(id!(play_button)).set_visible(false);
+                self.button(id!(retry_button)).set_visible(true);
             }
             DownloadState::Completed => ()
         }
@@ -322,41 +323,35 @@ impl Widget for DownloadItem {
 impl WidgetMatchEvent for DownloadItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for button_id in [id!(play_button), id!(retry_button)] {
-            if let Some(fd) = self.view(button_id).finger_down(&actions) {
+            if self.button(button_id).clicked(&actions) {
                 let Some(file_id) = &self.file_id else { return };
-                if fd.tap_count == 1 {
-                    let widget_uid = self.widget_uid();
-                    cx.widget_action(
-                        widget_uid,
-                        &scope.path,
-                        DownloadItemAction::Play(file_id.clone()),
-                    );
-                }
-            }
-        }
-
-        if let Some(fd) = self.view(id!(pause_button)).finger_down(&actions) {
-            let Some(file_id) = &self.file_id else { return };
-            if fd.tap_count == 1 {
                 let widget_uid = self.widget_uid();
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    DownloadItemAction::Pause(file_id.clone()),
-                );
+                    DownloadItemAction::Play(file_id.clone()),
+                )
             }
         }
 
-        if let Some(fd) = self.view(id!(cancel_button)).finger_down(&actions) {
+        if self.button(id!(pause_button)).clicked(&actions) {
             let Some(file_id) = &self.file_id else { return };
-            if fd.tap_count == 1 {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    DownloadItemAction::Cancel(file_id.clone()),
-                );
-            }
+            let widget_uid = self.widget_uid();
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadItemAction::Pause(file_id.clone()),
+            )
+        }
+
+        if self.button(id!(cancel_button)).clicked(&actions) {
+            let Some(file_id) = &self.file_id else { return };
+            let widget_uid = self.widget_uid();
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadItemAction::Cancel(file_id.clone()),
+            )
         }
     }
 }
