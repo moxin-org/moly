@@ -17,6 +17,11 @@ live_design! {
     START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     RESUME_CHAT = dep("crate://self/resources/icons/play_arrow.svg")
 
+    ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
+    ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
+    ICON_PLAY = dep("crate://self/resources/icons/play_download.svg")
+    ICON_RETRY = dep("crate://self/resources/icons/retry_download.svg")
+
     ModelFilesRow = <RoundedYView> {
         width: Fill,
         height: Fit,
@@ -69,13 +74,69 @@ live_design! {
         }
     }
 
-    DownloadPendingButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
-        text: "Downloading..."
-        enabled: false
+    // TODO This is a very temporary solution, we will have a better way to handle this.
+    DownloadPendingButton = <View> {
+        align: {y: 0.5},
+        spacing: 8,
+        progress_bar = <View> {
+            width: 74,
+            height: 12,
+            flow: Overlay,
 
-        draw_text: {
-            color: #x155EEF;
+            <RoundedView> {
+                height: Fill,
+                draw_bg: {
+                    color: #D9D9D9,
+                    radius: 2.5,
+                }
+            }
+
+            progress_fill = <RoundedView> {
+                width: 0,
+                height: Fill,
+                draw_bg: {
+                    color: #099250,
+                    radius: 2.5,
+                }
+            }
+        }
+        progress_text = <Label> {
+            text: "0%",
+            draw_text: {
+                text_style: <BOLD_FONT>{font_size: 9},
+                color: #087443
+            }
+        }
+        resume_button = <Button> {
+            padding: 4,
+            draw_icon: {
+                fn get_color(self) -> vec4 {
+                    return #667085;
+                }
+                svg_file: (ICON_PLAY),
+            }
+            icon_walk: {width: 14, height: 14}
+        }
+        /*pause_button = <Button> {
+            visible: false,
+            padding: 4,
+            draw_icon: {
+                fn get_color(self) -> vec4 {
+                    return #667085;
+                }
+                svg_file: (ICON_PAUSE),
+            }
+            icon_walk: {width: 14, height: 14}
+        }*/
+        cancel_button = <Button> {
+            padding: 4,
+            draw_icon: {
+                fn get_color(self) -> vec4 {
+                    return #667085;
+                }
+                svg_file: (ICON_CANCEL),
+            }
+            icon_walk: {width: 14, height: 14}
         }
     }
 
@@ -129,7 +190,6 @@ live_design! {
         }
 
         cell4 = {
-            align: {x: 0.5, y: 0.5},
             download_button = <DownloadButton> { visible: false }
             start_chat_button = <StartChatButton> { visible: false }
             resume_chat_button = <ResumeChatButton> { visible: false }
@@ -167,7 +227,9 @@ impl Widget for ModelFilesItem {
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
-        let Some(file_id) = self.file_id.clone() else { return; };
+        let Some(file_id) = self.file_id.clone() else {
+            return;
+        };
 
         if self.button(id!(download_button)).clicked(&actions) {
             cx.widget_action(
@@ -178,19 +240,11 @@ impl WidgetMatchEvent for ModelFilesItem {
         }
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatAction::Start(file_id.clone()),
-            );
+            cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
         }
 
         if self.button(id!(resume_chat_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatAction::Resume(file_id),
-            );
+            cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id));
         }
     }
 }

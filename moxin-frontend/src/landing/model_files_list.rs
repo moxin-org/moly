@@ -3,7 +3,7 @@ use crate::{
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID, Model, PendingDownload};
+use moxin_protocol::data::{File, FileID, PendingDownload};
 
 use super::model_files_item::ModelFilesItemWidgetRefExt;
 
@@ -104,7 +104,9 @@ impl ModelFilesList {
                 .items
                 .get_or_insert(cx, item_id, |cx| WidgetRef::new_from_ptr(cx, self.template));
 
-            item_widget.as_model_files_item().set_file(cx, files[i].clone());
+            item_widget
+                .as_model_files_item()
+                .set_file(cx, files[i].clone());
 
             let filename = &files[i].name;
             let size = format_model_size(&files[i].size).unwrap_or("-".to_string());
@@ -122,15 +124,25 @@ impl ModelFilesList {
                 },
             );
 
-            if pending_downloads
-                .iter()
-                .find(|f| f.file.id == files[i].id)
-                .is_some()
-            {
+            if let Some(download) = pending_downloads.iter().find(|f| f.file.id == files[i].id) {
+                let progress = format!("{:.1}%", download.progress);
+                let progress_fill_max = 74.0;
+                let progress_fill = download.progress * progress_fill_max / 100.0;
+
                 item_widget.apply_over(
                     cx,
                     live! { cell4 = {
-                        download_pending_button = { visible: true }
+                        download_pending_button = {
+                            visible: true
+                            progress_text = {
+                                text: (progress)
+                            }
+                            progress_bar = {
+                                progress_fill = {
+                                    width: (progress_fill)
+                                }
+                            }
+                        }
                         start_chat_button = { visible: false }
                         resume_chat_button = { visible: false }
                         download_button = { visible: false }

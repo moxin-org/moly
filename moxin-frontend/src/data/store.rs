@@ -182,15 +182,18 @@ impl Store {
         if let Some(result) = self.get_model_and_file_for_pending_download(file_id) {
             result
         } else {
-            self.get_model_and_file_from_search_results(file_id).unwrap()
+            self.get_model_and_file_from_search_results(file_id)
+                .unwrap()
         }
     }
 
     fn get_model_and_file_from_search_results(&self, file_id: &str) -> Option<(Model, File)> {
-        self.models
-            .iter()
-            .find_map(|m| m.files.iter().find(|f| f.id == file_id).map(|f| (m.clone(), f.clone()))
-        )
+        self.models.iter().find_map(|m| {
+            m.files
+                .iter()
+                .find(|f| f.id == file_id)
+                .map(|f| (m.clone(), f.clone()))
+        })
     }
 
     fn get_model_and_file_for_pending_download(&self, file_id: &str) -> Option<(Model, File)> {
@@ -557,22 +560,25 @@ impl Store {
     }
 
     pub fn next_download_notification(&mut self) -> Option<DownloadPendingNotification> {
-        self.current_downloads.iter_mut().filter_map(|(_, download)| {
-            if download.must_show_notification() {
-                if download.is_errored() {
-                    return Some(DownloadPendingNotification::DownloadErrored(
-                        download.file.clone(),
-                    ));
-                } else if download.is_complete() {
-                    return Some(DownloadPendingNotification::DownloadedFile(
-                        download.file.clone(),
-                    ));
-                } else {
-                    return None;
+        self.current_downloads
+            .iter_mut()
+            .filter_map(|(_, download)| {
+                if download.must_show_notification() {
+                    if download.is_errored() {
+                        return Some(DownloadPendingNotification::DownloadErrored(
+                            download.file.clone(),
+                        ));
+                    } else if download.is_complete() {
+                        return Some(DownloadPendingNotification::DownloadedFile(
+                            download.file.clone(),
+                        ));
+                    } else {
+                        return None;
+                    }
                 }
-            }
-            None
-        }).next()
+                None
+            })
+            .next()
     }
 
     // Utility functions
