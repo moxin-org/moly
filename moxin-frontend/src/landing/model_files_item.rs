@@ -10,7 +10,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::c_button::*;
+    import crate::shared::widgets::MoxinButton;
     import crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
@@ -50,9 +50,7 @@ live_design! {
         draw_bg: { color: #fff, color_hover: #09925033, border_color: #d0d5dd }
         text: "Chat with Model"
         draw_text: {
-            fn get_color(self) -> vec4 {
-                return #087443;
-            }
+            color: #087443;
         }
         draw_icon: {
             svg_file: (START_CHAT),
@@ -64,9 +62,7 @@ live_design! {
         draw_bg: { color: #099250, border_color: #09925033 }
         text: "Resume Chat"
         draw_text: {
-            fn get_color(self) -> vec4 {
-                return #fff;
-            }
+            color: #fff;
         }
         draw_icon: {
             svg_file: (RESUME_CHAT),
@@ -82,14 +78,12 @@ live_design! {
         grab_key_focus: false
 
         draw_text: {
-            fn get_color(self) -> vec4 {
-                return #x155EEF;
-            }
+            color: #x155EEF;
         }
-        draw_icon: {
-            // invisible for now
-            color: #0000
-        }
+        // draw_icon: {
+        //     // invisible for now
+        //     color: #0000
+        // }
     }
 
     ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {

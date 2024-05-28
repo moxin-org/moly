@@ -10,6 +10,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::MoxinButton;
 
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
@@ -126,29 +127,23 @@ live_design! {
         }
     }
 
-    ActionButton = <RoundedView> {
+    ActionButton = <MoxinButton> {
         width: 40,
         height: 40,
-
-        cursor: Hand,
-
-        align: {x: 0.5, y: 0.5}
 
         draw_bg: {
             border_color: #EAECF0,
             border_width: 1.0,
             color: #fff,
+            color_hover: #E2F1F199,
             radius: 2.0,
         }
 
-        icon = <Icon> {
-            draw_icon: {
-                fn get_color(self) -> vec4 {
-                    return #667085;
-                }
-            }
-            icon_walk: {height: 12, margin: {top: 2, right: 4}}
+        draw_icon: {
+            color: #667085;
         }
+
+        icon_walk: { margin: { left: 6 } }
     }
 
     Actions = <View> {
@@ -160,36 +155,26 @@ live_design! {
         align: {x: 0.5, y: 0.5},
 
         pause_button = <ActionButton> {
-            icon = {
-                draw_icon: {
-                    svg_file: (ICON_PAUSE),
-                }
+            draw_icon: {
+                svg_file: (ICON_PAUSE),
             }
-
         }
 
         play_button = <ActionButton> {
-            icon = {
-                draw_icon: {
-                    svg_file: (ICON_PLAY),
-                }
+            draw_icon: {
+                svg_file: (ICON_PLAY),
             }
-
         }
 
         retry_button = <ActionButton> {
-            icon = {
-                draw_icon: {
-                    svg_file: (ICON_RETRY),
-                }
+            draw_icon: {
+                svg_file: (ICON_RETRY),
             }
         }
 
         cancel_button = <ActionButton> {
-            icon = {
-                draw_icon: {
-                    svg_file: (ICON_CANCEL),
-                }
+            draw_icon: {
+                svg_file: (ICON_CANCEL),
             }
         }
     }

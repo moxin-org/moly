@@ -190,7 +190,7 @@ live_design! {
         draw_text: {
             text_style: <REGULAR_FONT>{font_size: 9},
             fn get_color(self) -> vec4 {
-                return #fff;
+                return self.color;
             }
         }
     }
