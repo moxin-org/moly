@@ -7,6 +7,7 @@ use crate::shared::{actions::ChatAction, widgets::c_button::CButtonWidgetExt};
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
+    import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
     import crate::shared::widgets::c_button::*;
@@ -32,96 +33,116 @@ live_design! {
         cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
-    ModelCardButton = <CButton> {
+    ModelCardButton = <Button> {
         width: 140,
         height: 32,
-        spacing: 6,
 
-        icon = {
-            draw_icon: {
-                fn get_color(self) -> vec4 {
-                    return #fff;
-                }
+        // This shader is based more in the RoundedView shader than the Button shader
+        // It fits better this application UI design
+        draw_bg: {
+            instance color: #0000
+            instance color_hover: #fff
+            instance border_width: 1.0
+            instance border_color: #0000
+            instance border_color_hover: #fff
+            instance radius: 2.5
+            
+            fn get_color(self) -> vec4 {
+                return mix(self.color, mix(self.color, self.color_hover, 0.2), self.hover)
             }
-            icon_walk: {width: 14, height: 14}
+            
+            fn get_border_color(self) -> vec4 {
+                return mix(self.border_color, mix(self.border_color, self.border_color_hover, 0.2), self.hover)
+            }
+            
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                sdf.box(
+                    self.border_width,
+                    self.border_width,
+                    self.rect_size.x - (self.border_width * 2.0),
+                    self.rect_size.y - (self.border_width * 2.0),
+                    max(1.0, self.radius)
+                )
+                sdf.fill_keep(self.get_color())
+                if self.border_width > 0.0 {
+                    sdf.stroke(self.get_border_color(), self.border_width)
+                }
+                return sdf.result;
+            }
         }
 
-        label = {
-            draw_text: {
-                text_style: <REGULAR_FONT>{font_size: 9},
-                fn get_color(self) -> vec4 {
-                    return #fff;
-                }
+        draw_icon: {
+            instance color: #fff
+            fn get_color(self) -> vec4 {
+                return mix(
+                    self.color,
+                    mix(self.color, #f, 0.2),
+                    self.hover
+                )
+            }
+        }
+        icon_walk: {width: 14, height: 14}
+
+        draw_text: {
+            text_style: <REGULAR_FONT>{font_size: 9},
+            fn get_color(self) -> vec4 {
+                return #fff;
             }
         }
     }
 
     DownloadButton = <ModelCardButton> {
         draw_bg: { color: #099250, border_color: #099250 }
-        label = { text: "Download" }
-        icon = { draw_icon: {
+        text: "Download"
+        draw_icon: {
             svg_file: (ICON_DOWNLOAD),
-        }}
+        }
     }
 
     StartChatButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #d0d5dd }
-        label = {
-            text: "Chat with Model"
-            draw_text: {
-                fn get_color(self) -> vec4 {
-                    return #087443;
-                }
+        draw_bg: { color: #fff, color_hover: #09925033, border_color: #d0d5dd }
+        text: "Chat with Model"
+        draw_text: {
+            fn get_color(self) -> vec4 {
+                return #087443;
             }
         }
-        icon = {
-            draw_icon: {
-                svg_file: (START_CHAT),
-                fn get_color(self) -> vec4 {
-                    return #087443;
-                }
-            }
+        draw_icon: {
+            svg_file: (START_CHAT),
+            color: #087443
         }
     }
 
     ResumeChatButton = <ModelCardButton> {
-        draw_bg: { color: #099250, border_color: #099250 }
-        label = {
-            text: "Resume Chat"
-            draw_text: {
-                fn get_color(self) -> vec4 {
-                    return #fff;
-                }
+        draw_bg: { color: #099250, border_color: #09925033 }
+        text: "Resume Chat"
+        draw_text: {
+            fn get_color(self) -> vec4 {
+                return #fff;
             }
         }
-        icon = {
-            draw_icon: {
-                svg_file: (RESUME_CHAT),
-                fn get_color(self) -> vec4 {
-                    return #fff;
-                }
-            }
+        draw_icon: {
+            svg_file: (RESUME_CHAT),
         }
     }
 
     // TODO This is a very temporary solution, we will have a better way to handle this.
     DownloadPendingButton = <ModelCardButton> {
         draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
-        label = {
-            text: "Downloading..."
-            draw_text: {
-                fn get_color(self) -> vec4 {
-                    return #x155EEF;
-                }
+        text: "Downloading..."
+
+        // Button disabled
+        grab_key_focus: false
+
+        draw_text: {
+            fn get_color(self) -> vec4 {
+                return #x155EEF;
             }
         }
-        icon = {
-            draw_icon: {
-                fn get_color(self) -> vec4 {
-                    // invisible for now
-                    return #0000;
-                }
-            }
+        draw_icon: {
+            // invisible for now
+            color: #0000
         }
     }
 
@@ -176,10 +197,30 @@ live_design! {
 
         cell4 = {
             align: {x: 0.5, y: 0.5},
-            download_button = <DownloadButton> { visible: false }
-            start_chat_button = <StartChatButton> { visible: false }
-            resume_chat_button = <ResumeChatButton> { visible: false }
-            download_pending_button = <DownloadPendingButton> { visible: false }
+            download_button_container = <View> {
+                width: Fit,
+                height: Fit,
+                visible: false
+                download_button = <DownloadButton> { }
+            }
+            start_chat_button_container = <View> {
+                width: Fit,
+                height: Fit,
+                visible: false
+                start_chat_button = <StartChatButton> { }
+            }
+            resume_chat_button_container = <View> {
+                width: Fit,
+                height: Fit,
+                visible: false
+                resume_chat_button = <ResumeChatButton> { }
+            }
+            download_pending_button_container = <View> {
+                width: Fit,
+                height: Fit,
+                visible: false
+                download_pending_button = <DownloadPendingButton> { }
+            }
         }
     }
 }
@@ -215,7 +256,7 @@ impl WidgetMatchEvent for ModelFilesItem {
         let widget_uid = self.widget_uid();
         let Some(file_id) = self.file_id.clone() else { return; };
 
-        if self.cbutton(id!(download_button)).clicked(&actions) {
+        if self.button(id!(download_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
@@ -223,7 +264,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             );
         }
 
-        if self.cbutton(id!(start_chat_button)).clicked(&actions) {
+        if self.button(id!(start_chat_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
@@ -231,7 +272,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             );
         }
 
-        if self.cbutton(id!(resume_chat_button)).clicked(&actions) {
+        if self.button(id!(resume_chat_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,

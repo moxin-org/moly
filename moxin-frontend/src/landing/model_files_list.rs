@@ -130,10 +130,10 @@ impl ModelFilesList {
                 item_widget.apply_over(
                     cx,
                     live! { cell4 = {
-                        download_pending_button = { visible: true }
-                        start_chat_button = { visible: false }
-                        resume_chat_button = { visible: false }
-                        download_button = { visible: false }
+                        download_pending_button_container = { visible: true }
+                        start_chat_button_container = { visible: false }
+                        resume_chat_button_container = { visible: false }
+                        download_button_container = { visible: false }
                     }},
                 );
             } else if files[i].downloaded {
@@ -144,20 +144,20 @@ impl ModelFilesList {
                     item_widget.apply_over(
                         cx,
                         live! { cell4 = {
-                            download_pending_button = { visible: false }
-                            start_chat_button = { visible: false }
-                            resume_chat_button = { visible: true }
-                            download_button = { visible: false }
+                            download_pending_button_container = { visible: false }
+                            start_chat_button_container = { visible: false }
+                            resume_chat_button_container = { visible: true }
+                            download_button_container = { visible: false }
                         }},
                     );
                 } else {
                     item_widget.apply_over(
                         cx,
                         live! { cell4 = {
-                            download_pending_button = { visible: false }
-                            start_chat_button = { visible: true }
-                            resume_chat_button = { visible: false }
-                            download_button = { visible: false }
+                            download_pending_button_container = { visible: false }
+                            start_chat_button_container = { visible: true }
+                            resume_chat_button_container = { visible: false }
+                            download_button_container = { visible: false }
                         }},
                     );
                 }
@@ -165,10 +165,10 @@ impl ModelFilesList {
                 item_widget.apply_over(
                     cx,
                     live! { cell4 = {
-                        download_pending_button = { visible: false }
-                        start_chat_button = { visible: false }
-                        resume_chat_button = { visible: false }
-                        download_button = { visible: true }
+                        download_pending_button_container = { visible: false }
+                        start_chat_button_container = { visible: false }
+                        resume_chat_button_container = { visible: false }
+                        download_button_container = { visible: true }
                     }},
                 );
             };
