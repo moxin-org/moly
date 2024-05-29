@@ -1,11 +1,10 @@
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::data::store::*;
-use crate::landing::download_item::DownloadItemAction;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
 use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
-use crate::shared::actions::ChatAction;
+use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
 };
@@ -224,15 +223,15 @@ impl MatchEvent for App {
             }
 
             match action.as_widget_action().cast() {
-                DownloadItemAction::Play(file_id) => {
+                DownloadAction::Play(file_id) => {
                     self.store.download_file(file_id);
                     self.ui.redraw(cx);
                 }
-                DownloadItemAction::Pause(file_id) => {
+                DownloadAction::Pause(file_id) => {
                     self.store.pause_download_file(file_id);
                     self.ui.redraw(cx);
                 }
-                DownloadItemAction::Cancel(file_id) => {
+                DownloadAction::Cancel(file_id) => {
                     self.store.cancel_download_file(file_id);
                     self.ui.redraw(cx);
                 }
@@ -293,15 +292,17 @@ impl MatchEvent for App {
 impl App {
     fn notify_downloaded_files(&mut self, cx: &mut Cx) {
         if let Some(notification) = self.store.next_download_notification() {
-            let mut popup = self.ui.download_notification_popup(id!(popup_download_success));
+            let mut popup = self
+                .ui
+                .download_notification_popup(id!(popup_download_success));
 
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
                     popup.set_data(&file, DownloadResult::Success);
-                },
+                }
                 DownloadPendingNotification::DownloadErrored(file) => {
                     popup.set_data(&file, DownloadResult::Failure);
-                },
+                }
             }
 
             let mut modal = self.ui.modal(id!(modal_root));

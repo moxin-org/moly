@@ -2,7 +2,10 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, FileID};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
-use crate::shared::{actions::ChatAction, widgets::c_button::CButtonWidgetExt};
+use crate::shared::{
+    actions::{ChatAction, DownloadAction},
+    widgets::c_button::CButtonWidgetExt,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -245,6 +248,30 @@ impl WidgetMatchEvent for ModelFilesItem {
 
         if self.button(id!(resume_chat_button)).clicked(&actions) {
             cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id));
+        }
+
+        if self.button(id!(resume_button)).clicked(&actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadAction::Play(file_id.clone()),
+            );
+        }
+
+        if self.button(id!(pause_button)).clicked(&actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadAction::Pause(file_id.clone()),
+            );
+        }
+
+        if self.button(id!(cancel_button)).clicked(&actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadAction::Cancel(file_id.clone()),
+            );
         }
     }
 }

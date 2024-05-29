@@ -1,6 +1,9 @@
 use crate::{
     data::{download::DownloadState, store::DownloadInfo},
-    shared::utils::{format_model_downloaded_size, format_model_size},
+    shared::{
+        actions::DownloadAction,
+        utils::{format_model_downloaded_size, format_model_size},
+    },
 };
 use makepad_widgets::*;
 use moxin_protocol::data::FileID;
@@ -201,14 +204,6 @@ live_design! {
     }
 }
 
-#[derive(Clone, DefaultNone, Debug)]
-pub enum DownloadItemAction {
-    Play(FileID),
-    Pause(FileID),
-    Cancel(FileID),
-    None,
-}
-
 #[derive(Live, LiveHook, Widget)]
 pub struct DownloadItem {
     #[deref]
@@ -306,12 +301,13 @@ impl Widget for DownloadItem {
                 self.button(id!(play_button)).set_visible(false);
                 self.button(id!(retry_button)).set_visible(true);
             }
-            DownloadState::Completed => ()
+            DownloadState::Completed => (),
         }
 
         let total_size = format_model_size(&download.file.size).unwrap_or("-".to_string());
-        let downloaded_size = format_model_downloaded_size(&download.file.size, download.get_progress())
-            .unwrap_or("-".to_string());
+        let downloaded_size =
+            format_model_downloaded_size(&download.file.size, download.get_progress())
+                .unwrap_or("-".to_string());
 
         self.label(id!(downloaded_size))
             .set_text(&format!("{} / {}", downloaded_size, total_size));
@@ -329,7 +325,7 @@ impl WidgetMatchEvent for DownloadItem {
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    DownloadItemAction::Play(file_id.clone()),
+                    DownloadAction::Play(file_id.clone()),
                 )
             }
         }
@@ -340,7 +336,7 @@ impl WidgetMatchEvent for DownloadItem {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadItemAction::Pause(file_id.clone()),
+                DownloadAction::Pause(file_id.clone()),
             )
         }
 
@@ -350,7 +346,7 @@ impl WidgetMatchEvent for DownloadItem {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadItemAction::Cancel(file_id.clone()),
+                DownloadAction::Cancel(file_id.clone()),
             )
         }
     }

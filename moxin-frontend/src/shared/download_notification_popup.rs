@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::{File, FileID};
 
-use crate::landing::download_item::DownloadItemAction;
+use crate::shared::actions::DownloadAction;
 
 use super::modal::ModalAction;
 
@@ -247,18 +247,21 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
             }
         }
 
-        if self.link_label(id!(view_in_my_models_link)).clicked(actions) {
+        if self
+            .link_label(id!(view_in_my_models_link))
+            .clicked(actions)
+        {
             // TODO: Abstract the navigation actions on a single enum for the whole app.
             cx.widget_action(widget_uid, &scope.path, PopupAction::NavigateToMyModels);
             cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
         }
-        
+
         if self.link_label(id!(retry_link)).clicked(actions) {
             let Some(file_id) = &self.file_id else { return };
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadItemAction::Play(file_id.clone()),
+                DownloadAction::Play(file_id.clone()),
             );
             cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
         }
@@ -268,7 +271,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DownloadItemAction::Cancel(file_id.clone()),
+                DownloadAction::Cancel(file_id.clone()),
             );
             cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
         }
@@ -279,7 +282,7 @@ impl DownloadNotificationPopup {
     pub fn update_content(&mut self) {
         match self.download_result {
             DownloadResult::Success => self.show_success_content(),
-            DownloadResult::Failure => self.show_failure_content()
+            DownloadResult::Failure => self.show_failure_content(),
         }
     }
 
@@ -307,8 +310,12 @@ impl DownloadNotificationPopup {
         self.label(id!(title))
             .set_text("Errors while downloading models");
 
-        self.label(id!(summary))
-            .set_text(&(format!("{} encountered some errors when downloading.", &self.filename)));
+        self.label(id!(summary)).set_text(
+            &(format!(
+                "{} encountered some errors when downloading.",
+                &self.filename
+            )),
+        );
     }
 }
 
