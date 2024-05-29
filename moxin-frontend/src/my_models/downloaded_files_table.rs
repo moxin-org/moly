@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
@@ -67,8 +65,6 @@ pub struct DownloadedFilesTable {
     #[deref]
     view: View,
     #[rust]
-    file_item_map: HashMap<u64, String>,
-    #[rust]
     current_results: Vec<DownloadedFile>,
     #[rust]
     latest_store_fetch_len: usize,
@@ -83,7 +79,6 @@ impl Widget for DownloadedFilesTable {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.file_item_map.clear();
         let filter = match &self.search_status {
             SearchStatus::Filtered(keywords) => Some(keywords.clone()),
             _ => None,
@@ -131,9 +126,6 @@ impl Widget for DownloadedFilesTable {
                         let item = list.item(cx, item_id, template).unwrap();
 
                         let file_data = &self.current_results[item_id - 1];
-
-                        self.file_item_map
-                            .insert(item.widget_uid().0, file_data.file.id.clone());
 
                         let mut downloaded_files_row_widget = item.as_downloaded_files_row();
                         downloaded_files_row_widget.set_file_id(file_data.file.id.clone());
