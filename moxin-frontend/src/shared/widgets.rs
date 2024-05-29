@@ -1,5 +1,3 @@
-pub mod c_button;
-
 use makepad_widgets::*;
 
 live_design! {
@@ -198,9 +196,6 @@ live_design! {
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
     MoxinTextInput = <TextInput> {
-        draw_bg: {
-            color: #fff
-        }
         draw_text: {
             text_style:<REGULAR_FONT>{font_size: 12},
             fn get_color(self) -> vec4 {
@@ -246,6 +241,7 @@ live_design! {
         }
 
         draw_bg: {
+            color: #fff
             instance radius: 2.0
             instance border_width: 0.0
             instance border_color: #3

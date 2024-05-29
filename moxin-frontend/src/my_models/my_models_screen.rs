@@ -97,7 +97,7 @@ live_design! {
         align: {x: 0.0, y: 0.5},
 
         draw_bg: {
-            radius: 10.0,
+            radius: 9.0,
             border_color: #D0D5DD,
             border_width: 1.0,
         }
@@ -156,9 +156,13 @@ live_design! {
                 }
 
                 models_summary = <Label> {
+                    // We need to manually align the text baseline with the title
+                    // There is no way to do this automatically in Makepad yet
+                    margin: { bottom: 3 }
+
                     draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 20}
-                        color: #555
+                        text_style: <REGULAR_FONT>{font_size: 16}
+                        color: #535353
                     }
                 }
             }

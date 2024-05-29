@@ -3,7 +3,7 @@ use crate::{
     shared::{modal::ModalAction, utils::hugging_face_model_url},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::ModelID;
+use moxin_protocol::data::{FileID, ModelID};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -266,6 +266,6 @@ impl ModelInfoModalRef {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelInfoAction {
-    FileSelected(String),
+    FileSelected(FileID),
     None,
 }

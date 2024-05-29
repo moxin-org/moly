@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::ModelID;
+use moxin_protocol::data::FileID;
 
 use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::modal::ModalAction};
 
@@ -137,6 +137,12 @@ live_design! {
     }
 }
 
+#[derive(Clone, DefaultNone, Debug)]
+pub enum DeleteModelAction {
+    FileSelected(FileID),
+    None,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct DeleteModelModal {
     #[deref]
@@ -211,15 +217,9 @@ impl WidgetMatchEvent for DeleteModelModal {
 }
 
 impl DeleteModelModalRef {
-    pub fn set_file_id(&mut self, file_id: ModelID) {
+    pub fn set_file_id(&mut self, file_id: FileID) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.file_id = file_id;
         }
     }
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum DeleteModelAction {
-    FileSelected(String),
-    None,
 }

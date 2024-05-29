@@ -3,33 +3,20 @@ use std::collections::HashMap;
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::{
-    data::store::Store,
-    shared::{
-        actions::ChatAction, modal::ModalAction, utils::format_model_size,
-        widgets::c_button::CButton,
-    },
-};
+use crate::{data::store::Store, shared::utils::format_model_size};
 
 use super::{
-    delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction,
-    my_models_screen::MyModelsSearchAction,
+    downloaded_files_row::DownloadedFilesRowWidgetRefExt, my_models_screen::MyModelsSearchAction,
 };
 
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
-    import crate::shared::widgets::c_button::*;
 
-    ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
-    ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
-    ICON_INFO = dep("crate://self/resources/icons/info.svg")
-    ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
-    MODEL_CTA_COLOR = #127487
+    import crate::my_models::downloaded_files_row::DownloadedFilesRow
 
     RowHeaderLabel = <View> {
         width: 100
@@ -40,20 +27,6 @@ live_design! {
             draw_text: {
                 text_style: <BOLD_FONT>{font_size: 9}
                 color: #667085
-            }
-        }
-    }
-
-    ActionButton = {{ActionButton}} {
-        draw_bg: {
-            border_color: #ccc,
-        }
-
-        icon = {
-            draw_icon: {
-                fn get_color(self) -> vec4 {
-                    return #087443;
-                }
             }
         }
     }
@@ -76,162 +49,6 @@ live_design! {
         <RowHeaderLabel> { width: 250, label = {text: ""} }
     }
 
-    Row = <View> {
-        // Heads-up: rows break the Portal List without fixed height
-        height: 85,
-        flow: Down
-        width: Fill
-        align: {x: 0.0, y: 0.5}
-
-        show_bg: true
-        draw_bg: {
-            color: #FFF;
-        }
-
-        separator_line = <Line> {}
-        h_wrapper = <View> {
-            flow: Right
-            width: Fit
-            padding: {top: 10, bottom: 10, left: 20, right: 20}
-            spacing: 30
-            show_bg: true
-            draw_bg: {
-                color: #FFF;
-            }
-
-            model_file = <View> {
-                flow: Down
-                width: 600
-
-                h_wrapper = <View> {
-                    flow: Right
-                    width: Fill
-                    spacing: 15
-                    name_tag = <View> {
-                        width: Fit
-                        align: {x: 0.0, y: 0.5}
-                        name = <Label> {
-                            width: Fit
-                            draw_text: {
-                                text_style: <BOLD_FONT>{font_size: 9}
-                                color: #x0
-                            }
-                        }
-                    }
-
-                    base_model_tag = <View> {
-                        width: Fit
-                        align: {x: 0.0, y: 0.5}
-                        base_model = <AttributeTag> {
-                            draw_bg: { color: #F0D6F5 },
-                        }
-                    }
-                    parameters_tag = <View> {
-                        width: Fit
-                        align: {x: 0.0, y: 0.5}
-                        parameters = <AttributeTag> {
-                            draw_bg: { color: #D4E6F7 },
-                        }
-                    }
-                }
-                model_version_tag = <View> {
-                    width: Fit
-                    align: {x: 0.0, y: 0.5}
-                    version = <Label> {
-                        width: Fit
-                        draw_text: {
-                            wrap: Ellipsis
-                            text_style: <REGULAR_FONT>{font_size: 9}
-                            color: #667085
-                        }
-                    }
-                }
-            }
-
-            file_size_tag = <View> {
-                width: 100
-                align: {x: 0.0, y: 0.5}
-                file_size = <Label> {
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 9}
-                        color: #x0
-                    }
-                }
-            }
-
-            date_added_tag = <View> {
-                width: 100
-                align: {x: 0.0, y: 0.5}
-                date_added = <Label> {
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 9}
-                        color: #x0
-                    }
-                }
-            }
-
-            actions = <View> {
-                width: 250
-                flow: Right
-                spacing: 10
-                align: {x: 0.0, y: 0.5}
-
-                start_chat = <ActionButton> {
-                    width: 140
-                    type_: Play,
-                    label = <Label> {
-                        text: "Chat with Model",
-                        draw_text: {
-                            color: (MODEL_CTA_COLOR)
-                            text_style: <REGULAR_FONT>{font_size: 9}
-                        }
-                    }
-                    icon = {
-                        draw_icon: {
-                            svg_file: (ICON_START_CHAT)
-                            draw_bg: {
-                                fn get_color(self) -> vec4 { return (MODEL_CTA_COLOR);}
-                            }
-                        }
-                    }
-                }
-
-                resume_chat = <ActionButton> {
-                    width: 140
-                    visible: false
-                    type_: Resume,
-                    show_bg: true
-                    draw_bg: {
-                        color: (MODEL_CTA_COLOR)
-                    }
-                    label = <Label> {
-                        text: "Resume Chat",
-                        draw_text: {
-                            color: #fff
-                            text_style: <BOLD_FONT>{font_size: 9}
-                        }
-                    }
-                    icon = {
-                        draw_icon: { svg_file: (ICON_PLAY) fn get_color(self) -> vec4 { return #fff;} }
-                        icon_walk: {width: 10, height: 10}
-                    }
-                }
-
-                <View> { width: Fill, height: Fit }
-
-                <ActionButton> {
-                    type_: Info,
-                    icon = { draw_icon: { svg_file: (ICON_INFO) fn get_color(self) -> vec4 { return #0099FF;} } }
-                }
-
-                <ActionButton> {
-                    type_: Delete,
-                    icon = { draw_icon: { svg_file: (ICON_DELETE) fn get_color(self) -> vec4 { return #B42318;} } }
-                }
-            }
-        }
-    }
-
     DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedView> {
         width: Fill,
         height: Fill,
@@ -240,7 +57,7 @@ live_design! {
         list = <PortalList>{
             drag_scrolling: false
             HeaderRow = <HeaderRow> {}
-            ItemRow = <Row> {}
+            ItemRow = <DownloadedFilesRow> {}
         }
     }
 }
@@ -318,6 +135,15 @@ impl Widget for DownloadedFilesTable {
                         self.file_item_map
                             .insert(item.widget_uid().0, file_data.file.id.clone());
 
+                        let mut downloaded_files_row_widget = item.as_downloaded_files_row();
+                        downloaded_files_row_widget.set_file_id(file_data.file.id.clone());
+
+                        let mut is_model_file_loaded = false;
+                        if let Some(file_id) = &current_chat_file_id {
+                            is_model_file_loaded = *file_id == file_data.file.id;
+                        }
+                        downloaded_files_row_widget.set_show_resume_button(is_model_file_loaded);
+
                         // Name tag
                         let name = human_readable_name(&file_data.file.name);
                         item.label(id!(h_wrapper.model_file.h_wrapper.name_tag.name))
@@ -357,27 +183,6 @@ impl Widget for DownloadedFilesTable {
                         item.label(id!(h_wrapper.date_added_tag.date_added))
                             .set_text(&formatted_date);
 
-                        // Wether to show show a start chat or resume chat button
-                        let mut start_chat_button =
-                            item.action_button(id!(h_wrapper.actions.start_chat));
-                        let mut resume_chat_button =
-                            item.action_button(id!(h_wrapper.actions.resume_chat));
-                        let mut show_resume_button = false;
-
-                        if let Some(file_id) = &current_chat_file_id {
-                            if *file_id == file_data.file.id {
-                                show_resume_button = true;
-                            }
-                        }
-
-                        if show_resume_button {
-                            resume_chat_button.set_visible(true);
-                            start_chat_button.set_visible(false);
-                        } else {
-                            start_chat_button.set_visible(true);
-                            resume_chat_button.set_visible(false);
-                        }
-
                         // Don't draw separator line on first row
                         if item_id == 1 {
                             item.view(id!(separator_line)).set_visible(false);
@@ -394,82 +199,7 @@ impl Widget for DownloadedFilesTable {
 
 impl WidgetMatchEvent for DownloadedFilesTable {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
         for action in actions.iter() {
-            if let Some(action) = action.as_widget_action() {
-                if let Some(group) = &action.group {
-                    match action.cast() {
-                        RowAction::PlayClicked => {
-                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
-                                let store = scope.data.get::<Store>().unwrap();
-                                let downloaded_files = &store.downloaded_files;
-                                let downloaded_file =
-                                    downloaded_files.iter().find(|f| f.file.id.eq(item_id));
-
-                                if let Some(df) = downloaded_file {
-                                    cx.widget_action(
-                                        widget_uid,
-                                        &scope.path,
-                                        ChatAction::Start(df.file.id.clone()),
-                                    );
-                                } else {
-                                    error!("A play action was dispatched for a model that does not longer exist in the local store");
-                                }
-                            }
-                        }
-                        RowAction::ResumeClicked => {
-                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
-                                let store = scope.data.get::<Store>().unwrap();
-                                let downloaded_files = &store.downloaded_files;
-
-                                let downloaded_file =
-                                    downloaded_files.iter().find(|f| f.file.id.eq(item_id));
-
-                                if let Some(df) = downloaded_file {
-                                    cx.widget_action(
-                                        widget_uid,
-                                        &scope.path,
-                                        ChatAction::Resume(df.file.id.clone()),
-                                    );
-                                } else {
-                                    error!("A play action was dispatched for a model that does not longer exist in the local store");
-                                }
-                            }
-                        }
-                        RowAction::InfoClicked => {
-                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
-                                cx.widget_action(
-                                    widget_uid,
-                                    &scope.path,
-                                    ModelInfoAction::FileSelected(item_id.clone()),
-                                );
-                                cx.widget_action(
-                                    widget_uid,
-                                    &scope.path,
-                                    ModalAction::ShowModalView(live_id!(model_info_modal_view)),
-                                );
-                            }
-                        }
-                        RowAction::DeleteClicked => {
-                            if let Some(item_id) = self.file_item_map.get(&group.item_uid.0) {
-                                cx.widget_action(
-                                    widget_uid,
-                                    &scope.path,
-                                    DeleteModelAction::FileSelected(item_id.clone()),
-                                );
-                                cx.widget_action(
-                                    widget_uid,
-                                    &scope.path,
-                                    ModalAction::ShowModalView(live_id!(delete_model_modal_view)),
-                                );
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
-
             match action.cast() {
                 MyModelsSearchAction::Search(keywords) => {
                     self.filter_by_keywords(cx, scope, &keywords);
@@ -516,67 +246,6 @@ enum SearchStatus {
     #[default]
     Idle,
     Filtered(String),
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum RowAction {
-    PlayClicked,
-    InfoClicked,
-    ResumeClicked,
-    DeleteClicked,
-    None,
-}
-
-#[derive(Clone, Debug, Live, LiveHook)]
-#[live_ignore]
-pub enum ButtonType {
-    #[pick]
-    Play,
-    Resume,
-    Info,
-    Delete,
-}
-
-#[derive(Live, LiveHook, Widget)]
-pub struct ActionButton {
-    #[deref]
-    cbutton: CButton,
-    #[live]
-    type_: ButtonType,
-}
-
-impl Widget for ActionButton {
-    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.cbutton.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
-    }
-
-    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.cbutton.draw_walk(cx, scope, walk)
-    }
-}
-
-impl WidgetMatchEvent for ActionButton {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.cbutton.clicked(actions) {
-            let uid = self.widget_uid().clone();
-            let action = match self.type_ {
-                ButtonType::Play => RowAction::PlayClicked,
-                ButtonType::Resume => RowAction::ResumeClicked,
-                ButtonType::Info => RowAction::InfoClicked,
-                ButtonType::Delete => RowAction::DeleteClicked,
-            };
-            cx.widget_action(uid, &scope.path, action);
-        }
-    }
-}
-
-impl ActionButtonRef {
-    pub fn set_visible(&mut self, visible: bool) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.cbutton.visible = visible;
-        }
-    }
 }
 
 /// Removes dashes, file extension, and capitalizes the first letter of each word.
