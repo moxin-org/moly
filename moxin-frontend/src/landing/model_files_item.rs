@@ -2,10 +2,7 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, FileID};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
-use crate::shared::{
-    actions::{ChatAction, DownloadAction},
-    widgets::c_button::CButtonWidgetExt,
-};
+use crate::shared::actions::{ChatAction, DownloadAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -240,7 +237,7 @@ impl WidgetMatchEvent for ModelFilesItem {
         }
 
         if self.button(id!(resume_chat_button)).clicked(&actions) {
-            cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id));
+            cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id.clone()));
         }
 
         if self.button(id!(resume_download_button)).clicked(&actions) {
