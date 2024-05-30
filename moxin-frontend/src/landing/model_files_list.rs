@@ -137,7 +137,7 @@ impl ModelFilesList {
                 item_widget.apply_over(
                     cx,
                     live! { cell4 = {
-                        download_pending_button = {
+                        download_pending_controls = {
                             visible: true
                             progress_text = {
                                 text: (progress)
@@ -167,7 +167,7 @@ impl ModelFilesList {
                     item_widget.apply_over(
                         cx,
                         live! { cell4 = {
-                            download_pending_button = { visible: false }
+                            download_pending_controls = { visible: false }
                             start_chat_button = { visible: false }
                             resume_chat_button = { visible: true }
                             download_button = { visible: false }
@@ -177,7 +177,7 @@ impl ModelFilesList {
                     item_widget.apply_over(
                         cx,
                         live! { cell4 = {
-                            download_pending_button = { visible: false }
+                            download_pending_controls = { visible: false }
                             start_chat_button = { visible: true }
                             resume_chat_button = { visible: false }
                             download_button = { visible: false }
@@ -188,7 +188,7 @@ impl ModelFilesList {
                 item_widget.apply_over(
                     cx,
                     live! { cell4 = {
-                        download_pending_button = { visible: false }
+                        download_pending_controls = { visible: false }
                         start_chat_button = { visible: false }
                         resume_chat_button = { visible: false }
                         download_button = { visible: true }

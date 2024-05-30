@@ -77,8 +77,7 @@ live_design! {
         }
     }
 
-    // TODO This is a very temporary solution, we will have a better way to handle this.
-    DownloadPendingButton = <View> {
+    DownloadPendingControls = <View> {
         align: {y: 0.5},
         spacing: 8,
         progress_bar = <View> {
@@ -195,7 +194,7 @@ live_design! {
             download_button = <DownloadButton> { visible: false }
             start_chat_button = <StartChatButton> { visible: false }
             resume_chat_button = <ResumeChatButton> { visible: false }
-            download_pending_button = <DownloadPendingButton> { visible: false }
+            download_pending_controls = <DownloadPendingControls> { visible: false }
         }
     }
 }
