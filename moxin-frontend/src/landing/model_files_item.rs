@@ -120,8 +120,8 @@ live_design! {
             }
             icon_walk: {width: 14, height: 14}
         }
-        /*pause_button = <Button> {
-            visible: false,
+        pause_button = <Button> {
+            // visible: false,
             padding: 4,
             draw_icon: {
                 fn get_color(self) -> vec4 {
@@ -130,7 +130,7 @@ live_design! {
                 svg_file: (ICON_PAUSE),
             }
             icon_walk: {width: 14, height: 14}
-        }*/
+        }
         cancel_button = <Button> {
             padding: 4,
             draw_icon: {
