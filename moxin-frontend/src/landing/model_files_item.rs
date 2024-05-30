@@ -74,14 +74,12 @@ live_design! {
         }
     }
 
-    DownloadPendingButton = <Button> {
-        padding: 4,
+    DownloadPendingButton = <MoxinButton> {
         draw_icon: {
             fn get_color(self) -> vec4 {
                 return #667085;
             }
         }
-        icon_walk: {width: 14, height: 14}
     }
 
     DownloadPendingControls = <View> {
