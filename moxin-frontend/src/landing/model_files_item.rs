@@ -110,7 +110,7 @@ live_design! {
                 color: #087443
             }
         }
-        resume_button = <Button> {
+        resume_download_button = <Button> {
             padding: 4,
             draw_icon: {
                 fn get_color(self) -> vec4 {
@@ -120,8 +120,7 @@ live_design! {
             }
             icon_walk: {width: 14, height: 14}
         }
-        pause_button = <Button> {
-            // visible: false,
+        pause_download_button = <Button> {
             padding: 4,
             draw_icon: {
                 fn get_color(self) -> vec4 {
@@ -131,7 +130,7 @@ live_design! {
             }
             icon_walk: {width: 14, height: 14}
         }
-        cancel_button = <Button> {
+        cancel_download_button = <Button> {
             padding: 4,
             draw_icon: {
                 fn get_color(self) -> vec4 {
@@ -250,7 +249,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id));
         }
 
-        if self.button(id!(resume_button)).clicked(&actions) {
+        if self.button(id!(resume_download_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
@@ -258,7 +257,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             );
         }
 
-        if self.button(id!(pause_button)).clicked(&actions) {
+        if self.button(id!(pause_download_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
@@ -266,7 +265,7 @@ impl WidgetMatchEvent for ModelFilesItem {
             );
         }
 
-        if self.button(id!(cancel_button)).clicked(&actions) {
+        if self.button(id!(cancel_download_button)).clicked(&actions) {
             cx.widget_action(
                 widget_uid,
                 &scope.path,

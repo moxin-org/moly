@@ -3,7 +3,7 @@ use crate::{
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID, PendingDownload};
+use moxin_protocol::data::{File, FileID, PendingDownload, PendingDownloadsStatus};
 
 use super::model_files_item::ModelFilesItemWidgetRefExt;
 
@@ -129,6 +129,11 @@ impl ModelFilesList {
                 let progress_fill_max = 74.0;
                 let progress_fill = download.progress * progress_fill_max / 100.0;
 
+                let is_resume_download_visible =
+                    matches!(download.status, PendingDownloadsStatus::Paused);
+                let is_pause_download_visible =
+                    matches!(download.status, PendingDownloadsStatus::Downloading);
+
                 item_widget.apply_over(
                     cx,
                     live! { cell4 = {
@@ -141,6 +146,12 @@ impl ModelFilesList {
                                 progress_fill = {
                                     width: (progress_fill)
                                 }
+                            }
+                            resume_download_button = {
+                                visible: (is_resume_download_visible)
+                            }
+                            pause_download_button = {
+                                visible: (is_pause_download_visible)
                             }
                         }
                         start_chat_button = { visible: false }

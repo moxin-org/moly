@@ -531,13 +531,20 @@ impl Store {
         let mut completed_download_ids = Vec::new();
 
         for (id, download) in &mut self.current_downloads {
-            if let Some(pending) = self.pending_downloads.iter_mut().find(|d| d.file.id == *id) {
-                pending.progress = download.get_progress();
-            }
-
             download.process_download_progress();
             if download.is_complete() {
                 completed_download_ids.push(id.clone());
+            }
+
+            // Workaround to keep the duplicate data in pending downloads in sync.
+            if let Some(pending) = self.pending_downloads.iter_mut().find(|d| d.file.id == *id) {
+                pending.progress = download.get_progress();
+                pending.status = match download.state {
+                    DownloadState::Downloading(_) => PendingDownloadsStatus::Downloading,
+                    DownloadState::Paused(_) => PendingDownloadsStatus::Paused,
+                    DownloadState::Errored(_) => PendingDownloadsStatus::Error,
+                    DownloadState::Completed => PendingDownloadsStatus::Downloading,
+                };
             }
         }
 
