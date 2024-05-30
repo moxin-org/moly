@@ -544,7 +544,6 @@ impl Store {
             // Workaround to keep the duplicate data in pending downloads in sync.
             if let Some(pending) = self.pending_downloads.iter_mut().find(|d| d.file.id == *id) {
                 pending.progress = download.get_progress();
-                dbg!(download.state);
                 pending.status = match download.state {
                     DownloadState::Downloading(_) => PendingDownloadsStatus::Downloading,
                     DownloadState::Paused(_) => PendingDownloadsStatus::Paused,
