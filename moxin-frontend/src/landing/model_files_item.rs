@@ -77,6 +77,16 @@ live_design! {
         }
     }
 
+    DownloadPendingButton = <Button> {
+        padding: 4,
+        draw_icon: {
+            fn get_color(self) -> vec4 {
+                return #667085;
+            }
+        }
+        icon_walk: {width: 14, height: 14}
+    }
+
     DownloadPendingControls = <View> {
         align: {y: 0.5},
         spacing: 8,
@@ -109,35 +119,20 @@ live_design! {
                 color: #087443
             }
         }
-        resume_download_button = <Button> {
-            padding: 4,
+        resume_download_button = <DownloadPendingButton> {
             draw_icon: {
-                fn get_color(self) -> vec4 {
-                    return #667085;
-                }
                 svg_file: (ICON_PLAY),
             }
-            icon_walk: {width: 14, height: 14}
         }
-        pause_download_button = <Button> {
-            padding: 4,
+        pause_download_button = <DownloadPendingButton> {
             draw_icon: {
-                fn get_color(self) -> vec4 {
-                    return #667085;
-                }
                 svg_file: (ICON_PAUSE),
             }
-            icon_walk: {width: 14, height: 14}
         }
-        cancel_download_button = <Button> {
-            padding: 4,
+        cancel_download_button = <DownloadPendingButton> {
             draw_icon: {
-                fn get_color(self) -> vec4 {
-                    return #667085;
-                }
                 svg_file: (ICON_CANCEL),
             }
-            icon_walk: {width: 14, height: 14}
         }
     }
 
