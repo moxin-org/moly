@@ -210,8 +210,13 @@ impl Store {
         let (model, file) = self.get_model_and_file_download(&file_id);
         let mut current_progress = 0.0;
 
-        if let Some(pending) = self.pending_downloads.iter().find(|d| d.file.id == file_id) {
+        if let Some(pending) = self
+            .pending_downloads
+            .iter_mut()
+            .find(|d| d.file.id == file_id)
+        {
             current_progress = pending.progress;
+            pending.status = PendingDownloadsStatus::Downloading;
         } else {
             let pending_download = PendingDownload {
                 file: file.clone(),
@@ -539,6 +544,7 @@ impl Store {
             // Workaround to keep the duplicate data in pending downloads in sync.
             if let Some(pending) = self.pending_downloads.iter_mut().find(|d| d.file.id == *id) {
                 pending.progress = download.get_progress();
+                dbg!(download.state);
                 pending.status = match download.state {
                     DownloadState::Downloading(_) => PendingDownloadsStatus::Downloading,
                     DownloadState::Paused(_) => PendingDownloadsStatus::Paused,
