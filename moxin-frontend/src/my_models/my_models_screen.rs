@@ -18,68 +18,53 @@ live_design! {
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_SHOW_IN_FILES = dep("crate://self/resources/icons/visibility.svg")
 
-    DownloadLocation = <RoundedView> {
+    DownloadLocationButton = <MoxinButton> {
         width: Fit,
-        height: Fit,
-        padding: {top: 6, bottom: 6, left: 4, right: 14}
-        align: {y: 0.5}
-        spacing: 8,
+        height: 28,
+        padding: {top: 6, bottom: 6, left: 14, right: 14}
 
         draw_bg: {
-            instance radius: 2.0,
+            radius: 2.0,
             color: #FEFEFE,
         }
 
-        <Icon> {
-            draw_icon: {
-                svg_file: (ICON_EDIT_FOLDER),
-                fn get_color(self) -> vec4 {
-                    return #000;
-                }
-            }
-            icon_walk: {width: 14, height: Fit}
+        draw_icon: {
+            svg_file: (ICON_EDIT_FOLDER),
+            color: #000,
         }
+        icon_walk: { margin: { top: 2 } }
 
-        <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
-                color: #000
-            }
-            text: "Change Download Location"
+        draw_text:{
+            text_style: <REGULAR_FONT>{font_size: 11},
+            color: #000
         }
+        text: "Change Download Location"
+        enabled: false
     }
 
-    ShowInFiles = <RoundedView> {
+    ShowInFilesButton = <MoxinButton> {
         width: Fit,
-        height: Fit,
+        height: 28,
         margin: {left: 10}
-        padding: {top: 6, bottom: 6, left: 4, right: 10}
-        spacing: 8,
-        cursor: Hand
-        align: {y: 0.5}
+        padding: {top: 6, bottom: 6, left: 14, right: 14}
 
         draw_bg: {
-            instance radius: 2.0,
+            radius: 2.0,
             color: #FEFEFE,
+            color_hover: #999,
         }
 
-        <Icon> {
-            draw_icon: {
-                svg_file: (ICON_SHOW_IN_FILES),
-                fn get_color(self) -> vec4 {
-                    return #000;
-                }
-            }
-            icon_walk: {width: 14, height: Fit}
+        draw_icon: {
+            svg_file: (ICON_SHOW_IN_FILES),
+            color: #000,
         }
+        icon_walk: { margin: { top: 4 } }
 
-        label = <Label> {
-            draw_text:{
-                text_style: <REGULAR_FONT>{font_size: 11},
-                color: #000
-            }
-            text: "Show in finder"
+        draw_text:{
+            text_style: <REGULAR_FONT>{font_size: 11},
+            color: #000
         }
+        text: "Show in finder"
     }
 
     SearchBar = <RoundedView> {
@@ -174,8 +159,8 @@ live_design! {
                 margin: {top: 10}
                 align: {x: 0.0, y: 0.5}
 
-                <DownloadLocation> {}
-                show_in_files = <ShowInFiles> {}
+                <DownloadLocationButton> {}
+                show_in_files = <ShowInFilesButton> {}
                 <View> { width: Fill, height: Fit }
                 search = <SearchBar> {}
             }
@@ -226,19 +211,17 @@ fn file_manager_label() -> String {
 
 impl WidgetMatchEvent for MyModelsScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(fe) = self.view(id!(show_in_files)).finger_up(actions) {
-            if fe.was_tap() {
-                let models_dir = &scope.data.get::<Store>().unwrap().downloaded_files_dir;
-                let models_uri = &format!("file:///.{}", models_dir);
-                robius_open::Uri::new(models_uri)
-                    .open()
-                    .unwrap_or_else(|_| {
-                        eprintln!(
-                            "Failed to open models downloads folder: {}. Check for permissions.",
-                            models_uri
-                        );
-                    });
-            }
+        if self.button(id!(show_in_files)).clicked(actions) {
+            let models_dir = &scope.data.get::<Store>().unwrap().downloaded_files_dir;
+            let models_uri = &format!("file:///.{}", models_dir);
+            robius_open::Uri::new(models_uri)
+                .open()
+                .unwrap_or_else(|_| {
+                    eprintln!(
+                        "Failed to open models downloads folder: {}. Check for permissions.",
+                        models_uri
+                    );
+            });
         }
 
         if let Some(keywords) = self.text_input(id!(search.input)).changed(actions) {
