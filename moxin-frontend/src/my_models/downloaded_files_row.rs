@@ -1,8 +1,9 @@
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
+use moxin_protocol::data::{DownloadedFile, FileID};
 
 use crate::my_models::{delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction};
 use crate::shared::{actions::ChatAction, modal::ModalAction};
+use crate::shared::utils::format_model_size;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -181,6 +182,12 @@ live_design! {
     }
 }
 
+pub struct DownloadedFilesRowProps {
+    pub downloaded_file: DownloadedFile,
+    pub show_separator: bool,
+    pub show_resume: bool,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct DownloadedFilesRow {
     #[deref]
@@ -197,6 +204,53 @@ impl Widget for DownloadedFilesRow {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let props = scope.props.get::<DownloadedFilesRowProps>().unwrap();
+        let downloaded_file = &props.downloaded_file;
+
+        // Name tag
+        let name = human_readable_name(&downloaded_file.file.name);
+        self.label(id!(h_wrapper.model_file.h_wrapper.name_tag.name))
+            .set_text(&name);
+
+        // Base model tag
+        let base_model = dash_if_empty(&downloaded_file.model.architecture);
+        self.label(id!(h_wrapper
+            .model_file
+            .base_model_tag
+            .base_model
+            .attr_name))
+            .set_text(&base_model);
+
+        // Parameters tag
+        let parameters = dash_if_empty(&downloaded_file.model.size);
+        self.label(id!(h_wrapper
+            .model_file
+            .parameters_tag
+            .parameters
+            .attr_name))
+            .set_text(&parameters);
+
+        // Version tag
+        let filename = format!("{}/{}", downloaded_file.model.name, downloaded_file.file.name);
+        self.label(id!(h_wrapper.model_file.model_version_tag.version))
+            .set_text(&filename);
+
+        // File size tag
+        let file_size =
+            format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
+        self.label(id!(h_wrapper.file_size_tag.file_size))
+            .set_text(&file_size);
+
+        // Added date tag
+        let formatted_date = downloaded_file.downloaded_at.format("%d/%m/%Y").to_string();
+        self.label(id!(h_wrapper.date_added_tag.date_added))
+            .set_text(&formatted_date);
+
+        self.button(id!(start_chat_button)).set_visible(!props.show_resume);
+        self.button(id!(resume_chat_button)).set_visible(props.show_resume);
+
+        self.view(id!(separator_line)).set_visible(props.show_separator);
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -264,19 +318,35 @@ impl DownloadedFilesRowRef {
         };
         inner.file_id = Some(file_id);
     }
+}
 
-    pub fn set_show_resume_button(&mut self, show_resume: bool) {
-        if let Some(mut inner) = self.borrow_mut() {
-            let start_chat_button = inner.button(id!(start_chat_button));
-            let resume_chat_button = inner.button(id!(resume_chat_button));
+/// Removes dashes, file extension, and capitalizes the first letter of each word.
+fn human_readable_name(name: &str) -> String {
+    let name = name
+        .to_lowercase()
+        .replace("-", " ")
+        .replace(".gguf", "")
+        .replace("chat", "");
 
-            if show_resume {
-                resume_chat_button.set_visible(true);
-                start_chat_button.set_visible(false);
-            } else {
-                start_chat_button.set_visible(true);
-                resume_chat_button.set_visible(false);
+    let name = name
+        .split_whitespace()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first_char) => first_char.to_uppercase().collect::<String>() + chars.as_str(),
             }
-        }
+        })
+        .collect::<Vec<String>>()
+        .join(" ");
+
+    name
+}
+
+fn dash_if_empty(input: &str) -> &str {
+    if input.is_empty() {
+        "-"
+    } else {
+        input
     }
 }

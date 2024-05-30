@@ -1,10 +1,11 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 
-use crate::{data::store::Store, shared::utils::format_model_size};
+use crate::data::store::Store;
 
 use super::{
-    downloaded_files_row::DownloadedFilesRowWidgetRefExt, my_models_screen::MyModelsSearchAction,
+    downloaded_files_row::{DownloadedFilesRowProps, DownloadedFilesRowWidgetRefExt},
+    my_models_screen::MyModelsSearchAction,
 };
 
 live_design! {
@@ -110,7 +111,7 @@ impl Widget for DownloadedFilesTable {
 
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
-                list.set_item_range(cx, 0, last_item_id);
+                list.set_item_range(cx, 0, last_item_id + 1);
                 while let Some(item_id) = list.next_visible_item(cx) {
                     if item_id <= last_item_id {
                         let template;
@@ -127,60 +128,21 @@ impl Widget for DownloadedFilesTable {
 
                         let file_data = &self.current_results[item_id - 1];
 
-                        let mut downloaded_files_row_widget = item.as_downloaded_files_row();
-                        downloaded_files_row_widget.set_file_id(file_data.file.id.clone());
+                        item.as_downloaded_files_row()
+                            .set_file_id(file_data.file.id.clone());
 
                         let mut is_model_file_loaded = false;
                         if let Some(file_id) = &current_chat_file_id {
                             is_model_file_loaded = *file_id == file_data.file.id;
                         }
-                        downloaded_files_row_widget.set_show_resume_button(is_model_file_loaded);
 
-                        // Name tag
-                        let name = human_readable_name(&file_data.file.name);
-                        item.label(id!(h_wrapper.model_file.h_wrapper.name_tag.name))
-                            .set_text(&name);
-
-                        // Base model tag
-                        let base_model = dash_if_empty(&file_data.model.architecture);
-                        item.label(id!(h_wrapper
-                            .model_file
-                            .base_model_tag
-                            .base_model
-                            .attr_name))
-                            .set_text(&base_model);
-
-                        // Parameters tag
-                        let parameters = dash_if_empty(&file_data.model.size);
-                        item.label(id!(h_wrapper
-                            .model_file
-                            .parameters_tag
-                            .parameters
-                            .attr_name))
-                            .set_text(&parameters);
-
-                        // Version tag
-                        let filename = format!("{}/{}", file_data.model.name, file_data.file.name);
-                        item.label(id!(h_wrapper.model_file.model_version_tag.version))
-                            .set_text(&filename);
-
-                        // File size tag
-                        let file_size =
-                            format_model_size(&file_data.file.size).unwrap_or("-".to_string());
-                        item.label(id!(h_wrapper.file_size_tag.file_size))
-                            .set_text(&file_size);
-
-                        // Added date tag
-                        let formatted_date = file_data.downloaded_at.format("%d/%m/%Y").to_string();
-                        item.label(id!(h_wrapper.date_added_tag.date_added))
-                            .set_text(&formatted_date);
-
-                        // Don't draw separator line on first row
-                        if item_id == 1 {
-                            item.view(id!(separator_line)).set_visible(false);
-                        }
-
-                        item.draw_all(cx, scope);
+                        let props = DownloadedFilesRowProps {
+                            downloaded_file: file_data.clone(),
+                            show_separator: item_id != last_item_id,
+                            show_resume: is_model_file_loaded,
+                        };
+                        let mut scope = Scope::with_props(&props);
+                        item.draw_all(cx, &mut scope);
                     }
                 }
             }
@@ -238,35 +200,4 @@ enum SearchStatus {
     #[default]
     Idle,
     Filtered(String),
-}
-
-/// Removes dashes, file extension, and capitalizes the first letter of each word.
-fn human_readable_name(name: &str) -> String {
-    let name = name
-        .to_lowercase()
-        .replace("-", " ")
-        .replace(".gguf", "")
-        .replace("chat", "");
-
-    let name = name
-        .split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first_char) => first_char.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(" ");
-
-    name
-}
-
-fn dash_if_empty(input: &str) -> &str {
-    if input.is_empty() {
-        "-"
-    } else {
-        input
-    }
 }
