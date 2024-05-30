@@ -64,21 +64,21 @@ live_design! {
 
                         discover_tab = <SidebarMenuButton> {
                             animator: {selected = {default: on}}
-                            label: "Discover",
+                            text: "Discover",
                             draw_icon: {
-                            svg_file: (ICON_DISCOVER),
+                                svg_file: (ICON_DISCOVER),
                             }
                         }
                         chat_tab = <SidebarMenuButton> {
-                            label: "Chat",
+                            text: "Chat",
                             draw_icon: {
-                            svg_file: (ICON_CHAT),
+                                svg_file: (ICON_CHAT),
                             }
                         }
                         my_models_tab = <SidebarMenuButton> {
-                            label: "My Models",
+                            text: "My Models",
                             draw_icon: {
-                            svg_file: (ICON_MY_MODELS),
+                                svg_file: (ICON_MY_MODELS),
                             }
                         }
                     }

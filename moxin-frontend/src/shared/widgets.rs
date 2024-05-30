@@ -139,6 +139,62 @@ live_design! {
         }
     }
 
+    // Customized button widget, based on the RoundedView shaders with some modifications
+    // which is a better fit with our application UI design
+    MoxinButton = <Button> {
+        draw_bg: {
+            instance color: #0000
+            instance color_hover: #fff
+            instance border_width: 1.0
+            instance border_color: #0000
+            instance border_color_hover: #fff
+            instance radius: 2.5
+
+            fn get_color(self) -> vec4 {
+                return mix(self.color, mix(self.color, self.color_hover, 0.2), self.hover)
+            }
+
+            fn get_border_color(self) -> vec4 {
+                return mix(self.border_color, mix(self.border_color, self.border_color_hover, 0.2), self.hover)
+            }
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                sdf.box(
+                    self.border_width,
+                    self.border_width,
+                    self.rect_size.x - (self.border_width * 2.0),
+                    self.rect_size.y - (self.border_width * 2.0),
+                    max(1.0, self.radius)
+                )
+                sdf.fill_keep(self.get_color())
+                if self.border_width > 0.0 {
+                    sdf.stroke(self.get_border_color(), self.border_width)
+                }
+                return sdf.result;
+            }
+        }
+
+        draw_icon: {
+            instance color: #fff
+            fn get_color(self) -> vec4 {
+                return mix(
+                    self.color,
+                    mix(self.color, #f, 0.2),
+                    self.hover
+                )
+            }
+        }
+        icon_walk: {width: 14, height: 14}
+
+        draw_text: {
+            text_style: <REGULAR_FONT>{font_size: 9},
+            fn get_color(self) -> vec4 {
+                return self.color;
+            }
+        }
+    }
+
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
     MoxinTextInput = <TextInput> {
