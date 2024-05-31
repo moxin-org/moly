@@ -1,9 +1,9 @@
 use crate::{
-    data::store::{ModelWithPendingDownloads, Store},
+    data::store::ModelWithPendingDownloads,
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID, PendingDownload, PendingDownloadsStatus};
+use moxin_protocol::data::{File, FileID, Model, PendingDownload, PendingDownloadsStatus};
 
 use super::model_files_item::ModelFilesItemWidgetRefExt;
 
@@ -60,9 +60,9 @@ impl Widget for ModelFilesList {
             current_file_id,
         } = scope.data.get::<ModelWithPendingDownloads>().unwrap();
         let files = if self.show_featured {
-            Store::model_featured_files(model)
+            model_featured_files(model)
         } else {
-            Store::model_other_files(model)
+            model_other_files(model)
         };
         cx.begin_turtle(walk, self.layout);
 
@@ -227,4 +227,17 @@ impl ModelFilesListRef {
         };
         inner.area.rect(cx).size.y
     }
+}
+
+fn model_featured_files(model: &Model) -> Vec<File> {
+    model.files.iter().filter(|f| f.featured).cloned().collect()
+}
+
+fn model_other_files(model: &Model) -> Vec<File> {
+    model
+        .files
+        .iter()
+        .filter(|f| !f.featured)
+        .cloned()
+        .collect()
 }

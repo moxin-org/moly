@@ -289,7 +289,7 @@ impl Store {
             .context("Failed to receive delete file response")?
             .context("Delete file operation failed")?;
 
-        self.set_file_downloaded_state(&file_id, false);
+        self.update_downloaded_file_in_search_results(&file_id, false);
         self.load_downloaded_files();
         self.load_pending_downloads();
         SignalToUI::set_ui_signal();
@@ -506,7 +506,7 @@ impl Store {
         match self.search.process_results(&self.backend) {
             Ok(Some(models)) => {
                 self.set_models(models);
-                self.sort_models_by_current_criteria();
+                self.sort_models(self.sorted_by);
             }
             Ok(None) => {
                 // No results arrived, do nothing
@@ -522,6 +522,17 @@ impl Store {
             return;
         };
         chat.borrow_mut().update_messages();
+    }
+
+    fn update_downloaded_file_in_search_results(&mut self, file_id: &FileID, downloaded: bool) {
+        let model = self
+            .models
+            .iter_mut()
+            .find(|m| m.files.iter().any(|f| f.id == *file_id));
+        if let Some(model) = model {
+            let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
+            file.downloaded = downloaded;
+        }
     }
 
     fn update_downloads(&mut self) {
@@ -549,25 +560,16 @@ impl Store {
             }
         }
 
+        // Reload downloaded files and pending downloads from the backend
         if !completed_download_ids.is_empty() {
-            // Reload downloaded files and pending downloads from the backend
             self.load_downloaded_files();
             self.load_pending_downloads();
         }
 
+        // For search results let's trust on our local cache, but updating
+        // the downloaded state of the files
         for file_id in completed_download_ids {
-            self.set_file_downloaded_state(&file_id, true);
-        }
-    }
-
-    fn set_file_downloaded_state(&mut self, file_id: &FileID, downloaded: bool) {
-        let model = self
-            .models
-            .iter_mut()
-            .find(|m| m.files.iter().any(|f| f.id == *file_id));
-        if let Some(model) = model {
-            let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
-            file.downloaded = downloaded;
+            self.update_downloaded_file_in_search_results(&file_id, true);
         }
     }
 
@@ -613,29 +615,6 @@ impl Store {
             }
         }
         self.sorted_by = criteria;
-    }
-
-    fn sort_models_by_current_criteria(&mut self) {
-        self.sort_models(self.sorted_by);
-    }
-
-    pub fn formatted_model_release_date(model: &Model) -> String {
-        let released_at = model.released_at.naive_local().format("%b %-d, %C%y");
-        let days_ago = (Utc::now() - model.released_at).num_days();
-        format!("{} ({} days ago)", released_at, days_ago)
-    }
-
-    pub fn model_featured_files(model: &Model) -> Vec<File> {
-        model.files.iter().filter(|f| f.featured).cloned().collect()
-    }
-
-    pub fn model_other_files(model: &Model) -> Vec<File> {
-        model
-            .files
-            .iter()
-            .filter(|f| !f.featured)
-            .cloned()
-            .collect()
     }
 
     pub fn get_model_with_pending_downloads(

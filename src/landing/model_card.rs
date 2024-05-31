@@ -2,8 +2,9 @@ use crate::data::store::{ModelWithPendingDownloads, Store};
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalAction;
 use crate::shared::utils::hugging_face_model_url;
+use chrono::Utc;
 use makepad_widgets::*;
-use moxin_protocol::data::ModelID;
+use moxin_protocol::data::{Model, ModelID};
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
@@ -393,7 +394,7 @@ impl Widget for ModelCard {
         self.label(id!(author_description))
             .set_text(author_description);
 
-        let released_at_str = Store::formatted_model_release_date(&model);
+        let released_at_str = formatted_model_release_date(&model);
         self.label(id!(model_released_at_tag.attr_value))
             .set_text(&released_at_str);
 
@@ -478,4 +479,10 @@ impl ModelCardViewAllModalRef {
             inner.model_id = model_id;
         }
     }
+}
+
+fn formatted_model_release_date(model: &Model) -> String {
+    let released_at = model.released_at.naive_local().format("%b %-d, %C%y");
+    let days_ago = (Utc::now() - model.released_at).num_days();
+    format!("{} ({} days ago)", released_at, days_ago)
 }
