@@ -1,4 +1,4 @@
-use crate::data::{download::DownloadState, store::Store};
+use crate::data::store::Store;
 use makepad_widgets::*;
 use moxin_protocol::data::PendingDownloadsStatus;
 

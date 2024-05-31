@@ -93,19 +93,6 @@ impl DownloadedFile {
         })
     }
 
-    pub fn get_all(conn: &rusqlite::Connection) -> rusqlite::Result<HashMap<Arc<String>, Self>> {
-        let mut stmt = conn.prepare("SELECT * FROM download_files")?;
-        let mut rows = stmt.query([])?;
-        let mut files = HashMap::new();
-
-        while let Some(row) = rows.next()? {
-            let file = Self::from_row(row)?;
-            files.insert(file.id.clone(), file);
-        }
-
-        Ok(files)
-    }
-
     pub fn get_finished(
         conn: &rusqlite::Connection,
     ) -> rusqlite::Result<HashMap<Arc<String>, Self>> {
