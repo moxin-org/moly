@@ -75,6 +75,9 @@ live_design! {
     }
 
     DownloadPendingButton = <MoxinButton> {
+        width: 25,
+        height: 25,
+        padding: 4,
         draw_icon: {
             fn get_color(self) -> vec4 {
                 return #667085;
@@ -118,6 +121,7 @@ live_design! {
         }
 
         resume_download_button = <DownloadPendingButton> {
+            icon_walk: { margin: { left: 4 } }
             draw_icon: {
                 svg_file: (ICON_PLAY),
             }
@@ -128,6 +132,7 @@ live_design! {
             }
         }
         pause_download_button = <DownloadPendingButton> {
+            icon_walk: { margin: { left: 4 } }
             draw_icon: {
                 svg_file: (ICON_PAUSE),
             }
