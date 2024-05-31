@@ -539,6 +539,22 @@ impl Store {
         let mut completed_download_ids = Vec::new();
 
         for (id, download) in &mut self.current_downloads {
+            if let Some(pending) = self
+                .pending_downloads
+                .iter_mut()
+                .find(|d| d.file.id == id.to_string())
+            {
+                match download.state {
+                    DownloadState::Downloading(_) => {
+                        pending.status = PendingDownloadsStatus::Downloading
+                    }
+                    DownloadState::Paused(_) => pending.status = PendingDownloadsStatus::Paused,
+                    DownloadState::Errored(_) => pending.status = PendingDownloadsStatus::Error,
+                    DownloadState::Completed => (),
+                };
+                pending.progress = download.get_progress();
+            }
+
             download.process_download_progress();
             if download.is_complete() {
                 completed_download_ids.push(id.clone());
@@ -557,7 +573,7 @@ impl Store {
         }
 
         if !completed_download_ids.is_empty() {
-            // Reload downloaded files
+            // Reload downloaded files and pending downloads from the backend
             self.load_downloaded_files();
             self.load_pending_downloads();
         }
@@ -643,41 +659,6 @@ impl Store {
             .filter(|f| !f.featured)
             .cloned()
             .collect()
-    }
-
-    pub fn current_downloads_info(&self) -> Vec<DownloadInfo> {
-        // Collect information about downloads triggered in this session
-        let mut results: Vec<DownloadInfo> = self
-            .current_downloads
-            .iter()
-            .filter_map(|(_id, download)| {
-                if !download.is_complete() {
-                    Some(DownloadInfo {
-                        file: download.file.clone(),
-                        model: download.model.clone(),
-                        state: download.state,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        // Add files that are still partially downloaded (from previous sessions with the app)
-        // TODO: Get rid of this list, merge into `current_downloads`
-        let mut partial_downloads: Vec<DownloadInfo> = self
-            .pending_downloads
-            .iter()
-            .filter(|f| !self.current_downloads.contains_key(&f.file.id))
-            .map(|d| DownloadInfo {
-                file: d.file.clone(),
-                model: d.model.clone(),
-                state: DownloadState::Paused(d.progress),
-            })
-            .collect();
-
-        results.append(&mut partial_downloads);
-        results
     }
 
     pub fn get_model_with_pending_downloads(
