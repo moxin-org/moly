@@ -149,11 +149,18 @@ live_design! {
             }
         }
 
-        <View> {
+        <RoundedView> {
+            show_bg: true,
+            draw_bg: {
+                border_width: 1.25,
+                border_color: #D0D5DD,
+                radius: 12.0,
+            },
+
             width: Fill,
             height: Fit,
             flow: Down,
-            padding: {top: 12, bottom: 12},
+            padding: 18,
             align: {x: 0.5, y: 0.0},
 
             input_container = <View> {
