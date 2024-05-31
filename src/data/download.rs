@@ -15,7 +15,6 @@ pub enum DownloadFileAction {
 pub enum DownloadState {
     Downloading(f64),
     Errored(f64),
-    Paused(f64),
     Completed,
 }
 
@@ -117,7 +116,6 @@ impl Download {
         match self.state {
             DownloadState::Downloading(progress) => progress,
             DownloadState::Errored(progress) => progress,
-            DownloadState::Paused(progress) => progress,
             DownloadState::Completed => 1.0,
         }
     }

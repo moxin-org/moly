@@ -38,24 +38,6 @@ pub enum SortCriteria {
 }
 
 #[derive(Clone, Debug)]
-pub struct DownloadInfo {
-    pub file: File,
-    pub model: Model,
-    pub state: DownloadState,
-}
-
-impl DownloadInfo {
-    pub fn get_progress(&self) -> f64 {
-        match self.state {
-            DownloadState::Downloading(progress) => progress,
-            DownloadState::Errored(progress) => progress,
-            DownloadState::Paused(progress) => progress,
-            DownloadState::Completed => 100.0,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct ModelWithPendingDownloads {
     pub model: Model,
     pub pending_downloads: Vec<PendingDownload>,
@@ -175,6 +157,14 @@ impl Store {
             match response {
                 Ok(files) => {
                     self.pending_downloads = files;
+
+                    // There is a issue with the backend response where all pending
+                    // downloads come with status `Paused` even if they are downloading.
+                    self.pending_downloads.iter_mut().for_each(|d| {
+                        if self.current_downloads.contains_key(&d.file.id) {
+                            d.status = PendingDownloadsStatus::Downloading;
+                        }
+                    });
                 }
                 Err(err) => eprintln!("Error fetching pending downloads: {:?}", err),
             }
@@ -265,7 +255,6 @@ impl Store {
             match response {
                 Ok(()) => {
                     self.current_downloads.remove(&file_id);
-                    self.pending_downloads.retain(|d| d.file.id != file_id);
                     self.load_pending_downloads();
                 }
                 Err(err) => eprintln!("Error cancelling download: {:?}", err),
@@ -548,7 +537,6 @@ impl Store {
                     DownloadState::Downloading(_) => {
                         pending.status = PendingDownloadsStatus::Downloading
                     }
-                    DownloadState::Paused(_) => pending.status = PendingDownloadsStatus::Paused,
                     DownloadState::Errored(_) => pending.status = PendingDownloadsStatus::Error,
                     DownloadState::Completed => (),
                 };
@@ -558,17 +546,6 @@ impl Store {
             download.process_download_progress();
             if download.is_complete() {
                 completed_download_ids.push(id.clone());
-            }
-
-            // Workaround to keep the duplicate data in pending downloads in sync.
-            if let Some(pending) = self.pending_downloads.iter_mut().find(|d| d.file.id == *id) {
-                pending.progress = download.get_progress();
-                pending.status = match download.state {
-                    DownloadState::Downloading(_) => PendingDownloadsStatus::Downloading,
-                    DownloadState::Paused(_) => PendingDownloadsStatus::Paused,
-                    DownloadState::Errored(_) => PendingDownloadsStatus::Error,
-                    DownloadState::Completed => PendingDownloadsStatus::Downloading,
-                };
             }
         }
 

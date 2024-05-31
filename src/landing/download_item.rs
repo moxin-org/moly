@@ -1,9 +1,6 @@
-use crate::{
-    data::{download::DownloadState, store::DownloadInfo},
-    shared::{
-        actions::DownloadAction,
-        utils::{format_model_downloaded_size, format_model_size},
-    },
+use crate::shared::{
+    actions::DownloadAction,
+    utils::{format_model_downloaded_size, format_model_size},
 };
 use makepad_widgets::*;
 use moxin_protocol::data::{FileID, PendingDownload, PendingDownloadsStatus};
