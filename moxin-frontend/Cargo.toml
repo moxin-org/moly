@@ -11,8 +11,7 @@ moxin-protocol = { path = "../moxin-protocol" }
 moxin-backend = { path = "../moxin-backend" }
 moxin-fake-backend = { path = "./moxin-fake-backend", package="moxin-fake-backend" }
 
-## makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
-makepad-widgets = { path = "../../makepad/widgets" }
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 
 robius-open = { git = "https://github.com/project-robius/robius-open", rev = "b901523667d4a8bbb0bba3cd1ebcc0b94d33534e" }
 
