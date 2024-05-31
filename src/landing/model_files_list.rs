@@ -50,11 +50,6 @@ impl Widget for ModelFilesList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        // let ModelWithPendingDownloads {
-        //     model,
-        //     pending_downloads,
-        //     current_file_id,
-        // } = scope.data.get::<ModelWithPendingDownloads>().unwrap();
         let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
         let files = if self.show_featured {
             model_featured_files(model)
@@ -63,7 +58,7 @@ impl Widget for ModelFilesList {
         };
         cx.begin_turtle(walk, self.layout);
 
-        self.draw_files(cx, &model.files);
+        self.draw_files(cx, &files);
         cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()

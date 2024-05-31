@@ -1,4 +1,4 @@
-use crate::data::store::{ModelWithPendingDownloads, StoreAction};
+use crate::data::store::{ModelWithDownloadInfo, StoreAction};
 use makepad_widgets::*;
 
 use super::model_files_list::ModelFilesListWidgetExt;
@@ -179,7 +179,7 @@ impl Widget for ModelFiles {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = &scope.data.get::<ModelWithPendingDownloads>().unwrap().model;
+        let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
         let files_count = model.files.len();
         let all_files_link = self.view(id!(all_files_link.link));
         all_files_link.set_text(&format!("Show All Files ({})", files_count));
