@@ -102,7 +102,6 @@ live_design! {
                 width: 0,
                 height: Fill,
                 draw_bg: {
-                    color: #099250,
                     radius: 2.5,
                 }
             }
@@ -111,12 +110,16 @@ live_design! {
             text: "0%",
             draw_text: {
                 text_style: <BOLD_FONT>{font_size: 9},
-                color: #087443
             }
         }
         resume_download_button = <DownloadPendingButton> {
             draw_icon: {
                 svg_file: (ICON_PLAY),
+            }
+        }
+        retry_download_button = <DownloadPendingButton> {
+            draw_icon: {
+                svg_file: (ICON_RETRY),
             }
         }
         pause_download_button = <DownloadPendingButton> {
@@ -238,7 +241,10 @@ impl WidgetMatchEvent for ModelFilesItem {
             cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id.clone()));
         }
 
-        if self.button(id!(resume_download_button)).clicked(&actions) {
+        if [id!(resume_download_button), id!(retry_download_button)]
+            .iter()
+            .any(|id| self.button(*id).clicked(&actions))
+        {
             cx.widget_action(
                 widget_uid,
                 &scope.path,

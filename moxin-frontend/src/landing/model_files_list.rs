@@ -133,6 +133,14 @@ impl ModelFilesList {
                     matches!(download.status, PendingDownloadsStatus::Paused);
                 let is_pause_download_visible =
                     matches!(download.status, PendingDownloadsStatus::Downloading);
+                let is_retry_download_visible =
+                    matches!(download.status, PendingDownloadsStatus::Error);
+
+                let status_color = match download.status {
+                    PendingDownloadsStatus::Downloading => vec3(0.035, 0.572, 0.314), // #099250
+                    PendingDownloadsStatus::Paused => vec3(0.4, 0.44, 0.52),          // #667085
+                    PendingDownloadsStatus::Error => vec3(0.7, 0.11, 0.09),           // #B42318
+                };
 
                 item_widget.apply_over(
                     cx,
@@ -141,14 +149,23 @@ impl ModelFilesList {
                             visible: true
                             progress_text = {
                                 text: (progress)
+                                draw_text: {
+                                    color: (status_color)
+                                }
                             }
                             progress_bar = {
                                 progress_fill = {
                                     width: (progress_fill)
+                                    draw_bg: {
+                                        color: (status_color),
+                                    }
                                 }
                             }
                             resume_download_button = {
                                 visible: (is_resume_download_visible)
+                            }
+                            retry_download_button = {
+                                visible: (is_retry_download_visible)
                             }
                             pause_download_button = {
                                 visible: (is_pause_download_visible)
