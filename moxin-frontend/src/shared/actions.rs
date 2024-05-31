@@ -7,3 +7,11 @@ pub enum ChatAction {
     Resume(FileID),
     None,
 }
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum DownloadAction {
+    Play(FileID),
+    Pause(FileID),
+    Cancel(FileID),
+    None,
+}

@@ -182,15 +182,18 @@ impl Store {
         if let Some(result) = self.get_model_and_file_for_pending_download(file_id) {
             result
         } else {
-            self.get_model_and_file_from_search_results(file_id).unwrap()
+            self.get_model_and_file_from_search_results(file_id)
+                .unwrap()
         }
     }
 
     fn get_model_and_file_from_search_results(&self, file_id: &str) -> Option<(Model, File)> {
-        self.models
-            .iter()
-            .find_map(|m| m.files.iter().find(|f| f.id == file_id).map(|f| (m.clone(), f.clone()))
-        )
+        self.models.iter().find_map(|m| {
+            m.files
+                .iter()
+                .find(|f| f.id == file_id)
+                .map(|f| (m.clone(), f.clone()))
+        })
     }
 
     fn get_model_and_file_for_pending_download(&self, file_id: &str) -> Option<(Model, File)> {
@@ -207,8 +210,13 @@ impl Store {
         let (model, file) = self.get_model_and_file_download(&file_id);
         let mut current_progress = 0.0;
 
-        if let Some(pending) = self.pending_downloads.iter().find(|d| d.file.id == file_id) {
+        if let Some(pending) = self
+            .pending_downloads
+            .iter_mut()
+            .find(|d| d.file.id == file_id)
+        {
             current_progress = pending.progress;
+            pending.status = PendingDownloadsStatus::Downloading;
         } else {
             let pending_download = PendingDownload {
                 file: file.clone(),
@@ -532,6 +540,17 @@ impl Store {
             if download.is_complete() {
                 completed_download_ids.push(id.clone());
             }
+
+            // Workaround to keep the duplicate data in pending downloads in sync.
+            if let Some(pending) = self.pending_downloads.iter_mut().find(|d| d.file.id == *id) {
+                pending.progress = download.get_progress();
+                pending.status = match download.state {
+                    DownloadState::Downloading(_) => PendingDownloadsStatus::Downloading,
+                    DownloadState::Paused(_) => PendingDownloadsStatus::Paused,
+                    DownloadState::Errored(_) => PendingDownloadsStatus::Error,
+                    DownloadState::Completed => PendingDownloadsStatus::Downloading,
+                };
+            }
         }
 
         if !completed_download_ids.is_empty() {
@@ -557,22 +576,25 @@ impl Store {
     }
 
     pub fn next_download_notification(&mut self) -> Option<DownloadPendingNotification> {
-        self.current_downloads.iter_mut().filter_map(|(_, download)| {
-            if download.must_show_notification() {
-                if download.is_errored() {
-                    return Some(DownloadPendingNotification::DownloadErrored(
-                        download.file.clone(),
-                    ));
-                } else if download.is_complete() {
-                    return Some(DownloadPendingNotification::DownloadedFile(
-                        download.file.clone(),
-                    ));
-                } else {
-                    return None;
+        self.current_downloads
+            .iter_mut()
+            .filter_map(|(_, download)| {
+                if download.must_show_notification() {
+                    if download.is_errored() {
+                        return Some(DownloadPendingNotification::DownloadErrored(
+                            download.file.clone(),
+                        ));
+                    } else if download.is_complete() {
+                        return Some(DownloadPendingNotification::DownloadedFile(
+                            download.file.clone(),
+                        ));
+                    } else {
+                        return None;
+                    }
                 }
-            }
-            None
-        }).next()
+                None
+            })
+            .next()
     }
 
     // Utility functions

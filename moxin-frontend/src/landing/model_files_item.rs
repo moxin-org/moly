@@ -2,7 +2,7 @@ use makepad_widgets::*;
 use moxin_protocol::data::{File, FileID};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
-use crate::shared::{actions::ChatAction, widgets::c_button::CButtonWidgetExt};
+use crate::shared::actions::{ChatAction, DownloadAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -16,6 +16,11 @@ live_design! {
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     RESUME_CHAT = dep("crate://self/resources/icons/play_arrow.svg")
+
+    ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
+    ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
+    ICON_PLAY = dep("crate://self/resources/icons/play_download.svg")
+    ICON_RETRY = dep("crate://self/resources/icons/retry_download.svg")
 
     ModelFilesRow = <RoundedYView> {
         width: Fill,
@@ -69,13 +74,73 @@ live_design! {
         }
     }
 
-    DownloadPendingButton = <ModelCardButton> {
-        draw_bg: { color: #fff, border_color: #x155EEF, border_width: 0.5}
-        text: "Downloading..."
-        enabled: false
+    DownloadPendingButton = <MoxinButton> {
+        width: 25,
+        height: 25,
+        padding: 4,
+        draw_icon: {
+            fn get_color(self) -> vec4 {
+                return #667085;
+            }
+        }
+    }
 
-        draw_text: {
-            color: #x155EEF;
+    DownloadPendingControls = <View> {
+        align: {y: 0.5},
+        spacing: 8,
+        progress_bar = <View> {
+            width: 74,
+            height: 12,
+            flow: Overlay,
+
+            <RoundedView> {
+                height: Fill,
+                draw_bg: {
+                    color: #D9D9D9,
+                    radius: 2.5,
+                }
+            }
+
+            progress_fill = <RoundedView> {
+                width: 0,
+                height: Fill,
+                draw_bg: {
+                    radius: 2.5,
+                }
+            }
+        }
+        progress_text_layout = <View> {
+            width: 40,
+            align: {x: 1, y: 0.5},
+            progress_text = <Label> {
+                text: "0%",
+                draw_text: {
+                    text_style: <BOLD_FONT>{font_size: 9},
+                }
+            }
+        }
+
+        resume_download_button = <DownloadPendingButton> {
+            icon_walk: { margin: { left: 4 } }
+            draw_icon: {
+                svg_file: (ICON_PLAY),
+            }
+        }
+        retry_download_button = <DownloadPendingButton> {
+            draw_icon: {
+                svg_file: (ICON_RETRY),
+            }
+        }
+        pause_download_button = <DownloadPendingButton> {
+            icon_walk: { margin: { left: 4 } }
+            draw_icon: {
+                svg_file: (ICON_PAUSE),
+            }
+        }
+        cancel_download_button = <DownloadPendingButton> {
+            draw_icon: {
+                svg_file: (ICON_CANCEL),
+            }
         }
     }
 
@@ -129,11 +194,10 @@ live_design! {
         }
 
         cell4 = {
-            align: {x: 0.5, y: 0.5},
             download_button = <DownloadButton> { visible: false }
             start_chat_button = <StartChatButton> { visible: false }
             resume_chat_button = <ResumeChatButton> { visible: false }
-            download_pending_button = <DownloadPendingButton> { visible: false }
+            download_pending_controls = <DownloadPendingControls> { visible: false }
         }
     }
 }
@@ -167,7 +231,9 @@ impl Widget for ModelFilesItem {
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
-        let Some(file_id) = self.file_id.clone() else { return; };
+        let Some(file_id) = self.file_id.clone() else {
+            return;
+        };
 
         if self.button(id!(download_button)).clicked(&actions) {
             cx.widget_action(
@@ -178,18 +244,37 @@ impl WidgetMatchEvent for ModelFilesItem {
         }
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatAction::Start(file_id.clone()),
-            );
+            cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
         }
 
         if self.button(id!(resume_chat_button)).clicked(&actions) {
+            cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id.clone()));
+        }
+
+        if [id!(resume_download_button), id!(retry_download_button)]
+            .iter()
+            .any(|id| self.button(*id).clicked(&actions))
+        {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                ChatAction::Resume(file_id),
+                DownloadAction::Play(file_id.clone()),
+            );
+        }
+
+        if self.button(id!(pause_download_button)).clicked(&actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadAction::Pause(file_id.clone()),
+            );
+        }
+
+        if self.button(id!(cancel_download_button)).clicked(&actions) {
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DownloadAction::Cancel(file_id.clone()),
             );
         }
     }
