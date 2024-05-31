@@ -1,4 +1,4 @@
-use crate::data::store::{ModelWithPendingDownloads, Store};
+use crate::data::store::{ModelWithDownloadInfo, ModelWithPendingDownloads, Store};
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalAction;
 use crate::shared::utils::hugging_face_model_url;
@@ -339,9 +339,9 @@ impl Widget for ModelCard {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let model = &scope.data.get::<ModelWithPendingDownloads>().unwrap().model;
+        let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
 
-        self.model_id = model.id.clone();
+        self.model_id = model.model_id;
 
         let name = &model.name;
         self.label(id!(model_name)).set_text(name);
@@ -386,7 +386,7 @@ impl Widget for ModelCard {
             .set_text(author_name);
         author_external_link.set_url(author_url);
 
-        let model_hugging_face_url = hugging_face_model_url(&model.id);
+        let model_hugging_face_url = hugging_face_model_url(&model.model_id);
         let mut model_hugging_face_external_link = self.external_link(id!(model_hugging_face_link));
         model_hugging_face_external_link.set_url(&model_hugging_face_url);
 
@@ -481,7 +481,7 @@ impl ModelCardViewAllModalRef {
     }
 }
 
-fn formatted_model_release_date(model: &Model) -> String {
+fn formatted_model_release_date(model: &ModelWithDownloadInfo) -> String {
     let released_at = model.released_at.naive_local().format("%b %-d, %C%y");
     let days_ago = (Utc::now() - model.released_at).num_days();
     format!("{} ({} days ago)", released_at, days_ago)

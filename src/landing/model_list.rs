@@ -97,10 +97,10 @@ impl Widget for ModelList {
                     let item = list.item(cx, item_id, live_id!(Model)).unwrap();
 
                     if item_id < models_count {
-                        let model_id = &models[item_id].id;
-                        let mut model_data =
-                            store.get_model_with_pending_downloads(model_id).unwrap();
-                        item.draw_all(cx, &mut Scope::with_data(&mut model_data));
+                        let model = &models[item_id];
+                        let mut model_with_download_info =
+                            store.add_download_info_to_model(model);
+                        item.draw_all(cx, &mut Scope::with_data(&mut model_with_download_info));
                     }
                 }
             }

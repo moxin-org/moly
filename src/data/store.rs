@@ -4,11 +4,11 @@ use super::filesystem::{project_dirs, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{
-    DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
+    Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload, PendingDownloadsStatus
 };
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::{
@@ -42,6 +42,28 @@ pub struct ModelWithPendingDownloads {
     pub model: Model,
     pub pending_downloads: Vec<PendingDownload>,
     pub current_file_id: Option<FileID>,
+}
+
+#[derive(Clone, Debug)]
+pub struct FileWithDownloadInfo {
+    pub file: File,
+    pub download: Option<PendingDownload>,
+    pub is_current_chat: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModelWithDownloadInfo {
+    pub model_id: ModelID,
+    pub name: String,
+    pub summary: String,
+    pub size: String,
+    pub requires: String,
+    pub architecture: String,
+    pub released_at: DateTime<Utc>,
+    pub author: Author,
+    pub like_count: u32,
+    pub download_count: u32,
+    pub files: Vec<FileWithDownloadInfo>,
 }
 
 pub enum DownloadPendingNotification {
@@ -617,32 +639,44 @@ impl Store {
         self.sorted_by = criteria;
     }
 
-    pub fn get_model_with_pending_downloads(
-        &self,
-        model_id: &str,
-    ) -> Option<ModelWithPendingDownloads> {
-        let model = self.models.iter().find(|m| m.id == model_id)?;
-        let pending_downloads = self
-            .pending_downloads
-            .iter()
-            .filter(|d| d.model.id == model_id)
-            .cloned()
-            .collect();
-        let current_file_id = model
+    /// This function combines the search results information for a given model
+    /// with the download information for the files of that model.
+    pub fn add_download_info_to_model(&self, model: &Model) -> ModelWithDownloadInfo {
+        let files = model
             .files
             .iter()
-            .find(|f| {
-                self.get_current_chat()
-                    .as_ref()
-                    .map_or(false, |c| c.borrow().file_id == f.id)
-            })
-            .map(|f| f.id.clone());
+            .map(|file| {
+                let download = self
+                    .pending_downloads
+                    .iter()
+                    .find(|d| d.file.id == file.id)
+                    .cloned();
+                let is_current_chat = self
+                    .get_current_chat()
+                    //.as_ref()
+                    .map_or(false, |c| c.borrow().file_id == file.id);
 
-        Some(ModelWithPendingDownloads {
-            model: model.clone(),
-            pending_downloads,
-            current_file_id,
-        })
+                FileWithDownloadInfo {
+                    file: file.clone(),
+                    download,
+                    is_current_chat,
+                }
+            })
+            .collect();
+
+        ModelWithDownloadInfo {
+            model_id: model.id.clone(),
+            name: model.name.clone(),
+            summary: model.summary.clone(),
+            size: model.size.clone(),
+            requires: model.requires.clone(),
+            architecture: model.architecture.clone(),
+            like_count: model.like_count,
+            download_count: model.download_count,
+            released_at: model.released_at,
+            author: model.author.clone(),
+            files: files,
+        }
     }
 
     pub fn search_is_loading(&self) -> bool {
