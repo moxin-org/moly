@@ -147,10 +147,12 @@ impl ModelFilesList {
                     live! { cell4 = {
                         download_pending_controls = {
                             visible: true
-                            progress_text = {
-                                text: (progress)
-                                draw_text: {
-                                    color: (status_color)
+                            progress_text_layout = {
+                                progress_text = {
+                                    text: (progress)
+                                    draw_text: {
+                                        color: (status_color)
+                                    }
                                 }
                             }
                             progress_bar = {

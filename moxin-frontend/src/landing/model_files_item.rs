@@ -106,12 +106,17 @@ live_design! {
                 }
             }
         }
-        progress_text = <Label> {
-            text: "0%",
-            draw_text: {
-                text_style: <BOLD_FONT>{font_size: 9},
+        progress_text_layout = <View> {
+            width: 40,
+            align: {x: 1, y: 0.5},
+            progress_text = <Label> {
+                text: "0%",
+                draw_text: {
+                    text_style: <BOLD_FONT>{font_size: 9},
+                }
             }
         }
+
         resume_download_button = <DownloadPendingButton> {
             draw_icon: {
                 svg_file: (ICON_PLAY),
