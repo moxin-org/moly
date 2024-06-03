@@ -90,7 +90,13 @@ impl Widget for DownloadedFilesTable {
         match filter {
             Some(keywords) => {
                 if self.latest_store_fetch_len
-                    != scope.data.get::<Store>().unwrap().downloaded_files.len()
+                    != scope
+                        .data
+                        .get::<Store>()
+                        .unwrap()
+                        .downloads
+                        .downloaded_files
+                        .len()
                 {
                     self.filter_by_keywords(cx, scope, &keywords)
                 }
@@ -168,13 +174,25 @@ impl WidgetMatchEvent for DownloadedFilesTable {
 
 impl DownloadedFilesTable {
     fn fetch_results(&mut self, scope: &mut Scope) {
-        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.current_results = scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files
+            .clone();
         self.latest_store_fetch_len = self.current_results.len();
     }
 
     fn filter_by_keywords(&mut self, cx: &mut Cx, scope: &mut Scope, keywords: &str) {
         let keywords = keywords.to_lowercase();
-        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.current_results = scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files
+            .clone();
         self.latest_store_fetch_len = self.current_results.len();
 
         self.current_results.retain(|f| {
@@ -187,7 +205,13 @@ impl DownloadedFilesTable {
     }
 
     fn reset_results(&mut self, cx: &mut Cx, scope: &mut Scope) {
-        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.current_results = scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files
+            .clone();
 
         self.search_status = SearchStatus::Idle;
         self.redraw(cx);

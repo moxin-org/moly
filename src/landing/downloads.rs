@@ -156,7 +156,7 @@ impl Widget for Downloads {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let pending_downloads = &store.pending_downloads;
+        let pending_downloads = &store.downloads.pending_downloads;
         let downloads_count = pending_downloads.len();
 
         let download_count = pending_downloads

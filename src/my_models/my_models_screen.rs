@@ -185,7 +185,12 @@ impl Widget for MyModelsScreen {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope.data.get::<Store>().unwrap().downloaded_files;
+        let downloaded_files = &scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files;
 
         let summary = generate_models_summary(&downloaded_files);
         let models_summary_label = self.view.label(id!(header.models_summary));
@@ -221,7 +226,7 @@ impl WidgetMatchEvent for MyModelsScreen {
                         "Failed to open models downloads folder: {}. Check for permissions.",
                         models_uri
                     );
-            });
+                });
         }
 
         if let Some(keywords) = self.text_input(id!(search.input)).changed(actions) {

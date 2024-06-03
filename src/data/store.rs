@@ -1,19 +1,15 @@
-use super::chat::ChatID;
-use super::download::DownloadState;
 use super::filesystem::{project_dirs, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::search::SortCriteria;
-use super::{chat::Chat, download::Download, search::Search};
+use super::{chat::Chat, chat::ChatID, downloads::Downloads, search::Search};
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
-use moxin_protocol::data::{
-    Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload, PendingDownloadsStatus,
-};
+use moxin_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
 use std::rc::Rc;
-use std::{cell::RefCell, collections::HashMap, path::PathBuf, sync::mpsc::channel};
+use std::{cell::RefCell, path::PathBuf, sync::mpsc::channel};
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
@@ -47,11 +43,6 @@ pub struct ModelWithDownloadInfo {
     pub files: Vec<FileWithDownloadInfo>,
 }
 
-pub enum DownloadPendingNotification {
-    DownloadedFile(File),
-    DownloadErrored(File),
-}
-
 #[derive(Default)]
 pub struct Store {
     /// This is the backend representation, including the sender and receiver ends of the channels to
@@ -59,16 +50,11 @@ pub struct Store {
     pub backend: Rc<Backend>,
 
     pub search: Search,
-
-    /// Local cache of search results and downloaded files
-    //pub models: Vec<Model>,
-    pub downloaded_files: Vec<DownloadedFile>,
-    pub pending_downloads: Vec<PendingDownload>,
+    pub downloads: Downloads,
 
     /// Locally saved chats
     pub saved_chats: Vec<RefCell<Chat>>,
     pub current_chat_id: Option<ChatID>,
-    pub current_downloads: HashMap<FileID, Download>,
 
     pub preferences: Preferences,
     pub downloaded_files_dir: PathBuf,
@@ -88,28 +74,21 @@ impl Store {
         let mut store = Self {
             backend: backend.clone(),
 
-            // TODO we should unify those two into a single struct
-            downloaded_files: vec![],
-            pending_downloads: vec![],
+            search: Search::new(backend.clone()),
+            downloads: Downloads::new(backend),
 
-            search: Search::new(backend),
             saved_chats: vec![],
             current_chat_id: None,
-            current_downloads: HashMap::new(),
 
             preferences: Preferences::load(),
             downloaded_files_dir,
         };
-        store.load_downloaded_files();
-        store.load_pending_downloads();
+        store.downloads.load_downloaded_files();
+        store.downloads.load_pending_downloads();
 
         store.search.load_featured_models();
         store
     }
-
-    ///////////////////////////////////////////////////////////////////////////////////
-    // Functions related with models search                                          //
-    ///////////////////////////////////////////////////////////////////////////////////
 
     /// This function combines the search results information for a given model
     /// with the download information for the files of that model.
@@ -119,6 +98,7 @@ impl Store {
             .iter()
             .map(|file| {
                 let download = self
+                    .downloads
                     .pending_downloads
                     .iter()
                     .find(|d| d.file.id == file.id)
@@ -150,163 +130,11 @@ impl Store {
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////
-    // Functions related with model file downloads                                   //
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    pub fn load_downloaded_files(&mut self) {
-        let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::GetDownloadedFiles(tx))
-            .unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(files) => {
-                    self.downloaded_files = files;
-                }
-                Err(err) => eprintln!("Error fetching downloaded files: {:?}", err),
-            }
-        };
-    }
-
-    pub fn load_pending_downloads(&mut self) {
-        let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::GetCurrentDownloads(tx))
-            .unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(files) => {
-                    self.pending_downloads = files;
-
-                    // There is a issue with the backend response where all pending
-                    // downloads come with status `Paused` even if they are downloading.
-                    self.pending_downloads.iter_mut().for_each(|d| {
-                        if self.current_downloads.contains_key(&d.file.id) {
-                            d.status = PendingDownloadsStatus::Downloading;
-                        }
-                    });
-                }
-                Err(err) => eprintln!("Error fetching pending downloads: {:?}", err),
-            }
-        };
-    }
-
-    pub fn download_file(&mut self, file_id: FileID) {
-        let (model, file) = self.get_model_and_file_download(&file_id);
-        let mut current_progress = 0.0;
-
-        if let Some(pending) = self
-            .pending_downloads
-            .iter_mut()
-            .find(|d| d.file.id == file_id)
+    pub fn get_model_and_file_download(&self, file_id: &str) -> (Model, File) {
+        if let Some(result) = self
+            .downloads
+            .get_model_and_file_for_pending_download(file_id)
         {
-            current_progress = pending.progress;
-            pending.status = PendingDownloadsStatus::Downloading;
-        } else {
-            let pending_download = PendingDownload {
-                file: file.clone(),
-                model: model.clone(),
-                progress: 0.0,
-                status: PendingDownloadsStatus::Downloading,
-            };
-            self.pending_downloads.push(pending_download);
-        }
-
-        self.current_downloads.insert(
-            file_id.clone(),
-            Download::new(file, model, current_progress, &self.backend.as_ref()),
-        );
-    }
-
-    pub fn pause_download_file(&mut self, file_id: FileID) {
-        let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::PauseDownload(file_id.clone(), tx))
-            .unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(()) => {
-                    self.current_downloads.remove(&file_id);
-                    self.load_pending_downloads();
-                }
-                Err(err) => eprintln!("Error pausing download: {:?}", err),
-            }
-        };
-    }
-
-    pub fn cancel_download_file(&mut self, file_id: FileID) {
-        let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::CancelDownload(file_id.clone(), tx))
-            .unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(()) => {
-                    self.current_downloads.remove(&file_id);
-                    self.load_pending_downloads();
-                }
-                Err(err) => eprintln!("Error cancelling download: {:?}", err),
-            }
-        };
-    }
-
-    pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
-        let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::DeleteFile(file_id.clone(), tx))
-            .context("Failed to send delete file command")?;
-
-        rx.recv()
-            .context("Failed to receive delete file response")?
-            .context("Delete file operation failed")?;
-
-        self.search
-            .update_downloaded_file_in_search_results(&file_id, false);
-        self.load_downloaded_files();
-        self.load_pending_downloads();
-        SignalToUI::set_ui_signal();
-        Ok(())
-    }
-
-    pub fn next_download_notification(&mut self) -> Option<DownloadPendingNotification> {
-        self.current_downloads
-            .iter_mut()
-            .filter_map(|(_, download)| {
-                if download.must_show_notification() {
-                    if download.is_errored() {
-                        return Some(DownloadPendingNotification::DownloadErrored(
-                            download.file.clone(),
-                        ));
-                    } else if download.is_complete() {
-                        return Some(DownloadPendingNotification::DownloadedFile(
-                            download.file.clone(),
-                        ));
-                    } else {
-                        return None;
-                    }
-                }
-                None
-            })
-            .next()
-    }
-
-    fn get_model_and_file_download(&self, file_id: &str) -> (Model, File) {
-        if let Some(result) = self.get_model_and_file_for_pending_download(file_id) {
             result
         } else {
             self.search
@@ -315,14 +143,12 @@ impl Store {
         }
     }
 
-    fn get_model_and_file_for_pending_download(&self, file_id: &str) -> Option<(Model, File)> {
-        self.pending_downloads.iter().find_map(|d| {
-            if d.file.id == file_id {
-                Some((d.model.clone(), d.file.clone()))
-            } else {
-                None
-            }
-        })
+    pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
+        self.downloads.delete_file(file_id.clone())?;
+        self.search
+            .update_downloaded_file_in_search_results(&file_id, false);
+        SignalToUI::set_ui_signal();
+        Ok(())
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -435,13 +261,6 @@ impl Store {
         Ok(())
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////
-    // The following functions are used to process the information after events are  //
-    // completed from the backend.                                                   //
-    // We only have a single event signal in Makepad, so we update everything (it is //
-    // not the most efficient way to do it, it is the simplest for now)              //
-    ///////////////////////////////////////////////////////////////////////////////////
-
     pub fn process_event_signal(&mut self) {
         self.update_downloads();
         self.update_chat_messages();
@@ -470,35 +289,7 @@ impl Store {
     }
 
     fn update_downloads(&mut self) {
-        let mut completed_download_ids = Vec::new();
-
-        for (id, download) in &mut self.current_downloads {
-            if let Some(pending) = self
-                .pending_downloads
-                .iter_mut()
-                .find(|d| d.file.id == id.to_string())
-            {
-                match download.state {
-                    DownloadState::Downloading(_) => {
-                        pending.status = PendingDownloadsStatus::Downloading
-                    }
-                    DownloadState::Errored(_) => pending.status = PendingDownloadsStatus::Error,
-                    DownloadState::Completed => (),
-                };
-                pending.progress = download.get_progress();
-            }
-
-            download.process_download_progress();
-            if download.is_complete() {
-                completed_download_ids.push(id.clone());
-            }
-        }
-
-        // Reload downloaded files and pending downloads from the backend
-        if !completed_download_ids.is_empty() {
-            self.load_downloaded_files();
-            self.load_pending_downloads();
-        }
+        let completed_download_ids = self.downloads.refresh_downloads_data();
 
         // For search results let's trust on our local cache, but updating
         // the downloaded state of the files

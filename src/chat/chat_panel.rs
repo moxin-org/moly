@@ -514,6 +514,7 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatAction::Start(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     let downloaded_file = store
+                        .downloads
                         .downloaded_files
                         .iter()
                         .find(|file| file.file.id == file_id)
@@ -754,7 +755,7 @@ impl ChatPanel {
     }
 
     fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {
-        let downloaded_model_empty = store.downloaded_files.is_empty();
+        let downloaded_model_empty = store.downloads.downloaded_files.is_empty();
         self.state = ChatPanelState::Unload {
             downloaded_model_empty,
         };

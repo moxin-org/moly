@@ -118,6 +118,7 @@ impl Widget for ModelSelectorList {
             let store = scope.data.get_mut::<Store>().unwrap();
             if let Some(filename) = &store.preferences.current_chat_model {
                 if let Some(downloaded_file) = store
+                    .downloads
                     .downloaded_files
                     .iter()
                     .find(|file| &file.file.id == filename)
@@ -152,7 +153,7 @@ impl Widget for ModelSelectorList {
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {
-            self.draw_items(cx, &store.downloaded_files);
+            self.draw_items(cx, &store.downloads.downloaded_files);
         }
 
         cx.end_turtle_with_area(&mut self.area);

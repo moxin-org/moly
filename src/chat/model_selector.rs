@@ -172,7 +172,7 @@ impl Widget for ModelSelector {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
 
-        let downloaded_model_empty = store.downloaded_files.is_empty();
+        let downloaded_model_empty = store.downloads.downloaded_files.is_empty();
         let choose_label = self.label(id!(choose.label));
 
         if downloaded_model_empty {
@@ -247,6 +247,7 @@ impl WidgetMatchEvent for ModelSelector {
             match action.as_widget_action().cast() {
                 ChatAction::Start(file_id) => {
                     let downloaded_file = store
+                        .downloads
                         .downloaded_files
                         .iter()
                         .find(|file| file.file.id == file_id)

@@ -1,4 +1,5 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
@@ -216,7 +217,8 @@ impl MatchEvent for App {
 
             match action.as_widget_action().cast() {
                 ModelFileItemAction::Download(file_id) => {
-                    self.store.download_file(file_id);
+                    let (model, file) = self.store.get_model_and_file_download(&file_id);
+                    self.store.downloads.download_file(model, file);
                     self.ui.redraw(cx);
                 }
                 _ => {}
@@ -224,15 +226,16 @@ impl MatchEvent for App {
 
             match action.as_widget_action().cast() {
                 DownloadAction::Play(file_id) => {
-                    self.store.download_file(file_id);
+                    let (model, file) = self.store.get_model_and_file_download(&file_id);
+                    self.store.downloads.download_file(model, file);
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Pause(file_id) => {
-                    self.store.pause_download_file(file_id);
+                    self.store.downloads.pause_download_file(file_id);
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Cancel(file_id) => {
-                    self.store.cancel_download_file(file_id);
+                    self.store.downloads.cancel_download_file(file_id);
                     self.ui.redraw(cx);
                 }
                 _ => {}
@@ -291,7 +294,7 @@ impl MatchEvent for App {
 
 impl App {
     fn notify_downloaded_files(&mut self, cx: &mut Cx) {
-        if let Some(notification) = self.store.next_download_notification() {
+        if let Some(notification) = self.store.downloads.next_download_notification() {
             let mut popup = self
                 .ui
                 .download_notification_popup(id!(popup_download_success));

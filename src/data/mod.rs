@@ -1,5 +1,5 @@
 pub mod chat;
-pub mod download;
+pub mod downloads;
 pub mod filesystem;
 pub mod preferences;
 pub mod search;

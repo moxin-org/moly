@@ -191,7 +191,12 @@ impl Widget for ModelInfoModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope.data.get::<Store>().unwrap().downloaded_files;
+        let downloaded_files = &scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files;
         let downloaded_file = downloaded_files
             .iter()
             .find(|f| f.file.id.eq(&self.file_id))
