@@ -1,4 +1,4 @@
-use super::filesystem::{project_dirs, setup_model_downloads_folder};
+use super::filesystem::project_dirs;
 use super::preferences::Preferences;
 use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
@@ -7,7 +7,6 @@ use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
-use std::path::PathBuf;
 use std::rc::Rc;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
@@ -51,32 +50,28 @@ pub struct Store {
     pub search: Search,
     pub downloads: Downloads,
     pub chats: Chats,
-
     pub preferences: Preferences,
-    pub downloaded_files_dir: PathBuf,
 }
 
 impl Store {
     pub fn new() -> Self {
-        let downloaded_files_dir = setup_model_downloads_folder();
+        let preferences = Preferences::load();
         let app_data_dir = project_dirs().data_dir();
 
         let backend = Rc::new(Backend::new(
             app_data_dir,
-            downloaded_files_dir.clone(),
+            preferences.downloaded_files_dir.clone(),
             DEFAULT_MAX_DOWNLOAD_THREADS,
         ));
 
         let mut store = Self {
             backend: backend.clone(),
-
             search: Search::new(backend.clone()),
             downloads: Downloads::new(backend.clone()),
             chats: Chats::new(backend),
-
-            preferences: Preferences::load(),
-            downloaded_files_dir,
+            preferences,
         };
+
         store.downloads.load_downloaded_files();
         store.downloads.load_pending_downloads();
 

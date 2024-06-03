@@ -7,12 +7,14 @@ use std::{
 use moxin_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 
-use super::filesystem::project_dirs;
+use super::filesystem::{project_dirs, setup_model_downloads_folder};
 const PREFERENCES_FILENAME: &str = "preferences.json";
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Preferences {
     pub current_chat_model: Option<FileID>,
+    #[serde(default = "setup_model_downloads_folder")]
+    pub downloaded_files_dir: PathBuf,
 }
 
 impl Preferences {
@@ -27,6 +29,7 @@ impl Preferences {
 
         Self {
             current_chat_model: None,
+            downloaded_files_dir: setup_model_downloads_folder(),
         }
     }
 
@@ -72,10 +75,5 @@ fn write_to_file(json: &str) -> Result<(), std::io::Error> {
 
 fn preferences_path() -> PathBuf {
     let preference_dir = project_dirs().preference_dir();
-    // TODO: this is overkill to create the directory every time.
-    //       This should be done somewhere during init, but I'm not sure where.
-    std::fs::create_dir_all(&preference_dir).unwrap_or_else(|_|
-        panic!("Failed to create the preference directory at {:?}", preference_dir)
-    );
     preference_dir.join(PREFERENCES_FILENAME)
 }
