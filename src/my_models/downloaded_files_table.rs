@@ -111,7 +111,7 @@ impl Widget for DownloadedFilesTable {
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
 
         let mut current_chat_file_id = None;
-        if let Some(current_chat) = &scope.data.get::<Store>().unwrap().get_current_chat() {
+        if let Some(current_chat) = &scope.data.get::<Store>().unwrap().chats.get_current_chat() {
             current_chat_file_id = Some(current_chat.borrow().file_id.clone());
         }
 

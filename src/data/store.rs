@@ -1,15 +1,14 @@
 use super::filesystem::{project_dirs, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::search::SortCriteria;
-use super::{chat::Chat, chat::ChatID, downloads::Downloads, search::Search};
-use anyhow::{Context, Result};
+use super::{chats::Chats, downloads::Downloads, search::Search};
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
-use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
+use std::path::PathBuf;
 use std::rc::Rc;
-use std::{cell::RefCell, path::PathBuf, sync::mpsc::channel};
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
@@ -51,10 +50,7 @@ pub struct Store {
 
     pub search: Search,
     pub downloads: Downloads,
-
-    /// Locally saved chats
-    pub saved_chats: Vec<RefCell<Chat>>,
-    pub current_chat_id: Option<ChatID>,
+    pub chats: Chats,
 
     pub preferences: Preferences,
     pub downloaded_files_dir: PathBuf,
@@ -75,10 +71,8 @@ impl Store {
             backend: backend.clone(),
 
             search: Search::new(backend.clone()),
-            downloads: Downloads::new(backend),
-
-            saved_chats: vec![],
-            current_chat_id: None,
+            downloads: Downloads::new(backend.clone()),
+            chats: Chats::new(backend),
 
             preferences: Preferences::load(),
             downloaded_files_dir,
@@ -88,6 +82,12 @@ impl Store {
 
         store.search.load_featured_models();
         store
+    }
+
+    pub fn load_model(&mut self, file: &File) {
+        if self.chats.load_model(file).is_ok() {
+            self.preferences.set_current_chat_model(file.id.clone());
+        }
     }
 
     /// This function combines the search results information for a given model
@@ -104,6 +104,7 @@ impl Store {
                     .find(|d| d.file.id == file.id)
                     .cloned();
                 let is_current_chat = self
+                    .chats
                     .get_current_chat()
                     .map_or(false, |c| c.borrow().file_id == file.id);
 
@@ -151,116 +152,6 @@ impl Store {
         Ok(())
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////
-    // Functions related with model's chat                                           //
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    pub fn load_model(&mut self, file: &File) {
-        let (tx, rx) = channel();
-        let cmd = Command::LoadModel(
-            file.id.clone(),
-            LoadModelOptions {
-                prompt_template: None,
-                gpu_layers: moxin_protocol::protocol::GPULayers::Max,
-                use_mlock: false,
-                n_batch: 512,
-                n_ctx: 512,
-                rope_freq_scale: 0.0,
-                rope_freq_base: 0.0,
-                context_overflow_policy:
-                    moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
-            },
-            tx,
-        );
-
-        self.backend.as_ref().command_sender.send(cmd).unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(response) => {
-                    let LoadModelResponse::Completed(_) = response else {
-                        eprintln!("Error loading model");
-                        return;
-                    };
-                    // TODO: Creating a new chat, maybe put in a method and save on disk or smth.
-                    let new_chat = RefCell::new(Chat::new(file.name.clone(), file.id.clone()));
-                    self.current_chat_id = Some(new_chat.borrow().id);
-                    self.saved_chats.push(new_chat);
-
-                    self.preferences.set_current_chat_model(file.id.clone());
-                }
-                Err(err) => eprintln!("Error loading model: {:?}", err),
-            }
-        };
-    }
-
-    pub fn get_current_chat(&self) -> Option<&RefCell<Chat>> {
-        if let Some(current_chat_id) = self.current_chat_id {
-            self.saved_chats
-                .iter()
-                .find(|c| c.borrow().id == current_chat_id)
-        } else {
-            None
-        }
-    }
-
-    pub fn send_chat_message(&mut self, prompt: String) {
-        if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut()
-                .send_message_to_model(prompt, &self.backend.as_ref());
-        }
-    }
-
-    pub fn cancel_chat_streaming(&mut self) {
-        if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut().cancel_streaming(&self.backend.as_ref());
-        }
-    }
-
-    pub fn delete_chat_message(&mut self, message_id: usize) {
-        if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut().delete_message(message_id);
-        }
-    }
-
-    pub fn edit_chat_message(
-        &mut self,
-        message_id: usize,
-        updated_message: String,
-        regenerate: bool,
-    ) {
-        if let Some(chat) = &mut self.get_current_chat() {
-            let mut chat = chat.borrow_mut();
-            if regenerate {
-                if chat.is_streaming {
-                    chat.cancel_streaming(&self.backend.as_ref());
-                }
-
-                chat.remove_messages_from(message_id);
-                chat.send_message_to_model(updated_message, &self.backend.as_ref());
-            } else {
-                chat.edit_message(message_id, updated_message);
-            }
-        }
-    }
-
-    pub fn eject_model(&mut self) -> Result<()> {
-        let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::EjectModel(tx))
-            .context("Failed to send eject model command")?;
-
-        let _ = rx
-            .recv()
-            .context("Failed to receive eject model response")?
-            .context("Eject model operation failed");
-
-        self.current_chat_id = None;
-        Ok(())
-    }
-
     pub fn process_event_signal(&mut self) {
         self.update_downloads();
         self.update_chat_messages();
@@ -282,7 +173,7 @@ impl Store {
     }
 
     fn update_chat_messages(&mut self) {
-        let Some(chat) = self.get_current_chat() else {
+        let Some(chat) = self.chats.get_current_chat() else {
             return;
         };
         chat.borrow_mut().update_messages();

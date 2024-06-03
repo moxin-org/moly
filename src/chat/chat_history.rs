@@ -1,6 +1,5 @@
-use crate::data::{chat::ChatID, store::Store};
-
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
+use crate::data::{chats::chat::ChatID, store::Store};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 
 use makepad_widgets::*;
 
@@ -93,13 +92,12 @@ pub struct ChatHistory {
 impl Widget for ChatHistory {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
+        let chats = &scope.data.get::<Store>().unwrap().chats;
 
-        let mut saved_chat_ids = store
+        let mut saved_chat_ids = chats
             .saved_chats
             .iter()
             .map(|c| c.borrow().id)
@@ -108,7 +106,7 @@ impl Widget for ChatHistory {
         // Reverse sort chat ids.
         saved_chat_ids.sort_by(|a, b| b.cmp(a));
 
-        let chats_count = store.saved_chats.len();
+        let chats_count = chats.saved_chats.len();
 
         while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
@@ -130,10 +128,6 @@ impl Widget for ChatHistory {
     }
 }
 
-impl WidgetMatchEvent for ChatHistory {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {}
-}
-
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatCard {
     #[deref]
@@ -151,12 +145,13 @@ impl Widget for ChatCard {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
         let chat = store
+            .chats
             .saved_chats
             .iter()
             .find(|c| c.borrow().id == self.chat_id)
             .unwrap();
 
-        if let Some(current_chat_id) = store.current_chat_id {
+        if let Some(current_chat_id) = store.chats.current_chat_id {
             let content_view = self.view(id!(content));
 
             if current_chat_id == self.chat_id {
@@ -215,7 +210,7 @@ impl WidgetMatchEvent for ChatCard {
 
         if let Some(fe) = self.view(id!(content)).finger_down(actions) {
             if fe.tap_count == 1 {
-                store.current_chat_id = Some(self.chat_id);
+                store.chats.current_chat_id = Some(self.chat_id);
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
@@ -242,14 +237,6 @@ impl ChatCardRef {
 
         inner.set_chat_id(id);
         Ok(())
-    }
-
-    pub fn get_chat_id(&mut self) -> Result<ChatID, &'static str> {
-        let Some(inner) = self.borrow_mut() else {
-            return Err("Widget not found in the document");
-        };
-
-        Ok(inner.chat_id)
     }
 }
 
