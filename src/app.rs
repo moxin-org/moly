@@ -203,13 +203,13 @@ impl MatchEvent for App {
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 StoreAction::Search(keywords) => {
-                    self.store.load_search_results(keywords);
+                    self.store.search.load_search_results(keywords);
                 }
                 StoreAction::ResetSearch => {
-                    self.store.load_featured_models();
+                    self.store.search.load_featured_models();
                 }
                 StoreAction::Sort(criteria) => {
-                    self.store.sort_models(criteria);
+                    self.store.search.sort_models(criteria);
                 }
                 _ => {}
             }

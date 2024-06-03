@@ -1,4 +1,4 @@
-use crate::data::store::{SortCriteria, StoreAction};
+use crate::data::{search::SortCriteria, store::StoreAction};
 use makepad_widgets::*;
 
 live_design! {

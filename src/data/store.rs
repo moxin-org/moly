@@ -2,21 +2,18 @@ use super::chat::ChatID;
 use super::download::DownloadState;
 use super::filesystem::{project_dirs, setup_model_downloads_folder};
 use super::preferences::Preferences;
+use super::search::SortCriteria;
 use super::{chat::Chat, download::Download, search::Search};
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{
-    Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload, PendingDownloadsStatus
+    Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload, PendingDownloadsStatus,
 };
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    path::PathBuf,
-    sync::mpsc::channel,
-};
+use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap, path::PathBuf, sync::mpsc::channel};
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
@@ -26,15 +23,6 @@ pub enum StoreAction {
     ResetSearch,
     Sort(SortCriteria),
     None,
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub enum SortCriteria {
-    #[default]
-    MostDownloads,
-    LeastDownloads,
-    MostLikes,
-    LeastLikes,
 }
 
 #[derive(Clone, Debug)]
@@ -68,15 +56,14 @@ pub enum DownloadPendingNotification {
 pub struct Store {
     /// This is the backend representation, including the sender and receiver ends of the channels to
     /// communicate with the backend thread.
-    pub backend: Backend,
-
-    /// Local cache of search results and downloaded files
-    pub models: Vec<Model>,
-    pub downloaded_files: Vec<DownloadedFile>,
-    pub pending_downloads: Vec<PendingDownload>,
+    pub backend: Rc<Backend>,
 
     pub search: Search,
-    pub sorted_by: SortCriteria,
+
+    /// Local cache of search results and downloaded files
+    //pub models: Vec<Model>,
+    pub downloaded_files: Vec<DownloadedFile>,
+    pub pending_downloads: Vec<PendingDownload>,
 
     /// Locally saved chats
     pub saved_chats: Vec<RefCell<Chat>>,
@@ -92,22 +79,20 @@ impl Store {
         let downloaded_files_dir = setup_model_downloads_folder();
         let app_data_dir = project_dirs().data_dir();
 
-        let backend = Backend::new(
+        let backend = Rc::new(Backend::new(
             app_data_dir,
             downloaded_files_dir.clone(),
             DEFAULT_MAX_DOWNLOAD_THREADS,
-        );
+        ));
+
         let mut store = Self {
-            backend,
-            // Initialize the local cache with empty values
-            models: vec![],
+            backend: backend.clone(),
 
             // TODO we should unify those two into a single struct
             downloaded_files: vec![],
             pending_downloads: vec![],
 
-            search: Search::new(),
-            sorted_by: SortCriteria::MostDownloads,
+            search: Search::new(backend),
             saved_chats: vec![],
             current_chat_id: None,
             current_downloads: HashMap::new(),
@@ -118,43 +103,13 @@ impl Store {
         store.load_downloaded_files();
         store.load_pending_downloads();
 
-        store.load_featured_models();
-
-        store.sort_models(SortCriteria::MostDownloads);
+        store.search.load_featured_models();
         store
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
     // Functions related with models search                                          //
     ///////////////////////////////////////////////////////////////////////////////////
-
-    pub fn load_featured_models(&mut self) {
-        self.search.load_featured_models(&self.backend);
-    }
-
-    pub fn load_search_results(&mut self, query: String) {
-        self.search.run_or_enqueue(query.clone(), &self.backend);
-    }
-
-    pub fn sort_models(&mut self, criteria: SortCriteria) {
-        match criteria {
-            SortCriteria::MostDownloads => {
-                self.models
-                    .sort_by(|a, b| b.download_count.cmp(&a.download_count));
-            }
-            SortCriteria::LeastDownloads => {
-                self.models
-                    .sort_by(|a, b| a.download_count.cmp(&b.download_count));
-            }
-            SortCriteria::MostLikes => {
-                self.models.sort_by(|a, b| b.like_count.cmp(&a.like_count));
-            }
-            SortCriteria::LeastLikes => {
-                self.models.sort_by(|a, b| a.like_count.cmp(&b.like_count));
-            }
-        }
-        self.sorted_by = criteria;
-    }
 
     /// This function combines the search results information for a given model
     /// with the download information for the files of that model.
@@ -170,7 +125,6 @@ impl Store {
                     .cloned();
                 let is_current_chat = self
                     .get_current_chat()
-                    //.as_ref()
                     .map_or(false, |c| c.borrow().file_id == file.id);
 
                 FileWithDownloadInfo {
@@ -196,37 +150,6 @@ impl Store {
         }
     }
 
-    pub fn search_is_loading(&self) -> bool {
-        self.search.is_pending()
-    }
-
-    pub fn search_is_errored(&self) -> bool {
-        self.search.was_error()
-    }
-
-    fn set_models(&mut self, models: Vec<Model>) {
-        #[cfg(not(debug_assertions))]
-        {
-            self.models = models;
-        }
-        #[cfg(debug_assertions)]
-        'debug_block: {
-            use super::faked_models::get_faked_models;
-
-            let fill_fake_data = std::env::var("FILL_FAKE_DATA").is_ok_and(|fill_fake_data| {
-                ["true", "t", "1"].iter().any(|&s| s == fill_fake_data)
-            });
-
-            if !fill_fake_data {
-                self.models = models;
-                break 'debug_block;
-            }
-
-            let faked_models: Vec<Model> = get_faked_models(&models);
-            self.models = faked_models;
-        }
-    }
-
     ///////////////////////////////////////////////////////////////////////////////////
     // Functions related with model file downloads                                   //
     ///////////////////////////////////////////////////////////////////////////////////
@@ -234,6 +157,7 @@ impl Store {
     pub fn load_downloaded_files(&mut self) {
         let (tx, rx) = channel();
         self.backend
+            .as_ref()
             .command_sender
             .send(Command::GetDownloadedFiles(tx))
             .unwrap();
@@ -251,6 +175,7 @@ impl Store {
     pub fn load_pending_downloads(&mut self) {
         let (tx, rx) = channel();
         self.backend
+            .as_ref()
             .command_sender
             .send(Command::GetCurrentDownloads(tx))
             .unwrap();
@@ -296,13 +221,14 @@ impl Store {
 
         self.current_downloads.insert(
             file_id.clone(),
-            Download::new(file, model, current_progress, &self.backend),
+            Download::new(file, model, current_progress, &self.backend.as_ref()),
         );
     }
 
     pub fn pause_download_file(&mut self, file_id: FileID) {
         let (tx, rx) = channel();
         self.backend
+            .as_ref()
             .command_sender
             .send(Command::PauseDownload(file_id.clone(), tx))
             .unwrap();
@@ -321,6 +247,7 @@ impl Store {
     pub fn cancel_download_file(&mut self, file_id: FileID) {
         let (tx, rx) = channel();
         self.backend
+            .as_ref()
             .command_sender
             .send(Command::CancelDownload(file_id.clone(), tx))
             .unwrap();
@@ -339,6 +266,7 @@ impl Store {
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
         let (tx, rx) = channel();
         self.backend
+            .as_ref()
             .command_sender
             .send(Command::DeleteFile(file_id.clone(), tx))
             .context("Failed to send delete file command")?;
@@ -347,7 +275,8 @@ impl Store {
             .context("Failed to receive delete file response")?
             .context("Delete file operation failed")?;
 
-        self.update_downloaded_file_in_search_results(&file_id, false);
+        self.search
+            .update_downloaded_file_in_search_results(&file_id, false);
         self.load_downloaded_files();
         self.load_pending_downloads();
         SignalToUI::set_ui_signal();
@@ -376,33 +305,14 @@ impl Store {
             .next()
     }
 
-    fn update_downloaded_file_in_search_results(&mut self, file_id: &FileID, downloaded: bool) {
-        let model = self
-            .models
-            .iter_mut()
-            .find(|m| m.files.iter().any(|f| f.id == *file_id));
-        if let Some(model) = model {
-            let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
-            file.downloaded = downloaded;
-        }
-    }
-
     fn get_model_and_file_download(&self, file_id: &str) -> (Model, File) {
         if let Some(result) = self.get_model_and_file_for_pending_download(file_id) {
             result
         } else {
-            self.get_model_and_file_from_search_results(file_id)
+            self.search
+                .get_model_and_file_from_search_results(file_id)
                 .unwrap()
         }
-    }
-
-    fn get_model_and_file_from_search_results(&self, file_id: &str) -> Option<(Model, File)> {
-        self.models.iter().find_map(|m| {
-            m.files
-                .iter()
-                .find(|f| f.id == file_id)
-                .map(|f| (m.clone(), f.clone()))
-        })
     }
 
     fn get_model_and_file_for_pending_download(&self, file_id: &str) -> Option<(Model, File)> {
@@ -437,7 +347,7 @@ impl Store {
             tx,
         );
 
-        self.backend.command_sender.send(cmd).unwrap();
+        self.backend.as_ref().command_sender.send(cmd).unwrap();
 
         if let Ok(response) = rx.recv() {
             match response {
@@ -471,13 +381,13 @@ impl Store {
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(chat) = self.get_current_chat() {
             chat.borrow_mut()
-                .send_message_to_model(prompt, &self.backend);
+                .send_message_to_model(prompt, &self.backend.as_ref());
         }
     }
 
     pub fn cancel_chat_streaming(&mut self) {
         if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut().cancel_streaming(&self.backend);
+            chat.borrow_mut().cancel_streaming(&self.backend.as_ref());
         }
     }
 
@@ -497,11 +407,11 @@ impl Store {
             let mut chat = chat.borrow_mut();
             if regenerate {
                 if chat.is_streaming {
-                    chat.cancel_streaming(&self.backend);
+                    chat.cancel_streaming(&self.backend.as_ref());
                 }
 
                 chat.remove_messages_from(message_id);
-                chat.send_message_to_model(updated_message, &self.backend);
+                chat.send_message_to_model(updated_message, &self.backend.as_ref());
             } else {
                 chat.edit_message(message_id, updated_message);
             }
@@ -511,6 +421,7 @@ impl Store {
     pub fn eject_model(&mut self) -> Result<()> {
         let (tx, rx) = channel();
         self.backend
+            .as_ref()
             .command_sender
             .send(Command::EjectModel(tx))
             .context("Failed to send eject model command")?;
@@ -538,16 +449,15 @@ impl Store {
     }
 
     fn update_search_results(&mut self) {
-        match self.search.process_results(&self.backend) {
+        match self.search.process_results() {
             Ok(Some(models)) => {
-                self.set_models(models);
-                self.sort_models(self.sorted_by);
+                self.search.set_models(models);
             }
             Ok(None) => {
                 // No results arrived, do nothing
             }
             Err(_) => {
-                self.set_models(vec![]);
+                self.search.set_models(vec![]);
             }
         }
     }
@@ -593,8 +503,8 @@ impl Store {
         // For search results let's trust on our local cache, but updating
         // the downloaded state of the files
         for file_id in completed_download_ids {
-            self.update_downloaded_file_in_search_results(&file_id, true);
+            self.search
+                .update_downloaded_file_in_search_results(&file_id, true);
         }
     }
-
 }

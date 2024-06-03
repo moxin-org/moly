@@ -446,7 +446,7 @@ impl Widget for ModelCardViewAllModal {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let model = store.models.iter().find(|model| model.id == self.model_id);
+        let model = store.search.models.iter().find(|model| model.id == self.model_id);
 
         if let Some(model) = model {
             let name = &model.name;

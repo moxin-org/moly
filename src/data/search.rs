@@ -3,9 +3,18 @@ use makepad_widgets::SignalToUI;
 use moxin_backend::Backend;
 use moxin_protocol::data::*;
 use moxin_protocol::protocol::Command;
+use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 
+#[derive(Clone, Copy, Debug, Default)]
+pub enum SortCriteria {
+    #[default]
+    MostDownloads,
+    LeastDownloads,
+    MostLikes,
+    LeastLikes,
+}
 pub enum SearchAction {
     Results(Vec<Model>),
     Error,
@@ -25,6 +34,9 @@ pub enum SearchState {
     Errored,
 }
 pub struct Search {
+    pub backend: Rc<Backend>,
+    pub models: Vec<Model>,
+    pub sorted_by: SortCriteria,
     pub keyword: Option<String>,
     pub sender: Sender<SearchAction>,
     pub receiver: Receiver<SearchAction>,
@@ -33,14 +45,17 @@ pub struct Search {
 
 impl Default for Search {
     fn default() -> Self {
-        Search::new()
+        Search::new(Rc::default())
     }
 }
 
 impl Search {
-    pub fn new() -> Self {
+    pub fn new(backend: Rc<Backend>) -> Self {
         let (tx, rx) = channel();
         let search = Self {
+            backend,
+            models: Vec::new(),
+            sorted_by: SortCriteria::MostDownloads,
             keyword: None,
             sender: tx,
             receiver: rx,
@@ -49,7 +64,7 @@ impl Search {
         search
     }
 
-    pub fn load_featured_models(&mut self, backend: &Backend) {
+    pub fn load_featured_models(&mut self) {
         match self.state {
             SearchState::Pending(_, ref mut next_command) => {
                 *next_command = Some(SearchCommand::LoadFeaturedModels);
@@ -64,7 +79,8 @@ impl Search {
         let (tx, rx) = channel();
 
         let store_search_tx = self.sender.clone();
-        backend
+        self.backend
+            .as_ref()
             .command_sender
             .send(Command::GetFeaturedModels(tx))
             .unwrap();
@@ -85,7 +101,11 @@ impl Search {
         });
     }
 
-    pub fn run_or_enqueue(&mut self, keyword: String, backend: &Backend) {
+    pub fn load_search_results(&mut self, query: String) {
+        self.run_or_enqueue(query);
+    }
+
+    fn run_or_enqueue(&mut self, keyword: String) {
         match self.state {
             SearchState::Pending(_, ref mut next_command) => {
                 *next_command = Some(SearchCommand::Search(keyword));
@@ -99,7 +119,8 @@ impl Search {
         let (tx, rx) = channel();
 
         let store_search_tx = self.sender.clone();
-        backend
+        self.backend
+            .as_ref()
             .command_sender
             .send(Command::SearchModels(keyword.clone(), tx))
             .unwrap();
@@ -120,7 +141,52 @@ impl Search {
         });
     }
 
-    pub fn process_results(&mut self, backend: &Backend) -> Result<Option<Vec<Model>>> {
+    pub fn sort_models(&mut self, criteria: SortCriteria) {
+        match criteria {
+            SortCriteria::MostDownloads => {
+                self.models
+                    .sort_by(|a, b| b.download_count.cmp(&a.download_count));
+            }
+            SortCriteria::LeastDownloads => {
+                self.models
+                    .sort_by(|a, b| a.download_count.cmp(&b.download_count));
+            }
+            SortCriteria::MostLikes => {
+                self.models.sort_by(|a, b| b.like_count.cmp(&a.like_count));
+            }
+            SortCriteria::LeastLikes => {
+                self.models.sort_by(|a, b| a.like_count.cmp(&b.like_count));
+            }
+        }
+        self.sorted_by = criteria;
+    }
+
+    pub fn set_models(&mut self, models: Vec<Model>) {
+        #[cfg(not(debug_assertions))]
+        {
+            self.models = models;
+        }
+        #[cfg(debug_assertions)]
+        'debug_block: {
+            use super::faked_models::get_faked_models;
+
+            let fill_fake_data = std::env::var("FILL_FAKE_DATA").is_ok_and(|fill_fake_data| {
+                ["true", "t", "1"].iter().any(|&s| s == fill_fake_data)
+            });
+
+            if !fill_fake_data {
+                self.models = models;
+                break 'debug_block;
+            }
+
+            let faked_models: Vec<Model> = get_faked_models(&models);
+            self.models = faked_models;
+        }
+
+        self.sort_models(self.sorted_by);
+    }
+
+    pub fn process_results(&mut self) -> Result<Option<Vec<Model>>> {
         for msg in self.receiver.try_iter() {
             match msg {
                 SearchAction::Results(models) => {
@@ -134,10 +200,10 @@ impl Search {
 
                         match next_command {
                             Some(SearchCommand::Search(next_keyword)) => {
-                                self.run_or_enqueue(next_keyword.clone(), backend);
+                                self.run_or_enqueue(next_keyword.clone());
                             }
                             Some(SearchCommand::LoadFeaturedModels) => {
-                                self.load_featured_models(backend);
+                                self.load_featured_models();
                             }
                             None => {}
                         }
@@ -152,7 +218,7 @@ impl Search {
                 }
             }
         }
-        return Ok(None)
+        return Ok(None);
     }
 
     pub fn is_pending(&self) -> bool {
@@ -161,5 +227,25 @@ impl Search {
 
     pub fn was_error(&self) -> bool {
         matches!(self.state, SearchState::Errored)
+    }
+
+    pub fn update_downloaded_file_in_search_results(&mut self, file_id: &FileID, downloaded: bool) {
+        let model = self
+            .models
+            .iter_mut()
+            .find(|m| m.files.iter().any(|f| f.id == *file_id));
+        if let Some(model) = model {
+            let file = model.files.iter_mut().find(|f| f.id == *file_id).unwrap();
+            file.downloaded = downloaded;
+        }
+    }
+
+    pub fn get_model_and_file_from_search_results(&self, file_id: &str) -> Option<(Model, File)> {
+        self.models.iter().find_map(|m| {
+            m.files
+                .iter()
+                .find(|f| f.id == file_id)
+                .map(|f| (m.clone(), f.clone()))
+        })
     }
 }
