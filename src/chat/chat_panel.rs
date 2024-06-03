@@ -28,12 +28,13 @@ live_design! {
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
     ChatAgentAvatar = <RoundedView> {
-        width: 20,
-        height: 20,
+        width: 24,
+        height: 24,
 
         show_bg: true,
         draw_bg: {
-            color: #444D9A
+            color: #444D9A,
+            radius: 6,
         }
 
         align: {x: 0.5, y: 0.5},

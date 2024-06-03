@@ -132,12 +132,12 @@ live_design! {
     ChatLineBody = <View> {
         width: Fill,
         height: Fit,
-        spacing: 5,
+        spacing: 12,
         flow: Down,
 
         <View> {
             height: 20,
-            align: {x: 0.0, y: 0.5},
+            align: {x: 0.0, y: 0.85},
 
             role = <Label> {
                 width: Fit,
@@ -160,7 +160,7 @@ live_design! {
             width: Fill,
             height: Fit,
             flow: Down,
-            padding: 18,
+            padding: {left: 16, right: 18, top: 18, bottom: 14},
             align: {x: 0.5, y: 0.0},
 
             input_container = <View> {
@@ -238,7 +238,7 @@ live_design! {
         avatar_section = <View> {
             width: Fit,
             height: Fit,
-            margin: {left: 20, right: 20},
+            margin: {left: 20, right: 12},
         }
 
         main_section = <View> {
