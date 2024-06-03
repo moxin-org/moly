@@ -1,3 +1,5 @@
+mod faked_models;
+
 use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
 use moxin_backend::Backend;
@@ -168,7 +170,7 @@ impl Search {
         }
         #[cfg(debug_assertions)]
         'debug_block: {
-            use super::faked_models::get_faked_models;
+            use faked_models::get_faked_models;
 
             let fill_fake_data = std::env::var("FILL_FAKE_DATA").is_ok_and(|fill_fake_data| {
                 ["true", "t", "1"].iter().any(|&s| s == fill_fake_data)
