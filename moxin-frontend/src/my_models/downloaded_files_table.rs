@@ -138,7 +138,6 @@ impl Widget for DownloadedFilesTable {
 
                         let props = DownloadedFilesRowProps {
                             downloaded_file: file_data.clone(),
-                            show_separator: item_id != last_item_id,
                             show_resume: is_model_file_loaded,
                         };
                         let mut scope = Scope::with_props(&props);
