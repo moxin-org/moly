@@ -52,10 +52,39 @@ live_design! {
 
     UserChatLine = <ChatLine> {
         avatar_section = {
-            <Image> {
-                source: dep("crate://self/resources/images/chat_user_icon.png"),
-                width: 20,
-                height: 20,
+            visible: false,
+        }
+        main_section = {
+            body_section = {
+                align: {x: 1.0, y: 0.5},
+                role_layout = {
+                    visible: false,
+                }
+                bubble = {
+                    margin: {left: 100}
+                    draw_bg: {
+                        color: #15859A
+                    }
+                    plain_text_message_container = {
+                        plain_text_message = {
+                            draw_text: {
+                                color: #fff
+                            }
+                        }
+                    }
+                    input_container = {
+                        input = {
+                            draw_bg: {
+                                color: #15859A
+                            }
+                            draw_text: {
+                                fn get_color(self) -> vec4 {
+                                    return #fff;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -467,7 +496,6 @@ impl Widget for ChatPanel {
                         } else {
                             item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
                             chat_line_item = item.as_chat_line();
-                            chat_line_item.set_role("You");
                             chat_line_item.set_regenerate_enabled(true);
                         };
 

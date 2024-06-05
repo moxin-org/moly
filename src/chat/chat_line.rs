@@ -135,7 +135,7 @@ live_design! {
         spacing: 12,
         flow: Down,
 
-        <View> {
+        role_layout = <View> {
             height: 20,
             align: {x: 0.0, y: 0.85},
 
@@ -149,7 +149,7 @@ live_design! {
             }
         }
 
-        <RoundedView> {
+        bubble = <RoundedView> {
             show_bg: true,
             draw_bg: {
                 border_width: 1.25,
