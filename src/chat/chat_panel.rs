@@ -148,7 +148,7 @@ live_design! {
         align: {x: 0.0, y: 1.0},
 
         draw_bg: {
-            radius: 2.0,
+            radius: 10.0,
             border_color: #D0D5DD,
             border_width: 1.0,
         }
@@ -159,6 +159,7 @@ live_design! {
 
             empty_message: "Enter a message"
             draw_bg: {
+                radius: 30.0
                 color: #fff
             }
             draw_text: {
@@ -180,6 +181,7 @@ live_design! {
             height: 28,
             show_bg: true,
             draw_bg: {
+                radius: 7.0,
                 color: #D0D5DD
             }
 
