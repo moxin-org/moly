@@ -50,12 +50,12 @@ live_design! {
                     draw_bg: {
                         radius: 8
                     }
-                    avatar_label: {
+                    avatar_label = {
                         text: ""
                     }
                 }
 
-                filler = <View> {widht: Fill}
+                filler = <View> {width: Fill}
 
                 date = <Label> {
                     width: Fit,
