@@ -11,6 +11,8 @@ live_design! {
     import crate::shared::styles::*;
     import makepad_draw::shader::std::*;
 
+    import crate::chat::chat_panel::ChatAgentAvatar;
+
     ChatCard = {{ChatCard}} {
         content = <RoundedView> {
             flow: Down
@@ -21,7 +23,10 @@ live_design! {
 
             cursor: Hand
 
-            draw_bg: { color: #fff }
+            draw_bg: {
+                color: #fff
+                border_width: 1
+            }
 
             title = <Label> {
                 width: Fit,
@@ -36,13 +41,27 @@ live_design! {
             <View> {
                 width: Fill
                 height: Fit
-                align: {x: 1}
+                align: {y: 1}
+
+                avatar = <ChatAgentAvatar> {
+                    width: 30
+                    height: 30
+
+                    draw_bg: {
+                        radius: 8
+                    }
+                    avatar_label: {
+                        text: ""
+                    }
+                }
+
+                filler = <View> {widht: Fill}
 
                 date = <Label> {
                     width: Fit,
                     height: Fit,
                     draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 8},
+                        text_style: <REGULAR_FONT>{font_size: 10},
                         color: #667085,
                     }
                     text: "5:29 PM, 5/12/24"
@@ -145,14 +164,15 @@ impl Widget for ChatCard {
                 content_view.apply_over(
                     cx,
                     live! {
-                        draw_bg: {border_color: (active_border_color), border_width: 1}
+                        draw_bg: {border_color: (active_border_color)}
                     },
                 );
             } else {
+                let border_color = vec3(0.918, 0.925, 0.941);
                 content_view.apply_over(
                     cx,
                     live! {
-                        draw_bg: {border_width: 0}
+                        draw_bg: {border_color: (border_color)}
                     },
                 );
             }
@@ -160,6 +180,18 @@ impl Widget for ChatCard {
 
         let title_label = self.view.label(id!(title));
         title_label.set_text(chat.borrow_mut().get_title());
+
+        let initial_letter = chat
+            .borrow()
+            .model_filename
+            .chars()
+            .next()
+            .unwrap_or_default()
+            .to_uppercase()
+            .to_string();
+
+        let avatar_label = self.view.label(id!(avatar.avatar_label));
+        avatar_label.set_text(&initial_letter);
 
         let date_label = self.view.label(id!(date));
 
