@@ -220,7 +220,7 @@ impl Search {
                 }
             }
         }
-        return Ok(None);
+        Ok(None)
     }
 
     pub fn is_pending(&self) -> bool {
