@@ -17,7 +17,7 @@ First, [install Rust](https://www.rust-lang.org/tools/install).
 Then, install the required WasmEdge WASM runtime:
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash
 
 source $HOME/.wasmedge/env
 ```
