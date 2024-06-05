@@ -184,7 +184,6 @@ live_design! {
 
 pub struct DownloadedFilesRowProps {
     pub downloaded_file: DownloadedFile,
-    pub show_separator: bool,
     pub show_resume: bool,
 }
 
@@ -248,8 +247,6 @@ impl Widget for DownloadedFilesRow {
 
         self.button(id!(start_chat_button)).set_visible(!props.show_resume);
         self.button(id!(resume_chat_button)).set_visible(props.show_resume);
-
-        self.view(id!(separator_line)).set_visible(props.show_separator);
 
         self.view.draw_walk(cx, scope, walk)
     }
