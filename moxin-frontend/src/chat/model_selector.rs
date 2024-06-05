@@ -156,6 +156,17 @@ impl Widget for ModelSelector {
                 self.redraw(cx);
             }
         }
+
+        if let Event::MouseDown(e) = event {
+            if self.open {
+                let hovered = self.view.area().rect(cx).contains(e.abs);
+                if !hovered {
+                    self.open = false;
+                    self.hide_animation_timer = cx.start_timeout(0.3);
+                    self.animator_play(cx, id!(open.hide));
+                }
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
