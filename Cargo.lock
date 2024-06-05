@@ -1186,6 +1186,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "moxin"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "lipsum",
+ "makepad-widgets",
+ "moxin-backend",
+ "moxin-fake-backend",
+ "moxin-protocol",
+ "rand",
+ "robius-open",
+ "serde",
+ "serde_json",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "moxin-backend"
 version = "0.1.0"
 dependencies = [
@@ -1210,24 +1228,6 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "moxin-protocol",
-]
-
-[[package]]
-name = "moxin-frontend"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "lipsum",
- "makepad-widgets",
- "moxin-backend",
- "moxin-fake-backend",
- "moxin-protocol",
- "rand",
- "robius-open",
- "serde",
- "serde_json",
- "unicode-segmentation",
 ]
 
 [[package]]

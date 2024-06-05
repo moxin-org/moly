@@ -17,9 +17,14 @@ First, [install Rust](https://www.rust-lang.org/tools/install).
 Then, install the required WasmEdge WASM runtime:
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasi_nn-ggml
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash
 
 source $HOME/.wasmedge/env
+```
+
+Obtain the source code from this repository:
+```sh
+git clone https://github.com/moxin-org/moxin.git
 ```
 
 ### macOS
@@ -27,7 +32,7 @@ source $HOME/.wasmedge/env
 Then, on a standard desktop platform (macOS), simply run:
 
 ```sh
-cd ~/moxin
+cd moxin
 cargo run
 ```
 
@@ -50,6 +55,6 @@ sudo apt-get install libxcursor-dev libx11-dev libasound2-dev libpulse-dev
 Then, run:
 
 ```sh
-cd ~/moxin
+cd moxin
 cargo run
 ```
