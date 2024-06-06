@@ -366,6 +366,9 @@ live_design! {
 
                 flow: Overlay
                 chat = <PortalList> {
+                    scroll_bar: {
+                        bar_size: 0.0,
+                    }
                     width: Fill,
                     height: Fill,
 
