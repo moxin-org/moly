@@ -10,7 +10,10 @@ pub struct Backend {
 
 impl Default for Backend {
     fn default() -> Self {
-        Backend::new(".".to_string(), ".".to_string(), 3)
+        // Backend::new(".".to_string(), ".".to_string(), 3)
+        // KEVIN
+        let home = std::env::var("HOME").expect("HOME env var was not set");
+        Backend::new(home.clone(), home, 3)
     }
 }
 
