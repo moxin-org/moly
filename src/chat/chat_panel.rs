@@ -65,6 +65,33 @@ live_design! {
                     draw_bg: {
                         color: #15859A
                     }
+                    markdown_message_container = {
+                        markdown_message = {
+                            draw_normal: {
+                                color: (#fff),
+                            }
+                            draw_italic: {
+                                color: (#fff),
+                            }
+                            draw_bold: {
+                                color: (#fff),
+                            }
+                            draw_bold_italic: {
+                                color: (#fff),
+                            }
+                            draw_fixed: {
+                                color: (#fff),
+                            }
+                            draw_block: {
+                                line_color: (#fff)
+                                sep_color: (#12778a)
+                                quote_bg_color: (#12778a)
+                                quote_fg_color: (#106a7b)
+                                block_color: (#12778a)
+                                code_color: (#12778a)
+                            }
+                        }
+                    }
                     plain_text_message_container = {
                         plain_text_message = {
                             draw_text: {
@@ -100,6 +127,13 @@ live_design! {
                         border_width: 1.0,
                         border_color: #D0D5DD,
                         color: #F9FAFB
+                    }
+                    input_container = {
+                        input = {
+                            draw_bg: {
+                                color: #F9FAFB
+                            }
+                        }
                     }
                 }
             }

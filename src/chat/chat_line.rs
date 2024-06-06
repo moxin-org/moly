@@ -69,7 +69,7 @@ live_design! {
     LINE_SPACING = 8.0
     BLOCK_LINE_SPACING = 12.0
 
-    MessageText = <Markdown>{
+    MessageText = <Markdown> {
         padding: 0,
         line_spacing: (LINE_SPACING),
         paragraph_spacing: 20.0,
