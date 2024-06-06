@@ -64,7 +64,6 @@ live_design! {
         }
     }
 
-    MESSAGE_TEXT_COLOR = #000
     TEXT_HEIGHT_FACTOR = 1.3
     LINE_SPACING = 8.0
     BLOCK_LINE_SPACING = 12.0
@@ -76,32 +75,19 @@ live_design! {
         width: Fill, height: Fit,
         font_size: 10.0,
         draw_normal: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_italic: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_bold: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_bold_italic: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_fixed: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_block: {
-            line_color: (MESSAGE_TEXT_COLOR)
-            sep_color: (#EDEDED)
-            quote_bg_color: (#EDEDED)
-            quote_fg_color: (#969696)
-            block_color: (#EDEDED)
-            code_color: (#EDEDED)
         }
         list_item_layout: { line_spacing: 5.0, padding: {left: 10.0, right:10, top: 6.0, bottom: 0}, }
         list_item_walk:{margin:0, height:Fit, width:Fill}
@@ -115,9 +101,6 @@ live_design! {
         padding: 0,
         empty_message: ""
 
-        draw_bg: {
-            color: #fff
-        }
         draw_text: {
             text_style:<REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
             word: Wrap,

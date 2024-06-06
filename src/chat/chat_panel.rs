@@ -128,6 +128,33 @@ live_design! {
                         border_color: #D0D5DD,
                         color: #F9FAFB
                     }
+                    markdown_message_container = {
+                        markdown_message = {
+                            draw_normal: {
+                                color: (#000),
+                            }
+                            draw_italic: {
+                                color: (#000),
+                            }
+                            draw_bold: {
+                                color: (#000),
+                            }
+                            draw_bold_italic: {
+                                color: (#000),
+                            }
+                            draw_fixed: {
+                                color: (#000),
+                            }
+                            draw_block: {
+                                line_color: (#000)
+                                sep_color: (#EDEDED)
+                                quote_bg_color: (#EDEDED)
+                                quote_fg_color: (#969696)
+                                block_color: (#EDEDED)
+                                code_color: (#EDEDED)
+                            }
+                        }
+                    }
                     input_container = {
                         input = {
                             draw_bg: {
