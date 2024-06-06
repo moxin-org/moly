@@ -51,6 +51,7 @@ live_design! {
     }
 
     UserChatLine = <ChatLine> {
+        margin: {left: 100}
         avatar_section = {
             visible: false,
         }
@@ -61,7 +62,6 @@ live_design! {
                     visible: false,
                 }
                 bubble = {
-                    margin: {left: 100}
                     draw_bg: {
                         color: #15859A
                     }
@@ -92,6 +92,17 @@ live_design! {
     ModelChatLine = <ChatLine> {
         avatar_section = {
             <ChatAgentAvatar> {}
+        }
+        main_section = {
+            body_section = {
+                bubble = {
+                    draw_bg: {
+                        border_width: 1.0,
+                        border_color: #D0D5DD,
+                        color: #F9FAFB
+                    }
+                }
+            }
         }
     }
 
@@ -168,7 +179,7 @@ live_design! {
                 instance prompt_enabled: 0.0
                 fn get_color(self) -> vec4 {
                     return mix(
-                        #D0D5DD,
+                        #98A2B3,
                         #000,
                         self.prompt_enabled
                     )

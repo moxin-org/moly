@@ -152,8 +152,6 @@ live_design! {
         bubble = <RoundedView> {
             show_bg: true,
             draw_bg: {
-                border_width: 1.25,
-                border_color: #D0D5DD,
                 radius: 12.0,
             },
 
