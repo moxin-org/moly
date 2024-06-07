@@ -1,35 +1,29 @@
-use std::path::PathBuf;
-use std::{env, fs};
+use std::{path::PathBuf, sync::OnceLock};
+use directories::ProjectDirs;
 
-// Note that .moxin will create a hidden folder in unix-like systems.
-// However in Windows the folder will be visible by default.
-pub const DEFAULT_DOWNLOADS_DIR: &str = ".moxin/model_downloads";
-pub const MOXIN_HOME_DIR: &str = ".moxin";
+pub const APP_QUALIFIER: &str = "com";
+pub const APP_ORGANIZATION: &str = "moxin-org";
+pub const APP_NAME: &str = "moxin";
 
-pub fn setup_model_downloads_folder() -> String {
-    let home_dir = home_dir();
-    let downloads_dir = PathBuf::from(home_dir).join(DEFAULT_DOWNLOADS_DIR);
+pub fn project_dirs() -> &'static ProjectDirs {
+    // This can be redesigned once std::sync::LazyLock is stabilized.
+    static MOXIN_PROJECT_DIRS: OnceLock<ProjectDirs> = OnceLock::new();
 
-    if fs::create_dir_all(&downloads_dir).is_err() {
-        eprintln!(
-            "Failed to create the model downloads directory at '{}'. Using current directory as fallback.",
-            downloads_dir.display()
-        );
-        ".".to_string()
-    } else {
-        downloads_dir.to_string_lossy().to_string()
-    }
+    MOXIN_PROJECT_DIRS.get_or_init(|| {
+        ProjectDirs::from(APP_QUALIFIER, APP_ORGANIZATION, APP_NAME)
+            .expect("Failed to obtain Moxin project directories")
+    })
 }
 
-fn home_dir() -> String {
-    // TODO: FIXME: use directories::ProjectDirs::data_dir() instead.
-    // <https://docs.rs/directories/latest/directories/struct.ProjectDirs.html#method.data_dir>
-    env::var("HOME") // Unix-like systems
-        .or_else(|_| env::var("USERPROFILE")) // Windows
-        .unwrap_or_else(|_| ".".to_string())
-}
+pub const MODEL_DOWNLOADS_DIR_NAME: &str = "model_downloads";
 
-pub fn moxin_home_dir() -> PathBuf {
-    let home_dir = home_dir();
-    PathBuf::from(home_dir).join(MOXIN_HOME_DIR)
+pub fn setup_model_downloads_folder() -> PathBuf {
+    let downloads_dir = project_dirs()
+        .data_dir()
+        .join(MODEL_DOWNLOADS_DIR_NAME);
+
+    std::fs::create_dir_all(&downloads_dir).unwrap_or_else(|_|
+        panic!("Failed to create the model downloads directory at {:?}", downloads_dir)
+    );
+    downloads_dir
 }

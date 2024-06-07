@@ -7,8 +7,8 @@ use std::{
 use moxin_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 
-use super::filesystem::moxin_home_dir;
-const PREFERENCES_FILE: &str = "preferences.json";
+use super::filesystem::project_dirs;
+const PREFERENCES_FILENAME: &str = "preferences.json";
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Preferences {
@@ -71,7 +71,11 @@ fn write_to_file(json: &str) -> Result<(), std::io::Error> {
 }
 
 fn preferences_path() -> PathBuf {
-    let home_dir = moxin_home_dir();
-    let preferences_path = PathBuf::from(home_dir).join(PREFERENCES_FILE);
-    preferences_path
+    let preference_dir = project_dirs().preference_dir();
+    // TODO: this is overkill to create the directory every time.
+    //       This should be done somewhere during init, but I'm not sure where.
+    std::fs::create_dir_all(&preference_dir).unwrap_or_else(|_|
+        panic!("Failed to create the preference directory at {:?}", preference_dir)
+    );
+    preference_dir.join(PREFERENCES_FILENAME)
 }

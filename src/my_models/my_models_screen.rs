@@ -213,7 +213,7 @@ impl WidgetMatchEvent for MyModelsScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.button(id!(show_in_files)).clicked(actions) {
             let models_dir = &scope.data.get::<Store>().unwrap().downloaded_files_dir;
-            let models_uri = &format!("file:///.{}", models_dir);
+            let models_uri = &format!("file:///{}", models_dir.display());
             robius_open::Uri::new(models_uri)
                 .open()
                 .unwrap_or_else(|_| {
