@@ -126,7 +126,6 @@ live_design! {
                     draw_bg: {
                         border_width: 1.0,
                         border_color: #D0D5DD,
-                        color: #F9FAFB
                     }
                     markdown_message_container = {
                         markdown_message = {
@@ -152,13 +151,6 @@ live_design! {
                                 quote_fg_color: (#969696)
                                 block_color: (#EDEDED)
                                 code_color: (#EDEDED)
-                            }
-                        }
-                    }
-                    input_container = {
-                        input = {
-                            draw_bg: {
-                                color: #F9FAFB
                             }
                         }
                     }
