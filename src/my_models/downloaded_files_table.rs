@@ -90,7 +90,13 @@ impl Widget for DownloadedFilesTable {
         match filter {
             Some(keywords) => {
                 if self.latest_store_fetch_len
-                    != scope.data.get::<Store>().unwrap().downloaded_files.len()
+                    != scope
+                        .data
+                        .get::<Store>()
+                        .unwrap()
+                        .downloads
+                        .downloaded_files
+                        .len()
                 {
                     self.filter_by_keywords(cx, scope, &keywords)
                 }
@@ -105,7 +111,7 @@ impl Widget for DownloadedFilesTable {
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
 
         let mut current_chat_file_id = None;
-        if let Some(current_chat) = &scope.data.get::<Store>().unwrap().get_current_chat() {
+        if let Some(current_chat) = &scope.data.get::<Store>().unwrap().chats.get_current_chat() {
             current_chat_file_id = Some(current_chat.borrow().file_id.clone());
         }
 
@@ -168,13 +174,25 @@ impl WidgetMatchEvent for DownloadedFilesTable {
 
 impl DownloadedFilesTable {
     fn fetch_results(&mut self, scope: &mut Scope) {
-        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.current_results = scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files
+            .clone();
         self.latest_store_fetch_len = self.current_results.len();
     }
 
     fn filter_by_keywords(&mut self, cx: &mut Cx, scope: &mut Scope, keywords: &str) {
         let keywords = keywords.to_lowercase();
-        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.current_results = scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files
+            .clone();
         self.latest_store_fetch_len = self.current_results.len();
 
         self.current_results.retain(|f| {
@@ -187,7 +205,13 @@ impl DownloadedFilesTable {
     }
 
     fn reset_results(&mut self, cx: &mut Cx, scope: &mut Scope) {
-        self.current_results = scope.data.get::<Store>().unwrap().downloaded_files.clone();
+        self.current_results = scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files
+            .clone();
 
         self.search_status = SearchStatus::Idle;
         self.redraw(cx);

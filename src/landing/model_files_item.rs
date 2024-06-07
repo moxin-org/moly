@@ -1,8 +1,14 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID};
+use moxin_protocol::data::{File, FileID, PendingDownloadsStatus};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
-use crate::shared::actions::{ChatAction, DownloadAction};
+use crate::{
+    data::store::FileWithDownloadInfo,
+    shared::{
+        actions::{ChatAction, DownloadAction},
+        utils::format_model_size,
+    },
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -224,6 +230,111 @@ impl Widget for ModelFilesItem {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let files_info = &scope.props.get::<FileWithDownloadInfo>().unwrap();
+        let filename = &files_info.file.name;
+        let size = format_model_size(&files_info.file.size).unwrap_or("-".to_string());
+        let quantization = &files_info.file.quantization;
+        self.apply_over(
+            cx,
+            live! {
+                cell1 = {
+                    filename = { text: (filename) }
+                }
+                cell2 = { full_size = { text: (size) }}
+                cell3 = {
+                    quantization_tag = { quantization = { text: (quantization) }}
+                }
+            },
+        );
+
+        if let Some(download) = &files_info.download {
+            let progress = format!("{:.1}%", download.progress);
+            let progress_fill_max = 74.0;
+            let progress_fill = download.progress * progress_fill_max / 100.0;
+
+            let is_resume_download_visible =
+                matches!(download.status, PendingDownloadsStatus::Paused);
+            let is_pause_download_visible =
+                matches!(download.status, PendingDownloadsStatus::Downloading);
+            let is_retry_download_visible =
+                matches!(download.status, PendingDownloadsStatus::Error);
+
+            let status_color = match download.status {
+                PendingDownloadsStatus::Downloading => vec3(0.035, 0.572, 0.314), // #099250
+                PendingDownloadsStatus::Paused => vec3(0.4, 0.44, 0.52),          // #667085
+                PendingDownloadsStatus::Error => vec3(0.7, 0.11, 0.09),           // #B42318
+            };
+
+            self.apply_over(
+                cx,
+                live! { cell4 = {
+                    download_pending_controls = {
+                        visible: true
+                        progress_text_layout = {
+                            progress_text = {
+                                text: (progress)
+                                draw_text: {
+                                    color: (status_color)
+                                }
+                            }
+                        }
+                        progress_bar = {
+                            progress_fill = {
+                                width: (progress_fill)
+                                draw_bg: {
+                                    color: (status_color),
+                                }
+                            }
+                        }
+                        resume_download_button = {
+                            visible: (is_resume_download_visible)
+                        }
+                        retry_download_button = {
+                            visible: (is_retry_download_visible)
+                        }
+                        pause_download_button = {
+                            visible: (is_pause_download_visible)
+                        }
+                    }
+                    start_chat_button = { visible: false }
+                    resume_chat_button = { visible: false }
+                    download_button = { visible: false }
+                }},
+            );
+        } else if files_info.file.downloaded {
+            if files_info.is_current_chat {
+                self.apply_over(
+                    cx,
+                    live! { cell4 = {
+                        download_pending_controls = { visible: false }
+                        start_chat_button = { visible: false }
+                        resume_chat_button = { visible: true }
+                        download_button = { visible: false }
+                    }},
+                );
+            } else {
+                self.apply_over(
+                    cx,
+                    live! { cell4 = {
+                        download_pending_controls = { visible: false }
+                        start_chat_button = { visible: true }
+                        resume_chat_button = { visible: false }
+                        download_button = { visible: false }
+                    }},
+                );
+            }
+        } else {
+            self.apply_over(
+                cx,
+                live! { cell4 = {
+                    download_pending_controls = { visible: false }
+                    start_chat_button = { visible: false }
+                    resume_chat_button = { visible: false }
+                    download_button = { visible: true }
+                }},
+            );
+        };
+
         self.view.draw_walk(cx, scope, walk)
     }
 }

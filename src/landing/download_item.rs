@@ -1,12 +1,9 @@
-use crate::{
-    data::{download::DownloadState, store::DownloadInfo},
-    shared::{
-        actions::DownloadAction,
-        utils::{format_model_downloaded_size, format_model_size},
-    },
+use crate::shared::{
+    actions::DownloadAction,
+    utils::{format_model_downloaded_size, format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
+use moxin_protocol::data::{FileID, PendingDownload, PendingDownloadsStatus};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -220,7 +217,7 @@ impl Widget for DownloadItem {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let download = scope.data.get::<DownloadInfo>().unwrap();
+        let download = scope.data.get::<PendingDownload>().unwrap();
         self.file_id = Some(download.file.id.clone());
 
         self.label(id!(filename))
@@ -232,13 +229,13 @@ impl Widget for DownloadItem {
         self.label(id!(params_size_tag.caption))
             .set_text(&&download.model.requires.as_str());
 
-        let progress_bar_width = download.get_progress() * 6.0; // 6.0 = 600px / 100%
+        let progress_bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
         let label = self.label(id!(progress));
-        match download.state {
-            DownloadState::Downloading(progress) => {
+        match download.status {
+            PendingDownloadsStatus::Downloading => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
 
-                label.set_text(&format!("Downloading {:.1}%", progress));
+                label.set_text(&format!("Downloading {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (downloading_color) }
@@ -257,10 +254,10 @@ impl Widget for DownloadItem {
                 self.button(id!(play_button)).set_visible(false);
                 self.button(id!(retry_button)).set_visible(false);
             }
-            DownloadState::Paused(progress) => {
+            PendingDownloadsStatus::Paused => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
 
-                label.set_text(&format!("Paused {:.1}%", progress));
+                label.set_text(&format!("Paused {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (paused_color) }
@@ -279,10 +276,10 @@ impl Widget for DownloadItem {
                 self.button(id!(play_button)).set_visible(true);
                 self.button(id!(retry_button)).set_visible(false);
             }
-            DownloadState::Errored(progress) => {
+            PendingDownloadsStatus::Error => {
                 let failed_color = vec3(0.7, 0.11, 0.09); // #B42318
 
-                label.set_text(&format!("Error {:.1}%", progress));
+                label.set_text(&format!("Error {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (failed_color) }
@@ -301,13 +298,11 @@ impl Widget for DownloadItem {
                 self.button(id!(play_button)).set_visible(false);
                 self.button(id!(retry_button)).set_visible(true);
             }
-            DownloadState::Completed => (),
         }
 
         let total_size = format_model_size(&download.file.size).unwrap_or("-".to_string());
-        let downloaded_size =
-            format_model_downloaded_size(&download.file.size, download.get_progress())
-                .unwrap_or("-".to_string());
+        let downloaded_size = format_model_downloaded_size(&download.file.size, download.progress)
+            .unwrap_or("-".to_string());
 
         self.label(id!(downloaded_size))
             .set_text(&format!("{} / {}", downloaded_size, total_size));

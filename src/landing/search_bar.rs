@@ -1,4 +1,5 @@
-use crate::data::store::{SortCriteria, StoreAction};
+use crate::data::search::SortCriteria;
+use crate::data::store::StoreAction;
 use crate::landing::sorting::SortingWidgetExt;
 use makepad_widgets::*;
 

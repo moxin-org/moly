@@ -390,7 +390,7 @@ impl Widget for ChatPanel {
                         auto_scroll_cancellable: true,
                     };
 
-                    let still_streaming = store.get_current_chat().unwrap().borrow().is_streaming;
+                    let still_streaming = store.chats.get_current_chat().unwrap().borrow().is_streaming;
                     if still_streaming {
                         if auto_scroll_pending {
                             self.scroll_messages_to_bottom(cx);
@@ -421,6 +421,7 @@ impl Widget for ChatPanel {
         // can be confused with the actual Chat type.
         let (chat_history, model_filename, initial_letter) =
             store
+                .chats
                 .get_current_chat()
                 .map_or((vec![], "".to_string(), "".to_string()), |chat| {
                     let model_filename = chat.borrow().model_filename.clone();
@@ -514,6 +515,7 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatAction::Start(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     let downloaded_file = store
+                        .downloads
                         .downloaded_files
                         .iter()
                         .find(|file| file.file.id == file_id)
@@ -527,12 +529,12 @@ impl WidgetMatchEvent for ChatPanel {
             match action.as_widget_action().cast() {
                 ChatLineAction::Delete(id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    store.delete_chat_message(id);
+                    store.chats.delete_chat_message(id);
                     self.redraw(cx);
                 }
                 ChatLineAction::Edit(id, updated, regenerate) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    store.edit_chat_message(id, updated, regenerate);
+                    store.chats.edit_chat_message(id, updated, regenerate);
 
                     if regenerate {
                         self.state = ChatPanelState::Streaming {
@@ -556,11 +558,12 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatPanelAction::UnloadIfActive(file_id) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
                     if store
+                        .chats
                         .get_current_chat()
                         .map_or(false, |chat| chat.borrow().file_id == file_id)
                     {
                         self.unload_model(cx, store);
-                        store.eject_model().expect("Failed to eject model");
+                        store.chats.eject_model().expect("Failed to eject model");
                     }
                 }
                 _ => {}
@@ -592,7 +595,7 @@ impl WidgetMatchEvent for ChatPanel {
                 {
                     if fe.was_tap() {
                         let store = scope.data.get_mut::<Store>().unwrap();
-                        store.cancel_chat_streaming();
+                        store.chats.cancel_chat_streaming();
                     }
                 }
             }
@@ -632,6 +635,7 @@ impl ChatPanel {
             ChatPanelState::Idle | ChatPanelState::Streaming { .. } => {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 let has_messages = store
+                    .chats
                     .get_current_chat()
                     .map_or(false, |chat| !chat.borrow().messages.is_empty());
 
@@ -754,7 +758,7 @@ impl ChatPanel {
     }
 
     fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {
-        let downloaded_model_empty = store.downloaded_files.is_empty();
+        let downloaded_model_empty = store.downloads.downloaded_files.is_empty();
         self.state = ChatPanelState::Unload {
             downloaded_model_empty,
         };
@@ -810,7 +814,7 @@ impl ChatPanel {
 
         self.show_prompt_input_stop_icon(cx);
         let store = scope.data.get_mut::<Store>().unwrap();
-        store.send_chat_message(prompt.clone());
+        store.chats.send_chat_message(prompt.clone());
 
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         prompt_input.set_text_and_redraw(cx, "");

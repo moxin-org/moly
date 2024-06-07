@@ -87,7 +87,7 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let models = &store.models;
+        let models = &store.search.models;
         let models_count = models.len();
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
@@ -97,10 +97,10 @@ impl Widget for ModelList {
                     let item = list.item(cx, item_id, live_id!(Model)).unwrap();
 
                     if item_id < models_count {
-                        let model_id = &models[item_id].id;
-                        let mut model_data =
-                            store.get_model_with_pending_downloads(model_id).unwrap();
-                        item.draw_all(cx, &mut Scope::with_data(&mut model_data));
+                        let model = &models[item_id];
+                        let mut model_with_download_info =
+                            store.add_download_info_to_model(model);
+                        item.draw_all(cx, &mut Scope::with_data(&mut model_with_download_info));
                     }
                 }
             }
@@ -153,7 +153,7 @@ impl WidgetMatchEvent for ModelList {
 impl ModelList {
     fn update_loading_and_error_message(&mut self, cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get::<Store>().unwrap();
-        let is_loading = store.search_is_loading();
+        let is_loading = store.search.is_pending();
         self.view(id!(loading)).set_visible(is_loading);
         if is_loading {
             self.search_loading(id!(search_loading)).animate(cx);
@@ -161,7 +161,7 @@ impl ModelList {
             self.search_loading(id!(search_loading)).stop_animation();
         }
 
-        let is_errored = store.search_is_errored();
+        let is_errored = store.search.was_error();
         self.view(id!(search_error)).set_visible(is_errored);
     }
 }

@@ -120,16 +120,16 @@ impl Widget for LandingScreen {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
-        if store.search_is_loading() || store.search_is_errored() {
+        let search = &scope.data.get::<Store>().unwrap().search;
+        if search.is_pending() || search.was_error() {
             self.view(id!(heading_with_filters)).set_visible(false);
             self.view(id!(heading_no_filters)).set_visible(false);
             self.sorting(id!(sorting)).set_visible(cx, false);
-        } else if let Some(keyword) = store.search.keyword.clone() {
+        } else if let Some(keyword) = search.keyword.clone() {
             self.view(id!(heading_with_filters)).set_visible(true);
             self.view(id!(heading_no_filters)).set_visible(false);
 
-            let models = &store.models;
+            let models = &search.models;
             let models_count = models.len();
             self.label(id!(heading_with_filters.results))
                 .set_text(&format!("{} Results", models_count));
@@ -173,9 +173,9 @@ impl WidgetMatchEvent for LandingScreen {
                     }
 
                     if collapse {
-                        let store = scope.data.get::<Store>().unwrap();
+                        let search = &scope.data.get::<Store>().unwrap().search;
                         self.search_bar(id!(search_bar))
-                            .collapse(cx, store.sorted_by);
+                            .collapse(cx, search.sorted_by);
                         self.sorting(id!(sorting)).set_visible(cx, false);
                         self.redraw(cx);
                     }
@@ -191,10 +191,10 @@ impl WidgetMatchEvent for LandingScreen {
                     SearchBarState::ExpandedWithoutFilters => {
                         self.search_bar_state = SearchBarState::ExpandedWithFilters;
 
-                        let store = scope.data.get::<Store>().unwrap();
+                        let search = &scope.data.get::<Store>().unwrap().search;
                         let sorting_ref = self.sorting(id!(sorting));
                         sorting_ref.set_visible(cx, true);
-                        sorting_ref.set_selected_item(store.sorted_by);
+                        sorting_ref.set_selected_item(search.sorted_by);
                     }
                     _ => {}
                 },

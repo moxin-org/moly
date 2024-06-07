@@ -1,5 +1,6 @@
-use crate::data::{download::DownloadState, store::Store};
+use crate::data::store::Store;
 use makepad_widgets::*;
+use moxin_protocol::data::PendingDownloadsStatus;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -155,26 +156,26 @@ impl Widget for Downloads {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let current_downloads = store.current_downloads_info();
-        let downloads_count = current_downloads.len();
+        let pending_downloads = &store.downloads.pending_downloads;
+        let downloads_count = pending_downloads.len();
 
-        let download_count = current_downloads
+        let download_count = pending_downloads
             .iter()
-            .filter(|d| matches!(d.state, DownloadState::Downloading(_)))
+            .filter(|d| matches!(d.status, PendingDownloadsStatus::Downloading))
             .count();
         self.label(id!(downloading_count))
             .set_text(&format!("{} downloading", download_count));
 
-        let paused_count = current_downloads
+        let paused_count = pending_downloads
             .iter()
-            .filter(|d| matches!(d.state, DownloadState::Paused(_)))
+            .filter(|d| matches!(d.status, PendingDownloadsStatus::Paused))
             .count();
         self.label(id!(paused_count))
             .set_text(&format!("{} paused", paused_count));
 
-        let failed_count = current_downloads
+        let failed_count = pending_downloads
             .iter()
-            .filter(|d| matches!(d.state, DownloadState::Errored(_)))
+            .filter(|d| matches!(d.status, PendingDownloadsStatus::Error))
             .count();
 
         if failed_count > 0 {
@@ -190,7 +191,7 @@ impl Widget for Downloads {
                     let item = list.item(cx, item_id, live_id!(DownloadItem)).unwrap();
 
                     if item_id < downloads_count {
-                        let download = &current_downloads[item_id];
+                        let download = &pending_downloads[item_id];
                         item.draw_all(cx, &mut Scope::with_data(&mut download.clone()));
                     }
                 }
