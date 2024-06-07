@@ -118,11 +118,11 @@ live_design! {
         spacing: 12,
         flow: Down,
 
-        role_layout = <View> {
+        sender_name_layout = <View> {
             height: 20,
             align: {x: 0.0, y: 0.85},
 
-            role = <Label> {
+            sender_name = <Label> {
                 width: Fit,
                 height: Fit,
                 draw_text:{
@@ -418,11 +418,11 @@ impl ChatLine {
 }
 
 impl ChatLineRef {
-    pub fn set_role(&mut self, text: &str) {
+    pub fn set_sender_name(&mut self, text: &str) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.label(id!(role)).set_text(text);
+        inner.label(id!(sender_name)).set_text(text);
     }
 
     pub fn set_avatar_text(&mut self, text: &str) {

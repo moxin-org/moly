@@ -58,7 +58,7 @@ live_design! {
         main_section = {
             body_section = {
                 align: {x: 1.0, y: 0.5},
-                role_layout = {
+                sender_name_layout = {
                     visible: false,
                 }
                 bubble = {
@@ -559,7 +559,7 @@ impl Widget for ChatPanel {
                         if chat_line_data.is_assistant() {
                             item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
                             chat_line_item = item.as_chat_line();
-                            chat_line_item.set_role(&model_filename);
+                            chat_line_item.set_sender_name(&model_filename);
                             chat_line_item.set_regenerate_enabled(false);
                             chat_line_item.set_avatar_text(&initial_letter);
                         } else {
