@@ -1,6 +1,6 @@
-use std::sync::{
-    mpsc::{Receiver, Sender},
-    Arc, Mutex,
+use std::{
+    path::{Path, PathBuf},
+    sync::{mpsc::{Receiver, Sender}, Arc, Mutex},
 };
 
 use chrono::Utc;
@@ -825,8 +825,8 @@ pub enum DownloadControlCommand {
 pub struct BackendImpl {
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
     #[allow(unused)]
-    home_dir: String,
-    models_dir: String,
+    app_data_dir: PathBuf,
+    models_dir: PathBuf,
     pub rx: Receiver<Command>,
     download_tx: tokio::sync::mpsc::UnboundedSender<(
         store::models::Model,
@@ -841,19 +841,21 @@ pub struct BackendImpl {
 }
 
 impl BackendImpl {
-    /// # Argument
-    ///
-    /// * `home_dir` - The home directory of the application.
-    /// * `models_dir` - The download path of the model.
+    /// # Arguments
+    /// * `app_data_dir` - The directory where application data should be stored.
+    /// * `models_dir` - The directory where models should be downloaded.
     /// * `max_download_threads` - Maximum limit on simultaneous file downloads.
-    pub fn build_command_sender(
-        home_dir: String,
-        models_dir: String,
+    pub fn build_command_sender<A: AsRef<Path>, M: AsRef<Path>>(
+        app_data_dir: A,
+        models_dir: M,
         max_download_threads: usize,
     ) -> Sender<Command> {
+        let app_data_dir = app_data_dir.as_ref().to_path_buf();
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
-
-        let sql_conn = rusqlite::Connection::open(format!("{home_dir}/data.sqlite")).unwrap();
+        std::fs::create_dir_all(&app_data_dir).unwrap_or_else(|_|
+            panic!("Failed to create the Moxin app data directory at {:?}", app_data_dir)
+        );
+        let sql_conn = rusqlite::Connection::open(app_data_dir.join("data.sqlite")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
         let _ = store::models::create_table_models(&sql_conn).unwrap();
@@ -883,8 +885,8 @@ impl BackendImpl {
 
         let mut backend = Self {
             sql_conn,
-            home_dir,
-            models_dir,
+            app_data_dir,
+            models_dir: models_dir.as_ref().into(),
             rx,
             download_tx,
             model: None,
@@ -978,7 +980,7 @@ impl BackendImpl {
                             reverse_prompt: remote_model.reverse_prompt,
                             downloaded: false,
                             file_size: 0,
-                            download_dir: self.models_dir.clone(),
+                            download_dir: self.models_dir.to_string_lossy().to_string(),
                             downloaded_at: Utc::now(),
                             tags:remote_file.tags,
                             featured: false,
@@ -1011,7 +1013,7 @@ impl BackendImpl {
                         let conn = self.sql_conn.lock().unwrap();
                         let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
                     }
-                    let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
+                    let _ = store::remove_downloaded_file(self.models_dir.to_string_lossy().to_string(), file_id);
 
                     let _ = tx.send(Ok(()));
                 }
@@ -1022,7 +1024,7 @@ impl BackendImpl {
                         let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
                     }
 
-                    let _ = store::remove_downloaded_file(self.models_dir.clone(), file_id);
+                    let _ = store::remove_downloaded_file(self.models_dir.to_string_lossy().to_string(), file_id);
                     let _ = tx.send(Ok(()));
                 }
 

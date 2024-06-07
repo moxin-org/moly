@@ -1,6 +1,6 @@
 use super::chat::ChatID;
 use super::download::DownloadState;
-use super::filesystem::{moxin_home_dir, setup_model_downloads_folder};
+use super::filesystem::{project_dirs, setup_model_downloads_folder};
 use super::preferences::Preferences;
 use super::{chat::Chat, download::Download, search::Search};
 use anyhow::{Context, Result};
@@ -11,9 +11,12 @@ use moxin_protocol::data::{
     DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
 };
 use moxin_protocol::protocol::{Command, LoadModelOptions, LoadModelResponse};
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::sync::mpsc::channel;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    path::PathBuf,
+    sync::mpsc::channel,
+};
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
@@ -84,16 +87,16 @@ pub struct Store {
     pub current_downloads: HashMap<FileID, Download>,
 
     pub preferences: Preferences,
-    pub downloaded_files_dir: String,
+    pub downloaded_files_dir: PathBuf,
 }
 
 impl Store {
     pub fn new() -> Self {
         let downloaded_files_dir = setup_model_downloads_folder();
-        let moxin_home_dir = moxin_home_dir().to_string_lossy().to_string();
+        let app_data_dir = project_dirs().data_dir();
 
         let backend = Backend::new(
-            moxin_home_dir,
+            app_data_dir,
             downloaded_files_dir.clone(),
             DEFAULT_MAX_DOWNLOAD_THREADS,
         );
