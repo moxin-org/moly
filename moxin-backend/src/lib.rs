@@ -10,10 +10,12 @@ pub struct Backend {
 
 impl Default for Backend {
     fn default() -> Self {
-        // Backend::new(".".to_string(), ".".to_string(), 3)
-        // KEVIN
-        let home = std::env::var("HOME").expect("HOME env var was not set");
-        Backend::new(home.clone(), home, 3)
+        // TODO: FIXME: use directories::ProjectDirs::data_dir() instead.
+        // <https://docs.rs/directories/latest/directories/struct.ProjectDirs.html#method.data_dir>
+        let home_dir = std::env::var("HOME") // Unix-like systems
+            .or_else(|_| std::env::var("USERPROFILE")) // Windows
+            .unwrap_or_else(|_| ".".to_string());
+        Backend::new(home_dir.clone(), home_dir, 3)
     }
 }
 

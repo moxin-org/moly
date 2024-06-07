@@ -11,7 +11,7 @@ members = [
 name = "moxin"
 version = "0.1.0"
 edition = "2021"
-description = "A Client for Downloading and Chatting with AI LLMs"
+description = "A desktop GUI client for downloading and chatting with AI LLMs"
 
 [dependencies]
 moxin-protocol = { path = "moxin-protocol" }
@@ -33,3 +33,11 @@ rand = "0.8.5"
 
 [package.metadata.bundle]
 identifier = "com.moxin-org.moxin"
+long_description = """
+Moxin is a desktop GUI client that lets you browse AI Large Language Models (LLMs), download them,
+and run them locally to chat with the models.
+Moxin is built using the Makepad UI framework (https://github.com/makepad/makepad)
+and Project Robius platform abstractions (https://github.com/project-robius),
+and currently runs on all three major desktop platforms: Windows, macOS, and Linux.
+Moxin uses the wasmedge WASM runtime to locally run the AI models.
+"""
