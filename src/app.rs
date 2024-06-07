@@ -141,19 +141,13 @@ live_design! {
 
 app_main!(App);
 
-#[derive(Live)]
+#[derive(Live, LiveHook)]
 pub struct App {
     #[live]
     ui: WidgetRef,
 
     #[rust]
     store: Store,
-}
-
-impl LiveHook for App {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.store = Store::new();
-    }
 }
 
 impl LiveRegister for App {

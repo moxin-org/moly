@@ -45,12 +45,6 @@ pub struct Search {
     pub state: SearchState,
 }
 
-impl Default for Search {
-    fn default() -> Self {
-        Search::new(Rc::default())
-    }
-}
-
 impl Search {
     pub fn new(backend: Rc<Backend>) -> Self {
         let (tx, rx) = channel();

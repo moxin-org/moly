@@ -13,7 +13,6 @@ pub enum DownloadPendingNotification {
     DownloadedFile(File),
     DownloadErrored(File),
 }
-#[derive(Default)]
 pub struct Downloads {
     pub backend: Rc<Backend>,
     pub downloaded_files: Vec<DownloadedFile>,

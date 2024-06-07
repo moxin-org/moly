@@ -7,7 +7,6 @@ use moxin_protocol::protocol::{Command, LoadModelResponse};
 use std::{cell::RefCell, rc::Rc, sync::mpsc::channel};
 use anyhow::{Context, Result};
 
-#[derive(Default)]
 pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,

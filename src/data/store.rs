@@ -40,8 +40,6 @@ pub struct ModelWithDownloadInfo {
     pub download_count: u32,
     pub files: Vec<FileWithDownloadInfo>,
 }
-
-#[derive(Default)]
 pub struct Store {
     /// This is the backend representation, including the sender and receiver ends of the channels to
     /// communicate with the backend thread.
@@ -51,6 +49,12 @@ pub struct Store {
     pub downloads: Downloads,
     pub chats: Chats,
     pub preferences: Preferences,
+}
+
+impl Default for Store {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Store {
