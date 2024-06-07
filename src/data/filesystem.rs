@@ -22,8 +22,8 @@ pub fn setup_model_downloads_folder() -> String {
 }
 
 fn home_dir() -> String {
-    env::var("HOME"). // Unix-like systems
-        or_else(|_| env::var("USERPROFILE")) // Windows
+    env::var("HOME") // Unix-like systems
+        .or_else(|_| env::var("USERPROFILE")) // Windows
         .unwrap_or_else(|_| ".".to_string())
 }
 

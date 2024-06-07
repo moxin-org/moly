@@ -853,8 +853,6 @@ impl BackendImpl {
     ) -> Sender<Command> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
 
-        eprintln!("KEVIN: cwd: {:?}, exe: {:?}, home_dir: {home_dir}, models_dir: {models_dir}", std::env::current_dir(), std::env::current_exe());
-        eprintln!("KEVIN: env vars: {:#?}", std::env::vars().into_iter().collect::<Vec<_>>());
         let sql_conn = rusqlite::Connection::open(format!("{home_dir}/data.sqlite")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
