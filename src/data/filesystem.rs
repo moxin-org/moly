@@ -22,8 +22,10 @@ pub fn setup_model_downloads_folder() -> String {
 }
 
 fn home_dir() -> String {
-    env::var("HOME"). // Unix-like systems
-        or_else(|_| env::var("USERPROFILE")) // Windows
+    // TODO: FIXME: use directories::ProjectDirs::data_dir() instead.
+    // <https://docs.rs/directories/latest/directories/struct.ProjectDirs.html#method.data_dir>
+    env::var("HOME") // Unix-like systems
+        .or_else(|_| env::var("USERPROFILE")) // Windows
         .unwrap_or_else(|_| ".".to_string())
 }
 
