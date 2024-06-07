@@ -64,44 +64,30 @@ live_design! {
         }
     }
 
-    MESSAGE_TEXT_COLOR = #000
     TEXT_HEIGHT_FACTOR = 1.3
     LINE_SPACING = 8.0
     BLOCK_LINE_SPACING = 12.0
 
-    MessageText = <Markdown>{
+    MessageText = <Markdown> {
         padding: 0,
         line_spacing: (LINE_SPACING),
         paragraph_spacing: 20.0,
         width: Fill, height: Fit,
         font_size: 10.0,
         draw_normal: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_italic: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_bold: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_bold_italic: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_fixed: {
-            color: (MESSAGE_TEXT_COLOR),
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_block: {
-            line_color: (MESSAGE_TEXT_COLOR)
-            sep_color: (#EDEDED)
-            quote_bg_color: (#EDEDED)
-            quote_fg_color: (#969696)
-            block_color: (#EDEDED)
-            code_color: (#EDEDED)
         }
         list_item_layout: { line_spacing: 5.0, padding: {left: 10.0, right:10, top: 6.0, bottom: 0}, }
         list_item_walk:{margin:0, height:Fit, width:Fill}
@@ -115,9 +101,6 @@ live_design! {
         padding: 0,
         empty_message: ""
 
-        draw_bg: {
-            color: #fff
-        }
         draw_text: {
             text_style:<REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
             word: Wrap,
@@ -132,14 +115,14 @@ live_design! {
     ChatLineBody = <View> {
         width: Fill,
         height: Fit,
-        spacing: 5,
+        spacing: 12,
         flow: Down,
 
-        <View> {
+        sender_name_layout = <View> {
             height: 20,
-            align: {x: 0.0, y: 0.5},
+            align: {x: 0.0, y: 0.85},
 
-            role = <Label> {
+            sender_name = <Label> {
                 width: Fit,
                 height: Fit,
                 draw_text:{
@@ -149,11 +132,16 @@ live_design! {
             }
         }
 
-        <View> {
+        bubble = <RoundedView> {
+            show_bg: true,
+            draw_bg: {
+                radius: 12.0,
+            },
+
             width: Fill,
             height: Fit,
             flow: Down,
-            padding: {top: 12, bottom: 12},
+            padding: {left: 16, right: 18, top: 18, bottom: 14},
             align: {x: 0.5, y: 0.0},
 
             input_container = <View> {
@@ -231,7 +219,7 @@ live_design! {
         avatar_section = <View> {
             width: Fit,
             height: Fit,
-            margin: {left: 20, right: 20},
+            margin: {left: 20, right: 12},
         }
 
         main_section = <View> {
@@ -430,11 +418,11 @@ impl ChatLine {
 }
 
 impl ChatLineRef {
-    pub fn set_role(&mut self, text: &str) {
+    pub fn set_sender_name(&mut self, text: &str) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.label(id!(role)).set_text(text);
+        inner.label(id!(sender_name)).set_text(text);
     }
 
     pub fn set_avatar_text(&mut self, text: &str) {

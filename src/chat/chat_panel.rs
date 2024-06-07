@@ -28,12 +28,13 @@ live_design! {
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
     ChatAgentAvatar = <RoundedView> {
-        width: 20,
-        height: 20,
+        width: 24,
+        height: 24,
 
         show_bg: true,
         draw_bg: {
-            color: #444D9A
+            color: #444D9A,
+            radius: 6,
         }
 
         align: {x: 0.5, y: 0.5},
@@ -50,11 +51,67 @@ live_design! {
     }
 
     UserChatLine = <ChatLine> {
+        margin: {left: 100}
         avatar_section = {
-            <Image> {
-                source: dep("crate://self/resources/images/chat_user_icon.png"),
-                width: 20,
-                height: 20,
+            visible: false,
+        }
+        main_section = {
+            body_section = {
+                align: {x: 1.0, y: 0.5},
+                sender_name_layout = {
+                    visible: false,
+                }
+                bubble = {
+                    draw_bg: {
+                        color: #15859A
+                    }
+                    markdown_message_container = {
+                        markdown_message = {
+                            draw_normal: {
+                                color: (#fff),
+                            }
+                            draw_italic: {
+                                color: (#fff),
+                            }
+                            draw_bold: {
+                                color: (#fff),
+                            }
+                            draw_bold_italic: {
+                                color: (#fff),
+                            }
+                            draw_fixed: {
+                                color: (#fff),
+                            }
+                            draw_block: {
+                                line_color: (#fff)
+                                sep_color: (#12778a)
+                                quote_bg_color: (#12778a)
+                                quote_fg_color: (#106a7b)
+                                block_color: (#12778a)
+                                code_color: (#12778a)
+                            }
+                        }
+                    }
+                    plain_text_message_container = {
+                        plain_text_message = {
+                            draw_text: {
+                                color: #fff
+                            }
+                        }
+                    }
+                    input_container = {
+                        input = {
+                            draw_bg: {
+                                color: #15859A
+                            }
+                            draw_text: {
+                                fn get_color(self) -> vec4 {
+                                    return #fff;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -62,6 +119,43 @@ live_design! {
     ModelChatLine = <ChatLine> {
         avatar_section = {
             <ChatAgentAvatar> {}
+        }
+        main_section = {
+            body_section = {
+                bubble = {
+                    draw_bg: {
+                        border_width: 1.0,
+                        border_color: #D0D5DD,
+                    }
+                    markdown_message_container = {
+                        markdown_message = {
+                            draw_normal: {
+                                color: (#000),
+                            }
+                            draw_italic: {
+                                color: (#000),
+                            }
+                            draw_bold: {
+                                color: (#000),
+                            }
+                            draw_bold_italic: {
+                                color: (#000),
+                            }
+                            draw_fixed: {
+                                color: (#000),
+                            }
+                            draw_block: {
+                                line_color: (#000)
+                                sep_color: (#EDEDED)
+                                quote_bg_color: (#EDEDED)
+                                quote_fg_color: (#969696)
+                                block_color: (#EDEDED)
+                                code_color: (#EDEDED)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -118,7 +212,7 @@ live_design! {
         align: {x: 0.0, y: 1.0},
 
         draw_bg: {
-            radius: 2.0,
+            radius: 10.0,
             border_color: #D0D5DD,
             border_width: 1.0,
         }
@@ -129,6 +223,7 @@ live_design! {
 
             empty_message: "Enter a message"
             draw_bg: {
+                radius: 30.0
                 color: #fff
             }
             draw_text: {
@@ -137,7 +232,7 @@ live_design! {
                 instance prompt_enabled: 0.0
                 fn get_color(self) -> vec4 {
                     return mix(
-                        #D0D5DD,
+                        #98A2B3,
                         #000,
                         self.prompt_enabled
                     )
@@ -150,6 +245,7 @@ live_design! {
             height: 28,
             show_bg: true,
             draw_bg: {
+                radius: 7.0,
                 color: #D0D5DD
             }
 
@@ -323,6 +419,9 @@ live_design! {
 
                 flow: Overlay
                 chat = <PortalList> {
+                    scroll_bar: {
+                        bar_size: 0.0,
+                    }
                     width: Fill,
                     height: Fill,
 
@@ -461,13 +560,12 @@ impl Widget for ChatPanel {
                         if chat_line_data.is_assistant() {
                             item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
                             chat_line_item = item.as_chat_line();
-                            chat_line_item.set_role(&model_filename);
+                            chat_line_item.set_sender_name(&model_filename);
                             chat_line_item.set_regenerate_enabled(false);
                             chat_line_item.set_avatar_text(&initial_letter);
                         } else {
                             item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
                             chat_line_item = item.as_chat_line();
-                            chat_line_item.set_role("You");
                             chat_line_item.set_regenerate_enabled(true);
                         };
 
