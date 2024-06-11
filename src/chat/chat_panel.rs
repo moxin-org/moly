@@ -502,7 +502,7 @@ impl Widget for ChatPanel {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.switch_visibilities(scope);
+        self.update_visibilities(scope);
 
         let store = scope.data.get_mut::<Store>().unwrap();
 
@@ -867,7 +867,7 @@ impl ChatPanel {
         };
     }
 
-    fn switch_visibilities(&mut self, scope: &mut Scope) {
+    fn update_visibilities(&mut self, scope: &mut Scope) {
         macro_rules! show {
             ($view_id:ident) => {
                 self.view(id!($view_id)).set_visible(true)
