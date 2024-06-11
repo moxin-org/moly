@@ -908,30 +908,34 @@ impl ChatPanel {
 
         match state {
             ComputedState::NoModelsAvailable => {
-                show!(no_downloaded_model);
-                hide!(no_model);
                 hide!(empty_conversation);
                 hide!(jump_to_bottom);
                 hide!(main);
+                hide!(no_model);
+
+                show!(no_downloaded_model);
             }
             ComputedState::NoModelSelected => {
-                hide!(no_downloaded_model);
-                show!(no_model);
                 hide!(empty_conversation);
                 hide!(jump_to_bottom);
                 hide!(main);
+                hide!(no_downloaded_model);
+
+                show!(no_model);
             }
             ComputedState::ModelSelectedWithEmptyChat => {
+                hide!(jump_to_bottom);
                 hide!(no_downloaded_model);
                 hide!(no_model);
+
                 show!(empty_conversation);
-                hide!(jump_to_bottom);
                 show!(main);
             }
             ComputedState::ModelSelectedWithChat => {
+                hide!(empty_conversation);
                 hide!(no_downloaded_model);
                 hide!(no_model);
-                hide!(empty_conversation);
+
                 show!(main);
 
                 if self.portal_list(id!(chat)).further_items_bellow_exist() {
