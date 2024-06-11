@@ -9,9 +9,14 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::MoxinButton;
     import makepad_draw::shader::std::*;
 
     import crate::chat::chat_panel::ChatAgentAvatar;
+
+    ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
+    ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_left_panel.svg")
+    ICON_OPEN_PANEL = dep("crate://self/resources/icons/open_left_panel.svg")
 
     ChatCard = {{ChatCard}} {
         content = <RoundedView> {
@@ -72,11 +77,42 @@ live_design! {
         }
     }
 
+    ChatHistoryActions = <View> {
+        spacing: 10,
+        height: Fit
+
+        close_panel_button = <MoxinButton> {
+            width: Fit,
+            height: Fit,
+            icon_walk: {margin: { left: -3, top: -1 }, width: 22, height: 22},
+            draw_icon: {
+                svg_file: (ICON_CLOSE_PANEL),
+                fn get_color(self) -> vec4 {
+                    return #475467;
+                }
+            }
+        }
+
+        new_chat_button = <MoxinButton> {
+            width: Fit,
+            height: Fit,
+            icon_walk: {width: 20, height: 20},
+            draw_icon: {
+                svg_file: (ICON_NEW_CHAT),
+                fn get_color(self) -> vec4 {
+                    return #475467;
+                }
+            }
+        }
+    }
+
     ChatHistory = {{ChatHistory}} {
         flow: Down
         width: Fill
         height: Fill
         padding: 10
+
+        <ChatHistoryActions> {}
 
         list = <PortalList> {
             ChatCard = <ChatCard> {margin: {top: 20}}
