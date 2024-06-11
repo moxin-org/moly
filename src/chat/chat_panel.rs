@@ -667,7 +667,7 @@ impl WidgetMatchEvent for ChatPanel {
             }
         }
 
-        self.jump_to_bottom_actions(cx, actions, scope);
+        self.jump_to_bottom_actions(cx, actions);
 
         match self.state {
             ChatPanelState::Idle => {
@@ -709,36 +709,11 @@ impl WidgetMatchEvent for ChatPanel {
 }
 
 impl ChatPanel {
-    fn jump_to_bottom_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn jump_to_bottom_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         if let Some(fe) = self.view(id!(jump_to_bottom)).finger_up(actions) {
             if fe.was_tap() {
                 self.scroll_messages_to_bottom(cx);
                 self.redraw(cx);
-            }
-        }
-
-        let jump_to_bottom = self.view(id!(jump_to_bottom));
-        match self.state {
-            ChatPanelState::Streaming {
-                auto_scroll_pending: true,
-                ..
-            } => {
-                // We avoid to show this button when the list is auto-scrolling upon
-                // receiving a new message. Otherwise, the button flicks.
-                jump_to_bottom.set_visible(false);
-            }
-            ChatPanelState::Idle | ChatPanelState::Streaming { .. } => {
-                let store = scope.data.get_mut::<Store>().unwrap();
-                let has_messages = store
-                    .chats
-                    .get_current_chat()
-                    .map_or(false, |chat| !chat.borrow().messages.is_empty());
-
-                let list = self.portal_list(id!(chat));
-                jump_to_bottom.set_visible(has_messages && list.further_items_bellow_exist());
-            }
-            ChatPanelState::Unload => {
-                jump_to_bottom.set_visible(false);
             }
         }
     }
@@ -942,21 +917,30 @@ impl ChatPanel {
                 show!(no_downloaded_model);
                 hide!(no_model);
                 hide!(empty_conversation);
+                hide!(jump_to_bottom);
             }
             ComputedState::NoModelSelected => {
                 hide!(no_downloaded_model);
                 show!(no_model);
                 hide!(empty_conversation);
+                hide!(jump_to_bottom);
             }
             ComputedState::ModelSelectedWithEmptyChat => {
                 hide!(no_downloaded_model);
                 hide!(no_model);
                 show!(empty_conversation);
+                hide!(jump_to_bottom);
             }
             ComputedState::ModelSelectedWithChat => {
                 hide!(no_downloaded_model);
                 hide!(no_model);
                 hide!(empty_conversation);
+
+                if self.portal_list(id!(chat)).further_items_bellow_exist() {
+                    show!(jump_to_bottom);
+                } else {
+                    hide!(jump_to_bottom);
+                }
             }
         }
     }
