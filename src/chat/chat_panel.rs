@@ -588,13 +588,13 @@ impl WidgetMatchEvent for ChatPanel {
 
         for action in actions {
             if let ChatHistoryCardAction::ChatSelected(_) = action.as_widget_action().cast() {
-                self.view(id!(empty_conversation)).set_visible(false);
+                self.redraw(cx);
 
                 // Temporary fix, PR #98 will bring a better solution
-                let store = scope.data.get::<Store>().unwrap();
-                if store.get_loaded_downloaded_file().is_some() {
-                    self.update_state_model_loaded(cx);
-                }
+                // let store = scope.data.get::<Store>().unwrap();
+                // if store.get_loaded_downloaded_file().is_some() {
+                //     self.update_state_model_loaded(cx);
+                // }
             }
 
             match action.as_widget_action().cast() {
@@ -850,11 +850,6 @@ impl ChatPanel {
 
     fn update_state_model_loaded(&mut self, cx: &mut Cx) {
         self.state = ChatPanelState::Idle;
-        self.view(id!(main)).set_visible(true);
-        self.view(id!(empty_conversation)).set_visible(true);
-        self.view(id!(no_model)).set_visible(false);
-        self.view(id!(no_downloaded_model)).set_visible(false);
-        self.redraw(cx);
     }
 
     fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {
@@ -862,25 +857,6 @@ impl ChatPanel {
         self.state = ChatPanelState::Unload {
             downloaded_model_empty,
         };
-
-        self.view(id!(main)).set_visible(false);
-        self.view(id!(empty_conversation)).set_visible(false);
-
-        match self.state {
-            ChatPanelState::Unload {
-                downloaded_model_empty: true,
-            } => {
-                self.view(id!(no_downloaded_model)).set_visible(true);
-                self.view(id!(no_model)).set_visible(false);
-            }
-            ChatPanelState::Unload {
-                downloaded_model_empty: false,
-            } => {
-                self.view(id!(no_model)).set_visible(true);
-                self.view(id!(no_downloaded_model)).set_visible(false)
-            }
-            _ => {}
-        }
 
         self.model_selector(id!(model_selector)).deselect(cx);
         self.view.redraw(cx);
@@ -921,8 +897,6 @@ impl ChatPanel {
         prompt_input.set_cursor(0, 0);
         self.update_prompt_input(cx);
 
-        self.view(id!(empty_conversation)).set_visible(false);
-
         // Scroll to the bottom when the message is sent
         self.scroll_messages_to_bottom(cx);
 
@@ -933,6 +907,30 @@ impl ChatPanel {
     }
 
     fn switch_visibilities(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
+        match self.state {
+            ChatPanelState::Idle => {
+                self.view(id!(main)).set_visible(true);
+                self.view(id!(empty_conversation)).set_visible(true);
+                self.view(id!(no_model)).set_visible(false);
+                self.view(id!(no_downloaded_model)).set_visible(false);
+            }
+            ChatPanelState::Unload {
+                downloaded_model_empty,
+            } => {
+                self.view(id!(main)).set_visible(false);
+                self.view(id!(empty_conversation)).set_visible(false);
+
+                if downloaded_model_empty {
+                    self.view(id!(no_downloaded_model)).set_visible(true);
+                    self.view(id!(no_model)).set_visible(false);
+                } else {
+                    self.view(id!(no_model)).set_visible(true);
+                    self.view(id!(no_downloaded_model)).set_visible(false);
+                }
+            }
+            _ => {}
+        }
+
         let store = scope.data.get_mut::<Store>().unwrap();
 
         enum State {
