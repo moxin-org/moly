@@ -880,12 +880,6 @@ impl ChatPanel {
             };
         }
 
-        match self.state {
-            ChatPanelState::Idle => show!(main),
-            ChatPanelState::Unload => hide!(main),
-            _ => {}
-        }
-
         let store = scope.data.get_mut::<Store>().unwrap();
 
         enum ComputedState {
@@ -918,23 +912,27 @@ impl ChatPanel {
                 hide!(no_model);
                 hide!(empty_conversation);
                 hide!(jump_to_bottom);
+                hide!(main);
             }
             ComputedState::NoModelSelected => {
                 hide!(no_downloaded_model);
                 show!(no_model);
                 hide!(empty_conversation);
                 hide!(jump_to_bottom);
+                hide!(main);
             }
             ComputedState::ModelSelectedWithEmptyChat => {
                 hide!(no_downloaded_model);
                 hide!(no_model);
                 show!(empty_conversation);
                 hide!(jump_to_bottom);
+                show!(main);
             }
             ComputedState::ModelSelectedWithChat => {
                 hide!(no_downloaded_model);
                 hide!(no_model);
                 hide!(empty_conversation);
+                show!(main);
 
                 if self.portal_list(id!(chat)).further_items_bellow_exist() {
                     show!(jump_to_bottom);
