@@ -508,60 +508,9 @@ impl Widget for ChatPanel {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.switch_visibilities(cx, scope);
+
         let store = scope.data.get_mut::<Store>().unwrap();
-
-        #[derive(Debug)]
-        enum State {
-            NoModelsAvailable,
-            NoModelSelected,
-            ModelSelectedWithEmptyChat,
-            ModelSelectedWithChat,
-        }
-
-        let state = if store.downloads.downloaded_files.is_empty() {
-            State::NoModelsAvailable
-        } else if store.chats.loaded_model.is_none() {
-            State::NoModelSelected
-        } else {
-            store
-                .chats
-                .get_current_chat()
-                .map_or(State::ModelSelectedWithEmptyChat, |chat| {
-                    if chat.borrow().messages.is_empty() {
-                        State::ModelSelectedWithEmptyChat
-                    } else {
-                        State::ModelSelectedWithChat
-                    }
-                })
-        };
-
-        dbg!(&state);
-
-        match state {
-            State::NoModelsAvailable => {
-                self.view(id!(no_downloaded_model)).set_visible(true);
-                self.view(id!(no_model)).set_visible(false);
-                //self.view(id!(main)).set_visible(false);
-                self.view(id!(empty_conversation)).set_visible(false);
-            }
-            State::NoModelSelected => {
-                self.view(id!(no_downloaded_model)).set_visible(false);
-                self.view(id!(no_model)).set_visible(true);
-                //self.view(id!(main)).set_visible(false);
-                self.view(id!(empty_conversation)).set_visible(false);
-            }
-            State::ModelSelectedWithEmptyChat => {
-                self.view(id!(no_downloaded_model)).set_visible(false);
-                self.view(id!(no_model)).set_visible(false);
-                //self.view(id!(main)).set_visible(true);
-                self.view(id!(empty_conversation)).set_visible(true);
-            }
-            State::ModelSelectedWithChat => {
-                self.view(id!(no_downloaded_model)).set_visible(false);
-                self.view(id!(no_model)).set_visible(false);
-                self.view(id!(empty_conversation)).set_visible(false);
-            }
-        }
 
         // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
         // can be confused with the actual Chat type.
@@ -981,6 +930,60 @@ impl ChatPanel {
             auto_scroll_pending: true,
             auto_scroll_cancellable: false,
         };
+    }
+
+    fn switch_visibilities(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        enum State {
+            NoModelsAvailable,
+            NoModelSelected,
+            ModelSelectedWithEmptyChat,
+            ModelSelectedWithChat,
+        }
+
+        let state = if store.downloads.downloaded_files.is_empty() {
+            State::NoModelsAvailable
+        } else if store.chats.loaded_model.is_none() {
+            State::NoModelSelected
+        } else {
+            store
+                .chats
+                .get_current_chat()
+                .map_or(State::ModelSelectedWithEmptyChat, |chat| {
+                    if chat.borrow().messages.is_empty() {
+                        State::ModelSelectedWithEmptyChat
+                    } else {
+                        State::ModelSelectedWithChat
+                    }
+                })
+        };
+
+        match state {
+            State::NoModelsAvailable => {
+                self.view(id!(no_downloaded_model)).set_visible(true);
+                self.view(id!(no_model)).set_visible(false);
+                //self.view(id!(main)).set_visible(false);
+                self.view(id!(empty_conversation)).set_visible(false);
+            }
+            State::NoModelSelected => {
+                self.view(id!(no_downloaded_model)).set_visible(false);
+                self.view(id!(no_model)).set_visible(true);
+                //self.view(id!(main)).set_visible(false);
+                self.view(id!(empty_conversation)).set_visible(false);
+            }
+            State::ModelSelectedWithEmptyChat => {
+                self.view(id!(no_downloaded_model)).set_visible(false);
+                self.view(id!(no_model)).set_visible(false);
+                //self.view(id!(main)).set_visible(true);
+                self.view(id!(empty_conversation)).set_visible(true);
+            }
+            State::ModelSelectedWithChat => {
+                self.view(id!(no_downloaded_model)).set_visible(false);
+                self.view(id!(no_model)).set_visible(false);
+                self.view(id!(empty_conversation)).set_visible(false);
+            }
+        }
     }
 }
 
