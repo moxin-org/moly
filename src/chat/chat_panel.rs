@@ -425,9 +425,7 @@ live_design! {
 
 #[derive(PartialEq)]
 enum ChatPanelState {
-    Unload {
-        downloaded_model_empty: bool,
-    },
+    Unload,
     Idle,
     Streaming {
         auto_scroll_pending: bool,
@@ -437,9 +435,7 @@ enum ChatPanelState {
 
 impl Default for ChatPanelState {
     fn default() -> ChatPanelState {
-        ChatPanelState::Unload {
-            downloaded_model_empty: true,
-        }
+        ChatPanelState::Unload
     }
 }
 
@@ -499,16 +495,14 @@ impl Widget for ChatPanel {
                     // Redraw because we expect to see new or updated chat entries
                     self.redraw(cx);
                 }
-                ChatPanelState::Unload {
-                    downloaded_model_empty: _,
-                } => self.unload_model(cx, store),
+                ChatPanelState::Unload => self.unload_model(cx),
                 _ => {}
             }
         }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.switch_visibilities(cx, scope);
+        self.switch_visibilities(scope);
 
         let store = scope.data.get_mut::<Store>().unwrap();
 
@@ -665,7 +659,7 @@ impl WidgetMatchEvent for ChatPanel {
                         .get_current_chat()
                         .map_or(false, |chat| chat.borrow().file_id == file_id)
                     {
-                        self.unload_model(cx, store);
+                        self.unload_model(cx);
                         store.chats.eject_model().expect("Failed to eject model");
                     }
                 }
@@ -743,9 +737,7 @@ impl ChatPanel {
                 let list = self.portal_list(id!(chat));
                 jump_to_bottom.set_visible(has_messages && list.further_items_bellow_exist());
             }
-            ChatPanelState::Unload {
-                downloaded_model_empty: _,
-            } => {
+            ChatPanelState::Unload => {
                 jump_to_bottom.set_visible(false);
             }
         }
@@ -770,9 +762,7 @@ impl ChatPanel {
                 );
                 self.show_prompt_input_stop_icon(cx);
             }
-            ChatPanelState::Unload {
-                downloaded_model_empty: _,
-            } => {}
+            _ => {}
         }
     }
 
@@ -852,12 +842,8 @@ impl ChatPanel {
         self.state = ChatPanelState::Idle;
     }
 
-    fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {
-        let downloaded_model_empty = store.downloads.downloaded_files.is_empty();
-        self.state = ChatPanelState::Unload {
-            downloaded_model_empty,
-        };
-
+    fn unload_model(&mut self, cx: &mut Cx) {
+        self.state = ChatPanelState::Unload;
         self.model_selector(id!(model_selector)).deselect(cx);
         self.view.redraw(cx);
     }
@@ -906,34 +892,28 @@ impl ChatPanel {
         };
     }
 
-    fn switch_visibilities(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
-        match self.state {
-            ChatPanelState::Idle => {
-                self.view(id!(main)).set_visible(true);
-                self.view(id!(empty_conversation)).set_visible(true);
-                self.view(id!(no_model)).set_visible(false);
-                self.view(id!(no_downloaded_model)).set_visible(false);
-            }
-            ChatPanelState::Unload {
-                downloaded_model_empty,
-            } => {
-                self.view(id!(main)).set_visible(false);
-                self.view(id!(empty_conversation)).set_visible(false);
+    fn switch_visibilities(&mut self, scope: &mut Scope) {
+        macro_rules! show {
+            ($view_id:ident) => {
+                self.view(id!($view_id)).set_visible(true)
+            };
+        }
 
-                if downloaded_model_empty {
-                    self.view(id!(no_downloaded_model)).set_visible(true);
-                    self.view(id!(no_model)).set_visible(false);
-                } else {
-                    self.view(id!(no_model)).set_visible(true);
-                    self.view(id!(no_downloaded_model)).set_visible(false);
-                }
-            }
+        macro_rules! hide {
+            ($view_id:ident) => {
+                self.view(id!($view_id)).set_visible(false)
+            };
+        }
+
+        match self.state {
+            ChatPanelState::Idle => show!(main),
+            ChatPanelState::Unload => hide!(main),
             _ => {}
         }
 
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        enum State {
+        enum ComputedState {
             NoModelsAvailable,
             NoModelSelected,
             ModelSelectedWithEmptyChat,
@@ -941,45 +921,42 @@ impl ChatPanel {
         }
 
         let state = if store.downloads.downloaded_files.is_empty() {
-            State::NoModelsAvailable
+            ComputedState::NoModelsAvailable
         } else if store.chats.loaded_model.is_none() {
-            State::NoModelSelected
+            ComputedState::NoModelSelected
         } else {
-            store
-                .chats
-                .get_current_chat()
-                .map_or(State::ModelSelectedWithEmptyChat, |chat| {
+            store.chats.get_current_chat().map_or(
+                ComputedState::ModelSelectedWithEmptyChat,
+                |chat| {
                     if chat.borrow().messages.is_empty() {
-                        State::ModelSelectedWithEmptyChat
+                        ComputedState::ModelSelectedWithEmptyChat
                     } else {
-                        State::ModelSelectedWithChat
+                        ComputedState::ModelSelectedWithChat
                     }
-                })
+                },
+            )
         };
 
         match state {
-            State::NoModelsAvailable => {
-                self.view(id!(no_downloaded_model)).set_visible(true);
-                self.view(id!(no_model)).set_visible(false);
-                //self.view(id!(main)).set_visible(false);
-                self.view(id!(empty_conversation)).set_visible(false);
+            ComputedState::NoModelsAvailable => {
+                show!(no_downloaded_model);
+                hide!(no_model);
+                hide!(empty_conversation);
             }
-            State::NoModelSelected => {
-                self.view(id!(no_downloaded_model)).set_visible(false);
-                self.view(id!(no_model)).set_visible(true);
-                //self.view(id!(main)).set_visible(false);
-                self.view(id!(empty_conversation)).set_visible(false);
+            ComputedState::NoModelSelected => {
+                hide!(no_downloaded_model);
+                show!(no_model);
+                hide!(empty_conversation);
             }
-            State::ModelSelectedWithEmptyChat => {
-                self.view(id!(no_downloaded_model)).set_visible(false);
-                self.view(id!(no_model)).set_visible(false);
-                //self.view(id!(main)).set_visible(true);
-                self.view(id!(empty_conversation)).set_visible(true);
+            ComputedState::ModelSelectedWithEmptyChat => {
+                hide!(no_downloaded_model);
+                hide!(no_model);
+                show!(empty_conversation);
             }
-            State::ModelSelectedWithChat => {
-                self.view(id!(no_downloaded_model)).set_visible(false);
-                self.view(id!(no_model)).set_visible(false);
-                self.view(id!(empty_conversation)).set_visible(false);
+            ComputedState::ModelSelectedWithChat => {
+                hide!(no_downloaded_model);
+                hide!(no_model);
+                hide!(empty_conversation);
             }
         }
     }
