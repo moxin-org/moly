@@ -81,7 +81,7 @@ cargo-build: | $(BUILDDIR)/target/
 flatpak-build: $(BUILDDIR)/wasmedge/linux-x86_64/core.archive
 flatpak-build: $(BUILDDIR)/wasmedge/linux-x86_64/wasinn.archive
 flatpak-build: cargo-build resources-build | $(BUILDDIR)/flatpak/
-	cp "$(SRCDIR)/pkg/rs.robius.moxin.json" "$(BUILDDIR)/"
+	cp "$(SRCDIR)/pkg/flatpak-rs.robius.moxin.json" "$(BUILDDIR)/"
 	flatpak-builder \
 		--force-clean \
 		--install \
