@@ -129,6 +129,7 @@ pub struct ChatHistory {
 impl Widget for ChatHistory {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -162,6 +163,19 @@ impl Widget for ChatHistory {
         }
 
         DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for ChatHistory {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+        let widget_uid = self.widget_uid();
+
+        if self.button(id!(new_chat_button)).clicked(&actions) {
+            store.chats.create_empty_chat();
+            self.redraw(cx);
+            cx.widget_action(widget_uid, &scope.path, ChatHistoryAction::NewChat);
+        }
     }
 }
 
@@ -282,4 +296,5 @@ impl ChatCardRef {
 pub enum ChatHistoryAction {
     None,
     ChatSelected(ChatID),
+    NewChat,
 }

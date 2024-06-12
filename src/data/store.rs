@@ -82,17 +82,31 @@ impl Store {
 
         store.chats.load_chats();
 
+        if let Some(ref file_id) = store.preferences.current_chat_model {
+            let available_files: Vec<File> = store
+                .downloads
+                .downloaded_files
+                .iter()
+                .map(|d| d.file.clone())
+                .collect();
+            let file = available_files
+                .iter()
+                .find(|file| file.id == *file_id)
+                .expect("Attempted to start chat with a no longer existing file");
+
+            if let Some(chat_id) = store.chats.get_latest_chat_id() {
+                store.chats.set_current_chat(chat_id, file);
+            } else {
+                store.chats.create_empty_chat_with_model_file(file);
+            }
+        }
+
         store.search.load_featured_models();
         store
     }
 
-    pub fn load_model(&mut self, file: &File, set_as_current: bool) {
-        // We are creating a new chat because there is no other way to start a new conversation
-        // with a model. This is a temporary solution until we have a better way to start a chat
-
-        if self.chats.load_model(file).is_ok()
-            && self.chats.create_new_chat(file, set_as_current).is_ok()
-        {
+    pub fn load_model(&mut self, file: &File) {
+        if self.chats.load_model(file).is_ok() {
             self.preferences.set_current_chat_model(file.id.clone());
         }
     }

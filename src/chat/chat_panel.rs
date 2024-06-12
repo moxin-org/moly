@@ -852,7 +852,7 @@ impl ChatPanel {
 
     fn load_model(&mut self, store: &mut Store, downloaded_file: DownloadedFile) {
         self.update_state_model_loaded();
-        store.load_model(&downloaded_file.file, true);
+        store.load_model(&downloaded_file.file);
     }
 
     fn update_state_model_loaded(&mut self) {

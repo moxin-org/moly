@@ -190,7 +190,7 @@ impl Chat {
         let cmd = Command::Chat(
             ChatRequestData {
                 messages,
-                model: "llama-2-7b-chat.Q5_K_M".to_string(),
+                model: self.model_filename.clone(),
                 frequency_penalty: None,
                 logprobs: None,
                 top_logprobs: None,
