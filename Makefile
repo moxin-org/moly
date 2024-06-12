@@ -78,9 +78,10 @@ cargo-build: | $(BUILDDIR)/target/
 #
 
 .PHONY: flatpak-build
+flatpak-build: cargo-build resources-build
 flatpak-build: $(BUILDDIR)/wasmedge/linux-x86_64/core.archive
 flatpak-build: $(BUILDDIR)/wasmedge/linux-x86_64/wasinn.archive
-flatpak-build: cargo-build resources-build | $(BUILDDIR)/flatpak/
+flatpak-build: FORCE | $(BUILDDIR)/flatpak/
 	cp "$(SRCDIR)/pkg/flatpak-rs.robius.moxin.json" "$(BUILDDIR)/"
 	flatpak-builder \
 		--force-clean \
@@ -97,13 +98,31 @@ flatpak-run:
 # Target: macos-*
 #
 
+MACOS_ARCH		?= arm64
+
+$(BUILDDIR)/macos-arm64/Moxin.app: $(BUILDDIR)/wasmedge/macos-arm64/core.archive
+$(BUILDDIR)/macos-arm64/Moxin.app: $(BUILDDIR)/wasmedge/macos-arm64/wasinn.archive
+$(BUILDDIR)/macos-x86_64/Moxin.app: $(BUILDDIR)/wasmedge/macos-x86_64/core.archive
+$(BUILDDIR)/macos-x86_64/Moxin.app: $(BUILDDIR)/wasmedge/macos-x86_64/wasinn.archive
+
+$(BUILDDIR)/macos-%/Moxin.app: cargo-build resources-build FORCE | $(BUILDDIR)/macos-%/
+	rm -rf "$@"
+	mkdir "$@/" "$@/Contents"
+	mkdir "$@/Contents/MacOS"
+	mkdir "$@/Contents/Resources"
+	cat "$(SRCDIR)/pkg/macos-Info.plist" >"$@/Contents/Info.plist"
+	cat "$(SRCDIR)/pkg/macos-PkgInfo" >"$@/Contents/PkgInfo"
+	install -Dm755 "$(BUILDDIR)/target/moxin" -t "$@/Contents/MacOS/"
+	cp -R "$(BUILDDIR)/resources/." "$@/Contents/Resources"
+	cp -R "$(BUILDDIR)/wasmedge/macos-$*/core/lib/." "$@/Contents/Frameworks"
+	cp -R "$(BUILDDIR)/wasmedge/macos-$*/wasinn/"*.dylib "$@/Contents/Frameworks"
+
 .PHONY: macos-build
-macos-build:
-	@echo "<TBD>"
+macos-build: $(BUILDDIR)/macos-$(MACOS_ARCH)/Moxin.app
 
 .PHONY: macos-run
 macos-run:
-	@echo "<TBD>"
+	open $(BUILDDIR)/macos-$(MACOS_ARCH)/Moxin.app
 
 #
 # Target: resources-*
