@@ -868,18 +868,6 @@ impl ChatPanel {
     }
 
     fn update_visibilities(&mut self, scope: &mut Scope) {
-        macro_rules! show {
-            ($view_id:ident) => {
-                self.view(id!($view_id)).set_visible(true)
-            };
-        }
-
-        macro_rules! hide {
-            ($view_id:ident) => {
-                self.view(id!($view_id)).set_visible(false)
-            };
-        }
-
         let store = scope.data.get_mut::<Store>().unwrap();
 
         enum ComputedState {
@@ -906,42 +894,48 @@ impl ChatPanel {
             )
         };
 
+        let empty_conversation = self.view(id!(empty_conversation));
+        let jump_to_bottom = self.view(id!(jump_to_bottom));
+        let main = self.view(id!(main));
+        let no_downloaded_model = self.view(id!(no_downloaded_model));
+        let no_model = self.view(id!(no_model));
+
         match state {
             ComputedState::NoModelsAvailable => {
-                hide!(empty_conversation);
-                hide!(jump_to_bottom);
-                hide!(main);
-                hide!(no_model);
+                empty_conversation.set_visible(false);
+                jump_to_bottom.set_visible(false);
+                main.set_visible(false);
+                no_model.set_visible(false);
 
-                show!(no_downloaded_model);
+                no_downloaded_model.set_visible(true);
             }
             ComputedState::NoModelSelected => {
-                hide!(empty_conversation);
-                hide!(jump_to_bottom);
-                hide!(main);
-                hide!(no_downloaded_model);
+                empty_conversation.set_visible(false);
+                jump_to_bottom.set_visible(false);
+                main.set_visible(false);
+                no_downloaded_model.set_visible(false);
 
-                show!(no_model);
+                no_model.set_visible(true);
             }
             ComputedState::ModelSelectedWithEmptyChat => {
-                hide!(jump_to_bottom);
-                hide!(no_downloaded_model);
-                hide!(no_model);
+                jump_to_bottom.set_visible(false);
+                no_downloaded_model.set_visible(false);
+                no_model.set_visible(false);
 
-                show!(empty_conversation);
-                show!(main);
+                empty_conversation.set_visible(true);
+                main.set_visible(true);
             }
             ComputedState::ModelSelectedWithChat => {
-                hide!(empty_conversation);
-                hide!(no_downloaded_model);
-                hide!(no_model);
+                empty_conversation.set_visible(false);
+                no_downloaded_model.set_visible(false);
+                no_model.set_visible(false);
 
-                show!(main);
+                main.set_visible(true);
 
                 if self.portal_list(id!(chat)).further_items_bellow_exist() {
-                    show!(jump_to_bottom);
+                    jump_to_bottom.set_visible(true);
                 } else {
-                    hide!(jump_to_bottom);
+                    jump_to_bottom.set_visible(false);
                 }
             }
         }
