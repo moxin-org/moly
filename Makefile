@@ -34,8 +34,6 @@ help:
 	@echo
 	@echo "    windows-build:      Build the Windows application"
 	@echo "    windows-run:        Run the Windows application"
-	@echo
-	@echo "    wasmedge-fetch:     Fetch the latest WasmEdge release"
 
 #
 # Target: BUILDDIR
@@ -80,7 +78,9 @@ cargo-build: | $(BUILDDIR)/target/
 #
 
 .PHONY: flatpak-build
-flatpak-build: cargo-build resources-build wasmedge-fetch | $(BUILDDIR)/flatpak/
+flatpak-build: $(BUILDDIR)/wasmedge/linux-x86_64/core.archive
+flatpak-build: $(BUILDDIR)/wasmedge/linux-x86_64/wasinn.archive
+flatpak-build: cargo-build resources-build | $(BUILDDIR)/flatpak/
 	cp "$(SRCDIR)/pkg/rs.robius.moxin.json" "$(BUILDDIR)/"
 	flatpak-builder \
 		--force-clean \
@@ -129,50 +129,55 @@ resources-build: resources-moxin resources-widgets
 #
 # Target: wasmedge-*
 #
-# The main target wasmedge-fetch will download the specified release of
-# WasmEdge and the WASI-NN plugin. The archives are extracted into:
-#
-#     $(BUILDDIR)/wasmedge/{core,wasinn}
+# The different `$(BUILDDIR)/wasmedge/*` targets fetch the selected WasmEdge
+# release archive and extract it into the build-directory. It is ready to be
+# bundled into application builds.
 #
 
-WASMEDGE_ARCH		?= x86_64
 WASMEDGE_DL		?= https://github.com/WasmEdge/WasmEdge/releases/download
-WASMEDGE_PKG		?= -manylinux2014_$(WASMEDGE_ARCH)
 WASMEDGE_VERSION	?= 0.13.5
 
-$(BUILDDIR)/wasmedge/core.tar.xz: | $(BUILDDIR)/wasmedge/
+$(BUILDDIR)/wasmedge/linux-arm64/core.archive: WASMEDGE_PKG=-manylinux2014_aarch64.tar.gz
+$(BUILDDIR)/wasmedge/linux-arm64/wasinn.archive: WASMEDGE_PKG=-manylinux2014_aarch64.tar.gz
+$(BUILDDIR)/wasmedge/linux-x86_64/core.archive: WASMEDGE_PKG=-manylinux2014_x86_64.tar.gz
+$(BUILDDIR)/wasmedge/linux-x86_64/wasinn.archive: WASMEDGE_PKG=-manylinux2014_x86_64.tar.gz
+$(BUILDDIR)/wasmedge/macos-arm64/core.archive: WASMEDGE_PKG=-darwin_arm64.tar.gz
+$(BUILDDIR)/wasmedge/macos-arm64/wasinn.archive: WASMEDGE_PKG=-darwin_arm64.tar.gz
+$(BUILDDIR)/wasmedge/macos-x86_64/core.archive: WASMEDGE_PKG=-darwin_x86_64.tar.gz
+$(BUILDDIR)/wasmedge/macos-x86_64/wasinn.archive: WASMEDGE_PKG=-darwin_x86_64.tar.gz
+$(BUILDDIR)/wasmedge/windows-x86_64/core.archive: WASMEDGE_PKG=-windows-msvc.zip
+$(BUILDDIR)/wasmedge/windows-x86_64/wasinn.archive: WASMEDGE_PKG=-windows_x86_64.zip
+
+$(BUILDDIR)/wasmedge/%/core.archive: | $(BUILDDIR)/wasmedge/%/
 	curl \
 		--fail \
 		--location \
 		--output "$@" \
 		--progress-bar \
 		--show-error \
-		"$(WASMEDGE_DL)/$(WASMEDGE_VERSION)/WasmEdge-$(WASMEDGE_VERSION)$(WASMEDGE_PKG).tar.xz"
-	rm -rf "$(BUILDDIR)/wasmedge/core"
-	mkdir "$(BUILDDIR)/wasmedge/core"
-	tar \
+		"$(WASMEDGE_DL)/$(WASMEDGE_VERSION)/WasmEdge-$(WASMEDGE_VERSION)$(WASMEDGE_PKG)"
+	rm -rf "$(dir $@)/core"
+	mkdir "$(dir $@)/core"
+	bsdtar \
 		-x \
 		--strip-components 1 \
-		-C "$(BUILDDIR)/wasmedge/core" \
+		-C "$(dir $@)/core" \
 		-f "$@"
 
-$(BUILDDIR)/wasmedge/wasinn.tar.gz: | $(BUILDDIR)/wasmedge/
+$(BUILDDIR)/wasmedge/%/wasinn.archive: | $(BUILDDIR)/wasmedge/%/
 	curl \
 		--fail \
 		--location \
 		--output "$@" \
 		--progress-bar \
 		--show-error \
-		"$(WASMEDGE_DL)/$(WASMEDGE_VERSION)/WasmEdge-plugin-wasi_nn-ggml-$(WASMEDGE_VERSION)$(WASMEDGE_PKG).tar.gz"
-	rm -rf "$(BUILDDIR)/wasmedge/wasinn"
-	mkdir "$(BUILDDIR)/wasmedge/wasinn"
-	tar \
+		"$(WASMEDGE_DL)/$(WASMEDGE_VERSION)/WasmEdge-plugin-wasi_nn-ggml-$(WASMEDGE_VERSION)$(WASMEDGE_PKG)"
+	rm -rf "$(dir $@)/wasinn"
+	mkdir "$(dir $@)/wasinn"
+	bsdtar \
 		-x \
-		-C "$(BUILDDIR)/wasmedge/wasinn" \
+		-C "$(dir $@)/wasinn" \
 		-f "$@"
-
-.PHONY: wasmedge-fetch
-wasmedge-fetch: $(BUILDDIR)/wasmedge/core.tar.xz $(BUILDDIR)/wasmedge/wasinn.tar.gz
 
 #
 # Target: windows-*

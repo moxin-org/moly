@@ -41,8 +41,8 @@
             "name": "wasmedge",
             "buildsystem": "simple",
             "build-commands": [
-                "cp -R ./wasmedge/core/lib64/. /app/lib",
-                "cp -R ./wasmedge/wasinn/. /app/lib"
+                "cp -R ./wasmedge/linux-x86_64/core/lib64/. /app/lib",
+                "cp -R ./wasmedge/linux-x86_64/wasinn/. /app/lib"
             ],
             "sources": [
                 {
