@@ -22,33 +22,11 @@ live_design! {
 
     import crate::chat::model_selector::ModelSelector;
     import crate::chat::chat_line::ChatLine;
+    import crate::chat::shared::ChatAgentAvatar;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
-
-    ChatAgentAvatar = <RoundedView> {
-        width: 24,
-        height: 24,
-
-        show_bg: true,
-        draw_bg: {
-            color: #444D9A,
-            radius: 6,
-        }
-
-        align: {x: 0.5, y: 0.5},
-
-        avatar_label = <Label> {
-            width: Fit,
-            height: Fit,
-            draw_text:{
-                text_style: <BOLD_FONT>{font_size: 10},
-                color: #fff,
-            }
-            text: "P"
-        }
-    }
 
     UserChatLine = <ChatLine> {
         margin: {left: 100}

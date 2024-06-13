@@ -11,7 +11,7 @@ live_design! {
     import crate::shared::widgets::MoxinButton;
     import makepad_draw::shader::std::*;
 
-    import crate::chat::chat_panel::ChatAgentAvatar;
+    import crate::chat::shared::ChatAgentAvatar;
     import crate::chat::chat_history_card::ChatHistoryCard;
 
     ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")

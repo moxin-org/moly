@@ -8,9 +8,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    // import makepad_draw::shader::std::*;
-
-    import crate::chat::chat_panel::ChatAgentAvatar;
+    import crate::chat::shared::ChatAgentAvatar;
 
     ChatHistoryCard = {{ChatHistoryCard}} {
         content = <RoundedView> {
