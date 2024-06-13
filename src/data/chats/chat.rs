@@ -291,6 +291,7 @@ impl Chat {
                 }
                 ChatTokenArrivalAction::StreamingDone => {
                     self.is_streaming = false;
+                    self.save();
                 }
             }
         }
