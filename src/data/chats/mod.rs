@@ -166,6 +166,7 @@ impl Chats {
     pub fn delete_chat_message(&mut self, message_id: usize) {
         if let Some(chat) = self.get_current_chat() {
             chat.borrow_mut().delete_message(message_id);
+            chat.borrow().save();
         }
     }
 
@@ -187,6 +188,7 @@ impl Chats {
             } else {
                 chat.edit_message(message_id, updated_message);
             }
+            chat.save();
         }
     }
 
