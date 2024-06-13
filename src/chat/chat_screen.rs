@@ -11,7 +11,6 @@ live_design! {
     ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
-        margin: {top: 48, right: 48, bottom: 48, left: 20},
         spacing: 50,
 
         <View> {
@@ -24,11 +23,13 @@ live_design! {
         chat_panel = <ChatPanel> {
             width: Fill,
             height: Fill,
+            padding: {top: 48, bottom: 48 }
         }
 
         <View> {
             width: 200,
             height: Fill,
+            margin: {top: 48, right: 48, bottom: 48}
         }
     }
 }

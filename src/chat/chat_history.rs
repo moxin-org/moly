@@ -7,6 +7,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::FadeView;
     import crate::shared::widgets::MoxinButton;
     import makepad_draw::shader::std::*;
 
@@ -24,9 +25,23 @@ live_design! {
         close_panel_button = <MoxinButton> {
             width: Fit,
             height: Fit,
-            icon_walk: {margin: { left: -3, top: -1 }, width: 22, height: 22},
+            //icon_walk: {margin: { left: -3, top: -1 }, width: 22, height: 22},
+            icon_walk: {width: 20, height: 20},
             draw_icon: {
                 svg_file: (ICON_CLOSE_PANEL),
+                fn get_color(self) -> vec4 {
+                    return #475467;
+                }
+            }
+        }
+
+        open_panel_button = <MoxinButton> {
+            width: Fit,
+            height: Fit,
+            visible: false,
+            icon_walk: {width: 20, height: 20},
+            draw_icon: {
+                svg_file: (ICON_OPEN_PANEL),
                 fn get_color(self) -> vec4 {
                     return #475467;
                 }
@@ -36,7 +51,7 @@ live_design! {
         new_chat_button = <MoxinButton> {
             width: Fit,
             height: Fit,
-            icon_walk: {width: 20, height: 20},
+            icon_walk: {margin: { top: -1 }, width: 21, height: 21},
             draw_icon: {
                 svg_file: (ICON_NEW_CHAT),
                 fn get_color(self) -> vec4 {
@@ -47,15 +62,53 @@ live_design! {
     }
 
     ChatHistory = {{ChatHistory}} {
-        flow: Down
+        flow: Overlay
         width: Fill
         height: Fill
-        padding: 10
 
-        <ChatHistoryActions> {}
+        main_content = <FadeView> {
+            width: Fill
+            height: Fill
+            <View> {
+                width: Fill,
+                height: Fill,
+                show_bg: true
+                draw_bg: {
+                    color: #F2F4F7
+                }
 
-        list = <PortalList> {
-            ChatHistoryCard = <ChatHistoryCard> {margin: {top: 20}}
+                <View> {
+                    width: Fill,
+                    height: Fill,
+
+                    margin: { top: 120 }
+                    padding: { left: 25, right: 25, bottom: 58 }
+
+                    list = <PortalList> {
+                        ChatHistoryCard = <ChatHistoryCard> {margin: {top: 20}}
+                    }
+                }
+            }
+        }
+
+        <ChatHistoryActions> {
+            padding: {top: 58, left: 25, right: 25}
+        }
+
+        animator: {
+            panel = {
+                default: show,
+                show = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.5}}
+                    apply: {main_content = { draw_bg: {opacity: 1.0} }}
+                }
+                hide = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.5}}
+                    apply: {main_content = { draw_bg: {opacity: 0.0} }}
+                }
+            }
         }
     }
 }
@@ -64,12 +117,19 @@ live_design! {
 pub struct ChatHistory {
     #[deref]
     view: View,
+
+    #[animator]
+    animator: Animator,
 }
 
 impl Widget for ChatHistory {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -113,6 +173,18 @@ impl WidgetMatchEvent for ChatHistory {
         if self.button(id!(new_chat_button)).clicked(&actions) {
             store.chats.create_empty_chat();
             self.redraw(cx);
+        }
+
+        if self.button(id!(close_panel_button)).clicked(&actions) {
+            self.button(id!(close_panel_button)).set_visible(false);
+            self.button(id!(open_panel_button)).set_visible(true);
+            self.animator_play(cx, id!(panel.hide));
+        }
+
+        if self.button(id!(open_panel_button)).clicked(&actions) {
+            self.button(id!(open_panel_button)).set_visible(false);
+            self.button(id!(close_panel_button)).set_visible(true);
+            self.animator_play(cx, id!(panel.show));
         }
     }
 }
