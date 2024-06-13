@@ -63,12 +63,12 @@ live_design! {
 
     ChatHistory = {{ChatHistory}} {
         flow: Overlay
-        width: Fill
+        width: Fit
         height: Fill
 
         main_content = <FadeView> {
-            width: Fill
-            height: Fill
+            width: 270
+            height: Fill,
             <View> {
                 width: Fill,
                 height: Fill,
@@ -100,13 +100,15 @@ live_design! {
                 default: show,
                 show = {
                     redraw: true,
-                    from: {all: Forward {duration: 0.5}}
-                    apply: {main_content = { draw_bg: {opacity: 1.0} }}
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {main_content = { width: 270, draw_bg: {opacity: 1.0} }}
                 }
                 hide = {
                     redraw: true,
-                    from: {all: Forward {duration: 0.5}}
-                    apply: {main_content = { draw_bg: {opacity: 0.0} }}
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {main_content = { width: 110, draw_bg: {opacity: 0.0} }}
                 }
             }
         }

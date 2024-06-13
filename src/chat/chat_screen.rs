@@ -14,7 +14,7 @@ live_design! {
         spacing: 50,
 
         <View> {
-            width: 270,
+            width: Fit,
             height: Fill,
 
             chat_history = <ChatHistory> {}

@@ -15,7 +15,7 @@ live_design! {
     ChatHistoryCard = {{ChatHistoryCard}} {
         content = <RoundedView> {
             flow: Down
-            width: Fill
+            width: 208
             height: Fit
             padding: 20
             spacing: 12
