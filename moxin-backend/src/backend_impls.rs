@@ -419,6 +419,8 @@ mod chat_ui {
 
         let mut instances: HashMap<String, &mut (dyn SyncInst)> = HashMap::new();
 
+        eprintln!("Kevin: run_wasm_by_downloaded_file: {:?}", file);
+
         let mut wasi = create_wasi(&file, &load_model).unwrap();
         let mut chatui = module(ChatBotUi::new(
             request_rx,
@@ -430,7 +432,29 @@ mod chat_ui {
         .unwrap();
 
         instances.insert(wasi.name().to_string(), wasi.as_mut());
-        let mut wasi_nn = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().unwrap();
+        
+        let mut wasi_nn = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().ok()
+            // On macOS, the plugin will be located in the Contents/Frameworks/ directory of the app bundle.
+            .or_else(|| {
+                let current_executable = std::env::current_exe().ok()?;
+                let executable_dir = current_executable.parent()?;
+                let mac_os_bundle_frameworks_dir = executable_dir.parent()?.join("Frameworks");
+                eprintln!("Kevin: current_executable: {:?}, executable_dir: {:?}, frameworks_dir: {:?}", current_executable, executable_dir, mac_os_bundle_frameworks_dir);
+                std::env::set_var("WASMEDGE_PLUGIN_PATH", mac_os_bundle_frameworks_dir.to_string_lossy().as_ref());
+                eprintln!("Kevin: WASMEDGE_PLUGIN_PATH: {:?}", std::env::var("WASMEDGE_PLUGIN_PATH"));
+                let load_plugin_result = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().ok();
+                let load_and_create_result = wasmedge_sdk::plugin::PluginManager::load(
+                    Some(mac_os_bundle_frameworks_dir.join("libwasmedgePluginWasiNN.dylib").as_path())
+                )
+                    .and_then(|_| wasmedge_sdk::plugin::PluginManager::create_plugin_instance("wasi_nn", "wasi_nn"))
+                    .ok();
+                eprintln!("Kevin: macOS load_plugin_result: {:?}", load_plugin_result);
+                eprintln!("Kevin: macOS load_and_create_result: {:?}", load_and_create_result);
+                load_and_create_result
+            })
+            .expect("Unable to find the wasi-nn plugin");
+
+        eprintln!("Kevin: Succeeded, wasi_nn: {:?}", wasi_nn);
         instances.insert(wasi_nn.name().unwrap(), &mut wasi_nn);
         instances.insert(chatui.name().unwrap(), &mut chatui);
 

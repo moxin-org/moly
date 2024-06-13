@@ -2,3 +2,5 @@
 preferences.json
 data.*
 .vscode
+/wasmedge
+/dist

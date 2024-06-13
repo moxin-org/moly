@@ -4,11 +4,11 @@ Moxin is an AI LLM client written in Rust to demonstrate the functionality of th
 
 > ⚠️ Moxin is just getting started and is not yet fully functional.
 
-The following table shows which host systems can currently be used to build Robrix for which target platforms.
+The following table shows which host systems can currently be used to build Moxin for which target platforms.
 | Host OS | Target Platform | Builds? | Runs? |
 | ------- | --------------- | ------- | ----- |
-| macOS | macOS | ✅ | ✅ |
-| Linux | ubuntu(x86_64-unknown-linux-gnu) | ✅ | ? |
+| macOS   | macOS           | ✅      | ✅    |  
+| Linux   | ubuntu(x86_64-unknown-linux-gnu) | ✅ | ? |
 
 ## Building and Running
 
@@ -58,3 +58,19 @@ Then, run:
 cd moxin
 cargo run
 ```
+
+
+## Packaging Moxin for Distribution
+
+Install cargo packager:
+```sh
+cargo install --locked cargo-packager
+```
+
+### Packaging for macOS
+Use `cargo packager` to generate a `.app` bundle and a `.dmg` disk image:
+```sh
+cargo packager --release
+```
+
+[Link to the MacOS .dmg background image](https://docs.google.com/drawings/d/1Uq13nAsCKFrl4s16HeLqpVfQ-vbF7v2Z8HFyqgeyrbE/edit?usp=sharing)
