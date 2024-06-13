@@ -33,7 +33,6 @@ impl Chats {
             match loaded_chat_result {
                 Err(e) => {
                     eprintln!("{}", &e.to_string());
-                    continue;
                 }
                 Ok(loaded_chat) => self.saved_chats.push(RefCell::new(loaded_chat)),
             }
