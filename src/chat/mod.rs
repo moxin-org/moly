@@ -1,4 +1,5 @@
 pub mod chat_history;
+pub mod chat_history_card;
 pub mod chat_line;
 pub mod chat_line_loading;
 pub mod chat_panel;
@@ -10,6 +11,7 @@ pub mod model_selector_list;
 use makepad_widgets::Cx;
 
 pub fn live_design(cx: &mut Cx) {
+    chat_history_card::live_design(cx);
     chat_history::live_design(cx);
     chat_line_loading::live_design(cx);
     chat_line::live_design(cx);

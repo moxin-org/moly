@@ -3,7 +3,7 @@ use moxin_protocol::data::{DownloadedFile, FileID};
 
 use crate::{
     chat::{
-        chat_history::ChatHistoryAction,
+        chat_history_card::ChatHistoryCardAction,
         chat_line::{ChatLineAction, ChatLineWidgetRefExt},
         model_selector::ModelSelectorWidgetExt,
         model_selector_list::ModelSelectorAction,
@@ -600,7 +600,7 @@ impl WidgetMatchEvent for ChatPanel {
         let widget_uid = self.widget_uid();
 
         for action in actions {
-            if let ChatHistoryAction::ChatSelected(_) = action.as_widget_action().cast() {
+            if let ChatHistoryCardAction::ChatSelected(_) = action.as_widget_action().cast() {
                 self.view(id!(empty_conversation)).set_visible(false);
                 self.update_state_model_loaded();
                 self.redraw(cx);
