@@ -79,6 +79,8 @@ impl Store {
         store.downloads.load_downloaded_files();
         store.downloads.load_pending_downloads();
 
+        store.chats.load_chats();
+
         store.search.load_featured_models();
         store
     }

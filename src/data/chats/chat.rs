@@ -1,11 +1,17 @@
+use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
 use moxin_backend::Backend;
 use moxin_protocol::data::FileID;
 use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
+use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Deserializer, Serialize};
+
+use crate::data::filesystem::{read_from_file, write_to_file};
 
 pub type ChatID = u128;
 
@@ -15,7 +21,7 @@ pub enum ChatTokenArrivalAction {
     StreamingDone,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatMessage {
     pub id: usize,
     pub role: Role,
@@ -35,24 +41,72 @@ enum TitleState {
     Updated,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
 pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
     pub model_filename: String,
     pub file_id: FileID,
     pub messages: Vec<ChatMessage>,
+    #[serde(skip)]
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
+    #[serde(skip)]
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
+    #[serde(skip)]
     pub is_streaming: bool,
 
     title: String,
     /// Know when title was updated by user.
+    #[serde(skip)]
     title_state: TitleState,
+
+    #[serde(skip)]
+    chats_dir: PathBuf,
+}
+
+impl<'de> Deserialize<'de> for Chat {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct ChatData {
+            id: ChatID,
+            model_filename: String,
+            file_id: FileID,
+            messages: Vec<ChatMessage>,
+            title: String,
+        }
+
+        let ChatData {
+            id,
+            model_filename,
+            file_id,
+            messages,
+            title,
+        } = ChatData::deserialize(deserializer)?;
+
+        let (tx, rx) = channel();
+
+        Ok(Chat {
+            id,
+            model_filename,
+            file_id,
+            messages,
+            // TODO: This is kinda bad, we set the sender and reciever which need to
+            // be set correctly later
+            messages_update_sender: tx,
+            messages_update_receiver: rx,
+            is_streaming: false,
+            title,
+            title_state: TitleState::default(),
+            chats_dir: PathBuf::new(),
+        })
+    }
 }
 
 impl Chat {
-    pub fn new(filename: String, file_id: FileID) -> Self {
+    pub fn new(filename: String, file_id: FileID, chats_dir: PathBuf) -> Self {
         let (tx, rx) = channel();
 
         // Get Unix timestamp in ms for id.
@@ -71,7 +125,34 @@ impl Chat {
             messages_update_receiver: rx,
             is_streaming: false,
             title_state: TitleState::default(),
+            chats_dir,
         }
+    }
+
+    pub fn load(path: PathBuf, chats_dir: PathBuf) -> Result<Self> {
+        let (tx, rx) = channel();
+
+        match read_from_file(path) {
+            Ok(json) => {
+                let mut chat: Chat = serde_json::from_str(&json)?;
+                chat.messages_update_sender = tx;
+                chat.messages_update_receiver = rx;
+                chat.chats_dir = chats_dir;
+                Ok(chat)
+            }
+            Err(_) => Err(anyhow!("Couldn't read chat file from path")),
+        }
+    }
+
+    pub fn save(&self) {
+        let json = serde_json::to_string(&self).unwrap();
+        let path = self.chats_dir.join(self.file_name());
+        write_to_file(path, &json).unwrap();
+    }
+
+    // TODO: Make a field
+    fn file_name(&self) -> String {
+        format!("{}.chat.json", self.id)
     }
 
     pub fn get_title(&self) -> &str {

@@ -489,7 +489,12 @@ impl Widget for ChatPanel {
                         auto_scroll_cancellable: true,
                     };
 
-                    let still_streaming = store.chats.get_current_chat().unwrap().borrow().is_streaming;
+                    let still_streaming = store
+                        .chats
+                        .get_current_chat()
+                        .unwrap()
+                        .borrow()
+                        .is_streaming;
                     if still_streaming {
                         if auto_scroll_pending {
                             self.scroll_messages_to_bottom(cx);
@@ -518,24 +523,23 @@ impl Widget for ChatPanel {
 
         // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
         // can be confused with the actual Chat type.
-        let (chat_history, model_filename, initial_letter) =
-            store
-                .chats
-                .get_current_chat()
-                .map_or((vec![], "".to_string(), "".to_string()), |chat| {
-                    let model_filename = chat.borrow().model_filename.clone();
-                    let initial_letter = model_filename
-                        .chars()
-                        .next()
-                        .unwrap_or_default()
-                        .to_uppercase()
-                        .to_string();
-                    (
-                        chat.borrow().messages.clone(),
-                        model_filename,
-                        initial_letter,
-                    )
-                });
+        let (chat_history, model_filename, initial_letter) = store.chats.get_current_chat().map_or(
+            (vec![], "".to_string(), "".to_string()),
+            |chat| {
+                let model_filename = chat.borrow().model_filename.clone();
+                let initial_letter = model_filename
+                    .chars()
+                    .next()
+                    .unwrap_or_default()
+                    .to_uppercase()
+                    .to_string();
+                (
+                    chat.borrow().messages.clone(),
+                    model_filename,
+                    initial_letter,
+                )
+            },
+        );
 
         let chats_count = chat_history.len();
 
