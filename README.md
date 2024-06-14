@@ -79,6 +79,7 @@ ERROR cargo_packager::cli: Error running create-dmg script: File exists (os erro
 ```
 then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
 
+At this point, in the `dist/` directory you should see both the `Moxin.app` and the `.dmg`.
 
 
 If you'd like to modify the .dmg background, here is the [Google Drawings file used to generate the MacOS .dmg background image](https://docs.google.com/drawings/d/1Uq13nAsCKFrl4s16HeLqpVfQ-vbF7v2Z8HFyqgeyrbE/edit?usp=sharing).

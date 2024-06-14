@@ -52,7 +52,7 @@ binaries = [
     { path = "moxin", main = false },
 ]
 before-packaging-command = """
-MAKEPAD_PACKAGE_ROOT=makepad cargo build --workspace --release  \
+MAKEPAD_PACKAGE_DIR=makepad cargo build --workspace --release  \
 """
 before-each-package-command = """
 echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n" \
