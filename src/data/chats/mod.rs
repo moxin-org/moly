@@ -66,14 +66,13 @@ impl Chats {
 
         if let Ok(response) = rx.recv() {
             match response {
-                Ok(response) => {
-                    if let LoadModelResponse::Completed(_) = response {
-                        self.loaded_model_id = Some(file.id.clone());
-                        Ok(())
-                    } else {
-                        eprintln!("Error loading model");
-                        Err(anyhow::anyhow!("Error loading model"))
-                    }
+                Ok(LoadModelResponse::Completed(_)) => {
+                    self.loaded_model_id = Some(file.id.clone());
+                    Ok(())
+                }
+                Ok(_) => {
+                    eprintln!("Error loading model: Unexpected response");
+                    Err(anyhow::anyhow!("Error loading model: Unexpected response"))
                 }
                 Err(err) => {
                     eprintln!("Error loading model: {:?}", err);
@@ -140,7 +139,11 @@ impl Chats {
             .get_current_chat_model_file(available_model_files)
             .clone();
 
-        if self.loaded_model_id.as_ref().is_some_and(|m| *m != file.id) {
+        if self
+            .loaded_model_id
+            .as_ref()
+            .map_or(true, |m| *m != file.id)
+        {
             self.load_model(&file)?;
         }
 
