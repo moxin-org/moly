@@ -1,0 +1,8 @@
+[package]
+name = "moxin-runner"
+version = "0.1.0"
+edition = "2021"
+description = "A companion app that runs before Moxin to handle wasmedge configuration and more"
+
+[dependencies]
+directories = "5.0.1"

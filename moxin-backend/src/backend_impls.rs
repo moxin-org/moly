@@ -419,6 +419,7 @@ mod chat_ui {
 
         let mut instances: HashMap<String, &mut (dyn SyncInst)> = HashMap::new();
 
+        eprintln!("Kevin: env vars: {:#?}", std::env::vars().collect::<Vec<_>>());
         eprintln!("Kevin: run_wasm_by_downloaded_file: {:?}", file);
 
         let mut wasi = create_wasi(&file, &load_model).unwrap();
