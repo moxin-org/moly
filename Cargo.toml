@@ -47,22 +47,12 @@ Moxin uses the wasmedge WASM runtime to locally run the AI models.
 
 ## Configuration for `cargo packager`
 [package.metadata.packager]
-## This command downloads the key parts of wasmedge and installs them into the local ./wasmedge directory.
 before-packaging-command = """
-MAKEPAD=packaged cargo build --release \
-&& mkdir -p ./wasmedge \
-&& curl -sfL --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.13.5/WasmEdge-0.13.5-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge \
-&& mkdir -p ./wasmedge/WasmEdge-0.13.5-Darwin/plugin \
-&& curl -sf --location --progress-bar --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.13.5/WasmEdge-plugin-wasi_nn-ggml-0.13.5-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge/WasmEdge-0.13.5-Darwin/plugin \
+MAKEPAD_PACKAGE_ROOT=makepad cargo build --release \
 """
 before-each-package-command = """
 echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n" \
-&& mkdir -p ./dist/Moxin.app/Contents/Frameworks \
-&& tree ./dist \
 """
-# && cp ./wasmedge/WasmEdge-0.13.5-Darwin/lib/libwasmedge.0.dylib ./dist/Moxin.app/Contents/Frameworks/ \
-# && cp ./wasmedge/WasmEdge-0.13.5-Darwin/plugin/libwasmedgePluginWasiNN.dylib ./dist/Moxin.app/Contents/Frameworks/ \
-# """
 product_name = "Moxin"
 identifier = "com.moxin-org.moxin"
 category = "Utility"
@@ -73,10 +63,6 @@ out_dir = "./dist"
 
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
-frameworks = [
-    "./wasmedge/WasmEdge-0.13.5-Darwin/lib/libwasmedge.0.dylib",
-    "./wasmedge/WasmEdge-0.13.5-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
-]
 
 ## Configuration for `cargo packager`'s generation of a macOS .dmg 
 [package.metadata.packager.dmg]

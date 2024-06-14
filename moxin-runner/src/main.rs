@@ -36,9 +36,9 @@
 //! ----------------------------------------------------
 //!
 //! The key environment variables of interest are those that get set by the wasmedge installer.
-//! 1. LIBRARY_PATH=/Users/kevinboos/.wasmedge/lib
-//! 2. C_INCLUDE_PATH=/Users/kevinboos/.wasmedge/include
-//! 3. CPLUS_INCLUDE_PATH=/Users/kevinboos/.wasmedge/include
+//! 1. LIBRARY_PATH=$HOME/.wasmedge/lib
+//! 2. C_INCLUDE_PATH=$HOME/.wasmedge/include
+//! 3. CPLUS_INCLUDE_PATH=$HOME/.wasmedge/include
 //!
 //! Of these 3, we only care about the `LIBRARY_PATH`, where the `libwasmedge.0.dylib` is located.
 //!
@@ -63,6 +63,7 @@ const WASMEDGE_WASI_NN_PLUGIN_DYLIB: &str = "libwasmedgePluginWasiNN.dylib";
 
 const ENV_PATH: &str = "PATH";
 const ENV_DYLD_LIBRARY_PATH: &str = "DYLD_LIBRARY_PATH";
+const ENV_DYLD_FALLBACK_LIBRARY_PATH: &str = "DYLD_FALLBACK_LIBRARY_PATH";
 const ENV_LIBRARY_PATH: &str = "LIBRARY_PATH";
 const ENV_C_INCLUDE_PATH: &str = "C_INCLUDE_PATH";
 const ENV_CPLUS_INCLUDE_PATH: &str = "CPLUS_INCLUDE_PATH";
@@ -111,6 +112,9 @@ fn main() -> std::io::Result<()> {
         wasi_nn plugin: {}",
         main_dylib_path.display(), wasi_nn_plugin_path.display(),
     );
+
+    run_moxin().unwrap();
+
     Ok(())
 }
 
@@ -203,9 +207,9 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<P, std::io::Error
 /// which is typically `$HOME/.wasmedge`.
 ///
 /// This does the following:
-/// * Prepends `wasmedge_dir/bin` to `PATH`
-/// * Prepends `wasmedge_dir/lib` to `DYLD_LIBRARY_PATH` and `LIBRARY_PATH`
-/// * Prepends `wasmedge_dir/include` to `C_INCLUDE_PATH` and `CPLUS_INCLUDE_PATH`
+/// * Prepends `wasmedge_dir/bin` to `PATH`.
+/// * Prepends `wasmedge_dir/lib` to `DYLD_LIBRARY_PATH`, `DYLD_FALLBACK_LIBRARY_PATH`, and `LIBRARY_PATH`.
+/// * Prepends `wasmedge_dir/include` to `C_INCLUDE_PATH` and `CPLUS_INCLUDE_PATH`.
 ///
 /// Note that we cannot simply run something like `Command::new("source")...`,
 /// because `source` is a shell builtin, and the environment changes would only be visible
@@ -228,6 +232,7 @@ fn apply_env_vars<P: AsRef<Path>>(wasmedge_dir_path: &P) {
     let wasmedge_dir = wasmedge_dir_path.as_ref();
     prepend_env_var(ENV_PATH, wasmedge_dir.join("bin"));
     prepend_env_var(ENV_DYLD_LIBRARY_PATH, wasmedge_dir.join("lib"));
+    prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_dir.join("lib"));
     prepend_env_var(ENV_LIBRARY_PATH, wasmedge_dir.join("lib"));
     prepend_env_var(ENV_C_INCLUDE_PATH, wasmedge_dir.join("include"));
     prepend_env_var(ENV_CPLUS_INCLUDE_PATH, wasmedge_dir.join("include"));
@@ -247,4 +252,18 @@ fn wasmedge_dir_from_env_vars() -> Option<PathBuf> {
             .and_then(PathExt::path_if_exists)
             .map(ToOwned::to_owned)
         )
+}
+
+/// Runs the moxin app binary, which must be located in the same directory as this binary.
+fn run_moxin() -> std::io::Result<()> {
+    let current_exe = std::env::current_exe()?;
+    let current_exe_dir = current_exe.parent().unwrap();
+    
+    println!("Running moxin in dir: {}", current_exe_dir.display());
+
+    let _output = Command::new(current_exe_dir.join("moxin"))
+        .spawn()?
+        .wait_with_output()?;
+
+    Ok(())
 }
