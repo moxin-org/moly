@@ -68,10 +68,14 @@ cargo install --locked cargo-packager
 ```
 
 ### Packaging for macOS
-Use `cargo packager` to generate a `.app` bundle and a `.dmg` disk image:
+This can only be run on an actual macOS machine, due to platform restrictions.
+
+Use `cargo packager` to generate an `.app` bundle and a `.dmg` disk image:
 ```sh
 cargo packager --release --verbose   ## --verbose is optional
 ```
+
+> Note: you will see a .dmg window pop up — please leave it alone, it will auto-close once the packaging procedure has completed.
 
 If you receive the following error:
 ```
@@ -79,7 +83,7 @@ ERROR cargo_packager::cli: Error running create-dmg script: File exists (os erro
 ```
 then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
 
-At this point, in the `dist/` directory you should see both the `Moxin.app` and the `.dmg`.
+After the command completes, you should see both the `Moxin.app` and the `.dmg` in the `dist/` directory.
 
 
 If you'd like to modify the .dmg background, here is the [Google Drawings file used to generate the MacOS .dmg background image](https://docs.google.com/drawings/d/1Uq13nAsCKFrl4s16HeLqpVfQ-vbF7v2Z8HFyqgeyrbE/edit?usp=sharing).
