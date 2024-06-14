@@ -78,9 +78,12 @@ resources = [
     { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
     { src = "./dist/resources/moxin", target = "moxin" },
 ]
-before-each-package-command = """
-echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n" \
-"""
+
+## this is not currently needed.
+# before-each-package-command = """
+# echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n" \
+# """
+
 product_name = "Moxin"
 identifier = "com.moxin-org.moxin"
 category = "Utility"
