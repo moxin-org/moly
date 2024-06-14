@@ -55,6 +55,12 @@
 //!    which is located in `$HOME/.wasmedge/plugin/libwasmedgePluginWasiNN.dylib`.
 //!
 
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
+
 const WASMEDGE_DIR_NAME: &str = ".wasmedge";
 const LIB_DIR_NAME: &str = "lib";
 const PLUGIN_DIR_NAME: &str = "plugin";
@@ -68,11 +74,6 @@ const ENV_LIBRARY_PATH: &str = "LIBRARY_PATH";
 const ENV_C_INCLUDE_PATH: &str = "C_INCLUDE_PATH";
 const ENV_CPLUS_INCLUDE_PATH: &str = "CPLUS_INCLUDE_PATH";
 
-use std::{
-    ffi::OsStr,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-};
 
 /// An extension trait for checking if a path exists.
 pub trait PathExt {
@@ -92,8 +93,9 @@ impl<P: AsRef<Path>> PathExt for P {
 
 
 fn main() -> std::io::Result<()> {
-    // First, check if the wasmedge installation directory exists in the default location.
-    let (main_dylib_path, wasi_nn_plugin_path) = existing_wasmedge_default_dir()
+    let (wasmedge_dir_in_use, main_dylib_path, wasi_nn_plugin_path) = 
+        // First, check if the wasmedge installation directory exists in the default location.
+        existing_wasmedge_default_dir()
         // If not, try to find the wasmedge installation directory using environment vars.
         .or_else(wasmedge_dir_from_env_vars)
         // If we have a wasmedge installation directory, try to find the dylibs within it.
@@ -107,12 +109,16 @@ fn main() -> std::io::Result<()> {
         )
         .expect("failed to find or install wasmedge dylibs");
 
-    println!("Found both required files:
-        wasmedge dylib: {},
-        wasi_nn plugin: {}",
-        main_dylib_path.display(), wasi_nn_plugin_path.display(),
+    println!("Found required files:
+        wasmedge root dir: {}
+        wasmedge dylib:    {}
+        wasi_nn plugin:    {}",
+        wasmedge_dir_in_use.display(),
+        main_dylib_path.display(),
+        wasi_nn_plugin_path.display(),
     );
 
+    apply_env_vars(&wasmedge_dir_in_use);
     run_moxin().unwrap();
 
     Ok(())
@@ -138,9 +144,12 @@ fn wasmedge_default_dir_path() -> Option<PathBuf> {
 /// The `wasmedge_dir` should be the root directory of the wasmedge installation;
 /// see the crate-level documentation for more information about the expected layout.
 /// 
-/// Returns a tuple of the main wasmedge dylib path and the wasi_nn plugin dylib path,
+/// Returns a tuple of:
+/// 1. the wasmedge root directory path
+/// 2. the main wasmedge dylib path
+/// 3. the wasi_nn plugin dylib path
 /// if found in `wasmedge_dir/lib/` and `wasmedge_dir/plugin/`.
-fn find_wasmedge_dylibs<P: AsRef<Path>>(wasmedge_dir: P) -> Option<(PathBuf, PathBuf)> {
+fn find_wasmedge_dylibs<P: AsRef<Path>>(wasmedge_dir: P) -> Option<(PathBuf, PathBuf, PathBuf)> {
     let main_dylib_path = wasmedge_dir.as_ref()
         .join(LIB_DIR_NAME)
         .join(WASMEDGE_MAIN_DYLIB)
@@ -150,7 +159,7 @@ fn find_wasmedge_dylibs<P: AsRef<Path>>(wasmedge_dir: P) -> Option<(PathBuf, Pat
         .join(WASMEDGE_WASI_NN_PLUGIN_DYLIB)
         .path_if_exists()?;
 
-    Some((main_dylib_path, wasi_nn_plugin_path))
+    Some((wasmedge_dir.as_ref().into(), main_dylib_path, wasi_nn_plugin_path))
 }
 
 
