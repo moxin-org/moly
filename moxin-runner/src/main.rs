@@ -109,7 +109,7 @@ fn main() -> std::io::Result<()> {
         )
         .expect("failed to find or install wasmedge dylibs");
 
-    println!("Found required files:
+    println!("Found required wasmedge files:
         wasmedge root dir: {}
         wasmedge dylib:    {}
         wasi_nn plugin:    {}",
@@ -263,7 +263,7 @@ fn wasmedge_dir_from_env_vars() -> Option<PathBuf> {
         )
 }
 
-/// Runs the moxin app binary, which must be located in the same directory as this binary.
+/// Runs the moxin app binary, which must be located in the same directory as this moxin-runner binary.
 fn run_moxin() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
@@ -271,6 +271,7 @@ fn run_moxin() -> std::io::Result<()> {
     println!("Running moxin in dir: {}", current_exe_dir.display());
 
     let _output = Command::new(current_exe_dir.join("moxin"))
+        .current_dir(current_exe_dir)
         .spawn()?
         .wait_with_output()?;
 
