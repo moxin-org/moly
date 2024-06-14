@@ -1,3 +1,4 @@
+use super::chats::chat::ChatID;
 use super::filesystem::project_dirs;
 use super::preferences::Preferences;
 use super::search::SortCriteria;
@@ -85,10 +86,30 @@ impl Store {
         store
     }
 
-    pub fn load_model(&mut self, file: &File) {
-        if self.chats.load_model(file).is_ok() {
-            self.preferences.set_current_chat_model(file.id.clone());
+    // TODO: This wrappers feel weird.
+    pub fn create_new_chat(&mut self, file: &File, set_as_current: bool) {
+        if self.chats.create_new_chat(file, set_as_current).is_ok() {
+            // TODO: This breaks, FIX THE PREFERENCES!!!
+            // self.preferences.set_current_chat_model(file.id.clone());
         }
+    }
+
+    /// This loads the model
+    // TODO: Feels weird to do this wrappers
+    pub fn set_current_chat(&mut self, chat_id: ChatID, available_model_files: &[File]) {
+        self.chats
+            .set_current_chat(chat_id, available_model_files)
+            .unwrap();
+
+        // TODO: This breaks, FIX THE PREFERENCES!!!
+        // let current_chat_model_file_id = self
+        //     .chats
+        //     .get_current_chat_model_file(available_model_files)
+        //     .id
+        //     .clone();
+        //
+        // self.preferences
+        //     .set_current_chat_model(current_chat_model_file_id);
     }
 
     /// This function combines the search results information for a given model

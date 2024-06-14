@@ -288,6 +288,7 @@ impl Chat {
                 ChatTokenArrivalAction::AppendDelta(response) => {
                     let last = self.messages.last_mut().unwrap();
                     last.content.push_str(&response);
+                    self.save();
                 }
                 ChatTokenArrivalAction::StreamingDone => {
                     self.is_streaming = false;

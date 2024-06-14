@@ -602,6 +602,7 @@ impl WidgetMatchEvent for ChatPanel {
         for action in actions {
             if let ChatHistoryAction::ChatSelected(_) = action.as_widget_action().cast() {
                 self.view(id!(empty_conversation)).set_visible(false);
+                self.update_state_model_loaded();
                 self.redraw(cx);
             }
 
@@ -850,13 +851,16 @@ impl ChatPanel {
     }
 
     fn load_model(&mut self, store: &mut Store, downloaded_file: DownloadedFile) {
+        self.update_state_model_loaded();
+        store.create_new_chat(&downloaded_file.file, true);
+    }
+
+    fn update_state_model_loaded(&mut self) {
         self.state = ChatPanelState::Idle;
         self.view(id!(main)).set_visible(true);
         self.view(id!(empty_conversation)).set_visible(true);
         self.view(id!(no_model)).set_visible(false);
         self.view(id!(no_downloaded_model)).set_visible(false);
-
-        store.load_model(&downloaded_file.file);
     }
 
     fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {

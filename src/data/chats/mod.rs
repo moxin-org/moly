@@ -2,17 +2,11 @@ pub mod chat;
 
 use anyhow::{Context, Result};
 use chat::{Chat, ChatID};
-use makepad_widgets::error;
 use moxin_backend::Backend;
 use moxin_protocol::protocol::{Command, LoadModelResponse};
 use moxin_protocol::{data::*, protocol::LoadModelOptions};
 use std::fs;
-use std::{
-    cell::RefCell,
-    path::{Path, PathBuf},
-    rc::Rc,
-    sync::mpsc::channel,
-};
+use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::channel};
 
 use super::filesystem::setup_chats_folder;
 
@@ -20,7 +14,8 @@ pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
-    pub current_chat_id: Option<ChatID>,
+    current_chat_id: Option<ChatID>,
+    loaded_model_id: Option<FileID>,
     chats_dir: PathBuf,
 }
 
@@ -44,51 +39,13 @@ impl Chats {
             backend,
             saved_chats: Vec::new(),
             current_chat_id: None,
+            loaded_model_id: None,
             chats_dir: setup_chats_folder(),
         }
     }
 
-    pub fn load_model2(&mut self, file: &File) -> Result<()> {
-        let (tx, rx) = channel();
-        let cmd = Command::LoadModel(
-            file.id.clone(),
-            LoadModelOptions {
-                prompt_template: None,
-                gpu_layers: moxin_protocol::protocol::GPULayers::Max,
-                use_mlock: false,
-                n_batch: 512,
-                n_ctx: 512,
-                rope_freq_scale: 0.0,
-                rope_freq_base: 0.0,
-                context_overflow_policy:
-                    moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
-            },
-            tx,
-        );
-
-        self.backend.as_ref().command_sender.send(cmd).unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(response) => {
-                    let LoadModelResponse::Completed(_) = response else {
-                        eprintln!("Error loading model");
-                        return Ok(());
-                    };
-                }
-                Err(err) => {
-                    eprintln!("Error loading model: {:?}", err);
-                    return Err(err);
-                }
-            }
-        };
-
-        Err(anyhow::anyhow!("Error loading model"))
-    }
-
     pub fn load_model(&mut self, file: &File) -> Result<()> {
         let (tx, rx) = channel();
-
         let cmd = Command::LoadModel(
             file.id.clone(),
             LoadModelOptions {
@@ -110,28 +67,46 @@ impl Chats {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(response) => {
-                    let LoadModelResponse::Completed(_) = response else {
+                    if let LoadModelResponse::Completed(_) = response {
+                        self.loaded_model_id = Some(file.id.clone());
+                        Ok(())
+                    } else {
                         eprintln!("Error loading model");
-                        return Ok(());
-                    };
-                    // TODO: Creating a new chat, maybe put in a method and save on disk or smth.
-                    let new_chat = RefCell::new(Chat::new(
-                        file.name.clone(),
-                        file.id.clone(),
-                        self.chats_dir.clone(),
-                    ));
-                    new_chat.borrow().save();
-                    self.current_chat_id = Some(new_chat.borrow().id);
-                    self.saved_chats.push(new_chat);
+                        Err(anyhow::anyhow!("Error loading model"))
+                    }
                 }
                 Err(err) => {
                     eprintln!("Error loading model: {:?}", err);
-                    return Err(err);
+                    Err(err)
                 }
             }
-        };
+        } else {
+            Err(anyhow::anyhow!("Error loading model"))
+        }
+    }
 
-        Err(anyhow::anyhow!("Error loading model"))
+    pub fn create_new_chat(&mut self, file: &File, set_as_current: bool) -> Result<()> {
+        self.load_model(file)?;
+
+        let new_chat = RefCell::new(Chat::new(
+            file.name.clone(),
+            file.id.clone(),
+            self.chats_dir.clone(),
+        ));
+
+        new_chat.borrow().save();
+
+        if set_as_current {
+            self.current_chat_id = Some(new_chat.borrow().id);
+        }
+
+        self.saved_chats.push(new_chat);
+
+        Ok(())
+    }
+
+    pub fn get_current_chat_id(&self) -> Option<ChatID> {
+        self.current_chat_id
     }
 
     pub fn get_current_chat(&self) -> Option<&RefCell<Chat>> {
@@ -144,8 +119,37 @@ impl Chats {
         }
     }
 
-    pub fn set_current_chat_id(&mut self, chat_id: ChatID) {
+    pub fn get_current_chat_model_file<'a>(&'a self, available_model_files: &'a [File]) -> &File {
+        let file_id = self.get_current_chat().unwrap().borrow().file_id.clone();
+        let file = available_model_files
+            .iter()
+            .find(|file| file.id == file_id)
+            .expect("Attempted to start chat with a no longer existing file");
+
+        file
+    }
+
+    pub fn set_current_chat(
+        &mut self,
+        chat_id: ChatID,
+        available_model_files: &[File],
+    ) -> Result<()> {
+        // TODO: Check if the model is the same as active and do nthg
         self.current_chat_id = Some(chat_id);
+
+        let file = self
+            .get_current_chat_model_file(available_model_files)
+            .clone();
+
+        if self.loaded_model_id.as_ref().is_some_and(|m| *m != file.id) {
+            self.load_model(&file)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn remove_current_chat(&mut self) {
+        self.current_chat_id = None;
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
@@ -204,7 +208,7 @@ impl Chats {
             .context("Failed to receive eject model response")?
             .context("Eject model operation failed");
 
-        self.current_chat_id = None;
+        self.remove_current_chat();
         Ok(())
     }
 }
