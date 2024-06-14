@@ -134,7 +134,6 @@ impl Chats {
         chat_id: ChatID,
         available_model_files: &[File],
     ) -> Result<()> {
-        // TODO: Check if the model is the same as active and do nthg
         self.current_chat_id = Some(chat_id);
 
         let file = self
