@@ -70,7 +70,7 @@ cargo install --locked cargo-packager
 ### Packaging for macOS
 This can only be run on an actual macOS machine, due to platform restrictions.
 
-Use `cargo packager` to generate an `.app` bundle and a `.dmg` disk image:
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate an `.app` bundle and a `.dmg` disk image:
 ```sh
 cargo packager --release --verbose   ## --verbose is optional
 ```
