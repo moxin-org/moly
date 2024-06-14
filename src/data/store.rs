@@ -97,19 +97,21 @@ impl Store {
     /// This loads the model
     // TODO: Feels weird to do this wrappers
     pub fn set_current_chat(&mut self, chat_id: ChatID, available_model_files: &[File]) {
-        self.chats
+        if self
+            .chats
             .set_current_chat(chat_id, available_model_files)
-            .unwrap();
-
-        // TODO: This breaks, FIX THE PREFERENCES!!!
-        // let current_chat_model_file_id = self
-        //     .chats
-        //     .get_current_chat_model_file(available_model_files)
-        //     .id
-        //     .clone();
-        //
-        // self.preferences
-        //     .set_current_chat_model(current_chat_model_file_id);
+            .is_ok()
+        {
+            // TODO: This breaks, FIX THE PREFERENCES!!!
+            // let current_chat_model_file_id = self
+            //     .chats
+            //     .get_current_chat_model_file(available_model_files)
+            //     .id
+            //     .clone();
+            //
+            // self.preferences
+            //     .set_current_chat_model(current_chat_model_file_id);
+        }
     }
 
     /// This function combines the search results information for a given model
@@ -149,7 +151,7 @@ impl Store {
             download_count: model.download_count,
             released_at: model.released_at,
             author: model.author.clone(),
-            files: files,
+            files,
         }
     }
 
