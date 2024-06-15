@@ -38,18 +38,13 @@ cargo run
 
 ### Linux
 
-Alternatively, on the Linux platform, you need to ensure the following dependencies are installed (e.g., Ubuntu.):
+To build Moxin on Linux, you must install the following dependencies:
+`openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
 
+On a Debian-like Linux distro (e.g., Ubuntu), run the following:
 ```sh
 sudo apt-get update
-# openssl
-sudo apt-get install libssl-dev pkg-config
-# libclang for bindgen
-sudo apt-get install llvm clang libclang-dev
-# binfmt
-sudo apt install binfmt-support
-# Xcursor、X11、asound and pulse
-sudo apt-get install libxcursor-dev libx11-dev libasound2-dev libpulse-dev
+sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
 ```
 
 Then, run:
@@ -66,6 +61,20 @@ Install cargo packager:
 ```sh
 cargo install --locked cargo-packager
 ```
+For the sake of posterity, these instructions were tested with cargo-packager v0.9.0.
+
+
+### Packaging for Linux
+On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` Debian package, an AppImage, and a pacman installation package.
+
+> Only the `.deb` file has been tested so far.
+
+To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
+```sh
+cd dist/
+sudo dpkg -i moxin-runner_0.1.0_amd64.deb  ## requires entering your password
+```
+
 
 ### Packaging for macOS
 This can only be run on an actual macOS machine, due to platform restrictions.
@@ -84,6 +93,9 @@ ERROR cargo_packager::cli: Error running create-dmg script: File exists (os erro
 then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
 
 After the command completes, you should see both the `Moxin.app` and the `.dmg` in the `dist/` directory.
+You can immediately double-click the `Moxin.app` bundle to run it, or you can double-click the `.dmg` file to 
+
+> Note that the `.dmg` is what should be distributed for installation on other machines, not the `.app`.
 
 
 If you'd like to modify the .dmg background, here is the [Google Drawings file used to generate the MacOS .dmg background image](https://docs.google.com/drawings/d/1Uq13nAsCKFrl4s16HeLqpVfQ-vbF7v2Z8HFyqgeyrbE/edit?usp=sharing).

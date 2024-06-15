@@ -64,7 +64,7 @@ live_design! {
             text_style: <REGULAR_FONT>{font_size: 11},
             color: #000
         }
-        text: "Show in finder"
+        text: "Show in Folder"
     }
 
     SearchBar = <RoundedView> {
@@ -210,7 +210,7 @@ fn file_manager_label() -> String {
     } else if cfg!(target_os = "macos") {
         "Show in Finder".to_string()
     } else {
-        "Show in File Manager".to_string()
+        "Show in Folder".to_string()
     }
 }
 
