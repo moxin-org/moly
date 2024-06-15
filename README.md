@@ -84,7 +84,8 @@ Ensure you are in the root `moxin` directory, and then you can use `cargo packag
 cargo packager --release --verbose   ## --verbose is optional
 ```
 
-> Note: you will see a .dmg window pop up — please leave it alone, it will auto-close once the packaging procedure has completed.
+> [!TIP]
+> You will see a .dmg window pop up — please leave it alone, it will auto-close once the packaging procedure has completed.
 
 If you receive the following error:
 ```
@@ -97,5 +98,23 @@ You can immediately double-click the `Moxin.app` bundle to run it, or you can do
 
 > Note that the `.dmg` is what should be distributed for installation on other machines, not the `.app`.
 
-
 If you'd like to modify the .dmg background, here is the [Google Drawings file used to generate the MacOS .dmg background image](https://docs.google.com/drawings/d/1Uq13nAsCKFrl4s16HeLqpVfQ-vbF7v2Z8HFyqgeyrbE/edit?usp=sharing).
+
+### Installing and running the packaged macOS app
+> [!IMPORTANT]
+> The Moxin application package on macOS is currently not signed, so Apple will display a warning on macOS (shown below) when you first attempt to open it after installation.
+>
+> **This warning is not true**. The app is not damaged, it just hasn't been signed.
+
+<img src="macOS_error.png" alt="macOS error for Moxin app" />
+
+To get around this, do the following:
+* Install the Moxin app as normal by opening the `.dmg` and dragging the Moxin app to the Applications folder shortcut.
+* Open the Moxin app from your Applications folder.
+* An error message will pop up, as described above. **Click cancel**.
+* Open a terminal and run the following command:
+  ```sh
+  xattr -dr com.apple.quarantine path/to/the/installed/Moxin.app
+  ```
+  * The path is typically `/Applications/Moxin.app`, assuming you dragged the app icon into the Applications folder.
+* Now open the Moxin app again as normal, it should work as expected.
