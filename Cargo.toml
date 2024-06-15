@@ -53,7 +53,6 @@ category = "Utility"
 publisher = "moxin-org"
 homepage = "https://github.com/moxin-org"
 icons = ["app_icon128x128.png"]
-formats = ["all"]
 out_dir = "./dist"
 binaries = [
     { path = "moxin-runner", main = true },
@@ -100,7 +99,6 @@ mkdir -p ./dist/resources/makepad_widgets/ \
 && cp -r `cargo metadata --format-version 1 | sed -e 's/,\"/,\\n\"/g' | grep 'widgets/Cargo.toml\"' | sed -e 's/\"manifest_path\":\"//g' -e 's/Cargo.toml\",/resources/g'` ./dist/resources/makepad_widgets/ \
 && mkdir -p ./dist/resources/moxin/ \
 && cp -r ./resources ./dist/resources/moxin/ \
-&& env \
 && cargo build --workspace --release  \
 """
 
@@ -112,7 +110,7 @@ mkdir -p ./dist/resources/makepad_widgets/ \
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
 
-## Configuration for `cargo packager`'s generation of a macOS .dmg 
+## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
 [package.metadata.packager.dmg]
 background = "./Moxin macOS dmg background.png"
 window_size = { width = 960, height = 540 }
