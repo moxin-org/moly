@@ -74,14 +74,18 @@ resources = [
 ## so we need to copy the resources to a known path before packaging
 ## such that cargo-packager can include them in the final package.
 ##
-## We then build the entire Moxin project and set the `MAKEPAD_PACKAGE_DIR` env var to `../Resources`,
-## which is the macOS-specific path where the resources will be copied to in the final package.
-## This only works because the `moxin-runner` binary sets the current working directory 
-## to the directory where the binary is located, which is `Moxin.app/Contents/MacOS/`.
-## (See the `run_moxin` function in `moxin-runner/src/main.rs` for more details.)
-## In a macOS app bundle, the resources directory is in `Moxin.app/Context/Resources/`,
-## so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources` --- it must be relative to the binary's location,
-## which is up one parent directory.
+## We then build the entire Moxin project and set the `MAKEPAD_PACKAGE_DIR` env var to the proper value.
+## * For macOS app bundles, this should be set to `../Resources`.
+##   This only works because the `moxin-runner` binary sets the current working directory 
+##   to the directory where the binary is located, which is `Moxin.app/Contents/MacOS/`.
+##   (See the `run_moxin` function in `moxin-runner/src/main.rs` for more details.)
+##   In a macOS app bundle, the resources directory is in `Moxin.app/Context/Resources/`,
+##   so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources` --- it must be relative to the binary's location,
+##   which is up one parent directory.
+## * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
+##   which is currently `/usr/lib/moxin-runner`.
+##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
+##
 before-packaging-command = """
 export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
 echo "\n\nPackaging on host platform '$CARGO_PACKAGER_HOST_OS'\n\n"; \
