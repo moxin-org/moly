@@ -2,3 +2,4 @@
 preferences.json
 data.*
 .vscode
+/dist
