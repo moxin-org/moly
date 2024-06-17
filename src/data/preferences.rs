@@ -21,13 +21,11 @@ impl Preferences {
             Ok(json) => {
                 let mut preferences: Preferences = serde_json::from_str(&json).unwrap();
                 preferences.downloaded_files_dir = setup_model_downloads_folder();
-                dbg!(&json, preferences_path());
                 return preferences;
             }
             Err(_) => {}
         }
 
-        dbg!("Creating new preferences file");
         Self {
             current_chat_model: None,
             downloaded_files_dir: setup_model_downloads_folder(),
