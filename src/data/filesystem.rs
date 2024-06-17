@@ -42,6 +42,18 @@ pub fn setup_chats_folder() -> PathBuf {
     chats_dir
 }
 
+pub fn setup_preferences_folder() -> PathBuf {
+    let preferences_dir = project_dirs().preference_dir();
+
+    std::fs::create_dir_all(&preferences_dir).unwrap_or_else(|_| {
+        panic!(
+            "Failed to create the preferences directory at {:?}",
+            preferences_dir
+        )
+    });
+    preferences_dir.to_path_buf()
+}
+
 pub fn read_from_file(path: PathBuf) -> Result<String, std::io::Error> {
     let mut file = match File::open(path) {
         Ok(file) => file,
