@@ -34,75 +34,39 @@ impl ChatMessage {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
 enum TitleState {
     #[default]
     Default,
     Updated,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize)]
+struct ChatData {
+    id: ChatID,
+    model_filename: String,
+    file_id: FileID,
+    messages: Vec<ChatMessage>,
+    title: String,
+    #[serde(default)]
+    title_state: TitleState,
+}
+
+#[derive(Debug)]
 pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
     pub model_filename: String,
     pub file_id: FileID,
     pub messages: Vec<ChatMessage>,
-    #[serde(skip)]
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
-    #[serde(skip)]
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
-    #[serde(skip)]
     pub is_streaming: bool,
 
     title: String,
-    /// Know when title was updated by user.
-    #[serde(skip)]
     title_state: TitleState,
 
-    #[serde(skip)]
     chats_dir: PathBuf,
-}
-
-impl<'de> Deserialize<'de> for Chat {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct ChatData {
-            id: ChatID,
-            model_filename: String,
-            file_id: FileID,
-            messages: Vec<ChatMessage>,
-            title: String,
-        }
-
-        let ChatData {
-            id,
-            model_filename,
-            file_id,
-            messages,
-            title,
-        } = ChatData::deserialize(deserializer)?;
-
-        let (tx, rx) = channel();
-
-        Ok(Chat {
-            id,
-            model_filename,
-            file_id,
-            messages,
-            // TODO: This is kinda bad, we set the sender and reciever which need to
-            // be set correctly later
-            messages_update_sender: tx,
-            messages_update_receiver: rx,
-            is_streaming: false,
-            title,
-            title_state: TitleState::default(),
-            chats_dir: PathBuf::new(),
-        })
-    }
 }
 
 impl Chat {
@@ -134,10 +98,19 @@ impl Chat {
 
         match read_from_file(path) {
             Ok(json) => {
-                let mut chat: Chat = serde_json::from_str(&json)?;
-                chat.messages_update_sender = tx;
-                chat.messages_update_receiver = rx;
-                chat.chats_dir = chats_dir;
+                let data: ChatData = serde_json::from_str(&json)?;
+                let chat = Chat {
+                    id: data.id,
+                    model_filename: data.model_filename,
+                    file_id: data.file_id,
+                    messages: data.messages,
+                    title: data.title,
+                    title_state: data.title_state,
+                    is_streaming: false,
+                    messages_update_sender: tx,
+                    messages_update_receiver: rx,
+                    chats_dir,
+                };
                 Ok(chat)
             }
             Err(_) => Err(anyhow!("Couldn't read chat file from path")),
@@ -145,7 +118,15 @@ impl Chat {
     }
 
     pub fn save(&self) {
-        let json = serde_json::to_string(&self).unwrap();
+        let data = ChatData {
+            id: self.id,
+            model_filename: self.model_filename.clone(),
+            file_id: self.file_id.clone(),
+            messages: self.messages.clone(),
+            title: self.title.clone(),
+            title_state: self.title_state,
+        };
+        let json = serde_json::to_string(&data).unwrap();
         let path = self.chats_dir.join(self.file_name());
         write_to_file(path, &json).unwrap();
     }
