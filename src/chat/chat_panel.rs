@@ -458,7 +458,7 @@ impl Widget for ChatPanel {
         if let Event::Startup = event {
             let store = scope.data.get::<Store>().unwrap();
             if store.get_loaded_downloaded_file().is_some() {
-                self.update_state_model_loaded();
+                self.update_state_model_loaded(cx);
             }
         }
 
@@ -527,8 +527,11 @@ impl Widget for ChatPanel {
 
             let chats_count = chat_history.len();
             let chat_is_empty = chats_count == 0;
+
+            let model_loaded = store.get_loaded_downloaded_file().is_some();
+
             let empty_conversation_view = self.view(id!(empty_conversation));
-            empty_conversation_view.set_visible(chat_is_empty);
+            empty_conversation_view.set_visible(chat_is_empty && model_loaded);
             if chat_is_empty {
                 empty_conversation_view
                     .label(id!(avatar_label))
@@ -591,14 +594,13 @@ impl WidgetMatchEvent for ChatPanel {
         for action in actions {
             if let ChatHistoryCardAction::ChatSelected(_) = action.as_widget_action().cast() {
                 self.view(id!(empty_conversation)).set_visible(false);
-                self.update_state_model_loaded();
-                self.redraw(cx);
+                self.update_state_model_loaded(cx);
             }
 
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    self.load_model(store, downloaded_file);
+                    self.load_model(cx, store, downloaded_file);
                 }
                 _ => {}
             }
@@ -614,8 +616,8 @@ impl WidgetMatchEvent for ChatPanel {
                         .expect("Attempted to start chat with a no longer existing file")
                         .clone();
 
-                    store.chats.create_empty_chat();
-                    self.load_model(store, downloaded_file);
+                    store.chats.create_empty_chat_with_model_file(&downloaded_file.file);
+                    self.update_state_model_loaded(cx);
                 }
                 _ => {}
             }
@@ -838,17 +840,18 @@ impl ChatPanel {
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
-    fn load_model(&mut self, store: &mut Store, downloaded_file: DownloadedFile) {
-        self.update_state_model_loaded();
+    fn load_model(&mut self, cx: &mut Cx, store: &mut Store, downloaded_file: DownloadedFile) {
+        self.update_state_model_loaded(cx);
         store.load_model(&downloaded_file.file);
     }
 
-    fn update_state_model_loaded(&mut self) {
+    fn update_state_model_loaded(&mut self, cx: &mut Cx) {
         self.state = ChatPanelState::Idle;
         self.view(id!(main)).set_visible(true);
         self.view(id!(empty_conversation)).set_visible(true);
         self.view(id!(no_model)).set_visible(false);
         self.view(id!(no_downloaded_model)).set_visible(false);
+        self.redraw(cx);
     }
 
     fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {

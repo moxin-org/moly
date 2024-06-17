@@ -103,7 +103,11 @@ impl Chats {
         }
     }
 
-    pub fn set_current_chat(&mut self, chat_id: ChatID, file: &File) {
+    pub fn set_current_chat(&mut self, chat_id: ChatID) {
+        self.current_chat_id = Some(chat_id);
+    }
+
+    pub fn set_current_chat_and_load_model(&mut self, chat_id: ChatID, file: &File) {
         self.current_chat_id = Some(chat_id);
 
         if self

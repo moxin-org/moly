@@ -81,25 +81,7 @@ impl Store {
         store.downloads.load_pending_downloads();
 
         store.chats.load_chats();
-
-        if let Some(ref file_id) = store.preferences.current_chat_model {
-            let available_files: Vec<File> = store
-                .downloads
-                .downloaded_files
-                .iter()
-                .map(|d| d.file.clone())
-                .collect();
-            let file = available_files
-                .iter()
-                .find(|file| file.id == *file_id)
-                .expect("Attempted to start chat with a no longer existing file");
-
-            if let Some(chat_id) = store.chats.get_latest_chat_id() {
-                store.chats.set_current_chat(chat_id, file);
-            } else {
-                store.chats.create_empty_chat_with_model_file(file);
-            }
-        }
+        store.init_current_chat();
 
         store.search.load_featured_models();
         store
@@ -119,19 +101,15 @@ impl Store {
             .map(|d| d.file.clone())
             .collect();
 
-        let file_id = self
-            .chats
-            .get_current_chat()
-            .unwrap()
-            .borrow()
-            .file_id
-            .clone();
-        let file = available_files
-            .iter()
-            .find(|file| file.id == file_id)
-            .expect("Attempted to start chat with a no longer existing file");
+        if let Some(chat) = self.chats.get_current_chat() {
+            let file_id = chat.borrow().file_id.clone();
 
-        self.chats.set_current_chat(chat_id, &file);
+            if let Some(file) = available_files.iter().find(|file| file.id == file_id) {
+                self.chats.set_current_chat_and_load_model(chat_id, &file)
+            } else {
+                self.chats.set_current_chat(chat_id)
+            }
+        }
     }
 
     pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
@@ -247,6 +225,31 @@ impl Store {
         for file_id in completed_download_ids {
             self.search
                 .update_downloaded_file_in_search_results(&file_id, true);
+        }
+    }
+
+    fn init_current_chat(&mut self) {
+        if let Some(ref file_id) = self.preferences.current_chat_model {
+            let available_files: Vec<File> = self
+                .downloads
+                .downloaded_files
+                .iter()
+                .map(|d| d.file.clone())
+                .collect();
+
+            if let Some(file) = available_files.iter().find(|file| file.id == *file_id) {
+                if let Some(chat_id) = self.chats.get_latest_chat_id() {
+                    self.chats.set_current_chat_and_load_model(chat_id, file);
+                } else {
+                    self.chats.create_empty_chat_with_model_file(file);
+                }
+
+                return;
+            }
+        }
+
+        if let Some(chat_id) = self.chats.get_latest_chat_id() {
+            self.chats.set_current_chat(chat_id);
         }
     }
 }
