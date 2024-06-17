@@ -14,6 +14,13 @@ version = "0.1.0"
 edition = "2021"
 description = "A desktop GUI client for downloading and chatting with AI LLMs"
 
+## Rename the binary to `_moxin_app` to avoid naming conflicts
+## with the `moxin` binary defined by the `moxin-runner` crate.
+[[bin]]
+name = "_moxin_app"
+path = "src/main.rs"
+
+
 [dependencies]
 moxin-protocol = { path = "moxin-protocol" }
 moxin-backend = { path = "moxin-backend" }
@@ -54,9 +61,14 @@ publisher = "moxin-org"
 homepage = "https://github.com/moxin-org"
 icons = ["app_icon128x128.png"]
 out_dir = "./dist"
+## Note: the `moxin-runner` crate binary is named `moxin`,
+##       while the main `moxin` crate binary is named `_moxin_app`.
+##       This is to avoid naming conflicts when packaging the binaries,
+##       and also ensures that the `moxin-runner` binary is the "main" binary
+##       that gets executed when the user runs "moxin" from the command line.
 binaries = [
-    { path = "moxin-runner", main = true },
-    { path = "moxin", main = false },
+    { path = "moxin", main = true },
+    { path = "_moxin_app", main = false },
 ]
 
 ## See the below paragraph comments for more info on how we determine these `src` directories.

@@ -2,8 +2,7 @@ mod backend_impls;
 mod store;
 
 use moxin_protocol::protocol::Command;
-use std::{path::Path, sync::{mpsc, OnceLock}};
-use directories::ProjectDirs;
+use std::{path::Path, sync::mpsc};
 
 pub struct Backend {
     pub command_sender: mpsc::Sender<Command>,
