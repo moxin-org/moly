@@ -45,7 +45,7 @@ impl Chats {
     }
 
     pub fn get_latest_chat_id(&mut self) -> Option<ChatID> {
-        self.saved_chats.sort_by(|a, b| b.borrow().id.cmp(&a.borrow().id));
+        self.saved_chats.sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
         self.saved_chats.last().map(|c| c.borrow().id.clone())
     }
 

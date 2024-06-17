@@ -451,6 +451,14 @@ pub struct ChatPanel {
 
 impl Widget for ChatPanel {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // Temporary fix, PR #98 will bring a better solution
+        if let Event::Startup = event {
+            let store = scope.data.get::<Store>().unwrap();
+            if store.get_loaded_downloaded_file().is_some() {
+                self.update_state_model_loaded();
+            }
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
