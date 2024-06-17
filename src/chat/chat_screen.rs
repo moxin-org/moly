@@ -42,7 +42,12 @@ pub struct ChatScreen {
 
 impl Widget for ChatScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
+        // TODO This check is actually copied from Makepad view.rs file
+        // It's not clear why it's needed here, but without this line
+        // the "View all files" link in Discover section does not work after visiting the chat screen
+        if self.visible || !event.requires_visibility() {
+            self.view.handle_event(cx, event, scope);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
