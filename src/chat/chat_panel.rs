@@ -292,21 +292,24 @@ live_design! {
                     }
                     text: "You haven’t downloaded any models yet."
                 }
-                go_to_discover_button = <RoundedView> {
+                go_to_discover_button = <MoxinButton> {
                     width: Fit,
                     height: Fit,
-                    cursor: Arrow,
 
-                    draw_bg: { color: #fff, border_color: #D0D5DD, border_width: 1}
+                    draw_bg: {
+                        border_color: #D0D5DD,
+                        border_width: 1.0,
+                        color: #fff,
+                        color_hover: #E2F1F1,
+                        radius: 2.0,
+                    }
 
-                    button_label = <Label> {
-                        margin: {top: 14, right: 12, bottom: 14, left: 12}
-                        text: "Go To Discover"
-                        draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 12},
-                            fn get_color(self) -> vec4 {
-                                return #087443;
-                            }
+                    padding: {top: 14, right: 12, bottom: 14, left: 12}
+                    text: "Go To Discover"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 12},
+                        fn get_color(self) -> vec4 {
+                            return #087443;
                         }
                     }
                 }
@@ -693,13 +696,10 @@ impl WidgetMatchEvent for ChatPanel {
             _ => {}
         }
 
-        if let Some(fe) = self
-            .view(id!(no_downloaded_model.go_to_discover_button))
-            .finger_up(actions)
+        if self.button(id!(no_downloaded_model.go_to_discover_button))
+            .clicked(actions)
         {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
-            }
+            cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
         }
     }
 }
