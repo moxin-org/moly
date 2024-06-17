@@ -7,7 +7,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
-use moxin_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
+use moxin_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
@@ -131,7 +131,24 @@ impl Store {
             .find(|file| file.id == file_id)
             .expect("Attempted to start chat with a no longer existing file");
 
-        let _ = self.chats.set_current_chat(chat_id, &file);
+        self.chats.set_current_chat(chat_id, &file);
+    }
+
+    pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
+        if let Some(file_id) = self
+            .chats
+            .get_current_chat()
+            .map(|chat| chat.borrow().file_id.clone())
+        {
+            self
+                .downloads
+                .downloaded_files
+                .iter()
+                .find(|d| d.file.id == file_id)
+                .cloned()
+        } else {
+            None
+        }
     }
 
     /// This function combines the search results information for a given model

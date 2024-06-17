@@ -137,6 +137,13 @@ pub struct ModelSelector {
 
 impl Widget for ModelSelector {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if let Event::Startup = event {
+            let store = scope.data.get::<Store>().unwrap();
+            if let Some(downloaded_file) = store.get_loaded_downloaded_file() {
+                self.update_ui_with_file(cx, downloaded_file);
+            }
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
