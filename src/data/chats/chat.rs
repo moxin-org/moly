@@ -150,7 +150,6 @@ impl Chat {
         write_to_file(path, &json).unwrap();
     }
 
-    // TODO: Make a field
     fn file_name(&self) -> String {
         format!("{}.chat.json", self.id)
     }
@@ -164,7 +163,6 @@ impl Chat {
         self.title_state = TitleState::Updated;
     }
 
-    // TODO: this feels kinda wrong.
     fn update_title_based_on_first_message(&mut self) {
         // If it hasnt been updated, and theres at least one message, use the first
         // one as title. Else we just return the default one.
@@ -288,13 +286,12 @@ impl Chat {
                 ChatTokenArrivalAction::AppendDelta(response) => {
                     let last = self.messages.last_mut().unwrap();
                     last.content.push_str(&response);
-                    self.save();
                 }
                 ChatTokenArrivalAction::StreamingDone => {
                     self.is_streaming = false;
-                    self.save();
                 }
             }
+            self.save();
         }
     }
 

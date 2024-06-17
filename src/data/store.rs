@@ -97,7 +97,7 @@ impl Store {
         }
     }
 
-    pub fn set_current_chat(&mut self, chat_id: ChatID) {
+    pub fn select_chat(&mut self, chat_id: ChatID) {
         let available_files: Vec<File> = self
             .downloads
             .downloaded_files

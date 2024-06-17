@@ -116,16 +116,6 @@ impl Chats {
         }
     }
 
-    // pub fn get_current_chat_model_file<'a>(&'a self, available_model_files: &'a [File]) -> &File {
-    //     let file_id = self.get_current_chat().unwrap().borrow().file_id.clone();
-    //     let file = available_model_files
-    //         .iter()
-    //         .find(|file| file.id == file_id)
-    //         .expect("Attempted to start chat with a no longer existing file");
-
-    //     file
-    // }
-
     pub fn set_current_chat(&mut self, chat_id: ChatID, file: &File) -> Result<()> {
         self.current_chat_id = Some(chat_id);
 

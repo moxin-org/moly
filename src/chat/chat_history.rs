@@ -217,7 +217,7 @@ impl WidgetMatchEvent for ChatCard {
                     ChatHistoryAction::ChatSelected(self.chat_id),
                 );
 
-                store.set_current_chat(self.chat_id);
+                store.select_chat(self.chat_id);
 
                 self.redraw(cx);
             }
