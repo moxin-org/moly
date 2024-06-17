@@ -210,13 +210,6 @@ impl WidgetMatchEvent for ChatCard {
         let widget_uid = self.widget_uid();
 
         if let Some(fe) = self.view(id!(content)).finger_down(actions) {
-            let available_files: Vec<File> = store
-                .downloads
-                .downloaded_files
-                .iter()
-                .map(|d| d.file.clone())
-                .collect();
-
             if fe.tap_count == 1 {
                 cx.widget_action(
                     widget_uid,
@@ -224,7 +217,7 @@ impl WidgetMatchEvent for ChatCard {
                     ChatHistoryAction::ChatSelected(self.chat_id),
                 );
 
-                store.set_current_chat(self.chat_id, &available_files);
+                store.set_current_chat(self.chat_id);
 
                 self.redraw(cx);
             }

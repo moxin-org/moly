@@ -86,32 +86,38 @@ impl Store {
         store
     }
 
-    // TODO: This wrappers feel weird.
-    pub fn create_new_chat(&mut self, file: &File, set_as_current: bool) {
-        if self.chats.create_new_chat(file, set_as_current).is_ok() {
-            // TODO: This breaks, FIX THE PREFERENCES!!!
-            // self.preferences.set_current_chat_model(file.id.clone());
+    pub fn load_model(&mut self, file: &File, set_as_current: bool) {
+        // We are creating a new chat because there is no other way to start a new conversation
+        // with a model. This is a temporary solution until we have a better way to start a chat
+
+        if self.chats.load_model(file).is_ok()
+            && self.chats.create_new_chat(file, set_as_current).is_ok()
+        {
+            self.preferences.set_current_chat_model(file.id.clone());
         }
     }
 
-    /// This loads the model
-    // TODO: Feels weird to do this wrappers
-    pub fn set_current_chat(&mut self, chat_id: ChatID, available_model_files: &[File]) {
-        if self
+    pub fn set_current_chat(&mut self, chat_id: ChatID) {
+        let available_files: Vec<File> = self
+            .downloads
+            .downloaded_files
+            .iter()
+            .map(|d| d.file.clone())
+            .collect();
+
+        let file_id = self
             .chats
-            .set_current_chat(chat_id, available_model_files)
-            .is_ok()
-        {
-            // TODO: This breaks, FIX THE PREFERENCES!!!
-            // let current_chat_model_file_id = self
-            //     .chats
-            //     .get_current_chat_model_file(available_model_files)
-            //     .id
-            //     .clone();
-            //
-            // self.preferences
-            //     .set_current_chat_model(current_chat_model_file_id);
-        }
+            .get_current_chat()
+            .unwrap()
+            .borrow()
+            .file_id
+            .clone();
+        let file = available_files
+            .iter()
+            .find(|file| file.id == file_id)
+            .expect("Attempted to start chat with a no longer existing file");
+
+        let _ = self.chats.set_current_chat(chat_id, &file);
     }
 
     /// This function combines the search results information for a given model

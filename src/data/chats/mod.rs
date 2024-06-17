@@ -85,8 +85,6 @@ impl Chats {
     }
 
     pub fn create_new_chat(&mut self, file: &File, set_as_current: bool) -> Result<()> {
-        self.load_model(file)?;
-
         let new_chat = RefCell::new(Chat::new(
             file.name.clone(),
             file.id.clone(),
@@ -118,33 +116,25 @@ impl Chats {
         }
     }
 
-    pub fn get_current_chat_model_file<'a>(&'a self, available_model_files: &'a [File]) -> &File {
-        let file_id = self.get_current_chat().unwrap().borrow().file_id.clone();
-        let file = available_model_files
-            .iter()
-            .find(|file| file.id == file_id)
-            .expect("Attempted to start chat with a no longer existing file");
+    // pub fn get_current_chat_model_file<'a>(&'a self, available_model_files: &'a [File]) -> &File {
+    //     let file_id = self.get_current_chat().unwrap().borrow().file_id.clone();
+    //     let file = available_model_files
+    //         .iter()
+    //         .find(|file| file.id == file_id)
+    //         .expect("Attempted to start chat with a no longer existing file");
 
-        file
-    }
+    //     file
+    // }
 
-    pub fn set_current_chat(
-        &mut self,
-        chat_id: ChatID,
-        available_model_files: &[File],
-    ) -> Result<()> {
+    pub fn set_current_chat(&mut self, chat_id: ChatID, file: &File) -> Result<()> {
         self.current_chat_id = Some(chat_id);
-
-        let file = self
-            .get_current_chat_model_file(available_model_files)
-            .clone();
 
         if self
             .loaded_model_id
             .as_ref()
             .map_or(true, |m| *m != file.id)
         {
-            self.load_model(&file)?;
+            self.load_model(file)?;
         }
 
         Ok(())
