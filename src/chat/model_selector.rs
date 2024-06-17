@@ -60,7 +60,7 @@ live_design! {
 
     ModelSelectorOptions = <RoundedView> {
         width: Fill,
-        height: Fit,
+        height: 0,
 
         margin: { top: 5 },
         padding: 5,
@@ -175,12 +175,9 @@ impl Widget for ModelSelector {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
-
-        let downloaded_model_empty = store.downloads.downloaded_files.is_empty();
         let choose_label = self.label(id!(choose.label));
 
-        if downloaded_model_empty {
+        if no_options_to_display(scope) {
             choose_label.set_text("No Available Models");
             let color = vec3(0.596, 0.635, 0.702);
             choose_label.apply_over(
@@ -213,6 +210,7 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
+            if no_options_to_display(scope) { return };
             if fd.tap_count == 1 {
                 self.open = !self.open;
 
@@ -327,4 +325,9 @@ impl ModelSelectorRef {
             inner.deselect(cx);
         }
     }
+}
+
+fn no_options_to_display(scope: &mut Scope) -> bool {
+    let store = scope.data.get::<Store>().unwrap();
+    store.downloads.downloaded_files.is_empty()
 }

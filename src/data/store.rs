@@ -83,6 +83,7 @@ impl Store {
         store.chats.load_chats();
 
         if let Some(ref file_id) = store.preferences.current_chat_model {
+            dbg!(file_id);
             let available_files: Vec<File> = store
                 .downloads
                 .downloaded_files
@@ -140,8 +141,7 @@ impl Store {
             .get_current_chat()
             .map(|chat| chat.borrow().file_id.clone())
         {
-            self
-                .downloads
+            self.downloads
                 .downloaded_files
                 .iter()
                 .find(|d| d.file.id == file_id)

@@ -509,37 +509,37 @@ impl Widget for ChatPanel {
 
         // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
         // can be confused with the actual Chat type.
-        let (chat_history, model_filename, initial_letter) = store.chats.get_current_chat().map_or(
-            (vec![], "".to_string(), "".to_string()),
-            |chat| {
-                let model_filename = chat.borrow().model_filename.clone();
-                let initial_letter = model_filename
-                    .chars()
-                    .next()
-                    .unwrap_or_default()
-                    .to_uppercase()
-                    .to_string();
-                (
-                    chat.borrow().messages.clone(),
-                    model_filename,
-                    initial_letter,
-                )
-            },
-        );
+        let chat_history;
+        let model_filename;
+        let initial_letter;
+        if let Some(chat) = store.chats.get_current_chat() {
+            model_filename = chat.borrow().model_filename.clone();
+            initial_letter = model_filename
+                .chars()
+                .next()
+                .unwrap_or_default()
+                .to_uppercase()
+                .to_string();
+            chat_history = chat.borrow().messages.clone();
 
-        let chats_count = chat_history.len();
-
-        let chat_is_empty = chats_count == 0;
-        let empty_conversation_view = self.view(id!(empty_conversation));
-        empty_conversation_view.set_visible(chat_is_empty);
-        if chat_is_empty {
-            empty_conversation_view
-                .label(id!(avatar_label))
-                .set_text(initial_letter.as_str());
+            let chats_count = chat_history.len();
+            let chat_is_empty = chats_count == 0;
+            let empty_conversation_view = self.view(id!(empty_conversation));
+            empty_conversation_view.set_visible(chat_is_empty);
+            if chat_is_empty {
+                empty_conversation_view
+                    .label(id!(avatar_label))
+                    .set_text(initial_letter.as_str());
+            }
+        } else {
+            model_filename = "".to_string();
+            initial_letter = "".to_string();
+            chat_history = vec![];
         }
 
         while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
+                let chats_count = chat_history.len();
                 list.set_item_range(cx, 0, chats_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
                     if item_id < chats_count {
