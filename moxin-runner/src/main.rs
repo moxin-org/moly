@@ -64,15 +64,38 @@ use std::{
 const WASMEDGE_DIR_NAME: &str = ".wasmedge";
 const LIB_DIR_NAME: &str = "lib";
 const PLUGIN_DIR_NAME: &str = "plugin";
-const WASMEDGE_MAIN_DYLIB: &str = "libwasmedge.0.dylib";
-const WASMEDGE_WASI_NN_PLUGIN_DYLIB: &str = "libwasmedgePluginWasiNN.dylib";
+
+const WASMEDGE_MAIN_DYLIB: &str = {
+    #[cfg(target_os = "macos")] {
+        "libwasmedge.0.dylib"
+    }
+    #[cfg(target_os = "linux")] {
+        "libwasmedge.so.0"
+    }
+};
+const WASMEDGE_WASI_NN_PLUGIN_DYLIB: &str = {
+    #[cfg(target_os = "macos")] {
+        "libwasmedgePluginWasiNN.dylib"
+    }
+    #[cfg(target_os = "linux")] {
+        "libwasmedgePluginWasiNN.so"
+    }
+};
 
 const ENV_PATH: &str = "PATH";
-const ENV_DYLD_LIBRARY_PATH: &str = "DYLD_LIBRARY_PATH";
-const ENV_DYLD_FALLBACK_LIBRARY_PATH: &str = "DYLD_FALLBACK_LIBRARY_PATH";
-const ENV_LIBRARY_PATH: &str = "LIBRARY_PATH";
 const ENV_C_INCLUDE_PATH: &str = "C_INCLUDE_PATH";
 const ENV_CPLUS_INCLUDE_PATH: &str = "CPLUS_INCLUDE_PATH";
+const ENV_LIBRARY_PATH: &str = "LIBRARY_PATH";
+const ENV_LD_LIBRARY_PATH: &str = {
+    #[cfg(target_os = "macos")] {
+        "DYLD_LIBRARY_PATH"
+    }
+    #[cfg(target_os = "linux")] {
+        "LD_LIBRARY_PATH"
+    }
+};
+#[cfg(target_os = "macos")]
+const ENV_DYLD_FALLBACK_LIBRARY_PATH: &str = "DYLD_FALLBACK_LIBRARY_PATH";
 
 
 /// An extension trait for checking if a path exists.
@@ -240,17 +263,20 @@ fn apply_env_vars<P: AsRef<Path>>(wasmedge_dir_path: &P) {
 
     let wasmedge_dir = wasmedge_dir_path.as_ref();
     prepend_env_var(ENV_PATH, wasmedge_dir.join("bin"));
-    prepend_env_var(ENV_DYLD_LIBRARY_PATH, wasmedge_dir.join("lib"));
-    prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_dir.join("lib"));
-    prepend_env_var(ENV_LIBRARY_PATH, wasmedge_dir.join("lib"));
     prepend_env_var(ENV_C_INCLUDE_PATH, wasmedge_dir.join("include"));
     prepend_env_var(ENV_CPLUS_INCLUDE_PATH, wasmedge_dir.join("include"));
+    prepend_env_var(ENV_LIBRARY_PATH, wasmedge_dir.join("lib"));
+    prepend_env_var(ENV_LD_LIBRARY_PATH, wasmedge_dir.join("lib"));
+
+    // The DYLD_FALLBACK_LIBRARY_PATH is only used on macOS.
+    #[cfg(target_os = "macos")]
+    prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_dir.join("lib"));
 }
 
 
 /// Attempts to discover the wasmedge installation directory using environment variables.
 fn wasmedge_dir_from_env_vars() -> Option<PathBuf> {
-    std::env::var_os(ENV_DYLD_LIBRARY_PATH)
+    std::env::var_os(ENV_LD_LIBRARY_PATH)
         .or_else(|| std::env::var_os(ENV_LIBRARY_PATH))
         .or_else(|| std::env::var_os(ENV_C_INCLUDE_PATH))
         .or_else(|| std::env::var_os(ENV_CPLUS_INCLUDE_PATH))

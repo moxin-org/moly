@@ -47,10 +47,24 @@ Moxin uses the wasmedge WASM runtime to locally run the AI models.
 
 ## Configuration for `cargo packager`
 [package.metadata.packager]
+product_name = "Moxin"
+identifier = "com.moxin-org.moxin"
+category = "Utility"
+publisher = "moxin-org"
+homepage = "https://github.com/moxin-org"
+icons = ["app_icon128x128.png"]
+out_dir = "./dist"
 binaries = [
     { path = "moxin-runner", main = true },
     { path = "moxin", main = false },
 ]
+
+## See the below paragraph comments for more info on how we determine these `src` directories.
+resources = [
+    { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
+    { src = "./dist/resources/moxin", target = "moxin" },
+]
+
 ## The below command uses cargo-metadata to determine the path of the `makepad_widgets` crate
 ## on the build system, and copies the `makepad-widgets/resources` directory to the `./dist/resources/makepad_widgets` directory.
 ## We also copy the Moxin project's `resources/` directory to the `./dist/resources/moxin` directory.
@@ -59,42 +73,44 @@ binaries = [
 ## so we need to copy the resources to a known path before packaging
 ## such that cargo-packager can include them in the final package.
 ##
-## We then build the entire Moxin project and set the `MAKEPAD_PACKAGE_DIR` env var to `../Resources`,
-## which is the macOS-specific path where the resources will be copied to in the final package.
-## This only works because the `moxin-runner` binary sets the current working directory 
-## to the directory where the binary is located, which is `Moxin.app/Contents/MacOS/`.
-## (See the `run_moxin` function in `moxin-runner/src/main.rs` for more details.)
-## In a macOS app bundle, the resources directory is in `Moxin.app/Context/Resources/`,
-## so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources` --- it must be relative to the binary's location,
-## which is up one parent directory.
+## We then build the entire Moxin project and set the `MAKEPAD_PACKAGE_DIR` env var to the proper value.
+## * For macOS app bundles, this should be set to `../Resources`.
+##   This only works because the `moxin-runner` binary sets the current working directory 
+##   to the directory where the binary is located, which is `Moxin.app/Contents/MacOS/`.
+##   (See the `run_moxin` function in `moxin-runner/src/main.rs` for more details.)
+##   In a macOS app bundle, the resources directory is in `Moxin.app/Context/Resources/`,
+##   so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources` --- it must be relative to the binary's location,
+##   which is up one parent directory.
+## * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
+##   which is currently `/usr/lib/moxin-runner`.
+##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
+##
 before-packaging-command = """
+export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
+echo "\n\nPackaging on host platform '$CARGO_PACKAGER_HOST_OS'\n\n"; \
+if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
+    export MAKEPAD_PACKAGE_DIR=../Resources; \
+elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
+    export MAKEPAD_PACKAGE_DIR=/usr/lib/moxin-runner; \
+else exit 2; \
+fi; \
+echo "MAKEPAD_PACKAGE_DIR='$MAKEPAD_PACKAGE_DIR'\n\n"; \
 mkdir -p ./dist/resources/makepad_widgets/ \
 && cp -r `cargo metadata --format-version 1 | sed -e 's/,\"/,\\n\"/g' | grep 'widgets/Cargo.toml\"' | sed -e 's/\"manifest_path\":\"//g' -e 's/Cargo.toml\",/resources/g'` ./dist/resources/makepad_widgets/ \
 && mkdir -p ./dist/resources/moxin/ \
 && cp -r ./resources ./dist/resources/moxin/ \
-&& MAKEPAD_PACKAGE_DIR=../Resources cargo build --workspace --release  \
+&& cargo build --workspace --release  \
 """
-resources = [
-    { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
-    { src = "./dist/resources/moxin", target = "moxin" },
-]
 
 ## this is not currently needed.
 # before-each-package-command = """
 # echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n" \
 # """
 
-product_name = "Moxin"
-identifier = "com.moxin-org.moxin"
-category = "Utility"
-publisher = "moxin-org"
-icons = ["app_icon128x128.png"]
-formats = ["all"]
-out_dir = "./dist"
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
 
-## Configuration for `cargo packager`'s generation of a macOS .dmg 
+## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
 [package.metadata.packager.dmg]
 background = "./Moxin macOS dmg background.png"
 window_size = { width = 960, height = 540 }
