@@ -610,6 +610,8 @@ impl WidgetMatchEvent for ChatPanel {
                         .find(|file| file.file.id == file_id)
                         .expect("Attempted to start chat with a no longer existing file")
                         .clone();
+
+                    store.chats.create_empty_chat();
                     self.load_model(store, downloaded_file);
                 }
                 _ => {}
