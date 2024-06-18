@@ -116,7 +116,26 @@ impl<P: AsRef<Path>> PathExt for P {
     }
 }
 
+#[cfg(feature = "macos_bundle")]
+fn main() {
+    // For macOS app bundles, the WasmEdge dylibs have already been packaged inside of the app bundle,
+    // specifically in the `Contents/Frameworks/` subdirectory.
+    // This is required for the app bundle to be notarizable.
+    //
+    // Thus, we don't need to discover, locate, or install wasmedge.
+    // We only need to explicitly set the wasmedge lugin path to point to the `Frameworks/` directory
+    // inside the app bundle, which is within the parent directory of the executables in the app bundle.
+    //
+    // Thus, we set the `WASMEDGE_PLUGIN_PATH` environment variable to `../Frameworks`,
+    // because the run_moxin() function will set the current working directory to `Contents/MacOS/`
+    // within the app bundle, which is the subdirectory that contains the actual moxin executables.
+    std::env::set_var("WASMEDGE_PLUGIN_PATH", "../Frameworks");
+    run_moxin().unwrap();
+    Ok(())
+}
 
+
+#[cfg(not(feature = "macos_bundle"))]
 fn main() -> std::io::Result<()> {
     let (wasmedge_dir_in_use, main_dylib_path, wasi_nn_plugin_path) = 
         // First, check if the wasmedge installation directory exists in the default location.
@@ -145,7 +164,6 @@ fn main() -> std::io::Result<()> {
 
     apply_env_vars(&wasmedge_dir_in_use);
     run_moxin().unwrap();
-
     Ok(())
 }
 
@@ -273,12 +291,6 @@ fn apply_env_vars<P: AsRef<Path>>(wasmedge_dir_path: &P) {
     // The DYLD_FALLBACK_LIBRARY_PATH is only used on macOS.
     #[cfg(target_os = "macos")]
     prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_dir.join("lib"));
-
-    // For macOS app bundles, we need to explicitly set the Plugin path to point to the Frameworks directory
-    // inside the app bundle, where the plugin dylibs are located (they have been packaged alongside the app,
-    // which is required on macOS for an app to be notarizable).
-    #[cfg(target_os = "macos")]
-    prepend_env_var("WASMEDGE_PLUGIN_PATH", "../Frameworks");
 }
 
 
@@ -301,9 +313,7 @@ fn wasmedge_dir_from_env_vars() -> Option<PathBuf> {
 fn run_moxin() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
-    
-    println!("------------------------- Environment Variables -------------------------");
-    println!("{:#?}", std::env::vars().collect::<Vec<_>>());
+
     println!("Running moxin in dir: {}", current_exe_dir.display());
 
     let _output = Command::new(current_exe_dir.join(MOXIN_APP_BINARY))
