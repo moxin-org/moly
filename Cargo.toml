@@ -123,7 +123,11 @@ if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
     MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release --features macos_bundle \
     && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app; \
 elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
-    MAKEPAD_PACKAGE_DIR=/usr/lib/moxin-runner  cargo build --workspace --release \
+    if [ "$CARGO_PACKAGER_FORMAT" = appimage ]; then \
+        MAKEPAD_PACKAGE_DIR=../../usr/lib/moxin  cargo build --workspace --release; \
+    else \
+        MAKEPAD_PACKAGE_DIR=/usr/lib/moxin  cargo build --workspace --release; \
+    fi; \
 else exit 2; \
 fi; \
 """
