@@ -21,7 +21,7 @@ moxin-fake-backend = { path = "moxin-fake-backend" }
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 
-robius-open = { git = "https://github.com/project-robius/robius-open", rev = "b901523667d4a8bbb0bba3cd1ebcc0b94d33534e" }
+robius-open = "0.1.0"
 
 chrono = "0.4"
 directories = "5.0.1"
