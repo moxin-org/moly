@@ -513,16 +513,10 @@ impl Widget for ChatPanel {
         // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
         // can be confused with the actual Chat type.
         let chat_history;
-        let model_filename;
-        let initial_letter;
         if let Some(chat) = store.chats.get_current_chat() {
-            model_filename = chat.borrow().model_filename.clone();
-            initial_letter = model_filename
-                .chars()
-                .next()
-                .unwrap_or_default()
-                .to_uppercase()
-                .to_string();
+            let model_filename = chat.borrow().model_filename.clone();
+            let initial_letter = get_initial_letter(&model_filename);
+
             chat_history = chat.borrow().messages.clone();
 
             let chats_count = chat_history.len();
@@ -538,8 +532,6 @@ impl Widget for ChatPanel {
                     .set_text(initial_letter.as_str());
             }
         } else {
-            model_filename = "".to_string();
-            initial_letter = "".to_string();
             chat_history = vec![];
         }
 
@@ -554,9 +546,12 @@ impl Widget for ChatPanel {
                         let item;
                         let mut chat_line_item;
                         if chat_line_data.is_assistant() {
+                            let username = chat_line_data.username.as_ref().map_or("", String::as_str);
+                            let initial_letter = get_initial_letter(username);
+
                             item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
                             chat_line_item = item.as_chat_line();
-                            chat_line_item.set_sender_name(&model_filename);
+                            chat_line_item.set_sender_name(&username);
                             chat_line_item.set_regenerate_enabled(false);
                             chat_line_item.set_avatar_text(&initial_letter);
                         } else {
@@ -594,7 +589,7 @@ impl WidgetMatchEvent for ChatPanel {
         for action in actions {
             if let ChatHistoryCardAction::ChatSelected(_) = action.as_widget_action().cast() {
                 self.view(id!(empty_conversation)).set_visible(false);
-                
+
                 // Temporary fix, PR #98 will bring a better solution
                 let store = scope.data.get::<Store>().unwrap();
                 if store.get_loaded_downloaded_file().is_some() {
@@ -622,7 +617,9 @@ impl WidgetMatchEvent for ChatPanel {
                         .expect("Attempted to start chat with a no longer existing file")
                         .clone();
 
-                    store.chats.create_empty_chat_with_model_file(&downloaded_file.file);
+                    store
+                        .chats
+                        .create_empty_chat_with_model_file(&downloaded_file.file);
                     self.update_state_model_loaded(cx);
                 }
                 ChatAction::Resume(file_id) => {
@@ -708,7 +705,8 @@ impl WidgetMatchEvent for ChatPanel {
             _ => {}
         }
 
-        if self.button(id!(no_downloaded_model.go_to_discover_button))
+        if self
+            .button(id!(no_downloaded_model.go_to_discover_button))
             .clicked(actions)
         {
             cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
@@ -940,4 +938,12 @@ pub enum ChatPanelAction {
     UnloadIfActive(FileID),
     NavigateToDiscover,
     None,
+}
+
+fn get_initial_letter(word: &str) -> String {
+    word.chars()
+        .next()
+        .unwrap_or_default()
+        .to_uppercase()
+        .to_string()
 }

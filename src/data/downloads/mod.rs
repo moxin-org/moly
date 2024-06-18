@@ -218,6 +218,10 @@ impl Downloads {
             }
         }
 
+        for id in &completed_download_ids {
+            self.current_downloads.remove(id);
+        }
+
         // Reload downloaded files and pending downloads from the backend
         if !completed_download_ids.is_empty() {
             self.load_downloaded_files();

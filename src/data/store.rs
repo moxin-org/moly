@@ -90,26 +90,16 @@ impl Store {
     pub fn load_model(&mut self, file: &File) {
         if self.chats.load_model(file).is_ok() {
             self.preferences.set_current_chat_model(file.id.clone());
+
+            // If there is no chat, create an empty one
+            if self.chats.get_current_chat().is_none() {
+                self.chats.create_empty_chat_with_model_file(file);
+            }
         }
     }
 
     pub fn select_chat(&mut self, chat_id: ChatID) {
-        let available_files: Vec<File> = self
-            .downloads
-            .downloaded_files
-            .iter()
-            .map(|d| d.file.clone())
-            .collect();
-
-        if let Some(chat) = self.chats.get_current_chat() {
-            let file_id = chat.borrow().file_id.clone();
-
-            if let Some(file) = available_files.iter().find(|file| file.id == file_id) {
-                self.chats.set_current_chat_and_load_model(chat_id, &file)
-            } else {
-                self.chats.set_current_chat(chat_id)
-            }
-        }
+        self.chats.set_current_chat(chat_id);
     }
 
     pub fn get_loaded_model_file_id(&self) -> Option<FileID> {
@@ -145,6 +135,10 @@ impl Store {
             return;
         }
 
+        let Some(current_chat_id) = self.chats.get_current_chat_id() else {
+            return;
+        };
+
         // Attempt to load the model in the current chat since it is not loaded
         let available_files: Vec<File> = self
             .downloads
@@ -155,7 +149,7 @@ impl Store {
 
         if let Some(file) = available_files.iter().find(|file| file.id == file_id) {
             self.chats
-                .set_current_chat_and_load_model(self.chats.get_current_chat_id().unwrap(), file);
+                .set_current_chat_and_load_model(current_chat_id, file);
         }
     }
 
@@ -174,8 +168,9 @@ impl Store {
                     .cloned();
                 let is_current_chat = self
                     .chats
-                    .get_current_chat()
-                    .map_or(false, |c| c.borrow().file_id == file.id);
+                    .loaded_model
+                    .clone()
+                    .map_or(false, |loaded| loaded.id == file.id);
 
                 FileWithDownloadInfo {
                     file: file.clone(),
@@ -217,6 +212,7 @@ impl Store {
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
+
         SignalToUI::set_ui_signal();
         Ok(())
     }
