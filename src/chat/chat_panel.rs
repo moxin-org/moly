@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{DownloadedFile, FileID};
+use moxin_protocol::data::FileID;
 
 use crate::{
     chat::{

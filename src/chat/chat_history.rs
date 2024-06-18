@@ -128,6 +128,13 @@ impl Widget for ChatHistory {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
+        // TODO This is a hack to redraw the chat history and reflect the
+        // name change on the first message sent.
+        // Maybe we should send and receive an action here?
+        if let Event::Signal = event {
+            self.redraw(cx);
+        }
+
         if self.animator_handle_event(cx, event).must_redraw() {
             self.redraw(cx);
         }
