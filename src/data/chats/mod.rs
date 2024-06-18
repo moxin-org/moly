@@ -203,6 +203,14 @@ impl Chats {
 
         self.current_chat_id = Some(new_chat.borrow().id);
         self.saved_chats.push(new_chat);
+
+        if self
+            .loaded_model_id
+            .as_ref()
+            .map_or(true, |m| *m != file.id)
+        {
+            let _ = self.load_model(file);
+        }
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
