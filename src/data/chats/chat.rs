@@ -131,6 +131,11 @@ impl Chat {
         write_to_file(path, &json).unwrap();
     }
 
+    pub fn remove_saved_file(&self) {
+        let path = self.chats_dir.join(self.file_name());
+        std::fs::remove_file(path).unwrap();
+    }
+
     fn file_name(&self) -> String {
         format!("{}.chat.json", self.id)
     }

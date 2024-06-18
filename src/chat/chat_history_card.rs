@@ -8,12 +8,15 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::MoxinButton;
     import crate::chat::shared::ChatAgentAvatar;
+
+    ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
     ChatHistoryCard = {{ChatHistoryCard}} {
         content = <RoundedView> {
             flow: Down
-            width: 208
+            width: 248
             height: Fit
             padding: 20
             spacing: 12
@@ -25,14 +28,37 @@ live_design! {
                 border_width: 1
             }
 
-            title = <Label> {
-                width: Fit,
-                height: Fit,
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 10},
-                    color: #000,
+            <View> {
+                width: Fill
+                height: Fit
+                flow: Right
+                spacing: 10
+                padding: { top: 4, bottom: 4 }
+                margin: 0
+
+                title = <Label> {
+                    width: Fill,
+                    height: Fit,
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 10},
+                        color: #000,
+                    }
+                    text: ""
                 }
-                text: ""
+
+                delete_chat = <MoxinButton> {
+                    width: Fit
+                    height: Fit
+                    padding: 4
+                    margin: { top: -4}
+                    icon_walk: {width: 12, height: 12}
+                    draw_icon: {
+                        svg_file: (ICON_DELETE),
+                        fn get_color(self) -> vec4 {
+                            return #B42318;
+                        }
+                    }
+                }
             }
 
             <View> {
@@ -149,6 +175,12 @@ impl WidgetMatchEvent for ChatHistoryCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
         let widget_uid = self.widget_uid();
+
+        if self.button(id!(delete_chat)).clicked(actions) {
+            store.delete_chat(self.chat_id);
+            self.redraw(cx);
+            return;
+        }
 
         if let Some(fe) = self.view(id!(content)).finger_down(actions) {
             if fe.tap_count == 1 {

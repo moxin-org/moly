@@ -288,4 +288,9 @@ impl Store {
             self.chats.create_empty_chat();
         }
     }
+
+    pub fn delete_chat(&mut self, chat_id: ChatID) {
+        self.chats.remove_chat(chat_id);
+        self.init_current_chat();
+    }
 }

@@ -175,6 +175,7 @@ impl Chats {
             .context("Failed to receive eject model response")?
             .context("Eject model operation failed");
 
+        self.loaded_model_id = None;
         Ok(())
     }
 
@@ -202,5 +203,18 @@ impl Chats {
 
         self.current_chat_id = Some(new_chat.borrow().id);
         self.saved_chats.push(new_chat);
+    }
+
+    pub fn remove_chat(&mut self, chat_id: ChatID) {
+        if let Some(chat) = self.saved_chats.iter().find(|c| c.borrow().id == chat_id) {
+            chat.borrow().remove_saved_file();
+        };
+        self.saved_chats.retain(|c| c.borrow().id != chat_id);
+
+        if let Some(current_chat_id) = self.current_chat_id {
+            if current_chat_id == chat_id {
+                self.current_chat_id = self.get_latest_chat_id();
+            }
+        }
     }
 }

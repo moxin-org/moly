@@ -25,7 +25,6 @@ live_design! {
         close_panel_button = <MoxinButton> {
             width: Fit,
             height: Fit,
-            //icon_walk: {margin: { left: -3, top: -1 }, width: 22, height: 22},
             icon_walk: {width: 20, height: 20},
             draw_icon: {
                 svg_file: (ICON_CLOSE_PANEL),
@@ -67,7 +66,7 @@ live_design! {
         height: Fill
 
         main_content = <FadeView> {
-            width: 270
+            width: 300
             height: Fill,
             <View> {
                 width: Fill,
@@ -102,7 +101,7 @@ live_design! {
                     redraw: true,
                     from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {main_content = { width: 270, draw_bg: {opacity: 1.0} }}
+                    apply: {main_content = { width: 300, draw_bg: {opacity: 1.0} }}
                 }
                 hide = {
                     redraw: true,
