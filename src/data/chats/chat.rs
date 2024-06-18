@@ -9,7 +9,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
 
@@ -131,6 +131,11 @@ impl Chat {
         write_to_file(path, &json).unwrap();
     }
 
+    pub fn remove_saved_file(&self) {
+        let path = self.chats_dir.join(self.file_name());
+        std::fs::remove_file(path).unwrap();
+    }
+
     fn file_name(&self) -> String {
         format!("{}.chat.json", self.id)
     }
@@ -190,7 +195,7 @@ impl Chat {
         let cmd = Command::Chat(
             ChatRequestData {
                 messages,
-                model: "llama-2-7b-chat.Q5_K_M".to_string(),
+                model: self.model_filename.clone(),
                 frequency_penalty: None,
                 logprobs: None,
                 top_logprobs: None,

@@ -1,9 +1,9 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{DownloadedFile, FileID};
+use moxin_protocol::data::FileID;
 
 use crate::{
     chat::{
-        chat_history::ChatHistoryAction,
+        chat_history_card::ChatHistoryCardAction,
         chat_line::{ChatLineAction, ChatLineWidgetRefExt},
         model_selector::ModelSelectorWidgetExt,
         model_selector_list::ModelSelectorAction,
@@ -22,33 +22,11 @@ live_design! {
 
     import crate::chat::model_selector::ModelSelector;
     import crate::chat::chat_line::ChatLine;
+    import crate::chat::shared::ChatAgentAvatar;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
-
-    ChatAgentAvatar = <RoundedView> {
-        width: 24,
-        height: 24,
-
-        show_bg: true,
-        draw_bg: {
-            color: #444D9A,
-            radius: 6,
-        }
-
-        align: {x: 0.5, y: 0.5},
-
-        avatar_label = <Label> {
-            width: Fit,
-            height: Fit,
-            draw_text:{
-                text_style: <BOLD_FONT>{font_size: 10},
-                color: #fff,
-            }
-            text: "P"
-        }
-    }
 
     UserChatLine = <ChatLine> {
         margin: {left: 100}
@@ -314,21 +292,24 @@ live_design! {
                     }
                     text: "You haven’t downloaded any models yet."
                 }
-                go_to_discover_button = <RoundedView> {
+                go_to_discover_button = <MoxinButton> {
                     width: Fit,
                     height: Fit,
-                    cursor: Arrow,
 
-                    draw_bg: { color: #fff, border_color: #D0D5DD, border_width: 1}
+                    draw_bg: {
+                        border_color: #D0D5DD,
+                        border_width: 1.0,
+                        color: #fff,
+                        color_hover: #E2F1F1,
+                        radius: 2.0,
+                    }
 
-                    button_label = <Label> {
-                        margin: {top: 14, right: 12, bottom: 14, left: 12}
-                        text: "Go To Discover"
-                        draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 12},
-                            fn get_color(self) -> vec4 {
-                                return #087443;
-                            }
+                    padding: {top: 14, right: 12, bottom: 14, left: 12}
+                    text: "Go To Discover"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 12},
+                        fn get_color(self) -> vec4 {
+                            return #087443;
                         }
                     }
                 }
@@ -473,6 +454,14 @@ pub struct ChatPanel {
 
 impl Widget for ChatPanel {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // Temporary fix, PR #98 will bring a better solution
+        if let Event::Startup = event {
+            let store = scope.data.get::<Store>().unwrap();
+            if store.get_loaded_downloaded_file().is_some() {
+                self.update_state_model_loaded(cx);
+            }
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
@@ -523,37 +512,40 @@ impl Widget for ChatPanel {
 
         // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
         // can be confused with the actual Chat type.
-        let (chat_history, model_filename, initial_letter) = store.chats.get_current_chat().map_or(
-            (vec![], "".to_string(), "".to_string()),
-            |chat| {
-                let model_filename = chat.borrow().model_filename.clone();
-                let initial_letter = model_filename
-                    .chars()
-                    .next()
-                    .unwrap_or_default()
-                    .to_uppercase()
-                    .to_string();
-                (
-                    chat.borrow().messages.clone(),
-                    model_filename,
-                    initial_letter,
-                )
-            },
-        );
+        let chat_history;
+        let model_filename;
+        let initial_letter;
+        if let Some(chat) = store.chats.get_current_chat() {
+            model_filename = chat.borrow().model_filename.clone();
+            initial_letter = model_filename
+                .chars()
+                .next()
+                .unwrap_or_default()
+                .to_uppercase()
+                .to_string();
+            chat_history = chat.borrow().messages.clone();
 
-        let chats_count = chat_history.len();
+            let chats_count = chat_history.len();
+            let chat_is_empty = chats_count == 0;
 
-        let chat_is_empty = chats_count == 0;
-        let empty_conversation_view = self.view(id!(empty_conversation));
-        empty_conversation_view.set_visible(chat_is_empty);
-        if chat_is_empty {
-            empty_conversation_view
-                .label(id!(avatar_label))
-                .set_text(initial_letter.as_str());
+            let model_loaded = store.get_loaded_downloaded_file().is_some();
+
+            let empty_conversation_view = self.view(id!(empty_conversation));
+            empty_conversation_view.set_visible(chat_is_empty && model_loaded);
+            if chat_is_empty {
+                empty_conversation_view
+                    .label(id!(avatar_label))
+                    .set_text(initial_letter.as_str());
+            }
+        } else {
+            model_filename = "".to_string();
+            initial_letter = "".to_string();
+            chat_history = vec![];
         }
 
         while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
+                let chats_count = chat_history.len();
                 list.set_item_range(cx, 0, chats_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
                     if item_id < chats_count {
@@ -600,16 +592,21 @@ impl WidgetMatchEvent for ChatPanel {
         let widget_uid = self.widget_uid();
 
         for action in actions {
-            if let ChatHistoryAction::ChatSelected(_) = action.as_widget_action().cast() {
+            if let ChatHistoryCardAction::ChatSelected(_) = action.as_widget_action().cast() {
                 self.view(id!(empty_conversation)).set_visible(false);
-                self.update_state_model_loaded();
-                self.redraw(cx);
+                
+                // Temporary fix, PR #98 will bring a better solution
+                let store = scope.data.get::<Store>().unwrap();
+                if store.get_loaded_downloaded_file().is_some() {
+                    self.update_state_model_loaded(cx);
+                }
             }
 
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    self.load_model(store, downloaded_file);
+                    store.load_model(&downloaded_file.file);
+                    self.update_state_model_loaded(cx);
                 }
                 _ => {}
             }
@@ -624,7 +621,13 @@ impl WidgetMatchEvent for ChatPanel {
                         .find(|file| file.file.id == file_id)
                         .expect("Attempted to start chat with a no longer existing file")
                         .clone();
-                    self.load_model(store, downloaded_file);
+
+                    store.chats.create_empty_chat_with_model_file(&downloaded_file.file);
+                    self.update_state_model_loaded(cx);
+                }
+                ChatAction::Resume(file_id) => {
+                    let store = scope.data.get_mut::<Store>().unwrap();
+                    store.ensure_model_loaded_in_current_chat(file_id);
                 }
                 _ => {}
             }
@@ -705,13 +708,10 @@ impl WidgetMatchEvent for ChatPanel {
             _ => {}
         }
 
-        if let Some(fe) = self
-            .view(id!(no_downloaded_model.go_to_discover_button))
-            .finger_up(actions)
+        if self.button(id!(no_downloaded_model.go_to_discover_button))
+            .clicked(actions)
         {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
-            }
+            cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
         }
     }
 }
@@ -850,17 +850,13 @@ impl ChatPanel {
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
-    fn load_model(&mut self, store: &mut Store, downloaded_file: DownloadedFile) {
-        self.update_state_model_loaded();
-        store.load_model(&downloaded_file.file, true);
-    }
-
-    fn update_state_model_loaded(&mut self) {
+    fn update_state_model_loaded(&mut self, cx: &mut Cx) {
         self.state = ChatPanelState::Idle;
         self.view(id!(main)).set_visible(true);
         self.view(id!(empty_conversation)).set_visible(true);
         self.view(id!(no_model)).set_visible(false);
         self.view(id!(no_downloaded_model)).set_visible(false);
+        self.redraw(cx);
     }
 
     fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {

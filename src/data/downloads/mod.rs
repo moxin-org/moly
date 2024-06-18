@@ -61,6 +61,8 @@ impl Downloads {
                 Ok(files) => {
                     self.pending_downloads = files;
 
+                    self.pending_downloads.sort_by(|a, b| b.file.id.cmp(&a.file.id));
+
                     // There is a issue with the backend response where all pending
                     // downloads come with status `Paused` even if they are downloading.
                     self.pending_downloads.iter_mut().for_each(|d| {

@@ -13,13 +13,23 @@ use super::filesystem::setup_chats_folder;
 pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
+    pub loaded_model_id: Option<FileID>,
 
     current_chat_id: Option<ChatID>,
-    loaded_model_id: Option<FileID>,
     chats_dir: PathBuf,
 }
 
 impl Chats {
+    pub fn new(backend: Rc<Backend>) -> Self {
+        Self {
+            backend,
+            saved_chats: Vec::new(),
+            current_chat_id: None,
+            loaded_model_id: None,
+            chats_dir: setup_chats_folder(),
+        }
+    }
+
     pub fn load_chats(&mut self) {
         let paths = fs::read_dir(&self.chats_dir).unwrap();
 
@@ -34,14 +44,9 @@ impl Chats {
         }
     }
 
-    pub fn new(backend: Rc<Backend>) -> Self {
-        Self {
-            backend,
-            saved_chats: Vec::new(),
-            current_chat_id: None,
-            loaded_model_id: None,
-            chats_dir: setup_chats_folder(),
-        }
+    pub fn get_latest_chat_id(&mut self) -> Option<ChatID> {
+        self.saved_chats.sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
+        self.saved_chats.last().map(|c| c.borrow().id.clone())
     }
 
     pub fn load_model(&mut self, file: &File) -> Result<()> {
@@ -84,24 +89,6 @@ impl Chats {
         }
     }
 
-    pub fn create_new_chat(&mut self, file: &File, set_as_current: bool) -> Result<()> {
-        let new_chat = RefCell::new(Chat::new(
-            file.name.clone(),
-            file.id.clone(),
-            self.chats_dir.clone(),
-        ));
-
-        new_chat.borrow().save();
-
-        if set_as_current {
-            self.current_chat_id = Some(new_chat.borrow().id);
-        }
-
-        self.saved_chats.push(new_chat);
-
-        Ok(())
-    }
-
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
         self.current_chat_id
     }
@@ -116,7 +103,11 @@ impl Chats {
         }
     }
 
-    pub fn set_current_chat(&mut self, chat_id: ChatID, file: &File) -> Result<()> {
+    pub fn set_current_chat(&mut self, chat_id: ChatID) {
+        self.current_chat_id = Some(chat_id);
+    }
+
+    pub fn set_current_chat_and_load_model(&mut self, chat_id: ChatID, file: &File) {
         self.current_chat_id = Some(chat_id);
 
         if self
@@ -124,14 +115,8 @@ impl Chats {
             .as_ref()
             .map_or(true, |m| *m != file.id)
         {
-            self.load_model(file)?;
+            let _ = self.load_model(file);
         }
-
-        Ok(())
-    }
-
-    pub fn remove_current_chat(&mut self) {
-        self.current_chat_id = None;
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
@@ -190,7 +175,46 @@ impl Chats {
             .context("Failed to receive eject model response")?
             .context("Eject model operation failed");
 
-        self.remove_current_chat();
+        self.loaded_model_id = None;
         Ok(())
+    }
+
+    pub fn create_empty_chat(&mut self) {
+        if let Some(current_chat) = self.get_current_chat() {
+            let filename = current_chat.borrow().model_filename.clone();
+            let file_id = current_chat.borrow().file_id.clone();
+            let new_chat = RefCell::new(Chat::new(filename, file_id, self.chats_dir.clone()));
+
+            new_chat.borrow().save();
+
+            self.current_chat_id = Some(new_chat.borrow().id);
+            self.saved_chats.push(new_chat);
+        }
+    }
+
+    pub fn create_empty_chat_with_model_file(&mut self, file: &File) {
+        let new_chat = RefCell::new(Chat::new(
+            file.name.clone(),
+            file.id.clone(),
+            self.chats_dir.clone(),
+        ));
+
+        new_chat.borrow().save();
+
+        self.current_chat_id = Some(new_chat.borrow().id);
+        self.saved_chats.push(new_chat);
+    }
+
+    pub fn remove_chat(&mut self, chat_id: ChatID) {
+        if let Some(chat) = self.saved_chats.iter().find(|c| c.borrow().id == chat_id) {
+            chat.borrow().remove_saved_file();
+        };
+        self.saved_chats.retain(|c| c.borrow().id != chat_id);
+
+        if let Some(current_chat_id) = self.current_chat_id {
+            if current_chat_id == chat_id {
+                self.current_chat_id = self.get_latest_chat_id();
+            }
+        }
     }
 }

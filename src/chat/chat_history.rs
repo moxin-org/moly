@@ -1,85 +1,115 @@
-use crate::data::{chats::chat::ChatID, store::Store};
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
-
 use makepad_widgets::*;
-use moxin_protocol::data::File;
+use crate::data::store::Store;
+use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::FadeView;
+    import crate::shared::widgets::MoxinButton;
     import makepad_draw::shader::std::*;
 
-    import crate::chat::chat_panel::ChatAgentAvatar;
+    import crate::chat::shared::ChatAgentAvatar;
+    import crate::chat::chat_history_card::ChatHistoryCard;
 
-    ChatCard = {{ChatCard}} {
-        content = <RoundedView> {
-            flow: Down
-            width: Fill
-            height: Fit
-            padding: 20
-            spacing: 12
+    ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
+    ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_left_panel.svg")
+    ICON_OPEN_PANEL = dep("crate://self/resources/icons/open_left_panel.svg")
 
-            cursor: Hand
+    ChatHistoryActions = <View> {
+        spacing: 10,
+        height: Fit
 
-            draw_bg: {
-                color: #fff
-                border_width: 1
-            }
-
-            title = <Label> {
-                width: Fit,
-                height: Fit,
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 10},
-                    color: #000,
-                }
-                text: ""
-            }
-
-            <View> {
-                width: Fill
-                height: Fit
-                align: {y: 1}
-
-                avatar = <ChatAgentAvatar> {
-                    width: 30
-                    height: 30
-
-                    draw_bg: {
-                        radius: 8
-                    }
-                    avatar_label = {
-                        text: ""
-                    }
-                }
-
-                filler = <View> {width: Fill}
-
-                date = <Label> {
-                    width: Fit,
-                    height: Fit,
-                    draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 10},
-                        color: #667085,
-                    }
-                    text: "5:29 PM, 5/12/24"
+        close_panel_button = <MoxinButton> {
+            width: Fit,
+            height: Fit,
+            icon_walk: {width: 20, height: 20},
+            draw_icon: {
+                svg_file: (ICON_CLOSE_PANEL),
+                fn get_color(self) -> vec4 {
+                    return #475467;
                 }
             }
+        }
 
+        open_panel_button = <MoxinButton> {
+            width: Fit,
+            height: Fit,
+            visible: false,
+            icon_walk: {width: 20, height: 20},
+            draw_icon: {
+                svg_file: (ICON_OPEN_PANEL),
+                fn get_color(self) -> vec4 {
+                    return #475467;
+                }
+            }
+        }
 
+        new_chat_button = <MoxinButton> {
+            width: Fit,
+            height: Fit,
+            icon_walk: {margin: { top: -1 }, width: 21, height: 21},
+            draw_icon: {
+                svg_file: (ICON_NEW_CHAT),
+                fn get_color(self) -> vec4 {
+                    return #475467;
+                }
+            }
         }
     }
 
     ChatHistory = {{ChatHistory}} {
-        flow: Down
-        width: Fill
+        flow: Overlay
+        width: Fit
         height: Fill
-        padding: 10
 
-        list = <PortalList> {
-            ChatCard = <ChatCard> {margin: {top: 20}}
+        main_content = <FadeView> {
+            width: 300
+            height: Fill,
+            <View> {
+                width: Fill,
+                height: Fill,
+                show_bg: true
+                draw_bg: {
+                    color: #F2F4F7
+                }
+
+                <View> {
+                    width: Fill,
+                    height: Fill,
+
+                    margin: { top: 120 }
+                    padding: { left: 25, right: 25, bottom: 58 }
+
+                    list = <PortalList> {
+                        ChatHistoryCard = <ChatHistoryCard> {margin: {top: 20}}
+                    }
+                }
+            }
+        }
+
+        <ChatHistoryActions> {
+            padding: {top: 58, left: 25, right: 25}
+        }
+
+        animator: {
+            panel = {
+                default: show,
+                show = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {main_content = { width: 300, draw_bg: {opacity: 1.0} }}
+                }
+                hide = {
+                    redraw: true,
+                    from: {all: Forward {duration: 0.3}}
+                    ease: ExpDecay {d1: 0.80, d2: 0.97}
+                    apply: {main_content = { width: 110, draw_bg: {opacity: 0.0} }}
+                }
+            }
         }
     }
 }
@@ -88,11 +118,26 @@ live_design! {
 pub struct ChatHistory {
     #[deref]
     view: View,
+
+    #[animator]
+    animator: Animator,
 }
 
 impl Widget for ChatHistory {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+
+        // TODO This is a hack to redraw the chat history and reflect the
+        // name change on the first message sent.
+        // Maybe we should send and receive an action here?
+        if let Event::Signal = event {
+            self.redraw(cx);
+        }
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -115,9 +160,9 @@ impl Widget for ChatHistory {
                 while let Some(item_id) = list.next_visible_item(cx) {
                     if item_id < chats_count {
                         let mut item = list
-                            .item(cx, item_id, live_id!(ChatCard))
+                            .item(cx, item_id, live_id!(ChatHistoryCard))
                             .unwrap()
-                            .as_chat_card();
+                            .as_chat_history_card();
                         let _ = item.set_chat_id(saved_chat_ids[item_id]);
                         item.draw_all(cx, scope);
                     }
@@ -129,121 +174,25 @@ impl Widget for ChatHistory {
     }
 }
 
-#[derive(Live, LiveHook, Widget)]
-pub struct ChatCard {
-    #[deref]
-    view: View,
-    #[rust]
-    chat_id: ChatID,
-}
-
-impl Widget for ChatCard {
-    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
-    }
-
-    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get_mut::<Store>().unwrap();
-        let chat = store
-            .chats
-            .saved_chats
-            .iter()
-            .find(|c| c.borrow().id == self.chat_id)
-            .unwrap();
-
-        if let Some(current_chat_id) = store.chats.get_current_chat_id() {
-            let content_view = self.view(id!(content));
-
-            if current_chat_id == self.chat_id {
-                let active_border_color = vec3(0.082, 0.522, 0.604);
-                content_view.apply_over(
-                    cx,
-                    live! {
-                        draw_bg: {border_color: (active_border_color)}
-                    },
-                );
-            } else {
-                let border_color = vec3(0.918, 0.925, 0.941);
-                content_view.apply_over(
-                    cx,
-                    live! {
-                        draw_bg: {border_color: (border_color)}
-                    },
-                );
-            }
-        }
-
-        let title_label = self.view.label(id!(title));
-        title_label.set_text(chat.borrow_mut().get_title());
-
-        let initial_letter = chat
-            .borrow()
-            .model_filename
-            .chars()
-            .next()
-            .unwrap_or_default()
-            .to_uppercase()
-            .to_string();
-
-        let avatar_label = self.view.label(id!(avatar.avatar_label));
-        avatar_label.set_text(&initial_letter);
-
-        let date_label = self.view.label(id!(date));
-
-        // Format date.
-        // TODO: Feels wrong to asume the id will always be the date, do smth about this.
-        let naive_datetime = NaiveDateTime::from_timestamp_millis(chat.borrow().id as i64)
-            .expect("Invalid timestamp");
-        let datetime: DateTime<Local> = Local.from_utc_datetime(&naive_datetime);
-        let formatted_date = datetime.format("%-I:%M %p, %-d/%m/%y").to_string();
-
-        date_label.set_text(&formatted_date);
-
-        self.view.draw_walk(cx, scope, walk)
-    }
-}
-
-impl WidgetMatchEvent for ChatCard {
+impl WidgetMatchEvent for ChatHistory {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let widget_uid = self.widget_uid();
 
-        if let Some(fe) = self.view(id!(content)).finger_down(actions) {
-            if fe.tap_count == 1 {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ChatHistoryAction::ChatSelected(self.chat_id),
-                );
+        if self.button(id!(new_chat_button)).clicked(&actions) {
+            store.chats.create_empty_chat();
+            self.redraw(cx);
+        }
 
-                store.select_chat(self.chat_id);
+        if self.button(id!(close_panel_button)).clicked(&actions) {
+            self.button(id!(close_panel_button)).set_visible(false);
+            self.button(id!(open_panel_button)).set_visible(true);
+            self.animator_play(cx, id!(panel.hide));
+        }
 
-                self.redraw(cx);
-            }
+        if self.button(id!(open_panel_button)).clicked(&actions) {
+            self.button(id!(open_panel_button)).set_visible(false);
+            self.button(id!(close_panel_button)).set_visible(true);
+            self.animator_play(cx, id!(panel.show));
         }
     }
-}
-
-impl ChatCard {
-    pub fn set_chat_id(&mut self, id: ChatID) {
-        self.chat_id = id;
-    }
-}
-
-impl ChatCardRef {
-    pub fn set_chat_id(&mut self, id: ChatID) -> Result<(), &'static str> {
-        let Some(mut inner) = self.borrow_mut() else {
-            return Err("Widget not found in the document");
-        };
-
-        inner.set_chat_id(id);
-        Ok(())
-    }
-}
-
-#[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
-pub enum ChatHistoryAction {
-    None,
-    ChatSelected(ChatID),
 }

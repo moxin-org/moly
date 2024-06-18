@@ -4,7 +4,7 @@ use moxin_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 
 use super::filesystem::{
-    project_dirs, read_from_file, setup_model_downloads_folder, write_to_file,
+    setup_preferences_folder, setup_model_downloads_folder, read_from_file, write_to_file,
 };
 const PREFERENCES_FILENAME: &str = "preferences.json";
 
@@ -44,6 +44,6 @@ impl Preferences {
 }
 
 fn preferences_path() -> PathBuf {
-    let preference_dir = project_dirs().preference_dir();
+    let preference_dir = setup_preferences_folder();
     preference_dir.join(PREFERENCES_FILENAME)
 }

@@ -11,11 +11,10 @@ live_design! {
     ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
-        margin: {top: 48, right: 48, bottom: 48, left: 20},
         spacing: 50,
 
         <View> {
-            width: 270,
+            width: Fit,
             height: Fill,
 
             chat_history = <ChatHistory> {}
@@ -24,11 +23,13 @@ live_design! {
         chat_panel = <ChatPanel> {
             width: Fill,
             height: Fill,
+            padding: {top: 48, bottom: 48 }
         }
 
         <View> {
             width: 200,
             height: Fill,
+            margin: {top: 48, right: 48, bottom: 48}
         }
     }
 }
@@ -41,7 +42,12 @@ pub struct ChatScreen {
 
 impl Widget for ChatScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
+        // TODO This check is actually copied from Makepad view.rs file
+        // It's not clear why it's needed here, but without this line
+        // the "View all files" link in Discover section does not work after visiting the chat screen
+        if self.visible || !event.requires_visibility() {
+            self.view.handle_event(cx, event, scope);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
