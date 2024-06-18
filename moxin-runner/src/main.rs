@@ -273,6 +273,12 @@ fn apply_env_vars<P: AsRef<Path>>(wasmedge_dir_path: &P) {
     // The DYLD_FALLBACK_LIBRARY_PATH is only used on macOS.
     #[cfg(target_os = "macos")]
     prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_dir.join("lib"));
+
+    // For macOS app bundles, we need to explicitly set the Plugin path to point to the Frameworks directory
+    // inside the app bundle, where the plugin dylibs are located (they have been packaged alongside the app,
+    // which is required on macOS for an app to be notarizable).
+    #[cfg(target_os = "macos")]
+    prepend_env_var("WASMEDGE_PLUGIN_PATH", "../Frameworks");
 }
 
 
@@ -296,6 +302,8 @@ fn run_moxin() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
     
+    println!("------------------------- Environment Variables -------------------------");
+    println!("{:#?}", std::env::vars().collect::<Vec<_>>());
     println!("Running moxin in dir: {}", current_exe_dir.display());
 
     let _output = Command::new(current_exe_dir.join(MOXIN_APP_BINARY))

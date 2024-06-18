@@ -71,20 +71,39 @@ binaries = [
     { path = "_moxin_app", main = false },
 ]
 
-## See the below paragraph comments for more info on how we determine these `src` directories.
+## The below command uses cargo-metadata to determine the path of the `makepad_widgets` crate on the host build system,
+## and copies the `makepad-widgets/resources` directory to the `./dist/resources/makepad_widgets` directory.
+## We also copy the Moxin project's `resources/` directory to the `./dist/resources/moxin` directory.
+##
+## This is necessary because the `cargo packager` command only supports defining resources at a known path
+## (see the below `resources = [...]` block below),
+## so we need to copy the resources to a known fixed (static) path before packaging,
+## such that cargo-packager can locate them and include them in the final package.
+##
+## In addition, on macOS only, we must download the WasmEdge plugins in order to include them
+## in the macOS app bundle. This is because macOS apps must include all dependencies in order to pass notarization.
+before-packaging-command = """
+mkdir -p ./dist/resources/makepad_widgets/ \
+&& cp -r `cargo metadata --format-version 1 | sed -e 's/,\"/,\\n\"/g' | grep 'widgets/Cargo.toml\"' | sed -e 's/\"manifest_path\":\"//g' -e 's/Cargo.toml\",/resources/g'` ./dist/resources/makepad_widgets/ \
+&& mkdir -p ./dist/resources/moxin/ \
+&& cp -r ./resources ./dist/resources/moxin/; \
+\
+export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
+echo "\n\nPackaging on host platform '$CARGO_PACKAGER_HOST_OS'\n\n"; \
+if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
+    mkdir -p ./wasmedge \
+    && curl -sfL --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.13.5/WasmEdge-0.13.5-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge \
+    && mkdir -p ./wasmedge/WasmEdge-0.13.5-Darwin/plugin \
+    && curl -sf --location --progress-bar --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.13.5/WasmEdge-plugin-wasi_nn-ggml-0.13.5-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge/WasmEdge-0.13.5-Darwin/plugin; \
+fi; \
+"""
+
+## See the above paragraph comments for more info on how we create/populate the below `src` directories.
 resources = [
     { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
     { src = "./dist/resources/moxin", target = "moxin" },
 ]
 
-## The below command uses cargo-metadata to determine the path of the `makepad_widgets` crate
-## on the build system, and copies the `makepad-widgets/resources` directory to the `./dist/resources/makepad_widgets` directory.
-## We also copy the Moxin project's `resources/` directory to the `./dist/resources/moxin` directory.
-## This is done because the `cargo packager` command only supports defining resources at a known path
-## (see the below `resources = [...]` block below),
-## so we need to copy the resources to a known path before packaging
-## such that cargo-packager can include them in the final package.
-##
 ## We then build the entire Moxin project and set the `MAKEPAD_PACKAGE_DIR` env var to the proper value.
 ## * For macOS app bundles, this should be set to `../Resources`.
 ##   This only works because the `moxin-runner` binary sets the current working directory 
@@ -97,7 +116,8 @@ resources = [
 ##   which is currently `/usr/lib/moxin-runner`.
 ##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
 ##
-before-packaging-command = """
+before-each-package-command = """
+echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n"; \
 export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
 echo "\n\nPackaging on host platform '$CARGO_PACKAGER_HOST_OS'\n\n"; \
 if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
@@ -107,20 +127,17 @@ elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
 else exit 2; \
 fi; \
 echo "MAKEPAD_PACKAGE_DIR='$MAKEPAD_PACKAGE_DIR'\n\n"; \
-mkdir -p ./dist/resources/makepad_widgets/ \
-&& cp -r `cargo metadata --format-version 1 | sed -e 's/,\"/,\\n\"/g' | grep 'widgets/Cargo.toml\"' | sed -e 's/\"manifest_path\":\"//g' -e 's/Cargo.toml\",/resources/g'` ./dist/resources/makepad_widgets/ \
-&& mkdir -p ./dist/resources/moxin/ \
-&& cp -r ./resources ./dist/resources/moxin/ \
-&& cargo build --workspace --release  \
+cargo build --workspace --release \
+&& install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app \
 """
-
-## this is not currently needed.
-# before-each-package-command = """
-# echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n" \
-# """
 
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
+frameworks = [
+    "./wasmedge/WasmEdge-0.13.5-Darwin/lib/libwasmedge.0.dylib",
+    "./wasmedge/WasmEdge-0.13.5-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
+]
+signing_identity = "Developer ID Application: AppChef Inc. (SFVQ5V48GD)"
 
 ## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
 [package.metadata.packager.dmg]
