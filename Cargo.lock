@@ -1810,7 +1810,8 @@ dependencies = [
 [[package]]
 name = "robius-android-env"
 version = "0.1.0"
-source = "git+https://github.com/project-robius/robius-android-env#45acdf70ebc507a2ac017add07bec9ecd7bafa51"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "312584c40c0d996c96a0c8498c6e556c38ca5785eda670ae11ba12fe2e556c4f"
 dependencies = [
  "jni",
 ]
@@ -1818,12 +1819,12 @@ dependencies = [
 [[package]]
 name = "robius-open"
 version = "0.1.0"
-source = "git+https://github.com/project-robius/robius-open?rev=b901523667d4a8bbb0bba3cd1ebcc0b94d33534e#b901523667d4a8bbb0bba3cd1ebcc0b94d33534e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b4c6634e8febd0be2e37aefd55fd256f9f39eb5583db30c7163132aa625bfda"
 dependencies = [
  "cfg-if",
  "icrate",
  "jni",
- "log",
  "objc2",
  "robius-android-env",
 ]
