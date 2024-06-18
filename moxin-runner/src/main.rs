@@ -61,6 +61,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+pub const MOXIN_APP_BINARY: &str = "_moxin_app";
+
 const WASMEDGE_DIR_NAME: &str = ".wasmedge";
 const LIB_DIR_NAME: &str = "lib";
 const PLUGIN_DIR_NAME: &str = "plugin";
@@ -289,14 +291,14 @@ fn wasmedge_dir_from_env_vars() -> Option<PathBuf> {
         )
 }
 
-/// Runs the moxin app binary, which must be located in the same directory as this moxin-runner binary.
+/// Runs the `_moxin_app` binary, which must be located in the same directory as this moxin-runner binary.
 fn run_moxin() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
     
     println!("Running moxin in dir: {}", current_exe_dir.display());
 
-    let _output = Command::new(current_exe_dir.join("moxin"))
+    let _output = Command::new(current_exe_dir.join(MOXIN_APP_BINARY))
         .current_dir(current_exe_dir)
         .spawn()?
         .wait_with_output()?;

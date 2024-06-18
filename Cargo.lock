@@ -1315,7 +1315,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "crossbeam",
- "directories",
  "futures-util",
  "log",
  "moxin-protocol",
