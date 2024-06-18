@@ -90,6 +90,11 @@ impl Store {
     pub fn load_model(&mut self, file: &File) {
         if self.chats.load_model(file).is_ok() {
             self.preferences.set_current_chat_model(file.id.clone());
+
+            // If there is no chat, create an empty one
+            if self.chats.get_current_chat().is_none() {
+                self.chats.create_empty_chat_with_model_file(file);
+            }
         }
     }
 
