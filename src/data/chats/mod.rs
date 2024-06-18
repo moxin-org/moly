@@ -13,7 +13,7 @@ use super::filesystem::setup_chats_folder;
 pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
-    pub loaded_model_id: Option<FileID>,
+    pub loaded_model: Option<File>,
 
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
@@ -25,7 +25,7 @@ impl Chats {
             backend,
             saved_chats: Vec::new(),
             current_chat_id: None,
-            loaded_model_id: None,
+            loaded_model: None,
             chats_dir: setup_chats_folder(),
         }
     }
@@ -72,7 +72,7 @@ impl Chats {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(LoadModelResponse::Completed(_)) => {
-                    self.loaded_model_id = Some(file.id.clone());
+                    self.loaded_model = Some(file.clone());
                     Ok(())
                 }
                 Ok(_) => {
@@ -111,18 +111,23 @@ impl Chats {
         self.current_chat_id = Some(chat_id);
 
         if self
-            .loaded_model_id
+            .loaded_model
             .as_ref()
-            .map_or(true, |m| *m != file.id)
+            .map_or(true, |m| *m.id != file.id)
         {
             let _ = self.load_model(file);
         }
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
+        let Some(loaded_model) = self.loaded_model.as_ref() else { 
+            println!("Skip sending message because loaded model not found");
+            return
+        };
+
         if let Some(chat) = self.get_current_chat() {
             chat.borrow_mut()
-                .send_message_to_model(prompt, self.backend.as_ref());
+                .send_message_to_model(prompt, loaded_model, self.backend.as_ref());
             chat.borrow().save();
         }
     }
@@ -149,12 +154,14 @@ impl Chats {
         if let Some(chat) = &mut self.get_current_chat() {
             let mut chat = chat.borrow_mut();
             if regenerate {
-                if chat.is_streaming {
-                    chat.cancel_streaming(self.backend.as_ref());
-                }
+                if let Some(loaded_model) = self.loaded_model.as_ref() {
+                    if chat.is_streaming {
+                        chat.cancel_streaming(self.backend.as_ref());
+                    }
 
-                chat.remove_messages_from(message_id);
-                chat.send_message_to_model(updated_message, self.backend.as_ref());
+                    chat.remove_messages_from(message_id);
+                    chat.send_message_to_model(updated_message, loaded_model, self.backend.as_ref());
+                }
             } else {
                 chat.edit_message(message_id, updated_message);
             }
@@ -175,7 +182,7 @@ impl Chats {
             .context("Failed to receive eject model response")?
             .context("Eject model operation failed");
 
-        self.loaded_model_id = None;
+        self.loaded_model = None;
         Ok(())
     }
 
@@ -205,9 +212,9 @@ impl Chats {
         self.saved_chats.push(new_chat);
 
         if self
-            .loaded_model_id
+            .loaded_model
             .as_ref()
-            .map_or(true, |m| *m != file.id)
+            .map_or(true, |m| *m.id != file.id)
         {
             let _ = self.load_model(file);
         }

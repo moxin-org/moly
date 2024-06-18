@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
 use moxin_backend::Backend;
-use moxin_protocol::data::FileID;
+use moxin_protocol::data::{File, FileID};
 use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
 use std::path::PathBuf;
@@ -25,6 +25,7 @@ pub enum ChatTokenArrivalAction {
 pub struct ChatMessage {
     pub id: usize,
     pub role: Role,
+    pub username: Option<String>,
     pub content: String,
 }
 
@@ -174,7 +175,7 @@ impl Chat {
             }
         }
     }
-    pub fn send_message_to_model(&mut self, prompt: String, backend: &Backend) {
+    pub fn send_message_to_model(&mut self, prompt: String, loaded_file: &File, backend: &Backend) {
         let (tx, rx) = channel();
         let mut messages: Vec<_> = self
             .messages
@@ -216,11 +217,14 @@ impl Chat {
         self.messages.push(ChatMessage {
             id: next_id,
             role: Role::User,
+            username: None,
             content: prompt.clone(),
         });
+        self.model_filename = loaded_file.name.clone();
         self.messages.push(ChatMessage {
             id: next_id + 1,
             role: Role::Assistant,
+            username: Some(self.model_filename.clone()),
             content: "".to_string(),
         });
 

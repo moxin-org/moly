@@ -110,10 +110,10 @@ impl Widget for DownloadedFilesTable {
         let entries_count = self.current_results.len();
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
 
-        let loaded_model_id = if let Some(loaded_model_id) =
-            &scope.data.get::<Store>().unwrap().chats.loaded_model_id
+        let loaded_model_id = if let Some(loaded_model) =
+            &scope.data.get::<Store>().unwrap().chats.loaded_model
         {
-            Some(loaded_model_id.clone())
+            Some(loaded_model.id.clone())
         } else {
             None
         };

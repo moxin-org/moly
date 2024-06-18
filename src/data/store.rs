@@ -159,9 +159,9 @@ impl Store {
                     .cloned();
                 let is_current_chat = self
                     .chats
-                    .loaded_model_id
+                    .loaded_model
                     .clone()
-                    .map_or(false, |loaded_id| loaded_id == file.id);
+                    .map_or(false, |loaded| loaded.id == file.id);
 
                 FileWithDownloadInfo {
                     file: file.clone(),
@@ -203,6 +203,7 @@ impl Store {
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
+
         SignalToUI::set_ui_signal();
         Ok(())
     }
