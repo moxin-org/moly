@@ -291,6 +291,10 @@ impl Store {
 
     pub fn delete_chat(&mut self, chat_id: ChatID) {
         self.chats.remove_chat(chat_id);
+
+        // TODO Decide proper behavior when deleting the current chat
+        // For now, we just create a new empty chat because we don't fully
+        // support having no chat selected
         self.init_current_chat();
     }
 }
