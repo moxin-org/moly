@@ -121,14 +121,12 @@ echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n"; \
 export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
 echo "\n\nPackaging on host platform '$CARGO_PACKAGER_HOST_OS'\n\n"; \
 if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
-    export MAKEPAD_PACKAGE_DIR=../Resources; \
+    MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release \
+    && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app; \
 elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
-    export MAKEPAD_PACKAGE_DIR=/usr/lib/moxin-runner; \
+    MAKEPAD_PACKAGE_DIR=/usr/lib/moxin-runner  cargo build --workspace --release \
 else exit 2; \
 fi; \
-echo "MAKEPAD_PACKAGE_DIR='$MAKEPAD_PACKAGE_DIR'\n\n"; \
-cargo build --workspace --release \
-&& install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app \
 """
 
 [package.metadata.packager.macos]
