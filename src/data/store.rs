@@ -282,5 +282,10 @@ impl Store {
         if let Some(chat_id) = self.chats.get_latest_chat_id() {
             self.chats.set_current_chat(chat_id);
         }
+
+        // If there is no chat, create an empty one
+        if self.chats.get_current_chat().is_none() {
+            self.chats.create_empty_chat();
+        }
     }
 }

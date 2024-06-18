@@ -594,13 +594,19 @@ impl WidgetMatchEvent for ChatPanel {
         for action in actions {
             if let ChatHistoryCardAction::ChatSelected(_) = action.as_widget_action().cast() {
                 self.view(id!(empty_conversation)).set_visible(false);
-                self.update_state_model_loaded(cx);
+                
+                // Temporary fix, PR #98 will bring a better solution
+                let store = scope.data.get::<Store>().unwrap();
+                if store.get_loaded_downloaded_file().is_some() {
+                    self.update_state_model_loaded(cx);
+                }
             }
 
             match action.as_widget_action().cast() {
                 ModelSelectorAction::Selected(downloaded_file) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    self.load_model(cx, store, downloaded_file);
+                    store.load_model(&downloaded_file.file);
+                    self.update_state_model_loaded(cx);
                 }
                 _ => {}
             }
@@ -842,11 +848,6 @@ impl ChatPanel {
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
         let mut list = self.portal_list(id!(chat));
         list.smooth_scroll_to_end(cx, 10, 80.0);
-    }
-
-    fn load_model(&mut self, cx: &mut Cx, store: &mut Store, downloaded_file: DownloadedFile) {
-        self.update_state_model_loaded(cx);
-        store.load_model(&downloaded_file.file);
     }
 
     fn update_state_model_loaded(&mut self, cx: &mut Cx) {
