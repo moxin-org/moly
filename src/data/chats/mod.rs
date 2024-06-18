@@ -13,9 +13,9 @@ use super::filesystem::setup_chats_folder;
 pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
+    pub loaded_model_id: Option<FileID>,
 
     current_chat_id: Option<ChatID>,
-    loaded_model_id: Option<FileID>,
     chats_dir: PathBuf,
 }
 
