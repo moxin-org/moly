@@ -112,12 +112,14 @@ impl Store {
         }
     }
 
-    pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
-        if let Some(file_id) = self
-            .chats
+    pub fn get_loaded_model_file_id(&self) -> Option<FileID> {
+        self.chats
             .get_current_chat()
             .map(|chat| chat.borrow().file_id.clone())
-        {
+    }
+
+    pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
+        if let Some(file_id) = self.get_loaded_model_file_id() {
             self.downloads
                 .downloaded_files
                 .iter()
@@ -125,6 +127,35 @@ impl Store {
                 .cloned()
         } else {
             None
+        }
+    }
+
+    /// This function ensures that the model with the provided file ID is loaded
+    /// in the current chat.
+    /// It is necesary to cover cases where the model file is deleted by the user,
+    /// but previous chat sessions refer to that file.
+    pub fn ensure_model_loaded_in_current_chat(&mut self, file_id: FileID) {
+        // Check if the current chat has loaded the provided file
+        // Do nothing if this is the case
+        if self
+            .get_loaded_model_file_id()
+            .map(|id| id == file_id)
+            .unwrap_or(false)
+        {
+            return;
+        }
+
+        // Attempt to load the model in the current chat since it is not loaded
+        let available_files: Vec<File> = self
+            .downloads
+            .downloaded_files
+            .iter()
+            .map(|d| d.file.clone())
+            .collect();
+
+        if let Some(file) = available_files.iter().find(|file| file.id == file_id) {
+            self.chats
+                .set_current_chat_and_load_model(self.chats.get_current_chat_id().unwrap(), file);
         }
     }
 

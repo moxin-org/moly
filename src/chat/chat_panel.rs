@@ -619,6 +619,10 @@ impl WidgetMatchEvent for ChatPanel {
                     store.chats.create_empty_chat_with_model_file(&downloaded_file.file);
                     self.update_state_model_loaded(cx);
                 }
+                ChatAction::Resume(file_id) => {
+                    let store = scope.data.get_mut::<Store>().unwrap();
+                    store.ensure_model_loaded_in_current_chat(file_id);
+                }
                 _ => {}
             }
 

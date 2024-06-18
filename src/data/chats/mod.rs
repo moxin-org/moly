@@ -119,10 +119,6 @@ impl Chats {
         }
     }
 
-    pub fn remove_current_chat(&mut self) {
-        self.current_chat_id = None;
-    }
-
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(chat) = self.get_current_chat() {
             chat.borrow_mut()
@@ -179,7 +175,6 @@ impl Chats {
             .context("Failed to receive eject model response")?
             .context("Eject model operation failed");
 
-        self.remove_current_chat();
         Ok(())
     }
 
