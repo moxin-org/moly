@@ -55,6 +55,8 @@
 //!    which is located in `$HOME/.wasmedge/plugin/libwasmedgePluginWasiNN.dylib`.
 //!
 
+#![cfg_attr(feature = "macos_bundle", allow(unused))]
+
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -116,8 +118,9 @@ impl<P: AsRef<Path>> PathExt for P {
     }
 }
 
+
 #[cfg(feature = "macos_bundle")]
-fn main() {
+fn main() -> std::io::Result<()> {
     // For macOS app bundles, the WasmEdge dylibs have already been packaged inside of the app bundle,
     // specifically in the `Contents/Frameworks/` subdirectory.
     // This is required for the app bundle to be notarizable.
@@ -130,6 +133,12 @@ fn main() {
     // because the run_moxin() function will set the current working directory to `Contents/MacOS/`
     // within the app bundle, which is the subdirectory that contains the actual moxin executables.
     std::env::set_var("WASMEDGE_PLUGIN_PATH", "../Frameworks");
+
+    println!("Running within a macOS app bundle.
+        WASMEDGE_PLUGIN_PATH: {:?}",
+        std::env::var("WASMEDGE_PLUGIN_PATH").ok()
+    );
+
     run_moxin().unwrap();
     Ok(())
 }

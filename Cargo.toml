@@ -120,7 +120,7 @@ before-each-package-command = """
 export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
 echo -e "\n\n================================================\n Packaging '$CARGO_PACKAGER_FORMAT' on host platform '$CARGO_PACKAGER_HOST_OS'\n================================================\n\n"; \
 if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
-    MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release \
+    MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release --features macos_bundle \
     && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app; \
 elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
     MAKEPAD_PACKAGE_DIR=/usr/lib/moxin-runner  cargo build --workspace --release \
@@ -134,7 +134,6 @@ frameworks = [
     "./wasmedge/WasmEdge-0.13.5-Darwin/lib/libwasmedge.0.dylib",
     "./wasmedge/WasmEdge-0.13.5-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
 ]
-signing_identity = "Developer ID Application: AppChef Inc. (SFVQ5V48GD)"
 
 ## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
 [package.metadata.packager.dmg]
