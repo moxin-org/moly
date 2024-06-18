@@ -90,6 +90,11 @@ impl Store {
     pub fn load_model(&mut self, file: &File) {
         if self.chats.load_model(file).is_ok() {
             self.preferences.set_current_chat_model(file.id.clone());
+
+            // If there is no chat, create an empty one
+            if self.chats.get_current_chat().is_none() {
+                self.chats.create_empty_chat_with_model_file(file);
+            }
         }
     }
 
@@ -159,9 +164,9 @@ impl Store {
                     .cloned();
                 let is_current_chat = self
                     .chats
-                    .loaded_model_id
+                    .loaded_model
                     .clone()
-                    .map_or(false, |loaded_id| loaded_id == file.id);
+                    .map_or(false, |loaded| loaded.id == file.id);
 
                 FileWithDownloadInfo {
                     file: file.clone(),
@@ -203,6 +208,7 @@ impl Store {
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
+
         SignalToUI::set_ui_signal();
         Ok(())
     }
