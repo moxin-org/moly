@@ -2,6 +2,7 @@ use crate::data::{chats::chat::ChatID, store::Store};
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 
 use makepad_widgets::*;
+use moxin_protocol::data::File;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -151,7 +152,7 @@ impl Widget for ChatCard {
             .find(|c| c.borrow().id == self.chat_id)
             .unwrap();
 
-        if let Some(current_chat_id) = store.chats.current_chat_id {
+        if let Some(current_chat_id) = store.chats.get_current_chat_id() {
             let content_view = self.view(id!(content));
 
             if current_chat_id == self.chat_id {
@@ -210,12 +211,13 @@ impl WidgetMatchEvent for ChatCard {
 
         if let Some(fe) = self.view(id!(content)).finger_down(actions) {
             if fe.tap_count == 1 {
-                store.chats.current_chat_id = Some(self.chat_id);
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
                     ChatHistoryAction::ChatSelected(self.chat_id),
                 );
+
+                store.select_chat(self.chat_id);
 
                 self.redraw(cx);
             }

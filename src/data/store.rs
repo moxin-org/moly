@@ -1,3 +1,4 @@
+use super::chats::chat::ChatID;
 use super::filesystem::project_dirs;
 use super::preferences::Preferences;
 use super::search::SortCriteria;
@@ -79,14 +80,44 @@ impl Store {
         store.downloads.load_downloaded_files();
         store.downloads.load_pending_downloads();
 
+        store.chats.load_chats();
+
         store.search.load_featured_models();
         store
     }
 
-    pub fn load_model(&mut self, file: &File) {
-        if self.chats.load_model(file).is_ok() {
+    pub fn load_model(&mut self, file: &File, set_as_current: bool) {
+        // We are creating a new chat because there is no other way to start a new conversation
+        // with a model. This is a temporary solution until we have a better way to start a chat
+
+        if self.chats.load_model(file).is_ok()
+            && self.chats.create_new_chat(file, set_as_current).is_ok()
+        {
             self.preferences.set_current_chat_model(file.id.clone());
         }
+    }
+
+    pub fn select_chat(&mut self, chat_id: ChatID) {
+        let available_files: Vec<File> = self
+            .downloads
+            .downloaded_files
+            .iter()
+            .map(|d| d.file.clone())
+            .collect();
+
+        let file_id = self
+            .chats
+            .get_current_chat()
+            .unwrap()
+            .borrow()
+            .file_id
+            .clone();
+        let file = available_files
+            .iter()
+            .find(|file| file.id == file_id)
+            .expect("Attempted to start chat with a no longer existing file");
+
+        let _ = self.chats.set_current_chat(chat_id, &file);
     }
 
     /// This function combines the search results information for a given model
@@ -126,7 +157,7 @@ impl Store {
             download_count: model.download_count,
             released_at: model.released_at,
             author: model.author.clone(),
-            files: files,
+            files,
         }
     }
 

@@ -1,5 +1,10 @@
-use std::{path::PathBuf, sync::OnceLock};
 use directories::ProjectDirs;
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::PathBuf,
+    sync::OnceLock,
+};
 
 pub const APP_QUALIFIER: &str = "com";
 pub const APP_ORGANIZATION: &str = "moxin-org";
@@ -16,14 +21,48 @@ pub fn project_dirs() -> &'static ProjectDirs {
 }
 
 pub const MODEL_DOWNLOADS_DIR_NAME: &str = "model_downloads";
-
 pub fn setup_model_downloads_folder() -> PathBuf {
-    let downloads_dir = project_dirs()
-        .data_dir()
-        .join(MODEL_DOWNLOADS_DIR_NAME);
+    let downloads_dir = project_dirs().data_dir().join(MODEL_DOWNLOADS_DIR_NAME);
 
-    std::fs::create_dir_all(&downloads_dir).unwrap_or_else(|_|
-        panic!("Failed to create the model downloads directory at {:?}", downloads_dir)
-    );
+    std::fs::create_dir_all(&downloads_dir).unwrap_or_else(|_| {
+        panic!(
+            "Failed to create the model downloads directory at {:?}",
+            downloads_dir
+        )
+    });
     downloads_dir
+}
+
+pub const CHATS_DIR_NAME: &str = "chats";
+pub fn setup_chats_folder() -> PathBuf {
+    let chats_dir = project_dirs().data_dir().join(CHATS_DIR_NAME);
+
+    std::fs::create_dir_all(&chats_dir)
+        .unwrap_or_else(|_| panic!("Failed to create the chats directory at {:?}", chats_dir));
+    chats_dir
+}
+
+pub fn read_from_file(path: PathBuf) -> Result<String, std::io::Error> {
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(why) => return Err(why),
+    };
+
+    let mut json = String::new();
+    match file.read_to_string(&mut json) {
+        Ok(_) => Ok(json),
+        Err(why) => Err(why),
+    }
+}
+
+pub fn write_to_file(path: PathBuf, json: &str) -> Result<(), std::io::Error> {
+    let mut file = match File::create(path) {
+        Ok(file) => file,
+        Err(why) => return Err(why),
+    };
+
+    match file.write_all(json.as_bytes()) {
+        Ok(_) => Ok(()),
+        Err(why) => Err(why),
+    }
 }
