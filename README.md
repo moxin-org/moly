@@ -59,9 +59,9 @@ cargo run
 
 Install cargo packager:
 ```sh
-cargo install --locked cargo-packager
+cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager
 ```
-For the sake of posterity, these instructions were tested with cargo-packager v0.9.0.
+For the sake of posterity, these instructions were tested with [this commit](https://github.com/project-robius/cargo-packager/commit/9cce648e44303b927911fa8971af3d9e55af19fe) of cargo-packager.
 
 
 ### Packaging for Linux

@@ -10,3 +10,7 @@ directories = "5.0.1"
 [[bin]]
 name = "moxin"
 path = "src/main.rs"
+
+[features]
+## Enable this feature when you are packaging Moxin into a macOS app bundle.
+macos_bundle = []
