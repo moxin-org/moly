@@ -117,9 +117,8 @@ resources = [
 ##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
 ##
 before-each-package-command = """
-echo -e "\n\nPackaging '$CARGO_PACKAGER_FORMAT'\n\n"; \
 export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
-echo "\n\nPackaging on host platform '$CARGO_PACKAGER_HOST_OS'\n\n"; \
+echo -e "\n\n================================================\n Packaging '$CARGO_PACKAGER_FORMAT' on host platform '$CARGO_PACKAGER_HOST_OS'\n================================================\n\n"; \
 if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
     MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release \
     && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app; \
