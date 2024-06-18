@@ -94,22 +94,7 @@ impl Store {
     }
 
     pub fn select_chat(&mut self, chat_id: ChatID) {
-        let available_files: Vec<File> = self
-            .downloads
-            .downloaded_files
-            .iter()
-            .map(|d| d.file.clone())
-            .collect();
-
-        if let Some(chat) = self.chats.get_current_chat() {
-            let file_id = chat.borrow().file_id.clone();
-
-            if let Some(file) = available_files.iter().find(|file| file.id == file_id) {
-                self.chats.set_current_chat_and_load_model(chat_id, &file)
-            } else {
-                self.chats.set_current_chat(chat_id)
-            }
-        }
+        self.chats.set_current_chat(chat_id);
     }
 
     pub fn get_loaded_model_file_id(&self) -> Option<FileID> {
@@ -174,8 +159,9 @@ impl Store {
                     .cloned();
                 let is_current_chat = self
                     .chats
-                    .get_current_chat()
-                    .map_or(false, |c| c.borrow().file_id == file.id);
+                    .loaded_model_id
+                    .clone()
+                    .map_or(false, |loaded_id| loaded_id == file.id);
 
                 FileWithDownloadInfo {
                     file: file.clone(),
