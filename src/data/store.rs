@@ -135,6 +135,10 @@ impl Store {
             return;
         }
 
+        let Some(current_chat_id) = self.chats.get_current_chat_id() else {
+            return;
+        };
+
         // Attempt to load the model in the current chat since it is not loaded
         let available_files: Vec<File> = self
             .downloads
@@ -145,7 +149,7 @@ impl Store {
 
         if let Some(file) = available_files.iter().find(|file| file.id == file_id) {
             self.chats
-                .set_current_chat_and_load_model(self.chats.get_current_chat_id().unwrap(), file);
+                .set_current_chat_and_load_model(current_chat_id, file);
         }
     }
 
