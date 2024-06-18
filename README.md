@@ -5,10 +5,10 @@ Moxin is an AI LLM client written in Rust to demonstrate the functionality of th
 > ⚠️ Moxin is just getting started and is not yet fully functional.
 
 The following table shows which host systems can currently be used to build Moxin for which target platforms.
-| Host OS | Target Platform | Builds? | Runs? |
-| ------- | --------------- | ------- | ----- |
-| macOS   | macOS           | ✅      | ✅    |  
-| Linux   | ubuntu(x86_64-unknown-linux-gnu) | ✅ | ? |
+| Host OS | Target Platform | Builds? | Runs? | Packaging Support                            |
+| ------- | --------------- | ------- | ----- | -------------------------------------------- |
+| macOS   | macOS           | ✅      | ✅    | `.app`, [`.dmg`]                             |
+| Linux   | Linux           | ✅      | ✅    | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
 
 ## Building and Running
 
@@ -72,7 +72,7 @@ On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` D
 To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 ```sh
 cd dist/
-sudo dpkg -i moxin-runner_0.1.0_amd64.deb  ## requires entering your password
+sudo dpkg -i moxin_0.1.0_amd64.deb  ## requires entering your password
 ```
 
 
@@ -118,3 +118,10 @@ To get around this, do the following:
   ```
   * The path is typically `/Applications/Moxin.app`, assuming you dragged the app icon into the Applications folder.
 * Now open the Moxin app again as normal, it should work as expected.
+
+
+
+[`.dmg`]: https://support.apple.com/en-gb/guide/mac-help/mh35835/mac
+[`.deb` (Debian dpkg)]: https://www.debian.org/doc/manuals/debian-faq/pkg-basics.en.html#package
+[AppImage]: https://appimage.org/
+[pacman]: https://pacman.archlinux.page/pacman.8.html
