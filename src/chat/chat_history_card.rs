@@ -158,14 +158,17 @@ impl Widget for ChatHistoryCard {
 
         let date_label = self.view.label(id!(date));
 
-        // Format date.
-        // TODO: Feels wrong to asume the id will always be the date, do smth about this.
-        let naive_datetime = NaiveDateTime::from_timestamp_millis(chat.borrow().id as i64)
-            .expect("Invalid timestamp");
-        let datetime: DateTime<Local> = Local.from_utc_datetime(&naive_datetime);
+        let datetime =
+            DateTime::from_timestamp_millis(chat.borrow().id as i64).expect("Invalid timestamp");
         let formatted_date = datetime.format("%-I:%M %p, %-d/%m/%y").to_string();
 
         date_label.set_text(&formatted_date);
+
+        let show_delete_button =
+            store.chats.saved_chats.len() > 1 || !chat.borrow().messages.is_empty();
+
+        self.button(id!(delete_chat))
+            .set_visible(show_delete_button);
 
         self.view.draw_walk(cx, scope, walk)
     }

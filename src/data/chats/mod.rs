@@ -50,6 +50,11 @@ impl Chats {
     }
 
     pub fn load_model(&mut self, file: &File) -> Result<()> {
+        // Do not load the model if it is already loaded
+        if self.loaded_model.as_ref().map_or(false, |m| *m.id == file.id) {
+            return Ok(());
+        }
+
         let (tx, rx) = channel();
         let cmd = Command::LoadModel(
             file.id.clone(),
@@ -105,18 +110,6 @@ impl Chats {
 
     pub fn set_current_chat(&mut self, chat_id: ChatID) {
         self.current_chat_id = Some(chat_id);
-    }
-
-    pub fn set_current_chat_and_load_model(&mut self, chat_id: ChatID, file: &File) {
-        self.current_chat_id = Some(chat_id);
-
-        if self
-            .loaded_model
-            .as_ref()
-            .map_or(true, |m| *m.id != file.id)
-        {
-            let _ = self.load_model(file);
-        }
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
@@ -196,35 +189,13 @@ impl Chats {
     }
 
     pub fn create_empty_chat(&mut self) {
-        if let Some(current_chat) = self.get_current_chat() {
-            let filename = current_chat.borrow().model_filename.clone();
-            let new_chat = RefCell::new(Chat::new(filename, self.chats_dir.clone()));
-
-            new_chat.borrow().save();
-
-            self.current_chat_id = Some(new_chat.borrow().id);
-            self.saved_chats.push(new_chat);
-        }
-    }
-
-    pub fn create_empty_chat_with_model_file(&mut self, file: &File) {
-        let new_chat = RefCell::new(Chat::new(
-            file.name.clone(),
-            self.chats_dir.clone(),
-        ));
+        let filename = self.loaded_model.as_ref().map_or("".to_string(), |m| m.name.clone());
+        let new_chat = RefCell::new(Chat::new(filename, self.chats_dir.clone()));
 
         new_chat.borrow().save();
 
         self.current_chat_id = Some(new_chat.borrow().id);
         self.saved_chats.push(new_chat);
-
-        if self
-            .loaded_model
-            .as_ref()
-            .map_or(true, |m| *m.id != file.id)
-        {
-            let _ = self.load_model(file);
-        }
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
