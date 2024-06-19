@@ -186,11 +186,19 @@ impl Chats {
         Ok(())
     }
 
+    pub fn eject_model_if_active(&mut self, file_id: &FileID) -> Result<()> {
+        if let Some(model_file) = &self.loaded_model {
+            if model_file.id == *file_id {
+                self.eject_model()?
+            }
+        }
+        Ok(())
+    }
+
     pub fn create_empty_chat(&mut self) {
         if let Some(current_chat) = self.get_current_chat() {
             let filename = current_chat.borrow().model_filename.clone();
-            let file_id = current_chat.borrow().file_id.clone();
-            let new_chat = RefCell::new(Chat::new(filename, file_id, self.chats_dir.clone()));
+            let new_chat = RefCell::new(Chat::new(filename, self.chats_dir.clone()));
 
             new_chat.borrow().save();
 
@@ -202,7 +210,6 @@ impl Chats {
     pub fn create_empty_chat_with_model_file(&mut self, file: &File) {
         let new_chat = RefCell::new(Chat::new(
             file.name.clone(),
-            file.id.clone(),
             self.chats_dir.clone(),
         ));
 

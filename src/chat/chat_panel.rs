@@ -470,8 +470,9 @@ impl Widget for ChatPanel {
                     // Redraw because we expect to see new or updated chat entries
                     self.redraw(cx);
                 }
-                State::NoModelSelected => {
-                    self.unload_model(cx);
+                State::NoModelSelected | State::NoModelsAvailable => {
+                    self.model_selector(id!(model_selector)).deselect(cx);
+                    self.view.redraw(cx);
                 }
                 _ => {}
             }
@@ -539,17 +540,6 @@ impl WidgetMatchEvent for ChatPanel {
                     self.redraw(cx);
                 }
                 _ => {}
-            }
-
-            if let ChatPanelAction::UnloadIfActive(file_id) = action.cast() {
-                if store
-                    .chats
-                    .get_current_chat()
-                    .map_or(false, |chat| chat.borrow().file_id == file_id)
-                {
-                    self.unload_model(cx);
-                    store.chats.eject_model().expect("Failed to eject model");
-                }
             }
         }
 

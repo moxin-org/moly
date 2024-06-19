@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
 use moxin_backend::Backend;
-use moxin_protocol::data::{File, FileID};
+use moxin_protocol::data::File;
 use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
 use std::path::PathBuf;
@@ -46,7 +46,6 @@ enum TitleState {
 struct ChatData {
     id: ChatID,
     model_filename: String,
-    file_id: FileID,
     messages: Vec<ChatMessage>,
     title: String,
     #[serde(default)]
@@ -58,7 +57,6 @@ pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
     pub model_filename: String,
-    pub file_id: FileID,
     pub messages: Vec<ChatMessage>,
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
@@ -71,7 +69,7 @@ pub struct Chat {
 }
 
 impl Chat {
-    pub fn new(filename: String, file_id: FileID, chats_dir: PathBuf) -> Self {
+    pub fn new(filename: String, chats_dir: PathBuf) -> Self {
         let (tx, rx) = channel();
 
         // Get Unix timestamp in ms for id.
@@ -84,7 +82,6 @@ impl Chat {
             id,
             title: String::from("New Chat"),
             model_filename: filename,
-            file_id,
             messages: vec![],
             messages_update_sender: tx,
             messages_update_receiver: rx,
@@ -103,7 +100,6 @@ impl Chat {
                 let chat = Chat {
                     id: data.id,
                     model_filename: data.model_filename,
-                    file_id: data.file_id,
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
@@ -122,7 +118,6 @@ impl Chat {
         let data = ChatData {
             id: self.id,
             model_filename: self.model_filename.clone(),
-            file_id: self.file_id.clone(),
             messages: self.messages.clone(),
             title: self.title.clone(),
             title_state: self.title_state,

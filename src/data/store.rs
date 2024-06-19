@@ -102,22 +102,14 @@ impl Store {
         self.chats.set_current_chat(chat_id);
     }
 
-    pub fn get_loaded_model_file_id(&self) -> Option<FileID> {
-        self.chats
-            .get_current_chat()
-            .map(|chat| chat.borrow().file_id.clone())
-    }
-
     pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
-        if let Some(file_id) = self.get_loaded_model_file_id() {
+        self.chats.loaded_model.clone().and_then(|model| {
             self.downloads
                 .downloaded_files
                 .iter()
-                .find(|d| d.file.id == file_id)
+                .find(|d| d.file.id == model.id)
                 .cloned()
-        } else {
-            None
-        }
+        })
     }
 
     /// This function ensures that the model with the provided file ID is loaded
@@ -128,8 +120,8 @@ impl Store {
         // Check if the current chat has loaded the provided file
         // Do nothing if this is the case
         if self
-            .get_loaded_model_file_id()
-            .map(|id| id == file_id)
+            .chats.loaded_model.as_ref()
+            .map(|file| file.id == file_id)
             .unwrap_or(false)
         {
             return;
@@ -209,6 +201,7 @@ impl Store {
     }
 
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
+        self.chats.eject_model_if_active(&file_id)?;
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
