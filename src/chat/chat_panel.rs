@@ -427,10 +427,11 @@ live_design! {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 enum State {
     /// `Unknown` is simply the default state, meaning the state has not been loaded yet,
     /// and therefore indicates a development error if it is encountered.
+    #[default]
     Unknown,
     NoModelsAvailable,
     NoModelSelected,
@@ -439,12 +440,6 @@ enum State {
         sticked_to_bottom: bool,
         is_streaming: bool,
     },
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -461,7 +456,6 @@ impl Widget for ChatPanel {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
         self.update_state(scope);
-        dbg!(self.state);
 
         if let Event::Signal = event {
             match self.state {
@@ -508,29 +502,46 @@ impl WidgetMatchEvent for ChatPanel {
         {
             if let ChatHistoryCardAction::ChatSelected(_) = action.cast() {
                 self.redraw(cx);
-            } else if let ModelSelectorAction::Selected(downloaded_file) = action.cast() {
+            }
+
+            if let ModelSelectorAction::Selected(downloaded_file) = action.cast() {
                 store.load_model(&downloaded_file.file);
                 self.redraw(cx)
-            } else if let ChatAction::Start(file_id) = action.cast() {
-                let downloaded_file = store
-                    .downloads
-                    .downloaded_files
-                    .iter()
-                    .find(|file| file.file.id == file_id)
-                    .expect("Attempted to start chat with a no longer existing file")
-                    .clone();
-                
-                store.chats
-                    .create_empty_chat_with_model_file(&downloaded_file.file);
-            } else if let ChatAction::Resume(file_id) = action.cast() {
-                store.ensure_model_loaded_in_current_chat(file_id);
-            } else if let ChatLineAction::Delete(id) = action.cast() {
-                store.chats.delete_chat_message(id);
-                self.redraw(cx);
-            } else if let ChatLineAction::Edit(id, updated, regenerate) = action.cast() {
-                store.chats.edit_chat_message(id, updated, regenerate);
-                self.redraw(cx);
-            } else if let ChatPanelAction::UnloadIfActive(file_id) = action.cast() {
+            }
+
+            match action.cast() {
+                ChatAction::Start(file_id) => {
+                    let downloaded_file = store
+                        .downloads
+                        .downloaded_files
+                        .iter()
+                        .find(|file| file.file.id == file_id)
+                        .expect("Attempted to start chat with a no longer existing file")
+                        .clone();
+
+                    store
+                        .chats
+                        .create_empty_chat_with_model_file(&downloaded_file.file);
+                }
+                ChatAction::Resume(file_id) => {
+                    store.ensure_model_loaded_in_current_chat(file_id);
+                }
+                _ => {}
+            }
+
+            match action.cast() {
+                ChatLineAction::Delete(id) => {
+                    store.chats.delete_chat_message(id);
+                    self.redraw(cx);
+                }
+                ChatLineAction::Edit(id, updated, regenerate) => {
+                    store.chats.edit_chat_message(id, updated, regenerate);
+                    self.redraw(cx);
+                }
+                _ => {}
+            }
+
+            if let ChatPanelAction::UnloadIfActive(file_id) = action.cast() {
                 if store
                     .chats
                     .get_current_chat()
@@ -804,12 +815,7 @@ impl ChatPanel {
                 no_model.set_visible(false);
 
                 main.set_visible(true);
-
-                if sticked_to_bottom {
-                    jump_to_bottom.set_visible(false);
-                } else {
-                    jump_to_bottom.set_visible(true);
-                }
+                jump_to_bottom.set_visible(!sticked_to_bottom);
             }
             _ => {}
         }
