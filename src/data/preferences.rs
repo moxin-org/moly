@@ -41,6 +41,11 @@ impl Preferences {
         self.current_chat_model = Some(file);
         self.save();
     }
+
+    pub fn set_downloaded_files_dir(&mut self, path: PathBuf) {
+        self.downloaded_files_dir = path;
+        self.save();
+    }
 }
 
 fn preferences_path() -> PathBuf {

@@ -39,7 +39,7 @@ live_design! {
             color: #000
         }
         text: "Change Download Location"
-        enabled: false
+        enabled: true
     }
 
     ShowInFilesButton = <MoxinButton> {
@@ -159,7 +159,7 @@ live_design! {
                 margin: {top: 10}
                 align: {x: 0.0, y: 0.5}
 
-                <DownloadLocationButton> {}
+                download_location = <DownloadLocationButton> {}
                 show_in_files = <ShowInFilesButton> {}
                 <View> { width: Fill, height: Fit }
                 search = <SearchBar> {}
@@ -196,7 +196,11 @@ impl Widget for MyModelsScreen {
         let models_summary_label = self.view.label(id!(header.models_summary));
         models_summary_label.set_text(&summary);
 
+
+
+
         self.view
+            .label(id!(download_location.label))
             .label(id!(show_in_files.label))
             .set_text(&file_manager_label());
 
@@ -227,6 +231,25 @@ impl WidgetMatchEvent for MyModelsScreen {
                         models_uri
                     );
                 });
+        }
+
+        if self.button(id!(download_location)).clicked(actions) {
+            let scope =  &mut scope.data.get_mut::<Store>().unwrap();
+            let models_dir = &scope.preferences.downloaded_files_dir;
+            let models_uri = &format!("file:///{}", models_dir.display());
+
+            use std::path::{Path, PathBuf};
+            let path_buf = PathBuf::from(models_uri);
+
+            let res = rfd::FileDialog::new()
+                    .add_filter("text", &["txt", "rs"])
+                    .add_filter("rust", &["rs", "toml"])
+                    .set_directory(&path_buf)
+                    .pick_folder();
+
+            if let Some(path) = res {
+                scope.preferences.set_downloaded_files_dir(path);
+            }
         }
 
         if let Some(keywords) = self.text_input(id!(search.input)).changed(actions) {

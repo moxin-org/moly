@@ -4,3 +4,4 @@ data.*
 .vscode
 /dist
 /wasmedge
+.DS_Store
