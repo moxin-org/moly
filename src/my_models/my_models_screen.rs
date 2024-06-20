@@ -242,8 +242,6 @@ impl WidgetMatchEvent for MyModelsScreen {
             let path_buf = PathBuf::from(models_uri);
 
             let res = rfd::FileDialog::new()
-                    .add_filter("text", &["txt", "rs"])
-                    .add_filter("rust", &["rs", "toml"])
                     .set_directory(&path_buf)
                     .pick_folder();
 
