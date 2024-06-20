@@ -149,7 +149,7 @@ impl Widget for ChatHistoryCard {
             .model_filename
             .chars()
             .next()
-            .unwrap_or_default()
+            .unwrap_or('A')
             .to_uppercase()
             .to_string();
 

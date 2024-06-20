@@ -745,7 +745,7 @@ impl ChatPanel {
 
                 self.view(id!(empty_conversation))
                     .label(id!(avatar_label))
-                    .set_text(&get_model_initial_letter(store).unwrap_or_default().to_string());
+                    .set_text(&get_model_initial_letter(store).unwrap_or('A').to_string());
             }
             _ => {}
         }
