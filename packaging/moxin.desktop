@@ -1,9 +1,13 @@
 [Desktop Entry]
-Categories=Utility;
-Comment=A desktop GUI client for downloading and chatting with AI LLMs
-Exec=moxin %u
-Icon=moxin
-Name=Moxin
+Categories={{categories}}
+{{#if comment}}
+Comment={{comment}}
+{{/if}}
+Exec={{exec}} %u
+Icon={{icon}}
+Name={{name}}
 Terminal=false
 Type=Application
-MimeType=x-scheme-handler/moxin
+{{#if mime_type}}
+MimeType={{mime_type}}
+{{/if}}
