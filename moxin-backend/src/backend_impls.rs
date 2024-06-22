@@ -1,6 +1,9 @@
 use std::{
     path::{Path, PathBuf},
-    sync::{mpsc::{Receiver, Sender}, Arc, Mutex},
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc, Mutex,
+    },
 };
 
 use chrono::Utc;
@@ -512,6 +515,7 @@ enum ModelManagementCommand {
     GetCurrentDownloads(Sender<anyhow::Result<Vec<PendingDownload>>>),
     GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
     DeleteFile(FileID, Sender<anyhow::Result<()>>),
+    ChangeModelsLocation(PathBuf),
 }
 
 #[derive(Clone, Debug)]
@@ -581,6 +585,9 @@ impl From<Command> for BuiltInCommand {
             }
             Command::StopLocalServer(tx) => {
                 Self::Interaction(ModelInteractionCommand::StopLocalServer(tx))
+            }
+            Command::ChangeModelsDir(path) => {
+                Self::Model(ModelManagementCommand::ChangeModelsLocation(path))
             }
         }
     }
@@ -852,9 +859,12 @@ impl BackendImpl {
     ) -> Sender<Command> {
         let app_data_dir = app_data_dir.as_ref().to_path_buf();
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
-        std::fs::create_dir_all(&app_data_dir).unwrap_or_else(|_|
-            panic!("Failed to create the Moxin app data directory at {:?}", app_data_dir)
-        );
+        std::fs::create_dir_all(&app_data_dir).unwrap_or_else(|_| {
+            panic!(
+                "Failed to create the Moxin app data directory at {:?}",
+                app_data_dir
+            )
+        });
         let sql_conn = rusqlite::Connection::open(app_data_dir.join("data.sqlite")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
@@ -1013,7 +1023,10 @@ impl BackendImpl {
                         let conn = self.sql_conn.lock().unwrap();
                         let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
                     }
-                    let _ = store::remove_downloaded_file(self.models_dir.to_string_lossy().to_string(), file_id);
+                    let _ = store::remove_downloaded_file(
+                        self.models_dir.to_string_lossy().to_string(),
+                        file_id,
+                    );
 
                     let _ = tx.send(Ok(()));
                 }
@@ -1024,7 +1037,10 @@ impl BackendImpl {
                         let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
                     }
 
-                    let _ = store::remove_downloaded_file(self.models_dir.to_string_lossy().to_string(), file_id);
+                    let _ = store::remove_downloaded_file(
+                        self.models_dir.to_string_lossy().to_string(),
+                        file_id,
+                    );
                     let _ = tx.send(Ok(()));
                 }
 
@@ -1046,6 +1062,8 @@ impl BackendImpl {
                     };
                     let _ = tx.send(pending_downloads);
                 }
+
+                ModelManagementCommand::ChangeModelsLocation(path) => self.update_models_dir(path),
             },
             BuiltInCommand::Interaction(model_cmd) => match model_cmd {
                 ModelInteractionCommand::LoadModel(file_id, options, tx) => {
@@ -1092,6 +1110,10 @@ impl BackendImpl {
                 ModelInteractionCommand::StopLocalServer(_) => todo!(),
             },
         }
+    }
+
+    pub fn update_models_dir<M: AsRef<Path>>(&mut self, models_dir: M) {
+        self.models_dir = models_dir.as_ref().to_path_buf();
     }
 
     fn run_loop(&mut self) {

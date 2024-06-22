@@ -1,5 +1,6 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
+use moxin_protocol::protocol::Command;
 
 use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 
@@ -196,9 +197,6 @@ impl Widget for MyModelsScreen {
         let models_summary_label = self.view.label(id!(header.models_summary));
         models_summary_label.set_text(&summary);
 
-
-
-
         self.view
             .label(id!(download_location.label))
             .label(id!(show_in_files.label))
@@ -221,7 +219,12 @@ fn file_manager_label() -> String {
 impl WidgetMatchEvent for MyModelsScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.button(id!(show_in_files)).clicked(actions) {
-            let models_dir = &scope.data.get::<Store>().unwrap().preferences.downloaded_files_dir;
+            let models_dir = &scope
+                .data
+                .get::<Store>()
+                .unwrap()
+                .preferences
+                .downloaded_files_dir;
             let models_uri = &format!("file:///{}", models_dir.display());
             robius_open::Uri::new(models_uri)
                 .open()
@@ -234,7 +237,7 @@ impl WidgetMatchEvent for MyModelsScreen {
         }
 
         if self.button(id!(download_location)).clicked(actions) {
-            let scope =  &mut scope.data.get_mut::<Store>().unwrap();
+            let scope = &mut scope.data.get_mut::<Store>().unwrap();
             let models_dir = &scope.preferences.downloaded_files_dir;
             let models_uri = &format!("file:///{}", models_dir.display());
 
@@ -242,11 +245,17 @@ impl WidgetMatchEvent for MyModelsScreen {
             let path_buf = PathBuf::from(models_uri);
 
             let res = rfd::FileDialog::new()
-                    .set_directory(&path_buf)
-                    .pick_folder();
+                .set_directory(&path_buf)
+                .pick_folder();
 
             if let Some(path) = res {
-                scope.preferences.set_downloaded_files_dir(path);
+                scope.preferences.set_downloaded_files_dir(path.clone());
+                scope
+                    .backend
+                    .as_ref()
+                    .command_sender
+                    .send(Command::ChangeModelsDir(path))
+                    .unwrap();
             }
         }
 

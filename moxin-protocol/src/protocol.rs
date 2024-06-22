@@ -1,6 +1,7 @@
 use crate::data::*;
 use crate::open_ai::*;
 use anyhow::Result;
+use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
 #[derive(Clone, Debug)]
@@ -77,6 +78,9 @@ pub enum LocalServerResponse {
 #[derive(Clone, Debug)]
 pub enum Command {
     GetFeaturedModels(Sender<Result<Vec<Model>>>),
+
+    // Change DowanloadFiles Location
+    ChangeModelsDir(PathBuf),
 
     // The argument is a string with the keywords to search for.
     SearchModels(String, Sender<Result<Vec<Model>>>),
