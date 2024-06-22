@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 use moxin_protocol::protocol::Command;
+use std::path::{Path, PathBuf};
 
 use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 
@@ -241,7 +242,6 @@ impl WidgetMatchEvent for MyModelsScreen {
             let models_dir = &scope.preferences.downloaded_files_dir;
             let models_uri = &format!("file:///{}", models_dir.display());
 
-            use std::path::{Path, PathBuf};
             let path_buf = PathBuf::from(models_uri);
 
             let res = rfd::FileDialog::new()
