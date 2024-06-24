@@ -59,7 +59,7 @@ identifier = "com.moxin-org.moxin"
 category = "Utility"
 publisher = "moxin-org"
 homepage = "https://github.com/moxin-org"
-icons = ["app_icon128x128.png"]
+icons = ["./packaging/app_icon128x128.png"]
 out_dir = "./dist"
 ## Note: the `moxin-runner` crate binary is named `moxin`,
 ##       while the main `moxin` crate binary is named `_moxin_app`.
@@ -132,6 +132,13 @@ else exit 2; \
 fi; \
 """
 
+deep_link_protocols = [
+    { schemes = ["moxin"], role = "viewer" }, ## `name` is left as default
+]
+
+[package.metadata.packager.deb]
+desktop_template = "./packaging/moxin.desktop"
+
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
 frameworks = [
@@ -141,7 +148,7 @@ frameworks = [
 
 ## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
 [package.metadata.packager.dmg]
-background = "./Moxin macOS dmg background.png"
+background = "./packaging/Moxin macOS dmg background.png"
 window_size = { width = 960, height = 540 }
 app_position = { x = 200, y = 250 }
 application_folder_position = { x = 760, y = 250 }
