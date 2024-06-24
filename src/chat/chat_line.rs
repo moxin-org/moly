@@ -17,51 +17,40 @@ live_design! {
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
-    ChatLineEditButton = <RoundedView> {
+    ChatLineEditButton = <MoxinButton> {
         width: 56,
         height: 31,
-        align: {x: 0.5, y: 0.5}
         spacing: 6,
-
-        cursor: Hand,
 
         draw_bg: { color: #099250 }
 
-        button_label = <Label> {
-            draw_text: {
-                text_style: <REGULAR_FONT>{font_size: 9},
-                fn get_color(self) -> vec4 {
-                    return #fff;
-                }
+        draw_text: {
+            text_style: <REGULAR_FONT>{font_size: 9},
+            fn get_color(self) -> vec4 {
+                return #fff;
             }
         }
     }
 
     SaveButton = <ChatLineEditButton> {
-        button_label = {
-            text: "Save"
-        }
+        text: "Save"
     }
 
     SaveAndRegerateButton = <ChatLineEditButton> {
         width: 130,
-        button_label = {
-            text: "Save & Regenerate"
-        }
+        text: "Save & Regenerate"
     }
 
     CancelButton = <ChatLineEditButton> {
         draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
 
-        button_label = {
-            draw_text: {
-                text_style: <REGULAR_FONT>{font_size: 9},
-                fn get_color(self) -> vec4 {
-                    return #000;
-                }
+        draw_text: {
+            text_style: <REGULAR_FONT>{font_size: 9},
+            fn get_color(self) -> vec4 {
+                return #000;
             }
-            text: "Cancel"
         }
+        text: "Cancel"
     }
 
     TEXT_HEIGHT_FACTOR = 1.3
@@ -190,21 +179,19 @@ live_design! {
         }
     }
 
-    ChatLineActionButton = <Button> {
+    ChatLineActionButton = <MoxinButton> {
         width: 14
         height: 14
         draw_icon: {
-            fn get_color(self) -> vec4 {
-                return #BDBDBD;
-            }
+            color: #BDBDBD
+            color_hover: #000
         }
         padding: 0,
         icon_walk: {width: 14, height: 14}
         draw_bg: {
-            fn pixel(self) -> vec4 {
-                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                return sdf.result
-            }
+            color: #0000
+            color_hover: #0000
+            border_width: 0
         }
         text: ""
     }
@@ -213,8 +200,6 @@ live_design! {
         padding: {top: 10, bottom: 3},
         width: Fill,
         height: Fit,
-
-       // cursor: Default,
 
         avatar_section = <View> {
             width: Fit,
@@ -372,47 +357,41 @@ impl ChatLine {
     }
 
     pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(fe) = self.view(id!(save)).finger_up(&actions) {
-            if fe.was_tap() {
-                let updated_message = self.text_input(id!(input)).text();
+        if self.button(id!(save)).clicked(&actions) {
+            let updated_message = self.text_input(id!(input)).text();
 
-                // Do not allow to have empty messages for now.
-                // TODO We should disable Save button when the message is empty.
-                if !updated_message.trim().is_empty() {
-                    let widget_id = self.view.widget_uid();
-                    cx.widget_action(
-                        widget_id,
-                        &scope.path,
-                        ChatLineAction::Edit(self.message_id, updated_message, false),
-                    );
-                }
-
-                self.set_edit_mode(cx, false);
+            // Do not allow to have empty messages for now.
+            // TODO We should disable Save button when the message is empty.
+            if !updated_message.trim().is_empty() {
+                let widget_id = self.view.widget_uid();
+                cx.widget_action(
+                    widget_id,
+                    &scope.path,
+                    ChatLineAction::Edit(self.message_id, updated_message, false),
+                );
             }
+
+            self.set_edit_mode(cx, false);
         }
 
-        if let Some(fe) = self.view(id!(save_and_regenerate)).finger_up(&actions) {
-            if fe.was_tap() {
-                let updated_message = self.text_input(id!(input)).text();
+        if self.button(id!(save_and_regenerate)).clicked(&actions) {
+            let updated_message = self.text_input(id!(input)).text();
 
-                // TODO We should disable Save and Regenerate button when the message is empty.
-                if !updated_message.trim().is_empty() {
-                    let widget_id = self.view.widget_uid();
-                    cx.widget_action(
-                        widget_id,
-                        &scope.path,
-                        ChatLineAction::Edit(self.message_id, updated_message, true),
-                    );
-                }
-
-                self.set_edit_mode(cx, false);
+            // TODO We should disable Save and Regenerate button when the message is empty.
+            if !updated_message.trim().is_empty() {
+                let widget_id = self.view.widget_uid();
+                cx.widget_action(
+                    widget_id,
+                    &scope.path,
+                    ChatLineAction::Edit(self.message_id, updated_message, true),
+                );
             }
+
+            self.set_edit_mode(cx, false);
         }
 
-        if let Some(fe) = self.view(id!(cancel)).finger_up(&actions) {
-            if fe.was_tap() {
-                self.set_edit_mode(cx, false);
-            }
+        if self.button(id!(cancel)).clicked(&actions) {
+            self.set_edit_mode(cx, false);
         }
     }
 }

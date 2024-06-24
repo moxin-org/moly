@@ -186,14 +186,11 @@ live_design! {
 
         draw_icon: {
             instance color: #fff
+            instance color_hover: #000
             uniform rotation_angle: 0.0,
 
             fn get_color(self) -> vec4 {
-                return mix(
-                    self.color,
-                    mix(self.color, #f, 0.2),
-                    self.hover
-                )
+                return mix(self.color, mix(self.color, self.color_hover, 0.2), self.hover)
             }
 
             // Support rotation of the icon
