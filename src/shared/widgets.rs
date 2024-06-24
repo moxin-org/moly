@@ -204,6 +204,69 @@ live_design! {
         }
     }
 
+    MoxinRadioButtonTab = <RadioButtonTab> {
+        padding: 10,
+
+        draw_radio: {
+            uniform radius: 3.0
+            uniform border_width: 0.0
+            instance color_unselected: (THEME_COLOR_TEXT_DEFAULT)
+            instance color_unselected_hover: (THEME_COLOR_TEXT_HOVER)
+            instance color_selected: (THEME_COLOR_TEXT_SELECTED)
+            instance border_color: (THEME_COLOR_TEXT_SELECTED)
+
+            fn get_color(self) -> vec4 {
+                return mix(
+                    mix(
+                        self.color_unselected,
+                        self.color_unselected_hover,
+                        self.hover
+                    ),
+                    self.color_selected,
+                    self.selected
+                )
+            }
+
+            fn get_border_color(self) -> vec4 {
+                return self.border_color;
+            }
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                match self.radio_type {
+                    RadioType::Tab => {
+                        sdf.box(
+                            self.border_width,
+                            self.border_width,
+                            self.rect_size.x - (self.border_width * 2.0),
+                            self.rect_size.y - (self.border_width * 2.0),
+                            max(1.0, self.radius)
+                        )
+                        sdf.fill_keep(self.get_color())
+                        if self.border_width > 0.0 {
+                            sdf.stroke(self.get_border_color(), self.border_width)
+                        }
+                    }
+                }
+                return sdf.result
+            }
+        }
+
+        draw_text: {
+            fn get_color(self) -> vec4 {
+                return mix(
+                    mix(
+                        self.color_unselected,
+                        self.color_unselected_hover,
+                        self.hover
+                    ),
+                    self.color_selected,
+                    self.selected
+                )
+            }
+        }
+    }
+
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
     MoxinTextInput = <TextInput> {

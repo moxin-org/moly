@@ -96,6 +96,8 @@ pub fn get_faked_models(models: &Vec<Model>) -> Vec<Model> {
                         new_file.size = rng.gen_range(100000000..999999999).to_string();
                     };
 
+                    new_file.featured = rng.gen_bool(0.15);
+
                     new_file
                 })
                 .collect();
