@@ -9,6 +9,7 @@ use moxin_protocol::{
 };
 use std::{collections::HashMap, rc::Rc, sync::mpsc::channel};
 
+#[derive(Debug)]
 pub enum DownloadPendingNotification {
     DownloadedFile(File),
     DownloadErrored(File),
@@ -18,6 +19,7 @@ pub struct Downloads {
     pub downloaded_files: Vec<DownloadedFile>,
     pub pending_downloads: Vec<PendingDownload>,
     pub current_downloads: HashMap<FileID, Download>,
+    pub pending_notifications: Vec<DownloadPendingNotification>,
 }
 
 impl Downloads {
@@ -27,6 +29,7 @@ impl Downloads {
             downloaded_files: Vec::new(),
             pending_downloads: Vec::new(),
             current_downloads: HashMap::new(),
+            pending_notifications: Vec::new(),
         }
     }
 
@@ -159,25 +162,7 @@ impl Downloads {
     }
 
     pub fn next_download_notification(&mut self) -> Option<DownloadPendingNotification> {
-        self.current_downloads
-            .iter_mut()
-            .filter_map(|(_, download)| {
-                if download.must_show_notification() {
-                    if download.is_errored() {
-                        return Some(DownloadPendingNotification::DownloadErrored(
-                            download.file.clone(),
-                        ));
-                    } else if download.is_complete() {
-                        return Some(DownloadPendingNotification::DownloadedFile(
-                            download.file.clone(),
-                        ));
-                    } else {
-                        return None;
-                    }
-                }
-                None
-            })
-            .next()
+        self.pending_notifications.pop()
     }
 
     pub fn get_model_and_file_for_pending_download(&self, file_id: &str) -> Option<(Model, File)> {
@@ -197,6 +182,8 @@ impl Downloads {
         let mut completed_download_ids = Vec::new();
 
         for (id, download) in &mut self.current_downloads {
+            download.process_download_progress();
+
             if let Some(pending) = self
                 .pending_downloads
                 .iter_mut()
@@ -204,15 +191,27 @@ impl Downloads {
             {
                 match download.state {
                     DownloadState::Downloading(_) => {
-                        pending.status = PendingDownloadsStatus::Downloading
+                        pending.status = PendingDownloadsStatus::Downloading;
                     }
-                    DownloadState::Errored(_) => pending.status = PendingDownloadsStatus::Error,
-                    DownloadState::Completed => (),
+                    DownloadState::Errored(_) => {
+                        pending.status = PendingDownloadsStatus::Error;
+                        if download.must_show_notification() {
+                            self.pending_notifications.push(DownloadPendingNotification::DownloadErrored(
+                                download.file.clone()
+                            ));
+                        }
+                    }
+                    DownloadState::Completed => {
+                        if download.must_show_notification() {
+                            self.pending_notifications.push(DownloadPendingNotification::DownloadedFile(
+                                download.file.clone()
+                            ));
+                        }
+                    }
                 };
                 pending.progress = download.get_progress();
             }
 
-            download.process_download_progress();
             if download.is_complete() {
                 completed_download_ids.push(id.clone());
             }

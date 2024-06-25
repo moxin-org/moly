@@ -108,10 +108,6 @@ impl Download {
         matches!(self.state, DownloadState::Completed)
     }
 
-    pub fn is_errored(&self) -> bool {
-        matches!(self.state, DownloadState::Errored(_))
-    }
-
     pub fn get_progress(&self) -> f64 {
         match self.state {
             DownloadState::Downloading(progress) => progress,
