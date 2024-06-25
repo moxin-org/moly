@@ -270,7 +270,7 @@ live_design! {
     }
 
     ChatPanel = {{ChatPanel}} {
-        width: Fill,
+        width: 650,
         height: Fill,
         margin: {top: 0, left: 20, right: 20, bottom: 20},
 
