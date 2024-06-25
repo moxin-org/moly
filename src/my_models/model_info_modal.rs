@@ -1,6 +1,6 @@
 use crate::{
     data::store::Store,
-    shared::{modal::ModalAction, utils::hugging_face_model_url},
+    shared::{portal::PortalAction, utils::hugging_face_model_url},
 };
 use makepad_widgets::*;
 use moxin_protocol::data::{FileID, ModelID};
@@ -234,7 +234,7 @@ impl WidgetMatchEvent for ModelInfoModal {
 
         if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
             if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
             }
         }
 
