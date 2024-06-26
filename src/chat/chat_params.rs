@@ -7,74 +7,13 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::FadeView;
     import crate::shared::widgets::MoxinButton;
+    import crate::shared::widgets::MoxinSlider;
     import makepad_draw::shader::std::*;
 
 
     // TODO: Use proper icons
     ICON_CLOSE_PANEL = dep("crate://self/resources/icons/open_left_panel.svg")
     ICON_OPEN_PANEL = dep("crate://self/resources/icons/close_left_panel.svg")
-
-    MoxinSlider =  <Slider> {
-        height: 40
-        width: Fill
-        draw_text: {
-            // TODO: The text weight should be 500 (semi bold, not fully bold).
-            text_style: <BOLD_FONT>{font_size: 10},
-            color: #000
-        }
-        text_input: {
-            /*draw_bg: {
-                color: #000;
-                radius: 2.0
-            },*/
-            draw_text: {
-                text_style: <BOLD_FONT>{font_size: 11},
-                fn get_color(self) -> vec4 {
-                    return #000;
-                }
-            }
-        }
-        draw_slider: {
-            instance bipolar: 0.0
-            fn pixel(self) -> vec4 {
-                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
-
-                let ball_radius = 10.0;
-                let ball_border = 2.0;
-                let padding_top = 29.0;
-                let padding_x = 5.0;
-                let rail_height = 4.0;
-
-                let rail_width = self.rect_size.x;
-                let rail_padding_x = padding_x + ball_radius / 2;
-                let ball_rel_x = self.slide_pos;
-                let ball_abs_x = ball_rel_x * (rail_width - 2.0 * rail_padding_x) + rail_padding_x;
-
-                // The drawing area (for debug only)
-                // sdf.rect(0, 0, self.rect_size.x, self.rect_size.y);
-                // sdf.fill(#06b6d4);
-
-                // The rail
-                sdf.move_to(0 + padding_x, padding_top);
-                sdf.line_to(self.rect_size.x - padding_x, padding_top);
-                sdf.stroke(#D9D9D9, rail_height);
-
-                // The filler
-                sdf.move_to(0 + padding_x, padding_top);
-                sdf.line_to(ball_abs_x, padding_top);
-                sdf.stroke(#989898, rail_height);
-
-                // The moving ball
-                sdf.circle(ball_abs_x, padding_top, ball_radius);
-                sdf.fill(#989898);
-                sdf.circle(ball_abs_x, padding_top, ball_radius - ball_border);
-                sdf.fill(#fff);
-
-
-                return sdf.result;
-            }
-        }
-    }
 
     ChatParamsActions = <View> {
         height: Fit
