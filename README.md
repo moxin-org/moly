@@ -84,14 +84,27 @@ Ensure you are in the root `moxin` directory, and then you can use `cargo packag
 cargo packager --release --verbose   ## --verbose is optional
 ```
 
-> [!TIP]
+> [!IMPORTANT]
 > You will see a .dmg window pop up — please leave it alone, it will auto-close once the packaging procedure has completed.
 
-If you receive the following error:
-```
-ERROR cargo_packager::cli: Error running create-dmg script: File exists (os error 17)
-```
-then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
+> [!TIP]
+> If you receive the following error:
+> ```
+> ERROR cargo_packager::cli: Error running create-dmg script: File exists (os error 17)
+> ```
+> then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
+
+> [!TIP]
+> If you receive an error like so:
+> ```
+> Creating disk image...
+> hdiutil: create failed - Operation not permitted
+> could not access /Volumes/Moxin/Moxin.app - Operation not permitted
+> ```
+> then you need to grant "App Management" permissions to the app in which you ran the `cargo packager` command, e.g., Terminal, Visual Studio Code, etc.
+> To do this, open `System Preferences` → `Privacy & Security` → `App Management`,
+> and then click the toggle switch next to the relevant app to enable that permission. 
+> Then, try the above `cargo packager` command again.
 
 After the command completes, you should see both the `Moxin.app` and the `.dmg` in the `dist/` directory.
 You can immediately double-click the `Moxin.app` bundle to run it, or you can double-click the `.dmg` file to 
