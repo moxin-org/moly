@@ -239,21 +239,15 @@ live_design! {
                 height: Fit,
                 filler_x = <View> {width: Fill, height: Fit}
 
-                close_button = <RoundedView> {
+                close_button = <MoxinButton> {
                     width: Fit,
                     height: Fit,
-                    align: {x: 0.5, y: 0.5}
-                    cursor: Hand
 
-                    button_icon = <Icon> {
-                        draw_icon: {
-                            svg_file: (ICON_CLOSE),
-                            fn get_color(self) -> vec4 {
-                                return #000;
-                            }
-                        }
-                        icon_walk: {width: 12, height: 12}
+                    draw_icon: {
+                        svg_file: (ICON_CLOSE),
+                        color: #000
                     }
+                    icon_walk: {width: 12, height: 12}
                 }
             }
 
@@ -469,10 +463,8 @@ impl WidgetMatchEvent for ModelCardViewAllModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
-        if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
-            }
+        if self.button(id!(close_button)).clicked(actions) {
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
     }
 }
