@@ -96,61 +96,8 @@ impl PortalViewRef {
 pub enum PortalAction {
     None,
     ShowPortalView(LiveId),
-    // ShowPortalViewWithProps(Box<PortalActionWithProps>),
     Close,
 }
-
-// #[derive(Debug)]
-// pub struct PortalActionWithProps {
-//     id: LiveId,
-//     data: Box<dyn Any>,
-// }
-//
-// impl PortalActionWithProps {
-//     pub fn new<T: 'static>(id: LiveId, data: T) -> Self {
-//         Self {
-//             id,
-//             data: Box::new(data),
-//         }
-//     }
-//
-//     pub fn get_data<T: 'static>(&self) -> Option<&T> {
-//         self.data.downcast_ref::<T>()
-//     }
-// }
-//
-// impl PortalAction {
-//     pub fn new_show_portal_view_with_props<T: 'static>(id: LiveId, data: T) -> Self {
-//         PortalAction::ShowPortalViewWithProps(Box::new(PortalActionWithProps::new(id, data)))
-//     }
-// }
-//
-// impl Clone for PortalActionWithProps {
-//     fn clone(&self) -> Self {
-//         Self {
-//             id: self.id.clone(),
-//             data: self.data.clone(),
-//         }
-//     }
-// }
-//
-// impl PartialEq for PortalActionWithProps {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.id == other.id && self.data.type_id() == other.data.type_id()
-//     }
-// }
-//
-// impl Eq for PortalActionWithProps {}
-//
-// trait CloneAny {
-//     fn clone_any(&self) -> Box<dyn Any>;
-// }
-//
-// impl<T: 'static + Clone> CloneAny for T {
-//     fn clone_any(&self) -> Box<dyn Any> {
-//         Box::new(self.clone())
-//     }
-// }
 
 #[derive(Default)]
 enum ActivePortalView {
@@ -261,15 +208,6 @@ impl Portal {
         self.redraw(cx);
         Ok(())
     }
-
-    // pub fn show_portal_view_by_id_with_props<T>(
-    //     &mut self,
-    //     cx: &mut Cx,
-    //     portal_view_id: LiveId,
-    //     props: T,
-    // ) -> Result<(), &'static str> {
-    //     self.show_portal_view_by_id(cx, portal_view_id)
-    // }
 
     pub fn close(&mut self, cx: &mut Cx) {
         if let Some(mut current_active_portal_view_ref) = self.get_active_portal_view(cx) {
