@@ -11,6 +11,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::MoxinButton;
     import crate::shared::resource_imports::*;
 
     MoxinHtml = <Html> {
@@ -30,7 +31,7 @@ live_design! {
             flow: Down
             width: 800
             height: Fit
-            padding: {top: 50, right: 30 bottom: 30 left: 50}
+            padding: {top: 44, right: 30 bottom: 30 left: 50}
             spacing: 5
 
             show_bg: true
@@ -44,10 +45,11 @@ live_design! {
                 height: Fit,
                 flow: Right
 
+                padding: {top: 6, bottom: 20}
+
                 title = <View> {
                     width: Fit,
                     height: Fit,
-                    padding: {bottom: 20}
 
                     filename = <Label> {
                         draw_text: {
@@ -59,21 +61,18 @@ live_design! {
 
                 filler_x = <View> {width: Fill, height: Fit}
 
-                close_button = <RoundedView> {
+                close_button = <MoxinButton> {
                     width: Fit,
                     height: Fit,
-                    align: {x: 0.5, y: 0.5}
-                    cursor: Hand
+                    margin: {top: -6}
 
-                    button_icon = <Icon> {
-                        draw_icon: {
-                            svg_file: (ICON_CLOSE),
-                            fn get_color(self) -> vec4 {
-                                return #000;
-                            }
+                    draw_icon: {
+                        svg_file: (ICON_CLOSE),
+                        fn get_color(self) -> vec4 {
+                            return #000;
                         }
-                        icon_walk: {width: 12, height: 12}
                     }
+                    icon_walk: {width: 12, height: 12}
                 }
             }
 
@@ -112,23 +111,19 @@ live_design! {
                     align: {x: 0.0, y: 0.5}
                     spacing: 20
 
-                    copy_button = <RoundedView> {
+                    copy_button = <MoxinButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
-                        cursor: Hand
-                        flow: Right,
                         spacing: 10
 
-                        icon = <Icon> {
-                            draw_icon: {
-                                svg_file: (ICON_COPY)
-                                fn get_color(self) -> vec4 {
-                                    return #x0;
-                                }
+                        draw_icon: {
+                            svg_file: (ICON_COPY)
+                            fn get_color(self) -> vec4 {
+                                return #x0;
                             }
-                            icon_walk: {width: 14, height: 14}
                         }
+                        icon_walk: {width: 14, height: 14}
 
                         draw_bg: {
                             instance radius: 2.0,
@@ -137,19 +132,16 @@ live_design! {
                             color: #EDFCF2,
                         }
 
-                        <Label> {
-                            text: "Copy to Clipboard"
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 10},
-                                color: #x0
-                            }
+                        text: "Copy to Clipboard"
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 10},
+                            color: #x0
                         }
                     }
-                    external_link = <RoundedView> {
+                    external_link = <MoxinButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
-                        cursor: Hand
 
                         draw_bg: {
                             instance radius: 2.0,
@@ -158,12 +150,10 @@ live_design! {
                             color: #F5FEFF,
                         }
 
-                        <Label> {
-                            text: "Model Card on Hugging Face"
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 10},
-                                color: #x0
-                            }
+                        text: "Model Card on Hugging Face"
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 10},
+                            color: #x0
                         }
                     }
                 }
@@ -232,30 +222,24 @@ impl WidgetMatchEvent for ModelInfoModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
-        if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
-            }
+        if self.button(id!(close_button)).clicked(actions) {
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
-        if let Some(fe) = self
-            .view(id!(wrapper.body.actions.copy_button))
-            .finger_up(actions)
+        if self
+            .button(id!(wrapper.body.actions.copy_button))
+            .clicked(actions)
         {
-            if fe.was_tap() {
-                cx.copy_to_clipboard(&self.stringified_model_data);
-            }
+            cx.copy_to_clipboard(&self.stringified_model_data);
         }
 
-        if let Some(fe) = self
-            .view(id!(wrapper.body.actions.external_link))
-            .finger_up(actions)
+        if self
+            .button(id!(wrapper.body.actions.external_link))
+            .clicked(actions)
         {
-            if fe.was_tap() {
-                let model_url = hugging_face_model_url(&self.model_id);
-                if let Err(e) = robius_open::Uri::new(&model_url).open() {
-                    error!("Error opening URL: {:?}", e);
-                }
+            let model_url = hugging_face_model_url(&self.model_id);
+            if let Err(e) = robius_open::Uri::new(&model_url).open() {
+                error!("Error opening URL: {:?}", e);
             }
         }
     }
