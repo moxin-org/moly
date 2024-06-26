@@ -50,14 +50,6 @@ live_design! {
         }
     }
 
-    ParamHeader = <Label> {
-        draw_text: {
-            // TODO: The text weight should be 500 (semi bold, not fully bold).
-            text_style: <BOLD_FONT>{font_size: 10},
-            color: #000
-        }
-    }
-
     ChatParams = {{ChatParams}} {
         flow: Overlay,
         width: Fit,
@@ -84,16 +76,29 @@ live_design! {
                     text: "Inference Parameters"
                 }
 
-                <ParamHeader> {
-                    text: "Temperature"
-                }
-
                 <Slider> {
                     text: "Temperature"
                     height: 40
                     min: 0.
                     max: 2.
                     width: Fill
+                    draw_text: {
+                        // TODO: The text weight should be 500 (semi bold, not fully bold).
+                        text_style: <BOLD_FONT>{font_size: 10},
+                        color: #000
+                    }
+                    text_input: {
+                        /*draw_bg: {
+                            color: #000;
+                            radius: 2.0
+                        },*/
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 10},
+                            fn get_color(self) -> vec4 {
+                                return #000;
+                            }
+                        }
+                    }
                     draw_slider: {
                         instance bipolar: 0.0
                         fn pixel(self) -> vec4 {
