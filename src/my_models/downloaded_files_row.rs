@@ -2,8 +2,8 @@ use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
 
 use crate::my_models::{delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction};
-use crate::shared::{actions::ChatAction, modal::ModalAction};
 use crate::shared::utils::format_model_size;
+use crate::shared::{actions::ChatAction, portal::PortalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -230,13 +230,15 @@ impl Widget for DownloadedFilesRow {
             .set_text(&parameters);
 
         // Version tag
-        let filename = format!("{}/{}", downloaded_file.model.name, downloaded_file.file.name);
+        let filename = format!(
+            "{}/{}",
+            downloaded_file.model.name, downloaded_file.file.name
+        );
         self.label(id!(h_wrapper.model_file.model_version_tag.version))
             .set_text(&filename);
 
         // File size tag
-        let file_size =
-            format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
+        let file_size = format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
         self.label(id!(h_wrapper.file_size_tag.file_size))
             .set_text(&file_size);
 
@@ -245,8 +247,10 @@ impl Widget for DownloadedFilesRow {
         self.label(id!(h_wrapper.date_added_tag.date_added))
             .set_text(&formatted_date);
 
-        self.button(id!(start_chat_button)).set_visible(!props.show_resume);
-        self.button(id!(resume_chat_button)).set_visible(props.show_resume);
+        self.button(id!(start_chat_button))
+            .set_visible(!props.show_resume);
+        self.button(id!(resume_chat_button))
+            .set_visible(props.show_resume);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -258,21 +262,13 @@ impl WidgetMatchEvent for DownloadedFilesRow {
 
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ChatAction::Start(file_id.clone()),
-                );
+                cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
             }
         }
 
         if self.button(id!(resume_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ChatAction::Resume(file_id.clone()),
-                );
+                cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id.clone()));
             }
         }
 
@@ -286,7 +282,7 @@ impl WidgetMatchEvent for DownloadedFilesRow {
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    ModalAction::ShowModalView(live_id!(model_info_modal_view)),
+                    PortalAction::ShowPortalView(live_id!(modal_model_info_portal_view)),
                 );
             }
         }
@@ -301,7 +297,7 @@ impl WidgetMatchEvent for DownloadedFilesRow {
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    ModalAction::ShowModalView(live_id!(delete_model_modal_view)),
+                    PortalAction::ShowPortalView(live_id!(modal_delete_model_portal_view)),
                 );
             }
         }

@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::FileID;
 
-use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::modal::ModalAction};
+use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::portal::PortalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -158,7 +158,12 @@ impl Widget for DeleteModelModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope.data.get::<Store>().unwrap().downloads.downloaded_files;
+        let downloaded_files = &scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files;
 
         let downloaded_file = downloaded_files
             .iter()
@@ -183,7 +188,7 @@ impl WidgetMatchEvent for DeleteModelModal {
 
         if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
             if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
             }
         }
 
@@ -201,7 +206,7 @@ impl WidgetMatchEvent for DeleteModelModal {
                 store
                     .delete_file(self.file_id.clone())
                     .expect("Failed to delete file");
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
             }
         }
 
@@ -210,7 +215,7 @@ impl WidgetMatchEvent for DeleteModelModal {
             .finger_up(actions)
         {
             if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
             }
         }
     }

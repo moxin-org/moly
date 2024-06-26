@@ -3,7 +3,7 @@ use moxin_protocol::data::{File, FileID};
 
 use crate::shared::actions::DownloadAction;
 
-use super::modal::ModalAction;
+use super::portal::PortalAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -243,7 +243,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
 
         if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
             if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
             }
         }
 
@@ -253,7 +253,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
         {
             // TODO: Abstract the navigation actions on a single enum for the whole app.
             cx.widget_action(widget_uid, &scope.path, PopupAction::NavigateToMyModels);
-            cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
         if self.link_label(id!(retry_link)).clicked(actions) {
@@ -263,7 +263,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
                 &scope.path,
                 DownloadAction::Play(file_id.clone()),
             );
-            cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
         if self.link_label(id!(cancel_link)).clicked(actions) {
@@ -273,7 +273,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
                 &scope.path,
                 DownloadAction::Cancel(file_id.clone()),
             );
-            cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
     }
 }
