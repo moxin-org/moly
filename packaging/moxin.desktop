@@ -3,11 +3,12 @@ Categories={{categories}}
 {{#if comment}}
 Comment={{comment}}
 {{/if}}
-Exec={{exec}} %u
+Exec={{exec}} %U
 Icon={{icon}}
 Name={{name}}
 Terminal=false
 Type=Application
+StartupWMClass={{name}}
 {{#if mime_type}}
 MimeType={{mime_type}}
 {{/if}}
