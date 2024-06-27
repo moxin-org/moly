@@ -1,5 +1,7 @@
 use makepad_widgets::*;
 
+use crate::data::store::Store;
+
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
@@ -82,32 +84,33 @@ live_design! {
                     flow: Down
                     spacing: 24
 
-                    <MoxinSlider> {
+                    temperature = <MoxinSlider> {
+                        default: 1.0
                         text: "Temperature"
                         min: 0.0
                         max: 2.0
                     }
 
-                    <MoxinSlider> {
+                    top_p = <MoxinSlider> {
                         text: "Top P"
                         min: 0.0
                         max: 1.0
                     }
 
-                    <MoxinSlider> {
+                    max_tokens = <MoxinSlider> {
                         text: "Max Tokens"
                         min: 100.0
                         max: 2048.0
                         step: 1.0
                     }
 
-                    <MoxinSlider> {
+                    frequency_penalty = <MoxinSlider> {
                         text: "Frequency Penalty"
                         min: 0.0
                         max: 1.0
                     }
 
-                    <MoxinSlider> {
+                    presence_penalty = <MoxinSlider> {
                         text: "Presence Penalty"
                         min: 0.0
                         max: 1.0
@@ -160,22 +163,70 @@ impl Widget for ChatParams {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get::<Store>().unwrap();
+
+        self.slider(id!(temperature)).borrow_mut().unwrap().value =
+            store.chats.inferences_params.temperature as f64;
+
+        self.slider(id!(top_p)).borrow_mut().unwrap().value =
+            store.chats.inferences_params.top_p as f64;
+
+        self.slider(id!(max_tokens)).borrow_mut().unwrap().value =
+            store.chats.inferences_params.max_tokens as f64;
+
+        self.slider(id!(frequency_penalty))
+            .borrow_mut()
+            .unwrap()
+            .value = store.chats.inferences_params.frequency_penalty as f64;
+
+        self.slider(id!(presence_penalty))
+            .borrow_mut()
+            .unwrap()
+            .value = store.chats.inferences_params.presence_penalty as f64;
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
 
 impl WidgetMatchEvent for ChatParams {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.button(id!(close_panel_button)).clicked(&actions) {
-            self.button(id!(close_panel_button)).set_visible(false);
-            self.button(id!(open_panel_button)).set_visible(true);
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        let close = self.button(id!(close_panel_button));
+        let open = self.button(id!(open_panel_button));
+
+        if close.clicked(&actions) {
+            close.set_visible(false);
+            open.set_visible(true);
             self.animator_play(cx, id!(panel.hide));
         }
 
-        if self.button(id!(open_panel_button)).clicked(&actions) {
-            self.button(id!(open_panel_button)).set_visible(false);
-            self.button(id!(close_panel_button)).set_visible(true);
+        if open.clicked(&actions) {
+            open.set_visible(false);
+            close.set_visible(true);
             self.animator_play(cx, id!(panel.show));
         }
+
+        if let Some(value) = self.slider(id!(temperature)).slided(&actions) {
+            store.chats.inferences_params.temperature = value as f32;
+        }
+
+        if let Some(value) = self.slider(id!(top_p)).slided(&actions) {
+            store.chats.inferences_params.top_p = value as f32;
+        }
+
+        if let Some(value) = self.slider(id!(max_tokens)).slided(&actions) {
+            store.chats.inferences_params.max_tokens = value as u32;
+        }
+
+        if let Some(value) = self.slider(id!(frequency_penalty)).slided(&actions) {
+            store.chats.inferences_params.frequency_penalty = value as f32;
+        }
+
+        if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
+            store.chats.inferences_params.presence_penalty = value as f32;
+        }
+
+        dbg!(&store.chats.inferences_params);
     }
 }

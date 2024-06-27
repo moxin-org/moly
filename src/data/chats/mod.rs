@@ -10,10 +10,32 @@ use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::channel};
 
 use super::filesystem::setup_chats_folder;
 
+#[derive(Debug)]
+pub struct ChatInferenceParams {
+    pub frequency_penalty: f32,
+    pub max_tokens: u32,
+    pub presence_penalty: f32,
+    pub temperature: f32,
+    pub top_p: f32,
+}
+
+impl Default for ChatInferenceParams {
+    fn default() -> Self {
+        Self {
+            frequency_penalty: 0.0,
+            max_tokens: 2048,
+            presence_penalty: 0.0,
+            temperature: 1.0,
+            top_p: 1.0,
+        }
+    }
+}
+
 pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
     pub loaded_model: Option<File>,
+    pub inferences_params: ChatInferenceParams,
 
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
@@ -26,6 +48,7 @@ impl Chats {
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
+            inferences_params: ChatInferenceParams::default(),
             chats_dir: setup_chats_folder(),
         }
     }
@@ -45,7 +68,8 @@ impl Chats {
     }
 
     pub fn get_latest_chat_id(&mut self) -> Option<ChatID> {
-        self.saved_chats.sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
+        self.saved_chats
+            .sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
         self.saved_chats.last().map(|c| c.borrow().id.clone())
     }
 
@@ -120,9 +144,9 @@ impl Chats {
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
-        let Some(loaded_model) = self.loaded_model.as_ref() else { 
+        let Some(loaded_model) = self.loaded_model.as_ref() else {
             println!("Skip sending message because loaded model not found");
-            return
+            return;
         };
 
         if let Some(chat) = self.get_current_chat() {
@@ -160,7 +184,11 @@ impl Chats {
                     }
 
                     chat.remove_messages_from(message_id);
-                    chat.send_message_to_model(updated_message, loaded_model, self.backend.as_ref());
+                    chat.send_message_to_model(
+                        updated_message,
+                        loaded_model,
+                        self.backend.as_ref(),
+                    );
                 }
             } else {
                 chat.edit_message(message_id, updated_message);
