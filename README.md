@@ -67,12 +67,19 @@ For the sake of posterity, these instructions were tested with [this commit](htt
 ### Packaging for Linux
 On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` Debian package, an AppImage, and a pacman installation package.
 
-> Only the `.deb` file has been tested so far.
+> The `pacman` package has not yet been tested.
 
 To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 ```sh
 cd dist/
 sudo dpkg -i moxin_0.1.0_amd64.deb  ## requires entering your password
+```
+
+To run the AppImage bundle, simply set the file as executable and then run it:
+```sh
+cd dist/
+chmod +x moxin_0.1.0_x86_64.AppImage
+./moxin_0.1.0_x86_64.AppImage
 ```
 
 
