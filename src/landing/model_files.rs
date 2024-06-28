@@ -224,7 +224,7 @@ impl Widget for ModelFiles {
 }
 
 impl WidgetMatchEvent for ModelFiles {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let actions_tab_buttons = self.widget(id!(model_files_actions)).radio_button_set(ids!(
             tab_buttons.show_all_button,
             tab_buttons.only_recommended_button,
@@ -249,6 +249,8 @@ impl WidgetMatchEvent for ModelFiles {
                 StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
                     self.hide_immediate(cx);
                     self.actual_height = None;
+                    self.radio_button(id!(only_recommended_button)).select(cx, scope);
+                    self.redraw(cx);
                 }
                 _ => {}
             }
