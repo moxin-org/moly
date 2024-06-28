@@ -164,25 +164,19 @@ impl Widget for ChatParams {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
+        let ip = &store.chats.inferences_params;
 
-        self.slider(id!(temperature)).borrow_mut().unwrap().value =
-            store.chats.inferences_params.temperature as f64;
+        let temperature = self.slider(id!(temperature));
+        let top_p = self.slider(id!(top_p));
+        let max_tokens = self.slider(id!(max_tokens));
+        let frequency_penalty = self.slider(id!(frequency_penalty));
+        let presence_penalty = self.slider(id!(presence_penalty));
 
-        self.slider(id!(top_p)).borrow_mut().unwrap().value =
-            store.chats.inferences_params.top_p as f64;
-
-        self.slider(id!(max_tokens)).borrow_mut().unwrap().value =
-            store.chats.inferences_params.max_tokens as f64;
-
-        self.slider(id!(frequency_penalty))
-            .borrow_mut()
-            .unwrap()
-            .value = store.chats.inferences_params.frequency_penalty as f64;
-
-        self.slider(id!(presence_penalty))
-            .borrow_mut()
-            .unwrap()
-            .value = store.chats.inferences_params.presence_penalty as f64;
+        temperature.set_value(ip.temperature.into());
+        top_p.set_value(ip.top_p.into());
+        max_tokens.set_value(ip.max_tokens.into());
+        frequency_penalty.set_value(ip.frequency_penalty.into());
+        presence_penalty.set_value(ip.presence_penalty.into());
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -191,6 +185,7 @@ impl Widget for ChatParams {
 impl WidgetMatchEvent for ChatParams {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+        let ip = &mut store.chats.inferences_params;
 
         let close = self.button(id!(close_panel_button));
         let open = self.button(id!(open_panel_button));
@@ -208,25 +203,25 @@ impl WidgetMatchEvent for ChatParams {
         }
 
         if let Some(value) = self.slider(id!(temperature)).slided(&actions) {
-            store.chats.inferences_params.temperature = value as f32;
+            ip.temperature = value as f32;
         }
 
         if let Some(value) = self.slider(id!(top_p)).slided(&actions) {
-            store.chats.inferences_params.top_p = value as f32;
+            ip.top_p = value as f32;
         }
 
         if let Some(value) = self.slider(id!(max_tokens)).slided(&actions) {
-            store.chats.inferences_params.max_tokens = value as u32;
+            ip.max_tokens = value as u32;
         }
 
         if let Some(value) = self.slider(id!(frequency_penalty)).slided(&actions) {
-            store.chats.inferences_params.frequency_penalty = value as f32;
+            ip.frequency_penalty = value as f32;
         }
 
         if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
-            store.chats.inferences_params.presence_penalty = value as f32;
+            ip.presence_penalty = value as f32;
         }
 
-        dbg!(&store.chats.inferences_params);
+        dbg!(&ip);
     }
 }

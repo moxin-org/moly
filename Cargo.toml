@@ -26,7 +26,7 @@ moxin-protocol = { path = "moxin-protocol" }
 moxin-backend = { path = "moxin-backend" }
 moxin-fake-backend = { path = "moxin-fake-backend" }
 
-makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "moxin-release-v1" }
+makepad-widgets = { git = "https://github.com/noxware/makepad", branch = "slider_value" }
 
 robius-open = "0.1.0"
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
@@ -48,7 +48,7 @@ rfd = "0.14.1"
 product_name = "Moxin"
 identifier = "com.moxin-org.moxin"
 category = "Utility"
-authors = [ "Moxin Organization <moxin-org@github.com>" ]
+authors = ["Moxin Organization <moxin-org@github.com>"]
 publisher = "moxin-org"
 license_file = "LICENSE"
 copyright = "Copyright 2023-2024, Project Robius, Moxin Organization"
