@@ -219,12 +219,16 @@ impl Widget for ChatParams {
         let max_tokens = self.slider(id!(max_tokens));
         let frequency_penalty = self.slider(id!(frequency_penalty));
         let presence_penalty = self.slider(id!(presence_penalty));
+        let stop = self.text_input(id!(stop));
+        let stream = self.check_box(id!(stream));
 
         temperature.set_value(ip.temperature.into());
         top_p.set_value(ip.top_p.into());
         max_tokens.set_value(ip.max_tokens.into());
         frequency_penalty.set_value(ip.frequency_penalty.into());
         presence_penalty.set_value(ip.presence_penalty.into());
+        stop.set_text(&ip.stop.join("\n"));
+        stream.set_selected(cx, ip.stream);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -268,6 +272,14 @@ impl WidgetMatchEvent for ChatParams {
 
         if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
             ip.presence_penalty = value as f32;
+        }
+
+        if let Some(value) = self.text_input(id!(stop)).changed(&actions) {
+            ip.stop = value.split('\n').map(|s| s.to_string()).collect();
+        }
+
+        if let Some(value) = self.check_box(id!(stream)).changed(actions) {
+            ip.stream = value;
         }
     }
 }

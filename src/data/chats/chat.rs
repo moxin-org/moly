@@ -60,6 +60,8 @@ pub struct ChatInferenceParams {
     pub presence_penalty: f32,
     pub temperature: f32,
     pub top_p: f32,
+    pub stream: bool,
+    pub stop: Vec<String>,
 }
 
 impl Default for ChatInferenceParams {
@@ -70,6 +72,8 @@ impl Default for ChatInferenceParams {
             presence_penalty: 0.0,
             temperature: 1.0,
             top_p: 1.0,
+            stream: true,
+            stop: vec![],
         }
     }
 }
