@@ -1,7 +1,7 @@
 pub mod chat;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatID};
+use chat::{Chat, ChatID, ChatInferenceParams};
 use moxin_backend::Backend;
 use moxin_protocol::protocol::{Command, LoadModelResponse};
 use moxin_protocol::{data::*, protocol::LoadModelOptions};
@@ -9,27 +9,6 @@ use std::fs;
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::channel};
 
 use super::filesystem::setup_chats_folder;
-
-#[derive(Debug)]
-pub struct ChatInferenceParams {
-    pub frequency_penalty: f32,
-    pub max_tokens: u32,
-    pub presence_penalty: f32,
-    pub temperature: f32,
-    pub top_p: f32,
-}
-
-impl Default for ChatInferenceParams {
-    fn default() -> Self {
-        Self {
-            frequency_penalty: 0.0,
-            max_tokens: 2048,
-            presence_penalty: 0.0,
-            temperature: 1.0,
-            top_p: 1.0,
-        }
-    }
-}
 
 pub struct Chats {
     pub backend: Rc<Backend>,
@@ -150,8 +129,12 @@ impl Chats {
         };
 
         if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut()
-                .send_message_to_model(prompt, loaded_model, self.backend.as_ref());
+            chat.borrow_mut().send_message_to_model(
+                prompt,
+                &self.inferences_params,
+                loaded_model,
+                self.backend.as_ref(),
+            );
             chat.borrow().save();
         }
     }
@@ -186,6 +169,7 @@ impl Chats {
                     chat.remove_messages_from(message_id);
                     chat.send_message_to_model(
                         updated_message,
+                        &self.inferences_params,
                         loaded_model,
                         self.backend.as_ref(),
                     );
