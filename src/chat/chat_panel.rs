@@ -33,7 +33,7 @@ live_design! {
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
-    RoundedButton = <MoxinButton> {
+    CircleButton = <MoxinButton> {
         padding: {right: 4},
         margin: {bottom: 2},
 
@@ -157,7 +157,7 @@ live_design! {
         height: Fill,
         align: {x: 0.5, y: 1.0},
 
-        jump_to_bottom = <RoundedButton> {
+        jump_to_bottom = <CircleButton> {
             width: 34,
             height: 34,
             margin: {bottom: 10},
@@ -180,7 +180,7 @@ live_design! {
         }
     }
 
-    PromptRoundedButton = <RoundedButton> {
+    PromptButton = <CircleButton> {
         width: 28,
         height: 28,
 
@@ -191,9 +191,6 @@ live_design! {
         icon_walk: {
             margin: {top: 0, left: -4},
         }
-
-        padding: {right: 4},
-        margin: {bottom: 2},
     }
 
     ChatPromptInput = <RoundedView> {
@@ -239,13 +236,13 @@ live_design! {
             }
         }
 
-        prompt_send_button = <PromptRoundedButton> {
+        prompt_send_button = <PromptButton> {
             draw_icon: {
                 svg_file: (ICON_PROMPT),
             }
         }
 
-        prompt_stop_button = <PromptRoundedButton> {
+        prompt_stop_button = <PromptButton> {
             draw_icon: {
                 svg_file: (ICON_STOP),
             }
