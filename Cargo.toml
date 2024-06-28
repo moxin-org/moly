@@ -119,6 +119,8 @@ resources = [
 ##   which is currently `/usr/lib/moxin-runner`.
 ##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
 ##   * On Linux, we also strip the binaries of unneeded content, as required for Debian packages.
+##   * For Debian and Pacman packages, we also auto-generate the list of dependencies required by moxin,
+##     making sure to add `curl` since it is used by an invocation in `moxin-runner`.
 ##
 before-each-package-command = """
 export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
@@ -130,7 +132,14 @@ elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
     if [ "$CARGO_PACKAGER_FORMAT" = appimage ]; then \
         MAKEPAD_PACKAGE_DIR=../../usr/lib/moxin  cargo build --workspace --release; \
     else \
-        MAKEPAD_PACKAGE_DIR=/usr/lib/moxin  cargo build --workspace --release; \
+        MAKEPAD_PACKAGE_DIR=/usr/lib/moxin  cargo build --workspace --release --features "reqwest/native-tls-vendored"; \
+        if [ "$CARGO_PACKAGER_FORMAT" = deb ]; then \
+            for path in $(ldd target/release/_moxin_app | awk '{print $3}'); do \
+                basename "$path" ; \
+            done \
+                | xargs dpkg -S 2> /dev/null | awk '{print $1}' | awk -F ':' '{print $1}' | sort | uniq > ./dist/depends_deb.txt; \
+            echo "curl" >> ./dist/depends_deb.txt; \
+        fi; \
     fi \
     && strip --strip-unneeded --remove-section=.comment --remove-section=.note target/release/_moxin_app target/release/moxin; \
 else exit 2; \
@@ -142,8 +151,13 @@ deep_link_protocols = [
 ]
 
 [package.metadata.packager.deb]
+depends = "./dist/depends_deb.txt" ## must include `curl`, as needed by `moxin-runner`
 desktop_template = "./packaging/moxin.desktop"
 section = "utils"
+
+[package.metadata.packager.appimage]
+## `curl` is needed for `moxin-runner` to auto-install wasmedge.
+bins = [ "/usr/bin/curl" ]
 
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"

@@ -57,11 +57,10 @@ cargo run
 
 ## Packaging Moxin for Distribution
 
-Install cargo packager:
+Install the following version of `cargo-packager`:
 ```sh
-cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager
+cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager --rev 596c5a418f26ab511447a23ba9687a056598227f
 ```
-For the sake of posterity, these instructions were tested with [this commit](https://github.com/project-robius/cargo-packager/commit/9cce648e44303b927911fa8971af3d9e55af19fe) of cargo-packager.
 
 
 ### Packaging for Linux
@@ -72,8 +71,10 @@ On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` D
 To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 ```sh
 cd dist/
-sudo dpkg -i moxin_0.1.0_amd64.deb  ## requires entering your password
+sudo apt install ./moxin_0.1.0_amd64.deb  ## The "./" part is required
 ```
+We recommend using `apt install` to install the `.deb` file instead of `dpkg -i`, because `apt` will auto-install all of Moxin's required dependencies, whereas `dpkg` will require you to install them manually.
+
 
 To run the AppImage bundle, simply set the file as executable and then run it:
 ```sh
