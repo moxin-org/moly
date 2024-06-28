@@ -33,6 +33,16 @@ live_design! {
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
+    CircleButton = <MoxinButton> {
+        padding: {right: 4},
+        margin: {bottom: 2},
+
+        draw_icon: {
+            color: #fff
+        }
+        icon_walk: {width: 12, height: 12}
+    }
+
     UserChatLine = <ChatLine> {
         margin: {left: 100}
         avatar_section = {
@@ -147,36 +157,39 @@ live_design! {
         height: Fill,
         align: {x: 0.5, y: 1.0},
 
-        jump_to_bottom = <CircleView> {
+        jump_to_bottom = <CircleButton> {
             width: 34,
             height: 34,
-            align: {x: 0.5, y: 0.5},
             margin: {bottom: 10},
 
-            cursor: Hand,
-
-            show_bg: true,
-
             draw_bg: {
-                radius: 14.0,
+                radius: 8.0,
                 color: #fff,
                 border_width: 1.0,
                 border_color: #EAECF0,
             }
-
-            <Icon> {
-                padding: 0,
-                // These margins are used to center the icon inside the circle
-                // Not sure why the icon is not centered by default
-                margin: { top: 6, right: 4 },
-                draw_icon: {
-                    svg_file: (ICON_JUMP_TO_BOTTOM),
-                    fn get_color(self) -> vec4 {
-                        return #1C1B1F;
-                    }
+            draw_icon: {
+                svg_file: (ICON_JUMP_TO_BOTTOM),
+                fn get_color(self) -> vec4 {
+                    return #1C1B1F;
                 }
-                icon_walk: {width: 12, height: 12}
             }
+            icon_walk: {
+                margin: {top: 6, left: -4},
+            }
+        }
+    }
+
+    PromptButton = <CircleButton> {
+        width: 28,
+        height: 28,
+
+        draw_bg: {
+            radius: 6.5,
+            color: #D0D5DD
+        }
+        icon_walk: {
+            margin: {top: 0, left: -4},
         }
     }
 
@@ -223,48 +236,15 @@ live_design! {
             }
         }
 
-        prompt_icon = <RoundedView> {
-            width: 28,
-            height: 28,
-            show_bg: true,
-            draw_bg: {
-                radius: 7.0,
-                color: #D0D5DD
+        prompt_send_button = <PromptButton> {
+            draw_icon: {
+                svg_file: (ICON_PROMPT),
             }
+        }
 
-            cursor: Hand,
-
-            padding: {right: 4},
-            margin: {bottom: 2},
-            align: {x: 0.5, y: 0.5},
-
-            icon_send = <View> {
-                width: Fit,
-                height: Fit,
-                <Icon> {
-                    draw_icon: {
-                        svg_file: (ICON_PROMPT),
-                        fn get_color(self) -> vec4 {
-                            return #fff;
-                        }
-                    }
-                    icon_walk: {width: 12, height: 12}
-                }
-            }
-            icon_stop = <View> {
-                width: Fit,
-                height: Fit,
-                visible: false,
-
-                <Icon> {
-                    draw_icon: {
-                        svg_file: (ICON_STOP),
-                        fn get_color(self) -> vec4 {
-                            return #fff;
-                        }
-                    }
-                    icon_walk: {width: 12, height: 12}
-                }
+        prompt_stop_button = <PromptButton> {
+            draw_icon: {
+                svg_file: (ICON_STOP),
             }
         }
     }
@@ -553,11 +533,9 @@ impl WidgetMatchEvent for ChatPanel {
             }
         }
 
-        if let Some(fe) = self.view(id!(jump_to_bottom)).finger_up(actions) {
-            if fe.was_tap() {
-                self.scroll_messages_to_bottom(cx);
-                self.redraw(cx);
-            }
+        if self.button(id!(jump_to_bottom)).clicked(actions) {
+            self.scroll_messages_to_bottom(cx);
+            self.redraw(cx);
         }
 
         match self.state {
@@ -571,13 +549,11 @@ impl WidgetMatchEvent for ChatPanel {
             State::ModelSelectedWithChat {
                 is_streaming: true, ..
             } => {
-                if let Some(fe) = self
-                    .view(id!(main_prompt_input.prompt_icon))
-                    .finger_up(actions)
+                if self
+                    .button(id!(main_prompt_input.prompt_stop_button))
+                    .clicked(actions)
                 {
-                    if fe.was_tap() {
-                        store.chats.cancel_chat_streaming();
-                    }
+                    store.chats.cancel_chat_streaming();
                 }
             }
             _ => {}
@@ -626,8 +602,8 @@ impl ChatPanel {
                 is_streaming: false,
                 ..
             } => {
-                self.enable_or_disable_prompt_input(cx);
-                self.show_prompt_input_send_icon(cx);
+                self.enable_or_disable_prompt_buttons(cx);
+                self.show_prompt_send_button(cx);
             }
             State::ModelSelectedWithChat {
                 is_streaming: true, ..
@@ -639,13 +615,13 @@ impl ChatPanel {
                         draw_text: { prompt_enabled: 0.0 }
                     },
                 );
-                self.show_prompt_input_stop_icon(cx);
+                self.show_prompt_input_stop_button(cx);
             }
             _ => {}
         }
     }
 
-    fn enable_or_disable_prompt_input(&mut self, cx: &mut Cx) {
+    fn enable_or_disable_prompt_buttons(&mut self, cx: &mut Cx) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         let enable = if !prompt_input.text().is_empty() {
             1.0
@@ -661,36 +637,45 @@ impl ChatPanel {
         );
     }
 
-    fn show_prompt_input_send_icon(&mut self, cx: &mut Cx) {
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
-            cx,
-            live! {
-                icon_send = { visible: true }
-                icon_stop = { visible: false }
-            },
-        );
+    fn show_prompt_send_button(&mut self, cx: &mut Cx) {
+        self.button(id!(main_prompt_input.prompt_send_button))
+            .set_visible(true);
+        self.button(id!(main_prompt_input.prompt_stop_button))
+            .set_visible(false);
+
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         if !prompt_input.text().is_empty() {
-            self.enable_prompt_input_icon(cx);
+            self.enable_prompt_buttons(cx);
         } else {
-            self.disable_prompt_input_icon(cx);
+            self.disable_prompt_buttons(cx);
         }
     }
 
-    fn show_prompt_input_stop_icon(&mut self, cx: &mut Cx) {
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
-            cx,
-            live! {
-                icon_send = { visible: false }
-                icon_stop = { visible: true }
-            },
-        );
-        self.enable_prompt_input_icon(cx);
+    fn show_prompt_input_stop_button(&mut self, cx: &mut Cx) {
+        self.button(id!(main_prompt_input.prompt_send_button))
+            .set_visible(false);
+        self.button(id!(main_prompt_input.prompt_stop_button))
+            .set_visible(true);
+
+        self.enable_prompt_buttons(cx);
     }
 
-    fn enable_prompt_input_icon(&mut self, cx: &mut Cx) {
+    fn enable_prompt_buttons(&mut self, cx: &mut Cx) {
         let enabled_color = vec3(0.0, 0.0, 0.0);
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
+        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
+        send_button.set_enabled(true);
+        send_button.apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: (enabled_color)
+                }
+            },
+        );
+
+        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
+        stop_button.set_enabled(true);
+        stop_button.apply_over(
             cx,
             live! {
                 draw_bg: {
@@ -700,9 +685,22 @@ impl ChatPanel {
         );
     }
 
-    fn disable_prompt_input_icon(&mut self, cx: &mut Cx) {
+    fn disable_prompt_buttons(&mut self, cx: &mut Cx) {
         let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
+        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
+        send_button.set_enabled(true);
+        send_button.apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: (disabled_color)
+                }
+            },
+        );
+
+        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
+        stop_button.set_enabled(false);
+        stop_button.apply_over(
             cx,
             live! {
                 draw_bg: {
@@ -728,13 +726,11 @@ impl ChatPanel {
             self.update_prompt_input(cx);
         }
 
-        if let Some(fe) = self
-            .view(id!(main_prompt_input.prompt_icon))
-            .finger_up(&actions)
+        if self
+            .button(id!(main_prompt_input.prompt_send_button))
+            .clicked(&actions)
         {
-            if fe.was_tap() {
-                self.send_message(cx, scope, prompt_input.text());
-            }
+            self.send_message(cx, scope, prompt_input.text());
         }
 
         if let Some(prompt) = prompt_input.returned(actions) {
@@ -777,7 +773,7 @@ impl ChatPanel {
 
     fn update_visibilities(&mut self) {
         let empty_conversation = self.view(id!(empty_conversation));
-        let jump_to_bottom = self.view(id!(jump_to_bottom));
+        let jump_to_bottom = self.button(id!(jump_to_bottom));
         let main = self.view(id!(main));
         let no_downloaded_model = self.view(id!(no_downloaded_model));
         let no_model = self.view(id!(no_model));

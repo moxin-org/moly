@@ -9,24 +9,18 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
-    import crate::shared::icon::*;
 
     import crate::landing::download_item::DownloadItem;
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
 
-    CollapseButton = <View> {
-        cursor: Hand
+    CollapseButton = <MoxinButton> {
         width: Fit, height: Fit
-        icon = <Icon> {
-            draw_icon: {
-                svg_file: (ICON_COLLAPSE)
-                fn get_color(self) -> vec4 {
-                    return #667085;
-                }
-            }
-            icon_walk: {width: 18, height: Fit}
+        draw_icon: {
+            svg_file: (ICON_COLLAPSE)
+            color: #667085
         }
+        icon_walk: {width: 18, height: Fit}
     }
 
     Header = <View> {
@@ -70,7 +64,9 @@ live_design! {
 
         <VerticalFiller> {}
 
-        collapse = <CollapseButton> {}
+        collapse = <CollapseButton> {
+            draw_icon: { rotation_angle: 180.0 }
+        }
     }
 
     Content = <View> {
@@ -205,10 +201,8 @@ impl Widget for Downloads {
 
 impl WidgetMatchEvent for Downloads {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(fe) = self.view(id!(collapse)).finger_up(&actions) {
-            if fe.was_tap() {
-                self.toggle_collapse(cx);
-            }
+        if self.button(id!(collapse)).clicked(&actions) {
+            self.toggle_collapse(cx);
         }
     }
 }
@@ -226,7 +220,7 @@ impl Downloads {
 
     fn set_collapse_button_open(&mut self, cx: &mut Cx, is_open: bool) {
         let rotation_angle = if is_open { 0.0 } else { 180.0 };
-        self.icon(id!(collapse.icon))
+        self.button(id!(collapse))
         .apply_over(cx, 
             live! {
                 draw_icon: { rotation_angle: (rotation_angle) }
