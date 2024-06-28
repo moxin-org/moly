@@ -359,7 +359,7 @@ impl WidgetMatchEvent for ModelFilesItem {
         }
 
         if self.button(id!(resume_chat_button)).clicked(&actions) {
-            cx.widget_action(widget_uid, &scope.path, ChatAction::Resume(file_id.clone()));
+            cx.widget_action(widget_uid, &scope.path, ChatAction::Resume);
         }
 
         if [id!(resume_download_button), id!(retry_download_button)]

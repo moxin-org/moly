@@ -104,6 +104,12 @@ impl Chats {
         }
     }
 
+    pub fn get_chat_by_id(&self, chat_id: ChatID) -> Option<&RefCell<Chat>> {
+        self.saved_chats
+                .iter()
+                .find(|c| c.borrow().id == chat_id)
+    }
+
     pub fn set_current_chat(&mut self, chat_id: ChatID) {
         self.current_chat_id = Some(chat_id);
     }
@@ -192,25 +198,16 @@ impl Chats {
     }
 
     pub fn create_empty_chat(&mut self) {
-        if let Some(current_chat) = self.get_current_chat() {
-            let filename = current_chat.borrow().model_filename.clone();
-            let file_id = current_chat.borrow().file_id.clone();
-            let new_chat = RefCell::new(Chat::new(filename, file_id, self.chats_dir.clone()));
+        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
 
-            new_chat.borrow().save();
+        new_chat.borrow().save();
 
-            self.current_chat_id = Some(new_chat.borrow().id);
-            self.saved_chats.push(new_chat);
-        }
+        self.current_chat_id = Some(new_chat.borrow().id);
+        self.saved_chats.push(new_chat);
     }
 
-    pub fn create_empty_chat_with_model_file(&mut self, file: &File) {
-        let new_chat = RefCell::new(Chat::new(
-            file.name.clone(),
-            file.id.clone(),
-            self.chats_dir.clone(),
-        ));
-
+    pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
+        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
         new_chat.borrow().save();
 
         self.current_chat_id = Some(new_chat.borrow().id);
