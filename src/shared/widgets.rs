@@ -438,4 +438,11 @@ live_design! {
             }
         }
     }
+
+    MoxinSwitch = <CheckBoxToggle> {
+        // U+200e as text.
+        // Nasty trick cause not setting `text` nor using a simple space works to
+        // render the widget without label.
+        text:"‎"
+    }
 }

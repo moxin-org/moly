@@ -10,6 +10,8 @@ live_design! {
     import crate::shared::widgets::FadeView;
     import crate::shared::widgets::MoxinButton;
     import crate::shared::widgets::MoxinSlider;
+    import crate::shared::widgets::MoxinSwitch;
+    import crate::shared::widgets::MoxinTextInput;
     import makepad_draw::shader::std::*;
 
 
@@ -69,7 +71,8 @@ live_design! {
                 flow: Down
                 show_bg: true
                 draw_bg: {
-                    color: #F2F4F7
+                    //color: #F2F4F7
+                    color: #67e8f9
                 }
 
                 <Label> {
@@ -97,11 +100,56 @@ live_design! {
                         max: 1.0
                     }
 
+                    <View> {
+                        flow: Right
+                        height: Fit
+                        width: Fill
+                        align: {y: 0.5}
+                        padding: {left: 4}
+                        <Label> {
+                            draw_text: {
+                                text_style: <BOLD_FONT>{font_size: 10},
+                                color: #000
+                            }
+                            text: "Stream"
+                        }
+                        <Filler> {}
+                        stream = <MoxinSwitch> {}
+                    }
+
                     max_tokens = <MoxinSlider> {
                         text: "Max Tokens"
                         min: 100.0
                         max: 2048.0
                         step: 1.0
+                    }
+
+                    <View> {
+                        flow: Down
+                        height: Fit
+                        width: Fill
+                        spacing: 12
+                        padding: {left: 4}
+                        <Label> {
+                            draw_text: {
+                                text_style: <BOLD_FONT>{font_size: 10},
+                                color: #000
+                            }
+                            text: "Stop"
+                        }
+                        stop = <MoxinTextInput> {
+                            width: Fill,
+                            height: 65,
+
+                            empty_message: ""
+                            draw_bg: {
+                                radius: 5.0
+                                color: #fff
+                            }
+                            draw_text: {
+                                text_style: {font_size: 10},
+                            }
+                        }
                     }
 
                     frequency_penalty = <MoxinSlider> {
@@ -221,7 +269,5 @@ impl WidgetMatchEvent for ChatParams {
         if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
             ip.presence_penalty = value as f32;
         }
-
-        dbg!(&ip);
     }
 }
