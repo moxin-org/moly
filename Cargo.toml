@@ -151,7 +151,7 @@ deep_link_protocols = [
 ]
 
 [package.metadata.packager.deb]
-depends = "./dist/depends_deb.txt" ## must include `curl`, as needed by `moxin-runner`
+depends = "./dist/depends_deb.txt"
 desktop_template = "./packaging/moxin.desktop"
 section = "utils"
 
