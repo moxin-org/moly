@@ -1,3 +1,5 @@
+use std::thread;
+use mega;
 use std::io::Write;
 
 fn main() {
@@ -15,6 +17,10 @@ fn main() {
             )
             .unwrap();
     });
-
+    thread::spawn(|| {
+        println!("Mega Started");
+        let args = "service multi http".split(' ').collect();
+        mega::cli::parse(Some(args)).expect("Failed to start Mega");
+    });
     moxin::app::app_main()
 }

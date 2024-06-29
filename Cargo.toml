@@ -40,6 +40,7 @@ serde = { version = "1.0.197", features = ["derive"] }
 lipsum = "0.9"
 rand = "0.8.5"
 
+mega = { git = "https://github.com/Hou-Xiaoxuan/mega.git", branch = "mega-lib", package = "mega"}
 
 ## Configuration for `cargo packager`
 [package.metadata.packager]
