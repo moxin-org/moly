@@ -15,7 +15,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
 
-    // TODO: Use proper icons
+    // TODO: Use proper icons for right panel.
     ICON_CLOSE_PANEL = dep("crate://self/resources/icons/open_left_panel.svg")
     ICON_OPEN_PANEL = dep("crate://self/resources/icons/close_left_panel.svg")
 
@@ -138,8 +138,9 @@ live_design! {
                         }
                         stop = <MoxinTextInput> {
                             width: Fill,
+                            // TODO: This should be something like min-height, allowing
+                            // the text input to grow.
                             height: 65,
-
                             empty_message: ""
                             draw_bg: {
                                 radius: 5.0
