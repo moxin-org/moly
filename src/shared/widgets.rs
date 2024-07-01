@@ -444,5 +444,41 @@ live_design! {
         // Nasty trick cause not setting `text` nor using a simple space works to
         // render the widget without label.
         text:"‎"
+        draw_check: {
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                let pill_padding = 2.0;
+                let pill_color_off = #D9D9D9;
+                let pill_color_on = #989898;
+
+                let pill_radius = self.rect_size.y * 0.5;
+                let ball_radius = pill_radius - pill_padding;
+
+                // Left side of the pill
+                sdf.circle(pill_radius, pill_radius, pill_radius);
+                sdf.fill(pill_color_off)
+                sdf.blend(self.selected);
+                sdf.fill(pill_color_on);
+
+
+                // Right side of the pill
+                sdf.circle(self.rect_size.x - pill_radius, pill_radius, pill_radius);
+                sdf.fill(pill_color_off)
+                sdf.blend(self.selected);
+                sdf.fill(pill_color_on);
+
+                // The union/middle of the pill
+                sdf.rect(pill_radius, 0.0, self.rect_size.x - 2.0 * pill_radius, self.rect_size.y);
+                sdf.fill(pill_color_off)
+                sdf.blend(self.selected);
+                sdf.fill(pill_color_on);
+
+                // The moving ball
+                sdf.circle(pill_padding + ball_radius + self.selected * (self.rect_size.x - 2.0 * ball_radius - 2.0 * pill_padding), pill_radius, ball_radius);
+                sdf.fill(#fff);
+
+                return sdf.result
+            }
+        }
     }
 }
