@@ -61,7 +61,7 @@ pub struct ChatInferenceParams {
     pub temperature: f32,
     pub top_p: f32,
     pub stream: bool,
-    pub stop: Vec<String>,
+    pub stop: String,
 }
 
 impl Default for ChatInferenceParams {
@@ -73,7 +73,7 @@ impl Default for ChatInferenceParams {
             temperature: 1.0,
             top_p: 1.0,
             stream: true,
-            stop: vec![],
+            stop: "".into(),
         }
     }
 }
@@ -235,8 +235,15 @@ impl Chat {
                 max_tokens: Some(ip.max_tokens),
                 presence_penalty: Some(ip.presence_penalty),
                 seed: None,
-                stop: None,
-                stream: Some(true),
+                stop: Some(
+                    ip.stop
+                        .split("\n")
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string())
+                        .collect(),
+                ),
+                stream: Some(ip.stream),
                 temperature: Some(ip.temperature),
                 top_p: Some(ip.top_p),
                 n: None,

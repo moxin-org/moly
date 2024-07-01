@@ -227,7 +227,7 @@ impl Widget for ChatParams {
         max_tokens.set_value(ip.max_tokens.into());
         frequency_penalty.set_value(ip.frequency_penalty.into());
         presence_penalty.set_value(ip.presence_penalty.into());
-        stop.set_text(&ip.stop.join("\n"));
+        stop.set_text(&ip.stop);
         stream.set_selected(cx, ip.stream);
 
         self.view.draw_walk(cx, scope, walk)
@@ -275,11 +275,11 @@ impl WidgetMatchEvent for ChatParams {
         }
 
         if let Some(value) = self.text_input(id!(stop)).changed(&actions) {
-            ip.stop = value.split('\n').map(|s| s.to_string()).collect();
+            ip.stop = value;
         }
 
         if let Some(value) = self.check_box(id!(stream)).changed(actions) {
-            ip.stream = value;
+            ip.stream = !value;
         }
     }
 }
