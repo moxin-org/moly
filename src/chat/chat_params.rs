@@ -71,8 +71,7 @@ live_design! {
                 flow: Down
                 show_bg: true
                 draw_bg: {
-                    //color: #F2F4F7
-                    color: #67e8f9
+                    color: #F2F4F7
                 }
 
                 <Label> {
@@ -145,6 +144,8 @@ live_design! {
                             draw_bg: {
                                 radius: 5.0
                                 color: #fff
+                                border_width: 1.0,
+                                border_color: #D9D9D9,
                             }
                             draw_text: {
                                 text_style: {font_size: 10},
