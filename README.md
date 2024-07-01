@@ -57,9 +57,9 @@ cargo run
 
 ## Packaging Moxin for Distribution
 
-Install the following version of `cargo-packager`:
+Install the version of `cargo-packager` maintained by Project Robius:
 ```sh
-cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager --rev 596c5a418f26ab511447a23ba9687a056598227f
+cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager --branch robius
 ```
 
 
