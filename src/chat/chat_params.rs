@@ -279,7 +279,9 @@ impl WidgetMatchEvent for ChatParams {
         }
 
         if let Some(value) = self.check_box(id!(stream)).changed(actions) {
-            ip.stream = !value;
+            dbg!(value);
+            ip.stream = value;
+            self.redraw(cx);
         }
     }
 }
