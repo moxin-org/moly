@@ -14,10 +14,8 @@ live_design! {
     import crate::shared::widgets::MoxinTextInput;
     import makepad_draw::shader::std::*;
 
-
-    // TODO: Use proper icons for right panel.
-    ICON_CLOSE_PANEL = dep("crate://self/resources/icons/open_left_panel.svg")
-    ICON_OPEN_PANEL = dep("crate://self/resources/icons/close_left_panel.svg")
+    ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_right_panel.svg")
+    ICON_OPEN_PANEL = dep("crate://self/resources/icons/open_right_panel.svg")
 
     ChatParamsActions = <View> {
         height: Fit
