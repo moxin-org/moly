@@ -230,7 +230,13 @@ impl Widget for ChatParams {
         frequency_penalty.set_value(ip.frequency_penalty.into());
         presence_penalty.set_value(ip.presence_penalty.into());
         stop.set_text(&ip.stop);
-        stream.set_selected(cx, ip.stream);
+
+        // Idk why, but without the check, this binding will not work when the screen is a non empty chat.
+        // I don't get the relation, maybe is something related to the mandatory `ctx` parameter or the
+        // animator.
+        if stream.selected(cx) != ip.stream {
+            stream.set_selected(cx, ip.stream);
+        }
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -281,9 +287,7 @@ impl WidgetMatchEvent for ChatParams {
         }
 
         if let Some(value) = self.check_box(id!(stream)).changed(actions) {
-            dbg!(value);
             ip.stream = value;
-            self.redraw(cx);
         }
     }
 }

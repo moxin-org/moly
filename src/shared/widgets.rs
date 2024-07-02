@@ -460,7 +460,6 @@ live_design! {
                 sdf.blend(self.selected);
                 sdf.fill(pill_color_on);
 
-
                 // Right side of the pill
                 sdf.circle(self.rect_size.x - pill_radius, pill_radius, pill_radius);
                 sdf.fill(pill_color_off)
