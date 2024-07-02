@@ -413,10 +413,6 @@ live_design! {
                 let ball_rel_x = self.slide_pos;
                 let ball_abs_x = ball_rel_x * (rail_width - 2.0 * rail_padding_x) + rail_padding_x;
 
-                // The drawing area (for debug only)
-                // sdf.rect(0, 0, self.rect_size.x, self.rect_size.y);
-                // sdf.fill(#06b6d4);
-
                 // The rail
                 sdf.move_to(0 + padding_x, padding_top);
                 sdf.line_to(self.rect_size.x - padding_x, padding_top);
@@ -425,11 +421,11 @@ live_design! {
                 // The filler
                 sdf.move_to(0 + padding_x, padding_top);
                 sdf.line_to(ball_abs_x, padding_top);
-                sdf.stroke(#989898, rail_height);
+                sdf.stroke(#15859A, rail_height);
 
                 // The moving ball
                 sdf.circle(ball_abs_x, padding_top, ball_radius);
-                sdf.fill(#989898);
+                sdf.fill(#15859A);
                 sdf.circle(ball_abs_x, padding_top, ball_radius - ball_border);
                 sdf.fill(#fff);
 
@@ -449,7 +445,7 @@ live_design! {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size)
                 let pill_padding = 2.0;
                 let pill_color_off = #D9D9D9;
-                let pill_color_on = #989898;
+                let pill_color_on = #15859A;
 
                 let pill_radius = self.rect_size.y * 0.5;
                 let ball_radius = pill_radius - pill_padding;
