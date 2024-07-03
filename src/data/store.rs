@@ -102,7 +102,6 @@ impl Store {
         self.chats.set_current_chat(chat_id);
 
         if let Some(file_id) = self.get_last_used_file_id_in_current_chat() {
-            dbg!(&file_id);
             if self
                 .chats
                 .loaded_model
@@ -116,7 +115,6 @@ impl Store {
                     .find(|df| df.file.id == *file_id)
                     .map(|df| df.file.clone())
                 {
-                    dbg!(&file);
                     let _ = self.load_model(&file);
                 }
             }

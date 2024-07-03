@@ -114,18 +114,6 @@ impl Chats {
         self.current_chat_id = Some(chat_id);
     }
 
-    pub fn set_current_chat_and_load_model(&mut self, chat_id: ChatID, file: &File) {
-        self.current_chat_id = Some(chat_id);
-
-        if self
-            .loaded_model
-            .as_ref()
-            .map_or(true, |m| *m.id != file.id)
-        {
-            let _ = self.load_model(file);
-        }
-    }
-
     pub fn send_chat_message(&mut self, prompt: String) {
         let Some(loaded_model) = self.loaded_model.as_ref() else {
             println!("Skip sending message because loaded model not found");

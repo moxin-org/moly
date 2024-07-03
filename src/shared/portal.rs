@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::fmt::Debug;
 
 use makepad_widgets::*;

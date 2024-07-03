@@ -3,7 +3,6 @@ use crate::{
     shared::{actions::ChatAction, utils::format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
 
 use super::model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt};
 
