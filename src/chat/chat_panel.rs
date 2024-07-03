@@ -830,13 +830,13 @@ impl ChatPanel {
 
                     let username = chat_line_data.username.as_ref().map_or("", String::as_str);
                     chat_line_item.set_sender_name(&username);
-                    chat_line_item.set_regenerate_enabled(false);
+                    chat_line_item.set_regenerate_button_visible(false);
                     chat_line_item
                         .set_avatar_text(&get_initial_letter(username).unwrap().to_string());
                 } else {
                     item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
                     chat_line_item = item.as_chat_line();
-                    chat_line_item.set_regenerate_enabled(true);
+                    chat_line_item.set_regenerate_button_visible(true);
                 };
 
                 chat_line_item.set_message_text(cx, &chat_line_data.content);
