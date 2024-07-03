@@ -478,6 +478,7 @@ impl WidgetMatchEvent for ChatPanel {
             .filter_map(|action| action.as_widget_action())
         {
             if let ChatHistoryCardAction::ChatSelected(_) = action.cast() {
+                self.reset_scroll_messages(&store);
                 self.redraw(cx);
             }
 
@@ -708,6 +709,17 @@ impl ChatPanel {
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
         let mut list = self.portal_list(id!(chat));
         list.smooth_scroll_to_end(cx, 10, 80.0);
+    }
+
+    fn reset_scroll_messages(&mut self, store: &Store) {
+        let list = self.portal_list(id!(chat));
+        let messages = get_chat_messages(store).unwrap();
+        let index = if messages.len() > 1 {
+            messages.len() - 1
+        } else {
+            0
+        };
+        list.set_first_id(index);
     }
 
     fn unload_model(&mut self, cx: &mut Cx) {
