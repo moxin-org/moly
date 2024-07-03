@@ -386,10 +386,6 @@ live_design! {
             color: #000
         }
         text_input: {
-            /*draw_bg: {
-                color: #000;
-                radius: 2.0
-            },*/
             draw_text: {
                 text_style: <BOLD_FONT>{font_size: 11},
                 fn get_color(self) -> vec4 {
