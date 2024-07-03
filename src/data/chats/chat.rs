@@ -45,7 +45,6 @@ enum TitleState {
 #[derive(Serialize, Deserialize)]
 struct ChatData {
     id: ChatID,
-    // TODO think if we need to think migration path here
     last_used_file_id: Option<FileID>,
     messages: Vec<ChatMessage>,
     title: String,
