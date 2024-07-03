@@ -57,22 +57,30 @@ cargo run
 
 ## Packaging Moxin for Distribution
 
-Install cargo packager:
+Install the version of `cargo-packager` maintained by Project Robius:
 ```sh
-cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager
+cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager --branch robius
 ```
-For the sake of posterity, these instructions were tested with [this commit](https://github.com/project-robius/cargo-packager/commit/9cce648e44303b927911fa8971af3d9e55af19fe) of cargo-packager.
 
 
 ### Packaging for Linux
 On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` Debian package, an AppImage, and a pacman installation package.
 
-> Only the `.deb` file has been tested so far.
+> The `pacman` package has not yet been tested.
 
 To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 ```sh
 cd dist/
-sudo dpkg -i moxin_0.1.0_amd64.deb  ## requires entering your password
+sudo apt install ./moxin_0.1.0_amd64.deb  ## The "./" part is required
+```
+We recommend using `apt install` to install the `.deb` file instead of `dpkg -i`, because `apt` will auto-install all of Moxin's required dependencies, whereas `dpkg` will require you to install them manually.
+
+
+To run the AppImage bundle, simply set the file as executable and then run it:
+```sh
+cd dist/
+chmod +x moxin_0.1.0_x86_64.AppImage
+./moxin_0.1.0_x86_64.AppImage
 ```
 
 
@@ -84,14 +92,27 @@ Ensure you are in the root `moxin` directory, and then you can use `cargo packag
 cargo packager --release --verbose   ## --verbose is optional
 ```
 
-> [!TIP]
+> [!IMPORTANT]
 > You will see a .dmg window pop up — please leave it alone, it will auto-close once the packaging procedure has completed.
 
-If you receive the following error:
-```
-ERROR cargo_packager::cli: Error running create-dmg script: File exists (os error 17)
-```
-then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
+> [!TIP]
+> If you receive the following error:
+> ```
+> ERROR cargo_packager::cli: Error running create-dmg script: File exists (os error 17)
+> ```
+> then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
+
+> [!TIP]
+> If you receive an error like so:
+> ```
+> Creating disk image...
+> hdiutil: create failed - Operation not permitted
+> could not access /Volumes/Moxin/Moxin.app - Operation not permitted
+> ```
+> then you need to grant "App Management" permissions to the app in which you ran the `cargo packager` command, e.g., Terminal, Visual Studio Code, etc.
+> To do this, open `System Preferences` → `Privacy & Security` → `App Management`,
+> and then click the toggle switch next to the relevant app to enable that permission. 
+> Then, try the above `cargo packager` command again.
 
 After the command completes, you should see both the `Moxin.app` and the `.dmg` in the `dist/` directory.
 You can immediately double-click the `Moxin.app` bundle to run it, or you can double-click the `.dmg` file to 
@@ -99,26 +120,6 @@ You can immediately double-click the `Moxin.app` bundle to run it, or you can do
 > Note that the `.dmg` is what should be distributed for installation on other machines, not the `.app`.
 
 If you'd like to modify the .dmg background, here is the [Google Drawings file used to generate the MacOS .dmg background image](https://docs.google.com/drawings/d/1Uq13nAsCKFrl4s16HeLqpVfQ-vbF7v2Z8HFyqgeyrbE/edit?usp=sharing).
-
-### Installing and running the packaged macOS app
-> [!IMPORTANT]
-> The Moxin application package on macOS is currently not signed, so Apple will display a warning on macOS (shown below) when you first attempt to open it after installation.
->
-> **This warning is not true**. The app is not damaged, it just hasn't been signed.
-
-<img src="macOS_error.png" alt="macOS error for Moxin app" />
-
-To get around this, do the following:
-* Install the Moxin app as normal by opening the `.dmg` and dragging the Moxin app to the Applications folder shortcut.
-* Open the Moxin app from your Applications folder.
-* An error message will pop up, as described above. **Click cancel**.
-* Open a terminal and run the following command:
-  ```sh
-  xattr -dr com.apple.quarantine path/to/the/installed/Moxin.app
-  ```
-  * The path is typically `/Applications/Moxin.app`, assuming you dragged the app icon into the Applications folder.
-* Now open the Moxin app again as normal, it should work as expected.
-
 
 
 [`.dmg`]: https://support.apple.com/en-gb/guide/mac-help/mh35835/mac

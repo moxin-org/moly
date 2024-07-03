@@ -1,16 +1,21 @@
 use makepad_widgets::*;
 use moxin_protocol::data::FileID;
+use std::cell::{Ref, RefCell, RefMut};
 
 use crate::{
     chat::{
-        chat_history_card::ChatHistoryCardAction,
         chat_line::{ChatLineAction, ChatLineWidgetRefExt},
         model_selector::ModelSelectorWidgetExt,
         model_selector_list::ModelSelectorAction,
     },
-    data::store::Store,
+    data::{
+        chats::chat::{Chat, ChatMessage},
+        store::Store,
+    },
     shared::actions::ChatAction,
 };
+
+use super::chat_history_card::ChatHistoryCardAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -27,6 +32,16 @@ live_design! {
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
+
+    CircleButton = <MoxinButton> {
+        padding: {right: 4},
+        margin: {bottom: 2},
+
+        draw_icon: {
+            color: #fff
+        }
+        icon_walk: {width: 12, height: 12}
+    }
 
     UserChatLine = <ChatLine> {
         margin: {left: 100}
@@ -142,36 +157,39 @@ live_design! {
         height: Fill,
         align: {x: 0.5, y: 1.0},
 
-        jump_to_bottom = <CircleView> {
+        jump_to_bottom = <CircleButton> {
             width: 34,
             height: 34,
-            align: {x: 0.5, y: 0.5},
             margin: {bottom: 10},
 
-            cursor: Hand,
-
-            show_bg: true,
-
             draw_bg: {
-                radius: 14.0,
+                radius: 8.0,
                 color: #fff,
                 border_width: 1.0,
                 border_color: #EAECF0,
             }
-
-            <Icon> {
-                padding: 0,
-                // These margins are used to center the icon inside the circle
-                // Not sure why the icon is not centered by default
-                margin: { top: 6, right: 4 },
-                draw_icon: {
-                    svg_file: (ICON_JUMP_TO_BOTTOM),
-                    fn get_color(self) -> vec4 {
-                        return #1C1B1F;
-                    }
+            draw_icon: {
+                svg_file: (ICON_JUMP_TO_BOTTOM),
+                fn get_color(self) -> vec4 {
+                    return #1C1B1F;
                 }
-                icon_walk: {width: 12, height: 12}
             }
+            icon_walk: {
+                margin: {top: 6, left: -4},
+            }
+        }
+    }
+
+    PromptButton = <CircleButton> {
+        width: 28,
+        height: 28,
+
+        draw_bg: {
+            radius: 6.5,
+            color: #D0D5DD
+        }
+        icon_walk: {
+            margin: {top: 0, left: -4},
         }
     }
 
@@ -218,54 +236,21 @@ live_design! {
             }
         }
 
-        prompt_icon = <RoundedView> {
-            width: 28,
-            height: 28,
-            show_bg: true,
-            draw_bg: {
-                radius: 7.0,
-                color: #D0D5DD
+        prompt_send_button = <PromptButton> {
+            draw_icon: {
+                svg_file: (ICON_PROMPT),
             }
+        }
 
-            cursor: Hand,
-
-            padding: {right: 4},
-            margin: {bottom: 2},
-            align: {x: 0.5, y: 0.5},
-
-            icon_send = <View> {
-                width: Fit,
-                height: Fit,
-                <Icon> {
-                    draw_icon: {
-                        svg_file: (ICON_PROMPT),
-                        fn get_color(self) -> vec4 {
-                            return #fff;
-                        }
-                    }
-                    icon_walk: {width: 12, height: 12}
-                }
-            }
-            icon_stop = <View> {
-                width: Fit,
-                height: Fit,
-                visible: false,
-
-                <Icon> {
-                    draw_icon: {
-                        svg_file: (ICON_STOP),
-                        fn get_color(self) -> vec4 {
-                            return #fff;
-                        }
-                    }
-                    icon_walk: {width: 12, height: 12}
-                }
+        prompt_stop_button = <PromptButton> {
+            draw_icon: {
+                svg_file: (ICON_STOP),
             }
         }
     }
 
     ChatPanel = {{ChatPanel}} {
-        width: Fill,
+        width: 650,
         height: Fill,
         margin: {top: 0, left: 20, right: 20, bottom: 20},
 
@@ -407,7 +392,6 @@ live_design! {
                     height: Fill,
 
                     drag_scrolling: false,
-                    auto_tail: true,
 
                     UserChatLine = <UserChatLine> {}
                     ModelChatLine = <ModelChatLine> {}
@@ -423,24 +407,19 @@ live_design! {
     }
 }
 
-#[derive(PartialEq)]
-enum ChatPanelState {
-    Unload {
-        downloaded_model_empty: bool,
+#[derive(Clone, Copy, Debug, Default)]
+enum State {
+    /// `Unknown` is simply the default state, meaning the state has not been loaded yet,
+    /// and therefore indicates a development error if it is encountered.
+    #[default]
+    Unknown,
+    NoModelsAvailable,
+    NoModelSelected,
+    ModelSelectedWithEmptyChat,
+    ModelSelectedWithChat {
+        sticked_to_bottom: bool,
+        is_streaming: bool,
     },
-    Idle,
-    Streaming {
-        auto_scroll_pending: bool,
-        auto_scroll_cancellable: bool,
-    },
-}
-
-impl Default for ChatPanelState {
-    fn default() -> ChatPanelState {
-        ChatPanelState::Unload {
-            downloaded_model_empty: true,
-        }
-    }
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -449,132 +428,42 @@ pub struct ChatPanel {
     view: View,
 
     #[rust]
-    state: ChatPanelState,
+    state: State,
 }
 
 impl Widget for ChatPanel {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        // Temporary fix, PR #98 will bring a better solution
-        if let Event::Startup = event {
-            let store = scope.data.get::<Store>().unwrap();
-            if store.get_loaded_downloaded_file().is_some() {
-                self.update_state_model_loaded(cx);
-            }
-        }
-
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+        self.update_state(scope);
 
         if let Event::Signal = event {
-            let store = scope.data.get_mut::<Store>().unwrap();
-
             match self.state {
-                ChatPanelState::Streaming {
-                    auto_scroll_pending,
-                    auto_scroll_cancellable: _,
+                State::ModelSelectedWithChat {
+                    is_streaming: true,
+                    sticked_to_bottom,
                 } => {
-                    self.state = ChatPanelState::Streaming {
-                        auto_scroll_pending,
-                        auto_scroll_cancellable: true,
-                    };
-
-                    let still_streaming = store
-                        .chats
-                        .get_current_chat()
-                        .unwrap()
-                        .borrow()
-                        .is_streaming;
-                    if still_streaming {
-                        if auto_scroll_pending {
-                            self.scroll_messages_to_bottom(cx);
-                        }
-                    } else {
-                        // Scroll to the bottom when streaming is done
+                    if sticked_to_bottom {
                         self.scroll_messages_to_bottom(cx);
-                        self.state = ChatPanelState::Idle;
                     }
-
-                    self.update_prompt_input(cx);
 
                     // Redraw because we expect to see new or updated chat entries
                     self.redraw(cx);
                 }
-                ChatPanelState::Unload {
-                    downloaded_model_empty: _,
-                } => self.unload_model(cx, store),
+                State::NoModelSelected => {
+                    self.unload_model(cx);
+                }
                 _ => {}
             }
         }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
-        // TODO: Rename "chat_history", "chat_count", etc, they are messages of a chat
-        // can be confused with the actual Chat type.
-        let chat_history;
-        if let Some(chat) = store.chats.get_current_chat() {
-            let model_filename = chat.borrow().model_filename.clone();
-            let initial_letter = get_initial_letter(&model_filename);
-
-            chat_history = chat.borrow().messages.clone();
-
-            let chats_count = chat_history.len();
-            let chat_is_empty = chats_count == 0;
-
-            let model_loaded = store.get_loaded_downloaded_file().is_some();
-
-            let empty_conversation_view = self.view(id!(empty_conversation));
-            empty_conversation_view.set_visible(chat_is_empty && model_loaded);
-            if chat_is_empty {
-                empty_conversation_view
-                    .label(id!(avatar_label))
-                    .set_text(initial_letter.as_str());
-            }
-        } else {
-            chat_history = vec![];
-        }
+        self.update_view(cx, scope);
 
         while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
-                let chats_count = chat_history.len();
-                list.set_item_range(cx, 0, chats_count);
-                while let Some(item_id) = list.next_visible_item(cx) {
-                    if item_id < chats_count {
-                        let chat_line_data = &chat_history[item_id];
-
-                        let item;
-                        let mut chat_line_item;
-                        if chat_line_data.is_assistant() {
-                            let username = chat_line_data.username.as_ref().map_or("", String::as_str);
-                            let initial_letter = get_initial_letter(username);
-
-                            item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
-                            chat_line_item = item.as_chat_line();
-                            chat_line_item.set_sender_name(&username);
-                            chat_line_item.set_regenerate_enabled(false);
-                            chat_line_item.set_avatar_text(&initial_letter);
-                        } else {
-                            item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
-                            chat_line_item = item.as_chat_line();
-                            chat_line_item.set_regenerate_enabled(true);
-                        };
-
-                        chat_line_item.set_message_text(cx, &chat_line_data.content);
-                        chat_line_item.set_message_id(chat_line_data.id);
-
-                        // Disable actions for the last chat line when model is streaming
-                        if matches!(self.state, ChatPanelState::Streaming { .. })
-                            && item_id == chats_count - 1
-                        {
-                            chat_line_item.set_actions_enabled(cx, false);
-                        } else {
-                            chat_line_item.set_actions_enabled(cx, true);
-                        }
-
-                        item.draw_all(cx, &mut Scope::empty());
-                    }
-                }
+                self.draw_messages(cx, scope, &mut list);
             }
         }
 
@@ -585,30 +474,23 @@ impl Widget for ChatPanel {
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
+        let store = scope.data.get_mut::<Store>().unwrap();
 
-        for action in actions {
-            if let ChatHistoryCardAction::ChatSelected(_) = action.as_widget_action().cast() {
-                self.view(id!(empty_conversation)).set_visible(false);
-
-                // Temporary fix, PR #98 will bring a better solution
-                let store = scope.data.get::<Store>().unwrap();
-                if store.get_loaded_downloaded_file().is_some() {
-                    self.update_state_model_loaded(cx);
-                }
+        for action in actions
+            .iter()
+            .filter_map(|action| action.as_widget_action())
+        {
+            if let ChatHistoryCardAction::ChatSelected(_) = action.cast() {
+                self.redraw(cx);
             }
 
-            match action.as_widget_action().cast() {
-                ModelSelectorAction::Selected(downloaded_file) => {
-                    let store = scope.data.get_mut::<Store>().unwrap();
-                    store.load_model(&downloaded_file.file);
-                    self.update_state_model_loaded(cx);
-                }
-                _ => {}
+            if let ModelSelectorAction::Selected(downloaded_file) = action.cast() {
+                store.load_model(&downloaded_file.file);
+                self.redraw(cx)
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ChatAction::Start(file_id) => {
-                    let store = scope.data.get_mut::<Store>().unwrap();
                     let downloaded_file = store
                         .downloads
                         .downloaded_files
@@ -620,86 +502,58 @@ impl WidgetMatchEvent for ChatPanel {
                     store
                         .chats
                         .create_empty_chat_with_model_file(&downloaded_file.file);
-                    self.update_state_model_loaded(cx);
                 }
                 ChatAction::Resume(file_id) => {
-                    let store = scope.data.get_mut::<Store>().unwrap();
                     store.ensure_model_loaded_in_current_chat(file_id);
                 }
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ChatLineAction::Delete(id) => {
-                    let store = scope.data.get_mut::<Store>().unwrap();
                     store.chats.delete_chat_message(id);
                     self.redraw(cx);
                 }
                 ChatLineAction::Edit(id, updated, regenerate) => {
-                    let store = scope.data.get_mut::<Store>().unwrap();
                     store.chats.edit_chat_message(id, updated, regenerate);
-
-                    if regenerate {
-                        self.state = ChatPanelState::Streaming {
-                            auto_scroll_pending: true,
-                            auto_scroll_cancellable: false,
-                        };
-
-                        self.show_prompt_input_stop_icon(cx);
-
-                        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-                        prompt_input.set_text_and_redraw(cx, "");
-                        prompt_input.set_cursor(0, 0);
-                        self.update_prompt_input(cx);
-                    }
                     self.redraw(cx);
                 }
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
-                ChatPanelAction::UnloadIfActive(file_id) => {
-                    let store = scope.data.get_mut::<Store>().unwrap();
-                    if store
-                        .chats
-                        .get_current_chat()
-                        .map_or(false, |chat| chat.borrow().file_id == file_id)
-                    {
-                        self.unload_model(cx, store);
-                        store.chats.eject_model().expect("Failed to eject model");
-                    }
+            if let ChatPanelAction::UnloadIfActive(file_id) = action.cast() {
+                if store
+                    .chats
+                    .get_current_chat()
+                    .map_or(false, |chat| chat.borrow().file_id == file_id)
+                {
+                    self.unload_model(cx);
+                    store.chats.eject_model().expect("Failed to eject model");
                 }
-                _ => {}
             }
         }
 
-        self.jump_to_bottom_actions(cx, actions, scope);
+        if self.button(id!(jump_to_bottom)).clicked(actions) {
+            self.scroll_messages_to_bottom(cx);
+            self.redraw(cx);
+        }
 
         match self.state {
-            ChatPanelState::Idle => {
+            State::ModelSelectedWithChat {
+                is_streaming: false,
+                ..
+            }
+            | State::ModelSelectedWithEmptyChat => {
                 self.handle_prompt_input_actions(cx, actions, scope);
             }
-            ChatPanelState::Streaming {
-                auto_scroll_pending: _,
-                auto_scroll_cancellable,
+            State::ModelSelectedWithChat {
+                is_streaming: true, ..
             } => {
-                let list = self.portal_list(id!(chat));
-                if auto_scroll_cancellable && list.scrolled(actions) {
-                    // Cancel auto-scrolling if the user scrolls up
-                    self.state = ChatPanelState::Streaming {
-                        auto_scroll_pending: false,
-                        auto_scroll_cancellable,
-                    };
-                }
-
-                if let Some(fe) = self
-                    .view(id!(main_prompt_input.prompt_icon))
-                    .finger_up(actions)
+                if self
+                    .button(id!(main_prompt_input.prompt_stop_button))
+                    .clicked(actions)
                 {
-                    if fe.was_tap() {
-                        let store = scope.data.get_mut::<Store>().unwrap();
-                        store.chats.cancel_chat_streaming();
-                    }
+                    store.chats.cancel_chat_streaming();
                 }
             }
             _ => {}
@@ -715,51 +569,44 @@ impl WidgetMatchEvent for ChatPanel {
 }
 
 impl ChatPanel {
-    fn jump_to_bottom_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if let Some(fe) = self.view(id!(jump_to_bottom)).finger_up(actions) {
-            if fe.was_tap() {
-                self.scroll_messages_to_bottom(cx);
-                self.redraw(cx);
-            }
-        }
+    fn update_state(&mut self, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+        let list = self.portal_list(id!(chat));
 
-        let jump_to_bottom = self.view(id!(jump_to_bottom));
-        match self.state {
-            ChatPanelState::Streaming {
-                auto_scroll_pending: true,
-                ..
-            } => {
-                // We avoid to show this button when the list is auto-scrolling upon
-                // receiving a new message. Otherwise, the button flicks.
-                jump_to_bottom.set_visible(false);
-            }
-            ChatPanelState::Idle | ChatPanelState::Streaming { .. } => {
-                let store = scope.data.get_mut::<Store>().unwrap();
-                let has_messages = store
-                    .chats
-                    .get_current_chat()
-                    .map_or(false, |chat| !chat.borrow().messages.is_empty());
-
-                let list = self.portal_list(id!(chat));
-                jump_to_bottom.set_visible(has_messages && list.further_items_bellow_exist());
-            }
-            ChatPanelState::Unload {
-                downloaded_model_empty: _,
-            } => {
-                jump_to_bottom.set_visible(false);
-            }
-        }
+        self.state = if store.downloads.downloaded_files.is_empty() {
+            State::NoModelsAvailable
+        } else if store.chats.loaded_model.is_none() {
+            State::NoModelSelected
+        } else {
+            store
+                .chats
+                .get_current_chat()
+                .map_or(State::ModelSelectedWithEmptyChat, |chat| {
+                    if chat.borrow().messages.is_empty() {
+                        State::ModelSelectedWithEmptyChat
+                    } else {
+                        State::ModelSelectedWithChat {
+                            sticked_to_bottom: !list.further_items_bellow_exist()
+                                || !matches!(self.state, State::ModelSelectedWithChat { .. }),
+                            is_streaming: chat.borrow().is_streaming,
+                        }
+                    }
+                })
+        };
     }
 
     fn update_prompt_input(&mut self, cx: &mut Cx) {
         match self.state {
-            ChatPanelState::Idle => {
-                self.enable_or_disable_prompt_input(cx);
-                self.show_prompt_input_send_icon(cx);
+            State::ModelSelectedWithEmptyChat
+            | State::ModelSelectedWithChat {
+                is_streaming: false,
+                ..
+            } => {
+                self.enable_or_disable_prompt_buttons(cx);
+                self.show_prompt_send_button(cx);
             }
-            ChatPanelState::Streaming {
-                auto_scroll_pending: _,
-                auto_scroll_cancellable: _,
+            State::ModelSelectedWithChat {
+                is_streaming: true, ..
             } => {
                 let prompt_input = self.text_input(id!(main_prompt_input.prompt));
                 prompt_input.apply_over(
@@ -768,15 +615,13 @@ impl ChatPanel {
                         draw_text: { prompt_enabled: 0.0 }
                     },
                 );
-                self.show_prompt_input_stop_icon(cx);
+                self.show_prompt_input_stop_button(cx);
             }
-            ChatPanelState::Unload {
-                downloaded_model_empty: _,
-            } => {}
+            _ => {}
         }
     }
 
-    fn enable_or_disable_prompt_input(&mut self, cx: &mut Cx) {
+    fn enable_or_disable_prompt_buttons(&mut self, cx: &mut Cx) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         let enable = if !prompt_input.text().is_empty() {
             1.0
@@ -792,36 +637,45 @@ impl ChatPanel {
         );
     }
 
-    fn show_prompt_input_send_icon(&mut self, cx: &mut Cx) {
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
-            cx,
-            live! {
-                icon_send = { visible: true }
-                icon_stop = { visible: false }
-            },
-        );
+    fn show_prompt_send_button(&mut self, cx: &mut Cx) {
+        self.button(id!(main_prompt_input.prompt_send_button))
+            .set_visible(true);
+        self.button(id!(main_prompt_input.prompt_stop_button))
+            .set_visible(false);
+
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         if !prompt_input.text().is_empty() {
-            self.enable_prompt_input_icon(cx);
+            self.enable_prompt_buttons(cx);
         } else {
-            self.disable_prompt_input_icon(cx);
+            self.disable_prompt_buttons(cx);
         }
     }
 
-    fn show_prompt_input_stop_icon(&mut self, cx: &mut Cx) {
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
-            cx,
-            live! {
-                icon_send = { visible: false }
-                icon_stop = { visible: true }
-            },
-        );
-        self.enable_prompt_input_icon(cx);
+    fn show_prompt_input_stop_button(&mut self, cx: &mut Cx) {
+        self.button(id!(main_prompt_input.prompt_send_button))
+            .set_visible(false);
+        self.button(id!(main_prompt_input.prompt_stop_button))
+            .set_visible(true);
+
+        self.enable_prompt_buttons(cx);
     }
 
-    fn enable_prompt_input_icon(&mut self, cx: &mut Cx) {
+    fn enable_prompt_buttons(&mut self, cx: &mut Cx) {
         let enabled_color = vec3(0.0, 0.0, 0.0);
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
+        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
+        send_button.set_enabled(true);
+        send_button.apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: (enabled_color)
+                }
+            },
+        );
+
+        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
+        stop_button.set_enabled(true);
+        stop_button.apply_over(
             cx,
             live! {
                 draw_bg: {
@@ -831,9 +685,22 @@ impl ChatPanel {
         );
     }
 
-    fn disable_prompt_input_icon(&mut self, cx: &mut Cx) {
+    fn disable_prompt_buttons(&mut self, cx: &mut Cx) {
         let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
-        self.view(id!(main_prompt_input.prompt_icon)).apply_over(
+        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
+        send_button.set_enabled(true);
+        send_button.apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: (disabled_color)
+                }
+            },
+        );
+
+        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
+        stop_button.set_enabled(false);
+        stop_button.apply_over(
             cx,
             live! {
                 draw_bg: {
@@ -848,58 +715,22 @@ impl ChatPanel {
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
-    fn update_state_model_loaded(&mut self, cx: &mut Cx) {
-        self.state = ChatPanelState::Idle;
-        self.view(id!(main)).set_visible(true);
-        self.view(id!(empty_conversation)).set_visible(true);
-        self.view(id!(no_model)).set_visible(false);
-        self.view(id!(no_downloaded_model)).set_visible(false);
-        self.redraw(cx);
-    }
-
-    fn unload_model(&mut self, cx: &mut Cx, store: &mut Store) {
-        let downloaded_model_empty = store.downloads.downloaded_files.is_empty();
-        self.state = ChatPanelState::Unload {
-            downloaded_model_empty,
-        };
-
-        self.view(id!(main)).set_visible(false);
-        self.view(id!(empty_conversation)).set_visible(false);
-
-        match self.state {
-            ChatPanelState::Unload {
-                downloaded_model_empty: true,
-            } => {
-                self.view(id!(no_downloaded_model)).set_visible(true);
-                self.view(id!(no_model)).set_visible(false);
-            }
-            ChatPanelState::Unload {
-                downloaded_model_empty: false,
-            } => {
-                self.view(id!(no_model)).set_visible(true);
-                self.view(id!(no_downloaded_model)).set_visible(false)
-            }
-            _ => {}
-        }
-
+    fn unload_model(&mut self, cx: &mut Cx) {
         self.model_selector(id!(model_selector)).deselect(cx);
         self.view.redraw(cx);
     }
 
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-
         if let Some(_text) = prompt_input.changed(actions) {
             self.update_prompt_input(cx);
         }
 
-        if let Some(fe) = self
-            .view(id!(main_prompt_input.prompt_icon))
-            .finger_up(&actions)
+        if self
+            .button(id!(main_prompt_input.prompt_send_button))
+            .clicked(&actions)
         {
-            if fe.was_tap() {
-                self.send_message(cx, scope, prompt_input.text());
-            }
+            self.send_message(cx, scope, prompt_input.text());
         }
 
         if let Some(prompt) = prompt_input.returned(actions) {
@@ -912,7 +743,6 @@ impl ChatPanel {
             return;
         }
 
-        self.show_prompt_input_stop_icon(cx);
         let store = scope.data.get_mut::<Store>().unwrap();
         store.chats.send_chat_message(prompt.clone());
 
@@ -921,15 +751,119 @@ impl ChatPanel {
         prompt_input.set_cursor(0, 0);
         self.update_prompt_input(cx);
 
-        self.view(id!(empty_conversation)).set_visible(false);
-
         // Scroll to the bottom when the message is sent
         self.scroll_messages_to_bottom(cx);
+    }
 
-        self.state = ChatPanelState::Streaming {
-            auto_scroll_pending: true,
-            auto_scroll_cancellable: false,
-        };
+    fn update_view(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
+        self.update_visibilities();
+        self.update_prompt_input(cx);
+
+        match self.state {
+            State::ModelSelectedWithEmptyChat => {
+                let store = scope.data.get::<Store>().unwrap();
+
+                self.view(id!(empty_conversation))
+                    .label(id!(avatar_label))
+                    .set_text(&get_model_initial_letter(store).unwrap().to_string());
+            }
+            _ => {}
+        }
+    }
+
+    fn update_visibilities(&mut self) {
+        let empty_conversation = self.view(id!(empty_conversation));
+        let jump_to_bottom = self.button(id!(jump_to_bottom));
+        let main = self.view(id!(main));
+        let no_downloaded_model = self.view(id!(no_downloaded_model));
+        let no_model = self.view(id!(no_model));
+
+        match self.state {
+            State::NoModelsAvailable => {
+                empty_conversation.set_visible(false);
+                jump_to_bottom.set_visible(false);
+                main.set_visible(false);
+                no_model.set_visible(false);
+
+                no_downloaded_model.set_visible(true);
+            }
+            State::NoModelSelected => {
+                empty_conversation.set_visible(false);
+                jump_to_bottom.set_visible(false);
+                main.set_visible(false);
+                no_downloaded_model.set_visible(false);
+
+                no_model.set_visible(true);
+            }
+            State::ModelSelectedWithEmptyChat => {
+                jump_to_bottom.set_visible(false);
+                no_downloaded_model.set_visible(false);
+                no_model.set_visible(false);
+
+                empty_conversation.set_visible(true);
+                main.set_visible(true);
+            }
+            State::ModelSelectedWithChat {
+                sticked_to_bottom, ..
+            } => {
+                empty_conversation.set_visible(false);
+                no_downloaded_model.set_visible(false);
+                no_model.set_visible(false);
+
+                main.set_visible(true);
+                jump_to_bottom.set_visible(!sticked_to_bottom);
+            }
+            _ => {}
+        }
+    }
+
+    fn draw_messages(&self, cx: &mut Cx2d, scope: &mut Scope, list: &mut RefMut<PortalList>) {
+        let store = scope.data.get::<Store>().unwrap();
+        let messages = get_chat_messages(store).unwrap();
+        let messages_count = messages.len();
+
+        list.set_item_range(cx, 0, messages_count);
+        while let Some(item_id) = list.next_visible_item(cx) {
+            if item_id < messages_count {
+                let chat_line_data = &messages[item_id];
+
+                let item;
+                let mut chat_line_item;
+                if chat_line_data.is_assistant() {
+                    item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
+                    chat_line_item = item.as_chat_line();
+
+                    let username = chat_line_data.username.as_ref().map_or("", String::as_str);
+                    chat_line_item.set_sender_name(&username);
+                    chat_line_item.set_regenerate_enabled(false);
+                    chat_line_item
+                        .set_avatar_text(&get_initial_letter(username).unwrap().to_string());
+                } else {
+                    item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
+                    chat_line_item = item.as_chat_line();
+                    chat_line_item.set_regenerate_enabled(true);
+                };
+
+                chat_line_item.set_message_text(cx, &chat_line_data.content);
+                chat_line_item.set_message_id(chat_line_data.id);
+
+                // Disable actions for the last chat line when model is streaming
+                if matches!(
+                    self.state,
+                    State::ModelSelectedWithChat {
+                        is_streaming: true,
+                        ..
+                    }
+                ) && item_id == messages_count - 1
+                {
+                    chat_line_item.set_actions_enabled(cx, false);
+                } else {
+                    chat_line_item.set_actions_enabled(cx, true);
+                }
+
+                item.draw_all(cx, &mut Scope::empty());
+            }
+        }
     }
 }
 
@@ -940,10 +874,20 @@ pub enum ChatPanelAction {
     None,
 }
 
-fn get_initial_letter(word: &str) -> String {
-    word.chars()
-        .next()
-        .unwrap_or_default()
-        .to_uppercase()
-        .to_string()
+fn get_chat(store: &Store) -> Option<&RefCell<Chat>> {
+    store.chats.get_current_chat()
+}
+
+fn get_initial_letter(word: &str) -> Option<char> {
+    word.chars().next()
+}
+
+fn get_model_initial_letter(store: &Store) -> Option<char> {
+    let chat = get_chat(store)?;
+    let initial_letter = get_initial_letter(&chat.borrow().model_filename)?;
+    Some(initial_letter.to_ascii_uppercase())
+}
+
+fn get_chat_messages(store: &Store) -> Option<Ref<Vec<ChatMessage>>> {
+    get_chat(store).map(|chat| Ref::map(chat.borrow(), |chat| &chat.messages))
 }

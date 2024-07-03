@@ -9,7 +9,7 @@ use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
 };
-use crate::shared::modal::ModalWidgetRefExt;
+use crate::shared::portal::PortalWidgetRefExt;
 use makepad_widgets::*;
 
 live_design! {
@@ -18,6 +18,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
+    import crate::shared::portal::*;
     import crate::shared::modal::*;
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
@@ -98,40 +99,34 @@ live_design! {
                     }
                 }
 
-                modal_root = <Modal> {
-                    model_card_view_all_modal_view = <ModalView> {
-                        content = {
-                            model_card_view_all_modal = <ModelCardViewAllModal> {}
+                portal_root = <Portal> {
+                    modal_model_card_view_all_portal_view = <PortalView> {
+                        modal = <Modal> {
+                            content = {
+                                model_card_view_all_modal = <ModelCardViewAllModal> {}
+                            }
                         }
                     }
 
-                    delete_model_modal_view = <ModalView> {
-                        content = {
-                            delete_model_modal = <DeleteModelModal> {}
+                    modal_delete_model_portal_view = <PortalView> {
+                        modal = <Modal> {
+                            content = {
+                                delete_model_modal = <DeleteModelModal> {}
+                            }
                         }
                     }
 
-                    model_info_modal_view = <ModalView> {
-                        content = {
-                            model_info_modal = <ModelInfoModal> {}
+                    modal_model_info_portal_view = <PortalView> {
+                        modal = <Modal> {
+                            content = {
+                                model_info_modal = <ModelInfoModal> {}
+                            }
                         }
                     }
 
-                    popup_download_success_modal_view = <ModalView> {
+                    popup_download_success_portal_view = <PortalView> {
                         align: {x: 1, y: 0}
-
-                        // TODO: By setting this on Fit we dissable the closing on click outside of modal
-                        // functionallity. We need to rethink the Modal widget so its more generic,
-                        // kinda like a portal that lets you render stuff from anywhere, for now
-                        // we use it as is, with this little hack.
-                        bg_view = {
-                            width: Fit
-                            height: Fit
-                            show_bg: false
-                        }
-                        content = {
-                            popup_download_success = <DownloadNotificationPopup> {}
-                        }
+                        popup_download_success = <DownloadNotificationPopup> {}
                     }
                 }
             }
@@ -187,7 +182,7 @@ impl MatchEvent for App {
             .selected_to_visible(
                 cx,
                 &self.ui,
-                &actions,
+                actions,
                 ids!(
                     application_pages.discover_frame,
                     application_pages.chat_frame,
@@ -302,8 +297,8 @@ impl App {
                 }
             }
 
-            let mut modal = self.ui.modal(id!(modal_root));
-            let _ = modal.show_modal_view_by_id(cx, live_id!(popup_download_success_modal_view));
+            let mut portal = self.ui.portal(id!(portal_root));
+            let _ = portal.show_portal_view_by_id(cx, live_id!(popup_download_success_portal_view));
         }
     }
 }

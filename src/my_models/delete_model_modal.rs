@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::FileID;
 
-use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::modal::ModalAction};
+use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::portal::PortalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -9,6 +9,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::MoxinButton;
     import crate::shared::resource_imports::*;
 
     DeleteModelModal = {{DeleteModelModal}} {
@@ -19,7 +20,7 @@ live_design! {
             flow: Down
             width: 600
             height: Fit
-            padding: {top: 50, right: 30 bottom: 30 left: 50}
+            padding: {top: 44, right: 30 bottom: 30 left: 50}
             spacing: 10
 
             show_bg: true
@@ -33,10 +34,11 @@ live_design! {
                 height: Fit,
                 flow: Right
 
+                padding: {top: 8, bottom: 20}
+
                 title = <View> {
                     width: Fit,
                     height: Fit,
-                    padding: {bottom: 20}
 
                     model_name = <Label> {
                         text: "Delete Model"
@@ -49,21 +51,19 @@ live_design! {
 
                 filler_x = <View> {width: Fill, height: Fit}
 
-                close_button = <RoundedView> {
+                close_button = <MoxinButton> {
                     width: Fit,
                     height: Fit,
-                    align: {x: 0.5, y: 0.5}
-                    cursor: Hand
 
-                    button_icon = <Icon> {
-                        draw_icon: {
-                            svg_file: (ICON_CLOSE),
-                            fn get_color(self) -> vec4 {
-                                return #000;
-                            }
+                    margin: {top: -8}
+
+                    draw_icon: {
+                        svg_file: (ICON_CLOSE),
+                        fn get_color(self) -> vec4 {
+                            return #000;
                         }
-                        icon_walk: {width: 12, height: 12}
                     }
+                    icon_walk: {width: 12, height: 12}
                 }
             }
 
@@ -91,11 +91,10 @@ live_design! {
                     align: {x: 1.0, y: 0.5}
                     spacing: 20
 
-                    cancel_button = <RoundedView> {
+                    cancel_button = <MoxinButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
-                        cursor: Hand
 
                         draw_bg: {
                             instance radius: 2.0,
@@ -104,31 +103,27 @@ live_design! {
                             color: #fff,
                         }
 
-                        <Label> {
-                            text: "Cancel"
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 10},
-                                color: #x0
-                            }
+                        text: "Cancel"
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 10},
+                            color: #x0
                         }
                     }
-                    delete_button = <RoundedView> {
+
+                    delete_button = <MoxinButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
-                        cursor: Hand
 
                         draw_bg: {
                             instance radius: 2.0,
                             color: #D92D20,
                         }
 
-                        <Label> {
-                            text: "Delete"
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 10},
-                                color: #fff
-                            }
+                        text: "Delete"
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 10},
+                            color: #fff
                         }
                     }
                 }
@@ -158,7 +153,12 @@ impl Widget for DeleteModelModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope.data.get::<Store>().unwrap().downloads.downloaded_files;
+        let downloaded_files = &scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files;
 
         let downloaded_file = downloaded_files
             .iter()
@@ -181,37 +181,31 @@ impl WidgetMatchEvent for DeleteModelModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
-        if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
-            }
+        if self.button(id!(close_button)).clicked(actions) {
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
-        if let Some(fe) = self
-            .view(id!(wrapper.body.actions.delete_button))
-            .finger_up(actions)
+        if self
+            .button(id!(wrapper.body.actions.delete_button))
+            .clicked(actions)
         {
-            if fe.was_tap() {
-                let store = scope.data.get_mut::<Store>().unwrap();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ChatPanelAction::UnloadIfActive(self.file_id.clone()),
-                );
-                store
-                    .delete_file(self.file_id.clone())
-                    .expect("Failed to delete file");
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
-            }
+            let store = scope.data.get_mut::<Store>().unwrap();
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ChatPanelAction::UnloadIfActive(self.file_id.clone()),
+            );
+            store
+                .delete_file(self.file_id.clone())
+                .expect("Failed to delete file");
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
-        if let Some(fe) = self
-            .view(id!(wrapper.body.actions.cancel_button))
-            .finger_up(actions)
+        if self
+            .button(id!(wrapper.body.actions.cancel_button))
+            .clicked(actions)
         {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
-            }
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
     }
 }

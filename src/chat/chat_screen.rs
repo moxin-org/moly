@@ -20,14 +20,17 @@ live_design! {
             chat_history = <ChatHistory> {}
         }
 
-        chat_panel = <ChatPanel> {
+        <View> {
             width: Fill,
             height: Fill,
+            align: {x: 0.5},
             padding: {top: 48, bottom: 48 }
+
+            chat_panel = <ChatPanel> {}
         }
 
         <View> {
-            width: 200,
+            width: 10,
             height: Fill,
             margin: {top: 48, right: 48, bottom: 48}
         }

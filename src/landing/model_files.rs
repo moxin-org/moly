@@ -8,12 +8,67 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::MoxinRadioButtonTab;
 
     import crate::landing::model_files_item::ModelFilesRow;
     import crate::landing::model_files_list::ModelFilesList;
 
     ICON_ADD = dep("crate://self/resources/icons/add.svg")
     ICON_REMOVE = dep("crate://self/resources/icons/remove.svg")
+
+    ActionToggleButton = <MoxinRadioButtonTab> {
+        width: Fit,
+        height: 40,
+        padding: { left: 20, top: 10, bottom: 10, right: 20 },
+        label_walk: { margin: 0 }
+        draw_text: {
+            text_style: <BOLD_FONT>{font_size: 9},
+            color_selected: #475467;
+            color_unselected: #475467;
+            color_unselected_hover: #173437;
+        }
+        draw_radio: {
+            color_unselected: #D0D5DD,
+            color_selected: #fff,
+            color_unselected_hover: #D0D5DD,
+            border_color: #D0D5DD,
+            border_width: 1.0,
+            radius: 7.0
+        }
+    }
+
+    ModelFilesActions = <View> {
+        width: Fill,
+        height: Fit,
+
+        align: {y: 0.5},
+        spacing: 10,
+
+        margin: { bottom: 12 },
+
+        <Label> {
+            draw_text: {
+                text_style: <BOLD_FONT>{font_size: 9},
+                color: #667085
+            }
+            text: "SHOW"
+        }
+
+        tab_buttons = <RoundedView> {
+            width: Fit,
+            height: Fit,
+
+            draw_bg: {
+                color: #D0D5DD
+                radius: 7.0
+            }
+
+            show_all_button =  <ActionToggleButton> {}
+            only_recommended_button = <ActionToggleButton> {
+                animator: {selected = {default: on}}
+            }
+        }
+    }
 
     ModelFilesHeader = <ModelFilesRow> {
         show_bg: true,
@@ -81,51 +136,19 @@ live_design! {
         }
     }
 
-    ModelFilesFooter = <RoundedYView> {
-        width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5},
-
-        show_bg: true,
-        draw_bg: {
-            color: #fff
-            radius: vec2(1.0, 3.0)
-        }
-
-        all_files_link = <FooterLink> {
-            icon = { draw_icon: { svg_file: (ICON_ADD) }}
-            link = { text: "Show All Files (12)" }
-        }
-
-        only_recommended_link = <FooterLink> {
-            visible: false,
-            icon = {
-                padding: { top: 10 }
-                draw_icon: { svg_file: (ICON_REMOVE) }
-            }
-            link = { text: "Show Only Recommended Files" }
-        }
-    }
-
     ModelFiles = {{ModelFiles}}<RoundedView> {
         width: Fill,
         height: Fit,
         flow: Down,
 
-        show_bg: true,
-        draw_bg: {
-            color: #EAECF0
-            radius: 3.0
-        }
-
+        model_files_actions = <ModelFilesActions> {}
         <ModelFilesHeader> {}
         <ModelFilesList> { show_featured: true}
-
         remaining_files_wrapper = <View> {
             width: Fill,
             height: 0,
             remaining_files = <ModelFilesList> { show_featured: false}
         }
-
-        footer = <ModelFilesFooter> {}
 
         show_all_animation_progress: 0.0,
         animator: {
@@ -181,8 +204,13 @@ impl Widget for ModelFiles {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
         let files_count = model.files.len();
-        let all_files_link = self.view(id!(all_files_link.link));
-        all_files_link.set_text(&format!("Show All Files ({})", files_count));
+        let featured_count = model.files.iter().filter(|f| f.file.featured).count();
+
+        let show_all_button = self.radio_button(id!(tab_buttons.show_all_button));
+        show_all_button.set_text(&format!("All Files ({})", files_count));
+
+        let show_all_button = self.radio_button(id!(tab_buttons.only_recommended_button));
+        show_all_button.set_text(&format!("Only Recommended Files ({})", featured_count));
 
         let _ = self.view.draw_walk(cx, scope, walk);
 
@@ -196,20 +224,23 @@ impl Widget for ModelFiles {
 }
 
 impl WidgetMatchEvent for ModelFiles {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(fe) = self.view(id!(all_files_link)).finger_up(&actions) {
-            if fe.was_tap() {
-                self.apply_links_visibility(cx, true);
-                self.animator_play(cx, id!(show_all.show));
-                self.redraw(cx);
-            }
-        }
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let actions_tab_buttons = self.widget(id!(model_files_actions)).radio_button_set(ids!(
+            tab_buttons.show_all_button,
+            tab_buttons.only_recommended_button,
+        ));
 
-        if let Some(fe) = self.view(id!(only_recommended_link)).finger_up(&actions) {
-            if fe.was_tap() {
-                self.apply_links_visibility(cx, false);
-                self.animator_play(cx, id!(show_all.hide));
-                self.redraw(cx);
+        if let Some(index) = actions_tab_buttons.selected(cx, actions) {
+            match index {
+                0 => {
+                    self.animator_play(cx, id!(show_all.show));
+                    self.redraw(cx);
+                }
+                1 => {
+                    self.animator_play(cx, id!(show_all.hide));
+                    self.redraw(cx);
+                }
+                _ => {}
             }
         }
 
@@ -218,6 +249,8 @@ impl WidgetMatchEvent for ModelFiles {
                 StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
                     self.hide_immediate(cx);
                     self.actual_height = None;
+                    self.radio_button(id!(only_recommended_button)).select(cx, scope);
+                    self.redraw(cx);
                 }
                 _ => {}
             }
@@ -226,15 +259,7 @@ impl WidgetMatchEvent for ModelFiles {
 }
 
 impl ModelFiles {
-    fn apply_links_visibility(&mut self, cx: &mut Cx, show_all: bool) {
-        self.view(id!(all_files_link))
-            .apply_over(cx, live! {visible: (!show_all)});
-        self.view(id!(only_recommended_link))
-            .apply_over(cx, live! {visible: (show_all)});
-    }
-
     fn hide_immediate(&mut self, cx: &mut Cx) {
-        self.apply_links_visibility(cx, false);
         self.view(id!(remaining_files_wrapper))
             .apply_over(cx, live! {height: 0});
         self.show_all_animation_progress = 0.0;

@@ -3,7 +3,7 @@ use moxin_protocol::data::{File, FileID};
 
 use crate::shared::actions::DownloadAction;
 
-use super::modal::ModalAction;
+use super::portal::PortalAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -11,6 +11,7 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::resource_imports::*;
+    import crate::shared::widgets::MoxinButton;
     import crate::landing::shared::*;
     import makepad_draw::shader::std::*;
 
@@ -91,21 +92,19 @@ live_design! {
         }
     }
 
-    PopupCloseButton = <RoundedView> {
+    PopupCloseButton = <MoxinButton> {
         width: Fit,
         height: Fit,
-        align: {x: 0.5, y: 0.5}
-        cursor: Hand
 
-        button_icon = <Icon> {
-            draw_icon: {
-                svg_file: (ICON_CLOSE),
-                fn get_color(self) -> vec4 {
-                    return #000;
-                }
+        margin: {top: -8}
+
+        draw_icon: {
+            svg_file: (ICON_CLOSE),
+            fn get_color(self) -> vec4 {
+                return #000;
             }
-            icon_walk: {width: 10, height: 10}
         }
+        icon_walk: {width: 10, height: 10}
     }
 
     NotificationIcons = <View> {
@@ -241,10 +240,8 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
-        if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
-            }
+        if self.button(id!(close_button)).clicked(actions) {
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
         if self
@@ -253,7 +250,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
         {
             // TODO: Abstract the navigation actions on a single enum for the whole app.
             cx.widget_action(widget_uid, &scope.path, PopupAction::NavigateToMyModels);
-            cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
         if self.link_label(id!(retry_link)).clicked(actions) {
@@ -263,7 +260,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
                 &scope.path,
                 DownloadAction::Play(file_id.clone()),
             );
-            cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
 
         if self.link_label(id!(cancel_link)).clicked(actions) {
@@ -273,7 +270,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
                 &scope.path,
                 DownloadAction::Cancel(file_id.clone()),
             );
-            cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
     }
 }

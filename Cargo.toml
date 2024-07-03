@@ -12,7 +12,7 @@ members = [
 name = "moxin"
 version = "0.1.0"
 edition = "2021"
-description = "A desktop GUI client for downloading and chatting with AI LLMs"
+description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moxin_app` to avoid naming conflicts
 ## with the `moxin` binary defined by the `moxin-runner` crate.
@@ -29,6 +29,7 @@ moxin-fake-backend = { path = "moxin-fake-backend" }
 makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "moxin-release-v1" }
 
 robius-open = "0.1.0"
+robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
 
 chrono = "0.4"
 directories = "5.0.1"
@@ -42,26 +43,28 @@ rand = "0.8.5"
 rfd = "0.14.1"
 
 
-## Configuration for `cargo bundle`
-[package.metadata.bundle]
-identifier = "com.moxin-org.moxin"
-long_description = """
-Moxin is a desktop GUI client that lets you browse AI Large Language Models (LLMs), download them,
-and run them locally to chat with the models.
-Moxin is built using the Makepad UI framework (https://github.com/makepad/makepad)
-and Project Robius platform abstractions (https://github.com/project-robius),
-and currently runs on all three major desktop platforms: Windows, macOS, and Linux.
-Moxin uses the wasmedge WASM runtime to locally run the AI models.
-"""
-
 ## Configuration for `cargo packager`
 [package.metadata.packager]
 product_name = "Moxin"
 identifier = "com.moxin-org.moxin"
 category = "Utility"
+authors = [ "Moxin Organization <moxin-org@github.com>" ]
 publisher = "moxin-org"
+license_file = "LICENSE"
+copyright = "Copyright 2023-2024, Project Robius, Moxin Organization"
 homepage = "https://github.com/moxin-org"
-icons = ["app_icon128x128.png"]
+### Note: there is an 80-character max for each line of the `long_description`.
+long_description = """
+Moxin is a desktop app that lets you browse AI Large Language Models (LLMs),
+download them, and run them locally to chat with the models.
+Moxin uses the Makepad UI framework (https://github.com/makepad/makepad)
+and Project Robius platform abstractions (https://github.com/project-robius),
+and currently runs on major desktop platforms: macOS and Linux
+(Windows support is coming soon).
+Moxin uses the WasmEdge WASM runtime (https://github.com/WasmEdge/WasmEdge)
+to locally run the AI models efficiently across varying hardware.
+"""
+icons = ["./packaging/app_icon128x128.png"]
 out_dir = "./dist"
 ## Note: the `moxin-runner` crate binary is named `moxin`,
 ##       while the main `moxin` crate binary is named `_moxin_app`.
@@ -117,6 +120,9 @@ resources = [
 ## * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
 ##   which is currently `/usr/lib/moxin-runner`.
 ##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
+##   * On Linux, we also strip the binaries of unneeded content, as required for Debian packages.
+##   * For Debian and Pacman packages, we also auto-generate the list of dependencies required by moxin,
+##     making sure to add `curl` since it is used by an invocation in `moxin-runner`.
 ##
 before-each-package-command = """
 export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
@@ -128,11 +134,32 @@ elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
     if [ "$CARGO_PACKAGER_FORMAT" = appimage ]; then \
         MAKEPAD_PACKAGE_DIR=../../usr/lib/moxin  cargo build --workspace --release; \
     else \
-        MAKEPAD_PACKAGE_DIR=/usr/lib/moxin  cargo build --workspace --release; \
-    fi; \
+        MAKEPAD_PACKAGE_DIR=/usr/lib/moxin  cargo build --workspace --release --features "reqwest/native-tls-vendored"; \
+        if [ "$CARGO_PACKAGER_FORMAT" = deb ]; then \
+            for path in $(ldd target/release/_moxin_app | awk '{print $3}'); do \
+                basename "$path" ; \
+            done \
+                | xargs dpkg -S 2> /dev/null | awk '{print $1}' | awk -F ':' '{print $1}' | sort | uniq > ./dist/depends_deb.txt; \
+            echo "curl" >> ./dist/depends_deb.txt; \
+        fi; \
+    fi \
+    && strip --strip-unneeded --remove-section=.comment --remove-section=.note target/release/_moxin_app target/release/moxin; \
 else exit 2; \
 fi; \
 """
+
+deep_link_protocols = [
+    { schemes = ["moxin"], role = "viewer" }, ## `name` is left as default
+]
+
+[package.metadata.packager.deb]
+depends = "./dist/depends_deb.txt"
+desktop_template = "./packaging/moxin.desktop"
+section = "utils"
+
+[package.metadata.packager.appimage]
+## `curl` is needed for `moxin-runner` to auto-install wasmedge.
+bins = [ "/usr/bin/curl" ]
 
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
@@ -143,7 +170,7 @@ frameworks = [
 
 ## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
 [package.metadata.packager.dmg]
-background = "./Moxin macOS dmg background.png"
+background = "./packaging/Moxin macOS dmg background.png"
 window_size = { width = 960, height = 540 }
 app_position = { x = 200, y = 250 }
 application_folder_position = { x = 760, y = 250 }

@@ -28,7 +28,7 @@ live_design! {
     FadeView = <CachedView> {
         draw_bg: {
             instance opacity: 1.0
-            
+
             fn pixel(self) -> vec4 {
                 let color = sample2d_rt(self.image, self.pos * self.scale + self.shift) + vec4(self.marked, 0.0, 0.0, 0.0);
                 return Pal::premul(vec4(color.xyz, color.w * self.opacity))
@@ -186,12 +186,42 @@ live_design! {
 
         draw_icon: {
             instance color: #fff
+            instance color_hover: #000
+            uniform rotation_angle: 0.0,
+
             fn get_color(self) -> vec4 {
-                return mix(
-                    self.color,
-                    mix(self.color, #f, 0.2),
-                    self.hover
+                return mix(self.color, mix(self.color, self.color_hover, 0.2), self.hover)
+            }
+
+            // Support rotation of the icon
+            fn clip_and_transform_vertex(self, rect_pos: vec2, rect_size: vec2) -> vec4 {
+                let clipped: vec2 = clamp(
+                    self.geom_pos * rect_size + rect_pos,
+                    self.draw_clip.xy,
+                    self.draw_clip.zw
                 )
+                self.pos = (clipped - rect_pos) / rect_size
+
+                // Calculate the texture coordinates based on the rotation angle
+                let angle_rad = self.rotation_angle * 3.14159265359 / 180.0;
+                let cos_angle = cos(angle_rad);
+                let sin_angle = sin(angle_rad);
+                let rot_matrix = mat2(
+                    cos_angle, -sin_angle,
+                    sin_angle, cos_angle
+                );
+                self.tex_coord1 = mix(
+                    self.icon_t1.xy,
+                    self.icon_t2.xy,
+                    (rot_matrix * (self.pos.xy - vec2(0.5))) + vec2(0.5)
+                );
+
+                return self.camera_projection * (self.camera_view * (self.view_transform * vec4(
+                    clipped.x,
+                    clipped.y,
+                    self.draw_depth + self.draw_zbias,
+                    1.
+                )))
             }
         }
         icon_walk: {width: 14, height: 14}
@@ -200,6 +230,69 @@ live_design! {
             text_style: <REGULAR_FONT>{font_size: 9},
             fn get_color(self) -> vec4 {
                 return self.color;
+            }
+        }
+    }
+
+    MoxinRadioButtonTab = <RadioButtonTab> {
+        padding: 10,
+
+        draw_radio: {
+            uniform radius: 3.0
+            uniform border_width: 0.0
+            instance color_unselected: (THEME_COLOR_TEXT_DEFAULT)
+            instance color_unselected_hover: (THEME_COLOR_TEXT_HOVER)
+            instance color_selected: (THEME_COLOR_TEXT_SELECTED)
+            instance border_color: (THEME_COLOR_TEXT_SELECTED)
+
+            fn get_color(self) -> vec4 {
+                return mix(
+                    mix(
+                        self.color_unselected,
+                        self.color_unselected_hover,
+                        self.hover
+                    ),
+                    self.color_selected,
+                    self.selected
+                )
+            }
+
+            fn get_border_color(self) -> vec4 {
+                return self.border_color;
+            }
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                match self.radio_type {
+                    RadioType::Tab => {
+                        sdf.box(
+                            self.border_width,
+                            self.border_width,
+                            self.rect_size.x - (self.border_width * 2.0),
+                            self.rect_size.y - (self.border_width * 2.0),
+                            max(1.0, self.radius)
+                        )
+                        sdf.fill_keep(self.get_color())
+                        if self.border_width > 0.0 {
+                            sdf.stroke(self.get_border_color(), self.border_width)
+                        }
+                    }
+                }
+                return sdf.result
+            }
+        }
+
+        draw_text: {
+            fn get_color(self) -> vec4 {
+                return mix(
+                    mix(
+                        self.color_unselected,
+                        self.color_unselected_hover,
+                        self.hover
+                    ),
+                    self.color_selected,
+                    self.selected
+                )
             }
         }
     }

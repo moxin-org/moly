@@ -1,6 +1,6 @@
 use crate::data::store::{ModelWithDownloadInfo, Store};
 use crate::shared::external_link::ExternalLinkWidgetExt;
-use crate::shared::modal::ModalAction;
+use crate::shared::portal::PortalAction;
 use crate::shared::utils::hugging_face_model_url;
 use chrono::Utc;
 use makepad_widgets::*;
@@ -239,21 +239,15 @@ live_design! {
                 height: Fit,
                 filler_x = <View> {width: Fill, height: Fit}
 
-                close_button = <RoundedView> {
+                close_button = <MoxinButton> {
                     width: Fit,
                     height: Fit,
-                    align: {x: 0.5, y: 0.5}
-                    cursor: Hand
 
-                    button_icon = <Icon> {
-                        draw_icon: {
-                            svg_file: (ICON_CLOSE),
-                            fn get_color(self) -> vec4 {
-                                return #000;
-                            }
-                        }
-                        icon_walk: {width: 12, height: 12}
+                    draw_icon: {
+                        svg_file: (ICON_CLOSE),
+                        color: #000
                     }
+                    icon_walk: {width: 12, height: 12}
                 }
             }
 
@@ -410,7 +404,7 @@ impl WidgetMatchEvent for ModelCard {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                ModalAction::ShowModalView(live_id!(model_card_view_all_modal_view)),
+                PortalAction::ShowPortalView(live_id!(modal_model_card_view_all_portal_view)),
             );
 
             cx.widget_action(
@@ -446,7 +440,11 @@ impl Widget for ModelCardViewAllModal {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let model = store.search.models.iter().find(|model| model.id == self.model_id);
+        let model = store
+            .search
+            .models
+            .iter()
+            .find(|model| model.id == self.model_id);
 
         if let Some(model) = model {
             let name = &model.name;
@@ -465,10 +463,8 @@ impl WidgetMatchEvent for ModelCardViewAllModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
-        if let Some(fe) = self.view(id!(close_button)).finger_up(actions) {
-            if fe.was_tap() {
-                cx.widget_action(widget_uid, &scope.path, ModalAction::CloseModal);
-            }
+        if self.button(id!(close_button)).clicked(actions) {
+            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }
     }
 }

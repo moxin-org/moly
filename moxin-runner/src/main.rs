@@ -322,11 +322,18 @@ fn wasmedge_dir_from_env_vars() -> Option<PathBuf> {
 fn run_moxin() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
+    let args = std::env::args().collect::<Vec<_>>();
 
-    println!("Running moxin in dir: {}", current_exe_dir.display());
+    println!("Running the main Moxin binary:
+        working directory: {}
+        args: {:?}",
+        current_exe_dir.display(),
+        args,
+    );
 
     let _output = Command::new(current_exe_dir.join(MOXIN_APP_BINARY))
         .current_dir(current_exe_dir)
+        .args(args.into_iter().skip(1)) // skip the first arg (the binary name)
         .spawn()?
         .wait_with_output()?;
 
