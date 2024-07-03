@@ -29,21 +29,11 @@ live_design! {
 
             chat_panel = <ChatPanel> {}
         }
-        /*
-        <View> {
-            show_bg: true,
-            draw_bg: {
-                color: #000
-            }
-            width: 10,
-            height: Fill,
-            margin: {top: 48, right: 48, bottom: 48}
-        }
-         */
 
         <View> {
             width: Fit,
             height: Fill,
+
             chat_params = <ChatParams> {}
         }
     }
