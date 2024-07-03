@@ -40,6 +40,8 @@ serde = { version = "1.0.197", features = ["derive"] }
 lipsum = "0.9"
 rand = "0.8.5"
 
+rfd = "0.14.1"
+
 
 ## Configuration for `cargo packager`
 [package.metadata.packager]
@@ -109,7 +111,7 @@ resources = [
 
 ## We then build the entire Moxin project and set the `MAKEPAD_PACKAGE_DIR` env var to the proper value.
 ## * For macOS app bundles, this should be set to `../Resources`.
-##   This only works because the `moxin-runner` binary sets the current working directory 
+##   This only works because the `moxin-runner` binary sets the current working directory
 ##   to the directory where the binary is located, which is `Moxin.app/Contents/MacOS/`.
 ##   (See the `run_moxin` function in `moxin-runner/src/main.rs` for more details.)
 ##   In a macOS app bundle, the resources directory is in `Moxin.app/Context/Resources/`,
