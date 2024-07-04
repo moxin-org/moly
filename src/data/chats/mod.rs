@@ -1,7 +1,7 @@
 pub mod chat;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatID, ChatInferenceParams};
+use chat::{Chat, ChatID};
 use moxin_backend::Backend;
 use moxin_protocol::protocol::{Command, LoadModelResponse};
 use moxin_protocol::{data::*, protocol::LoadModelOptions};
@@ -14,7 +14,6 @@ pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
     pub loaded_model: Option<File>,
-    pub inferences_params: ChatInferenceParams,
 
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
@@ -27,7 +26,6 @@ impl Chats {
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
-            inferences_params: ChatInferenceParams::default(),
             chats_dir: setup_chats_folder(),
         }
     }
@@ -129,12 +127,8 @@ impl Chats {
         };
 
         if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut().send_message_to_model(
-                prompt,
-                &self.inferences_params,
-                loaded_model,
-                self.backend.as_ref(),
-            );
+            chat.borrow_mut()
+                .send_message_to_model(prompt, loaded_model, self.backend.as_ref());
             chat.borrow().save();
         }
     }
@@ -169,7 +163,6 @@ impl Chats {
                     chat.remove_messages_from(message_id);
                     chat.send_message_to_model(
                         updated_message,
-                        &self.inferences_params,
                         loaded_model,
                         self.backend.as_ref(),
                     );

@@ -88,6 +88,7 @@ pub struct Chat {
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
     pub is_streaming: bool,
+    pub inferences_params: ChatInferenceParams,
 
     title: String,
     title_state: TitleState,
@@ -116,6 +117,7 @@ impl Chat {
             is_streaming: false,
             title_state: TitleState::default(),
             chats_dir,
+            inferences_params: ChatInferenceParams::default(),
         }
     }
 
@@ -136,6 +138,7 @@ impl Chat {
                     messages_update_sender: tx,
                     messages_update_receiver: rx,
                     chats_dir,
+                    inferences_params: ChatInferenceParams::default(),
                 };
                 Ok(chat)
             }
@@ -200,13 +203,7 @@ impl Chat {
             }
         }
     }
-    pub fn send_message_to_model(
-        &mut self,
-        prompt: String,
-        inference_params: &ChatInferenceParams,
-        loaded_file: &File,
-        backend: &Backend,
-    ) {
+    pub fn send_message_to_model(&mut self, prompt: String, loaded_file: &File, backend: &Backend) {
         let (tx, rx) = channel();
         let mut messages: Vec<_> = self
             .messages
@@ -224,7 +221,7 @@ impl Chat {
             name: None,
         });
 
-        let ip = inference_params;
+        let ip = &self.inferences_params;
         let cmd = Command::Chat(
             ChatRequestData {
                 messages,

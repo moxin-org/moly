@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::store::Store;
+use crate::data::{chats::chat::ChatID, store::Store};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -198,6 +198,9 @@ pub struct ChatParams {
 
     #[animator]
     animator: Animator,
+
+    #[rust]
+    current_chat_id: Option<ChatID>,
 }
 
 impl Widget for ChatParams {
@@ -212,28 +215,36 @@ impl Widget for ChatParams {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let ip = &store.chats.inferences_params;
 
-        let temperature = self.slider(id!(temperature));
-        let top_p = self.slider(id!(top_p));
-        let max_tokens = self.slider(id!(max_tokens));
-        let frequency_penalty = self.slider(id!(frequency_penalty));
-        let presence_penalty = self.slider(id!(presence_penalty));
-        let stop = self.text_input(id!(stop));
-        let stream = self.check_box(id!(stream));
+        if let Some(chat) = store.chats.get_current_chat() {
+            self.visible = true;
 
-        temperature.set_value(ip.temperature.into());
-        top_p.set_value(ip.top_p.into());
-        max_tokens.set_value(ip.max_tokens.into());
-        frequency_penalty.set_value(ip.frequency_penalty.into());
-        presence_penalty.set_value(ip.presence_penalty.into());
-        stop.set_text(&ip.stop);
+            let chat = chat.borrow();
+            let ip = &chat.inferences_params;
 
-        // Idk why, but without the check, this binding will not work when the screen is a non empty chat.
-        // I don't get the relation, maybe is something related to the mandatory `ctx` parameter or the
-        // animator.
-        if stream.selected(cx) != ip.stream {
-            stream.set_selected(cx, ip.stream);
+            let temperature = self.slider(id!(temperature));
+            let top_p = self.slider(id!(top_p));
+            let max_tokens = self.slider(id!(max_tokens));
+            let frequency_penalty = self.slider(id!(frequency_penalty));
+            let presence_penalty = self.slider(id!(presence_penalty));
+            let stop = self.text_input(id!(stop));
+            let stream = self.check_box(id!(stream));
+
+            temperature.set_value(ip.temperature.into());
+            top_p.set_value(ip.top_p.into());
+            max_tokens.set_value(ip.max_tokens.into());
+            frequency_penalty.set_value(ip.frequency_penalty.into());
+            presence_penalty.set_value(ip.presence_penalty.into());
+            stop.set_text(&ip.stop);
+
+            // Idk why, but without the check, this binding will not work when the screen is a non empty chat.
+            // I don't get the relation, maybe is something related to the mandatory `ctx` parameter or the
+            // animator.
+            if stream.selected(cx) != ip.stream {
+                stream.set_selected(cx, ip.stream);
+            }
+        } else {
+            self.visible = false;
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -243,7 +254,6 @@ impl Widget for ChatParams {
 impl WidgetMatchEvent for ChatParams {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let ip = &mut store.chats.inferences_params;
 
         let close = self.button(id!(close_panel_button));
         let open = self.button(id!(open_panel_button));
@@ -260,32 +270,43 @@ impl WidgetMatchEvent for ChatParams {
             self.animator_play(cx, id!(panel.show));
         }
 
-        if let Some(value) = self.slider(id!(temperature)).slided(&actions) {
-            ip.temperature = value as f32;
-        }
+        if let Some(chat) = store.chats.get_current_chat() {
+            let mut chat = chat.borrow_mut();
 
-        if let Some(value) = self.slider(id!(top_p)).slided(&actions) {
-            ip.top_p = value as f32;
-        }
+            if self.current_chat_id != Some(chat.id) {
+                self.current_chat_id = Some(chat.id);
+                self.redraw(cx);
+            }
 
-        if let Some(value) = self.slider(id!(max_tokens)).slided(&actions) {
-            ip.max_tokens = value as u32;
-        }
+            let ip = &mut chat.inferences_params;
 
-        if let Some(value) = self.slider(id!(frequency_penalty)).slided(&actions) {
-            ip.frequency_penalty = value as f32;
-        }
+            if let Some(value) = self.slider(id!(temperature)).slided(&actions) {
+                ip.temperature = value as f32;
+            }
 
-        if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
-            ip.presence_penalty = value as f32;
-        }
+            if let Some(value) = self.slider(id!(top_p)).slided(&actions) {
+                ip.top_p = value as f32;
+            }
 
-        if let Some(value) = self.text_input(id!(stop)).changed(&actions) {
-            ip.stop = value;
-        }
+            if let Some(value) = self.slider(id!(max_tokens)).slided(&actions) {
+                ip.max_tokens = value as u32;
+            }
 
-        if let Some(value) = self.check_box(id!(stream)).changed(actions) {
-            ip.stream = value;
+            if let Some(value) = self.slider(id!(frequency_penalty)).slided(&actions) {
+                ip.frequency_penalty = value as f32;
+            }
+
+            if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
+                ip.presence_penalty = value as f32;
+            }
+
+            if let Some(value) = self.text_input(id!(stop)).changed(&actions) {
+                ip.stop = value;
+            }
+
+            if let Some(value) = self.check_box(id!(stream)).changed(actions) {
+                ip.stream = value;
+            }
         }
     }
 }
