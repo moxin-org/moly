@@ -237,7 +237,7 @@ impl Chat {
                 seed: None,
                 stop: Some(
                     ip.stop
-                        .split("\n")
+                        .split(",")
                         .map(|s| s.trim())
                         .filter(|s| !s.is_empty())
                         .map(|s| s.to_string())
