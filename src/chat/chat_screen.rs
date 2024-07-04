@@ -12,7 +12,7 @@ live_design! {
     ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
-        spacing: 50,
+        spacing: 10,
 
         <View> {
             width: Fit,
