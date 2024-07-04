@@ -237,9 +237,9 @@ impl Widget for ChatParams {
             presence_penalty.set_value(ip.presence_penalty.into());
             stop.set_text(&ip.stop);
 
-            // Idk why, but without the check, this binding will not work when the screen is a non empty chat.
-            // I don't get the relation, maybe is something related to the mandatory `ctx` parameter or the
-            // animator.
+            // Currently, `selected` and `set_selected` interact with the animator of
+            // the widget to do what they do. To avoid some visual issues, we should not
+            // trigger the animator unnecessarily. This is a workaround.
             if stream.selected(cx) != ip.stream {
                 stream.set_selected(cx, ip.stream);
             }
