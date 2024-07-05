@@ -214,6 +214,39 @@ impl Widget for ChatParams {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get::<Store>().unwrap();
+
+        if let Some(chat) = store.chats.get_current_chat() {
+            self.visible = true;
+
+            let chat = chat.borrow();
+            let ip = &chat.inferences_params;
+
+            let temperature = self.slider(id!(temperature));
+            let top_p = self.slider(id!(top_p));
+            let max_tokens = self.slider(id!(max_tokens));
+            let frequency_penalty = self.slider(id!(frequency_penalty));
+            let presence_penalty = self.slider(id!(presence_penalty));
+            let stop = self.text_input(id!(stop));
+            let stream = self.check_box(id!(stream));
+
+            temperature.set_value(ip.temperature.into());
+            top_p.set_value(ip.top_p.into());
+            max_tokens.set_value(ip.max_tokens.into());
+            frequency_penalty.set_value(ip.frequency_penalty.into());
+            presence_penalty.set_value(ip.presence_penalty.into());
+            stop.set_text(&ip.stop);
+
+            // Currently, `selected` and `set_selected` interact with the animator of
+            // the widget to do what they do. To avoid some visual issues, we should not
+            // trigger the animator unnecessarily. This is a workaround.
+            if stream.selected(cx) != ip.stream {
+                stream.set_selected(cx, ip.stream);
+            }
+        } else {
+            self.visible = false;
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -238,63 +271,42 @@ impl WidgetMatchEvent for ChatParams {
         }
 
         if let Some(chat) = store.chats.get_current_chat() {
-            self.visible = true;
-
             let mut chat = chat.borrow_mut();
-
-            let temperature = self.slider(id!(temperature));
-            let top_p = self.slider(id!(top_p));
-            let max_tokens = self.slider(id!(max_tokens));
-            let frequency_penalty = self.slider(id!(frequency_penalty));
-            let presence_penalty = self.slider(id!(presence_penalty));
-            let stop = self.text_input(id!(stop));
-            let stream = self.check_box(id!(stream));
 
             if self.current_chat_id != Some(chat.id) {
                 self.current_chat_id = Some(chat.id);
-
-                temperature.set_value(chat.inferences_params.temperature.into());
-                top_p.set_value(chat.inferences_params.top_p.into());
-                max_tokens.set_value(chat.inferences_params.max_tokens.into());
-                frequency_penalty.set_value(chat.inferences_params.frequency_penalty.into());
-                presence_penalty.set_value(chat.inferences_params.presence_penalty.into());
-                stop.set_text(&chat.inferences_params.stop);
-                stream.set_selected(cx, chat.inferences_params.stream);
-
                 self.redraw(cx);
             }
 
             let ip = &mut chat.inferences_params;
 
-            if let Some(value) = temperature.slided(&actions) {
+            if let Some(value) = self.slider(id!(temperature)).slided(&actions) {
                 ip.temperature = value as f32;
             }
 
-            if let Some(value) = top_p.slided(&actions) {
+            if let Some(value) = self.slider(id!(top_p)).slided(&actions) {
                 ip.top_p = value as f32;
             }
 
-            if let Some(value) = max_tokens.slided(&actions) {
+            if let Some(value) = self.slider(id!(max_tokens)).slided(&actions) {
                 ip.max_tokens = value as u32;
             }
 
-            if let Some(value) = frequency_penalty.slided(&actions) {
+            if let Some(value) = self.slider(id!(frequency_penalty)).slided(&actions) {
                 ip.frequency_penalty = value as f32;
             }
 
-            if let Some(value) = presence_penalty.slided(&actions) {
+            if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
                 ip.presence_penalty = value as f32;
             }
 
-            if let Some(value) = stop.changed(&actions) {
+            if let Some(value) = self.text_input(id!(stop)).changed(&actions) {
                 ip.stop = value;
             }
 
-            if let Some(value) = stream.changed(actions) {
+            if let Some(value) = self.check_box(id!(stream)).changed(actions) {
                 ip.stream = value;
             }
-        } else {
-            self.visible = false;
         }
     }
 }
