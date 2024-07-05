@@ -4,6 +4,7 @@ pub mod chat_line;
 pub mod chat_line_loading;
 pub mod chat_panel;
 pub mod chat_screen;
+pub mod delete_chat_modal;
 pub mod model_info;
 pub mod model_selector;
 pub mod model_selector_list;
@@ -22,4 +23,5 @@ pub fn live_design(cx: &mut Cx) {
     model_selector_list::live_design(cx);
     model_selector::live_design(cx);
     shared::live_design(cx);
+    delete_chat_modal::live_design(cx);
 }
