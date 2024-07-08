@@ -293,7 +293,6 @@ impl Chat {
                         break;
                     }
                     Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
-                    _ => (),
                 }
             } else {
                 break;

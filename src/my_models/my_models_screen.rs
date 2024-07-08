@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::DownloadedFile;
 use moxin_protocol::protocol::Command;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 

@@ -2,7 +2,7 @@ use crate::{
     data::{chats::chat::ChatID, store::Store},
     shared::portal::PortalAction,
 };
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use chrono::{DateTime, Local, TimeZone};
 
 use makepad_widgets::*;
 
@@ -161,10 +161,10 @@ impl Widget for ChatHistoryCard {
 
         // Format date.
         // TODO: Feels wrong to asume the id will always be the date, do smth about this.
-        let naive_datetime = NaiveDateTime::from_timestamp_millis(chat.borrow().id as i64)
+        let datetime = DateTime::from_timestamp_millis(chat.borrow().id as i64)
             .expect("Invalid timestamp");
-        let datetime: DateTime<Local> = Local.from_utc_datetime(&naive_datetime);
-        let formatted_date = datetime.format("%-I:%M %p, %-d/%m/%y").to_string();
+        let local_datetime: DateTime<Local> = Local.from_utc_datetime(&datetime.naive_utc());
+        let formatted_date = local_datetime.format("%-I:%M %p, %-d/%m/%y").to_string();
 
         date_label.set_text(&formatted_date);
 
