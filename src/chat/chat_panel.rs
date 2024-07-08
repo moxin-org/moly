@@ -450,9 +450,6 @@ impl Widget for ChatPanel {
                     // Redraw because we expect to see new or updated chat entries
                     self.redraw(cx);
                 }
-                State::NoModelSelected => {
-                    self.unload_model(cx);
-                }
                 _ => {}
             }
         }
@@ -481,6 +478,7 @@ impl WidgetMatchEvent for ChatPanel {
             .filter_map(|action| action.as_widget_action())
         {
             if let ChatHistoryCardAction::ChatSelected(_) = action.cast() {
+                self.reset_scroll_messages(&store);
                 self.redraw(cx);
             }
 
@@ -501,10 +499,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                     store
                         .chats
-                        .create_empty_chat_with_model_file(&downloaded_file.file);
-                }
-                ChatAction::Resume(file_id) => {
-                    store.ensure_model_loaded_in_current_chat(file_id);
+                        .create_empty_chat_and_load_file(&downloaded_file.file);
                 }
                 _ => {}
             }
@@ -524,11 +519,12 @@ impl WidgetMatchEvent for ChatPanel {
             if let ChatPanelAction::UnloadIfActive(file_id) = action.cast() {
                 if store
                     .chats
-                    .get_current_chat()
-                    .map_or(false, |chat| chat.borrow().file_id == file_id)
+                    .loaded_model
+                    .as_ref()
+                    .map_or(false, |file| file.id == file_id)
                 {
-                    self.unload_model(cx);
                     store.chats.eject_model().expect("Failed to eject model");
+                    self.unload_model(cx);
                 }
             }
         }
@@ -715,6 +711,13 @@ impl ChatPanel {
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
+    fn reset_scroll_messages(&mut self, store: &Store) {
+        let list = self.portal_list(id!(chat));
+        let messages = get_chat_messages(store).unwrap();
+        let index = messages.len().saturating_sub(1);
+        list.set_first_id(index);
+    }
+
     fn unload_model(&mut self, cx: &mut Cx) {
         self.model_selector(id!(model_selector)).deselect(cx);
         self.view.redraw(cx);
@@ -765,7 +768,7 @@ impl ChatPanel {
 
                 self.view(id!(empty_conversation))
                     .label(id!(avatar_label))
-                    .set_text(&get_model_initial_letter(store).unwrap().to_string());
+                    .set_text(&get_model_initial_letter(store).unwrap_or('A').to_string());
             }
             _ => {}
         }
@@ -835,13 +838,13 @@ impl ChatPanel {
 
                     let username = chat_line_data.username.as_ref().map_or("", String::as_str);
                     chat_line_item.set_sender_name(&username);
-                    chat_line_item.set_regenerate_enabled(false);
+                    chat_line_item.set_regenerate_button_visible(false);
                     chat_line_item
                         .set_avatar_text(&get_initial_letter(username).unwrap().to_string());
                 } else {
                     item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
                     chat_line_item = item.as_chat_line();
-                    chat_line_item.set_regenerate_enabled(true);
+                    chat_line_item.set_regenerate_button_visible(true);
                 };
 
                 chat_line_item.set_message_text(cx, &chat_line_data.content);
@@ -884,7 +887,7 @@ fn get_initial_letter(word: &str) -> Option<char> {
 
 fn get_model_initial_letter(store: &Store) -> Option<char> {
     let chat = get_chat(store)?;
-    let initial_letter = get_initial_letter(&chat.borrow().model_filename)?;
+    let initial_letter = store.get_last_used_file_initial_letter(chat.borrow().id)?;
     Some(initial_letter.to_ascii_uppercase())
 }
 

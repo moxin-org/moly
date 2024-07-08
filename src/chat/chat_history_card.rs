@@ -149,12 +149,8 @@ impl Widget for ChatHistoryCard {
         let title_label = self.view.label(id!(title));
         title_label.set_text(chat.borrow_mut().get_title());
 
-        let initial_letter = chat
-            .borrow()
-            .model_filename
-            .chars()
-            .next()
-            .unwrap_or_default()
+        let initial_letter = store.get_last_used_file_initial_letter(self.chat_id)
+            .unwrap_or('A')
             .to_uppercase()
             .to_string();
 

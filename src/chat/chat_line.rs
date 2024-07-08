@@ -460,10 +460,10 @@ impl ChatLineRef {
         }
     }
 
-    pub fn set_regenerate_enabled(&mut self, enabled: bool) {
+    pub fn set_regenerate_button_visible(&mut self, visible: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.view(id!(save_and_regenerate)).set_visible(enabled);
+        inner.button(id!(save_and_regenerate)).set_visible(visible);
     }
 }

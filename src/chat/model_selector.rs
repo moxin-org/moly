@@ -3,7 +3,6 @@ use crate::{
     shared::{actions::ChatAction, utils::format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
 
 use super::model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt};
 
@@ -137,13 +136,6 @@ pub struct ModelSelector {
 
 impl Widget for ModelSelector {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        if let Event::Startup = event {
-            let store = scope.data.get::<Store>().unwrap();
-            if let Some(downloaded_file) = store.get_loaded_downloaded_file() {
-                self.update_ui_with_file(cx, downloaded_file);
-            }
-        }
-
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
@@ -175,9 +167,10 @@ impl Widget for ModelSelector {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        if no_options_to_display(scope) {
+        if no_options_to_display(store) {
             choose_label.set_text("No Available Models");
             let color = vec3(0.596, 0.635, 0.702);
             choose_label.apply_over(
@@ -188,7 +181,7 @@ impl Widget for ModelSelector {
                     }
                 },
             );
-        } else {
+        } else if no_active_model(store) {
             choose_label.set_text("Choose a Model");
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
@@ -199,6 +192,8 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+        } else {
+            self.update_selected_model_info(cx, store);
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -209,8 +204,12 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let store = scope.data.get::<Store>().unwrap();
+
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
-            if no_options_to_display(scope) { return };
+            if no_options_to_display(store) {
+                return;
+            };
             if fd.tap_count == 1 {
                 self.open = !self.open;
 
@@ -239,24 +238,16 @@ impl WidgetMatchEvent for ModelSelector {
         }
 
         for action in actions {
-            let store = scope.data.get_mut::<Store>().unwrap();
             match action.as_widget_action().cast() {
-                ModelSelectorAction::Selected(downloaded_file) => {
-                    self.update_ui_with_file(cx, downloaded_file);
+                ModelSelectorAction::Selected(_) => {
+                    self.hide_options(cx);
                 }
                 _ => {}
             }
 
             match action.as_widget_action().cast() {
-                ChatAction::Start(file_id) => {
-                    let downloaded_file = store
-                        .downloads
-                        .downloaded_files
-                        .iter()
-                        .find(|file| file.file.id == file_id)
-                        .expect("Attempted to start chat with a no longer existing file")
-                        .clone();
-                    self.update_ui_with_file(cx, downloaded_file);
+                ChatAction::Start(_) => {
+                    self.hide_options(cx);
                 }
                 _ => {}
             }
@@ -265,10 +256,16 @@ impl WidgetMatchEvent for ModelSelector {
 }
 
 impl ModelSelector {
-    fn update_ui_with_file(&mut self, cx: &mut Cx, downloaded_file: DownloadedFile) {
+    fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
         self.animator_cut(cx, id!(open.hide));
+    }
+
+    fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
+        let Some(downloaded_file) = store.get_loaded_downloaded_file() else {
+            return;
+        };
 
         self.view(id!(choose)).apply_over(
             cx,
@@ -327,7 +324,10 @@ impl ModelSelectorRef {
     }
 }
 
-fn no_options_to_display(scope: &mut Scope) -> bool {
-    let store = scope.data.get::<Store>().unwrap();
+fn no_options_to_display(store: &Store) -> bool {
     store.downloads.downloaded_files.is_empty()
+}
+
+fn no_active_model(store: &Store) -> bool {
+    store.get_loaded_downloaded_file().is_none()
 }

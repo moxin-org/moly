@@ -45,8 +45,7 @@ enum TitleState {
 #[derive(Serialize, Deserialize)]
 struct ChatData {
     id: ChatID,
-    model_filename: String,
-    file_id: FileID,
+    last_used_file_id: Option<FileID>,
     messages: Vec<ChatMessage>,
     title: String,
     #[serde(default)]
@@ -82,8 +81,7 @@ impl Default for ChatInferenceParams {
 pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
-    pub model_filename: String,
-    pub file_id: FileID,
+    pub last_used_file_id: Option<FileID>,
     pub messages: Vec<ChatMessage>,
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
@@ -97,7 +95,7 @@ pub struct Chat {
 }
 
 impl Chat {
-    pub fn new(filename: String, file_id: FileID, chats_dir: PathBuf) -> Self {
+    pub fn new(chats_dir: PathBuf) -> Self {
         let (tx, rx) = channel();
 
         // Get Unix timestamp in ms for id.
@@ -109,11 +107,10 @@ impl Chat {
         Self {
             id,
             title: String::from("New Chat"),
-            model_filename: filename,
-            file_id,
             messages: vec![],
             messages_update_sender: tx,
             messages_update_receiver: rx,
+            last_used_file_id: None,
             is_streaming: false,
             title_state: TitleState::default(),
             chats_dir,
@@ -129,8 +126,7 @@ impl Chat {
                 let data: ChatData = serde_json::from_str(&json)?;
                 let chat = Chat {
                     id: data.id,
-                    model_filename: data.model_filename,
-                    file_id: data.file_id,
+                    last_used_file_id: data.last_used_file_id,
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
@@ -149,8 +145,7 @@ impl Chat {
     pub fn save(&self) {
         let data = ChatData {
             id: self.id,
-            model_filename: self.model_filename.clone(),
-            file_id: self.file_id.clone(),
+            last_used_file_id: self.last_used_file_id.clone(),
             messages: self.messages.clone(),
             title: self.title.clone(),
             title_state: self.title_state,
@@ -225,7 +220,7 @@ impl Chat {
         let cmd = Command::Chat(
             ChatRequestData {
                 messages,
-                model: self.model_filename.clone(),
+                model: loaded_file.name.clone(),
                 frequency_penalty: Some(ip.frequency_penalty),
                 logprobs: None,
                 top_logprobs: None,
@@ -256,11 +251,13 @@ impl Chat {
             username: None,
             content: prompt.clone(),
         });
-        self.model_filename = loaded_file.name.clone();
+
+        self.last_used_file_id = Some(loaded_file.id.clone());
+
         self.messages.push(ChatMessage {
             id: next_id + 1,
             role: Role::Assistant,
-            username: Some(self.model_filename.clone()),
+            username: Some(loaded_file.name.clone()),
             content: "".to_string(),
         });
 
