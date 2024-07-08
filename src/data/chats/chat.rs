@@ -54,6 +54,31 @@ struct ChatData {
 }
 
 #[derive(Debug)]
+pub struct ChatInferenceParams {
+    pub frequency_penalty: f32,
+    pub max_tokens: u32,
+    pub presence_penalty: f32,
+    pub temperature: f32,
+    pub top_p: f32,
+    pub stream: bool,
+    pub stop: String,
+}
+
+impl Default for ChatInferenceParams {
+    fn default() -> Self {
+        Self {
+            frequency_penalty: 0.0,
+            max_tokens: 2048,
+            presence_penalty: 0.0,
+            temperature: 1.0,
+            top_p: 1.0,
+            stream: true,
+            stop: "".into(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
@@ -63,6 +88,7 @@ pub struct Chat {
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
     pub is_streaming: bool,
+    pub inferences_params: ChatInferenceParams,
 
     title: String,
     title_state: TitleState,
@@ -91,6 +117,7 @@ impl Chat {
             is_streaming: false,
             title_state: TitleState::default(),
             chats_dir,
+            inferences_params: ChatInferenceParams::default(),
         }
     }
 
@@ -111,6 +138,7 @@ impl Chat {
                     messages_update_sender: tx,
                     messages_update_receiver: rx,
                     chats_dir,
+                    inferences_params: ChatInferenceParams::default(),
                 };
                 Ok(chat)
             }
@@ -193,20 +221,28 @@ impl Chat {
             name: None,
         });
 
+        let ip = &self.inferences_params;
         let cmd = Command::Chat(
             ChatRequestData {
                 messages,
                 model: self.model_filename.clone(),
-                frequency_penalty: None,
+                frequency_penalty: Some(ip.frequency_penalty),
                 logprobs: None,
                 top_logprobs: None,
-                max_tokens: None,
-                presence_penalty: None,
+                max_tokens: Some(ip.max_tokens),
+                presence_penalty: Some(ip.presence_penalty),
                 seed: None,
-                stop: None,
-                stream: Some(true),
-                temperature: None,
-                top_p: None,
+                stop: Some(
+                    ip.stop
+                        .split(",")
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string())
+                        .collect(),
+                ),
+                stream: Some(ip.stream),
+                temperature: Some(ip.temperature),
+                top_p: Some(ip.top_p),
                 n: None,
                 logit_bias: None,
             },

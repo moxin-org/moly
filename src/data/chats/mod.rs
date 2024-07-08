@@ -45,7 +45,8 @@ impl Chats {
     }
 
     pub fn get_latest_chat_id(&mut self) -> Option<ChatID> {
-        self.saved_chats.sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
+        self.saved_chats
+            .sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
         self.saved_chats.last().map(|c| c.borrow().id.clone())
     }
 
@@ -120,9 +121,9 @@ impl Chats {
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
-        let Some(loaded_model) = self.loaded_model.as_ref() else { 
+        let Some(loaded_model) = self.loaded_model.as_ref() else {
             println!("Skip sending message because loaded model not found");
-            return
+            return;
         };
 
         if let Some(chat) = self.get_current_chat() {
@@ -160,7 +161,11 @@ impl Chats {
                     }
 
                     chat.remove_messages_from(message_id);
-                    chat.send_message_to_model(updated_message, loaded_model, self.backend.as_ref());
+                    chat.send_message_to_model(
+                        updated_message,
+                        loaded_model,
+                        self.backend.as_ref(),
+                    );
                 }
             } else {
                 chat.edit_message(message_id, updated_message);
