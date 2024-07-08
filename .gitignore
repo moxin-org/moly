@@ -5,3 +5,4 @@ data.*
 /dist
 /wasmedge
 .idea
+.DS_Store

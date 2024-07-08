@@ -251,6 +251,14 @@ impl Chat {
                             break;
                         }
                     }
+                    Ok(ChatResponse::ChatFinalResponseData(data)) => {
+                        let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
+                            data.choices[0].message.content.clone(),
+                        ));
+                        let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
+                        SignalToUI::set_ui_signal();
+                        break;
+                    }
                     Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
                     _ => (),
                 }

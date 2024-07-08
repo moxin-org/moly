@@ -24,10 +24,10 @@ pub struct DownloadedFile {
 impl DownloadedFile {
     pub fn insert_into_db(&self, conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         conn.execute(
-            "INSERT OR IGNORE INTO download_files (
-                id, model_id, name, size, quantization, 
-                prompt_template, reverse_prompt, 
-                downloaded, file_size, download_dir, downloaded_at, tags, featured, sha256) 
+            "INSERT OR REPLACE INTO download_files (
+                id, model_id, name, size, quantization,
+                prompt_template, reverse_prompt,
+                downloaded, file_size, download_dir, downloaded_at, tags, featured, sha256)
                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             rusqlite::params![
                 self.id,

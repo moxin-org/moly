@@ -1,6 +1,6 @@
 use directories::ProjectDirs;
 use std::{
-    fs::File,
+    fs::{self,File},
     io::{Read, Write},
     path::PathBuf,
     sync::OnceLock,
@@ -68,13 +68,17 @@ pub fn read_from_file(path: PathBuf) -> Result<String, std::io::Error> {
 }
 
 pub fn write_to_file(path: PathBuf, json: &str) -> Result<(), std::io::Error> {
-    let mut file = match File::create(path) {
-        Ok(file) => file,
-        Err(why) => return Err(why),
-    };
-
-    match file.write_all(json.as_bytes()) {
-        Ok(_) => Ok(()),
-        Err(why) => Err(why),
+    // Ensure the directory exists
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
     }
+
+    // Create or overwrite the file
+    eprintln!("Creating or overwriting the file: {:?}", path);
+    let mut file = File::create(path)?;
+
+    // Write the JSON data to the file
+    eprintln!("Writing JSON data to the file.");
+    file.write_all(json.as_bytes())?;
+    Ok(())
 }

@@ -17,28 +17,42 @@ pub struct Preferences {
 
 impl Preferences {
     pub fn load() -> Self {
-        match read_from_file(preferences_path()) {
-            Ok(json) => {
-                let mut preferences: Preferences = serde_json::from_str(&json).unwrap();
-                preferences.downloaded_files_dir = setup_model_downloads_folder();
-                return preferences;
-            }
-            Err(_) => {}
-        }
+            let preferences_path = preferences_path();
+            eprintln!("preferences_path {:?}", preferences_path);
 
-        Self {
-            current_chat_model: None,
-            downloaded_files_dir: setup_model_downloads_folder(),
+            if let Ok(json) = read_from_file(preferences_path) {
+                if let Ok(mut preferences) = serde_json::from_str::<Preferences>(&json) {
+                    // Check if the downloaded_files_dir exists, if not, create it
+                    if !preferences.downloaded_files_dir.exists() {
+                        preferences.downloaded_files_dir = setup_model_downloads_folder();
+                    }
+                    return preferences;
+                }
+            }
+
+            // If no preferences file exists, create default preferences
+            Self {
+                current_chat_model: None,
+                downloaded_files_dir: setup_model_downloads_folder(),
+            }
         }
-    }
 
     pub fn save(&self) {
         let json = serde_json::to_string(&self).unwrap();
-        write_to_file(preferences_path(), &json).unwrap();
+        eprintln!("json {:?}", json);
+        match write_to_file(preferences_path(), &json) {
+            Ok(_) => eprintln!("Successfully wrote to the file."),
+            Err(e) => eprintln!("Failed to write to the file: {:?}", e),
+        }
     }
 
     pub fn set_current_chat_model(&mut self, file: FileID) {
         self.current_chat_model = Some(file);
+        self.save();
+    }
+
+    pub fn set_downloaded_files_dir(&mut self, path: PathBuf) {
+        self.downloaded_files_dir = path;
         self.save();
     }
 }
