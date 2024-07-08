@@ -332,8 +332,6 @@ impl ChatLine {
             .set_visible(show && is_plain_text);
         self.view(id!(markdown_message_container))
             .set_visible(show && !is_plain_text);
-
-        self.redraw(cx);
     }
 
     pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
