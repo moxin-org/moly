@@ -1,7 +1,6 @@
 use makepad_widgets::*;
 
 use crate::{
-    chat::chat_panel::ChatPanelAction,
     data::{chats::chat::ChatID, store::Store},
     shared::portal::PortalAction,
 };
