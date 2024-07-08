@@ -714,11 +714,7 @@ impl ChatPanel {
     fn reset_scroll_messages(&mut self, store: &Store) {
         let list = self.portal_list(id!(chat));
         let messages = get_chat_messages(store).unwrap();
-        let index = if messages.len() > 1 {
-            messages.len() - 1
-        } else {
-            0
-        };
+        let index = messages.len().saturating_sub(1);
         list.set_first_id(index);
     }
 
