@@ -5,7 +5,7 @@
 log_path = "/tmp/.mega/logs"
 
 # log level
-level = "info"
+level = "debug"
 
 # print std log in console, disable it on production for performance
 print_std = true
