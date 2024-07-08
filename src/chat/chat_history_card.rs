@@ -1,7 +1,12 @@
-use crate::data::{chats::chat::ChatID, store::Store};
+use crate::{
+    data::{chats::chat::ChatID, store::Store},
+    shared::portal::PortalAction,
+};
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 
 use makepad_widgets::*;
+
+use super::delete_chat_modal::DeleteChatAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -177,8 +182,16 @@ impl WidgetMatchEvent for ChatHistoryCard {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(delete_chat)).clicked(actions) {
-            store.delete_chat(self.chat_id);
-            self.redraw(cx);
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DeleteChatAction::ChatSelected(self.chat_id),
+            );
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                PortalAction::ShowPortalView(live_id!(modal_delete_chat_portal_view)),
+            );
             return;
         }
 

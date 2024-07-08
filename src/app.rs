@@ -1,4 +1,5 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::chat::delete_chat_modal::{DeleteChatAction, DeleteChatModalWidgetRefExt};
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
@@ -27,6 +28,7 @@ live_design! {
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
     import crate::my_models::delete_model_modal::DeleteModelModal;
+    import crate::chat::delete_chat_modal::DeleteChatModal;
     import crate::my_models::model_info_modal::ModelInfoModal;
 
 
@@ -112,6 +114,14 @@ live_design! {
                         modal = <Modal> {
                             content = {
                                 delete_model_modal = <DeleteModelModal> {}
+                            }
+                        }
+                    }
+
+                    modal_delete_chat_portal_view = <PortalView> {
+                        modal = <Modal> {
+                            content = {
+                                delete_chat_modal = <DeleteChatModal> {}
                             }
                         }
                     }
@@ -245,6 +255,15 @@ impl MatchEvent for App {
             if let DeleteModelAction::FileSelected(file_id) = action.as_widget_action().cast() {
                 let mut modal = self.ui.delete_model_modal(id!(delete_model_modal));
                 modal.set_file_id(file_id);
+                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
+                // this forces the entire ui to rerender, still weird that only happens the first time.
+                self.ui.redraw(cx);
+            }
+
+            // Set modal viewall model id
+            if let DeleteChatAction::ChatSelected(chat_id) = action.as_widget_action().cast() {
+                let mut modal = self.ui.delete_chat_modal(id!(delete_chat_modal));
+                modal.set_chat_id(chat_id);
                 // TODO: Hack for error that when you first open the modal, doesnt draw until an event
                 // this forces the entire ui to rerender, still weird that only happens the first time.
                 self.ui.redraw(cx);
