@@ -318,12 +318,12 @@ impl ChatLine {
         self.view(id!(actions_section.actions)).set_visible(false);
         self.view(id!(edit_buttons)).set_visible(enabled);
         self.view(id!(input_container)).set_visible(enabled);
-        self.show_or_hide_message_label(cx, !enabled);
+        self.show_or_hide_message_label(!enabled);
 
         self.redraw(cx);
     }
 
-    pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
+    pub fn show_or_hide_message_label(&mut self, show: bool) {
         let text = self.text_input(id!(input)).text();
         let to_markdown = parse_markdown(&text);
         let is_plain_text = to_markdown.nodes.len() <= 3;
@@ -432,7 +432,7 @@ impl ChatLineRef {
                     loading_widget.stop_animation();
                 }
 
-                inner.show_or_hide_message_label(cx, true);
+                inner.show_or_hide_message_label(true);
             }
             ChatLineState::OnEdit => {}
         }
