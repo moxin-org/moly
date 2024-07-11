@@ -7,7 +7,6 @@ use moxin_protocol::protocol::Command;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +49,8 @@ struct ChatData {
     title: String,
     #[serde(default)]
     title_state: TitleState,
+    #[serde(default)]
+    accessed_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug)]
@@ -87,6 +88,7 @@ pub struct Chat {
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
     pub is_streaming: bool,
     pub inferences_params: ChatInferenceParams,
+    pub accessed_at: chrono::DateTime<chrono::Utc>,
 
     title: String,
     title_state: TitleState,
@@ -99,10 +101,7 @@ impl Chat {
         let (tx, rx) = channel();
 
         // Get Unix timestamp in ms for id.
-        let id = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Couldn't get Unix timestamp, time went backwards")
-            .as_millis();
+        let id = chrono::Utc::now().timestamp_millis() as u128;
 
         Self {
             id,
@@ -115,6 +114,7 @@ impl Chat {
             title_state: TitleState::default(),
             chats_dir,
             inferences_params: ChatInferenceParams::default(),
+            accessed_at: chrono::Utc::now(),
         }
     }
 
@@ -135,6 +135,7 @@ impl Chat {
                     messages_update_receiver: rx,
                     chats_dir,
                     inferences_params: ChatInferenceParams::default(),
+                    accessed_at: data.accessed_at,
                 };
                 Ok(chat)
             }
@@ -149,6 +150,7 @@ impl Chat {
             messages: self.messages.clone(),
             title: self.title.clone(),
             title_state: self.title_state,
+            accessed_at: self.accessed_at,
         };
         let json = serde_json::to_string(&data).unwrap();
         let path = self.chats_dir.join(self.file_name());
@@ -342,5 +344,9 @@ impl Chat {
             .position(|m| m.id == message_id)
             .unwrap();
         self.messages.truncate(message_index);
+    }
+
+    pub fn update_accessed_at(&mut self) {
+        self.accessed_at = chrono::Utc::now();
     }
 }

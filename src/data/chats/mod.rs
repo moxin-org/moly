@@ -44,10 +44,11 @@ impl Chats {
         }
     }
 
-    pub fn get_latest_chat_id(&mut self) -> Option<ChatID> {
+    pub fn get_last_selected_chat_id(&self) -> Option<ChatID> {
         self.saved_chats
-            .sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
-        self.saved_chats.last().map(|c| c.borrow().id.clone())
+            .iter()
+            .max_by_key(|c| c.borrow().accessed_at)
+            .map(|c| c.borrow().id)
     }
 
     pub fn load_model(&mut self, file: &File) -> Result<()> {
@@ -105,13 +106,15 @@ impl Chats {
     }
 
     pub fn get_chat_by_id(&self, chat_id: ChatID) -> Option<&RefCell<Chat>> {
-        self.saved_chats
-                .iter()
-                .find(|c| c.borrow().id == chat_id)
+        self.saved_chats.iter().find(|c| c.borrow().id == chat_id)
     }
 
     pub fn set_current_chat(&mut self, chat_id: ChatID) {
         self.current_chat_id = Some(chat_id);
+
+        let mut chat = self.get_current_chat().unwrap().borrow_mut();
+        chat.update_accessed_at();
+        chat.save();
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
@@ -218,7 +221,7 @@ impl Chats {
 
         if let Some(current_chat_id) = self.current_chat_id {
             if current_chat_id == chat_id {
-                self.current_chat_id = self.get_latest_chat_id();
+                self.current_chat_id = self.get_last_selected_chat_id();
             }
         }
     }
