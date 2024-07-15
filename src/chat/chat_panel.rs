@@ -395,6 +395,7 @@ live_design! {
 
                     UserChatLine = <UserChatLine> {}
                     ModelChatLine = <ModelChatLine> {}
+                    EndOfChat = <View> {height: 0.1}
                 }
 
                 <JumpToButtom> {}
@@ -429,6 +430,9 @@ pub struct ChatPanel {
 
     #[rust]
     state: State,
+
+    #[rust]
+    portal_list_end_reached: bool,
 }
 
 impl Widget for ChatPanel {
@@ -449,9 +453,6 @@ impl Widget for ChatPanel {
 
                     // Redraw because we expect to see new or updated chat entries
                     self.redraw(cx);
-                }
-                State::NoModelSelected => {
-                    self.unload_model(cx);
                 }
                 _ => {}
             }
@@ -481,6 +482,7 @@ impl WidgetMatchEvent for ChatPanel {
             .filter_map(|action| action.as_widget_action())
         {
             if let ChatHistoryCardAction::ChatSelected(_) = action.cast() {
+                self.reset_scroll_messages(&store);
                 self.redraw(cx);
             }
 
@@ -501,10 +503,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                     store
                         .chats
-                        .create_empty_chat_with_model_file(&downloaded_file.file);
-                }
-                ChatAction::Resume(file_id) => {
-                    store.ensure_model_loaded_in_current_chat(file_id);
+                        .create_empty_chat_and_load_file(&downloaded_file.file);
                 }
                 _ => {}
             }
@@ -524,11 +523,12 @@ impl WidgetMatchEvent for ChatPanel {
             if let ChatPanelAction::UnloadIfActive(file_id) = action.cast() {
                 if store
                     .chats
-                    .get_current_chat()
-                    .map_or(false, |chat| chat.borrow().file_id == file_id)
+                    .loaded_model
+                    .as_ref()
+                    .map_or(false, |file| file.id == file_id)
                 {
-                    self.unload_model(cx);
                     store.chats.eject_model().expect("Failed to eject model");
+                    self.unload_model(cx);
                 }
             }
         }
@@ -571,7 +571,6 @@ impl WidgetMatchEvent for ChatPanel {
 impl ChatPanel {
     fn update_state(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let list = self.portal_list(id!(chat));
 
         self.state = if store.downloads.downloaded_files.is_empty() {
             State::NoModelsAvailable
@@ -586,7 +585,7 @@ impl ChatPanel {
                         State::ModelSelectedWithEmptyChat
                     } else {
                         State::ModelSelectedWithChat {
-                            sticked_to_bottom: !list.further_items_bellow_exist()
+                            sticked_to_bottom: self.portal_list_end_reached
                                 || !matches!(self.state, State::ModelSelectedWithChat { .. }),
                             is_streaming: chat.borrow().is_streaming,
                         }
@@ -715,6 +714,13 @@ impl ChatPanel {
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
+    fn reset_scroll_messages(&mut self, store: &Store) {
+        let list = self.portal_list(id!(chat));
+        let messages = get_chat_messages(store).unwrap();
+        let index = messages.len().saturating_sub(1);
+        list.set_first_id(index);
+    }
+
     fn unload_model(&mut self, cx: &mut Cx) {
         self.model_selector(id!(model_selector)).deselect(cx);
         self.view.redraw(cx);
@@ -765,7 +771,7 @@ impl ChatPanel {
 
                 self.view(id!(empty_conversation))
                     .label(id!(avatar_label))
-                    .set_text(&get_model_initial_letter(store).unwrap().to_string());
+                    .set_text(&get_model_initial_letter(store).unwrap_or('A').to_string());
             }
             _ => {}
         }
@@ -817,12 +823,13 @@ impl ChatPanel {
         }
     }
 
-    fn draw_messages(&self, cx: &mut Cx2d, scope: &mut Scope, list: &mut RefMut<PortalList>) {
+    fn draw_messages(&mut self, cx: &mut Cx2d, scope: &mut Scope, list: &mut RefMut<PortalList>) {
         let store = scope.data.get::<Store>().unwrap();
         let messages = get_chat_messages(store).unwrap();
         let messages_count = messages.len();
 
-        list.set_item_range(cx, 0, messages_count);
+        self.portal_list_end_reached = false;
+        list.set_item_range(cx, 0, messages_count + 1);
         while let Some(item_id) = list.next_visible_item(cx) {
             if item_id < messages_count {
                 let chat_line_data = &messages[item_id];
@@ -835,13 +842,13 @@ impl ChatPanel {
 
                     let username = chat_line_data.username.as_ref().map_or("", String::as_str);
                     chat_line_item.set_sender_name(&username);
-                    chat_line_item.set_regenerate_enabled(false);
+                    chat_line_item.set_regenerate_button_visible(false);
                     chat_line_item
                         .set_avatar_text(&get_initial_letter(username).unwrap().to_string());
                 } else {
                     item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
                     chat_line_item = item.as_chat_line();
-                    chat_line_item.set_regenerate_enabled(true);
+                    chat_line_item.set_regenerate_button_visible(true);
                 };
 
                 chat_line_item.set_message_text(cx, &chat_line_data.content);
@@ -861,6 +868,10 @@ impl ChatPanel {
                     chat_line_item.set_actions_enabled(cx, true);
                 }
 
+                item.draw_all(cx, &mut Scope::empty());
+            } else {
+                self.portal_list_end_reached = true;
+                let item = list.item(cx, item_id, live_id!(EndOfChat)).unwrap();
                 item.draw_all(cx, &mut Scope::empty());
             }
         }
@@ -884,7 +895,7 @@ fn get_initial_letter(word: &str) -> Option<char> {
 
 fn get_model_initial_letter(store: &Store) -> Option<char> {
     let chat = get_chat(store)?;
-    let initial_letter = get_initial_letter(&chat.borrow().model_filename)?;
+    let initial_letter = store.get_last_used_file_initial_letter(chat.borrow().id)?;
     Some(initial_letter.to_ascii_uppercase())
 }
 

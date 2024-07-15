@@ -7,11 +7,12 @@ live_design! {
     import crate::shared::styles::*;
     import crate::chat::chat_panel::ChatPanel;
     import crate::chat::chat_history::ChatHistory;
+    import crate::chat::chat_params::ChatParams;
 
     ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
-        spacing: 50,
+        spacing: 10,
 
         <View> {
             width: Fit,
@@ -30,9 +31,10 @@ live_design! {
         }
 
         <View> {
-            width: 10,
+            width: Fit,
             height: Fill,
-            margin: {top: 48, right: 48, bottom: 48}
+
+            chat_params = <ChatParams> {}
         }
     }
 }

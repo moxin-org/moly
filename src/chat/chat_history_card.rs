@@ -1,7 +1,12 @@
-use crate::data::{chats::chat::ChatID, store::Store};
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use crate::{
+    data::{chats::chat::ChatID, store::Store},
+    shared::portal::PortalAction,
+};
+use chrono::{DateTime, Local, TimeZone};
 
 use makepad_widgets::*;
+
+use super::delete_chat_modal::DeleteChatAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -144,12 +149,8 @@ impl Widget for ChatHistoryCard {
         let title_label = self.view.label(id!(title));
         title_label.set_text(chat.borrow_mut().get_title());
 
-        let initial_letter = chat
-            .borrow()
-            .model_filename
-            .chars()
-            .next()
-            .unwrap_or_default()
+        let initial_letter = store.get_last_used_file_initial_letter(self.chat_id)
+            .unwrap_or('A')
             .to_uppercase()
             .to_string();
 
@@ -160,10 +161,10 @@ impl Widget for ChatHistoryCard {
 
         // Format date.
         // TODO: Feels wrong to asume the id will always be the date, do smth about this.
-        let naive_datetime = NaiveDateTime::from_timestamp_millis(chat.borrow().id as i64)
+        let datetime = DateTime::from_timestamp_millis(chat.borrow().id as i64)
             .expect("Invalid timestamp");
-        let datetime: DateTime<Local> = Local.from_utc_datetime(&naive_datetime);
-        let formatted_date = datetime.format("%-I:%M %p, %-d/%m/%y").to_string();
+        let local_datetime: DateTime<Local> = Local.from_utc_datetime(&datetime.naive_utc());
+        let formatted_date = local_datetime.format("%-I:%M %p, %-d/%m/%y").to_string();
 
         date_label.set_text(&formatted_date);
 
@@ -177,8 +178,16 @@ impl WidgetMatchEvent for ChatHistoryCard {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(delete_chat)).clicked(actions) {
-            store.delete_chat(self.chat_id);
-            self.redraw(cx);
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                DeleteChatAction::ChatSelected(self.chat_id),
+            );
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                PortalAction::ShowPortalView(live_id!(modal_delete_chat_portal_view)),
+            );
             return;
         }
 

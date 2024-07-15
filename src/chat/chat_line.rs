@@ -318,12 +318,12 @@ impl ChatLine {
         self.view(id!(actions_section.actions)).set_visible(false);
         self.view(id!(edit_buttons)).set_visible(enabled);
         self.view(id!(input_container)).set_visible(enabled);
-        self.show_or_hide_message_label(cx, !enabled);
+        self.show_or_hide_message_label(!enabled);
 
         self.redraw(cx);
     }
 
-    pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
+    pub fn show_or_hide_message_label(&mut self, show: bool) {
         let text = self.text_input(id!(input)).text();
         let to_markdown = parse_markdown(&text);
         let is_plain_text = to_markdown.nodes.len() <= 3;
@@ -332,8 +332,6 @@ impl ChatLine {
             .set_visible(show && is_plain_text);
         self.view(id!(markdown_message_container))
             .set_visible(show && !is_plain_text);
-
-        self.redraw(cx);
     }
 
     pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
@@ -434,7 +432,7 @@ impl ChatLineRef {
                     loading_widget.stop_animation();
                 }
 
-                inner.show_or_hide_message_label(cx, true);
+                inner.show_or_hide_message_label(true);
             }
             ChatLineState::OnEdit => {}
         }
@@ -462,10 +460,10 @@ impl ChatLineRef {
         }
     }
 
-    pub fn set_regenerate_enabled(&mut self, enabled: bool) {
+    pub fn set_regenerate_button_visible(&mut self, visible: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.view(id!(save_and_regenerate)).set_visible(enabled);
+        inner.button(id!(save_and_regenerate)).set_visible(visible);
     }
 }

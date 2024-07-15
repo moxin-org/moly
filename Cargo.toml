@@ -49,7 +49,7 @@ mega = { git = "https://github.com/web3infra-foundation/mega.git", branch = "mai
 product_name = "Moxin"
 identifier = "com.moxin-org.moxin"
 category = "Utility"
-authors = [ "Moxin Organization <moxin-org@github.com>" ]
+authors = ["Moxin Organization <moxin-org@github.com>"]
 publisher = "moxin-org"
 license_file = "LICENSE"
 copyright = "Copyright 2023-2024, Project Robius, Moxin Organization"

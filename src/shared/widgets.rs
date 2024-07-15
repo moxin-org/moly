@@ -376,4 +376,94 @@ live_design! {
             }
         }
     }
+
+    MoxinSlider =  <Slider> {
+        height: 40
+        width: Fill
+        draw_text: {
+            // TODO: The text weight should be 500 (semi bold, not fully bold).
+            text_style: <BOLD_FONT>{font_size: 10},
+            color: #000
+        }
+        text_input: {
+            draw_text: {
+                text_style: <BOLD_FONT>{font_size: 11},
+                fn get_color(self) -> vec4 {
+                    return #000;
+                }
+            }
+        }
+        draw_slider: {
+            instance bipolar: 0.0
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+
+                let ball_radius = 10.0;
+                let ball_border = 2.0;
+                let padding_top = 29.0;
+                let padding_x = 5.0;
+                let rail_height = 4.0;
+
+                let rail_width = self.rect_size.x;
+                let rail_padding_x = padding_x + ball_radius / 2;
+                let ball_rel_x = self.slide_pos;
+                let ball_abs_x = ball_rel_x * (rail_width - 2.0 * rail_padding_x) + rail_padding_x;
+
+                // The rail
+                sdf.move_to(0 + padding_x, padding_top);
+                sdf.line_to(self.rect_size.x - padding_x, padding_top);
+                sdf.stroke(#D9D9D9, rail_height);
+
+                // The filler
+                sdf.move_to(0 + padding_x, padding_top);
+                sdf.line_to(ball_abs_x, padding_top);
+                sdf.stroke(#15859A, rail_height);
+
+                // The moving ball
+                sdf.circle(ball_abs_x, padding_top, ball_radius);
+                sdf.fill(#15859A);
+                sdf.circle(ball_abs_x, padding_top, ball_radius - ball_border);
+                sdf.fill(#fff);
+
+
+                return sdf.result;
+            }
+        }
+    }
+
+    MoxinSwitch = <CheckBoxToggle> {
+        // U+200e as text.
+        // Nasty trick cause not setting `text` nor using a simple space works to
+        // render the widget without label.
+        text:"‎"
+        draw_check: {
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                let pill_padding = 2.0;
+                let pill_color_off = #D9D9D9;
+                let pill_color_on = #15859A;
+
+                let pill_radius = self.rect_size.y * 0.5;
+                let ball_radius = pill_radius - pill_padding;
+
+                // Left side of the pill
+                sdf.circle(pill_radius, pill_radius, pill_radius);
+                sdf.fill(mix(pill_color_off, pill_color_on, self.selected));
+
+                // Right side of the pill
+                sdf.circle(self.rect_size.x - pill_radius, pill_radius, pill_radius);
+                sdf.fill(mix(pill_color_off, pill_color_on, self.selected));
+
+                // The union/middle of the pill
+                sdf.rect(pill_radius, 0.0, self.rect_size.x - 2.0 * pill_radius, self.rect_size.y);
+                sdf.fill(mix(pill_color_off, pill_color_on, self.selected));
+
+                // The moving ball
+                sdf.circle(pill_padding + ball_radius + self.selected * (self.rect_size.x - 2.0 * ball_radius - 2.0 * pill_padding), pill_radius, ball_radius);
+                sdf.fill(#fff);
+
+                return sdf.result;
+            }
+        }
+    }
 }

@@ -7,7 +7,6 @@ use moxin_protocol::protocol::Command;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
@@ -45,24 +44,51 @@ enum TitleState {
 #[derive(Serialize, Deserialize)]
 struct ChatData {
     id: ChatID,
-    model_filename: String,
-    file_id: FileID,
+    last_used_file_id: Option<FileID>,
     messages: Vec<ChatMessage>,
     title: String,
     #[serde(default)]
     title_state: TitleState,
+    #[serde(default)]
+    accessed_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug)]
+pub struct ChatInferenceParams {
+    pub frequency_penalty: f32,
+    pub max_tokens: u32,
+    pub presence_penalty: f32,
+    pub temperature: f32,
+    pub top_p: f32,
+    pub stream: bool,
+    pub stop: String,
+}
+
+impl Default for ChatInferenceParams {
+    fn default() -> Self {
+        Self {
+            frequency_penalty: 0.0,
+            max_tokens: 2048,
+            presence_penalty: 0.0,
+            temperature: 1.0,
+            top_p: 1.0,
+            stream: true,
+            stop: "".into(),
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
-    pub model_filename: String,
-    pub file_id: FileID,
+    pub last_used_file_id: Option<FileID>,
     pub messages: Vec<ChatMessage>,
     pub messages_update_sender: Sender<ChatTokenArrivalAction>,
     pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
     pub is_streaming: bool,
+    pub inferences_params: ChatInferenceParams,
+    pub accessed_at: chrono::DateTime<chrono::Utc>,
 
     title: String,
     title_state: TitleState,
@@ -71,26 +97,24 @@ pub struct Chat {
 }
 
 impl Chat {
-    pub fn new(filename: String, file_id: FileID, chats_dir: PathBuf) -> Self {
+    pub fn new(chats_dir: PathBuf) -> Self {
         let (tx, rx) = channel();
 
         // Get Unix timestamp in ms for id.
-        let id = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Couldn't get Unix timestamp, time went backwards")
-            .as_millis();
+        let id = chrono::Utc::now().timestamp_millis() as u128;
 
         Self {
             id,
             title: String::from("New Chat"),
-            model_filename: filename,
-            file_id,
             messages: vec![],
             messages_update_sender: tx,
             messages_update_receiver: rx,
+            last_used_file_id: None,
             is_streaming: false,
             title_state: TitleState::default(),
             chats_dir,
+            inferences_params: ChatInferenceParams::default(),
+            accessed_at: chrono::Utc::now(),
         }
     }
 
@@ -102,8 +126,7 @@ impl Chat {
                 let data: ChatData = serde_json::from_str(&json)?;
                 let chat = Chat {
                     id: data.id,
-                    model_filename: data.model_filename,
-                    file_id: data.file_id,
+                    last_used_file_id: data.last_used_file_id,
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
@@ -111,6 +134,8 @@ impl Chat {
                     messages_update_sender: tx,
                     messages_update_receiver: rx,
                     chats_dir,
+                    inferences_params: ChatInferenceParams::default(),
+                    accessed_at: data.accessed_at,
                 };
                 Ok(chat)
             }
@@ -121,11 +146,11 @@ impl Chat {
     pub fn save(&self) {
         let data = ChatData {
             id: self.id,
-            model_filename: self.model_filename.clone(),
-            file_id: self.file_id.clone(),
+            last_used_file_id: self.last_used_file_id.clone(),
             messages: self.messages.clone(),
             title: self.title.clone(),
             title_state: self.title_state,
+            accessed_at: self.accessed_at,
         };
         let json = serde_json::to_string(&data).unwrap();
         let path = self.chats_dir.join(self.file_name());
@@ -193,20 +218,28 @@ impl Chat {
             name: None,
         });
 
+        let ip = &self.inferences_params;
         let cmd = Command::Chat(
             ChatRequestData {
                 messages,
-                model: self.model_filename.clone(),
-                frequency_penalty: None,
+                model: loaded_file.name.clone(),
+                frequency_penalty: Some(ip.frequency_penalty),
                 logprobs: None,
                 top_logprobs: None,
-                max_tokens: None,
-                presence_penalty: None,
+                max_tokens: Some(ip.max_tokens),
+                presence_penalty: Some(ip.presence_penalty),
                 seed: None,
-                stop: None,
-                stream: Some(true),
-                temperature: None,
-                top_p: None,
+                stop: Some(
+                    ip.stop
+                        .split(",")
+                        .map(|s| s.trim())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string())
+                        .collect(),
+                ),
+                stream: Some(ip.stream),
+                temperature: Some(ip.temperature),
+                top_p: Some(ip.top_p),
                 n: None,
                 logit_bias: None,
             },
@@ -220,11 +253,13 @@ impl Chat {
             username: None,
             content: prompt.clone(),
         });
-        self.model_filename = loaded_file.name.clone();
+
+        self.last_used_file_id = Some(loaded_file.id.clone());
+
         self.messages.push(ChatMessage {
             id: next_id + 1,
             role: Role::Assistant,
-            username: Some(self.model_filename.clone()),
+            username: Some(loaded_file.name.clone()),
             content: "".to_string(),
         });
 
@@ -260,7 +295,6 @@ impl Chat {
                         break;
                     }
                     Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
-                    _ => (),
                 }
             } else {
                 break;
@@ -310,5 +344,9 @@ impl Chat {
             .position(|m| m.id == message_id)
             .unwrap();
         self.messages.truncate(message_index);
+    }
+
+    pub fn update_accessed_at(&mut self) {
+        self.accessed_at = chrono::Utc::now();
     }
 }

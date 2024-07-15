@@ -44,9 +44,11 @@ impl Chats {
         }
     }
 
-    pub fn get_latest_chat_id(&mut self) -> Option<ChatID> {
-        self.saved_chats.sort_by(|a, b| a.borrow().id.cmp(&b.borrow().id));
-        self.saved_chats.last().map(|c| c.borrow().id.clone())
+    pub fn get_last_selected_chat_id(&self) -> Option<ChatID> {
+        self.saved_chats
+            .iter()
+            .max_by_key(|c| c.borrow().accessed_at)
+            .map(|c| c.borrow().id)
     }
 
     pub fn load_model(&mut self, file: &File) -> Result<()> {
@@ -103,26 +105,22 @@ impl Chats {
         }
     }
 
-    pub fn set_current_chat(&mut self, chat_id: ChatID) {
-        self.current_chat_id = Some(chat_id);
+    pub fn get_chat_by_id(&self, chat_id: ChatID) -> Option<&RefCell<Chat>> {
+        self.saved_chats.iter().find(|c| c.borrow().id == chat_id)
     }
 
-    pub fn set_current_chat_and_load_model(&mut self, chat_id: ChatID, file: &File) {
+    pub fn set_current_chat(&mut self, chat_id: ChatID) {
         self.current_chat_id = Some(chat_id);
 
-        if self
-            .loaded_model
-            .as_ref()
-            .map_or(true, |m| *m.id != file.id)
-        {
-            let _ = self.load_model(file);
-        }
+        let mut chat = self.get_current_chat().unwrap().borrow_mut();
+        chat.update_accessed_at();
+        chat.save();
     }
 
     pub fn send_chat_message(&mut self, prompt: String) {
-        let Some(loaded_model) = self.loaded_model.as_ref() else { 
+        let Some(loaded_model) = self.loaded_model.as_ref() else {
             println!("Skip sending message because loaded model not found");
-            return
+            return;
         };
 
         if let Some(chat) = self.get_current_chat() {
@@ -160,7 +158,11 @@ impl Chats {
                     }
 
                     chat.remove_messages_from(message_id);
-                    chat.send_message_to_model(updated_message, loaded_model, self.backend.as_ref());
+                    chat.send_message_to_model(
+                        updated_message,
+                        loaded_model,
+                        self.backend.as_ref(),
+                    );
                 }
             } else {
                 chat.edit_message(message_id, updated_message);
@@ -187,25 +189,16 @@ impl Chats {
     }
 
     pub fn create_empty_chat(&mut self) {
-        if let Some(current_chat) = self.get_current_chat() {
-            let filename = current_chat.borrow().model_filename.clone();
-            let file_id = current_chat.borrow().file_id.clone();
-            let new_chat = RefCell::new(Chat::new(filename, file_id, self.chats_dir.clone()));
+        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
 
-            new_chat.borrow().save();
+        new_chat.borrow().save();
 
-            self.current_chat_id = Some(new_chat.borrow().id);
-            self.saved_chats.push(new_chat);
-        }
+        self.current_chat_id = Some(new_chat.borrow().id);
+        self.saved_chats.push(new_chat);
     }
 
-    pub fn create_empty_chat_with_model_file(&mut self, file: &File) {
-        let new_chat = RefCell::new(Chat::new(
-            file.name.clone(),
-            file.id.clone(),
-            self.chats_dir.clone(),
-        ));
-
+    pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
+        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
         new_chat.borrow().save();
 
         self.current_chat_id = Some(new_chat.borrow().id);
@@ -228,7 +221,7 @@ impl Chats {
 
         if let Some(current_chat_id) = self.current_chat_id {
             if current_chat_id == chat_id {
-                self.current_chat_id = self.get_latest_chat_id();
+                self.current_chat_id = self.get_last_selected_chat_id();
             }
         }
     }
