@@ -1153,12 +1153,13 @@ dependencies = [
 [[package]]
 name = "callisto"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "chrono",
  "common",
  "sea-orm",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1184,7 +1185,7 @@ dependencies = [
 [[package]]
 name = "ceres"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -1361,7 +1362,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "anyhow",
  "clap",
@@ -1737,7 +1738,7 @@ dependencies = [
 [[package]]
 name = "delta"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "diffs",
  "flate2",
@@ -2320,7 +2321,7 @@ dependencies = [
 [[package]]
 name = "gateway"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2353,15 +2354,15 @@ dependencies = [
 [[package]]
 name = "gemini"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "axum",
  "callisto",
  "chrono",
  "common",
  "jupiter",
+ "neptune",
  "reqwest 0.12.5",
- "rust-ztm",
  "serde",
  "serde_json",
  "tokio",
@@ -3054,7 +3055,7 @@ dependencies = [
 [[package]]
 name = "jupiter"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3566,7 +3567,7 @@ checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 [[package]]
 name = "mega"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "anyhow",
  "ceres",
@@ -3604,7 +3605,7 @@ dependencies = [
 [[package]]
 name = "mercury"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "axum",
  "bincode",
@@ -3757,6 +3758,21 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "neptune"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
+dependencies = [
+ "cmake",
+ "libc",
+ "num_cpus",
+ "reqwest 0.12.5",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5055,19 +5071,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-ztm"
-version = "0.1.0"
-source = "git+https://github.com/flomesh-io/rust-ztm.git#d4118af9b2c3a0ea6727a5f9d5396f2ce53c00bc"
-dependencies = [
- "cmake",
- "libc",
- "reqwest 0.12.5",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "rust_decimal"
 version = "1.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6350,6 +6353,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-test"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2468baabc3311435b55dd935f702f42cd1b8abb7e754fb7dfb16bd36aa88f9f7"
+dependencies = [
+ "async-stream",
+ "bytes",
+ "futures-core",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "tokio-util"
 version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6734,7 +6750,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vault"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "bs58",
  "go-defer",
@@ -6765,7 +6781,7 @@ dependencies = [
 [[package]]
 name = "venus"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fdd0dc6f1c9f5474a4cc56b14801b12a949dc01"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#daaf8c04c4a9646e42faa973896e5bd74857e259"
 dependencies = [
  "bstr",
  "callisto",
