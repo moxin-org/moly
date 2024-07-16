@@ -177,8 +177,38 @@ impl BackendModel for LLamaEdgeApiServer {
         let wasm_module_ = wasm_module.clone();
 
         let file_id = file.id.to_string();
+
+        let url = format!("http://{}/echo", listen_addr);
+
+        let file_ = file.clone();
+
         let model_thread = std::thread::spawn(move || {
             run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options)
+        });
+
+        async_rt.spawn(async move {
+            let mut test_server = false;
+            for _i in 0..600 {
+                let r = reqwest::get(&url).await;
+                if let Ok(resp) = r {
+                    if resp.status().is_success() {
+                        test_server = true;
+                        break;
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+            if test_server {
+                let _ = tx.send(Ok(moxin_protocol::protocol::LoadModelResponse::Completed(
+                    moxin_protocol::protocol::LoadedModelInfo {
+                        file_id: file_.id.to_string(),
+                        model_id: file_.model_id,
+                        information: "".to_string(),
+                    },
+                )));
+            } else {
+                let _ = tx.send(Err(anyhow!("Failed to start the model")));
+            }
         });
 
         let running_controller = tokio::sync::broadcast::channel(1).0;
