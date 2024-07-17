@@ -1,3 +1,6 @@
+use crate::chat::chat_history_card_options::{
+    ChatHistoryCardOptionsAction, ChatHistoryCardOptionsWidgetRefExt,
+};
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::delete_chat_modal::{DeleteChatAction, DeleteChatModalWidgetRefExt};
 use crate::data::downloads::DownloadPendingNotification;
@@ -10,7 +13,7 @@ use crate::shared::actions::{ChatAction, DownloadAction, TooltipAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
 };
-use crate::shared::portal::{PortalViewWidgetRefExt, PortalWidgetRefExt};
+use crate::shared::portal::{PortalAction, PortalViewWidgetRefExt, PortalWidgetRefExt};
 use crate::shared::tooltip::TooltipWidgetRefExt;
 use makepad_widgets::*;
 
@@ -32,6 +35,7 @@ live_design! {
     import crate::my_models::delete_model_modal::DeleteModelModal;
     import crate::chat::delete_chat_modal::DeleteChatModal;
     import crate::my_models::model_info_modal::ModelInfoModal;
+    import crate::chat::chat_history_card_options::ChatHistoryCardOptions ;
 
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
@@ -144,6 +148,11 @@ live_design! {
                     tooltip_portal_view = <PortalView> {
                         tooltip = <Tooltip> {}
                     }
+
+                    chat_history_card_options_portal_view = <PortalView> {
+                        align: {x: 1, y: 0}
+                        chat_history_card_options = <ChatHistoryCardOptions> {}
+                    }
                 }
             }
         }
@@ -246,41 +255,35 @@ impl MatchEvent for App {
                 _ => {}
             }
 
+            // TODO: Hack for error that when you first open the portal, doesnt draw until an event
+            // this forces the entire ui to rerender, still weird that only happens the first time.
+            if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
+                self.ui.redraw(cx);
+            }
+
             // Set modal viewall model id
             if let ViewAllModalAction::ModelSelected(model_id) = action.as_widget_action().cast() {
                 let mut modal = self
                     .ui
                     .model_card_view_all_modal(id!(model_card_view_all_modal));
                 modal.set_model_id(model_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
             }
 
             // Set modal viewall model id
             if let DeleteModelAction::FileSelected(file_id) = action.as_widget_action().cast() {
                 let mut modal = self.ui.delete_model_modal(id!(delete_model_modal));
                 modal.set_file_id(file_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
             }
 
             // Set modal viewall model id
             if let DeleteChatAction::ChatSelected(chat_id) = action.as_widget_action().cast() {
                 let mut modal = self.ui.delete_chat_modal(id!(delete_chat_modal));
                 modal.set_chat_id(chat_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
             }
 
             if let ModelInfoAction::FileSelected(file_id) = action.as_widget_action().cast() {
                 let mut modal = self.ui.model_info_modal(id!(model_info_modal));
                 modal.set_file_id(file_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
             }
 
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
@@ -321,6 +324,16 @@ impl MatchEvent for App {
                     let _ = portal.close(cx);
                 }
                 _ => {}
+            }
+
+            if let ChatHistoryCardOptionsAction::Selected(chat_id, cords) =
+                action.as_widget_action().cast()
+            {
+                let mut chat_history_card_options = self
+                    .ui
+                    .chat_history_card_options(id!(chat_history_card_options));
+                // TODO: Would be cool to listen for this action inside of the widget itself.
+                chat_history_card_options.selected(chat_id, cords);
             }
         }
     }
