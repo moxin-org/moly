@@ -237,6 +237,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<P, std::io::Error
     let bash_cmd = Command::new("bash")
         .arg("-s")
         .arg("--")
+        .arg("--version=0.14.0")
         .arg(&format!("--path={}", install_path.as_ref().display()))
         // The default `/tmp/` dir used in `install_v2.sh` isn't always accessible to bundled apps.
         .arg(&format!("--tmpdir={}", temp_dir.display()))
