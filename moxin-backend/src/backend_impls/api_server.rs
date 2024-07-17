@@ -106,9 +106,11 @@ pub fn run_wasm_by_downloaded_file(
     let mut wasi_logger = wasmedge_sdk::plugin::PluginManager::create_plugin_instance(
         "wasi_logging",
         "wasi:logging/logging",
-    )
-    .unwrap();
-    instances.insert(wasi_logger.name().unwrap(), &mut wasi_logger);
+    );
+
+    if let Ok(wasi_logger) = &mut wasi_logger {
+        instances.insert(wasi_logger.name().unwrap(), wasi_logger);
+    }
 
     let store = Store::new(None, instances).unwrap();
     let mut vm = Vm::new(store);
