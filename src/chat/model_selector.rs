@@ -136,41 +136,46 @@ pub struct ModelSelector {
 
 impl Widget for ModelSelector {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
-
         let store = scope.data.get::<Store>().unwrap();
 
-        if let Hit::FingerDown(fd) = event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true) {
-            if no_options_to_display(store) {
-                return;
-            };
-            if fd.tap_count == 1 {
-                self.open = !self.open;
-
-                if self.open {
-                    let list = self.model_selector_list(id!(options.list_container.list));
-                    let height = list.get_height();
-                    if height > MAX_OPTIONS_HEIGHT {
-                        self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
-                    } else {
-                        self.options_list_height = Some(height);
-                    }
-
-                    self.view(id!(options)).apply_over(
-                        cx,
-                        live! {
-                            height: Fit,
-                        },
-                    );
-
-                    self.animator_play(cx, id!(open.show));
-                } else {
-                    self.hide_animation_timer = cx.start_timeout(0.3);
-                    self.animator_play(cx, id!(open.hide));
+        if options_to_display(store) {
+            match event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true) {
+                Hit::FingerHoverIn(_) => {
+                    cx.set_cursor(MouseCursor::Hand);
                 }
+                Hit::FingerDown(fd) => {
+                    if fd.tap_count == 1 {
+                        self.open = !self.open;
+
+                        if self.open {
+                            let list = self.model_selector_list(id!(options.list_container.list));
+                            let height = list.get_height();
+                            if height > MAX_OPTIONS_HEIGHT {
+                                self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
+                            } else {
+                                self.options_list_height = Some(height);
+                            }
+
+                            self.view(id!(options)).apply_over(
+                                cx,
+                                live! {
+                                    height: Fit,
+                                },
+                            );
+
+                            self.animator_play(cx, id!(open.show));
+                        } else {
+                            self.hide_animation_timer = cx.start_timeout(0.3);
+                            self.animator_play(cx, id!(open.hide));
+                        }
+                    }
+                }
+                _ => {}
             }
         }
+
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
 
         if self.hide_animation_timer.is_event(event).is_some() {
             // When closing animation is done, hide the wrapper element
@@ -203,7 +208,7 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        if no_options_to_display(store) {
+        if !options_to_display(store) {
             choose_label.set_text("No Available Models");
             let color = vec3(0.596, 0.635, 0.702);
             choose_label.apply_over(
@@ -357,8 +362,8 @@ impl ModelSelectorRef {
     }
 }
 
-fn no_options_to_display(store: &Store) -> bool {
-    store.downloads.downloaded_files.is_empty()
+fn options_to_display(store: &Store) -> bool {
+    !store.downloads.downloaded_files.is_empty()
 }
 
 fn no_active_model(store: &Store) -> bool {
