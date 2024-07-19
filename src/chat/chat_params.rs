@@ -20,6 +20,22 @@ live_design! {
     ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_right_panel.svg")
     ICON_OPEN_PANEL = dep("crate://self/resources/icons/open_right_panel.svg")
 
+    ChatParamsTextInputWrapper = <RoundedView> {
+        width: Fill,
+        show_bg: true
+        draw_bg: {
+            radius: 5.0
+            color: #fff
+            border_width: 1.0,
+            border_color: #D9D9D9,
+        }
+        scrolled_content = <ScrollYView> {
+            margin: 1,
+            width: Fill,
+            height: Fill
+        }
+    }
+
     ChatParamsActions = <View> {
         height: Fit
         flow: Right
@@ -78,9 +94,50 @@ live_design! {
                 label = <Label> {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 12}
-                        color: #000
+                        color: #667085
                     }
-                    text: "Inference Parameters"
+                    text: "Chat Settings"
+                }
+
+                <View> {
+                    flow: Down
+                    height: Fit
+                    width: Fill
+                    spacing: 12
+                    padding: {left: 4}
+                    <Label> {
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 10},
+                            color: #000
+                        }
+                        text: "System Prompt"
+                    }
+                    <ChatParamsTextInputWrapper> {
+                        height: 90,
+                        scrolled_content = {
+                            system_prompt = <MoxinTextInput> {
+                                width: Fill,
+                                height: Fit,
+                                empty_message: "Enter a system prompt"
+                                draw_bg: {
+                                    radius: 0
+                                    color: #0000
+                                    border_width: 0
+                                }
+                                draw_text: {
+                                    text_style: {font_size: 10},
+                                }
+                            }
+                        }
+                    }
+                }
+
+                <Label> {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 10}
+                        color: #667085
+                    }
+                    text: "INFERENCE PARAMETERS"
                 }
 
                 <View> {
@@ -145,20 +202,22 @@ live_design! {
                             }
                             text: "Stop"
                         }
-                        stop = <MoxinTextInput> {
-                            width: Fill,
-                            // TODO: This should be something like min-height, allowing
-                            // the text input to grow.
+                        <ChatParamsTextInputWrapper> {
                             height: 65,
-                            empty_message: ""
-                            draw_bg: {
-                                radius: 5.0
-                                color: #fff
-                                border_width: 1.0,
-                                border_color: #D9D9D9,
-                            }
-                            draw_text: {
-                                text_style: {font_size: 10},
+                            scrolled_content = {
+                                stop = <MoxinTextInput> {
+                                    width: Fill,
+                                    height: Fit,
+                                    empty_message: " "
+                                    draw_bg: {
+                                        radius: 0,
+                                        color: #0000,
+                                        border_width: 0,
+                                    }
+                                    draw_text: {
+                                        text_style: {font_size: 10},
+                                    }
+                                }
                             }
                         }
                     }
@@ -243,12 +302,17 @@ impl Widget for ChatParams {
             let stop = self.text_input(id!(stop));
             let stream = self.check_box(id!(stream));
 
+            let system_prompt = self.text_input(id!(system_prompt));
+
             temperature.set_value(ip.temperature.into());
             top_p.set_value(ip.top_p.into());
             max_tokens.set_value(ip.max_tokens.into());
             frequency_penalty.set_value(ip.frequency_penalty.into());
             presence_penalty.set_value(ip.presence_penalty.into());
             stop.set_text(&ip.stop);
+
+            let system_prompt_value = chat.system_prompt.clone().unwrap_or_default();
+            system_prompt.set_text(&system_prompt_value);
 
             // Currently, `selected` and `set_selected` interact with the animator of
             // the widget to do what they do. To avoid some visual issues, we should not
@@ -320,6 +384,14 @@ impl WidgetMatchEvent for ChatParams {
 
             if let Some(value) = self.check_box(id!(stream)).changed(actions) {
                 ip.stream = value;
+            }
+
+            if let Some(value) = self.text_input(id!(system_prompt)).changed(&actions) {
+                if value.is_empty() {
+                    chat.system_prompt = None;
+                } else {
+                    chat.system_prompt = Some(value);
+                }
             }
         }
     }

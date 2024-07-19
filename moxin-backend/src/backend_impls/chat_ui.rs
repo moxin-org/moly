@@ -240,7 +240,7 @@ fn get_input(
 
         Ok(vec![WasmValue::from_i32(n as i32)])
     } else {
-        Err(CoreError::Execution(CoreExecutionError::FuncTypeMismatch))
+        Err(CoreError::Execution(CoreExecutionError::FuncSigMismatch))
     }
 }
 
@@ -274,7 +274,7 @@ fn push_token(
 
         Ok(vec![WasmValue::from_i32(if r { 0 } else { -1 })])
     } else {
-        Err(CoreError::Execution(CoreExecutionError::FuncTypeMismatch))
+        Err(CoreError::Execution(CoreExecutionError::FuncSigMismatch))
     }
 }
 
@@ -299,7 +299,7 @@ fn return_token_error(
 
         Ok(vec![])
     } else {
-        Err(CoreError::Execution(CoreExecutionError::FuncTypeMismatch))
+        Err(CoreError::Execution(CoreExecutionError::FuncSigMismatch))
     }
 }
 

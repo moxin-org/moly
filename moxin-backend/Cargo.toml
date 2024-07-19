@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 moxin-protocol = { path = "../moxin-protocol" }
 chrono = "0.4"
-wasmedge-sdk = { version = "=0.13.5-newapi", default-features = false, features = [
+wasmedge-sdk = { version = "0.14.0", default-features = false, features = [
     "wasi_nn",
 ] }
 log = "0.4.21"

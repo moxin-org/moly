@@ -15,6 +15,8 @@ use crate::store::download_files::DownloadedFile;
 
 use super::BackendModel;
 
+// From https://github.com/L-jasmine/LlamaEdge/tree/feat/support_unload_and_exit
+// A repo that fork from LlamaEdge/LlamaEdge for support unload model and exit
 static WASM: &[u8] = include_bytes!("../../wasm/llama-api-server.wasm");
 
 /// Use server which is OpenAI compatible
@@ -32,22 +34,16 @@ fn create_wasi(
     file: &DownloadedFile,
     load_model: &LoadModelOptions,
 ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
-    let ctx_size = if load_model.n_ctx > 0 {
-        Some(load_model.n_ctx.to_string())
-    } else {
-        None
-    };
+    // use model metadata context size
+    let ctx_size = Some(format!("{}", file.context_size));
 
     let n_gpu_layers = match load_model.gpu_layers {
         moxin_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
         moxin_protocol::protocol::GPULayers::Max => None,
     };
 
-    let batch_size = if load_model.n_batch > 0 {
-        Some(load_model.n_batch.to_string())
-    } else {
-        None
-    };
+    // Set n_batch to a fixed value of 128.
+    let batch_size = Some(format!("128"));
 
     let mut prompt_template = load_model.prompt_template.clone();
     if prompt_template.is_none() && !file.prompt_template.is_empty() {
@@ -104,9 +100,11 @@ pub fn run_wasm_by_downloaded_file(
     let mut wasi_logger = wasmedge_sdk::plugin::PluginManager::create_plugin_instance(
         "wasi_logging",
         "wasi:logging/logging",
-    )
-    .unwrap();
-    instances.insert(wasi_logger.name().unwrap(), &mut wasi_logger);
+    );
+
+    if let Ok(wasi_logger) = &mut wasi_logger {
+        instances.insert(wasi_logger.name().unwrap(), wasi_logger);
+    }
 
     let store = Store::new(None, instances).unwrap();
     let mut vm = Vm::new(store);
@@ -168,11 +166,45 @@ impl BackendModel for LLamaEdgeApiServer {
             return old_model.unwrap();
         }
 
+        if let Some(old_model) = old_model {
+            old_model.stop(async_rt);
+        }
+
         let wasm_module_ = wasm_module.clone();
 
         let file_id = file.id.to_string();
+
+        let url = format!("http://{}/echo", listen_addr);
+
+        let file_ = file.clone();
+
         let model_thread = std::thread::spawn(move || {
             run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options)
+        });
+
+        async_rt.spawn(async move {
+            let mut test_server = false;
+            for _i in 0..600 {
+                let r = reqwest::get(&url).await;
+                if let Ok(resp) = r {
+                    if resp.status().is_success() {
+                        test_server = true;
+                        break;
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+            if test_server {
+                let _ = tx.send(Ok(moxin_protocol::protocol::LoadModelResponse::Completed(
+                    moxin_protocol::protocol::LoadedModelInfo {
+                        file_id: file_.id.to_string(),
+                        model_id: file_.model_id,
+                        information: "".to_string(),
+                    },
+                )));
+            } else {
+                let _ = tx.send(Err(anyhow!("Failed to start the model")));
+            }
         });
 
         let running_controller = tokio::sync::broadcast::channel(1).0;
@@ -184,10 +216,6 @@ impl BackendModel for LLamaEdgeApiServer {
             running_controller,
             model_thread,
         };
-
-        if let Some(old_model) = old_model {
-            old_model.stop(async_rt);
-        }
 
         new_model
     }
@@ -262,6 +290,8 @@ impl BackendModel for LLamaEdgeApiServer {
     }
 
     fn stop(self, _async_rt: &tokio::runtime::Runtime) {
-        // TODO
+        let url = format!("http://{}/admin/exit", self.listen_addr);
+        let _ = reqwest::blocking::get(url);
+        let _ = self.model_thread.join();
     }
 }
