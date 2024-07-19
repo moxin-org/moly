@@ -14,7 +14,7 @@ pub struct Message {
 pub struct ChatRequestData {
     pub messages: Vec<Message>,
 
-    // Not really necesary but it is part of the OpenAI API. We are going to send the id
+    // Not really necessary but it is part of the OpenAI API. We are going to send the id
     // of the model currently loaded.
     pub model: ModelID,
 
