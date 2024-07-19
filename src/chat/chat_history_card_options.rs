@@ -28,9 +28,6 @@ live_design! {
             height: Fit,
             flow: Down,
 
-            padding: 12,
-            spacing: 10,
-
             draw_bg: {
                 color: #fff,
                 border_width: 1.0,
@@ -41,8 +38,12 @@ live_design! {
             edit_chat_name = <MoxinButton> {
                 width: Fit
                 height: Fit
-                padding: 4
-                margin: { top: -4}
+                padding: { top: 12, right: 12, bottom: 12, left: 12}
+
+                draw_bg: {
+                    border_width: 0,
+                    radius: 0
+                }
 
                 icon_walk: {width: 12, height: 12}
                 draw_icon: {
@@ -64,10 +65,15 @@ live_design! {
 
 
             delete_chat = <MoxinButton> {
-                width: Fit
+                width: Fill
                 height: Fit
-                padding: 4
-                margin: { top: -4}
+                padding: { top: 12, right: 12, bottom: 12, left: 12}
+
+                draw_bg: {
+                    border_width: 0,
+                    radius: 0
+                }
+
                 icon_walk: {width: 12, height: 12}
                 draw_icon: {
                     svg_file: (ICON_DELETE),
@@ -180,7 +186,7 @@ impl WidgetMatchEvent for ChatHistoryCardOptions {
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                ChatHistoryCardAction::ActivateTitleEdition,
+                ChatHistoryCardAction::ActivateTitleEdition(self.chat_id),
             );
             cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
         }

@@ -215,6 +215,20 @@ impl MatchEvent for App {
                 ),
             );
 
+        if let Some(_) = self
+            .ui
+            .radio_button_set(ids!(
+                sidebar_menu.discover_tab,
+                sidebar_menu.chat_tab,
+                sidebar_menu.my_models_tab,
+            ))
+            .selected(cx, actions)
+        {
+            // TODO: maybe once the navigation actions are centralized, dispatch one here.
+            let mut portal = self.ui.portal(id!(portal_root));
+            let _ = portal.close(cx);
+        };
+
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 StoreAction::Search(keywords) => {
@@ -287,11 +301,19 @@ impl MatchEvent for App {
             }
 
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
+                // TODO: Refactor this after centralizing navigation actions.
+                let mut portal = self.ui.portal(id!(portal_root));
+                let _ = portal.close(cx);
+
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
 
             if let PopupAction::NavigateToMyModels = action.as_widget_action().cast() {
+                // TODO: Refactor this after centralizing navigation actions.
+                let mut portal = self.ui.portal(id!(portal_root));
+                let _ = portal.close(cx);
+
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
             }
@@ -302,6 +324,10 @@ impl MatchEvent for App {
             }
 
             if let ChatAction::Resume = action.as_widget_action().cast() {
+                // TODO: Refactor this after centralizing navigation actions.
+                let mut portal = self.ui.portal(id!(portal_root));
+                let _ = portal.close(cx);
+
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
@@ -312,10 +338,13 @@ impl MatchEvent for App {
                     tooltip.set_text(&text);
 
                     let tooltip_portal_view = self.ui.portal_view(id!(tooltip_portal_view));
-                    tooltip_portal_view.apply_over_and_redraw(cx, live!{
-                        padding: { left: (pos.x), top: (pos.y) }
-                    });
-                    
+                    tooltip_portal_view.apply_over_and_redraw(
+                        cx,
+                        live! {
+                            padding: { left: (pos.x), top: (pos.y) }
+                        },
+                    );
+
                     let mut portal = self.ui.portal(id!(portal_root));
                     let _ = portal.show_portal_view_by_id(cx, live_id!(tooltip_portal_view));
                 }

@@ -264,6 +264,7 @@ impl Widget for ChatHistoryCard {
         }
 
         self.set_title_text(chat.borrow_mut().get_title());
+        self.update_title_visibility(cx);
 
         let initial_letter = store
             .get_last_used_file_initial_letter(self.chat_id)
@@ -293,7 +294,6 @@ impl WidgetMatchEvent for ChatHistoryCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
 
-        self.update_title_visibility(cx);
         match self.title_edition_state {
             TitleState::Editable => self.handle_title_editable_actions(cx, actions, scope),
             TitleState::OnEdit => self.handle_title_on_edit_actions(cx, actions, scope),
@@ -372,10 +372,12 @@ impl ChatHistoryCard {
         scope: &mut Scope,
     ) {
         for action in actions {
-            if let ChatHistoryCardAction::ActivateTitleEdition =
+            if let ChatHistoryCardAction::ActivateTitleEdition(chat_id) =
                 action.as_widget_action().cast::<ChatHistoryCardAction>()
             {
-                self.transition_title_state(cx);
+                if chat_id == self.chat_id {
+                    self.transition_title_state(cx);
+                }
             }
         }
     }
@@ -421,5 +423,5 @@ impl ChatHistoryCardRef {
 pub enum ChatHistoryCardAction {
     None,
     ChatSelected(ChatID),
-    ActivateTitleEdition,
+    ActivateTitleEdition(ChatID),
 }
