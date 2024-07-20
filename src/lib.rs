@@ -1,7 +1,7 @@
 pub mod app;
 
 mod chat;
-mod data;
+pub mod data;
 mod landing;
 mod my_models;
 mod shared;
