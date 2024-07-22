@@ -28,8 +28,6 @@ pub struct LoadModelOptions {
     pub prompt_template: Option<String>,
     pub gpu_layers: GPULayers,
     pub use_mlock: bool,
-    pub n_batch: u32,
-    pub n_ctx: u32,
     pub rope_freq_scale: f32,
     pub rope_freq_base: f32,
 

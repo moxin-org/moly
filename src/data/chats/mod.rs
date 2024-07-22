@@ -59,8 +59,6 @@ impl Chats {
                 prompt_template: None,
                 gpu_layers: moxin_protocol::protocol::GPULayers::Max,
                 use_mlock: false,
-                n_batch: 512,
-                n_ctx: 512,
                 rope_freq_scale: 0.0,
                 rope_freq_base: 0.0,
                 context_overflow_policy:
