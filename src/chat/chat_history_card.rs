@@ -317,19 +317,6 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
             return;
         }
-
-        //if let Some(fe) = self.view(id!(content)).finger_down(actions) {
-        //    let store = scope.data.get_mut::<Store>().unwrap();
-        //     if fe.tap_count == 1 {
-        //         cx.widget_action(
-        //             widget_uid,
-        //             &scope.path,
-        //             ChatHistoryCardAction::ChatSelected(self.chat_id),
-        //         );
-        //         store.select_chat(self.chat_id);
-        //         self.redraw(cx);
-        //     }
-        // }
     }
 }
 
