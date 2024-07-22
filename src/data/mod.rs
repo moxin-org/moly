@@ -1,4 +1,4 @@
-mod filesystem;
+pub mod filesystem;
 pub mod chats;
 pub mod downloads;
 pub mod preferences;

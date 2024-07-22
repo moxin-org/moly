@@ -1,4 +1,7 @@
+use std::{env, fs, io, thread};
+use mega;
 use std::io::Write;
+use moxin::data::filesystem::project_dirs;
 
 fn main() {
     robius_url_handler::register_handler(|incoming_url| {
@@ -15,6 +18,25 @@ fn main() {
             )
             .unwrap();
     });
-
+    run_mega_server();
     moxin::app::app_main()
+}
+
+/// Start the Mega server in a separate thread.
+fn run_mega_server() {
+    env::set_var("MEGA_BASE_DIR", project_dirs().data_dir().join(".mega").to_str().unwrap());
+    thread::spawn(|| -> io::Result<()> {
+        let config = include_str!("../.mega/config.toml"); // save config as String (soft-hard code)
+        let config_path = project_dirs().config_dir().join(".mega/config.toml");
+        if !config_path.exists() {
+            fs::create_dir_all(config_path.parent().unwrap())?;
+            let mut file = fs::File::create(&config_path)?;
+            file.write_all(config.as_bytes())?;
+        }
+
+        let args = vec!["-c", config_path.to_str().unwrap(), "service", "multi", "http"];
+        println!("Starting Mega with args: {:?}", args);
+        mega::cli::parse(Some(args)).expect("Failed to start Mega");
+        Ok(())
+    });
 }
