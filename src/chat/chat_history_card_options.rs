@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat::ChatID, store::Store},
+    data::chats::chat::ChatID,
     shared::portal::PortalAction,
 };
 use makepad_widgets::*;
@@ -54,7 +54,7 @@ live_design! {
                 }
 
                 draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 11},
+                    text_style: <REGULAR_FONT>{font_size: 9},
                     fn get_color(self) -> vec4 {
                         return #000;
                     }
@@ -68,6 +68,7 @@ live_design! {
                 width: Fill
                 height: Fit
                 padding: { top: 12, right: 12, bottom: 12, left: 12}
+                align: {x: 0.0, y: 0.5}
 
                 draw_bg: {
                     border_width: 0,
@@ -83,7 +84,7 @@ live_design! {
                 }
 
                 draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 11},
+                    text_style: <REGULAR_FONT>{font_size: 9},
                     fn get_color(self) -> vec4 {
                         return #B42318;
                     }
