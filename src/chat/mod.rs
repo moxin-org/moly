@@ -1,5 +1,6 @@
 pub mod chat_history;
 pub mod chat_history_card;
+pub mod chat_history_card_options;
 pub mod chat_line;
 pub mod chat_line_loading;
 pub mod chat_panel;
@@ -26,4 +27,5 @@ pub fn live_design(cx: &mut Cx) {
     model_selector::live_design(cx);
     shared::live_design(cx);
     delete_chat_modal::live_design(cx);
+    chat_history_card_options::live_design(cx);
 }
