@@ -216,20 +216,6 @@ impl Widget for ChatHistoryCard {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
-
-        let store = scope.data.get_mut::<Store>().unwrap();
-        let widget_uid = self.widget_uid();
-        if let Hit::FingerDown(fd) = event.hits_with_capture_overload(cx, self.view.area(), true) {
-            if fd.tap_count == 1 {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ChatHistoryCardAction::ChatSelected(self.chat_id),
-                );
-                store.select_chat(self.chat_id);
-                self.redraw(cx);
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -316,6 +302,19 @@ impl WidgetMatchEvent for ChatHistoryCard {
             );
 
             return;
+        }
+
+        if let Some(fe) = self.view(id!(content)).finger_down(actions) {
+            if fe.tap_count == 1 {
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    ChatHistoryCardAction::ChatSelected(self.chat_id),
+                );
+                let store = scope.data.get_mut::<Store>().unwrap();
+                store.select_chat(self.chat_id);
+                self.redraw(cx);
+            }
         }
     }
 }
