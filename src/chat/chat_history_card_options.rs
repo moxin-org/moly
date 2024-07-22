@@ -100,7 +100,7 @@ live_design! {
 #[derive(Clone, DefaultNone, PartialEq, Debug)]
 pub enum ChatHistoryCardOptionsAction {
     None,
-    /// (chat_id, cords)
+    /// (chat_id, coords)
     Selected(ChatID, DVec2),
 }
 
@@ -108,8 +108,6 @@ pub enum ChatHistoryCardOptionsAction {
 pub struct ChatHistoryCardOptions {
     #[deref]
     view: View,
-    #[rust]
-    cords: DVec2,
     #[rust]
     chat_id: ChatID,
 }
@@ -138,8 +136,8 @@ impl Widget for ChatHistoryCardOptions {
 impl ChatHistoryCardOptions {
     pub fn selected(&mut self, cx: &mut Cx, chat_id: ChatID, coords: DVec2) {
         self.chat_id = chat_id;
-
-        self.view.apply_over(cx, live!{content = { abs_pos: (coords)}})
+        self.apply_over(cx, live!{content = { abs_pos: (coords)}});
+        self.redraw(cx);
     }
 }
 
@@ -158,17 +156,6 @@ impl ChatHistoryCardOptionsRef {
 impl WidgetMatchEvent for ChatHistoryCardOptions {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
-
-        for action in actions {
-            if let ChatHistoryCardOptionsAction::Selected(chat_id, cords) = action
-                .as_widget_action()
-                .cast::<ChatHistoryCardOptionsAction>()
-            {
-                self.chat_id = chat_id;
-                self.cords = cords;
-                self.redraw(cx);
-            }
-        }
 
         if self.button(id!(delete_chat)).clicked(actions) {
             cx.widget_action(
