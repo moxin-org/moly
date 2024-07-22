@@ -19,9 +19,9 @@ live_design! {
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
 
     ChatHistoryCardOptions = {{ChatHistoryCardOptions}} {
-        width: Fill,
-        height: Fill,
-        flow: Down,
+        width: Fill
+        height: Fill
+        flow: Overlay
 
         content = <RoundedView> {
             width: Fit,
@@ -130,25 +130,25 @@ impl Widget for ChatHistoryCardOptions {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view
-            .draw_walk(cx, scope, walk.with_abs_pos(self.cords))
+        self.view.draw_walk(cx, scope, walk)
     }
 }
 
 impl ChatHistoryCardOptions {
-    pub fn selected(&mut self, chat_id: ChatID, cords: DVec2) {
-        self.cords = cords;
+    pub fn selected(&mut self, cx: &mut Cx, chat_id: ChatID, coords: DVec2) {
         self.chat_id = chat_id;
+
+        self.view.apply_over(cx, live!{content = { abs_pos: (coords)}})
     }
 }
 
 impl ChatHistoryCardOptionsRef {
-    pub fn selected(&mut self, chat_id: ChatID, cords: DVec2) -> Result<(), &'static str> {
+    pub fn selected(&mut self, cx: &mut Cx, chat_id: ChatID, coords: DVec2) -> Result<(), &'static str> {
         let Some(mut inner) = self.borrow_mut() else {
             return Err("Widget not found in the document");
         };
 
-        inner.selected(chat_id, cords);
+        inner.selected(cx, chat_id, coords);
 
         Ok(())
     }

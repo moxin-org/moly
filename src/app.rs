@@ -150,7 +150,6 @@ live_design! {
                     }
 
                     chat_history_card_options_portal_view = <PortalView> {
-                        align: {x: 1, y: 0}
                         chat_history_card_options = <ChatHistoryCardOptions> {}
                     }
                 }
@@ -362,7 +361,7 @@ impl MatchEvent for App {
                     .ui
                     .chat_history_card_options(id!(chat_history_card_options));
                 // TODO: Would be cool to listen for this action inside of the widget itself.
-                chat_history_card_options.selected(chat_id, cords);
+                chat_history_card_options.selected(cx, chat_id, cords);
             }
         }
     }
