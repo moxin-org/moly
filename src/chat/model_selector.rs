@@ -216,6 +216,8 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
+        self.update_loading_model_state(cx, store);
+
         if !options_to_display(store) {
             choose_label.set_text("No Available Models");
             let color = vec3(0.596, 0.635, 0.702);
@@ -227,7 +229,6 @@ impl Widget for ModelSelector {
                     }
                 },
             );
-            self.model_selector_loading(id!(loading)).hide(cx);
         } else if no_active_model(store) {
             choose_label.set_text("Choose a Model");
             let color = vec3(0.0, 0.0, 0.0);
@@ -239,7 +240,6 @@ impl Widget for ModelSelector {
                     }
                 },
             );
-            self.model_selector_loading(id!(loading)).hide(cx);
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -307,26 +307,15 @@ impl ModelSelector {
         self.animator_cut(cx, id!(open.hide));
     }
 
-    fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
-        if let Some(loader) = &store.chats.model_loader {
-            if !loader.complete {
-                let caption = format!("Loading {}", loader.file.name);
-                self.model_selector_loading(id!(loading)).show_and_animate(cx);
-                self.view(id!(selected)).apply_over(
-                    cx,
-                    live! {
-                        visible: true
-                        label = { text: (caption) }
-                        architecture_tag = { visible: false }
-                        params_size_tag = { visible: false }
-                        file_size_tag = { visible: false }
-                    },
-                );
-                self.redraw(cx);
-                return;
-            }
+    fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
+        if store.chats.get_loading_model().is_some() {
+            self.model_selector_loading(id!(loading)).show_and_animate(cx);
+        } else {
+            self.model_selector_loading(id!(loading)).hide(cx);
         }
+    }
 
+    fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
         let Some(downloaded_file) = store.get_loaded_downloaded_file() else {
             return;
         };
@@ -337,6 +326,25 @@ impl ModelSelector {
                 visible: false
             },
         );
+
+        // When a model is being loaded, show a loading message
+        if let Some(file) = &store.chats.get_loading_model() {
+            let caption = format!("Loading {}", file.name);
+            self.view(id!(selected)).apply_over(
+                cx,
+                live! {
+                    visible: true
+                    label = { text: (caption) }
+                    architecture_tag = { visible: false }
+                    params_size_tag = { visible: false }
+                    file_size_tag = { visible: false }
+                },
+            );
+            self.redraw(cx);
+            return;
+        }
+
+        // Normal case when a model is loaded
         let filename = downloaded_file.file.name;
 
         let architecture = downloaded_file.model.architecture;

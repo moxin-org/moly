@@ -69,6 +69,10 @@ impl Chats {
         self.model_loader = Some(loader);
     }
 
+    pub fn get_loading_model(&self) -> Option<&File> {
+        self.model_loader.as_ref().filter(|loader| !loader.complete).map(|loader| &loader.file)
+    }
+
     pub fn update_load_model(&mut self) {
         let loader = self.model_loader.as_mut();
         if let Some(loader) = loader {
