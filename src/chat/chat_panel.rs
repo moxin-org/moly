@@ -92,14 +92,20 @@ live_design! {
                             }
                         }
                     }
-                    input_container = {
-                        input = {
-                            draw_bg: {
-                                color: #15859A
-                            }
+                    edit_buttons = {
+                        save = {
+                            draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
                             draw_text: {
                                 fn get_color(self) -> vec4 {
-                                    return #fff;
+                                    return #099250;
+                                }
+                            }
+                        }
+                        save_and_regenerate = {
+                            draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
+                            draw_text: {
+                                fn get_color(self) -> vec4 {
+                                    return #099250;
                                 }
                             }
                         }
@@ -116,10 +122,6 @@ live_design! {
         main_section = {
             body_section = {
                 bubble = {
-                    draw_bg: {
-                        border_width: 1.0,
-                        border_color: #D0D5DD,
-                    }
                     markdown_message_container = {
                         markdown_message = {
                             draw_normal: {
