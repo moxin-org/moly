@@ -424,6 +424,7 @@ enum State {
     Unknown,
     NoModelsAvailable,
     NoModelSelected,
+    ModelLoading,
     ModelSelectedWithEmptyChat,
     ModelSelectedWithChat {
         sticked_to_bottom: bool,
@@ -579,9 +580,12 @@ impl WidgetMatchEvent for ChatPanel {
 impl ChatPanel {
     fn update_state(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+        let loader = &store.chats.model_loader;
 
         self.state = if store.downloads.downloaded_files.is_empty() {
             State::NoModelsAvailable
+        } else if loader.as_ref().map_or(false, |l| !l.complete) {
+            State::ModelLoading
         } else if store.chats.loaded_model.is_none() {
             State::NoModelSelected
         } else {
@@ -623,6 +627,18 @@ impl ChatPanel {
                     },
                 );
                 self.show_prompt_input_stop_button(cx);
+            }
+            State::ModelLoading => {
+                self.show_prompt_send_button(cx);
+                self.disable_prompt_buttons(cx);
+
+                let prompt_input = self.text_input(id!(main_prompt_input.prompt));
+                prompt_input.apply_over(
+                    cx,
+                    live! {
+                        draw_text: { prompt_enabled: 0.0 }
+                    },
+                );
             }
             _ => {}
         }
@@ -695,7 +711,7 @@ impl ChatPanel {
     fn disable_prompt_buttons(&mut self, cx: &mut Cx) {
         let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
         let send_button = self.button(id!(main_prompt_input.prompt_send_button));
-        send_button.set_enabled(true);
+        send_button.set_enabled(false);
         send_button.apply_over(
             cx,
             live! {
