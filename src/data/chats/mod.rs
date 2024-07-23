@@ -1,19 +1,24 @@
 pub mod chat;
+pub mod model_loader;
 
 use anyhow::{Context, Result};
 use chat::{Chat, ChatID};
+use model_loader::ModelLoader;
 use moxin_backend::Backend;
-use moxin_protocol::protocol::{Command, LoadModelResponse};
-use moxin_protocol::{data::*, protocol::LoadModelOptions};
+use moxin_protocol::data::*;
+use moxin_protocol::protocol::Command;
 use std::fs;
-use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::channel};
+use std::sync::mpsc::channel;
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use super::filesystem::setup_chats_folder;
 
 pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
+
     pub loaded_model: Option<File>,
+    pub model_loader: Option<ModelLoader>,
 
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
@@ -26,6 +31,7 @@ impl Chats {
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
+            model_loader: None,
             chats_dir: setup_chats_folder(),
         }
     }
@@ -51,41 +57,28 @@ impl Chats {
             .map(|c| c.borrow().id)
     }
 
-    pub fn load_model(&mut self, file: &File) -> Result<()> {
-        let (tx, rx) = channel();
-        let cmd = Command::LoadModel(
-            file.id.clone(),
-            LoadModelOptions {
-                prompt_template: None,
-                gpu_layers: moxin_protocol::protocol::GPULayers::Max,
-                use_mlock: false,
-                rope_freq_scale: 0.0,
-                rope_freq_base: 0.0,
-                context_overflow_policy:
-                    moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
-            },
-            tx,
-        );
-
-        self.backend.as_ref().command_sender.send(cmd).unwrap();
-
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(LoadModelResponse::Completed(_)) => {
-                    self.loaded_model = Some(file.clone());
-                    Ok(())
-                }
-                Ok(_) => {
-                    eprintln!("Error loading model: Unexpected response");
-                    Err(anyhow::anyhow!("Error loading model: Unexpected response"))
-                }
-                Err(err) => {
-                    eprintln!("Error loading model: {:?}", err);
-                    Err(err)
-                }
+    pub fn load_model(&mut self, file: &File) {
+        if let Some(loader) = &self.model_loader {
+            if !loader.complete {
+                return;
             }
-        } else {
-            Err(anyhow::anyhow!("Error loading model"))
+        }
+
+        let loader = ModelLoader::new(file.clone());
+        loader.load_model(self.backend.as_ref());
+        self.model_loader = Some(loader);
+    }
+
+    pub fn update_load_model(&mut self) {
+        let loader = self.model_loader.as_mut();
+        if let Some(loader) = loader {
+            if loader.check_load_response().is_ok() {
+                self.loaded_model = Some(loader.file.clone());
+            }
+
+            if loader.complete {
+                self.model_loader = None;
+            }
         }
     }
 

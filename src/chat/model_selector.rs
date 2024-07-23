@@ -4,7 +4,7 @@ use crate::{
 };
 use makepad_widgets::*;
 
-use super::model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt};
+use super::{model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt}, model_selector_loading::ModelSelectorLoadingWidgetExt};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -14,13 +14,15 @@ live_design! {
 
     import crate::chat::model_info::ModelInfo;
     import crate::chat::model_selector_list::ModelSelectorList;
+    import crate::chat::model_selector_loading::ModelSelectorLoading;
 
     ModelSelectorButton = <RoundedView> {
         width: Fill,
         height: 54,
+        flow: Overlay,
 
         align: {x: 0.0, y: 0.5},
-        padding: 16,
+        padding: 0,
 
         draw_bg: {
             instance radius: 3.0,
@@ -29,11 +31,18 @@ live_design! {
 
         cursor: Hand,
 
+        loading = <ModelSelectorLoading> {
+            width: Fill,
+            height: Fill,
+            visible: false,
+        }
+
         choose = <View> {
             width: Fill,
             height: Fit,
 
             align: {x: 0.5, y: 0.5},
+            padding: 16,
 
             label = <Label> {
                 draw_text:{
@@ -48,6 +57,8 @@ live_design! {
             height: Fit,
             show_bg: false,
             visible: false,
+
+            padding: 16,
 
             label = {
                 draw_text: {
@@ -139,6 +150,41 @@ impl Widget for ModelSelector {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
+        let store = scope.data.get::<Store>().unwrap();
+
+        if let Hit::FingerDown(fd) =
+            event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
+        {
+            if !options_to_display(store) {
+                return;
+            };
+            if fd.tap_count == 1 {
+                self.open = !self.open;
+
+                if self.open {
+                    let list = self.model_selector_list(id!(options.list_container.list));
+                    let height = list.get_height();
+                    if height > MAX_OPTIONS_HEIGHT {
+                        self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
+                    } else {
+                        self.options_list_height = Some(height);
+                    }
+
+                    self.view(id!(options)).apply_over(
+                        cx,
+                        live! {
+                            height: Fit,
+                        },
+                    );
+
+                    self.animator_play(cx, id!(open.show));
+                } else {
+                    self.hide_animation_timer = cx.start_timeout(0.3);
+                    self.animator_play(cx, id!(open.hide));
+                }
+            }
+        }
+
         if self.hide_animation_timer.is_event(event).is_some() {
             // When closing animation is done, hide the wrapper element
             self.view(id!(options)).apply_over(cx, live! { height: 0 });
@@ -181,6 +227,7 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+            self.model_selector_loading(id!(loading)).hide(cx);
         } else if no_active_model(store) {
             choose_label.set_text("Choose a Model");
             let color = vec3(0.0, 0.0, 0.0);
@@ -192,6 +239,7 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+            self.model_selector_loading(id!(loading)).hide(cx);
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -260,6 +308,25 @@ impl ModelSelector {
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
+        if let Some(loader) = &store.chats.model_loader {
+            if !loader.complete {
+                let caption = format!("Loading {}", loader.file.name);
+                self.model_selector_loading(id!(loading)).show_and_animate(cx);
+                self.view(id!(selected)).apply_over(
+                    cx,
+                    live! {
+                        visible: true
+                        label = { text: (caption) }
+                        architecture_tag = { visible: false }
+                        params_size_tag = { visible: false }
+                        file_size_tag = { visible: false }
+                    },
+                );
+                self.redraw(cx);
+                return;
+            }
+        }
+
         let Some(downloaded_file) = store.get_loaded_downloaded_file() else {
             return;
         };
@@ -281,6 +348,7 @@ impl ModelSelector {
         let size = format_model_size(&downloaded_file.file.size).unwrap_or("".to_string());
         let size_visible = !size.trim().is_empty();
 
+        self.model_selector_loading(id!(loading)).hide(cx);
         self.view(id!(selected)).apply_over(
             cx,
             live! {
