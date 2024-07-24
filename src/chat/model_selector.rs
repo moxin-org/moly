@@ -4,7 +4,10 @@ use crate::{
 };
 use makepad_widgets::*;
 
-use super::{model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt}, model_selector_loading::ModelSelectorLoadingWidgetExt};
+use super::{
+    model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt},
+    model_selector_loading::ModelSelectorLoadingWidgetExt,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -309,17 +312,14 @@ impl ModelSelector {
 
     fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
         if store.chats.get_loading_model().is_some() {
-            self.model_selector_loading(id!(loading)).show_and_animate(cx);
+            self.model_selector_loading(id!(loading))
+                .show_and_animate(cx);
         } else {
             self.model_selector_loading(id!(loading)).hide(cx);
         }
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
-        let Some(downloaded_file) = store.get_loaded_downloaded_file() else {
-            return;
-        };
-
         self.view(id!(choose)).apply_over(
             cx,
             live! {
@@ -327,8 +327,8 @@ impl ModelSelector {
             },
         );
 
-        // When a model is being loaded, show a loading message
         if let Some(file) = &store.chats.get_loading_model() {
+            // When a model is being loaded, show the "loading state"
             let caption = format!("Loading {}", file.name);
             self.view(id!(selected)).apply_over(
                 cx,
@@ -340,33 +340,37 @@ impl ModelSelector {
                     file_size_tag = { visible: false }
                 },
             );
-            self.redraw(cx);
-            return;
+        } else {
+            let Some(downloaded_file) = store.get_loaded_downloaded_file() else {
+                error!("Error displaying current loaded model");
+                return;
+            };
+
+            // When a model is loaded, show the model info
+            let filename = downloaded_file.file.name;
+
+            let architecture = downloaded_file.model.architecture;
+            let architecture_visible = !architecture.trim().is_empty();
+
+            let param_size = downloaded_file.model.size;
+            let param_size_visible = !param_size.trim().is_empty();
+
+            let size = format_model_size(&downloaded_file.file.size).unwrap_or("".to_string());
+            let size_visible = !size.trim().is_empty();
+
+            self.model_selector_loading(id!(loading)).hide(cx);
+            self.view(id!(selected)).apply_over(
+                cx,
+                live! {
+                    visible: true
+                    label = { text: (filename) }
+                    architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) }}
+                    params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) }}
+                    file_size_tag = { visible: (size_visible), caption = { text: (size) }}
+                },
+            );
         }
 
-        // Normal case when a model is loaded
-        let filename = downloaded_file.file.name;
-
-        let architecture = downloaded_file.model.architecture;
-        let architecture_visible = !architecture.trim().is_empty();
-
-        let param_size = downloaded_file.model.size;
-        let param_size_visible = !param_size.trim().is_empty();
-
-        let size = format_model_size(&downloaded_file.file.size).unwrap_or("".to_string());
-        let size_visible = !size.trim().is_empty();
-
-        self.model_selector_loading(id!(loading)).hide(cx);
-        self.view(id!(selected)).apply_over(
-            cx,
-            live! {
-                visible: true
-                label = { text: (filename) }
-                architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) }}
-                params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) }}
-                file_size_tag = { visible: (size_visible), caption = { text: (size) }}
-            },
-        );
         self.redraw(cx);
     }
 
