@@ -154,7 +154,7 @@ live_design! {
         }
     }
 
-    JumpToButtom = <View> {
+    JumpToBottom = <View> {
         width: Fill,
         height: Fill,
         align: {x: 1.0, y: 1.0},
@@ -412,7 +412,7 @@ live_design! {
             model_selector = <ModelSelector> {}
         }
 
-        <JumpToButtom> {}
+        <JumpToBottom> {}
     }
 }
 
