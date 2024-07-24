@@ -154,10 +154,11 @@ live_design! {
         }
     }
 
-    JumpToButtom = <View> {
+    JumpToBottom = <View> {
         width: Fill,
         height: Fill,
-        align: {x: 0.5, y: 1.0},
+        align: {x: 1.0, y: 1.0},
+        padding: {bottom: 60},
 
         jump_to_bottom = <CircleButton> {
             width: 34,
@@ -252,161 +253,166 @@ live_design! {
     }
 
     ChatPanel = {{ChatPanel}} {
-        width: Fill,
-        height: Fill,
-        margin: {top: 0, left: 20, right: 20, bottom: 20},
+        flow: Overlay
+        width: Fill
+        height: Fill
 
-        flow: Overlay,
+        <View> {
+            flow: Overlay
+            width: Fill
+            height: Fill
+            padding: {left: 25, right: 25, bottom: 20},
 
-        no_downloaded_model = <View> {
-            width: Fill,
-            height: Fill,
-
-            flow: Down,
-            align: {x: 0.5, y: 0.5},
-
-            <View> {
+            no_downloaded_model = <View> {
                 width: Fill,
                 height: Fill,
+
                 flow: Down,
-                spacing: 30,
                 align: {x: 0.5, y: 0.5},
 
-                <Label> {
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 12},
-                        color: #667085
-                    }
-                    text: "You haven’t downloaded any models yet."
-                }
-                go_to_discover_button = <MoxinButton> {
-                    width: Fit,
-                    height: Fit,
+                <View> {
+                    width: Fill,
+                    height: Fill,
+                    flow: Down,
+                    spacing: 30,
+                    align: {x: 0.5, y: 0.5},
 
-                    draw_bg: {
-                        border_color: #D0D5DD,
-                        border_width: 1.0,
-                        color: #fff,
-                        color_hover: #E2F1F1,
-                        radius: 2.0,
+                    <Label> {
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 12},
+                            color: #667085
+                        }
+                        text: "You haven’t downloaded any models yet."
                     }
+                    go_to_discover_button = <MoxinButton> {
+                        width: Fit,
+                        height: Fit,
 
-                    padding: {top: 14, right: 12, bottom: 14, left: 12}
-                    text: "Go To Discover"
-                    draw_text: {
-                        text_style: <BOLD_FONT>{font_size: 12},
-                        fn get_color(self) -> vec4 {
-                            return #087443;
+                        draw_bg: {
+                            border_color: #D0D5DD,
+                            border_width: 1.0,
+                            color: #fff,
+                            color_hover: #E2F1F1,
+                            radius: 2.0,
+                        }
+
+                        padding: {top: 14, right: 12, bottom: 14, left: 12}
+                        text: "Go To Discover"
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 12},
+                            fn get_color(self) -> vec4 {
+                                return #087443;
+                            }
                         }
                     }
                 }
+
+                <View> {
+                    width: Fill, height: Fit
+                    flow: Down,
+                    align: {x: 0.5, y: 0.5},
+                    no_downloaded_model_prompt_input = <ChatPromptInput> {}
+                }
+
             }
 
-            <View> {
-                width: Fill, height: Fit
-                flow: Down,
-                align: {x: 0.5, y: 0.5},
-                no_downloaded_model_prompt_input = <ChatPromptInput> {}
-            }
-
-        }
-
-        no_model = <View> {
-            width: Fill,
-            height: Fill,
-
-            flow: Down,
-            align: {x: 0.5, y: 0.5},
-
-            <View> {
+            no_model = <View> {
                 width: Fill,
                 height: Fill,
+
+                flow: Down,
+                align: {x: 0.5, y: 0.5},
+
+                <View> {
+                    width: Fill,
+                    height: Fill,
+                    flow: Down,
+                    spacing: 30,
+                    align: {x: 0.5, y: 0.5},
+
+                    <Icon> {
+                        draw_icon: {
+                            svg_file: dep("crate://self/resources/icons/chat.svg"),
+                            color: #D0D5DD
+                        }
+                        icon_walk: {width: 128, height: 128}
+                    }
+
+                    <Label> {
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 14},
+                            color: #667085
+                        }
+                        text: "Start chatting by choosing a model from above"
+                    }
+                }
+
+                <View> {
+                    width: Fill, height: Fit
+                    flow: Down,
+                    align: {x: 0.5, y: 0.5},
+                    no_model_prompt_input = <ChatPromptInput> {}
+                }
+
+            }
+
+            empty_conversation = <View> {
+                visible: false,
+
+                width: Fill,
+                height: Fill,
+
                 flow: Down,
                 spacing: 30,
                 align: {x: 0.5, y: 0.5},
 
-                <Icon> {
-                    draw_icon: {
-                        svg_file: dep("crate://self/resources/icons/chat.svg"),
-                        color: #D0D5DD
-                    }
-                    icon_walk: {width: 128, height: 128}
-                }
-
+                <ChatAgentAvatar> {}
                 <Label> {
                     draw_text: {
                         text_style: <REGULAR_FONT>{font_size: 14},
-                        color: #667085
+                        color: #101828
                     }
-                    text: "Start chatting by choosing a model from above"
+                    text: "How can I help you?"
                 }
             }
 
-            <View> {
-                width: Fill, height: Fit
-                flow: Down,
-                align: {x: 0.5, y: 0.5},
-                no_model_prompt_input = <ChatPromptInput> {}
-            }
+            main = <View> {
+                visible: false
 
-        }
-
-        empty_conversation = <View> {
-            visible: false,
-
-            width: Fill,
-            height: Fill,
-
-            flow: Down,
-            spacing: 30,
-            align: {x: 0.5, y: 0.5},
-
-            <ChatAgentAvatar> {}
-            <Label> {
-                draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 14},
-                    color: #101828
-                }
-                text: "How can I help you?"
-            }
-        }
-
-        main = <View> {
-            visible: false
-
-            width: Fill,
-            height: Fill,
-
-            margin: { top: 86 }
-            spacing: 4,
-            flow: Down,
-
-            <View> {
                 width: Fill,
                 height: Fill,
 
-                flow: Overlay
-                chat = <PortalList> {
-                    scroll_bar: {
-                        bar_size: 0.0,
-                    }
+                margin: { top: 86 }
+                spacing: 4,
+                flow: Down,
+
+                <View> {
                     width: Fill,
                     height: Fill,
 
-                    drag_scrolling: false,
+                    flow: Overlay
+                    chat = <PortalList> {
+                        scroll_bar: {
+                            bar_size: 0.0,
+                        }
+                        width: Fill,
+                        height: Fill,
 
-                    UserChatLine = <UserChatLine> {}
-                    ModelChatLine = <ModelChatLine> {}
-                    EndOfChat = <View> {height: 0.1}
+                        drag_scrolling: false,
+
+                        UserChatLine = <UserChatLine> {}
+                        ModelChatLine = <ModelChatLine> {}
+                        EndOfChat = <View> {height: 0.1}
+                    }
                 }
 
-                <JumpToButtom> {}
+                main_prompt_input = <ChatPromptInput> {}
             }
 
-            main_prompt_input = <ChatPromptInput> {}
+            model_selector = <ModelSelector> {}
         }
 
-        model_selector = <ModelSelector> {}
+        <JumpToBottom> {}
     }
 }
 
