@@ -165,7 +165,7 @@ impl BackendModel for LLamaEdgeApiServer {
 
         let file_id = file.id.to_string();
 
-        let url = format!("http://127.0.0.1:{}/echo", listen_addr.port());
+        let url = format!("http://localhost:{}/echo", listen_addr.port());
 
         let file_ = file.clone();
 
@@ -176,7 +176,13 @@ impl BackendModel for LLamaEdgeApiServer {
         async_rt.spawn(async move {
             let mut test_server = false;
             for _i in 0..600 {
-                let r = reqwest::get(&url).await;
+                let r = reqwest::ClientBuilder::new()
+                    .no_proxy()
+                    .build()
+                    .unwrap()
+                    .get(&url)
+                    .send()
+                    .await;
                 if let Ok(resp) = r {
                     if resp.status().is_success() {
                         test_server = true;
@@ -219,14 +225,17 @@ impl BackendModel for LLamaEdgeApiServer {
     ) -> bool {
         let is_stream = data.stream.unwrap_or(false);
         let url = format!(
-            "http://127.0.0.1:{}/v1/chat/completions",
+            "http://localhost:{}/v1/chat/completions",
             self.listen_addr.port()
         );
         let mut cancel = self.running_controller.subscribe();
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
-            let resp = reqwest::Client::new()
+            let resp = reqwest::ClientBuilder::new()
+                .no_proxy()
+                .build()
+                .unwrap()
                 .post(url)
                 .body(request_body)
                 .send()
@@ -284,8 +293,13 @@ impl BackendModel for LLamaEdgeApiServer {
     }
 
     fn stop(self, _async_rt: &tokio::runtime::Runtime) {
-        let url = format!("http://127.0.0.1:{}/admin/exit", self.listen_addr.port());
-        let _ = reqwest::blocking::get(url);
+        let url = format!("http://localhost:{}/admin/exit", self.listen_addr.port());
+        let _ = reqwest::blocking::ClientBuilder::new()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .get(url)
+            .send();
         let _ = self.model_thread.join();
     }
 }
