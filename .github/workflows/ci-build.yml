@@ -93,9 +93,10 @@ jobs:
 
       - name: Download WasmEdge
         run: |
+          $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip" -OutFile "WasmEdge-0.14.0-windows.zip"
           Expand-Archive -LiteralPath "WasmEdge-0.14.0-windows.zip" -DestinationPath ${{ github.workspace }}
-          tree ${{ github.workspace }}\WasmEdge
+          tree /F ${{ github.workspace }}\WasmEdge
 
       - name: Set up Windows 10 SDK
         uses: GuillaumeFalourd/setup-windows10-sdk-action@v1.11
