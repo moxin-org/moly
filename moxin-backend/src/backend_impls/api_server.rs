@@ -165,7 +165,7 @@ impl BackendModel for LLamaEdgeApiServer {
 
         let file_id = file.id.to_string();
 
-        let url = format!("http://{}/echo", listen_addr);
+        let url = format!("http://127.0.0.1:{}/echo", listen_addr.port());
 
         let file_ = file.clone();
 
@@ -218,7 +218,10 @@ impl BackendModel for LLamaEdgeApiServer {
         tx: std::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
     ) -> bool {
         let is_stream = data.stream.unwrap_or(false);
-        let url = format!("http://{}/v1/chat/completions", self.listen_addr);
+        let url = format!(
+            "http://127.0.0.1:{}/v1/chat/completions",
+            self.listen_addr.port()
+        );
         let mut cancel = self.running_controller.subscribe();
 
         async_rt.spawn(async move {
@@ -281,7 +284,7 @@ impl BackendModel for LLamaEdgeApiServer {
     }
 
     fn stop(self, _async_rt: &tokio::runtime::Runtime) {
-        let url = format!("http://{}/admin/exit", self.listen_addr);
+        let url = format!("http://127.0.0.1:{}/admin/exit", self.listen_addr.port());
         let _ = reqwest::blocking::get(url);
         let _ = self.model_thread.join();
     }
