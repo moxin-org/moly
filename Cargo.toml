@@ -7,6 +7,9 @@ members = [
     "moxin-backend",
     "moxin-fake-backend",
 ]
+exclude = [
+    "packaging/before-packaging-command"
+]
 
 [package]
 name = "moxin"
