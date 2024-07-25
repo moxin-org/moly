@@ -122,6 +122,7 @@ live_design! {
         main_section = {
             body_section = {
                 bubble = {
+                    padding: {left: 0}
                     markdown_message_container = {
                         markdown_message = {
                             draw_normal: {
