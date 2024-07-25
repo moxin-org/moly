@@ -37,7 +37,6 @@ live_design! {
         loading = <ModelSelectorLoading> {
             width: Fill,
             height: Fill,
-            visible: false,
         }
 
         choose = <View> {
@@ -315,7 +314,7 @@ impl ModelSelector {
             self.model_selector_loading(id!(loading))
                 .show_and_animate(cx);
         } else {
-            self.model_selector_loading(id!(loading)).hide(cx);
+            self.model_selector_loading(id!(loading)).hide();
         }
     }
 
@@ -358,7 +357,6 @@ impl ModelSelector {
             let size = format_model_size(&downloaded_file.file.size).unwrap_or("".to_string());
             let size_visible = !size.trim().is_empty();
 
-            self.model_selector_loading(id!(loading)).hide(cx);
             self.view(id!(selected)).apply_over(
                 cx,
                 live! {

@@ -101,15 +101,13 @@ impl Widget for ModelSelectorLoading {
 
 impl ModelSelectorLoading {
     pub fn update_animation(&mut self, cx: &mut Cx) {
+        self.visible = true;
         if self.animator_in_state(cx, id!(line.restart)) {
-            self.visible = true;
             self.animator_play(cx, id!(line.run));
-            self.timer = cx.start_timeout(1.5);
         } else {
-            self.visible = true;
             self.animator_play(cx, id!(line.restart));
-            self.timer = cx.start_timeout(1.5);
         }
+        self.timer = cx.start_timeout(1.5);
     }
 }
 
@@ -123,11 +121,11 @@ impl ModelSelectorLoadingRef {
         }
     }
 
-    pub fn hide(&mut self, cx: &mut Cx) {
+    pub fn hide(&mut self) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.view.visible = false;
+        inner.visible = false;
         inner.timer = Timer::default();
     }
 }
