@@ -335,7 +335,7 @@ impl MatchEvent for App {
                     .ui
                     .chat_history_card_options(id!(chat_history_card_options));
                 // TODO: Would be cool to listen for this action inside of the widget itself.
-                chat_history_card_options.selected(cx, chat_id, cords);
+                let _ = chat_history_card_options.selected(cx, chat_id, cords);
             }
         }
     }
