@@ -264,6 +264,7 @@ live_design! {
             padding: {left: 25, right: 25, bottom: 20},
 
             no_downloaded_model = <View> {
+                visible: false,
                 width: Fill,
                 height: Fill,
 
@@ -317,6 +318,7 @@ live_design! {
             }
 
             no_model = <View> {
+                visible: false,
                 width: Fill,
                 height: Fill,
 
@@ -424,9 +426,11 @@ enum State {
     Unknown,
     NoModelsAvailable,
     NoModelSelected,
-    ModelLoading,
-    ModelSelectedWithEmptyChat,
+    ModelSelectedWithEmptyChat {
+        is_loading: bool,
+    },
     ModelSelectedWithChat {
+        is_loading: bool,
         sticked_to_bottom: bool,
         is_streaming: bool,
     },
@@ -464,6 +468,7 @@ impl Widget for ChatPanel {
                 State::ModelSelectedWithChat {
                     is_streaming: true,
                     sticked_to_bottom,
+                    ..
                 } => {
                     if sticked_to_bottom {
                         self.scroll_messages_to_bottom(cx);
@@ -561,7 +566,7 @@ impl WidgetMatchEvent for ChatPanel {
                 is_streaming: false,
                 ..
             }
-            | State::ModelSelectedWithEmptyChat => {
+            | State::ModelSelectedWithEmptyChat { .. } => {
                 self.handle_prompt_input_actions(cx, actions, scope);
             }
             State::ModelSelectedWithChat {
@@ -589,36 +594,44 @@ impl WidgetMatchEvent for ChatPanel {
 impl ChatPanel {
     fn update_state(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let loader = &store.chats.model_loader;
+        //let loader = &store.chats.model_loader;
 
         self.state = if store.downloads.downloaded_files.is_empty() {
             State::NoModelsAvailable
-        } else if loader.as_ref().map_or(false, |l| !l.complete) {
-            State::ModelLoading
         } else if store.chats.loaded_model.is_none() {
             State::NoModelSelected
         } else {
-            store
-                .chats
-                .get_current_chat()
-                .map_or(State::ModelSelectedWithEmptyChat, |chat| {
+            let is_loading = store.chats.get_currently_loading_model().is_some();
+
+            store.chats.get_current_chat().map_or(
+                State::ModelSelectedWithEmptyChat { is_loading },
+                |chat| {
                     if chat.borrow().messages.is_empty() {
-                        State::ModelSelectedWithEmptyChat
+                        State::ModelSelectedWithEmptyChat { is_loading }
                     } else {
                         State::ModelSelectedWithChat {
+                            is_loading,
                             sticked_to_bottom: self.portal_list_end_reached
                                 || !matches!(self.state, State::ModelSelectedWithChat { .. }),
                             is_streaming: chat.borrow().is_streaming,
                         }
                     }
-                })
+                },
+            )
         };
     }
 
     fn update_prompt_input(&mut self, cx: &mut Cx) {
         match self.state {
-            State::ModelSelectedWithEmptyChat
+            State::ModelSelectedWithEmptyChat { is_loading: true }
             | State::ModelSelectedWithChat {
+                is_loading: true, ..
+            } => {
+                self.activate_prompt_input(cx, PromptInputMode::Disabled, PromptInputButton::Send);
+            }
+            State::ModelSelectedWithEmptyChat { is_loading: false }
+            | State::ModelSelectedWithChat {
+                is_loading: false,
                 is_streaming: false,
                 ..
             } => {
@@ -629,10 +642,9 @@ impl ChatPanel {
             } => {
                 self.activate_prompt_input(cx, PromptInputMode::Disabled, PromptInputButton::Stop);
             }
-            State::ModelLoading => {
-                self.activate_prompt_input(cx, PromptInputMode::Disabled, PromptInputButton::Send);
+            _ => {
+                // Input prompts should not be visible in other conditions
             }
-            _ => {}
         }
     }
 
@@ -754,7 +766,7 @@ impl ChatPanel {
         self.update_prompt_input(cx);
 
         match self.state {
-            State::ModelSelectedWithEmptyChat => {
+            State::ModelSelectedWithEmptyChat { .. } => {
                 let store = scope.data.get::<Store>().unwrap();
 
                 self.view(id!(empty_conversation))
@@ -789,7 +801,7 @@ impl ChatPanel {
 
                 no_model.set_visible(true);
             }
-            State::ModelSelectedWithEmptyChat => {
+            State::ModelSelectedWithEmptyChat { .. } => {
                 jump_to_bottom.set_visible(false);
                 no_downloaded_model.set_visible(false);
                 no_model.set_visible(false);

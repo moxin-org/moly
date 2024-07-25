@@ -69,7 +69,7 @@ impl Chats {
         self.model_loader = Some(loader);
     }
 
-    pub fn get_loading_model(&self) -> Option<&File> {
+    pub fn get_currently_loading_model(&self) -> Option<&File> {
         self.model_loader.as_ref().filter(|loader| !loader.complete).map(|loader| &loader.file)
     }
 
