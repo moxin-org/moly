@@ -54,6 +54,39 @@ cd moxin
 cargo run
 ```
 
+## Windows (Windows 10 or higher)
+1.  Download and install the LLVM v17.0.6 release for Windows: [Here is a direct link to LLVM-17.0.6-win64.exe](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe), 333MB in size.
+    > [!IMPORTANT]
+    > During the setup procedure, make sure to select `Add LLVM to the system PATH for all users` or `for the current user`.
+2. Restart your PC, or log out and log back in, which allows the LLVM path to be properly
+    * Alternatively you can add the LLVM path `C:\Program Files\LLVM\bin` to your system PATH.
+3.  Download the [WasmEdge-0.14.0-windows.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip) file from [the WasmEdge v0.14.0 release page](https://github.com/WasmEdge/WasmEdge/releases/tag/0.14.0),
+    and then extract it into a directory of your choice, such as your home directory (`C:\Users\<USERNAME>\`). 
+    Afterwards, you should see a directory called `WasmEdge-0.14.0-Windows` there.
+        
+    Here are the commands to do this in powershell:
+    ```powershell
+    Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip" -OutFile "WasmEdge-0.14.0-windows.zip"
+    Expand-Archive -LiteralPath "WasmEdge-0.14.0-windows.zip" -DestinationPath ~
+    ```
+
+4. Download the WasmEdge WASI-NN plugin here: [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) (15.5MB) and extract it to the same directory as above, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows`.
+    > [!IMPORTANT]
+    > You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
+5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin.
+    In powershell, you can do this like so:
+    ```powershell
+    $env:WASMEDGE_DIR="C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows\"
+    $env:WASMEDGE_PLUGIN_PATH="C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows\"
+    cargo run
+    ```
+
+    In Windows `cmd`, you can do this like so:
+    ```batch
+    set WASMEDGE_DIR=C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows
+    cargo run
+    ```
+
 
 ## Packaging Moxin for Distribution
 
