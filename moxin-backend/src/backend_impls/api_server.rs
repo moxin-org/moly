@@ -35,7 +35,7 @@ fn create_wasi(
     load_model: &LoadModelOptions,
 ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
     // use model metadata context size
-    let ctx_size = Some(format!("{}", file.context_size));
+    let ctx_size = Some(format!("{}", file.context_size.min(8 * 1024)));
 
     let n_gpu_layers = match load_model.gpu_layers {
         moxin_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
