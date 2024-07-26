@@ -97,10 +97,10 @@ fn main() -> std::io::Result<()> {
 ///
 /// ## Functionality
 /// 1. Creates a directory for the resources to be packaged, which is currently `./dist/resources/`.
-/// 2. Creates a symlink from the resources of the `makepad-widgets` crate to a subdirectory
+/// 2. Recursively copies the resources from the `makepad-widgets` crate to a subdirectory
 ///    of the directory created in step 1, which is currently `./dist/resources/makepad_widgets/`.
 ///    The location of the `makepad-widgets` crate is determined using `cargo-metadata`.
-/// 3. Creates a symlink from the Moxin-specific `./resources` directory to `./dist/resources/moxin/`.
+/// 3. Recursively copies the Moxin-specific `./resources` directory to `./dist/resources/moxin/`.
 /// 4. (If macOS) Downloads WasmEdge and sets up the plugins into the `./wasmedge/` directory.
 fn before_packaging(host_os: &str) -> std::io::Result<()> {
     let cwd = std::env::current_dir()?;
@@ -127,34 +127,23 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
             .join("resources")
     };
 
-    #[cfg(unix)] {
-        std::os::unix::fs::symlink(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
-        std::os::unix::fs::symlink(&moxin_resources_src, &moxin_resources_dest)?;
-    }
-    #[cfg(windows)] {
-        // On Windows, creating a symlink requires Administrator privileges or Developer Mode,
-        // so we perform a recursive copy of all resources instead.
-        /// Copy files from source to destination recursively.
-        fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> std::io::Result<()> {
-            fs::create_dir_all(&destination)?;
-            for entry in fs::read_dir(source)? {
-                let entry = entry?;
-                let filetype = entry.file_type()?;
-                if filetype.is_dir() {
-                    copy_recursively(entry.path(), destination.as_ref().join(entry.file_name()))?;
-                } else {
-                    fs::copy(entry.path(), destination.as_ref().join(entry.file_name()))?;
-                }
+    /// Copy files from source to destination recursively.
+    fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> std::io::Result<()> {
+        fs::create_dir_all(&destination)?;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let filetype = entry.file_type()?;
+            if filetype.is_dir() {
+                copy_recursively(entry.path(), destination.as_ref().join(entry.file_name()))?;
+            } else {
+                fs::copy(entry.path(), destination.as_ref().join(entry.file_name()))?;
             }
-            Ok(())
         }
+        Ok(())
+    }
 
-        copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
-        copy_recursively(&moxin_resources_src, &moxin_resources_dest)?;
-    }
-    #[cfg(not(any(unix, windows)))] {
-        panic!("Unsupported OS, neither 'unix' nor 'windows'");
-    }
+    copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
+    copy_recursively(&moxin_resources_src, &moxin_resources_dest)?;
 
     if host_os == "macos" {
        download_wasmedge_macos("0.14.0")?;

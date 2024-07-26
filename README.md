@@ -116,7 +116,7 @@ Install `cargo-packager`:
 ```sh
 cargo install --force --locked cargo-packager
 ```
-For posterity, these instructions have been tested on `cargo-packager` version 0.10.1.
+For posterity, these instructions have been tested on `cargo-packager` version 0.10.1, which requires Rust v1.79.
 
 
 ### Packaging for Linux
