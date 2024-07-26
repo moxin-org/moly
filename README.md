@@ -101,6 +101,13 @@ cargo run
     cargo run
     ```
 
+    In a Unix-like shell on Windows (e.g., GitBash, cygwin, msys2, WSL/WSL2):
+    ```sh
+    WASMEDGE_DIR=$HOME/WasmEdge-0.14.0-Windows \
+    WASMEDGE_PLUGIN_PATH=$HOME/WasmEdge-0.14.0-Windows \
+    cargo run
+    ```
+
 
 ## Packaging Moxin for Distribution
 
