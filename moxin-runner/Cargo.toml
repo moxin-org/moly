@@ -8,7 +8,10 @@ description = "A companion app that runs before Moxin to handle wasmedge configu
 directories = "5.0.1"
 
 [target.'cfg(windows)'.dependencies]
+## For running a powershell script, which downloads and extracts/installs WasmEdge
 powershell_script = "1.1.0"
+## For showing a dialog box modal when the CPU is unsupported.
+windows-sys = { version = "0.52", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
 
 [[bin]]
 name = "moxin"
