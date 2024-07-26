@@ -121,6 +121,7 @@ const WASMEDGE_WASI_NN_PLUGIN_DYLIB: &str = {
 };
 
 const ENV_WASMEDGE_DIR: &str = "WASMEDGE_DIR";
+#[allow(unused)]
 const ENV_WASMEDGE_PLUGIN_PATH: &str = "WASMEDGE_PLUGIN_PATH";
 const ENV_PATH: &str = "PATH";
 const ENV_C_INCLUDE_PATH: &str = "C_INCLUDE_PATH";
@@ -259,6 +260,7 @@ fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(
 /// ```
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io::Error> {
+    use std::process::Stdio;
     println!("Downloading WasmEdge 0.14.0 from GitHub and installing it to {}", install_path.as_ref().display());
     let temp_dir = std::env::temp_dir();
     let curl_script_cmd = Command::new("curl")
@@ -414,7 +416,7 @@ fn wasmedge_root_dir_from_env_vars() -> Option<PathBuf> {
     // e.g., the wasmedge root dir, or one of the subdirectories within it.
 
     #[cfg(any(target_os = "linux", target_os = "macos"))] {
-        return std::env::var_os(ENV_LD_LIBRARY_PATH)
+        std::env::var_os(ENV_LD_LIBRARY_PATH)
             .or_else(|| std::env::var_os(ENV_LIBRARY_PATH))
             .or_else(|| std::env::var_os(ENV_C_INCLUDE_PATH))
             .or_else(|| std::env::var_os(ENV_CPLUS_INCLUDE_PATH))
@@ -424,10 +426,11 @@ fn wasmedge_root_dir_from_env_vars() -> Option<PathBuf> {
                 .parent()
                 .and_then(PathExt::path_if_exists)
                 .map(ToOwned::to_owned)
-            );
+            )
     }
-
-    None
+    #[cfg(windows)] {
+        None
+    }
 }
 
 /// Runs the `_moxin_app` binary, which must be located in the same directory as this moxin-runner binary.
