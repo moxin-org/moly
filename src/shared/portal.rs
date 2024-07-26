@@ -1,6 +1,10 @@
 use std::fmt::Debug;
 
+use crate::my_models::downloaded_files_row::DownloadedFilesRowProps;
 use makepad_widgets::*;
+
+use crate::data::store::{Store, StoreAction};
+use moxin_protocol::data::FileID;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -112,6 +116,9 @@ pub struct Portal {
 
     #[rust]
     active_portal_view: ActivePortalView,
+
+    #[rust]
+    current_file_id: Option<FileID>,
 }
 
 impl Widget for Portal {
@@ -153,7 +160,7 @@ impl WidgetNode for Portal {
 }
 
 impl WidgetMatchEvent for Portal {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for action in actions {
             match action.as_widget_action().cast::<PortalAction>() {
                 PortalAction::ShowPortalView(portal_view_id) => {
@@ -162,6 +169,13 @@ impl WidgetMatchEvent for Portal {
                     }
                 }
                 PortalAction::Close => {
+                    if let Some(file_id) = self.current_file_id.take() {
+                        cx.widget_action(
+                            self.widget_uid(),
+                            &scope.path,
+                            StoreAction::SetShowInfo(file_id, false),
+                        );
+                    }
                     self.close(cx);
                 }
                 PortalAction::None => {}
@@ -171,6 +185,10 @@ impl WidgetMatchEvent for Portal {
 }
 
 impl Portal {
+    pub fn set_current_file_id(&mut self, file_id: Option<FileID>) {
+        self.current_file_id = file_id;
+    }
+
     fn get_active_portal_view(&mut self, _cx: &mut Cx) -> Option<PortalViewRef> {
         match self.active_portal_view {
             ActivePortalView::None => None,

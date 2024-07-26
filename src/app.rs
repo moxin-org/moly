@@ -225,6 +225,10 @@ impl MatchEvent for App {
                 StoreAction::Sort(criteria) => {
                     self.store.search.sort_models(criteria);
                 }
+                StoreAction::SetShowInfo(file_id, show_info) => {
+                    self.store.set_show_info(file_id, show_info);
+                    cx.redraw_all();
+                }
                 _ => {}
             }
 

@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moxin_backend::Backend;
 use moxin_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
@@ -17,6 +18,7 @@ pub enum StoreAction {
     Search(String),
     ResetSearch,
     Sort(SortCriteria),
+    SetShowInfo(FileID, bool),
     None,
 }
 
@@ -50,6 +52,7 @@ pub struct Store {
     pub downloads: Downloads,
     pub chats: Chats,
     pub preferences: Preferences,
+    pub show_info_states: HashMap<FileID, bool>,
 }
 
 impl Default for Store {
@@ -75,6 +78,7 @@ impl Store {
             downloads: Downloads::new(backend.clone()),
             chats: Chats::new(backend),
             preferences,
+            show_info_states: HashMap::new(),
         };
 
         store.downloads.load_downloaded_files();
@@ -85,6 +89,14 @@ impl Store {
 
         store.search.load_featured_models();
         store
+    }
+
+    pub fn set_show_info(&mut self, file_id: FileID, show_info: bool) {
+        self.show_info_states.insert(file_id, show_info);
+    }
+
+    pub fn get_show_info(&self, file_id: &FileID) -> bool {
+        *self.show_info_states.get(file_id).unwrap_or(&false)
     }
 
     pub fn load_model(&mut self, file: &File) {

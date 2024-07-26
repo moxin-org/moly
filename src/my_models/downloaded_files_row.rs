@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
 
+use crate::data::store::{Store, StoreAction};
 use crate::my_models::{delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction};
 use crate::shared::utils::format_model_size;
 use crate::shared::{actions::ChatAction, portal::PortalAction};
@@ -204,6 +205,7 @@ impl Widget for DownloadedFilesRow {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let props = scope.props.get::<DownloadedFilesRowProps>().unwrap();
+
         let downloaded_file = &props.downloaded_file;
 
         // Name tag
@@ -252,6 +254,30 @@ impl Widget for DownloadedFilesRow {
         self.button(id!(resume_chat_button))
             .set_visible(props.show_resume);
 
+        if let Some(store) = scope.data.get::<Store>() {
+            let show_info = self
+                .file_id
+                .as_ref()
+                .map_or(false, |id| store.get_show_info(id));
+
+            let info_button_color = if show_info {
+                vec4(0.4, 0.4, 0.4, 1.0) // 灰色
+            } else {
+                vec4(0.0, 0.6, 1.0, 1.0) // 原始的蓝色
+            };
+
+            self.button(id!(info_button)).apply_over(
+                cx,
+                live! {
+                    draw_bg: {
+                        color: (info_button_color)
+                    }
+                },
+            );
+        } else {
+            error!("Store not found in Scope");
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -273,7 +299,14 @@ impl WidgetMatchEvent for DownloadedFilesRow {
         }
 
         if self.button(id!(info_button)).clicked(actions) {
+            // DownloadedFilesRowProps::opened_show_info(scope);
             if let Some(file_id) = &self.file_id {
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    StoreAction::SetShowInfo(file_id.clone(), true),
+                );
+
                 cx.widget_action(
                     widget_uid,
                     &scope.path,

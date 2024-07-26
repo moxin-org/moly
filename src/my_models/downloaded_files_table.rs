@@ -110,13 +110,12 @@ impl Widget for DownloadedFilesTable {
         let entries_count = self.current_results.len();
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
 
-        let loaded_model_id = if let Some(loaded_model) =
-            &scope.data.get::<Store>().unwrap().chats.loaded_model
-        {
-            Some(loaded_model.id.clone())
-        } else {
-            None
-        };
+        let loaded_model_id =
+            if let Some(loaded_model) = &scope.data.get::<Store>().unwrap().chats.loaded_model {
+                Some(loaded_model.id.clone())
+            } else {
+                None
+            };
 
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
@@ -140,8 +139,9 @@ impl Widget for DownloadedFilesTable {
                         item.as_downloaded_files_row()
                             .set_file_id(file_data.file.id.clone());
 
-                        let is_model_file_loaded =
-                            loaded_model_id.clone().map_or(false, |f| *f == file_data.file.id);
+                        let is_model_file_loaded = loaded_model_id
+                            .clone()
+                            .map_or(false, |f| *f == file_data.file.id);
 
                         let props = DownloadedFilesRowProps {
                             downloaded_file: file_data.clone(),
