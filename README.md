@@ -97,10 +97,14 @@ chmod +x moxin_0.1.0_x86_64.AppImage
 ### Packaging for Windows
 This can only be run on an actual Windows machine, due to platform restrictions.
 
-Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate all three package types at once:
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate a `setup.exe` file using NSIS:
 ```sh
-cargo packager --release --verbose   ## --verbose is optional
+WASMEDGE_DIR=path/to/WasmEdge-0.14.0-Windows cargo packager --release --formats nsis --verbose   ## --verbose is optional
 ```
+
+After the command completes, you should see a Windows installer called `moxin_0.1.0_x64-setup` in the `dist/` directory.
+Double-click that file to install Moxin on your machine, and then run it as you would a regular application.
+
 
 ### Packaging for macOS
 This can only be run on an actual macOS machine, due to platform restrictions.

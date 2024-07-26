@@ -28,12 +28,29 @@ use cargo_metadata::MetadataCommand;
 
 /// Returns the value of the `MAKEPAD_PACKAGE_DIR` environment variable
 /// that must be set for the given package format.
+///
+/// * For macOS app bundles, this should be set to `../Resources`.
+///   * This only works because the `moxin-runner` binary sets the current working directory
+///     to the directory where the binary is located, which is `Moxin.app/Contents/MacOS/`.
+///     (See the `run_moxin` function in `moxin-runner/src/main.rs` for more details.)
+///   * In a macOS app bundle, the resources directory is in `Moxin.app/Context/Resources/`,
+///     so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources`. 
+///     This must be relative to the binary's location, i.e. up one parent directory.
+/// * For AppImage packages, this should be set to a relative path that goes up two parent directories
+///   to account for the fact that AppImage binaries run in a simulated `usr/bin/` directory.
+///   * Thus, we need to get to the simulated `usr/lib/` directory for Moxin's resources, 
+///     which currently works out to `../../usr/lib/moxin`.
+///   * Note that this must be a relative path, not an absolute path.
+/// * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
+///   which is currently `/usr/lib/moxin-runner`.
+///   * This is the directory in which `dpkg` copies app resource files to
+///     when a user installs the `.deb` package.
 fn makepad_package_dir_value(package_format: &str) -> &'static str {
     match package_format {
         "app" | "dmg" => "../Resources",
         "appimage" => "../../usr/lib/moxin",
         "deb" | "pacman" => "/usr/share/moxin",
-        "wix" | "nsis" => "C:\\Program Files\\Moxin",
+        "nsis" => ".\\",
         _other => panic!("Unsupported package format: {}", _other),
     }
 }

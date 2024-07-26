@@ -171,7 +171,7 @@ fn main() -> std::io::Result<()> {
         std::env::var(ENV_WASMEDGE_PLUGIN_PATH).ok()
     );
 
-    run_moxin().unwrap();
+    run_moxin(None).unwrap();
     Ok(())
 }
 
@@ -205,7 +205,7 @@ fn main() -> std::io::Result<()> {
 
     apply_env_vars(&wasmedge_root_dir_in_use);
 
-    run_moxin()
+    run_moxin(main_dylib_path.parent())
 }
 
 
@@ -428,7 +428,10 @@ fn wasmedge_root_dir_from_env_vars() -> Option<PathBuf> {
 }
 
 /// Runs the `_moxin_app` binary, which must be located in the same directory as this moxin-runner binary.
-fn run_moxin() -> std::io::Result<()> {
+///
+/// An optional path to the directory containing the main WasmEdge dylib can be provided,
+/// which is currently only used to set the path on Windows.
+fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
     let args = std::env::args().collect::<Vec<_>>();
@@ -439,6 +442,27 @@ fn run_moxin() -> std::io::Result<()> {
         current_exe_dir.display(),
         args,
     );
+
+    // On Windows, the MOXIN_APP_BINARY needs to be able to find the WASMEDGE_MAIN_DYLIB (wasmedge.dll),
+    // so we prepend it to the PATH.
+    #[cfg(windows)] {
+        match (std::env::var_os(ENV_PATH), _main_wasmedge_dylib_dir) {
+            (Some(path), Some(dylib_parent)) => {
+                println!("Old path: {:?}", path.to_string_lossy());
+                println!("Prepending \"{}\" to Windows PATH", dylib_parent.display());
+                let new_path = std::env::join_paths(
+                    Some(dylib_parent.to_path_buf())
+                        .into_iter()
+                        .chain(std::env::split_paths(&path))
+                )
+                .expect("BUG: failed to join paths for the main Moxin binary.");
+                std::env::set_var(ENV_PATH, &new_path);
+                println!("New path: {:?}", std::env::var(ENV_PATH));
+
+            }
+            _ => eprintln!("BUG: failed to set PATH for the main Moxin binary."),
+        }
+    }
 
     let _output = Command::new(current_exe_dir.join(MOXIN_APP_BINARY))
         .current_dir(current_exe_dir)
