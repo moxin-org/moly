@@ -28,6 +28,8 @@ live_design! {
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
     import crate::shared::tooltip::Tooltip;
+    import crate::shared::desktop_buttons::MoxinDesktopButton;
+
     import crate::landing::landing_screen::LandingScreen;
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
@@ -46,6 +48,17 @@ live_design! {
         ui: <Window> {
             window: {inner_size: vec2(1440, 1024)},
             pass: {clear_color: #fff}
+
+            caption_bar = {
+                caption_label = <View> {} // empty view to remove the default caption label
+                windows_buttons = <View> {
+                    visible: false,
+                    width: Fit, height: Fit,
+                    min = <MoxinDesktopButton> {draw_bg: {button_type: WindowsMin}}
+                    max = <MoxinDesktopButton> {draw_bg: {button_type: WindowsMax}}
+                    close = <MoxinDesktopButton> {draw_bg: {button_type: WindowsClose}}
+                }
+            }
 
             body = {
                 flow: Overlay
