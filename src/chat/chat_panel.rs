@@ -745,20 +745,32 @@ impl ChatPanel {
     }
 
     fn send_message(&mut self, cx: &mut Cx, scope: &mut Scope, prompt: String) {
+        // Check if we have any text to send
         if prompt.trim().is_empty() {
             return;
         }
 
-        let store = scope.data.get_mut::<Store>().unwrap();
-        store.chats.send_chat_message(prompt.clone());
+        // Let's confirm we're in an appropriate state to send a message
+        self.update_state(scope);
+        if matches!(
+            self.state,
+            State::ModelSelectedWithChat {
+                is_streaming: false,
+                is_loading: false,
+                ..
+            } | State::ModelSelectedWithEmptyChat { is_loading: false }
+        ) {
+            let store = scope.data.get_mut::<Store>().unwrap();
+            store.chats.send_chat_message(prompt.clone());
 
-        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        prompt_input.set_text_and_redraw(cx, "");
-        prompt_input.set_cursor(0, 0);
+            let prompt_input = self.text_input(id!(main_prompt_input.prompt));
+            prompt_input.set_text_and_redraw(cx, "");
+            prompt_input.set_cursor(0, 0);
 
-        // Scroll to the bottom when the message is sent
-        self.scroll_messages_to_bottom(cx);
-        self.redraw(cx);
+            // Scroll to the bottom when the message is sent
+            self.scroll_messages_to_bottom(cx);
+            self.redraw(cx);
+        }
     }
 
     fn update_view(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
