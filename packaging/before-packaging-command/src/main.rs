@@ -45,12 +45,16 @@ use cargo_metadata::MetadataCommand;
 ///   which is currently `/usr/lib/moxin-runner`.
 ///   * This is the directory in which `dpkg` copies app resource files to
 ///     when a user installs the `.deb` package.
+/// * For Windows NSIS packages, this should be set to `.` (the current dir).
+///  * This is because the NSIS installer script copies the resources to the same directory
+///    as the installed binaries, and our `moxin-runner` app changes the current working directory
+///    to that same directory before running the main Moxin binary.
 fn makepad_package_dir_value(package_format: &str) -> &'static str {
     match package_format {
         "app" | "dmg" => "../Resources",
         "appimage" => "../../usr/lib/moxin",
         "deb" | "pacman" => "/usr/share/moxin",
-        "nsis" => ".\\",
+        "nsis" => ".",
         _other => panic!("Unsupported package format: {}", _other),
     }
 }
@@ -103,9 +107,9 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
     let dist_resources_dir = cwd.join("dist").join("resources");
     fs::create_dir_all(&dist_resources_dir)?;
 
-    let moxin_resources_dest = dist_resources_dir.join("moxin");
+    let moxin_resources_dest = dist_resources_dir.join("moxin").join("resources");
     let moxin_resources_src = cwd.join("resources");
-    let makepad_widgets_resources_dest = dist_resources_dir.join("makepad_widgets");
+    let makepad_widgets_resources_dest = dist_resources_dir.join("makepad_widgets").join("resources");
     let makepad_widgets_resources_src = {
         let cargo_metadata = MetadataCommand::new()
             .exec()

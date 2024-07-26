@@ -448,7 +448,6 @@ fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
     #[cfg(windows)] {
         match (std::env::var_os(ENV_PATH), _main_wasmedge_dylib_dir) {
             (Some(path), Some(dylib_parent)) => {
-                println!("Old path: {:?}", path.to_string_lossy());
                 println!("Prepending \"{}\" to Windows PATH", dylib_parent.display());
                 let new_path = std::env::join_paths(
                     Some(dylib_parent.to_path_buf())
@@ -457,7 +456,6 @@ fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
                 )
                 .expect("BUG: failed to join paths for the main Moxin binary.");
                 std::env::set_var(ENV_PATH, &new_path);
-                println!("New path: {:?}", std::env::var(ENV_PATH));
 
             }
             _ => eprintln!("BUG: failed to set PATH for the main Moxin binary."),
