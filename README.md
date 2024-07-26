@@ -79,16 +79,17 @@ cargo run
 4. Download the WasmEdge WASI-NN plugin here: [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) (15.5MB) and extract it to the same directory as above, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows`.
 
 > [!IMPORTANT]
-> You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
+> You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.    
 
     To do this quickly in powershell:
+
     ```powershell
     $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
     Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -OutFile "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
     Expand-Archive -Force -LiteralPath "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -DestinationPath "$home\WasmEdge-0.14.0-Windows"
     $ProgressPreference = 'Continue' ## restore default progress bars
     ```
-
+    
 5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin.
     In powershell, you can do this like so:
     ```powershell
