@@ -82,13 +82,9 @@ fn main() -> std::io::Result<()> {
 /// 3. Creates a symlink from the Moxin-specific `./resources` directory to `./dist/resources/moxin/`.
 /// 4. (If macOS) Downloads WasmEdge and sets up the plugins into the `./wasmedge/` directory.
 fn before_packaging(host_os: &str) -> std::io::Result<()> {
-    println!("Running before-packaging steps for host OS: {host_os}");
     let cwd = std::env::current_dir()?;
-    println!("here1");
-
     let dist_resources_dir = cwd.join("dist").join("resources");
     fs::create_dir_all(&dist_resources_dir)?;
-    println!("here2");
 
     let moxin_resources_dest = dist_resources_dir.join("moxin");
     let moxin_resources_src = cwd.join("resources");
@@ -109,7 +105,6 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "makepad-widgets package manifest path not found"))?
             .join("resources")
     };
-    println!("Found makepad widgets resources at: {makepad_widgets_resources_src:?}");
 
     #[cfg(unix)] {
         std::os::unix::fs::symlink(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
@@ -133,9 +128,7 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
             Ok(())
         }
 
-        println!("Copying makepad widgets resources from: {makepad_widgets_resources_src:?} to: {makepad_widgets_resources_dest:?}");
         copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
-        println!("Copying moxin resources from: {moxin_resources_src:?} to: {moxin_resources_dest:?}");
         copy_recursively(&moxin_resources_src, &moxin_resources_dest)?;
     }
     #[cfg(not(any(unix, windows)))] {

@@ -59,7 +59,7 @@
 
 use std::{
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
 };
 
 pub const MOXIN_APP_BINARY: &str = "_moxin_app";
@@ -103,7 +103,7 @@ const WASMEDGE_MAIN_DYLIB: &str = {
     #[cfg(target_os = "linux")] {
         "libwasmedge.so.0"
     }
-    #[cfg(target_os = "windows")] {
+    #[cfg(windows)] {
         "wasmedge.dll"
     }
 };
@@ -115,7 +115,7 @@ const WASMEDGE_WASI_NN_PLUGIN_DYLIB: &str = {
     #[cfg(target_os = "linux")] {
         "libwasmedgePluginWasiNN.so"
     }
-    #[cfg(target_os = "windows")] {
+    #[cfg(windows)] {
         "wasmedgePluginWasiNN.dll"
     }
 };
@@ -184,13 +184,13 @@ fn main() -> std::io::Result<()> {
         // If not, check if the wasmedge installation directory exists in the default location.
         .or_else(existing_wasmedge_default_dir)
         // If we have a wasmedge installation directory, try to find the dylibs within it.
-        .and_then(|wasmedge_root_dir| find_wasmedge_dylibs(&wasmedge_root_dir))
+        .and_then(|wasmedge_root_dir| find_wasmedge_dylibs_in_dir(&wasmedge_root_dir))
         // If we couldn't find the wasmedge directory or the dylibs within an existing directory,
         // then we must install wasmedge.
         .or_else(|| wasmedge_default_dir_path()
             .and_then(|default_path| install_wasmedge(default_path).ok())
             // If we successfully installed wasmedge, try to find the dylibs again.
-            .and_then(find_wasmedge_dylibs)
+            .and_then(find_wasmedge_dylibs_in_dir)
         )
         .expect("failed to find or install wasmedge dylibs");
 
@@ -203,9 +203,7 @@ fn main() -> std::io::Result<()> {
         wasi_nn_plugin_path.display(),
     );
 
-    #[cfg(any(target_os = "linux", target_os = "macos"))] {
-        apply_env_vars(&wasmedge_root_dir_in_use);
-    }
+    apply_env_vars(&wasmedge_root_dir_in_use);
 
     run_moxin()
 }
@@ -235,7 +233,7 @@ fn wasmedge_default_dir_path() -> Option<PathBuf> {
 /// 1. the wasmedge root directory path,
 /// 2. the main wasmedge dylib path,
 /// 3. the wasi_nn plugin dylib path.
-fn find_wasmedge_dylibs<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(PathBuf, PathBuf, PathBuf)> {
+fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(PathBuf, PathBuf, PathBuf)> {
     let main_dylib_path = wasmedge_root_dir.as_ref()
         .join(DYLIB_DIR_NAME)
         .join(WASMEDGE_MAIN_DYLIB)
@@ -258,7 +256,7 @@ fn find_wasmedge_dylibs<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(PathBuf
 /// source $HOME/.wasmedge/env
 /// ```
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<P, std::io::Error> {
+fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io::Error> {
     println!("Attempting to install wasmedge to: {}", install_path.as_ref().display());
     let temp_dir = std::env::temp_dir();
     let curl_script_cmd = Command::new("curl")
@@ -294,13 +292,57 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<P, std::io::Error
 
     apply_env_vars(&install_path);
 
-    Ok(install_path)
+    Ok(install_path.as_ref().to_path_buf())
 } 
 
 
-#[cfg(target_os = "windows")]
-fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<P, std::io::Error> {
-    Err(std::io::Error::new(std::io::ErrorKind::Other, "WasmEdge installation is not supported on Windows."))
+/// Installs WasmEdge by calling out to PowerShell to run the Windows installation steps
+/// provided in the main Moxin README.
+///
+/// The given `install_path` is currently ignored, using the [wasmedge_default_dir_path()] instead.
+///
+/// The PowerShell script we run simply downloads and extracts the main WasmEdge files and the Wasi-NN plugin.
+/// ```powershell
+///    Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip" -OutFile "$env:TEMP\WasmEdge-0.14.0-windows.zip"
+///    Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath $home
+///    Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -OutFile "$env:TEMP\WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
+///    Expand-Archive -Force -Path "$env:TEMP\WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -DestinationPath "$home\WasmEdge-0.14.0-Windows"
+/// ```
+#[cfg(windows)]
+fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io::Error> {
+    let install_wasmedge_ps1 = include_str!("powershell_install_wasmedge.ps1");
+    match powershell_script::PsScriptBuilder::new()
+        .non_interactive(true)
+        .hidden(true) // Don't display a PowerShell window
+        .print_commands(true) // just for debugging
+        .build()
+        .run(&install_wasmedge_ps1)
+    {
+        Ok(output) => {
+            if output.success() {
+                // The wasmedge installation directory is currently forced to the default dir path.
+                wasmedge_default_dir_path().ok_or_else(
+                || std::io::Error::new(std::io::ErrorKind::Other, "BUG: couldn't get WasmEdge default directory path.")
+                )
+            } else {
+                eprintln!("------------- Powershell stdout --------------\n{}", output.stdout().unwrap_or_default());
+                eprintln!("----------------------------------------------\n");
+                eprintln!("------------- Powershell stderr --------------\n{}", output.stderr().unwrap_or_default());
+                eprintln!("----------------------------------------------\n");
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "The WasmEdge install PowerShell script failed."))
+            }
+        }
+        Err(err) => {
+            eprintln!("Failed to install wasmedge: {:?}", err);
+            if let powershell_script::PsError::Powershell(output) = err {
+                eprintln!("------------- Powershell stdout --------------\n{}", output.stdout().unwrap_or_default());
+                eprintln!("----------------------------------------------\n");
+                eprintln!("------------- Powershell stderr --------------\n{}", output.stderr().unwrap_or_default());
+                eprintln!("----------------------------------------------\n");
+            }
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "The WasmEdge install PowerShell script failed."))
+        }
+    }
 }
 
 
@@ -346,6 +388,16 @@ fn apply_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
     prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
 }
 
+
+/// Applies the environment variables needed for Moxin to find WasmEdge on Windows.
+///
+/// Currently, this only does the following:
+/// * Sets [ENV_WASMEDGE_DIR] and [ENV_WASMEDGE_PLUGIN_PATH] to the given `wasmedge_root_dir_path`.
+#[cfg(windows)]
+fn apply_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
+    std::env::set_var(ENV_WASMEDGE_DIR, wasmedge_root_dir_path.as_ref());
+    std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, wasmedge_root_dir_path.as_ref());
+}
 
 /// Attempts to discover the wasmedge installation directory using environment variables.
 ///
