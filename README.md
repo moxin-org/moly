@@ -57,8 +57,8 @@ cargo run
 ## Windows (Windows 10 or higher)
 1.  Download and install the LLVM v17.0.6 release for Windows: [Here is a direct link to LLVM-17.0.6-win64.exe](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe), 333MB in size.
 
-    > [!IMPORTANT]
-    > During the setup procedure, make sure to select `Add LLVM to the system PATH for all users` or `for the current user`.
+> [!IMPORTANT]
+> During the setup procedure, make sure to select `Add LLVM to the system PATH for all users` or `for the current user`.
 
 2. Restart your PC, or log out and log back in, which allows the LLVM path to be properly
     * Alternatively you can add the LLVM path `C:\Program Files\LLVM\bin` to your system PATH.
@@ -78,8 +78,8 @@ cargo run
 
 4. Download the WasmEdge WASI-NN plugin here: [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) (15.5MB) and extract it to the same directory as above, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows`.
 
-    > [!IMPORTANT]
-    > You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
+> [!IMPORTANT]
+> You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
 
     To do this quickly in powershell:
     ```powershell
