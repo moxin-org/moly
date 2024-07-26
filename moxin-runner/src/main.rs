@@ -259,7 +259,7 @@ fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(
 /// ```
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io::Error> {
-    println!("Attempting to install wasmedge to: {}", install_path.as_ref().display());
+    println!("Downloading WasmEdge 0.14.0 from GitHub and installing it to {}", install_path.as_ref().display());
     let temp_dir = std::env::temp_dir();
     let curl_script_cmd = Command::new("curl")
         .arg("-s")
@@ -312,6 +312,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 /// ```
 #[cfg(windows)]
 fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io::Error> {
+    println!("Downloading and installing WasmEdge 0.14.0 from GitHub.");
     let install_wasmedge_ps1 = include_str!("powershell_install_wasmedge.ps1");
     match powershell_script::PsScriptBuilder::new()
         .non_interactive(true)
