@@ -1,27 +1,30 @@
 //! This small program is invoked by cargo-packager during its before-packaging steps.
 //!
 //! This program must be run from the root of the project directory,
-//! which is also where the `cargo-packager` command must be invoked from.
+//! which is also where the cargo-packager command must be invoked from.
 //!
-//! There are two kinds of before-packaging steps in `cargo-packager`:
-//! * `before-packaging-command`: this command is run only *once* before cargo-packager
-//!    generates any package bundles.
-//! * `before-each-package-command`: this command is run multiple times: once for *each*
-//!    package that cargo-packager is going to generate.
-//!    * The environment variable `CARGO_PACKAGER_FORMAT` is set by `cargo-packager` to
+//! This program runs in two modes, one for each kind of before-packaging step in cargo-packager.
+//! It accepts arguments to determine which mode:
+//! * Argument `before-packaging`: specifies that the `before-packaging-command` is being run
+//!   by cargo-packager, which gets executed only *once* before cargo-packager generates any package bundles.
+//! * Argument `before-each-package`: specifies that the `before-each-package-command` is being run
+//!   by cargo-packager, which gets executed multiple times: once for *each* package
+//!   that cargo-packager is going to generate.
+//!    * The environment variable `CARGO_PACKAGER_FORMAT` is set by cargo-packager to
 //!      the declare which package format is about to be generated, which include the values
 //!      given here: <https://docs.rs/cargo-packager/latest/cargo_packager/enum.PackageFormat.html>.
 //!      * `app`, `dmg`: for macOS.
 //!      * `deb`, `appimage`, `pacman`: for Linux.
-//!      * `wix`, `nsis`: for Windows (`wix` generates an `.msi` package).
+//!      * `wix`, `nsis`: for Windows; `wix` generates an `.msi` package, `nsis` generates an `.exe`.
 //!
 //! This program uses the `CARGO_PACKAGER_FORMAT` environment variable to determine
 //! which specific build commands and configuration options should be used.
 //!
 
 use core::panic;
-use std::{ffi::OsStr, path::Path, process::{Command, Stdio}};
+use std::{ffi::OsStr, fs, path::Path, process::{Command, Stdio}};
 use cargo_metadata::MetadataCommand;
+
 
 /// Returns the value of the `MAKEPAD_PACKAGE_DIR` environment variable
 /// that must be set for the given package format.
@@ -39,22 +42,19 @@ fn makepad_package_dir_value(package_format: &str) -> &'static str {
 fn main() -> std::io::Result<()> {
     let mut is_before_packaging = false;
     let mut is_before_each_package = false;
-    let mut current_os: Option<String> = None;
+    let mut host_os_opt: Option<String> = None;
 
     let mut args = std::env::args().peekable();
     while let Some(arg) = args.next() {
-        // support both before-package and before_packaging
-        if arg.contains("before-packag") || arg.contains("before_packag") {
+        if arg.ends_with("before-packaging") || arg.ends_with("before_packaging") {
             is_before_packaging = true;
         }
-        // support both before-package and before_packaging
         if arg.contains("before-each") || arg.contains("before_each") {
             is_before_each_package = true;
         }
-        if current_os.is_none()
-            && (arg.contains("target") || arg.contains("host") || arg.contains("os"))
+        if host_os_opt.is_none() && (arg.contains("host_os") || arg.contains("host-os"))
         {
-            current_os = arg
+            host_os_opt = arg
                 .split("=")
                 .last()
                 .map(|s| s.to_string())
@@ -62,7 +62,7 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    let host_os = current_os.as_deref().unwrap_or(std::env::consts::OS);
+    let host_os = host_os_opt.as_deref().unwrap_or(std::env::consts::OS);
 
     match (is_before_packaging, is_before_each_package) {
         (true, false) => before_packaging(host_os),
@@ -84,8 +84,12 @@ fn main() -> std::io::Result<()> {
 fn before_packaging(host_os: &str) -> std::io::Result<()> {
     println!("Running before-packaging steps for host OS: {host_os}");
     let cwd = std::env::current_dir()?;
+    println!("here1");
+
     let dist_resources_dir = cwd.join("dist").join("resources");
-    std::fs::create_dir_all(&dist_resources_dir)?;
+    fs::create_dir_all(&dist_resources_dir)?;
+    println!("here2");
+
     let moxin_resources_dest = dist_resources_dir.join("moxin");
     let moxin_resources_src = cwd.join("resources");
     let makepad_widgets_resources_dest = dist_resources_dir.join("makepad_widgets");
@@ -105,14 +109,34 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "makepad-widgets package manifest path not found"))?
             .join("resources")
     };
+    println!("Found makepad widgets resources at: {makepad_widgets_resources_src:?}");
 
     #[cfg(unix)] {
         std::os::unix::fs::symlink(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
         std::os::unix::fs::symlink(&moxin_resources_src, &moxin_resources_dest)?;
     }
     #[cfg(windows)] {
-        std::os::windows::fs::symlink_dir(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
-        std::os::windows::fs::symlink_dir(&moxin_resources_src, &moxin_resources_dest)?;
+        // On Windows, creating a symlink requires Administrator privileges or Developer Mode,
+        // so we perform a recursive copy of all resources instead.
+        /// Copy files from source to destination recursively.
+        fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> std::io::Result<()> {
+            fs::create_dir_all(&destination)?;
+            for entry in fs::read_dir(source)? {
+                let entry = entry?;
+                let filetype = entry.file_type()?;
+                if filetype.is_dir() {
+                    copy_recursively(entry.path(), destination.as_ref().join(entry.file_name()))?;
+                } else {
+                    fs::copy(entry.path(), destination.as_ref().join(entry.file_name()))?;
+                }
+            }
+            Ok(())
+        }
+
+        println!("Copying makepad widgets resources from: {makepad_widgets_resources_src:?} to: {makepad_widgets_resources_dest:?}");
+        copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
+        println!("Copying moxin resources from: {moxin_resources_src:?} to: {moxin_resources_dest:?}");
+        copy_recursively(&moxin_resources_src, &moxin_resources_dest)?;
     }
     #[cfg(not(any(unix, windows)))] {
         panic!("Unsupported OS, neither 'unix' nor 'windows'");
@@ -138,7 +162,7 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
 fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
     // Command 1: Create the destination directory.
     let dest_dir = std::env::current_dir()?.join("wasmedge");
-    std::fs::create_dir_all(&dest_dir)?;
+    fs::create_dir_all(&dest_dir)?;
 
     // Command 2: Download and extract WasmEdge.
     {
@@ -170,7 +194,7 @@ fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
 
     // Command 3: Create the plugin destination directory.
     let plugin_dest_dir = dest_dir.join("WasmEdge-0.13.5-Darwin").join("plugin");
-    std::fs::create_dir_all(&plugin_dest_dir)?;
+    fs::create_dir_all(&plugin_dest_dir)?;
     
     // Command 4: Download and extract the Wasi-NN plugin.
     {
@@ -204,6 +228,9 @@ fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
 }
 
 
+/// The function that is run by cargo-packager's `before-each-package-command`.
+///
+/// It's just a simple wrapper that invokes the function for each specific package format.
 fn before_each_package(host_os: &str) -> std::io::Result<()> {
     // The `CARGO_PACKAGER_FORMAT` environment variable is required.
     let format = std::env::var("CARGO_PACKAGER_FORMAT")
@@ -216,8 +243,7 @@ fn before_each_package(host_os: &str) -> std::io::Result<()> {
         "deb" => before_each_package_deb(package_format, host_os),
         "appimage" => before_each_package_app_image(package_format, host_os),
         "pacman" => todo!(),
-        "wix" => todo!(),
-        "nsis" => todo!(),
+        "wix" | "nsis" => before_each_package_windows(package_format, host_os),
         _other => return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             format!("Unknown/unsupported package format {_other:?}"),
@@ -364,6 +390,19 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     std::fs::write("./dist/depends_deb.txt", dpkgs.join("\n"))?;
     
     strip_unneeded_linux_binaries(host_os)?;
+    Ok(())
+}
+
+/// Runs the Windows-specific build commands for WiX (`.msi`) and NSIS (`.exe`) packages.
+fn before_each_package_windows(package_format: &str, host_os: &str) -> std::io::Result<()> {
+    assert!(host_os == "windows", "'.exe' and '.msi' packages can only be created on Windows.");
+
+    cargo_build(
+        package_format,
+        host_os,
+        std::iter::empty::<&str>(),
+    )?;
+
     Ok(())
 }
 

@@ -57,16 +57,27 @@ cargo run
 
 ## Packaging Moxin for Distribution
 
-Install the version of `cargo-packager` maintained by Project Robius:
+Install `cargo-packager`:
 ```sh
-cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager --branch robius
+cargo install --force --locked cargo-packager
 ```
+For posterity, these instructions have been tested on `cargo-packager` version 0.10.1.
 
 
 ### Packaging for Linux
 On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` Debian package, an AppImage, and a pacman installation package.
 
+
+> [!IMPORTANT]
+> You can only generate a `.deb` Debian package on a Debian-based Linux distribution, as `dpkg` is needed.
+ 
+> [!NOTE]
 > The `pacman` package has not yet been tested.
+
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate all three package types at once:
+```sh
+cargo packager --release --verbose   ## --verbose is optional
+```
 
 To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 ```sh
@@ -83,6 +94,13 @@ chmod +x moxin_0.1.0_x86_64.AppImage
 ./moxin_0.1.0_x86_64.AppImage
 ```
 
+### Packaging for Windows
+This can only be run on an actual Windows machine, due to platform restrictions.
+
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate all three package types at once:
+```sh
+cargo packager --release --verbose   ## --verbose is optional
+```
 
 ### Packaging for macOS
 This can only be run on an actual macOS machine, due to platform restrictions.
