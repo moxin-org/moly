@@ -263,9 +263,9 @@ impl Widget for DownloadedFilesRow {
             eprintln!("show info ------{:?}", show_info);
 
             let info_button_color = if show_info {
-                vec4(0.4, 0.4, 0.4, 1.0) // 灰色
+                vec4(0.4, 0.4, 0.4, 1.0) // gray
             } else {
-                vec4(0.0, 0.6, 1.0, 1.0) // 原始的蓝色
+                vec4(1.0, 1.0, 1.0, 1.0) // White
             };
 
             self.button(id!(info_button)).apply_over(

@@ -226,6 +226,7 @@ impl MatchEvent for App {
                     self.store.search.sort_models(criteria);
                 }
                 StoreAction::SetShowInfo(file_id, show_info) => {
+                    eprintln!("file_id in App {:?}", file_id);
                     self.store.set_show_info(file_id, show_info);
                     cx.redraw_all();
                 }
@@ -260,19 +261,7 @@ impl MatchEvent for App {
 
             // TODO: Hack for error that when you first open the portal, doesnt draw until an event
             // this forces the entire ui to rerender, still weird that only happens the first time.
-            if let PortalAction::ShowPortalView(portal_view_id) = action.as_widget_action().cast() {
-                match portal_view_id {
-                    live_id!(modal_model_info_portal_view) => {
-                        if let Some(ModelInfoAction::FileSelected(file_id)) =
-                            action.as_widget_action().cast()
-                        {
-                            self.ui
-                                .portal(id!(portal_root))
-                                .set_current_file_id(Some(file_id));
-                        }
-                    }
-                    _ => {}
-                }
+            if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
                 self.ui.redraw(cx);
             }
 
@@ -297,8 +286,16 @@ impl MatchEvent for App {
             }
 
             if let ModelInfoAction::FileSelected(file_id) = action.as_widget_action().cast() {
+                eprintln!(
+                    "file_id in PortalAction::ShowPortalView in App {:?}",
+                    file_id
+                );
                 let mut modal = self.ui.model_info_modal(id!(model_info_modal));
-                modal.set_file_id(file_id);
+                modal.set_file_id(file_id.clone());
+
+                self.ui
+                    .portal(id!(portal_root))
+                    .set_current_file_id(Some(file_id));
             }
 
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
