@@ -307,6 +307,7 @@ impl ModelSelector {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
         self.animator_cut(cx, id!(open.hide));
+        self.redraw(cx);
     }
 
     fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
@@ -405,4 +406,5 @@ fn options_to_display(store: &Store) -> bool {
 
 fn no_active_model(store: &Store) -> bool {
     store.get_loaded_downloaded_file().is_none()
+        && store.chats.get_currently_loading_model().is_none()
 }
