@@ -110,7 +110,7 @@ live_design! {
     ChatLineBody = <View> {
         width: Fill,
         height: Fit,
-        spacing: 12,
+        spacing: 20,
         flow: Down,
 
         sender_name_layout = <View> {
