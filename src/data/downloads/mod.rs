@@ -117,7 +117,11 @@ impl Downloads {
             match response {
                 Ok(()) => {
                     self.current_downloads.remove(&file_id);
-                    self.load_pending_downloads();
+                    self.pending_downloads.iter_mut().for_each(|d| {
+                        if d.file.id == file_id {
+                            d.status = PendingDownloadsStatus::Paused;
+                        }
+                    });
                 }
                 Err(err) => eprintln!("Error pausing download: {:?}", err),
             }
@@ -136,7 +140,7 @@ impl Downloads {
             match response {
                 Ok(()) => {
                     self.current_downloads.remove(&file_id);
-                    self.load_pending_downloads();
+                    self.pending_downloads.retain(|d| d.file.id != file_id);
                 }
                 Err(err) => eprintln!("Error cancelling download: {:?}", err),
             }
