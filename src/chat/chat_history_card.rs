@@ -355,7 +355,7 @@ impl ChatHistoryCard {
         &mut self,
         cx: &mut Cx,
         actions: &Actions,
-        scope: &mut Scope,
+        _scope: &mut Scope,
     ) {
         for action in actions {
             if let ChatHistoryCardAction::ActivateTitleEdition(chat_id) =

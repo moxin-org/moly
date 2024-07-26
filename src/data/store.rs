@@ -88,7 +88,13 @@ impl Store {
     }
 
     pub fn load_model(&mut self, file: &File) {
-        if self.chats.load_model(file).is_ok() {
+        self.chats.load_model(file);
+    }
+
+    fn update_load_model(&mut self) {
+        self.chats.update_load_model();
+
+        if let Some(file) = &self.chats.loaded_model {
             self.preferences.set_current_chat_model(file.id.clone());
 
             // If there is no chat, create an empty one
@@ -222,6 +228,7 @@ impl Store {
         self.update_downloads();
         self.update_chat_messages();
         self.update_search_results();
+        self.update_load_model();
     }
 
     fn update_search_results(&mut self) {
