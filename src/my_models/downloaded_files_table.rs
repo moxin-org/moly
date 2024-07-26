@@ -147,8 +147,15 @@ impl Widget for DownloadedFilesTable {
                             downloaded_file: file_data.clone(),
                             show_resume: is_model_file_loaded,
                         };
-                        let mut scope = Scope::with_props(&props);
-                        item.draw_all(cx, &mut scope);
+                        // let mut scope = Scope::with_props(&props);
+
+                        let mut store_scope =
+                            Scope::with_data(scope.data.get_mut::<Store>().unwrap());
+                        let props_scope = Scope::with_props(&props);
+
+                        std::mem::replace(&mut store_scope.props, props_scope.props);
+
+                        item.draw_all(cx, &mut store_scope);
                     }
                 }
             }

@@ -170,11 +170,14 @@ impl WidgetMatchEvent for Portal {
                 }
                 PortalAction::Close => {
                     if let Some(file_id) = self.current_file_id.take() {
+                        eprintln!("--- file_id: {:?}", file_id);
                         cx.widget_action(
                             self.widget_uid(),
                             &scope.path,
                             StoreAction::SetShowInfo(file_id, false),
                         );
+                    } else {
+                        error!("PortalAction Close not set show info")
                     }
                     self.close(cx);
                 }
@@ -237,6 +240,12 @@ impl Portal {
 
 #[allow(dead_code)]
 impl PortalRef {
+    pub fn set_current_file_id(&mut self, file_id: Option<FileID>) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_current_file_id(file_id);
+        }
+    }
+
     pub fn show_portal_view_by_id(
         &mut self,
         cx: &mut Cx,

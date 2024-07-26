@@ -260,7 +260,19 @@ impl MatchEvent for App {
 
             // TODO: Hack for error that when you first open the portal, doesnt draw until an event
             // this forces the entire ui to rerender, still weird that only happens the first time.
-            if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
+            if let PortalAction::ShowPortalView(portal_view_id) = action.as_widget_action().cast() {
+                match portal_view_id {
+                    live_id!(modal_model_info_portal_view) => {
+                        if let Some(ModelInfoAction::FileSelected(file_id)) =
+                            action.as_widget_action().cast()
+                        {
+                            self.ui
+                                .portal(id!(portal_root))
+                                .set_current_file_id(Some(file_id));
+                        }
+                    }
+                    _ => {}
+                }
                 self.ui.redraw(cx);
             }
 

@@ -260,6 +260,8 @@ impl Widget for DownloadedFilesRow {
                 .as_ref()
                 .map_or(false, |id| store.get_show_info(id));
 
+            eprintln!("show info ------{:?}", show_info);
+
             let info_button_color = if show_info {
                 vec4(0.4, 0.4, 0.4, 1.0) // 灰色
             } else {
