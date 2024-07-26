@@ -1,10 +1,11 @@
 use makepad_widgets::Cx;
 
 pub mod actions;
+pub mod desktop_buttons;
 pub mod download_notification_popup;
 pub mod external_link;
-pub mod portal;
 pub mod modal;
+pub mod portal;
 pub mod resource_imports;
 pub mod styles;
 pub mod tooltip;
@@ -20,4 +21,5 @@ pub fn live_design(cx: &mut Cx) {
     external_link::live_design(cx);
     download_notification_popup::live_design(cx);
     tooltip::live_design(cx);
+    desktop_buttons::live_design(cx);
 }
