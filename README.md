@@ -86,7 +86,7 @@ cargo run
     Expand-Archive -Force -LiteralPath "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -DestinationPath "$home\WasmEdge-0.14.0-Windows"
     $ProgressPreference = 'Continue' ## restore default progress bars
     ```
-    
+
 5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin.
     In powershell, you can do this like so:
     ```powershell
