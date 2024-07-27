@@ -126,7 +126,7 @@ resources = [
 ##   which is currently `/usr/lib/moxin-runner`.
 ##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
 ##   * On Linux, we also strip the binaries of unneeded content, as required for Debian packages.
-##   * For Debian and Pacman packages, we also auto-generate the list of dependencies required by moxin,
+##   * For Debian and Pacman (still a to-do!) packages, we also auto-generate the list of dependencies required by Moxin,
 ##     making sure to add `curl` since it is used by an invocation in `moxin-runner`.
 ##
 before-each-package-command = """

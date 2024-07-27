@@ -114,7 +114,8 @@ cargo run
 
 Install `cargo-packager`:
 ```sh
-cargo install --force --locked cargo-packager
+rustup update stable  ## Rust version 1.79 or higher is required
+cargo +stable install --force --locked cargo-packager
 ```
 For posterity, these instructions have been tested on `cargo-packager` version 0.10.1, which requires Rust v1.79.
 

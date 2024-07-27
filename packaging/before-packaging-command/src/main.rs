@@ -15,7 +15,8 @@
 //!      given here: <https://docs.rs/cargo-packager/latest/cargo_packager/enum.PackageFormat.html>.
 //!      * `app`, `dmg`: for macOS.
 //!      * `deb`, `appimage`, `pacman`: for Linux.
-//!      * `wix`, `nsis`: for Windows; `wix` generates an `.msi` package, `nsis` generates an `.exe`.
+//!      * `nsis`: for Windows; `nsis` generates an installer `setup.exe`.
+//!      * `wix`: (UNSUPPORTED) for Windows; generates an `.msi` installer package.
 //!
 //! This program uses the `CARGO_PACKAGER_FORMAT` environment variable to determine
 //! which specific build commands and configuration options should be used.
@@ -53,7 +54,7 @@ fn makepad_package_dir_value(package_format: &str) -> &'static str {
     match package_format {
         "app" | "dmg" => "../Resources",
         "appimage" => "../../usr/lib/moxin",
-        "deb" | "pacman" => "/usr/share/moxin",
+        "deb" | "pacman" => "/usr/lib/moxin",
         "nsis" => ".",
         _other => panic!("Unsupported package format: {}", _other),
     }
@@ -142,8 +143,12 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
         Ok(())
     }
 
+    println!("Copying makepad-widgets resources...\n  --> From: {}\n      to:   {}", makepad_widgets_resources_src.as_std_path().display(), makepad_widgets_resources_dest.display());
     copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
+    println!("  --> Done!");
+    println!("Copying moxin resources...\n  --> From {}\n      to:   {}", moxin_resources_src.display(), moxin_resources_dest.display());
     copy_recursively(&moxin_resources_src, &moxin_resources_dest)?;
+    println!("  --> Done!");
 
     if host_os == "macos" {
        download_wasmedge_macos("0.14.0")?;
@@ -243,10 +248,10 @@ fn before_each_package(host_os: &str) -> std::io::Result<()> {
     println!("Running before-each-package-command for {package_format:?}");
     match package_format         {
         "app" | "dmg" => before_each_package_macos(package_format, host_os),
-        "deb" => before_each_package_deb(package_format, host_os),
-        "appimage" => before_each_package_app_image(package_format, host_os),
-        "pacman" => todo!(),
-        "wix" | "nsis" => before_each_package_windows(package_format, host_os),
+        "deb"         => before_each_package_deb(package_format, host_os),
+        "appimage"    => before_each_package_appimage(package_format, host_os),
+        "pacman"      => before_each_package_pacman(package_format, host_os),
+        "nsis"        => before_each_package_windows(package_format, host_os),
         _other => return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             format!("Unknown/unsupported package format {_other:?}"),
@@ -294,7 +299,7 @@ fn before_each_package_macos(package_format: &str, host_os: &str) -> std::io::Re
 }
 
 /// Runs the Linux-specific build commands for AppImage packages.
-fn before_each_package_app_image(package_format: &str, host_os: &str) -> std::io::Result<()> {
+fn before_each_package_appimage(package_format: &str, host_os: &str) -> std::io::Result<()> {
     assert!(host_os == "linux", "AppImage packages can only be created on Linux.");
 
     cargo_build(
@@ -331,19 +336,18 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     
     // Create Debian dependencies file by running `ldd` on the binary
     // and then running `dpkg -S` on each unique shared libraries outputted by `ldd`.
-    let ldd_cmd = Command::new("ldd")
+    let ldd_output = Command::new("ldd")
         .arg("target/release/_moxin_app")
-        .spawn()?;
+        .output()?;
 
-    let output = ldd_cmd.wait_with_output()?;
-    let ldd_output = if output.status.success() {
-        String::from_utf8_lossy(&output.stdout)
+    let ldd_output = if ldd_output.status.success() {
+        String::from_utf8_lossy(&ldd_output.stdout)
     } else {
         eprintln!("Failed to run ldd command: {}
             ------------------------- stderr: -------------------------
             {:?}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr),
+            ldd_output.status,
+            String::from_utf8_lossy(&ldd_output.stderr),
         );
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
@@ -352,42 +356,35 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     };
 
     let mut dpkgs = Vec::new();
-    for line in ldd_output.lines() {
+    for line_raw in ldd_output.lines() {
+        let line = line_raw.trim();
         let lib_name_opt = line.split_whitespace()
-            .nth(2)
+            .next()
             .and_then(|path| Path::new(path)
                 .file_name()
                 .and_then(|f| f.to_str().to_owned())
             );
         let Some(lib_name) = lib_name_opt else { continue };
 
-        let dpkg_cmd = Command::new("dpkg")
+        let dpkg_output = Command::new("dpkg")
             .arg("-S")
             .arg(lib_name)
-            .spawn()?;
-        let output = dpkg_cmd.wait_with_output()?;
-        let dpkg_output = if output.status.success() {
-            String::from_utf8_lossy(&output.stdout)
+            .stderr(Stdio::null())
+            .output()?;
+        let dpkg_output = if dpkg_output.status.success() {
+            String::from_utf8_lossy(&dpkg_output.stdout)
         } else {
-            eprintln!("Failed to run dpkg -S command: {}
-                ------------------------- stderr: -------------------------
-                {:?}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr),
-            );
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to run dpkg -S command on {host_os} for package format {package_format:?}")
-            ));
+            // Skip shared libraries that dpkg doesn't know about, e.g., `linux-vdso.so*`
+            continue;
         };
 
         let Some(package_name) = dpkg_output.split(':').next() else { continue };
+        println!("Got dpkg dependency {package_name:?} from ldd output: {line:?}");
         dpkgs.push(package_name.to_string());
     }
-    println!("Unsorted dependencies: {:#?}", dpkgs);
     dpkgs.sort();
     dpkgs.dedup();
-    println!("Sorted and deduped dependencies: {:#?}", dpkgs);
+    println!("Sorted and de-duplicated dependencies: {:#?}", dpkgs);
     // `curl` is a fixed dependency for the moxin-runner binary.
     dpkgs.push("curl".to_string());
     std::fs::write("./dist/depends_deb.txt", dpkgs.join("\n"))?;
@@ -396,6 +393,23 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     Ok(())
 }
 
+
+/// Runs the Linux-specific build commands for PacMan packages.
+///
+/// This is untested and may be incomplete, e.g., dependencies are not determined.
+fn before_each_package_pacman(package_format: &str, host_os: &str) -> std::io::Result<()> {
+    assert!(host_os == "linux", "Pacman packages can only be created on Linux.");
+
+    cargo_build(
+        package_format,
+        host_os,
+        &["--features", "reqwest/native-tls-vendored"],
+    )?;
+
+    strip_unneeded_linux_binaries(host_os)?;
+    Ok(())
+}
+    
 /// Runs the Windows-specific build commands for WiX (`.msi`) and NSIS (`.exe`) packages.
 fn before_each_package_windows(package_format: &str, host_os: &str) -> std::io::Result<()> {
     assert!(host_os == "windows", "'.exe' and '.msi' packages can only be created on Windows.");

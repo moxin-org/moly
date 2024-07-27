@@ -4,8 +4,8 @@
 //! such that the main `moxin` app can locate the wasmedge dylibs and plugin dylibs.
 //!
 //! First, we discover the wasmedge installation.
-//! The standard installation directory is `$HOME/.wasmedge`.
-//! The default layout of the wasmedge installation directory is as follows:
+//! * The standard installation directory on macOS and Linux is `$HOME/.wasmedge`.
+//! * On macOS, the default layout of the wasmedge installation directory is as follows:
 //! ----------------------------------------------------
 //! $HOME/.wasmedge
 //! ├── bin
@@ -36,11 +36,10 @@
 //! ----------------------------------------------------
 //!
 //! The key environment variables of interest are those that get set by the wasmedge installer.
-//! 1. LIBRARY_PATH=$HOME/.wasmedge/lib
-//! 2. C_INCLUDE_PATH=$HOME/.wasmedge/include
-//! 3. CPLUS_INCLUDE_PATH=$HOME/.wasmedge/include
-//!
-//! Of these 3, we only care about the `LIBRARY_PATH`, where the `libwasmedge.0.dylib` is located.
+//! 1. WASMEDGE_DIR=$HOME/.wasmedge
+//! 2. LIBRARY_PATH=$HOME/.wasmedge/lib
+//! 3. C_INCLUDE_PATH=$HOME/.wasmedge/include
+//! 4. CPLUS_INCLUDE_PATH=$HOME/.wasmedge/include
 //!
 //! For loading plugins, we need to discover the plugin path. The plugin path can be set in the following ways:
 //!/ * The environment variable "WASMEDGE_PLUGIN_PATH".
@@ -53,6 +52,9 @@
 //!    which is located in `$HOME/.wasmedge/lib/libwasmedge.0.dylib`.
 //! 2. the wasi-nn plugin `libwasmedgePluginWasiNN.dylib`,
 //!    which is located in `$HOME/.wasmedge/plugin/libwasmedgePluginWasiNN.dylib`.
+//!
+//! On Windows and Linux, the concepts are the same, but the file names and 
+//! directory layout of WasmEdge differ from macOS.
 //!
 
 #![cfg_attr(feature = "macos_bundle", allow(unused))]
