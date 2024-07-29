@@ -257,11 +257,11 @@ impl MatchEvent for App {
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Pause(file_id) => {
-                    self.store.downloads.pause_download_file(file_id);
+                    self.store.downloads.pause_download_file(&file_id);
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Cancel(file_id) => {
-                    self.store.downloads.cancel_download_file(file_id);
+                    self.store.downloads.cancel_download_file(&file_id);
                     self.ui.redraw(cx);
                 }
                 _ => {}

@@ -13,7 +13,7 @@ pub enum DownloadFileAction {
 
 #[derive(Clone, Copy, Debug)]
 pub enum DownloadState {
-    Starting(f64),
+    Initializing(f64),
     Downloading(f64),
     Errored(f64),
     Completed,
@@ -37,7 +37,7 @@ impl Download {
             model: model,
             sender: tx,
             receiver: rx,
-            state: DownloadState::Starting(progress),
+            state: DownloadState::Initializing(progress),
             notification_pending: false,
         };
 
@@ -105,8 +105,8 @@ impl Download {
         }
     }
 
-    pub fn is_cancelable(&self) -> bool {
-        matches!(self.state, DownloadState::Downloading(..) | DownloadState::Errored(..))
+    pub fn is_initializing(&self) -> bool {
+        matches!(self.state, DownloadState::Initializing(..))
     }
 
     pub fn is_complete(&self) -> bool {
@@ -115,7 +115,7 @@ impl Download {
 
     pub fn get_progress(&self) -> f64 {
         match self.state {
-            DownloadState::Starting(progress) => progress,
+            DownloadState::Initializing(progress) => progress,
             DownloadState::Downloading(progress) => progress,
             DownloadState::Errored(progress) => progress,
             DownloadState::Completed => 1.0,
