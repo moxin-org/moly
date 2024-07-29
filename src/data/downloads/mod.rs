@@ -64,7 +64,8 @@ impl Downloads {
                 Ok(files) => {
                     self.pending_downloads = files;
 
-                    self.pending_downloads.sort_by(|a, b| b.file.id.cmp(&a.file.id));
+                    self.pending_downloads
+                        .sort_by(|a, b| b.file.id.cmp(&a.file.id));
 
                     // There is a issue with the backend response where all pending
                     // downloads come with status `Paused` even if they are downloading.
@@ -106,6 +107,13 @@ impl Downloads {
     }
 
     pub fn pause_download_file(&mut self, file_id: FileID) {
+        let Some(current_download) = self.current_downloads.get(&file_id) else {
+            return;
+        };
+        if !current_download.is_cancelable() {
+            return;
+        }
+
         let (tx, rx) = channel();
         self.backend
             .as_ref()
@@ -129,6 +137,12 @@ impl Downloads {
     }
 
     pub fn cancel_download_file(&mut self, file_id: FileID) {
+        if let Some(current_download) = self.current_downloads.get(&file_id) {
+            if !current_download.is_cancelable() {
+                return;
+            }
+        };
+
         let (tx, rx) = channel();
         self.backend
             .as_ref()
@@ -159,7 +173,6 @@ impl Downloads {
             .context("Failed to receive delete file response")?
             .context("Delete file operation failed")?;
 
-        
         self.load_downloaded_files();
         self.load_pending_downloads();
         Ok(())
@@ -194,22 +207,22 @@ impl Downloads {
                 .find(|d| d.file.id == id.to_string())
             {
                 match download.state {
-                    DownloadState::Downloading(_) => {
+                    DownloadState::Downloading(_) | DownloadState::Starting(_) => {
                         pending.status = PendingDownloadsStatus::Downloading;
                     }
                     DownloadState::Errored(_) => {
                         pending.status = PendingDownloadsStatus::Error;
                         if download.must_show_notification() {
-                            self.pending_notifications.push(DownloadPendingNotification::DownloadErrored(
-                                download.file.clone()
-                            ));
+                            self.pending_notifications.push(
+                                DownloadPendingNotification::DownloadErrored(download.file.clone()),
+                            );
                         }
                     }
                     DownloadState::Completed => {
                         if download.must_show_notification() {
-                            self.pending_notifications.push(DownloadPendingNotification::DownloadedFile(
-                                download.file.clone()
-                            ));
+                            self.pending_notifications.push(
+                                DownloadPendingNotification::DownloadedFile(download.file.clone()),
+                            );
                         }
                     }
                 };
