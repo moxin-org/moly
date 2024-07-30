@@ -6,6 +6,9 @@ live_design! {
 
     import crate::shared::styles::*;
 
+    ICON_TICK = dep("crate://self/resources/images/tick.png")
+
+
     ModelAttributeTag = <RoundedView> {
         width: Fit,
         height: Fit,
@@ -72,6 +75,15 @@ live_design! {
                 color: #fff,
                 border_color: #B4B4B4,
                 border_width: 1.0,
+            }
+        }
+
+        icon_tick_tag = <RoundedView> {
+            align: {x: 1.0, y: 0.5}, 
+            icon_tick = <Image> {
+                width: 18,
+                height: 18,
+                source: (ICON_TICK),
             }
         }
     }
