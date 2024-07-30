@@ -45,9 +45,13 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: Test Build
+      - name: Build
         run: |
-          cargo build --release
+          cargo build
+
+      - name: Build before-packaging-command
+        run: |
+          cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_macos:
     name: MacOS
@@ -71,9 +75,13 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: Test Build
+      - name: Build
         run: |
-          cargo build --release
+          cargo build
+
+      - name: Build before-packaging-command
+        run: |
+          cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_windows:
     name: Windows
@@ -108,6 +116,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: Test Build
+      - name: Build
         run: |
           cargo build
+      
+      - name: Build before-packaging-command
+        run: |
+          cargo build --manifest-path packaging/before-packaging-command/Cargo.toml

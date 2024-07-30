@@ -7,6 +7,9 @@ members = [
     "moxin-backend",
     "moxin-fake-backend",
 ]
+exclude = [
+    "packaging/before-packaging-command"
+]
 
 [package]
 name = "moxin"
@@ -88,19 +91,7 @@ binaries = [
 ## In addition, on macOS only, we must download the WasmEdge plugins in order to include them
 ## in the macOS app bundle. This is because macOS apps must include all dependencies in order to pass notarization.
 before-packaging-command = """
-mkdir -p ./dist/resources/makepad_widgets/ \
-&& cp -r `cargo metadata --format-version 1 | sed -e 's/,\"/,\\n\"/g' | grep 'widgets/Cargo.toml\"' | sed -e 's/\"manifest_path\":\"//g' -e 's/Cargo.toml\",/resources/g'` ./dist/resources/makepad_widgets/ \
-&& mkdir -p ./dist/resources/moxin/ \
-&& cp -r ./resources ./dist/resources/moxin/; \
-\
-export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
-echo "\n\nPackaging on host platform '$CARGO_PACKAGER_HOST_OS'\n\n"; \
-if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
-    mkdir -p ./wasmedge \
-    && curl -sfL --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.13.5/WasmEdge-0.13.5-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge \
-    && mkdir -p ./wasmedge/WasmEdge-0.13.5-Darwin/plugin \
-    && curl -sf --location --progress-bar --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.13.5/WasmEdge-plugin-wasi_nn-ggml-0.13.5-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge/WasmEdge-0.13.5-Darwin/plugin; \
-fi; \
+cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-packaging
 """
 
 ## See the above paragraph comments for more info on how we create/populate the below `src` directories.
@@ -121,31 +112,11 @@ resources = [
 ##   which is currently `/usr/lib/moxin-runner`.
 ##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
 ##   * On Linux, we also strip the binaries of unneeded content, as required for Debian packages.
-##   * For Debian and Pacman packages, we also auto-generate the list of dependencies required by moxin,
+##   * For Debian and Pacman (still a to-do!) packages, we also auto-generate the list of dependencies required by Moxin,
 ##     making sure to add `curl` since it is used by an invocation in `moxin-runner`.
 ##
 before-each-package-command = """
-export CARGO_PACKAGER_HOST_OS=`rustc --print cfg | grep target_os= | sed -e 's/target_os=\"//g' -e 's/\"//g'`; \
-echo -e "\n\n================================================\n Packaging '$CARGO_PACKAGER_FORMAT' on host platform '$CARGO_PACKAGER_HOST_OS'\n================================================\n\n"; \
-if [ "$CARGO_PACKAGER_HOST_OS" = macos ]; then \
-    MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release --features macos_bundle \
-    && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app; \
-elif [ "$CARGO_PACKAGER_HOST_OS" = linux ]; then \
-    if [ "$CARGO_PACKAGER_FORMAT" = appimage ]; then \
-        MAKEPAD_PACKAGE_DIR=../../usr/lib/moxin  cargo build --workspace --release; \
-    else \
-        MAKEPAD_PACKAGE_DIR=/usr/lib/moxin  cargo build --workspace --release --features "reqwest/native-tls-vendored"; \
-        if [ "$CARGO_PACKAGER_FORMAT" = deb ]; then \
-            for path in $(ldd target/release/_moxin_app | awk '{print $3}'); do \
-                basename "$path" ; \
-            done \
-                | xargs dpkg -S 2> /dev/null | awk '{print $1}' | awk -F ':' '{print $1}' | sort | uniq > ./dist/depends_deb.txt; \
-            echo "curl" >> ./dist/depends_deb.txt; \
-        fi; \
-    fi \
-    && strip --strip-unneeded --remove-section=.comment --remove-section=.note target/release/_moxin_app target/release/moxin; \
-else exit 2; \
-fi; \
+cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-each-package
 """
 
 deep_link_protocols = [
@@ -164,9 +135,10 @@ bins = [ "/usr/bin/curl" ]
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
 frameworks = [
-    "./wasmedge/WasmEdge-0.13.5-Darwin/lib/libwasmedge.0.dylib",
-    "./wasmedge/WasmEdge-0.13.5-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
+    "./wasmedge/WasmEdge-0.14.0-Darwin/lib/libwasmedge.0.dylib",
+    "./wasmedge/WasmEdge-0.14.0-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
 ]
+
 
 ## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
 [package.metadata.packager.dmg]
@@ -174,3 +146,12 @@ background = "./packaging/Moxin macOS dmg background.png"
 window_size = { width = 960, height = 540 }
 app_position = { x = 200, y = 250 }
 application_folder_position = { x = 760, y = 250 }
+
+
+## Configuration for `cargo packager`'s generation of a Windows `.exe` setup installer.
+[package.metadata.packager.nsis]
+## See this: <https://nsis.sourceforge.io/Docs/Chapter4.html#varconstant>
+appdata_paths = [
+    "$APPDATA/$PUBLISHER/$PRODUCTNAME",
+    "$LOCALAPPDATA/$PRODUCTNAME",
+]

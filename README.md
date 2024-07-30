@@ -56,8 +56,10 @@ cargo run
 
 ## Windows (Windows 10 or higher)
 1.  Download and install the LLVM v17.0.6 release for Windows: [Here is a direct link to LLVM-17.0.6-win64.exe](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe), 333MB in size.
-    > [!IMPORTANT]
-    > During the setup procedure, make sure to select `Add LLVM to the system PATH for all users` or `for the current user`.
+
+> [!IMPORTANT]
+> During the setup procedure, make sure to select `Add LLVM to the system PATH for all users` or `for the current user`.
+
 2. Restart your PC, or log out and log back in, which allows the LLVM path to be properly
     * Alternatively you can add the LLVM path `C:\Program Files\LLVM\bin` to your system PATH.
 3.  Download the [WasmEdge-0.14.0-windows.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip) file from [the WasmEdge v0.14.0 release page](https://github.com/WasmEdge/WasmEdge/releases/tag/0.14.0),
@@ -75,10 +77,9 @@ cargo run
     ```
 
 4. Download the WasmEdge WASI-NN plugin here: [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) (15.5MB) and extract it to the same directory as above, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows`.
-    > [!IMPORTANT]
-    > You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
-
-    To do this quickly in powershell:
+> [!IMPORTANT]
+> You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.    
+* To do this quickly in powershell:
     ```powershell
     $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
     Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -OutFile "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
@@ -101,19 +102,38 @@ cargo run
     cargo run
     ```
 
+    In a Unix-like shell on Windows (e.g., GitBash, cygwin, msys2, WSL/WSL2):
+    ```sh
+    WASMEDGE_DIR=$HOME/WasmEdge-0.14.0-Windows \
+    WASMEDGE_PLUGIN_PATH=$HOME/WasmEdge-0.14.0-Windows \
+    cargo run
+    ```
+
 
 ## Packaging Moxin for Distribution
 
-Install the version of `cargo-packager` maintained by Project Robius:
+Install `cargo-packager`:
 ```sh
-cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager --branch robius
+rustup update stable  ## Rust version 1.79 or higher is required
+cargo +stable install --force --locked cargo-packager
 ```
+For posterity, these instructions have been tested on `cargo-packager` version 0.10.1, which requires Rust v1.79.
 
 
 ### Packaging for Linux
 On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` Debian package, an AppImage, and a pacman installation package.
 
+
+> [!IMPORTANT]
+> You can only generate a `.deb` Debian package on a Debian-based Linux distribution, as `dpkg` is needed.
+ 
+> [!NOTE]
 > The `pacman` package has not yet been tested.
+
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate all three package types at once:
+```sh
+cargo packager --release --verbose   ## --verbose is optional
+```
 
 To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 ```sh
@@ -129,6 +149,19 @@ cd dist/
 chmod +x moxin_0.1.0_x86_64.AppImage
 ./moxin_0.1.0_x86_64.AppImage
 ```
+
+### Packaging for Windows
+This can only be run on an actual Windows machine, due to platform restrictions.
+
+First, [follow the above instructions for building on Windows](#windows-windows-10-or-higher).
+
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate a `setup.exe` file using NSIS:
+```sh
+WASMEDGE_DIR=path/to/WasmEdge-0.14.0-Windows cargo packager --release --formats nsis --verbose   ## --verbose is optional
+```
+
+After the command completes, you should see a Windows installer called `moxin_0.1.0_x64-setup` in the `dist/` directory.
+Double-click that file to install Moxin on your machine, and then run it as you would a regular application.
 
 
 ### Packaging for macOS

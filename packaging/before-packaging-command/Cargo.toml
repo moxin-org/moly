@@ -1,0 +1,9 @@
+[package]
+name = "before-packaging-command"
+version = "0.1.0"
+edition = "2021"
+description = "A small Rust program that is run by cargo-packager's 'before packaging' commands."
+
+[dependencies]
+cargo_metadata = "0.18"
+directories = "5.0.1"
