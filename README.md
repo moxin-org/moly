@@ -14,29 +14,32 @@ The following table shows which host systems can currently be used to build Moxi
 
 First, [install Rust](https://www.rust-lang.org/tools/install).
 
-Then, install the required WasmEdge WASM runtime:
-
-```sh
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
-
-source $HOME/.wasmedge/env
-```
-
 Obtain the source code from this repository:
 ```sh
 git clone https://github.com/moxin-org/moxin.git
 ```
 
 ### macOS
+Install the required WasmEdge WASM runtime:
+```sh
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
 
-Then, on a standard desktop platform (macOS), simply run:
+source $HOME/.wasmedge/env
+```
 
+Then use `cargo` to build and run Moxin:
 ```sh
 cd moxin
-cargo run
+cargo run --release
 ```
 
 ### Linux
+Install the required WasmEdge WASM runtime:
+```sh
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+
+source $HOME/.wasmedge/env
+```
 
 To build Moxin on Linux, you must install the following dependencies:
 `openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
@@ -47,11 +50,10 @@ sudo apt-get update
 sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
 ```
 
-Then, run:
-
+Then use `cargo` to build and run Moxin:
 ```sh
 cd moxin
-cargo run
+cargo run --release
 ```
 
 ## Windows (Windows 10 or higher)
@@ -92,21 +94,21 @@ cargo run
     ```powershell
     $env:WASMEDGE_DIR="$home\WasmEdge-0.14.0-Windows\"
     $env:WASMEDGE_PLUGIN_PATH="$home\WasmEdge-0.14.0-Windows\"
-    cargo run
+    cargo run --release
     ```
 
     In Windows `cmd`, you can do this like so:
     ```batch
     set WASMEDGE_DIR=%homedrive%%homepath%\WasmEdge-0.14.0-Windows
     set WASMEDGE_PLUGIN_PATH=%homedrive%%homepath%\WasmEdge-0.14.0-Windows
-    cargo run
+    cargo run --release
     ```
 
     In a Unix-like shell on Windows (e.g., GitBash, cygwin, msys2, WSL/WSL2):
     ```sh
     WASMEDGE_DIR=$HOME/WasmEdge-0.14.0-Windows \
     WASMEDGE_PLUGIN_PATH=$HOME/WasmEdge-0.14.0-Windows \
-    cargo run
+    cargo run --release
     ```
 
 

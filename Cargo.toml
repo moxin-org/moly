@@ -15,6 +15,7 @@ exclude = [
 name = "moxin"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.79" ## required by cargo-packager
 description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moxin_app` to avoid naming conflicts
