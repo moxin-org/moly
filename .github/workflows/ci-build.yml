@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04, ubuntu-20.04]
-        rust: [1.79, 1.78, 1.77]
+        rust: [1.79]
     env:
       LD_LIBRARY_PATH: ~\.wasmedge\lib
 
@@ -61,7 +61,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-14, macos-13]
-        rust: [1.79, 1.78, 1.77]
+        rust: [1.79]
 
     steps:
       - name: Checkout sources
@@ -90,7 +90,7 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        rust: [1.79, 1.78, 1.77]
+        rust: [1.79]
     env:
       WASMEDGE_DIR: ${{ github.workspace }}\WasmEdge-0.14.0-Windows
     steps:
