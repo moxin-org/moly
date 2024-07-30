@@ -8,6 +8,7 @@ pub mod modal;
 pub mod portal;
 pub mod resource_imports;
 pub mod styles;
+pub mod toggle_panel;
 pub mod tooltip;
 pub mod utils;
 pub mod widgets;
@@ -22,4 +23,5 @@ pub fn live_design(cx: &mut Cx) {
     download_notification_popup::live_design(cx);
     tooltip::live_design(cx);
     desktop_buttons::live_design(cx);
+    toggle_panel::live_design(cx);
 }
