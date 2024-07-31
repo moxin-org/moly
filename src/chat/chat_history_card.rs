@@ -155,6 +155,8 @@ live_design! {
                             color: #667085,
                         }
                         text: "..."
+
+                        unhover_on_click: false
                     }
                 }
             }
@@ -358,12 +360,18 @@ impl ChatHistoryCard {
         _scope: &mut Scope,
     ) {
         for action in actions {
-            if let ChatHistoryCardAction::ActivateTitleEdition(chat_id) =
-                action.as_widget_action().cast::<ChatHistoryCardAction>()
-            {
-                if chat_id == self.chat_id {
-                    self.transition_title_state(cx);
+            match action.as_widget_action().cast::<ChatHistoryCardAction>() {
+                ChatHistoryCardAction::ActivateTitleEdition(chat_id) => {
+                    if chat_id == self.chat_id {
+                        self.transition_title_state(cx);
+                    }
                 }
+                ChatHistoryCardAction::MenuClosed(chat_id) => {
+                    if chat_id == self.chat_id {
+                        self.button(id!(chat_options)).reset_hover(cx);
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -410,4 +418,5 @@ pub enum ChatHistoryCardAction {
     None,
     ChatSelected(ChatID),
     ActivateTitleEdition(ChatID),
+    MenuClosed(ChatID),
 }

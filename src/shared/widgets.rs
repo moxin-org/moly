@@ -232,6 +232,8 @@ live_design! {
                 return self.color;
             }
         }
+
+        unhover_on_click: true
     }
 
     MoxinRadioButtonTab = <RadioButtonTab> {
