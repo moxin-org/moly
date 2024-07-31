@@ -108,6 +108,9 @@ pub struct ModelSelectorList {
 
     #[rust]
     total_height: Option<f64>,
+
+    #[rust]
+    selected_id: Option<LiveId>,
 }
 
 impl Widget for ModelSelectorList {
@@ -117,6 +120,7 @@ impl Widget for ModelSelectorList {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.as_view().finger_down(&actions) {
                 if fd.tap_count == 1 {
+                    self.selected_id = Some(*id);
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
@@ -175,6 +179,8 @@ impl ModelSelectorList {
             let size = format_model_size(&items[i].file.size).unwrap_or("".to_string());
             let size_visible = !size.trim().is_empty();
 
+            let icon_tick_visible = self.selected_id == Some(item_id);
+
             item_widget.apply_over(
                 cx,
                 live! {
@@ -182,7 +188,7 @@ impl ModelSelectorList {
                     architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) } }
                     params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) } }
                     file_size_tag = { visible: (size_visible), caption = { text: (size) } }
-                    icon_tick_tag = { visible: true }
+                    icon_tick_tag = { visible: (is_selected) }
                 },
             );
 
