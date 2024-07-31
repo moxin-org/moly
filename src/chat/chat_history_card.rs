@@ -337,6 +337,7 @@ impl ChatHistoryCard {
         let on_edit = matches!(self.title_edition_state, TitleState::OnEdit);
         self.view(id!(edit_buttons)).set_visible(on_edit);
         self.view(id!(title_input_container)).set_visible(on_edit);
+        self.button(id!(chat_options)).set_visible(!on_edit);
 
         let editable = matches!(self.title_edition_state, TitleState::Editable);
         self.view(id!(title_label_container)).set_visible(editable);
