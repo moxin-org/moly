@@ -80,6 +80,7 @@ live_design! {
 
         icon_tick_tag = <RoundedView> {
             align: {x: 1.0, y: 0.5}, 
+            visible: false,
             icon_tick = <Image> {
                 width: 18,
                 height: 18,

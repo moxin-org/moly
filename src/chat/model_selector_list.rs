@@ -182,6 +182,7 @@ impl ModelSelectorList {
                     architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) } }
                     params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) } }
                     file_size_tag = { visible: (size_visible), caption = { text: (size) } }
+                    icon_tick_tag = { visible: true }
                 },
             );
 
