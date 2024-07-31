@@ -2,7 +2,7 @@ use makepad_widgets::*;
 
 use crate::{
     data::{chats::chat::ChatID, store::Store},
-    shared::{actions::TooltipAction, toggle_panel::TogglePanel},
+    shared::actions::TooltipAction,
 };
 
 live_design! {
@@ -10,11 +10,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::FadeView;
-    import crate::shared::widgets::MoxinButton;
-    import crate::shared::widgets::MoxinSlider;
-    import crate::shared::widgets::MoxinSwitch;
-    import crate::shared::widgets::MoxinTextInput;
+    import crate::shared::widgets::*;
     import makepad_draw::shader::std::*;
 
     ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_right_panel.svg")
@@ -36,7 +32,7 @@ live_design! {
         }
     }
 
-    ChatParams = {{ChatParams}} {
+    ChatParams = {{ChatParams}} <MoxinTogglePanel> {
         open_content = {
             <View> {
                 width: Fill

@@ -1,5 +1,5 @@
 use super::chat_history_card::ChatHistoryCardWidgetRefExt;
-use crate::{data::store::Store, shared::toggle_panel::TogglePanel};
+use crate::data::store::Store;
 use makepad_widgets::*;
 
 live_design! {
@@ -7,7 +7,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::MoxinButton;
+    import crate::shared::widgets::*;
     import makepad_draw::shader::std::*;
 
     import crate::chat::shared::ChatAgentAvatar;
@@ -15,7 +15,7 @@ live_design! {
 
     ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
 
-    ChatHistory = {{ChatHistory}} {
+    ChatHistory = {{ChatHistory}} <MoxinTogglePanel> {
         open_content = {
             <View> {
                 width: Fill,

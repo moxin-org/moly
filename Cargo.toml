@@ -7,9 +7,7 @@ members = [
     "moxin-backend",
     "moxin-fake-backend",
 ]
-exclude = [
-    "packaging/before-packaging-command"
-]
+exclude = ["packaging/before-packaging-command"]
 
 [package]
 name = "moxin"
@@ -29,7 +27,7 @@ moxin-protocol = { path = "moxin-protocol" }
 moxin-backend = { path = "moxin-backend" }
 moxin-fake-backend = { path = "moxin-fake-backend" }
 
-makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "moxin-release-v1" }
+makepad-widgets = { git = "https://github.com/noxware/makepad", rev = "7ebad2443" }
 
 robius-open = "0.1.0"
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
@@ -130,7 +128,7 @@ section = "utils"
 
 [package.metadata.packager.appimage]
 ## `curl` is needed for `moxin-runner` to auto-install wasmedge.
-bins = [ "/usr/bin/curl" ]
+bins = ["/usr/bin/curl"]
 
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
