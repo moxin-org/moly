@@ -19,6 +19,9 @@ live_design! {
     import crate::chat::model_selector_list::ModelSelectorList;
     import crate::chat::model_selector_loading::ModelSelectorLoading;
 
+    ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
+
+
     ModelSelectorButton = <RoundedView> {
         width: Fill,
         height: 54,
@@ -66,6 +69,13 @@ live_design! {
                 draw_text: {
                     text_style: <BOLD_FONT>{font_size: 11},
                 }
+            }
+
+            icon_drop = <Image> {
+                align: {x: 1.0, y: 0.5}, 
+                width: 18,
+                height: 18,
+                source: (ICON_DROP),
             }
         }
     }
