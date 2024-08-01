@@ -64,13 +64,18 @@ impl Downloads {
                 Ok(files) => {
                     self.pending_downloads = files;
 
-                    self.pending_downloads.sort_by(|a, b| b.file.id.cmp(&a.file.id));
+                    self.pending_downloads
+                        .sort_by(|a, b| b.file.id.cmp(&a.file.id));
 
                     // There is a issue with the backend response where all pending
                     // downloads come with status `Paused` even if they are downloading.
                     self.pending_downloads.iter_mut().for_each(|d| {
-                        if self.current_downloads.contains_key(&d.file.id) {
-                            d.status = PendingDownloadsStatus::Downloading;
+                        if let Some(current) = self.current_downloads.get(&d.file.id) {
+                            if current.is_initializing() {
+                                d.status = PendingDownloadsStatus::Initializing;
+                            } else {
+                                d.status = PendingDownloadsStatus::Downloading;
+                            }
                         }
                     });
                 }
@@ -88,13 +93,13 @@ impl Downloads {
             .find(|d| d.file.id == file.id)
         {
             current_progress = pending.progress;
-            pending.status = PendingDownloadsStatus::Downloading;
+            pending.status = PendingDownloadsStatus::Initializing;
         } else {
             let pending_download = PendingDownload {
                 file: file.clone(),
                 model: model.clone(),
                 progress: 0.0,
-                status: PendingDownloadsStatus::Downloading,
+                status: PendingDownloadsStatus::Initializing,
             };
             self.pending_downloads.push(pending_download);
         }
@@ -105,7 +110,14 @@ impl Downloads {
         );
     }
 
-    pub fn pause_download_file(&mut self, file_id: FileID) {
+    pub fn pause_download_file(&mut self, file_id: &FileID) {
+        let Some(current_download) = self.current_downloads.get(file_id) else {
+            return;
+        };
+        if current_download.is_initializing() {
+            return;
+        }
+
         let (tx, rx) = channel();
         self.backend
             .as_ref()
@@ -116,15 +128,25 @@ impl Downloads {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    self.current_downloads.remove(&file_id);
-                    self.load_pending_downloads();
+                    self.current_downloads.remove(file_id);
+                    self.pending_downloads.iter_mut().for_each(|d| {
+                        if d.file.id == *file_id {
+                            d.status = PendingDownloadsStatus::Paused;
+                        }
+                    });
                 }
                 Err(err) => eprintln!("Error pausing download: {:?}", err),
             }
         };
     }
 
-    pub fn cancel_download_file(&mut self, file_id: FileID) {
+    pub fn cancel_download_file(&mut self, file_id: &FileID) {
+        if let Some(current_download) = self.current_downloads.get(file_id) {
+            if current_download.is_initializing() {
+                return;
+            }
+        };
+
         let (tx, rx) = channel();
         self.backend
             .as_ref()
@@ -135,8 +157,8 @@ impl Downloads {
         if let Ok(response) = rx.recv() {
             match response {
                 Ok(()) => {
-                    self.current_downloads.remove(&file_id);
-                    self.load_pending_downloads();
+                    self.current_downloads.remove(file_id);
+                    self.pending_downloads.retain(|d| d.file.id != *file_id);
                 }
                 Err(err) => eprintln!("Error cancelling download: {:?}", err),
             }
@@ -155,7 +177,6 @@ impl Downloads {
             .context("Failed to receive delete file response")?
             .context("Delete file operation failed")?;
 
-        
         self.load_downloaded_files();
         self.load_pending_downloads();
         Ok(())
@@ -190,22 +211,25 @@ impl Downloads {
                 .find(|d| d.file.id == id.to_string())
             {
                 match download.state {
+                    DownloadState::Initializing(_) => {
+                        pending.status = PendingDownloadsStatus::Initializing;
+                    }
                     DownloadState::Downloading(_) => {
                         pending.status = PendingDownloadsStatus::Downloading;
                     }
                     DownloadState::Errored(_) => {
                         pending.status = PendingDownloadsStatus::Error;
                         if download.must_show_notification() {
-                            self.pending_notifications.push(DownloadPendingNotification::DownloadErrored(
-                                download.file.clone()
-                            ));
+                            self.pending_notifications.push(
+                                DownloadPendingNotification::DownloadErrored(download.file.clone()),
+                            );
                         }
                     }
                     DownloadState::Completed => {
                         if download.must_show_notification() {
-                            self.pending_notifications.push(DownloadPendingNotification::DownloadedFile(
-                                download.file.clone()
-                            ));
+                            self.pending_notifications.push(
+                                DownloadPendingNotification::DownloadedFile(download.file.clone()),
+                            );
                         }
                     }
                 };

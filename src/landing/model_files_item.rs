@@ -258,11 +258,14 @@ impl Widget for ModelFilesItem {
                 matches!(download.status, PendingDownloadsStatus::Downloading);
             let is_retry_download_visible =
                 matches!(download.status, PendingDownloadsStatus::Error);
+            let is_cancel_download_visible = !matches!(download.status, PendingDownloadsStatus::Initializing);
 
             let status_color = match download.status {
-                PendingDownloadsStatus::Downloading => vec3(0.035, 0.572, 0.314), // #099250
-                PendingDownloadsStatus::Paused => vec3(0.4, 0.44, 0.52),          // #667085
-                PendingDownloadsStatus::Error => vec3(0.7, 0.11, 0.09),           // #B42318
+                PendingDownloadsStatus::Downloading | PendingDownloadsStatus::Initializing => {
+                    vec3(0.035, 0.572, 0.314)
+                } // #099250
+                PendingDownloadsStatus::Paused => vec3(0.4, 0.44, 0.52), // #667085
+                PendingDownloadsStatus::Error => vec3(0.7, 0.11, 0.09),  // #B42318
             };
 
             self.apply_over(
@@ -294,6 +297,9 @@ impl Widget for ModelFilesItem {
                         }
                         pause_download_button = {
                             visible: (is_pause_download_visible)
+                        }
+                        cancel_download_button = {
+                            visible: (is_cancel_download_visible)
                         }
                     }
                     start_chat_button = { visible: false }

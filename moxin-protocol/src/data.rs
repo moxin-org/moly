@@ -56,6 +56,7 @@ pub struct DownloadedFile {
 #[derive(Clone, Debug, Default)]
 pub enum PendingDownloadsStatus {
     #[default]
+    Initializing,
     Downloading,
     Paused,
     Error,
