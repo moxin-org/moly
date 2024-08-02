@@ -7,9 +7,7 @@ members = [
     "moxin-backend",
     "moxin-fake-backend",
 ]
-exclude = [
-    "packaging/before-packaging-command"
-]
+exclude = ["packaging/before-packaging-command"]
 
 [package]
 name = "moxin"
@@ -131,7 +129,7 @@ section = "utils"
 
 [package.metadata.packager.appimage]
 ## `curl` is needed for `moxin-runner` to auto-install wasmedge.
-bins = [ "/usr/bin/curl" ]
+bins = ["/usr/bin/curl"]
 
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
