@@ -8,11 +8,13 @@ on:
   push:
     branches:
       - 'main'
+      - 'dev'
     paths-ignore:
       - "**/*.md"
   pull_request:
     branches:
       - 'main'
+      - 'dev'
     paths-ignore:
       - "**/*.md"
 
@@ -23,7 +25,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04, ubuntu-20.04]
-        rust: [1.79, 1.78, 1.77]
+        rust: [1.79]
     env:
       LD_LIBRARY_PATH: ~\.wasmedge\lib
 
@@ -45,9 +47,13 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: Test Build
+      - name: Build
         run: |
-          cargo build --release
+          cargo build
+
+      - name: Build before-packaging-command
+        run: |
+          cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_macos:
     name: MacOS
@@ -55,7 +61,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-14, macos-13]
-        rust: [1.79, 1.78, 1.77]
+        rust: [1.79]
 
     steps:
       - name: Checkout sources
@@ -71,16 +77,20 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: Test Build
+      - name: Build
         run: |
-          cargo build --release
+          cargo build
+
+      - name: Build before-packaging-command
+        run: |
+          cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_windows:
     name: Windows
     runs-on: windows-2022
     strategy:
       matrix:
-        rust: [1.79, 1.78, 1.77]
+        rust: [1.79]
     env:
       WASMEDGE_DIR: ${{ github.workspace }}\WasmEdge-0.14.0-Windows
     steps:
@@ -108,6 +118,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
-      - name: Test Build
+      - name: Build
         run: |
           cargo build
+      
+      - name: Build before-packaging-command
+        run: |
+          cargo build --manifest-path packaging/before-packaging-command/Cargo.toml

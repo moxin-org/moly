@@ -158,7 +158,7 @@ impl Widget for Downloads {
 
         let download_count = pending_downloads
             .iter()
-            .filter(|d| matches!(d.status, PendingDownloadsStatus::Downloading))
+            .filter(|d| matches!(d.status, PendingDownloadsStatus::Downloading | PendingDownloadsStatus::Initializing))
             .count();
         self.label(id!(downloading_count))
             .set_text(&format!("{} downloading", download_count));

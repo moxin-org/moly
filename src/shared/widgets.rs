@@ -466,4 +466,33 @@ live_design! {
             }
         }
     }
+
+    TogglePanelButton = <MoxinButton> {
+        width: Fit,
+        height: Fit,
+        icon_walk: {width: 20, height: 20},
+        draw_icon: {
+            fn get_color(self) -> vec4 {
+                return #475467;
+            }
+        }
+    }
+
+    MoxinTogglePanel = <TogglePanel> {
+        persistent_content = {
+            default = {
+                open = <TogglePanelButton> {
+                    visible: false,
+                    draw_icon: {
+                        svg_file: (TOGGLE_PANEL_OPEN_ICON)
+                    }
+                }
+                close = <TogglePanelButton> {
+                    draw_icon: {
+                        svg_file: (TOGGLE_PANEL_CLOSE_ICON)
+                    }
+                }
+            }
+        }
+    }
 }
