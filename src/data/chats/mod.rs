@@ -58,6 +58,8 @@ impl Chats {
     }
 
     pub fn load_model(&mut self, file: &File) {
+        self.cancel_chat_streaming();
+
         if let Some(loader) = &self.model_loader {
             if !loader.complete {
                 return;
@@ -70,7 +72,10 @@ impl Chats {
     }
 
     pub fn get_currently_loading_model(&self) -> Option<&File> {
-        self.model_loader.as_ref().filter(|loader| !loader.complete).map(|loader| &loader.file)
+        self.model_loader
+            .as_ref()
+            .filter(|loader| !loader.complete)
+            .map(|loader| &loader.file)
     }
 
     pub fn update_load_model(&mut self) {
@@ -105,6 +110,7 @@ impl Chats {
     }
 
     pub fn set_current_chat(&mut self, chat_id: ChatID) {
+        self.cancel_chat_streaming();
         self.current_chat_id = Some(chat_id);
 
         let mut chat = self.get_current_chat().unwrap().borrow_mut();
@@ -195,6 +201,8 @@ impl Chats {
     pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
         let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
         new_chat.borrow().save();
+
+        self.cancel_chat_streaming();
 
         self.current_chat_id = Some(new_chat.borrow().id);
         self.saved_chats.push(new_chat);
