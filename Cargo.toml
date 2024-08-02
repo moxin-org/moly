@@ -27,7 +27,7 @@ moxin-protocol = { path = "moxin-protocol" }
 moxin-backend = { path = "moxin-backend" }
 moxin-fake-backend = { path = "moxin-fake-backend" }
 
-makepad-widgets = { git = "https://github.com/noxware/makepad", rev = "7ebad2443" }
+makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "moxin-release-v1" }
 
 robius-open = "0.1.0"
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
