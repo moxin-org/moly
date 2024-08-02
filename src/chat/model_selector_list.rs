@@ -108,9 +108,6 @@ pub struct ModelSelectorList {
 
     #[rust]
     total_height: Option<f64>,
-
-    #[rust]
-    selected_id: Option<LiveId>,
 }
 
 impl Widget for ModelSelectorList {
@@ -120,7 +117,6 @@ impl Widget for ModelSelectorList {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.as_view().finger_down(&actions) {
                 if fd.tap_count == 1 {
-                    self.selected_id = Some(*id);
                     cx.widget_action(
                         widget_uid,
                         &scope.path,
@@ -138,7 +134,9 @@ impl Widget for ModelSelectorList {
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {
-            self.draw_items(cx, &store.downloads.downloaded_files);
+            if let Some(loaded_file) = store.get_loaded_downloaded_file() {
+                self.draw_items(cx, &store.downloads.downloaded_files,loaded_file);
+            }
         }
 
         cx.end_turtle_with_area(&mut self.area);
@@ -148,7 +146,7 @@ impl Widget for ModelSelectorList {
 }
 
 impl ModelSelectorList {
-    fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<DownloadedFile>) {
+    fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<DownloadedFile>, loaded_model: DownloadedFile) {
         let mut items = items.clone();
         items.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
 
@@ -179,7 +177,7 @@ impl ModelSelectorList {
             let size = format_model_size(&items[i].file.size).unwrap_or("".to_string());
             let size_visible = !size.trim().is_empty();
 
-            let icon_tick_visible = self.selected_id == Some(item_id);
+            let icon_tick_visible = self.map_to_downloaded_files.get(&item_id).unwrap().file.id == loaded_model.file.id;
 
             item_widget.apply_over(
                 cx,
