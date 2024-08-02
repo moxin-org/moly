@@ -298,6 +298,8 @@ live_design! {
         // This is necesary because we have a Modal widget inside this widget
         flow: Overlay,
 
+        cursor: Default,
+
         <RoundedView> {
             width: Fill,
             height: Fit,
