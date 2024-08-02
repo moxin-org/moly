@@ -113,7 +113,7 @@ live_design! {
             }
         }
 
-        unhover_on_click: false,
+        reset_hover_on_click: false,
     }
 
     TogglePanel = {{TogglePanel}} {

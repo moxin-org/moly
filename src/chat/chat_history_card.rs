@@ -156,7 +156,7 @@ live_design! {
                         }
                         text: "..."
 
-                        unhover_on_click: false
+                        reset_hover_on_click: false
                     }
                 }
             }

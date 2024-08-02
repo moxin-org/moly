@@ -233,7 +233,7 @@ live_design! {
             }
         }
 
-        unhover_on_click: true
+        reset_hover_on_click: true
     }
 
     MoxinRadioButtonTab = <RadioButtonTab> {
