@@ -71,11 +71,15 @@ live_design! {
                 }
             }
 
-            icon_drop = <Image> {
-                align: {x: 1.0, y: 0.5}, 
-                width: 18,
-                height: 18,
+            icon_drop = <RotatedImage> {
+                height: 14,
+                width: 14,
+                align: {x: 1.0, y: 0.5},
                 source: (ICON_DROP),
+                cursor: Hand,
+                draw_bg: {
+                    rotation: 0.0
+                }
             }
         }
     }
@@ -116,6 +120,7 @@ live_design! {
         options = <ModelSelectorOptions> {}
 
         open_animation_progress: 0.0,
+        rotate_animation_progress: 0.0
         animator: {
             open = {
                 default: hide,
@@ -123,13 +128,13 @@ live_design! {
                     redraw: true,
                     from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {open_animation_progress: 1.0}
+                    apply: {open_animation_progress: 1.0, rotate_animation_progress: 1.0}
                 }
                 hide = {
                     redraw: true,
                     from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {open_animation_progress: 0.0}
+                    apply: {open_animation_progress: 0.0, rotate_animation_progress: 0.0}
                 }
             }
         }
@@ -149,6 +154,9 @@ pub struct ModelSelector {
 
     #[live]
     open_animation_progress: f64,
+
+    #[live]
+    rotate_animation_progress: f64,
 
     #[rust]
     hide_animation_timer: Timer,
@@ -208,6 +216,10 @@ impl Widget for ModelSelector {
                 let height = self.open_animation_progress * total_height;
                 self.view(id!(options.list_container))
                     .apply_over(cx, live! {height: (height)});
+
+                let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
+                self.view(id!(selected.icon_drop)).apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
+
                 self.redraw(cx);
             }
         }
@@ -316,6 +328,7 @@ impl ModelSelector {
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
+        self.view(id!(selected.icon_drop)).apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
         self.animator_cut(cx, id!(open.hide));
         self.redraw(cx);
     }

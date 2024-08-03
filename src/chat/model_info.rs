@@ -82,8 +82,8 @@ live_design! {
             align: {x: 1.0, y: 0.5}, 
             visible: false,
             icon_tick = <Image> {
-                width: 18,
-                height: 18,
+                width: 14,
+                height: 14,
                 source: (ICON_TICK),
             }
         }
