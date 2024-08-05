@@ -67,6 +67,15 @@ cargo run --release
 
 2. Restart your PC, or log out and log back in, which allows the LLVM path to be properly
     * Alternatively you can add the LLVM path `C:\Program Files\LLVM\bin` to your system PATH.
+
+
+> [!TIP]
+> To automatically handle Steps 3 and 4, simply run:
+> ```sh
+> cargo run -p moxin-runner -- --install
+> ```
+
+
 3.  Download the [WasmEdge-0.14.0-windows.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip) file from [the WasmEdge v0.14.0 release page](https://github.com/WasmEdge/WasmEdge/releases/tag/0.14.0),
     and then extract it into a directory of your choice.
     We recommend using your home directory (e.g., `C:\Users\<USERNAME>\`), represented by `$home` in powershell and `%homedrive%%homepath%` in batch-cmd.
@@ -81,25 +90,23 @@ cargo run --release
     $ProgressPreference = 'Continue' ## restore default progress bars
     ```
 
-4. Download [the appropriate WasmEdge WASI-NN plugin](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499) (see below for details), and extract it to the same directory as above, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows`.
+4. Download [the appropriate WasmEdge WASI-NN plugin](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499) (see below for details), extract/unzip it, and copy the `lib\wasmedge` directory from the .zip archive into the `lib\` directory of the above WasmEdge installation directory, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows\lib`.
 
 > [!IMPORTANT]
-> You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
+> The only file that matters is the plugin file, which must exist at the path `WasmEdge-0.14.0-Windows\lib\wasmedge\wasmedgePluginWasiNN.dll`
+
 * If your computer has a CUDA v12-capable GPU, select [WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip).
   * Note that **CUDA version 12** is required.
 * If your computer doesn't have CUDA 12, then select either:
   * [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) if your CPU supports AVX-512, or
   * [WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499#:~:text=WasmEdge%2Dplugin%2Dwasi_nn%2Dggml%2Dnoavx%2D0.14.0%2Dwindows_x86_64.zip) if your CPU does *not* support AVX-512.
 
-* To quickly perform the above instructions in powershell (replace `<CHOSEN URL FOR PLUGIN>` accordingly):
-    ```powershell
-    $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
-    Invoke-WebRequest -Uri "<CHOSEN URL FOR PLUGIN>" -OutFile "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
-    Expand-Archive -Force -LiteralPath "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -DestinationPath "$home\WasmEdge-0.14.0-Windows"
-    $ProgressPreference = 'Continue' ## restore default progress bars
-    ```
     
-5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin. You may also need to add the `WasmEdge-0.14.0-Windows\bin` directory to your `PATH` environment variable (on some versions of Windows).
+5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin.
+
+> [!IMPORTANT]
+> You may also need to add the `WasmEdge-0.14.0-Windows\bin` directory to your `PATH` environment variable (on some versions of Windows).
+
     In powershell, you can do this like so:
     ```powershell
     $env:WASMEDGE_DIR="$home\WasmEdge-0.14.0-Windows\"

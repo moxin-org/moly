@@ -9,7 +9,7 @@ directories = "5.0.1"
 
 [target.'cfg(windows)'.dependencies]
 ## For running a powershell script, which downloads and extracts/installs WasmEdge
-powershell_script = { git = "https://github.com/project-robius/powershell-script.git", branch = "accept_args" }
+powershell_script = "1.1.0"
 ## For showing a dialog box modal when the CPU is unsupported.
 windows-sys = { version = "0.52", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
 
