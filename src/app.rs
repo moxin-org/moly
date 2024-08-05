@@ -2,7 +2,6 @@ use crate::chat::chat_history_card_options::{
     ChatHistoryCardOptionsAction, ChatHistoryCardOptionsWidgetRefExt,
 };
 use crate::chat::chat_panel::ChatPanelAction;
-use crate::chat::delete_chat_modal::{DeleteChatAction, DeleteChatModalWidgetRefExt};
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
@@ -31,7 +30,6 @@ live_design! {
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
-    import crate::chat::delete_chat_modal::DeleteChatModal;
     import crate::chat::chat_history_card_options::ChatHistoryCardOptions ;
 
 
@@ -116,14 +114,6 @@ live_design! {
                 }
 
                 portal_root = <Portal> {
-                    modal_delete_chat_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                delete_chat_modal = <DeleteChatModal> {}
-                            }
-                        }
-                    }
-
                     popup_download_success_portal_view = <PortalView> {
                         align: {x: 1, y: 0}
                         popup_download_success = <DownloadNotificationPopup> {}
@@ -242,12 +232,6 @@ impl MatchEvent for App {
             // this forces the entire ui to rerender, still weird that only happens the first time.
             if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
                 self.ui.redraw(cx);
-            }
-
-            // Set modal viewall model id
-            if let DeleteChatAction::ChatSelected(chat_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.delete_chat_modal(id!(delete_chat_modal));
-                modal.set_chat_id(chat_id);
             }
 
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
