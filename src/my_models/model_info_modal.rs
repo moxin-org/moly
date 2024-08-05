@@ -1,6 +1,5 @@
 use crate::shared::{portal::PortalAction, utils::hugging_face_model_url};
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
 
 use super::downloaded_files_row::DownloadedFilesRowProps;
 
@@ -166,8 +165,6 @@ pub struct ModelInfoModal {
     #[deref]
     view: View,
     #[rust]
-    file_id: String,
-    #[rust]
     model_id: String,
     #[rust]
     stringified_model_data: String,
@@ -234,10 +231,4 @@ impl WidgetMatchEvent for ModelInfoModal {
             }
         }
     }
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum ModelInfoAction {
-    FileSelected(FileID),
-    None,
 }

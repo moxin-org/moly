@@ -5,7 +5,6 @@ use crate::shared::portal::PortalAction;
 use crate::shared::utils::hugging_face_model_url;
 use chrono::Utc;
 use makepad_widgets::*;
-use moxin_protocol::data::ModelID;
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
@@ -408,44 +407,18 @@ impl Widget for ModelCard {
 }
 
 impl WidgetMatchEvent for ModelCard {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.link_label(id!(view_all_button.link)).clicked(actions) {
             self.modal(id!(modal)).open_modal(cx);
             self.redraw(cx);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                //self.redraw(cx);
-
-
-            // cx.widget_action(
-            //     widget_uid,
-            //     &scope.path,
-            //     PortalAction::ShowPortalView(live_id!(modal_model_card_view_all_portal_view)),
-            // );
-
-            // cx.widget_action(
-            //     widget_uid,
-            //     &scope.path,
-            //     ViewAllModalAction::ModelSelected(self.model_id.clone()),
-            // );
         }
     }
-}
-
-// TODO: Make it so this action and setting the model id from the outside isnt needed
-//       find a way to pass the data inside the Modal action itself.
-#[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
-pub enum ViewAllModalAction {
-    None,
-    ModelSelected(ModelID),
 }
 
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelCardViewAllModal {
     #[deref]
     view: View,
-    #[rust]
-    model_id: ModelID,
 }
 
 impl Widget for ModelCardViewAllModal {

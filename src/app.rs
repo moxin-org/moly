@@ -5,10 +5,8 @@ use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::delete_chat_modal::{DeleteChatAction, DeleteChatModalWidgetRefExt};
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
-use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
-use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
 use crate::shared::actions::{ChatAction, DownloadAction, TooltipAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
@@ -36,7 +34,6 @@ live_design! {
     import crate::my_models::my_models_screen::MyModelsScreen;
     import crate::my_models::delete_model_modal::DeleteModelModal;
     import crate::chat::delete_chat_modal::DeleteChatModal;
-    import crate::my_models::model_info_modal::ModelInfoModal;
     import crate::chat::chat_history_card_options::ChatHistoryCardOptions ;
 
 

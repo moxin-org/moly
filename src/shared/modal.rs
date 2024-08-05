@@ -65,7 +65,7 @@ pub struct Modal {
 }
 
 impl LiveHook for Modal {
-    fn after_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+    fn after_apply(&mut self, cx: &mut Cx, _apply: &mut Apply, _index: usize, _nodes: &[LiveNode]) {
         self.draw_list.redraw(cx);
     }
 }

@@ -285,18 +285,6 @@ impl WidgetMatchEvent for DownloadedFilesRow {
 
         if self.button(id!(info_button)).clicked(actions) {
             self.modal(id!(info_modal)).open_modal(cx);
-            // if let Some(file_id) = &self.file_id {
-            //     cx.widget_action(
-            //         widget_uid,
-            //         &scope.path,
-            //         ModelInfoAction::FileSelected(file_id.clone()),
-            //     );
-            //     cx.widget_action(
-            //         widget_uid,
-            //         &scope.path,
-            //         PortalAction::ShowPortalView(live_id!(modal_model_info_portal_view)),
-            //     );
-            // }
         }
 
         if self.button(id!(delete_button)).clicked(actions) {
