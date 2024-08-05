@@ -350,7 +350,7 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
     match powershell_script::PsScriptBuilder::new()
         .non_interactive(true)
         .hidden(true) // Don't display a PowerShell window
-        .print_commands(true) // enable this for debugging
+        .print_commands(false) // enable this for debugging
         .build()
         .run(&install_wasmedge_ps1)
     {
