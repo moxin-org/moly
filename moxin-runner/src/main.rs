@@ -136,6 +136,18 @@ const ENV_LD_LIBRARY_PATH: &str = "LD_LIBRARY_PATH";
 #[cfg(target_os = "macos")]
 const ENV_DYLD_FALLBACK_LIBRARY_PATH: &str = "DYLD_FALLBACK_LIBRARY_PATH";
 
+/// Returns the URL of the WASI-NN plugin that should be downloaded.
+#[cfg(windows)]
+fn wasmedge_wasi_nn_plugin_url() -> &'static str {
+    #[cfg(target_arch = "x86_64")]
+    if is_x86_feature_detected!("avx512f") {
+        return "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip";
+    }
+
+    // Currently, the only other option is the no-AVX build, which still requires SSE4.2 or SSE4a.
+    // When WasmEdge releases additional builds, we can add them here.
+    "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64.zip"
+}
 
 /// An extension trait for checking if a path exists.
 pub trait PathExt {
@@ -311,7 +323,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 /// ```powershell
 ///    Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip" -OutFile "$env:TEMP\WasmEdge-0.14.0-windows.zip"
 ///    Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath $home
-///    Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -OutFile "$env:TEMP\WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
+///    Invoke-WebRequest -Uri "<Wasi NN plugin URL>" -OutFile "$env:TEMP\WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
 ///    Expand-Archive -Force -Path "$env:TEMP\WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -DestinationPath "$home\WasmEdge-0.14.0-Windows"
 /// ```
 #[cfg(windows)]
@@ -322,6 +334,7 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
         .non_interactive(true)
         .hidden(true) // Don't display a PowerShell window
         .print_commands(false) // enable this for debugging
+        .arg(std::ffi::OsString::from(wasmedge_wasi_nn_plugin_url()))
         .build()
         .run(&install_wasmedge_ps1)
     {
@@ -486,77 +499,84 @@ fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
 /// Does nothing for other platforms.
 fn check_cpu_features() {
     #[cfg(windows)] {
-        if !is_x86_feature_detected!("avx512f") {
-            eprintln!("Feature aes: {}", is_x86_feature_detected!("aes"));
-            eprintln!("Feature pclmulqdq: {}", is_x86_feature_detected!("pclmulqdq"));
-            eprintln!("Feature rdrand: {}", is_x86_feature_detected!("rdrand"));
-            eprintln!("Feature rdseed: {}", is_x86_feature_detected!("rdseed"));
-            eprintln!("Feature tsc: {}", is_x86_feature_detected!("tsc"));
-            eprintln!("Feature mmx: {}", is_x86_feature_detected!("mmx"));
-            eprintln!("Feature sse: {}", is_x86_feature_detected!("sse"));
-            eprintln!("Feature sse2: {}", is_x86_feature_detected!("sse2"));
-            eprintln!("Feature sse3: {}", is_x86_feature_detected!("sse3"));
-            eprintln!("Feature ssse3: {}", is_x86_feature_detected!("ssse3"));
-            eprintln!("Feature sse4.1: {}", is_x86_feature_detected!("sse4.1"));
-            eprintln!("Feature sse4.2: {}", is_x86_feature_detected!("sse4.2"));
-            eprintln!("Feature sse4a: {}", is_x86_feature_detected!("sse4a"));
-            eprintln!("Feature sha: {}", is_x86_feature_detected!("sha"));
-            eprintln!("Feature avx: {}", is_x86_feature_detected!("avx"));
-            eprintln!("Feature avx2: {}", is_x86_feature_detected!("avx2"));
-            eprintln!("Feature avx512f: {}", is_x86_feature_detected!("avx512f"));
-            eprintln!("Feature avx512cd: {}", is_x86_feature_detected!("avx512cd"));
-            eprintln!("Feature avx512er: {}", is_x86_feature_detected!("avx512er"));
-            eprintln!("Feature avx512pf: {}", is_x86_feature_detected!("avx512pf"));
-            eprintln!("Feature avx512bw: {}", is_x86_feature_detected!("avx512bw"));
-            eprintln!("Feature avx512dq: {}", is_x86_feature_detected!("avx512dq"));
-            eprintln!("Feature avx512vl: {}", is_x86_feature_detected!("avx512vl"));
-            eprintln!("Feature avx512ifma: {}", is_x86_feature_detected!("avx512ifma"));
-            eprintln!("Feature avx512vbmi: {}", is_x86_feature_detected!("avx512vbmi"));
-            eprintln!("Feature avx512vpopcntdq: {}", is_x86_feature_detected!("avx512vpopcntdq"));
-            eprintln!("Feature avx512vbmi2: {}", is_x86_feature_detected!("avx512vbmi2"));
-            eprintln!("Feature gfni: {}", is_x86_feature_detected!("gfni"));
-            eprintln!("Feature vaes: {}", is_x86_feature_detected!("vaes"));
-            eprintln!("Feature vpclmulqdq: {}", is_x86_feature_detected!("vpclmulqdq"));
-            eprintln!("Feature avx512vnni: {}", is_x86_feature_detected!("avx512vnni"));
-            eprintln!("Feature avx512bitalg: {}", is_x86_feature_detected!("avx512bitalg"));
-            eprintln!("Feature avx512bf16: {}", is_x86_feature_detected!("avx512bf16"));
-            eprintln!("Feature avx512vp2intersect: {}", is_x86_feature_detected!("avx512vp2intersect"));
-            // eprintln!("Feature avx512fp16: {}", is_x86_feature_detected!("avx512fp16"));
-            eprintln!("Feature f16c: {}", is_x86_feature_detected!("f16c"));
-            eprintln!("Feature fma: {}", is_x86_feature_detected!("fma"));
-            eprintln!("Feature bmi1: {}", is_x86_feature_detected!("bmi1"));
-            eprintln!("Feature bmi2: {}", is_x86_feature_detected!("bmi2"));
-            eprintln!("Feature abm: {}", is_x86_feature_detected!("abm"));
-            eprintln!("Feature lzcnt: {}", is_x86_feature_detected!("lzcnt"));
-            eprintln!("Feature tbm: {}", is_x86_feature_detected!("tbm"));
-            eprintln!("Feature popcnt: {}", is_x86_feature_detected!("popcnt"));
-            eprintln!("Feature fxsr: {}", is_x86_feature_detected!("fxsr"));
-            eprintln!("Feature xsave: {}", is_x86_feature_detected!("xsave"));
-            eprintln!("Feature xsaveopt: {}", is_x86_feature_detected!("xsaveopt"));
-            eprintln!("Feature xsaves: {}", is_x86_feature_detected!("xsaves"));
-            eprintln!("Feature xsavec: {}", is_x86_feature_detected!("xsavec"));
-            eprintln!("Feature cmpxchg16b: {}", is_x86_feature_detected!("cmpxchg16b"));
-            eprintln!("Feature adx: {}", is_x86_feature_detected!("adx"));
-            eprintln!("Feature rtm: {}", is_x86_feature_detected!("rtm"));
-            eprintln!("Feature movbe: {}", is_x86_feature_detected!("movbe"));
-            eprintln!("Feature ermsb: {}", is_x86_feature_detected!("ermsb"));
-
-            use windows_sys::Win32::UI::WindowsAndMessaging::{
-                MessageBoxW, MB_ICONERROR, MB_SETFOREGROUND, MB_TOPMOST,
-            };
-            // SAFE: just displaying an Error dialog box; the program will be terminated regardless.
-            unsafe {
-                MessageBoxW(
-                    0,
-                    windows_sys::w!(
-                        "This CPU does not support AVX512, which is required by Moxin.\n\n\
-                        The list of supported CPU features has been logged to the console.\
-                    "),
-                    windows_sys::w!("Error: Unsupported CPU!"),
-                    MB_SETFOREGROUND | MB_TOPMOST | MB_ICONERROR,
-                );
-            }
-            panic!("\nError: this CPU does not support AVX512, which is required by Moxin.\n")
+        if is_x86_feature_detected!("avx512f") {
+            return;
         }
+
+        if is_x86_feature_detected!("sse4.2") || is_x86_feature_detected!("sse4a") {
+            return;
+        }
+
+        eprintln!("Feature aes: {}", is_x86_feature_detected!("aes"));
+        eprintln!("Feature pclmulqdq: {}", is_x86_feature_detected!("pclmulqdq"));
+        eprintln!("Feature rdrand: {}", is_x86_feature_detected!("rdrand"));
+        eprintln!("Feature rdseed: {}", is_x86_feature_detected!("rdseed"));
+        eprintln!("Feature tsc: {}", is_x86_feature_detected!("tsc"));
+        eprintln!("Feature mmx: {}", is_x86_feature_detected!("mmx"));
+        eprintln!("Feature sse: {}", is_x86_feature_detected!("sse"));
+        eprintln!("Feature sse2: {}", is_x86_feature_detected!("sse2"));
+        eprintln!("Feature sse3: {}", is_x86_feature_detected!("sse3"));
+        eprintln!("Feature ssse3: {}", is_x86_feature_detected!("ssse3"));
+        eprintln!("Feature sse4.1: {}", is_x86_feature_detected!("sse4.1"));
+        eprintln!("Feature sse4.2: {}", is_x86_feature_detected!("sse4.2"));
+        eprintln!("Feature sse4a: {}", is_x86_feature_detected!("sse4a"));
+        eprintln!("Feature sha: {}", is_x86_feature_detected!("sha"));
+        eprintln!("Feature avx: {}", is_x86_feature_detected!("avx"));
+        eprintln!("Feature avx2: {}", is_x86_feature_detected!("avx2"));
+        eprintln!("Feature avx512f: {}", is_x86_feature_detected!("avx512f"));
+        eprintln!("Feature avx512cd: {}", is_x86_feature_detected!("avx512cd"));
+        eprintln!("Feature avx512er: {}", is_x86_feature_detected!("avx512er"));
+        eprintln!("Feature avx512pf: {}", is_x86_feature_detected!("avx512pf"));
+        eprintln!("Feature avx512bw: {}", is_x86_feature_detected!("avx512bw"));
+        eprintln!("Feature avx512dq: {}", is_x86_feature_detected!("avx512dq"));
+        eprintln!("Feature avx512vl: {}", is_x86_feature_detected!("avx512vl"));
+        eprintln!("Feature avx512ifma: {}", is_x86_feature_detected!("avx512ifma"));
+        eprintln!("Feature avx512vbmi: {}", is_x86_feature_detected!("avx512vbmi"));
+        eprintln!("Feature avx512vpopcntdq: {}", is_x86_feature_detected!("avx512vpopcntdq"));
+        eprintln!("Feature avx512vbmi2: {}", is_x86_feature_detected!("avx512vbmi2"));
+        eprintln!("Feature gfni: {}", is_x86_feature_detected!("gfni"));
+        eprintln!("Feature vaes: {}", is_x86_feature_detected!("vaes"));
+        eprintln!("Feature vpclmulqdq: {}", is_x86_feature_detected!("vpclmulqdq"));
+        eprintln!("Feature avx512vnni: {}", is_x86_feature_detected!("avx512vnni"));
+        eprintln!("Feature avx512bitalg: {}", is_x86_feature_detected!("avx512bitalg"));
+        eprintln!("Feature avx512bf16: {}", is_x86_feature_detected!("avx512bf16"));
+        eprintln!("Feature avx512vp2intersect: {}", is_x86_feature_detected!("avx512vp2intersect"));
+        // eprintln!("Feature avx512fp16: {}", is_x86_feature_detected!("avx512fp16"));
+        eprintln!("Feature f16c: {}", is_x86_feature_detected!("f16c"));
+        eprintln!("Feature fma: {}", is_x86_feature_detected!("fma"));
+        eprintln!("Feature bmi1: {}", is_x86_feature_detected!("bmi1"));
+        eprintln!("Feature bmi2: {}", is_x86_feature_detected!("bmi2"));
+        eprintln!("Feature abm: {}", is_x86_feature_detected!("abm"));
+        eprintln!("Feature lzcnt: {}", is_x86_feature_detected!("lzcnt"));
+        eprintln!("Feature tbm: {}", is_x86_feature_detected!("tbm"));
+        eprintln!("Feature popcnt: {}", is_x86_feature_detected!("popcnt"));
+        eprintln!("Feature fxsr: {}", is_x86_feature_detected!("fxsr"));
+        eprintln!("Feature xsave: {}", is_x86_feature_detected!("xsave"));
+        eprintln!("Feature xsaveopt: {}", is_x86_feature_detected!("xsaveopt"));
+        eprintln!("Feature xsaves: {}", is_x86_feature_detected!("xsaves"));
+        eprintln!("Feature xsavec: {}", is_x86_feature_detected!("xsavec"));
+        eprintln!("Feature cmpxchg16b: {}", is_x86_feature_detected!("cmpxchg16b"));
+        eprintln!("Feature adx: {}", is_x86_feature_detected!("adx"));
+        eprintln!("Feature rtm: {}", is_x86_feature_detected!("rtm"));
+        eprintln!("Feature movbe: {}", is_x86_feature_detected!("movbe"));
+        eprintln!("Feature ermsb: {}", is_x86_feature_detected!("ermsb"));
+
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            MessageBoxW, MB_ICONERROR, MB_SETFOREGROUND, MB_TOPMOST,
+        };
+        // SAFE: just displaying an Error dialog box; the program will be terminated regardless.
+        unsafe {
+            MessageBoxW(
+                0,
+                windows_sys::w!(
+                    "Moxin requires the CPU to support either AVX512, SSE4.2, or SSE4a,\
+                    but the current CPU does not support any of those SIMD versions.\n\n\
+                    The list of supported CPU features has been logged to the console.\
+                "),
+                windows_sys::w!("Error: Unsupported CPU!"),
+                MB_SETFOREGROUND | MB_TOPMOST | MB_ICONERROR,
+            );
+        }
+        panic!("\nError: this CPU does not support AVX512, SSE4.2, or SSE4a, one of which is required by Moxin.\n")
     }
 }
