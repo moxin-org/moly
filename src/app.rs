@@ -137,14 +137,6 @@ live_design! {
                         }
                     }
 
-                    modal_model_info_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                model_info_modal = <ModelInfoModal> {}
-                            }
-                        }
-                    }
-
                     popup_download_success_portal_view = <PortalView> {
                         align: {x: 1, y: 0}
                         popup_download_success = <DownloadNotificationPopup> {}
@@ -275,11 +267,6 @@ impl MatchEvent for App {
             if let DeleteChatAction::ChatSelected(chat_id) = action.as_widget_action().cast() {
                 let mut modal = self.ui.delete_chat_modal(id!(delete_chat_modal));
                 modal.set_chat_id(chat_id);
-            }
-
-            if let ModelInfoAction::FileSelected(file_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.model_info_modal(id!(model_info_modal));
-                modal.set_file_id(file_id);
             }
 
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
