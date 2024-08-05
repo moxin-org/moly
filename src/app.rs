@@ -121,14 +121,6 @@ live_design! {
                 }
 
                 portal_root = <Portal> {
-                    modal_model_card_view_all_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                model_card_view_all_modal = <ModelCardViewAllModal> {}
-                            }
-                        }
-                    }
-
                     modal_delete_model_portal_view = <PortalView> {
                         modal = <Modal> {
                             content = {
@@ -271,14 +263,6 @@ impl MatchEvent for App {
             // this forces the entire ui to rerender, still weird that only happens the first time.
             if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
                 self.ui.redraw(cx);
-            }
-
-            // Set modal viewall model id
-            if let ViewAllModalAction::ModelSelected(model_id) = action.as_widget_action().cast() {
-                let mut modal = self
-                    .ui
-                    .model_card_view_all_modal(id!(model_card_view_all_modal));
-                modal.set_model_id(model_id);
             }
 
             // Set modal viewall model id

@@ -1,5 +1,6 @@
-use crate::data::store::{ModelWithDownloadInfo, Store};
+use crate::data::store::ModelWithDownloadInfo;
 use crate::shared::external_link::ExternalLinkWidgetExt;
+use crate::shared::modal::ModalWidgetExt;
 use crate::shared::portal::PortalAction;
 use crate::shared::utils::hugging_face_model_url;
 use chrono::Utc;
@@ -19,6 +20,7 @@ live_design! {
     import crate::landing::shared::*;
     import crate::landing::model_files::ModelFiles;
     import crate::shared::external_link::*;
+    import crate::shared::modal::*;
 
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
@@ -294,6 +296,9 @@ live_design! {
         width: Fill,
         height: Fit,
 
+        // This is necesary because we have a Modal widget inside this widget
+        flow: Overlay,
+
         <RoundedView> {
             width: Fill,
             height: Fit,
@@ -313,6 +318,12 @@ live_design! {
             <Line> {}
             <ModelInformation> {}
             <ModelFiles> {}
+        }
+
+        modal = <Modal> {
+            content: {
+                <ModelCardViewAllModal> {}
+            }
         }
     }
 }
@@ -398,20 +409,25 @@ impl Widget for ModelCard {
 
 impl WidgetMatchEvent for ModelCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
         if self.link_label(id!(view_all_button.link)).clicked(actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                PortalAction::ShowPortalView(live_id!(modal_model_card_view_all_portal_view)),
-            );
+            self.modal(id!(modal)).open_modal(cx);
+            self.redraw(cx);
+                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
+                // this forces the entire ui to rerender, still weird that only happens the first time.
+                //self.redraw(cx);
 
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ViewAllModalAction::ModelSelected(self.model_id.clone()),
-            );
+
+            // cx.widget_action(
+            //     widget_uid,
+            //     &scope.path,
+            //     PortalAction::ShowPortalView(live_id!(modal_model_card_view_all_portal_view)),
+            // );
+
+            // cx.widget_action(
+            //     widget_uid,
+            //     &scope.path,
+            //     ViewAllModalAction::ModelSelected(self.model_id.clone()),
+            // );
         }
     }
 }
@@ -439,20 +455,13 @@ impl Widget for ModelCardViewAllModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
-        let model = store
-            .search
-            .models
-            .iter()
-            .find(|model| model.id == self.model_id);
+        let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
 
-        if let Some(model) = model {
-            let name = &model.name;
-            self.label(id!(model_name)).set_text(name);
+        let name = &model.name;
+        self.label(id!(model_name)).set_text(name);
 
-            let summary = &model.summary;
-            self.label(id!(model_summary)).set_text(summary);
-        }
+        let summary = &model.summary;
+        self.label(id!(model_summary)).set_text(summary);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
@@ -465,14 +474,6 @@ impl WidgetMatchEvent for ModelCardViewAllModal {
 
         if self.button(id!(close_button)).clicked(actions) {
             cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
-        }
-    }
-}
-
-impl ModelCardViewAllModalRef {
-    pub fn set_model_id(&mut self, model_id: ModelID) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.model_id = model_id;
         }
     }
 }
