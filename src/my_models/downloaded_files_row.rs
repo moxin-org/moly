@@ -1,10 +1,8 @@
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
-
-use crate::my_models::delete_model_modal::DeleteModelAction;
 use crate::shared::utils::format_model_size;
 use crate::shared::modal::ModalWidgetExt;
-use crate::shared::{actions::ChatAction, portal::PortalAction};
+use crate::shared::actions::ChatAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -14,6 +12,7 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::shared::modal::*;
     import crate::my_models::model_info_modal::ModelInfoModal;
+    import crate::my_models::delete_model_modal::DeleteModelModal;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
@@ -181,13 +180,19 @@ live_design! {
                 model_file = <ModelFile> {}
                 file_size_tag = <DownloadedFilesTag> {}
                 date_added_tag = <DownloadedFilesTag> {}
-                actions = <RowActions> {}
+                row_actions = <RowActions> {}
             }
         }
 
         info_modal = <Modal> {
             content: {
                 <ModelInfoModal> {}
+            }
+        }
+
+        delete_modal = <Modal> {
+            content: {
+                <DeleteModelModal> {}
             }
         }
     }
@@ -283,23 +288,12 @@ impl WidgetMatchEvent for DownloadedFilesRow {
             }
         }
 
-        if self.button(id!(info_button)).clicked(actions) {
+        if self.button(id!(row_actions.info_button)).clicked(actions) {
             self.modal(id!(info_modal)).open_modal(cx);
         }
 
-        if self.button(id!(delete_button)).clicked(actions) {
-            if let Some(file_id) = &self.file_id {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    DeleteModelAction::FileSelected(file_id.clone()),
-                );
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    PortalAction::ShowPortalView(live_id!(modal_delete_model_portal_view)),
-                );
-            }
+        if self.button(id!(row_actions.delete_button)).clicked(actions) {
+            self.modal(id!(delete_modal)).open_modal(cx);
         }
     }
 }

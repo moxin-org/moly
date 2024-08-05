@@ -1,7 +1,8 @@
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
 
 use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::portal::PortalAction};
+
+use super::downloaded_files_row::DownloadedFilesRowProps;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -132,12 +133,6 @@ live_design! {
     }
 }
 
-#[derive(Clone, DefaultNone, Debug)]
-pub enum DeleteModelAction {
-    FileSelected(FileID),
-    None,
-}
-
 #[derive(Live, LiveHook, Widget)]
 pub struct DeleteModelModal {
     #[deref]
@@ -153,17 +148,10 @@ impl Widget for DeleteModelModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope
-            .data
-            .get::<Store>()
-            .unwrap()
-            .downloads
-            .downloaded_files;
+        let props = scope.props.get::<DownloadedFilesRowProps>().unwrap();
+        let downloaded_file = &props.downloaded_file;
 
-        let downloaded_file = downloaded_files
-            .iter()
-            .find(|f| f.file.id.eq(&self.file_id))
-            .expect("Downloaded file not found");
+        self.file_id = downloaded_file.file.id.clone();
 
         let prompt_text = format!(
             "Are you sure you want to delete {}?\nThis action cannot be undone.",
@@ -206,14 +194,6 @@ impl WidgetMatchEvent for DeleteModelModal {
             .clicked(actions)
         {
             cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
-        }
-    }
-}
-
-impl DeleteModelModalRef {
-    pub fn set_file_id(&mut self, file_id: FileID) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.file_id = file_id;
         }
     }
 }

@@ -95,10 +95,6 @@ impl Widget for Modal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        // if !self.visible {
-        //     return DrawStep::done();
-        // }
-
         self.draw_list.begin_overlay_reuse(cx);
 
         cx.begin_pass_sized_turtle(self.layout);
@@ -144,17 +140,3 @@ impl ModalRef {
         }
     }
 }
-
-// impl WidgetNode for Modal {
-//     fn walk(&mut self, cx: &mut Cx) -> Walk {
-//         self.walk
-//     }
-
-//     fn redraw(&mut self, cx: &mut Cx) {
-//         self.draw_list.redraw(cx);
-//     }
-
-//     fn find_widgets(&mut self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet) {
-//         self.body.find_widgets(path, cached, results);
-//     }
-// }
