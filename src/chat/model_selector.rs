@@ -25,10 +25,10 @@ live_design! {
     ModelSelectorButton = <RoundedView> {
         width: Fill,
         height: 54,
-        flow: Overlay,
+        flow: Right,
 
         align: {x: 0.0, y: 0.5},
-        padding: 0,
+        padding: {left: 16, right: 16, top: 0, bottom: 0},
 
         draw_bg: {
             instance radius: 3.0,
@@ -37,46 +37,60 @@ live_design! {
 
         cursor: Hand,
 
-        loading = <ModelSelectorLoading> {
-            width: Fill,
-            height: Fill,
-        }
-
-        choose = <View> {
+        content = <View> { 
             width: Fill,
             height: Fit,
+            flow: Overlay,
+            padding: {left: 16, top: 0, bottom: 0, right: 0},
 
-            align: {x: 0.5, y: 0.5},
-            padding: 16,
+            loading = <ModelSelectorLoading> {
+                width: Fill,
+                height: Fill,
+            }
 
-            label = <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 11},
-                    color: #000
+            choose = <View> {
+                width: Fill,
+                height: Fit,
+
+                align: {x: 0.0, y: 0.5},
+                padding: 16,
+
+                label = <Label> {
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 11},
+                        color: #000
+                    }
+                    text: "Choose a model"
                 }
-                text: "Choose a model"
+            }
+
+            selected = <ModelInfo> {
+                width: Fit,
+                height: Fit,
+                show_bg: false,
+                visible: false,
+
+                padding: 0,
+
+                label = {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 11},
+                    }
+                }
             }
         }
-        selected = <ModelInfo> {
+
+        icon_drop = <RoundedView> {  
             width: Fit,
             height: Fit,
-            show_bg: false,
-            visible: false,
+            align: {x: 1.0, y: 0.5},  
+            margin: {left: 10, right: 6},  
+            visible: true,
 
-            padding: 16,
-
-            label = {
-                draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 11},
-                }
-            }
-
-            icon_drop = <RotatedImage> {
+            icon = <RotatedImage> {
                 height: 14,
                 width: 14,
-                align: {x: 1.0, y: 0.5},
                 source: (ICON_DROP),
-                cursor: Hand,
                 draw_bg: {
                     rotation: 0.0
                 }
@@ -218,7 +232,7 @@ impl Widget for ModelSelector {
                     .apply_over(cx, live! {height: (height)});
 
                 let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
-                self.view(id!(selected.icon_drop)).apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
+                self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
 
                 self.redraw(cx);
             }
@@ -328,7 +342,7 @@ impl ModelSelector {
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
-        self.view(id!(selected.icon_drop)).apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
+        self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
         self.animator_cut(cx, id!(open.hide));
         self.redraw(cx);
     }
