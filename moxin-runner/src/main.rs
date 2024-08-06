@@ -283,24 +283,33 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
     println!("Downloading WasmEdge 0.14.0 from GitHub and installing it to {}", install_path.as_ref().display());
     let temp_dir = std::env::temp_dir();
     let curl_script_cmd = Command::new("curl")
+        .stdout(Stdio::piped())
         .arg("-s")
         .arg("-S")
         .arg("-f")
         .arg("https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh")
-        .stdout(Stdio::piped())
         .spawn()?;
 
-    let bash_cmd = Command::new("bash")
+    let mut bash_cmd = Command::new("bash");
+    bash_cmd
+        .stdin(Stdio::from(curl_script_cmd.stdout.expect("failed to pipe curl stdout into bash stdin")))
         .arg("-s")
         .arg("--")
         .arg("--version=0.14.0")
         .arg(&format!("--path={}", install_path.as_ref().display()))
         // The default `/tmp/` dir used in `install_v2.sh` isn't always accessible to bundled apps.
-        .arg(&format!("--tmpdir={}", temp_dir.display()))
-        .stdin(Stdio::from(curl_script_cmd.stdout.expect("failed to pipe curl stdout into bash stdin")))
-        .spawn()?;
+        .arg(&format!("--tmpdir={}", temp_dir.display()));
 
-    let output = bash_cmd.wait_with_output()?;
+    // If the current CPU doesn't support AVX512, tell the install script to
+    // the WASI-nn plugin built without AVX support.
+    #[cfg(target_arch = "x86_64")]
+    if is_x86_feature_detected!("avx512f") {
+        bash_cmd.arg("--noavx");
+    }
+
+    let output = bash_cmd
+        .spawn()?
+        .wait_with_output()?;
     if !output.status.success() {
         eprintln!("Failed to install wasmedge: {}
             ------------------------- stderr: -------------------------
@@ -357,9 +366,12 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
         Ok(output) => {
             if output.success() {
                 // The wasmedge installation directory is currently forced to the default dir path.
-                wasmedge_default_dir_path().ok_or_else(
-                || std::io::Error::new(std::io::ErrorKind::Other, "BUG: couldn't get WasmEdge default directory path.")
-                )
+                if let Some(install_path) = wasmedge_default_dir_path() {
+                    println!("Successfully installed wasmedge to: {}", install_path.display());
+                    Ok(install_path)
+                } else {
+                    Err(std::io::Error::new(std::io::ErrorKind::Other, "BUG: couldn't get WasmEdge default directory path."))
+                }
             } else {
                 eprintln!("------------- Powershell stdout --------------\n{}", output.stdout().unwrap_or_default());
                 eprintln!("----------------------------------------------\n");
@@ -495,19 +507,25 @@ fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
                     Some(dylib_parent.to_path_buf())
                         .into_iter()
                         .chain(std::env::split_paths(&path))
-                )
-                .expect("BUG: failed to join paths for the main Moxin binary.");
+                ).expect("BUG: failed to join paths for the main Moxin binary.");
                 std::env::set_var(ENV_PATH, &new_path);
-
             }
             _ => eprintln!("BUG: failed to set PATH for the main Moxin binary."),
         }
     }
 
-    let _output = Command::new(current_exe_dir.join(MOXIN_APP_BINARY))
+    let main_moxin_binary_path = current_exe_dir.join(MOXIN_APP_BINARY);
+    let _output = Command::new(&main_moxin_binary_path)
         .current_dir(current_exe_dir)
         .args(args.into_iter().skip(1)) // skip the first arg (the binary name)
-        .spawn()?
+        .spawn()
+        .inspect_err(|e| if e.kind() == std::io::ErrorKind::NotFound {
+            eprintln!("\nError: couldn't find the main Moxin binary at {}\n\
+                \t--> Have you compiled the main Moxin app yet?\n\
+                \t--> If not, run `cargo build [--release]` first.\n",
+                main_moxin_binary_path.display(),
+            );
+        })?
         .wait_with_output()?;
 
     Ok(())
@@ -517,16 +535,22 @@ fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
 /// Checks that the current CPU supports AVX512, or either SSE4.2 or SSE4a,
 /// at least one of which is required by the current builds of WasmEdge 0.14.0 on Windows.
 ///
-/// Does nothing for other platforms.
+/// This only checks x86_64 platforms, and does nothing on other platforms.
 fn assert_cpu_features() {
-    #[cfg(windows)] {
+    #[cfg(target_arch = "x86_64")] {
+        // AVX-512 support is preferred, and it alone is sufficient.
         if is_x86_feature_detected!("avx512f") {
             return;
         }
 
+        // If AVX-512 is not supported, then either SSE4.2 (on Intel CPUs)
+        // or SSE4a (on AMD CPUs) is required.
         if is_x86_feature_detected!("sse4.2") || is_x86_feature_detected!("sse4a") {
             return;
         }
+
+        // Currently WasmEdge does not provide no-SIMD builds, but if it does in the future,
+        // we could check for the minimum required SIMD support here (e.g., SSE2).
 
         eprintln!("Feature aes: {}", is_x86_feature_detected!("aes"));
         eprintln!("Feature pclmulqdq: {}", is_x86_feature_detected!("pclmulqdq"));
