@@ -106,7 +106,7 @@ impl Downloads {
 
         self.current_downloads.insert(
             file.id.clone(),
-            Download::new(file, model, current_progress, &self.backend.as_ref()),
+            Download::new(file, current_progress, &self.backend.as_ref()),
         );
     }
 

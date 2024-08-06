@@ -10,12 +10,20 @@ live_design! {
     import crate::shared::portal::*;
 
     Modal = {{Modal}} {
+        opened: false
+
         width: Fill
         height: Fill
         flow: Overlay
         align: {x: 0.5, y: 0.5}
 
-        bg_view = <View> {
+        draw_bg: {
+            fn pixel(self) -> vec4 {
+                return vec4(0., 0., 0., 0.0)
+            }
+        }
+
+        bg_view: <View> {
             width: Fill
             height: Fill
             show_bg: true
@@ -26,7 +34,7 @@ live_design! {
             }
         }
 
-        content = <View> {
+        content: <View> {
             flow: Overlay
             width: Fit
             height: Fit
@@ -34,44 +42,101 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook, LiveRegisterWidget, WidgetRef)]
+#[derive(Live, Widget)]
 pub struct Modal {
-    #[deref]
-    view: View,
+    #[live]
+    opened: bool,
+    #[live]
+    #[find]
+    content: View,
+    #[live]
+    bg_view: View,
+
+    #[redraw]
+    #[rust(DrawList2d::new(cx))]
+    draw_list: DrawList2d,
+
+    #[live]
+    draw_bg: DrawQuad,
+    #[layout]
+    layout: Layout,
+    #[walk]
+    walk: Walk,
+}
+
+impl LiveHook for Modal {
+    fn after_apply(&mut self, cx: &mut Cx, _apply: &mut Apply, _index: usize, _nodes: &[LiveNode]) {
+        self.draw_list.redraw(cx);
+    }
 }
 
 impl Widget for Modal {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+        if !self.opened {
+            return;
+        }
 
-        self.view(id!(content)).handle_event(cx, event, scope);
+        // When passing down events we need to suspend the sweep lock
+        // because regular View instances won't respond to events if the sweep lock is active.
+        cx.sweep_unlock(self.draw_bg.area());
+        self.content.handle_event(cx, event, scope);
+        cx.sweep_lock(self.draw_bg.area());
 
-        let content_rec = self.view(id!(content)).area().rect(cx);
+        self.widget_match_event(cx, event, scope);
 
         // Check if there was a click outside of the content (bg), then close if true.
-        if let Hit::FingerUp(fe) = event.hits_with_capture_overload(cx, self.view.area(), true) {
+        let content_rec = self.content.area().rect(cx);
+        if let Hit::FingerUp(fe) = event.hits_with_sweep_area(cx, self.draw_bg.area(), self.draw_bg.area()) {
             if !content_rec.contains(fe.abs) {
+                let widget_uid = self.content.widget_uid();
                 cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
             }
         }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view
-            .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
+        self.draw_list.begin_overlay_reuse(cx);
+
+        cx.begin_pass_sized_turtle(self.layout);
+        self.draw_bg.begin(cx, self.walk, self.layout);
+
+        if self.opened {
+            let _ = self
+                .bg_view
+                .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }));
+            let _ = self.content.draw_all(cx, scope);
+        }
+
+        self.draw_bg.end(cx);
+
+        cx.end_pass_sized_turtle();
+        self.draw_list.end(cx);
+
+        DrawStep::done()
     }
 }
 
-impl WidgetNode for Modal {
-    fn walk(&mut self, cx: &mut Cx) -> Walk {
-        self.view.walk(cx)
+impl WidgetMatchEvent for Modal {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        for action in actions {
+            match action.as_widget_action().cast::<PortalAction>() {
+                PortalAction::Close => {
+                    self.opened = false;
+                    self.draw_bg.redraw(cx);
+                    cx.sweep_unlock(self.draw_bg.area())
+                }
+                _ => {}
+            }
+        }
     }
+}
 
-    fn redraw(&mut self, cx: &mut Cx) {
-        self.view.redraw(cx);
-    }
-
-    fn find_widgets(&mut self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet) {
-        self.view.find_widgets(path, cached, results);
+impl ModalRef {
+    pub fn open_modal(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.opened = true;
+            inner.redraw(cx);
+            cx.sweep_lock(inner.draw_bg.area());
+        }
     }
 }
