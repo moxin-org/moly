@@ -134,9 +134,7 @@ impl Widget for ModelSelectorList {
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {
-            if let Some(loaded_file) = store.get_loaded_downloaded_file() {
-                self.draw_items(cx, &store.downloads.downloaded_files,loaded_file);
-            }
+            self.draw_items(cx, store);
         }
 
         cx.end_turtle_with_area(&mut self.area);
@@ -146,8 +144,9 @@ impl Widget for ModelSelectorList {
 }
 
 impl ModelSelectorList {
-    fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<DownloadedFile>, loaded_model: DownloadedFile) {
-        let mut items = items.clone();
+    fn draw_items(&mut self, cx: &mut Cx2d, store: &Store) {
+
+        let mut items = store.downloads.downloaded_files.clone();
         items.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
 
         if items.is_empty() {
@@ -177,7 +176,10 @@ impl ModelSelectorList {
             let size = format_model_size(&items[i].file.size).unwrap_or("".to_string());
             let size_visible = !size.trim().is_empty();
 
-            let icon_tick_visible = self.map_to_downloaded_files.get(&item_id).unwrap().file.id == loaded_model.file.id;
+            let mut icon_tick_visible = false;
+            if let Some(loaded_model) = store.get_loaded_downloaded_file() {  
+                icon_tick_visible = self.map_to_downloaded_files.get(&item_id).unwrap().file.id == loaded_model.file.id;
+            }
 
             item_widget.apply_over(
                 cx,
