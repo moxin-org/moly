@@ -9,6 +9,7 @@ The following table shows which host systems can currently be used to build Moxi
 | ------- | --------------- | ------- | ----- | -------------------------------------------- |
 | macOS   | macOS           | ✅      | ✅    | `.app`, [`.dmg`]                             |
 | Linux   | Linux           | ✅      | ✅    | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
+| Windows | Windows (10+)   | ✅      | ✅    | `.exe` (NSIS)                                |
 
 ## Building and Running
 
