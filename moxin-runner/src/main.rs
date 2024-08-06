@@ -303,7 +303,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
     // If the current CPU doesn't support AVX512, tell the install script to
     // the WASI-nn plugin built without AVX support.
     #[cfg(target_arch = "x86_64")]
-    if is_x86_feature_detected!("avx512f") {
+    if !is_x86_feature_detected!("avx512f") {
         bash_cmd.arg("--noavx");
     }
 
@@ -606,21 +606,23 @@ fn assert_cpu_features() {
         eprintln!("Feature movbe: {}", is_x86_feature_detected!("movbe"));
         eprintln!("Feature ermsb: {}", is_x86_feature_detected!("ermsb"));
 
-        use windows_sys::Win32::UI::WindowsAndMessaging::{
-            MessageBoxW, MB_ICONERROR, MB_SETFOREGROUND, MB_TOPMOST,
-        };
-        // SAFE: just displaying an Error dialog box; the program will be terminated regardless.
-        unsafe {
-            MessageBoxW(
-                0,
-                windows_sys::w!(
-                    "Moxin requires the CPU to support either AVX512, SSE4.2, or SSE4a,\
-                    but the current CPU does not support any of those SIMD versions.\n\n\
-                    The list of supported CPU features has been logged to the console.\
-                "),
-                windows_sys::w!("Error: Unsupported CPU!"),
-                MB_SETFOREGROUND | MB_TOPMOST | MB_ICONERROR,
-            );
+        #[cfg(windows)] {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{
+                MessageBoxW, MB_ICONERROR, MB_SETFOREGROUND, MB_TOPMOST,
+            };
+            // SAFE: just displaying an Error dialog box; the program will be terminated regardless.
+            unsafe {
+                MessageBoxW(
+                    0,
+                    windows_sys::w!(
+                        "Moxin requires the CPU to support either AVX512, SSE4.2, or SSE4a,\
+                        but the current CPU does not support any of those SIMD versions.\n\n\
+                        The list of supported CPU features has been logged to the console.\
+                    "),
+                    windows_sys::w!("Error: Unsupported CPU!"),
+                    MB_SETFOREGROUND | MB_TOPMOST | MB_ICONERROR,
+                );
+            }
         }
         panic!("\nError: this CPU does not support AVX512, SSE4.2, or SSE4a, one of which is required by Moxin.\n")
     }
