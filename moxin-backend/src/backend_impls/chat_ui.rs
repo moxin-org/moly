@@ -228,6 +228,7 @@ fn get_input(
                     file_id,
                     model_id,
                     information: String::new(),
+                    listen_port: 0,
                 })));
             }
 
@@ -430,6 +431,7 @@ impl super::BackendModel for ChatBotModel {
                 file_id: file.id.to_string(),
                 model_id: file.model_id,
                 information: "".to_string(),
+                listen_port: 0,
             })));
             return old_model.unwrap();
         }
