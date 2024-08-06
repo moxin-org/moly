@@ -85,10 +85,14 @@ cargo run --release
 
 > [!IMPORTANT]
 > You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
-* If your computer has a CUDA-capable NVIDIA GPU, select either [WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip) for CUDA v12 or [WasmEdge-plugin-wasi_nn-ggml-cuda-11-0.14.0-ubuntu20.04_x86_64.tar.gz](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-11-0.14.0-ubuntu20.04_x86_64.tar.gz) for CUDA v11.
-* If your computer doesn't have CUDA, then select either [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip]https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) if your CPU supports AVX-512, or [WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499#:~:text=WasmEdge%2Dplugin%2Dwasi_nn%2Dggml%2Dnoavx%2D0.14.0%2Dwindows_x86_64.zip) if your CPU does *not* support AVX-512.
+* If your computer has a CUDA-capable NVIDIA GPU, select either:
+  * [WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip) for CUDA v12, or
+  * [WasmEdge-plugin-wasi_nn-ggml-cuda-11-0.14.0-ubuntu20.04_x86_64.tar.gz](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-11-0.14.0-ubuntu20.04_x86_64.tar.gz) for CUDA v11.
+* If your computer doesn't have CUDA, then select either:
+  * [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip]https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) if your CPU supports AVX-512, or
+  * [WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499#:~:text=WasmEdge%2Dplugin%2Dwasi_nn%2Dggml%2Dnoavx%2D0.14.0%2Dwindows_x86_64.zip) if your CPU does *not* support AVX-512.
 
-* To accomplish this quickly in powershell (replace `<CHOSEN URL FOR PLUGIN>` accordingly):
+* To quickly perform the above instructions in powershell (replace `<CHOSEN URL FOR PLUGIN>` accordingly):
     ```powershell
     $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
     Invoke-WebRequest -Uri "<CHOSEN URL FOR PLUGIN>" -OutFile "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
