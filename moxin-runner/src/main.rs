@@ -340,8 +340,8 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
         Invoke-WebRequest -Uri "{WASMEDGE_0_14_0_WINDOWS_URL}" -OutFile "$env:TEMP\WasmEdge-0.14.0-windows.zip"
         Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath $home
 
-        Invoke-WebRequest -Uri "{wasi_nn_plugin_url}" -OutFile "$env:TEMP\{wasi_nn_dir_name}"
-        Expand-Archive -Force -Path "$env:TEMP\{wasi_nn_dir_name}" -DestinationPath "$env:TEMP\{wasi_nn_dir_name}"
+        Invoke-WebRequest -Uri "{wasi_nn_plugin_url}" -OutFile "$env:TEMP\{wasi_nn_dir_name}.zip"
+        Expand-Archive -Force -Path "$env:TEMP\{wasi_nn_dir_name}.zip" -DestinationPath "$env:TEMP\{wasi_nn_dir_name}"
         Copy-Item -Recurse -Force -Path "$env:TEMP\{wasi_nn_dir_name}\{wasi_nn_dir_name}\lib\wasmedge" -Destination "$home\WasmEdge-0.14.0-Windows\lib\"
         $ProgressPreference = 'Continue' ## restore default progress bars
         "#,
