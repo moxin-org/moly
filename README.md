@@ -41,6 +41,9 @@ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/insta
 source $HOME/.wasmedge/env
 ```
 
+> [!IMPORTANT]
+> If your CPU does not support AVX512, then you should append the `--noavx` option onto the above command.
+
 To build Moxin on Linux, you must install the following dependencies:
 `openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
 
@@ -78,18 +81,22 @@ cargo run --release
     $ProgressPreference = 'Continue' ## restore default progress bars
     ```
 
-4. Download the WasmEdge WASI-NN plugin here: [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) (15.5MB) and extract it to the same directory as above, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows`.
+4. Download [the appropriate WasmEdge WASI-NN plugin](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499) (see below for details), and extract it to the same directory as above, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows`.
+
 > [!IMPORTANT]
-> You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.    
-* To do this quickly in powershell:
+> You will be asked whether you want to replace the files that already exist; select `Replace the files in the destination` when doing so.
+* If your computer has a CUDA-capable NVIDIA GPU, select either [WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip) for CUDA v12 or [WasmEdge-plugin-wasi_nn-ggml-cuda-11-0.14.0-ubuntu20.04_x86_64.tar.gz](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-11-0.14.0-ubuntu20.04_x86_64.tar.gz) for CUDA v11.
+* If your computer doesn't have CUDA, then select either [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip]https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) if your CPU supports AVX-512, or [WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499#:~:text=WasmEdge%2Dplugin%2Dwasi_nn%2Dggml%2Dnoavx%2D0.14.0%2Dwindows_x86_64.zip) if your CPU does *not* support AVX-512.
+
+* To accomplish this quickly in powershell (replace `<CHOSEN URL FOR PLUGIN>` accordingly):
     ```powershell
     $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
-    Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -OutFile "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
+    Invoke-WebRequest -Uri "<CHOSEN URL FOR PLUGIN>" -OutFile "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip"
     Expand-Archive -Force -LiteralPath "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip" -DestinationPath "$home\WasmEdge-0.14.0-Windows"
     $ProgressPreference = 'Continue' ## restore default progress bars
     ```
-
-5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin.
+    
+5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin. You may also need to add the `WasmEdge-0.14.0-Windows\bin` directory to your `PATH` environment variable (on some versions of Windows).
     In powershell, you can do this like so:
     ```powershell
     $env:WASMEDGE_DIR="$home\WasmEdge-0.14.0-Windows\"
