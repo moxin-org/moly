@@ -355,7 +355,7 @@ impl ModelSelector {
     }
 
     fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-        if store.chats.get_currently_loading_model().is_some() {
+        if store.get_currently_loading_model().is_some() {
             self.model_selector_loading(id!(loading))
                 .show_and_animate(cx);
         } else {
@@ -371,7 +371,7 @@ impl ModelSelector {
             },
         );
 
-        if let Some(file) = &store.chats.get_currently_loading_model() {
+        if let Some(file) = &store.get_currently_loading_model() {
             // When a model is being loaded, show the "loading state"
             let caption = format!("Loading {}", file.name);
             self.view(id!(selected)).apply_over(
@@ -449,6 +449,5 @@ fn options_to_display(store: &Store) -> bool {
 }
 
 fn no_active_model(store: &Store) -> bool {
-    store.get_loaded_downloaded_file().is_none()
-        && store.chats.get_currently_loading_model().is_none()
+    store.get_loaded_downloaded_file().is_none() && store.get_currently_loading_model().is_none()
 }
