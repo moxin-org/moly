@@ -25,74 +25,81 @@ live_design! {
     ModelSelectorButton = <RoundedView> {
         width: Fill,
         height: 54,
-        flow: Right,
+        flow: Overlay,
 
-        align: {x: 0.0, y: 0.5},
-        padding: {left: 16, right: 16, top: 0, bottom: 0},
+        loading = <ModelSelectorLoading> {
+            width: Fill,
+            height: Fill,
+            visible: false,
+        }
 
         draw_bg: {
             instance radius: 3.0,
             color: #F9FAFB,
         }
 
-        cursor: Hand,
-
-        content = <View> { 
+        <View> {
             width: Fill,
-            height: Fit,
-            flow: Overlay,
-            padding: {left: 16, top: 0, bottom: 0, right: 0},
+            height: Fill,
+            flow: Right,
 
-            loading = <ModelSelectorLoading> {
-                width: Fill,
-                height: Fill,
-            }
+            align: {x: 0.0, y: 0.5},
+            padding: {left: 16, right: 16, top: 0, bottom: 0},
 
-            choose = <View> {
+            cursor: Hand,
+
+            content = <View> { 
                 width: Fill,
                 height: Fit,
+                flow: Overlay,
+                padding: {left: 16, top: 0, bottom: 0, right: 0},
 
-                align: {x: 0.0, y: 0.5},
-                padding: 16,
+                choose = <View> {
+                    width: Fill,
+                    height: Fit,
 
-                label = <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 11},
-                        color: #000
+                    align: {x: 0.0, y: 0.5},
+                    padding: 16,
+
+                    label = <Label> {
+                        draw_text:{
+                            text_style: <BOLD_FONT>{font_size: 11},
+                            color: #000
+                        }
+                        text: "Choose a model"
                     }
-                    text: "Choose a model"
+                }
+
+                selected = <ModelInfo> {
+                    width: Fit,
+                    height: Fit,
+                    show_bg: false,
+                    visible: false,
+
+                    padding: 0,
+
+                    label = {
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 11},
+                        }
+                    }
                 }
             }
 
-            selected = <ModelInfo> {
+            icon_drop = <RoundedView> {
                 width: Fit,
                 height: Fit,
-                show_bg: false,
-                visible: false,
+                align: {x: 1.0, y: 0.5},
+                margin: {left: 10, right: 6},
+                visible: true,
 
-                padding: 0,
-
-                label = {
-                    draw_text: {
-                        text_style: <BOLD_FONT>{font_size: 11},
+                icon = <RotatedImage> {
+                    height: 14,
+                    width: 14,
+                    source: (ICON_DROP),
+                    draw_bg: {
+                        rotation: 0.0
                     }
-                }
-            }
-        }
-
-        icon_drop = <RoundedView> {  
-            width: Fit,
-            height: Fit,
-            align: {x: 1.0, y: 0.5},  
-            margin: {left: 10, right: 6},  
-            visible: true,
-
-            icon = <RotatedImage> {
-                height: 14,
-                width: 14,
-                source: (ICON_DROP),
-                draw_bg: {
-                    rotation: 0.0
                 }
             }
         }
