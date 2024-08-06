@@ -36,8 +36,8 @@ fn create_wasi(
     load_model: &LoadModelOptions,
 ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
     // use model metadata context size
-    let ctx_size = if load_model.n_ctx > 0 {
-        Some(format!("{}", load_model.n_ctx))
+    let ctx_size = if let Some(n_ctx) = load_model.n_ctx {
+        Some(format!("{}", n_ctx))
     } else {
         Some(format!("{}", file.context_size.min(8 * 1024)))
     };
@@ -48,8 +48,8 @@ fn create_wasi(
     };
 
     // Set n_batch to a fixed value of 128.
-    let batch_size = if load_model.n_batch > 0 {
-        Some(format!("{}", load_model.n_batch))
+    let batch_size = if let Some(n_batch) = load_model.n_batch {
+        Some(format!("{}", n_batch))
     } else {
         Some("128".to_string())
     };

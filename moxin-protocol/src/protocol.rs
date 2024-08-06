@@ -28,10 +28,8 @@ pub struct LoadModelOptions {
     pub prompt_template: Option<String>,
     pub gpu_layers: GPULayers,
     pub use_mlock: bool,
-    // if 0, the backend will use the default value
-    pub n_batch: u32,
-    // if 0, the backend will use the default value
-    pub n_ctx: u32,
+    pub n_batch: Option<u32>,
+    pub n_ctx: Option<u32>,
     pub rope_freq_scale: f32,
     pub rope_freq_base: f32,
     // TBD Not really sure if this is something backend manages or if it is matter of
