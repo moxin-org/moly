@@ -130,6 +130,11 @@ impl Widget for ChatHistoryCardOptions {
         if let Hit::FingerUp(fe) = event.hits_with_capture_overload(cx, self.view.area(), true) {
             if !content_rec.contains(fe.abs) {
                 cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    ChatHistoryCardAction::MenuClosed(self.chat_id),
+                );
             }
         }
 
@@ -171,6 +176,12 @@ impl WidgetMatchEvent for ChatHistoryCardOptions {
 
             let modal = self.modal(id!(delete_chat_modal));
             modal.open_modal(cx);
+
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ChatHistoryCardAction::MenuClosed(self.chat_id),
+            );
         }
 
         if self.button(id!(edit_chat_name)).clicked(actions) {
@@ -180,6 +191,11 @@ impl WidgetMatchEvent for ChatHistoryCardOptions {
                 ChatHistoryCardAction::ActivateTitleEdition(self.chat_id),
             );
             cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ChatHistoryCardAction::MenuClosed(self.chat_id),
+            );
         }
     }
 }
