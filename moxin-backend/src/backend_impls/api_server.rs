@@ -23,6 +23,7 @@ static WASM: &[u8] = include_bytes!("../../wasm/llama-api-server.wasm");
 pub struct LLamaEdgeApiServer {
     id: String,
     listen_addr: SocketAddr,
+    load_model_options: LoadModelOptions,
     wasm_module: Module,
     running_controller: tokio::sync::broadcast::Sender<()>,
     #[allow(dead_code)]
@@ -141,17 +142,23 @@ impl BackendModel for LLamaEdgeApiServer {
         options: moxin_protocol::protocol::LoadModelOptions,
         tx: std::sync::mpsc::Sender<anyhow::Result<moxin_protocol::protocol::LoadModelResponse>>,
     ) -> Self {
+        let load_model_options = options.clone();
         let mut need_reload = true;
         let (wasm_module, listen_addr) = if let Some(old_model) = &old_model {
-            if old_model.id == file.id.as_str() {
+            if old_model.id == file.id.as_str()
+                && old_model.load_model_options.n_ctx == options.n_ctx
+                && old_model.load_model_options.n_batch == options.n_batch
+            {
                 need_reload = false;
             }
             (old_model.wasm_module.clone(), old_model.listen_addr)
         } else {
-            (
-                Module::from_bytes(None, WASM).unwrap(),
-                ([0, 0, 0, 0], 8080).into(),
-            )
+            let new_addr = std::net::TcpListener::bind("localhost:0")
+                .unwrap()
+                .local_addr()
+                .unwrap();
+
+            (Module::from_bytes(None, WASM).unwrap(), new_addr)
         };
 
         if !need_reload {
@@ -160,6 +167,7 @@ impl BackendModel for LLamaEdgeApiServer {
                     file_id: file.id.to_string(),
                     model_id: file.model_id,
                     information: "".to_string(),
+                    listen_port: listen_addr.port(),
                 },
             )));
             return old_model.unwrap();
@@ -173,7 +181,8 @@ impl BackendModel for LLamaEdgeApiServer {
 
         let file_id = file.id.to_string();
 
-        let url = format!("http://localhost:{}/echo", listen_addr.port());
+        let listen_port = listen_addr.port();
+        let url = format!("http://localhost:{}/echo", listen_port);
 
         let file_ = file.clone();
 
@@ -205,6 +214,7 @@ impl BackendModel for LLamaEdgeApiServer {
                         file_id: file_.id.to_string(),
                         model_id: file_.model_id,
                         information: "".to_string(),
+                        listen_port,
                     },
                 )));
             } else {
@@ -220,6 +230,7 @@ impl BackendModel for LLamaEdgeApiServer {
             listen_addr,
             running_controller,
             model_thread,
+            load_model_options,
         };
 
         new_model

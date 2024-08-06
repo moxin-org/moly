@@ -44,6 +44,10 @@ pub struct LoadedModelInfo {
     pub file_id: FileID,
     pub model_id: ModelID,
 
+    // The port where the local server is listening for the model.
+    // if 0, the server is not running.
+    pub listen_port: u16,
+
     // JSON formatted string with the model information. See "Model Inspector" in LMStudio.
     pub information: String,
 }
