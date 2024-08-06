@@ -139,6 +139,8 @@ fn test_chat() {
             rope_freq_scale: 0.0,
             rope_freq_base: 0.0,
             context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            n_batch: 128,
+            n_ctx: 1024,
         },
         tx,
     );
@@ -209,6 +211,8 @@ fn test_chat_stop() {
             prompt_template: None,
             gpu_layers: moxin_protocol::protocol::GPULayers::Max,
             use_mlock: false,
+            n_batch: 128,
+            n_ctx: 1024,
             rope_freq_scale: 0.0,
             rope_freq_base: 0.0,
             context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,

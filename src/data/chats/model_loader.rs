@@ -34,6 +34,8 @@ impl ModelLoader {
                 rope_freq_base: 0.0,
                 context_overflow_policy:
                     moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+                n_batch: 0,
+                n_ctx: 0,
             },
             tx,
         );

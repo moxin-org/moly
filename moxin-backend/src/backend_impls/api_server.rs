@@ -35,7 +35,11 @@ fn create_wasi(
     load_model: &LoadModelOptions,
 ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
     // use model metadata context size
-    let ctx_size = Some(format!("{}", file.context_size.min(8 * 1024)));
+    let ctx_size = if load_model.n_ctx > 0 {
+        Some(format!("{}", load_model.n_ctx))
+    } else {
+        Some(format!("{}", file.context_size.min(8 * 1024)))
+    };
 
     let n_gpu_layers = match load_model.gpu_layers {
         moxin_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
@@ -43,7 +47,11 @@ fn create_wasi(
     };
 
     // Set n_batch to a fixed value of 128.
-    let batch_size = Some(format!("128"));
+    let batch_size = if load_model.n_batch > 0 {
+        Some(format!("{}", load_model.n_batch))
+    } else {
+        Some("128".to_string())
+    };
 
     let mut prompt_template = load_model.prompt_template.clone();
     if prompt_template.is_none() && !file.prompt_template.is_empty() {
