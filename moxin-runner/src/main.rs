@@ -1,13 +1,25 @@
 //! This `moxin-runner` application is a "companion" binary to the main `moxin` application.
-//! This binary is reponsible for discovering the wasmedge installation,
-//! installing wasmedge if it's missing, and setting up the environment properly
-//! such that the main `moxin` app can locate the wasmedge dylibs and plugin dylibs.
 //!
-//! First, we discover the wasmedge installation.
-//! * The standard installation directory on macOS and Linux is `$HOME/.wasmedge`.
-//! * On macOS, the default layout of the wasmedge installation directory is as follows:
+//! This binary is reponsible for discovering the "Moxin-local" wasmedge installation,
+//! installing a local instance of wasmedge if it's missing, and then setting up
+//! the environment properly such that the main `moxin` app can locate
+//! the app-local wasmedge dylibs and plugin dylibs.
+//!
+//! By "app-local" or "Moxin-local", we mean that the wasmedge dylibs and plugins
+//! are installed in an app-specific data directory, the same as (or adjacent to) the location
+//! where the app's data files, cached data, or preferences are stored.
+//!
+//! Moxin intentionally does not rely on a global installation of WasmEdge,
+//! as it cannot guarantee the precise version and build configuration of that installation.
+//!
+//! The steps of this `moxin-runner` app are as follows.
+//! First, we discover the app-local wasmedge installation, which should be located within
+//! the app's data directory as given by the [directories::ProjectDirs::data_dir()`] function.
+//! See: <https://docs.rs/directories/latest/directories/struct.ProjectDirs.html#method.data_dir>.
+//!
+//! For example, on macOS, the layout of the wasmedge root directory is as follows:
 //! ----------------------------------------------------
-//! $HOME/.wasmedge
+//! $APP_DATA_DIR/.wasmedge
 //! ├── bin
 //! │   ├── wasmedge
 //! │   └── wasmedgec
@@ -35,17 +47,14 @@
 //!     └── libwasmedgePluginWasiNN.dylib
 //! ----------------------------------------------------
 //!
-//! The key environment variables of interest are those that get set by the wasmedge installer.
-//! 1. WASMEDGE_DIR=$HOME/.wasmedge
-//! 2. LIBRARY_PATH=$HOME/.wasmedge/lib
-//! 3. C_INCLUDE_PATH=$HOME/.wasmedge/include
-//! 4. CPLUS_INCLUDE_PATH=$HOME/.wasmedge/include
+//! We must set some environment variables to point WasmEdge to the app-local installation:
+//! * `WASMEDGE_DIR`: the root directory of the wasmedge installation.
+//! * `WASMEDGE_PLUGIN_PATH`: the path to the directory containing the WASI-nn plugin dylib.
+//! * `PATH`: prepend `$(WASMEDGE_DIR)/bin` onto the existing path.
 //!
-//! For loading plugins, we need to discover the plugin path. The plugin path can be set in the following ways:
-//!/ * The environment variable "WASMEDGE_PLUGIN_PATH".
-//!/ * The `../plugin/` directory related to the WasmEdge installation path.
-//!/ * The `wasmedge/` directory under the library path if the WasmEdge is installed under the "/usr".
-//!
+//! And then on macOS or Linux, we also set the following environment variables:
+//! * `LIBRARY_PATH`, `(DY)LD_LIBRARY_PATH`: `$(WASMEDGE_DIR)/lib`
+//! * `C_INCLUDE_PATH`, `CPLUS_INCLUDE_PATH`: `$(WASMEDGE_DIR)/include`
 //!
 //! Moxin needs two wasmedge dylibs:
 //! 1. the main `libwasmedge.0.dylib`,
@@ -66,7 +75,7 @@ use std::{
 
 pub const MOXIN_APP_BINARY: &str = "_moxin_app";
 
-/// The name of the wasmedge installation directory.
+/// The name of the wasmedge root directory.
 const WASMEDGE_ROOT_DIR_NAME: &str = {
     #[cfg(any(target_os = "linux", target_os = "macos"))] {
         ".wasmedge"
@@ -217,10 +226,8 @@ fn main() -> std::io::Result<()> {
     assert_cpu_features();
 
     let (wasmedge_root_dir_in_use, main_dylib_path, wasi_nn_plugin_path) = 
-        // First, try to find the wasmedge installation directory using environment vars.
-        wasmedge_root_dir_from_env_vars()
-        // If not, check if the wasmedge installation directory exists in the default location.
-        .or_else(existing_wasmedge_default_dir)
+        // First, try to find the wasmedge installation directory in the app data dir.
+        existing_wasmedge_default_dir()
         // If we have a wasmedge installation directory, try to find the dylibs within it.
         .and_then(|wasmedge_root_dir| find_wasmedge_dylibs_in_dir(&wasmedge_root_dir))
         // If we couldn't find the wasmedge directory or the dylibs within an existing directory,
@@ -241,7 +248,7 @@ fn main() -> std::io::Result<()> {
         wasi_nn_plugin_path.display(),
     );
 
-    apply_env_vars(&wasmedge_root_dir_in_use);
+    set_env_vars(&wasmedge_root_dir_in_use);
 
     run_moxin(main_dylib_path.parent())
 }
@@ -253,12 +260,17 @@ fn existing_wasmedge_default_dir() -> Option<PathBuf> {
 }
 
 
-/// Returns the path to where wasmedge is installed by default.
+pub const APP_QUALIFIER: &str = "com";
+pub const APP_ORGANIZATION: &str = "moxin-org";
+pub const APP_NAME: &str = "moxin";
+
+/// Returns the path to the default WasmEdge root directory,
+/// which is currently in the app data directory.
 ///
 /// This does not check if the directory actually exists.
 fn wasmedge_default_dir_path() -> Option<PathBuf> {
-    directories::UserDirs::new()
-        .map(|dirs| dirs.home_dir().join(WASMEDGE_ROOT_DIR_NAME))
+    directories::ProjectDirs::from(APP_QUALIFIER, APP_ORGANIZATION, APP_NAME)
+        .map(|dirs| dirs.data_dir().join(WASMEDGE_ROOT_DIR_NAME))
 }
 
 
@@ -268,7 +280,7 @@ fn wasmedge_default_dir_path() -> Option<PathBuf> {
 /// see the crate-level documentation for more information about the expected layout.
 /// 
 /// If all items were found in their expected locations, this returns a tuple of:
-/// 1. the wasmedge root directory path,
+/// 1. the wasmedge root directory path (the given `wasmedge_root_dir` parameter),
 /// 2. the main wasmedge dylib path,
 /// 3. the wasi_nn plugin dylib path.
 fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(PathBuf, PathBuf, PathBuf)> {
@@ -296,7 +308,7 @@ fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io::Error> {
     use std::process::Stdio;
-    println!("Downloading WasmEdge 0.14.0 from GitHub and installing it to {}", install_path.as_ref().display());
+    println!("Downloading WasmEdge 0.14.0 from GitHub; installing to {}", install_path.as_ref().display());
     let temp_dir = std::env::temp_dir();
     let curl_script_cmd = Command::new("curl")
         .stdout(Stdio::piped())
@@ -338,7 +350,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 
     println!("Successfully installed wasmedge to: {}", install_path.as_ref().display());
 
-    apply_env_vars(&install_path);
+    set_env_vars(&install_path);
 
     Ok(install_path.as_ref().to_path_buf())
 } 
@@ -347,14 +359,13 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 /// Installs WasmEdge by calling out to PowerShell to run the Windows installation steps
 /// provided in the main Moxin README.
 ///
-/// The given `install_path` is currently ignored, using the [wasmedge_default_dir_path()] instead.
-///
 /// The PowerShell script we run simply downloads and extracts the main WasmEdge files and the Wasi-NN plugin.
 #[cfg(windows)]
-fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io::Error> {
-    println!("Downloading and installing WasmEdge 0.14.0 from GitHub.");
+fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std::io::Error> {
+    let install_path = install_path_ref.as_ref();
+    println!("Downloading WasmEdge 0.14.0 from GitHub; installing to {}", install_path.display());
 
-    // Currently we hardcode the path to v0.14.0 of WasmEdge for windows.
+    // Currently we hardcode the URL for the v0.14.0 release of WasmEdge for windows.
     const WASMEDGE_0_14_0_WINDOWS_URL: &'static str = "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip";
     let (wasi_nn_plugin_url, wasi_nn_dir_name) = wasmedge_wasi_nn_plugin_url();
     println!(" --> Using WASI-NN plugin at: {wasi_nn_plugin_url}");
@@ -363,13 +374,15 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
         r#"
         $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
         Invoke-WebRequest -Uri "{WASMEDGE_0_14_0_WINDOWS_URL}" -OutFile "$env:TEMP\WasmEdge-0.14.0-windows.zip"
-        Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath $home
+        Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath "{}"
 
         Invoke-WebRequest -Uri "{wasi_nn_plugin_url}" -OutFile "$env:TEMP\{wasi_nn_dir_name}.zip"
         Expand-Archive -Force -Path "$env:TEMP\{wasi_nn_dir_name}.zip" -DestinationPath "$env:TEMP\{wasi_nn_dir_name}"
-        Copy-Item -Recurse -Force -Path "$env:TEMP\{wasi_nn_dir_name}\{wasi_nn_dir_name}\lib\wasmedge" -Destination "$home\WasmEdge-0.14.0-Windows\lib\"
+        Copy-Item -Recurse -Force -Path "$env:TEMP\{wasi_nn_dir_name}\{wasi_nn_dir_name}\lib\wasmedge" -Destination "{}"
         $ProgressPreference = 'Continue' ## restore default progress bars
         "#,
+        install_path.parent().unwrap().display(),
+        install_path.join("lib").display(),
     );
 
     match powershell_script::PsScriptBuilder::new()
@@ -381,13 +394,8 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
     {
         Ok(output) => {
             if output.success() {
-                // The wasmedge installation directory is currently forced to the default dir path.
-                if let Some(install_path) = wasmedge_default_dir_path() {
-                    println!("Successfully installed wasmedge to: {}", install_path.display());
-                    Ok(install_path)
-                } else {
-                    Err(std::io::Error::new(std::io::ErrorKind::Other, "BUG: couldn't get WasmEdge default directory path."))
-                }
+                println!("Successfully installed wasmedge to: {}", install_path.display());
+                Ok(install_path.to_path_buf())
             } else {
                 eprintln!("------------- Powershell stdout --------------\n{}", output.stdout().unwrap_or_default());
                 eprintln!("----------------------------------------------\n");
@@ -410,10 +418,7 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
 }
 
 
-/// Applies the environment variable changes defined by `wasmedge_root_dir/env`.
-///
-/// The `wasmedge_root_dir` should be the root directory of the wasmedge installation,
-/// which is typically `$HOME/.wasmedge`.
+/// Sets the environment variables defined in the shell script `$WASMEDGE_DIR/env`.
 ///
 /// This does the following:
 /// * Prepends `wasmedge_root_dir/bin` to `PATH`.
@@ -424,7 +429,7 @@ fn install_wasmedge<P: AsRef<Path>>(_install_path: P) -> Result<PathBuf, std::io
 /// because `source` is a shell builtin, and the environment changes would only be visible
 /// within that new process's shell instance -- not to this program.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-fn apply_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
+fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
     use std::ffi::OsStr;
     /// Prepends the given `prefix` to the environment variable with the given `key`.
     ///
@@ -458,39 +463,11 @@ fn apply_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
 /// Currently, this only does the following:
 /// * Sets [ENV_WASMEDGE_DIR] and [ENV_WASMEDGE_PLUGIN_PATH] to the given `wasmedge_root_dir_path`.
 #[cfg(windows)]
-fn apply_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
+fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
     std::env::set_var(ENV_WASMEDGE_DIR, wasmedge_root_dir_path.as_ref());
     std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, wasmedge_root_dir_path.as_ref());
 }
 
-/// Attempts to discover the wasmedge installation directory using environment variables.
-///
-/// * On Windows, only the [ENV_WASMEDGE_DIR] environment variable can be used.
-/// * On Linux and macOS, all other environment variables are checked.
-fn wasmedge_root_dir_from_env_vars() -> Option<PathBuf> {
-    if let Some(dir) = std::env::var_os(ENV_WASMEDGE_DIR).and_then(PathExt::path_if_exists) {
-        return Some(dir.into());
-    }
-    // Note: we cannot use ENV_WASMEDGE_PLUGIN_PATH here, because it can point to multiple directories, 
-    // e.g., the wasmedge root dir, or one of the subdirectories within it.
-
-    #[cfg(any(target_os = "linux", target_os = "macos"))] {
-        std::env::var_os(ENV_LD_LIBRARY_PATH)
-            .or_else(|| std::env::var_os(ENV_LIBRARY_PATH))
-            .or_else(|| std::env::var_os(ENV_C_INCLUDE_PATH))
-            .or_else(|| std::env::var_os(ENV_CPLUS_INCLUDE_PATH))
-            .and_then(|lib_path| PathBuf::from(lib_path)
-                // All four of the above environment variables should point to a child directory
-                // (either `lib/` or `include/`) within the wasmedge root directory.
-                .parent()
-                .and_then(PathExt::path_if_exists)
-                .map(ToOwned::to_owned)
-            )
-    }
-    #[cfg(windows)] {
-        None
-    }
-}
 
 /// Versions of CUDA that WasmEdge supports.
 enum CudaVersion {
@@ -527,6 +504,7 @@ fn get_cuda_version() -> Option<CudaVersion> {
         None
     }
 }
+
 
 /// Runs the `_moxin_app` binary, which must be located in the same directory as this moxin-runner binary.
 ///
