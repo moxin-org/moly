@@ -346,8 +346,8 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 /// The PowerShell script we run simply downloads and extracts the main WasmEdge files and the Wasi-NN plugin.
 #[cfg(windows)]
 fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std::io::Error> {
-    println!("Downloading and installing WasmEdge 0.14.0 from GitHub.");
     let install_path = install_path_ref.as_ref();
+    println!("Downloading WasmEdge 0.14.0 from GitHub; installing to {}", install_path.display());
 
     // Currently we hardcode the URL for the v0.14.0 release of WasmEdge for windows.
     const WASMEDGE_0_14_0_WINDOWS_URL: &'static str = "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip";
@@ -365,8 +365,8 @@ fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std:
         Copy-Item -Recurse -Force -Path "$env:TEMP\{wasi_nn_dir_name}\{wasi_nn_dir_name}\lib\wasmedge" -Destination "{}"
         $ProgressPreference = 'Continue' ## restore default progress bars
         "#,
-        install_path.display(),
-        install_path.push("WasmEdge-0.14.0-Windows").push("lib").display(),
+        install_path.parent().unwrap().display(),
+        install_path.join("lib").display(),
     );
 
     match powershell_script::PsScriptBuilder::new()
