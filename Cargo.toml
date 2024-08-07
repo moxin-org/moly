@@ -30,7 +30,7 @@ moxin-fake-backend = { path = "moxin-fake-backend" }
 
 makepad-widgets = { git = "https://github.com/jmbejar/makepad", branch = "moxin-release-v1" }
 
-robius-open = "0.1.0"
+robius-open = "0.1.1"
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
 
 chrono = "0.4"
