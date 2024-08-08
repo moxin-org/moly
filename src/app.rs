@@ -9,7 +9,8 @@ use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
 };
-use crate::shared::portal::{PortalAction, PortalWidgetRefExt};
+use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
+use crate::shared::portal::PortalAction;
 use makepad_widgets::*;
 
 live_design! {
@@ -19,7 +20,7 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::portal::*;
-    import crate::shared::modal::*;
+    import crate::shared::popup_notification::*;
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
     import crate::shared::desktop_buttons::MoxinDesktopButton;
@@ -112,15 +113,16 @@ live_design! {
                 }
 
                 portal_root = <Portal> {
-                    popup_download_success_portal_view = <PortalView> {
-                        align: {x: 1, y: 0}
-                        popup_download_success = <DownloadNotificationPopup> {}
-                    }
-
                     chat_history_card_options_portal_view = <PortalView> {
                         chat_history_card_options = <ChatHistoryCardOptions> {}
                     }
                 }
+
+                popup_download_notification = <PopupNotification> {
+                    content: {
+                        popup_download_success = <DownloadNotificationPopup> {}
+                    }
+                } 
             }
         }
     }
@@ -277,8 +279,7 @@ impl App {
                 }
             }
 
-            let mut portal = self.ui.portal(id!(portal_root));
-            let _ = portal.show_portal_view_by_id(cx, live_id!(popup_download_success_portal_view));
+            self.ui.popup_notification(id!(popup_download_notification)).open(cx);
         }
     }
 }

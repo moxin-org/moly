@@ -259,11 +259,11 @@ impl WidgetMatchEvent for DownloadedFilesRow {
         }
 
         if self.button(id!(row_actions.info_button)).clicked(actions) {
-            self.modal(id!(info_modal)).open_modal(cx);
+            self.modal(id!(info_modal)).open(cx);
         }
 
         if self.button(id!(row_actions.delete_button)).clicked(actions) {
-            self.modal(id!(delete_modal)).open_modal(cx);
+            self.modal(id!(delete_modal)).open(cx);
         }
     }
 }

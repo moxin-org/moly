@@ -175,7 +175,7 @@ impl WidgetMatchEvent for ChatHistoryCardOptions {
             delete_modal_inner.set_chat_id(self.chat_id);
 
             let modal = self.modal(id!(delete_chat_modal));
-            modal.open_modal(cx);
+            modal.open(cx);
 
             cx.widget_action(
                 widget_uid,
