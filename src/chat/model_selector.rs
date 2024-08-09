@@ -3,7 +3,6 @@ use crate::{
     shared::{actions::ChatAction, utils::format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{File, Model};
 
 use super::{
     model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt},
@@ -356,7 +355,7 @@ impl ModelSelector {
     }
 
     fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-        if store.get_currently_loading_model().is_some() {
+        if store.chats.model_loader.is_loading() {
             self.model_selector_loading(id!(loading))
                 .show_and_animate(cx);
         } else {
@@ -405,8 +404,8 @@ impl ModelSelector {
             _ => false,
         };
 
-        let text_enabled_color = hex_rgb_to_vec4_color(0x000000);
-        let text_disabled_color = hex_rgb_to_vec4_color(0x667085);
+        let text_enabled_color = hex_rgb_color(0x000000);
+        let text_disabled_color = hex_rgb_color(0x667085);
 
         let text_color = if is_loaded_file {
             text_enabled_color
@@ -467,17 +466,17 @@ fn options_to_display(store: &Store) -> bool {
 }
 
 fn no_active_model(store: &Store) -> bool {
-    store.get_loaded_downloaded_file().is_none() && store.get_currently_loading_model().is_none()
+    store.get_loaded_downloaded_file().is_none() && store.get_loading_file().is_none()
 }
 
-fn rgb_to_vec4_color(r: u8, g: u8, b: u8) -> Vec4 {
+fn rgb_color(r: u8, g: u8, b: u8) -> Vec4 {
     vec4(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0)
 }
 
-fn hex_rgb_to_vec4_color(hex: u32) -> Vec4 {
+fn hex_rgb_color(hex: u32) -> Vec4 {
     let r = ((hex >> 16) & 0xFF) as u8;
     let g = ((hex >> 8) & 0xFF) as u8;
     let b = (hex & 0xFF) as u8;
 
-    rgb_to_vec4_color(r, g, b)
+    rgb_color(r, g, b)
 }

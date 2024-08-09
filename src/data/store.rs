@@ -92,20 +92,14 @@ impl Store {
     }
 
     fn update_load_model(&mut self) {
-        // self.chats.update_load_model();
         if self.chats.model_loader.is_loaded() {
             self.chats.loaded_model = self
                 .chats
                 .model_loader
                 .file_id()
-                .map(|id| {
-                    self.downloads
-                        .downloaded_files
-                        .iter()
-                        .find(|df| df.file.id == id)
-                        .map(|df| df.file.clone())
-                })
-                .flatten();
+                .map(|id| self.downloads.get_file(&id))
+                .flatten()
+                .cloned();
         }
 
         if let Some(file) = &self.chats.loaded_model {
@@ -121,13 +115,7 @@ impl Store {
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             if let Some(file_id) = &chat.last_used_file_id {
-                if let Some(file) = self
-                    .downloads
-                    .downloaded_files
-                    .iter()
-                    .find(|df| df.file.id == *file_id)
-                    .map(|df| &df.file)
-                {
+                if let Some(file) = self.downloads.get_file(file_id) {
                     chat.send_message_to_model(
                         prompt,
                         file,
@@ -145,26 +133,6 @@ impl Store {
             chat.edit_message(message_id, updated_message);
             chat.save();
         }
-
-        // if let Some(chat) = &mut self.get_current_chat() {
-        //     let mut chat = chat.borrow_mut();
-        //     if regenerate {
-        //         if chat.is_streaming {
-        //             chat.cancel_streaming(self.backend.as_ref());
-        //         }
-
-        //         chat.remove_messages_from(message_id);
-        //         chat.send_message_to_model(
-        //             updated_message,
-        //             file,
-        //             self.model_loader.clone(),
-        //             self.backend.as_ref(),
-        //         );
-        //     } else {
-        //         chat.edit_message(message_id, updated_message);
-        //     }
-        //     chat.save();
-        // }
     }
 
     // Enhancement: Would be ideal to just have a `regenerate_from` function` to be
@@ -172,13 +140,7 @@ impl Store {
     pub fn edit_chat_message_regenerating(&mut self, message_id: usize, updated_message: String) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             if let Some(file_id) = &chat.last_used_file_id {
-                if let Some(file) = self
-                    .downloads
-                    .downloaded_files
-                    .iter()
-                    .find(|df| df.file.id == *file_id)
-                    .map(|df| &df.file)
-                {
+                if let Some(file) = self.downloads.get_file(file_id) {
                     chat.remove_messages_from(message_id);
                     chat.send_message_to_model(
                         updated_message,
@@ -192,18 +154,12 @@ impl Store {
         }
     }
 
-    pub fn get_currently_loading_model(&self) -> Option<File> {
+    pub fn get_loading_file(&self) -> Option<&File> {
         self.chats
             .model_loader
             .get_loading_file_id()
-            .map(|file_id| {
-                self.downloads
-                    .downloaded_files
-                    .iter()
-                    .find(|df| df.file.id == file_id)
-                    .map(|df| df.file.clone())
-                    .expect("File being loaded not known?")
-            })
+            .map(|file_id| self.downloads.get_file(&file_id))
+            .flatten()
     }
 
     pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
