@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use makepad_widgets::SignalToUI;
 use moxin_protocol::{
     data::FileID,
@@ -11,6 +12,38 @@ use std::{
     thread,
 };
 
+/// Immutable handleable error type for the model loader.
+///
+/// Actually, just a wrapper around `anyhow::Error` to support `Clone`.
+#[derive(Debug, Clone)]
+pub struct ModelLoaderError(Arc<anyhow::Error>);
+
+impl std::error::Error for ModelLoaderError {}
+
+impl std::fmt::Display for ModelLoaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ModelLoaderError: {}", self.0)
+    }
+}
+
+impl From<anyhow::Error> for ModelLoaderError {
+    fn from(err: anyhow::Error) -> Self {
+        Self(Arc::new(err))
+    }
+}
+
+impl From<String> for ModelLoaderError {
+    fn from(err: String) -> Self {
+        Self(Arc::new(anyhow!(err)))
+    }
+}
+
+impl From<&'static str> for ModelLoaderError {
+    fn from(err: &'static str) -> Self {
+        Self(Arc::new(anyhow!(err)))
+    }
+}
+
 /// All posible states in which the loader can be.
 #[derive(Debug, Default, Clone)]
 pub enum ModelLoaderStatus {
@@ -18,7 +51,7 @@ pub enum ModelLoaderStatus {
     Unloaded,
     Loading,
     Loaded,
-    Failed,
+    Failed(#[allow(dead_code)] ModelLoaderError),
 }
 
 #[derive(Default)]
@@ -36,70 +69,73 @@ impl ModelLoader {
         Self::default()
     }
 
-    pub fn load(
+    pub fn load_blocking(
         &mut self,
         file_id: FileID,
         command_sender: Sender<Command>,
-    ) -> Receiver<Result<(), ()>> {
-        if self.is_loading() {
-            panic!("ModelLoader is already loading a model");
-        }
-
-        let (load_tx, load_rx) = channel();
-
-        if let Some(prev_file_id) = self.file_id() {
-            if prev_file_id == file_id {
-                let _ = load_tx.send(Ok(()));
-                return load_rx;
+    ) -> Result<(), ModelLoaderError> {
+        match self.status() {
+            ModelLoaderStatus::Loading => {
+                return Err(anyhow!("ModelLoader is already loading a model").into());
             }
-        }
+            ModelLoaderStatus::Loaded => {
+                if let Some(prev_file_id) = self.file_id() {
+                    if prev_file_id == file_id {
+                        return Ok(());
+                    }
+                }
+            }
+            _ => {}
+        };
 
-        let mut outer_lock = self.0.lock().unwrap();
-        outer_lock.file_id = Some(file_id.clone());
-        outer_lock.status = ModelLoaderStatus::Loading;
+        self.set_status(ModelLoaderStatus::Loading);
+        self.set_file_id(Some(file_id.clone()));
 
-        let rx = dispatch_load_command(command_sender, file_id.clone());
-        let inner = self.0.clone();
+        let response = dispatch_load_command(command_sender, file_id.clone()).recv();
+
+        let result = if let Ok(response) = response {
+            match response {
+                Ok(LoadModelResponse::Completed(_)) => {
+                    self.set_status(ModelLoaderStatus::Loaded);
+                    Ok(())
+                }
+                Ok(response) => {
+                    let msg = format!("Unexpected response: {:?}", response);
+                    let err = ModelLoaderError::from(msg);
+                    self.set_status(ModelLoaderStatus::Failed(err.clone()));
+                    Err(err)
+                }
+                Err(err) => {
+                    let err = ModelLoaderError::from(err);
+                    self.set_status(ModelLoaderStatus::Failed(err.clone()));
+                    Err(err)
+                }
+            }
+        } else {
+            let err = ModelLoaderError::from("Internal communication error");
+            self.set_status(ModelLoaderStatus::Failed(err.clone()));
+            Err(err)
+        };
+
+        SignalToUI::set_ui_signal();
+        result
+    }
+
+    pub fn load(&mut self, file_id: FileID, command_sender: Sender<Command>) {
+        let mut self_clone = self.clone();
         thread::spawn(move || {
-            let response = rx.recv();
-            let mut inner_lock = inner.lock().unwrap();
-
-            if let Ok(response) = response {
-                match response {
-                    Ok(LoadModelResponse::Completed(_)) => {
-                        inner_lock.status = ModelLoaderStatus::Loaded;
-                    }
-                    Ok(_) => {
-                        let msg = "Error loading model: Unexpected response";
-                        inner_lock.status = ModelLoaderStatus::Failed;
-                        eprintln!("{}", msg);
-                    }
-                    Err(err) => {
-                        eprintln!("Error loading model: {:?}", &err);
-                        inner_lock.status = ModelLoaderStatus::Failed;
-                    }
-                }
-            } else {
-                eprintln!("Error loading model: Internal communication error");
-                inner_lock.status = ModelLoaderStatus::Failed;
+            if let Err(err) = self_clone.load_blocking(file_id, command_sender) {
+                eprintln!("Error loading model: {}", err);
             }
-
-            match inner_lock.status {
-                ModelLoaderStatus::Loaded => {
-                    let _ = load_tx.send(Ok(()));
-                }
-                ModelLoaderStatus::Failed => {
-                    let _ = load_tx.send(Err(()));
-                }
-                _ => {
-                    panic!("ModelLoader finished with unexpected status");
-                }
-            }
-
-            SignalToUI::set_ui_signal();
         });
+    }
 
-        load_rx
+    fn set_status(&mut self, status: ModelLoaderStatus) {
+        self.0.lock().unwrap().status = status;
+    }
+
+    fn set_file_id(&mut self, file_id: Option<FileID>) {
+        self.0.lock().unwrap().file_id = file_id;
     }
 
     pub fn file_id(&self) -> Option<FileID> {
@@ -119,7 +155,7 @@ impl ModelLoader {
     }
 
     pub fn is_failed(&self) -> bool {
-        matches!(self.status(), ModelLoaderStatus::Failed)
+        matches!(self.status(), ModelLoaderStatus::Failed(_))
     }
 
     pub fn is_finished(&self) -> bool {
