@@ -257,7 +257,7 @@ live_design! {
                 height: Fit,
                 padding: {bottom: 20}
 
-                model_name = <Label> {
+                modal_model_name = <Label> {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 16},
                         color: #000
@@ -278,7 +278,7 @@ live_design! {
                     }
                     text: "Model Description"
                 }
-                model_summary = <Label> {
+                modal_model_summary = <Label> {
                     width: Fill,
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 9},
@@ -433,10 +433,10 @@ impl Widget for ModelCardViewAllModal {
         let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
 
         let name = &model.name;
-        self.label(id!(model_name)).set_text(name);
+        self.label(id!(modal_model_name)).set_text(name);
 
         let summary = &model.summary;
-        self.label(id!(model_summary)).set_text(summary);
+        self.label(id!(modal_model_summary)).set_text(summary);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
