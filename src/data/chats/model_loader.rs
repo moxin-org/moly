@@ -12,38 +12,6 @@ use std::{
     thread,
 };
 
-/// Immutable handleable error type for the model loader.
-///
-/// Actually, just a wrapper around `anyhow::Error` to support `Clone`.
-#[derive(Debug, Clone)]
-pub struct ModelLoaderError(Arc<anyhow::Error>);
-
-impl std::error::Error for ModelLoaderError {}
-
-impl std::fmt::Display for ModelLoaderError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ModelLoaderError: {}", self.0)
-    }
-}
-
-impl From<anyhow::Error> for ModelLoaderError {
-    fn from(err: anyhow::Error) -> Self {
-        Self(Arc::new(err))
-    }
-}
-
-impl From<String> for ModelLoaderError {
-    fn from(err: String) -> Self {
-        Self(Arc::new(anyhow!(err)))
-    }
-}
-
-impl From<&'static str> for ModelLoaderError {
-    fn from(err: &'static str) -> Self {
-        Self(Arc::new(anyhow!(err)))
-    }
-}
-
 /// All posible states in which the loader can be.
 #[derive(Debug, Default, Clone)]
 pub enum ModelLoaderStatus {
@@ -51,7 +19,7 @@ pub enum ModelLoaderStatus {
     Unloaded,
     Loading,
     Loaded,
-    Failed(#[allow(dead_code)] ModelLoaderError),
+    Failed,
 }
 
 #[derive(Default)]
@@ -73,10 +41,10 @@ impl ModelLoader {
         &mut self,
         file_id: FileID,
         command_sender: Sender<Command>,
-    ) -> Result<(), ModelLoaderError> {
+    ) -> Result<(), anyhow::Error> {
         match self.status() {
             ModelLoaderStatus::Loading => {
-                return Err(anyhow!("ModelLoader is already loading a model").into());
+                return Err(anyhow!("ModelLoader is already loading a model"));
             }
             ModelLoaderStatus::Loaded => {
                 if let Some(prev_file_id) = self.file_id() {
@@ -100,21 +68,17 @@ impl ModelLoader {
                     Ok(())
                 }
                 Ok(response) => {
-                    let msg = format!("Unexpected response: {:?}", response);
-                    let err = ModelLoaderError::from(msg);
-                    self.set_status(ModelLoaderStatus::Failed(err.clone()));
-                    Err(err)
+                    self.set_status(ModelLoaderStatus::Failed);
+                    Err(anyhow!("Unexpected response: {:?}", response))
                 }
                 Err(err) => {
-                    let err = ModelLoaderError::from(err);
-                    self.set_status(ModelLoaderStatus::Failed(err.clone()));
-                    Err(err)
+                    self.set_status(ModelLoaderStatus::Failed);
+                    Err(anyhow!(err))
                 }
             }
         } else {
-            let err = ModelLoaderError::from("Internal communication error");
-            self.set_status(ModelLoaderStatus::Failed(err.clone()));
-            Err(err)
+            self.set_status(ModelLoaderStatus::Failed);
+            Err(anyhow!("Internal communication error"))
         };
 
         SignalToUI::set_ui_signal();
@@ -155,7 +119,7 @@ impl ModelLoader {
     }
 
     pub fn is_failed(&self) -> bool {
-        matches!(self.status(), ModelLoaderStatus::Failed(_))
+        matches!(self.status(), ModelLoaderStatus::Failed)
     }
 
     pub fn is_finished(&self) -> bool {
