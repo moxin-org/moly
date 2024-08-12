@@ -37,7 +37,7 @@ impl ModelLoader {
         Self::default()
     }
 
-    pub fn load_blocking(
+    pub fn load(
         &mut self,
         file_id: FileID,
         command_sender: Sender<Command>,
@@ -85,10 +85,10 @@ impl ModelLoader {
         result
     }
 
-    pub fn load(&mut self, file_id: FileID, command_sender: Sender<Command>) {
+    pub fn load_async(&mut self, file_id: FileID, command_sender: Sender<Command>) {
         let mut self_clone = self.clone();
         thread::spawn(move || {
-            if let Err(err) = self_clone.load_blocking(file_id, command_sender) {
+            if let Err(err) = self_clone.load(file_id, command_sender) {
                 eprintln!("Error loading model: {}", err);
             }
         });

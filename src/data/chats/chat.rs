@@ -245,7 +245,7 @@ impl Chat {
                     content: "You are a helpful, respectful, and honest assistant.".to_string(),
                     role: Role::System,
                     name: None,
-                }
+                },
             );
         }
 
@@ -298,7 +298,7 @@ impl Chat {
         let wanted_file = wanted_file.clone();
         let command_sender = backend.command_sender.clone();
         thread::spawn(move || {
-            if let Err(err) = model_loader.load_blocking(wanted_file.id, command_sender.clone()) {
+            if let Err(err) = model_loader.load(wanted_file.id, command_sender.clone()) {
                 eprintln!("Error loading model: {}", err);
                 return;
             }

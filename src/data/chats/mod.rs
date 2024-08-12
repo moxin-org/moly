@@ -68,7 +68,7 @@ impl Chats {
             chat.save();
         }
         self.model_loader
-            .load(file.id, self.backend.command_sender.clone());
+            .load_async(file.id, self.backend.command_sender.clone());
     }
 
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
