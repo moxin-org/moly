@@ -399,13 +399,14 @@ impl ChatHistoryCard {
                         let mut delete_modal_inner = self.delete_chat_modal(id!(delete_chat_modal_inner));
                         delete_modal_inner.set_chat_id(self.chat_id);
 
-                        let modal = self.modal(id!(delete_chat_modal));
-                        modal.open(cx);
+                        self.modal(id!(delete_chat_modal)).open(cx);
                     }
                 }
                 _ => {}
             }
 
+            // If the modal is dissmised (such as, clicking outside) we need to reset the hover state
+            // of the open chat options button.
             if self.modal(id!(chat_history_card_options_modal)).dismissed(actions) {
                 self.button(id!(chat_options)).reset_hover(cx);
             }
