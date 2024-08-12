@@ -530,7 +530,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                     store
                         .chats
-                        .create_empty_chat_and_load_file(downloaded_file.file);
+                        .create_empty_chat_and_load_file(&downloaded_file.file);
                 }
                 _ => {}
             }

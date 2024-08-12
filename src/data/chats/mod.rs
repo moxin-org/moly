@@ -57,7 +57,7 @@ impl Chats {
             .map(|c| c.borrow().id)
     }
 
-    pub fn load_model(&mut self, file: File) {
+    pub fn load_model(&mut self, file: &File) {
         self.cancel_chat_streaming();
 
         if self.model_loader.is_loading() {
@@ -68,7 +68,7 @@ impl Chats {
             chat.save();
         }
         self.model_loader
-            .load_async(file.id, self.backend.command_sender.clone());
+            .load_async(file.id.clone(), self.backend.command_sender.clone());
     }
 
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
@@ -137,7 +137,7 @@ impl Chats {
         self.saved_chats.push(new_chat);
     }
 
-    pub fn create_empty_chat_and_load_file(&mut self, file: File) {
+    pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
         let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
         new_chat.borrow().save();
 
@@ -151,7 +151,7 @@ impl Chats {
             .as_ref()
             .map_or(true, |m| *m.id != file.id)
         {
-            let _ = self.load_model(file);
+            let _ = self.load_model(&file);
         }
     }
 
