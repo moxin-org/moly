@@ -1,6 +1,9 @@
 use crate::{
     data::store::Store,
-    shared::{actions::ChatAction, utils::format_model_size},
+    shared::{
+        actions::ChatAction,
+        utils::{format_model_size, hex_rgb_color},
+    },
 };
 use makepad_widgets::*;
 
@@ -457,16 +460,4 @@ fn options_to_display(store: &Store) -> bool {
 
 fn no_active_model(store: &Store) -> bool {
     store.get_loaded_downloaded_file().is_none() && store.get_loading_file().is_none()
-}
-
-fn rgb_color(r: u8, g: u8, b: u8) -> Vec4 {
-    vec4(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0)
-}
-
-fn hex_rgb_color(hex: u32) -> Vec4 {
-    let r = ((hex >> 16) & 0xFF) as u8;
-    let g = ((hex >> 8) & 0xFF) as u8;
-    let b = (hex & 0xFF) as u8;
-
-    rgb_color(r, g, b)
 }
