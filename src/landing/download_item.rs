@@ -189,6 +189,8 @@ live_design! {
         spacing: 30,
         align: {x: 0.0, y: 0.5},
 
+        cursor: Default,
+
         draw_bg: {
             border_color: #EAECF0,
             border_width: 1.0,

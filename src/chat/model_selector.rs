@@ -19,52 +19,87 @@ live_design! {
     import crate::chat::model_selector_list::ModelSelectorList;
     import crate::chat::model_selector_loading::ModelSelectorLoading;
 
+    ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
+
+
     ModelSelectorButton = <RoundedView> {
         width: Fill,
         height: 54,
         flow: Overlay,
 
-        align: {x: 0.0, y: 0.5},
-        padding: 0,
+        loading = <ModelSelectorLoading> {
+            width: Fill,
+            height: Fill,
+            visible: false,
+        }
 
         draw_bg: {
             instance radius: 3.0,
             color: #F9FAFB,
         }
 
-        cursor: Hand,
-
-        loading = <ModelSelectorLoading> {
+        <View> {
             width: Fill,
             height: Fill,
-        }
+            flow: Right,
 
-        choose = <View> {
-            width: Fill,
-            height: Fit,
+            align: {x: 0.0, y: 0.5},
+            padding: {left: 16, right: 16, top: 0, bottom: 0},
 
-            align: {x: 0.5, y: 0.5},
-            padding: 16,
+            cursor: Hand,
 
-            label = <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 11},
-                    color: #000
+            content = <View> { 
+                width: Fill,
+                height: Fit,
+                flow: Overlay,
+                padding: {left: 16, top: 0, bottom: 0, right: 0},
+
+                choose = <View> {
+                    width: Fill,
+                    height: Fit,
+
+                    align: {x: 0.0, y: 0.5},
+                    padding: 16,
+
+                    label = <Label> {
+                        draw_text:{
+                            text_style: <BOLD_FONT>{font_size: 11},
+                            color: #000
+                        }
+                        text: "Choose a model"
+                    }
                 }
-                text: "Choose a model"
+
+                selected = <ModelInfo> {
+                    width: Fit,
+                    height: Fit,
+                    show_bg: false,
+                    visible: false,
+
+                    padding: 0,
+
+                    label = {
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 11},
+                        }
+                    }
+                }
             }
-        }
-        selected = <ModelInfo> {
-            width: Fit,
-            height: Fit,
-            show_bg: false,
-            visible: false,
 
-            padding: 16,
+            icon_drop = <RoundedView> {
+                width: Fit,
+                height: Fit,
+                align: {x: 1.0, y: 0.5},
+                margin: {left: 10, right: 6},
+                visible: true,
 
-            label = {
-                draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 11},
+                icon = <RotatedImage> {
+                    height: 14,
+                    width: 14,
+                    source: (ICON_DROP),
+                    draw_bg: {
+                        rotation: 0.0
+                    }
                 }
             }
         }
@@ -106,6 +141,7 @@ live_design! {
         options = <ModelSelectorOptions> {}
 
         open_animation_progress: 0.0,
+        rotate_animation_progress: 0.0
         animator: {
             open = {
                 default: hide,
@@ -113,13 +149,13 @@ live_design! {
                     redraw: true,
                     from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {open_animation_progress: 1.0}
+                    apply: {open_animation_progress: 1.0, rotate_animation_progress: 1.0}
                 }
                 hide = {
                     redraw: true,
                     from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {open_animation_progress: 0.0}
+                    apply: {open_animation_progress: 0.0, rotate_animation_progress: 0.0}
                 }
             }
         }
@@ -139,6 +175,9 @@ pub struct ModelSelector {
 
     #[live]
     open_animation_progress: f64,
+
+    #[live]
+    rotate_animation_progress: f64,
 
     #[rust]
     hide_animation_timer: Timer,
@@ -198,6 +237,10 @@ impl Widget for ModelSelector {
                 let height = self.open_animation_progress * total_height;
                 self.view(id!(options.list_container))
                     .apply_over(cx, live! {height: (height)});
+
+                let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
+                self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
+
                 self.redraw(cx);
             }
         }
@@ -306,6 +349,7 @@ impl ModelSelector {
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
+        self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
         self.animator_cut(cx, id!(open.hide));
         self.redraw(cx);
     }

@@ -22,7 +22,6 @@ pub enum DownloadState {
 #[derive(Debug)]
 pub struct Download {
     pub file: File,
-    pub model: Model,
     pub sender: Sender<DownloadFileAction>,
     pub receiver: Receiver<DownloadFileAction>,
     pub state: DownloadState,
@@ -30,11 +29,10 @@ pub struct Download {
 }
 
 impl Download {
-    pub fn new(file: File, model: Model, progress: f64, backend: &Backend) -> Self {
+    pub fn new(file: File, progress: f64, backend: &Backend) -> Self {
         let (tx, rx) = channel();
         let mut download = Self {
             file: file,
-            model: model,
             sender: tx,
             receiver: rx,
             state: DownloadState::Initializing(progress),

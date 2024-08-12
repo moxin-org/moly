@@ -53,10 +53,14 @@ live_design! {
         height: Fill,
         align: {x: 0.5, y: 0.5}
 
-        list = <PortalList>{
+        list = <PortalList> {
             drag_scrolling: false
-            HeaderRow = <HeaderRow> {}
-            ItemRow = <DownloadedFilesRow> {}
+            HeaderRow = <HeaderRow> {
+                cursor: Default
+            }
+            ItemRow = <DownloadedFilesRow> {
+                cursor: Default
+            }
         }
     }
 }

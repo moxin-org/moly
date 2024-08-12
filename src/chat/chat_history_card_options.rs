@@ -3,8 +3,9 @@ use crate::{
     shared::portal::PortalAction,
 };
 use makepad_widgets::*;
-
-use super::{chat_history_card::ChatHistoryCardAction, delete_chat_modal::DeleteChatAction};
+use super::chat_history_card::ChatHistoryCardAction;
+use super::delete_chat_modal::DeleteChatModalWidgetExt;
+use crate::shared::modal::ModalWidgetExt;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -14,6 +15,8 @@ live_design! {
     import makepad_draw::shader::draw_color::DrawColor;
     import crate::shared::widgets::*;
     import crate::shared::styles::*;
+    import crate::shared::modal::*;
+    import crate::chat::delete_chat_modal::DeleteChatModal;
 
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
@@ -92,7 +95,12 @@ live_design! {
 
                 text: "Delete Chat"
             }
+        }
 
+        delete_chat_modal = <Modal> {
+            content: {
+                delete_chat_modal_inner = <DeleteChatModal> {}
+            }
         }
     }
 }
@@ -122,6 +130,11 @@ impl Widget for ChatHistoryCardOptions {
         if let Hit::FingerUp(fe) = event.hits_with_capture_overload(cx, self.view.area(), true) {
             if !content_rec.contains(fe.abs) {
                 cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    ChatHistoryCardAction::MenuClosed(self.chat_id),
+                );
             }
         }
 
@@ -158,15 +171,16 @@ impl WidgetMatchEvent for ChatHistoryCardOptions {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(delete_chat)).clicked(actions) {
+            let mut delete_modal_inner = self.delete_chat_modal(id!(delete_chat_modal_inner));
+            delete_modal_inner.set_chat_id(self.chat_id);
+
+            let modal = self.modal(id!(delete_chat_modal));
+            modal.open_modal(cx);
+
             cx.widget_action(
                 widget_uid,
                 &scope.path,
-                DeleteChatAction::ChatSelected(self.chat_id),
-            );
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                PortalAction::ShowPortalView(live_id!(modal_delete_chat_portal_view)),
+                ChatHistoryCardAction::MenuClosed(self.chat_id),
             );
         }
 
@@ -177,6 +191,11 @@ impl WidgetMatchEvent for ChatHistoryCardOptions {
                 ChatHistoryCardAction::ActivateTitleEdition(self.chat_id),
             );
             cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ChatHistoryCardAction::MenuClosed(self.chat_id),
+            );
         }
     }
 }

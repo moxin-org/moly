@@ -2,13 +2,9 @@ use crate::chat::chat_history_card_options::{
     ChatHistoryCardOptionsAction, ChatHistoryCardOptionsWidgetRefExt,
 };
 use crate::chat::chat_panel::ChatPanelAction;
-use crate::chat::delete_chat_modal::{DeleteChatAction, DeleteChatModalWidgetRefExt};
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
-use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
-use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
-use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
 use crate::shared::actions::{ChatAction, DownloadAction, TooltipAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
@@ -34,9 +30,6 @@ live_design! {
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
-    import crate::my_models::delete_model_modal::DeleteModelModal;
-    import crate::chat::delete_chat_modal::DeleteChatModal;
-    import crate::my_models::model_info_modal::ModelInfoModal;
     import crate::chat::chat_history_card_options::ChatHistoryCardOptions ;
 
 
@@ -121,38 +114,6 @@ live_design! {
                 }
 
                 portal_root = <Portal> {
-                    modal_model_card_view_all_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                model_card_view_all_modal = <ModelCardViewAllModal> {}
-                            }
-                        }
-                    }
-
-                    modal_delete_model_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                delete_model_modal = <DeleteModelModal> {}
-                            }
-                        }
-                    }
-
-                    modal_delete_chat_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                delete_chat_modal = <DeleteChatModal> {}
-                            }
-                        }
-                    }
-
-                    modal_model_info_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                model_info_modal = <ModelInfoModal> {}
-                            }
-                        }
-                    }
-
                     popup_download_success_portal_view = <PortalView> {
                         align: {x: 1, y: 0}
                         popup_download_success = <DownloadNotificationPopup> {}
@@ -271,31 +232,6 @@ impl MatchEvent for App {
             // this forces the entire ui to rerender, still weird that only happens the first time.
             if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
                 self.ui.redraw(cx);
-            }
-
-            // Set modal viewall model id
-            if let ViewAllModalAction::ModelSelected(model_id) = action.as_widget_action().cast() {
-                let mut modal = self
-                    .ui
-                    .model_card_view_all_modal(id!(model_card_view_all_modal));
-                modal.set_model_id(model_id);
-            }
-
-            // Set modal viewall model id
-            if let DeleteModelAction::FileSelected(file_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.delete_model_modal(id!(delete_model_modal));
-                modal.set_file_id(file_id);
-            }
-
-            // Set modal viewall model id
-            if let DeleteChatAction::ChatSelected(chat_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.delete_chat_modal(id!(delete_chat_modal));
-                modal.set_chat_id(chat_id);
-            }
-
-            if let ModelInfoAction::FileSelected(file_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.model_info_modal(id!(model_info_modal));
-                modal.set_file_id(file_id);
             }
 
             if let ChatAction::Start(_) = action.as_widget_action().cast() {

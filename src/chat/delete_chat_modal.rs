@@ -134,12 +134,6 @@ live_design! {
     }
 }
 
-#[derive(Clone, DefaultNone, Debug)]
-pub enum DeleteChatAction {
-    ChatSelected(ChatID),
-    None,
-}
-
 #[derive(Live, LiveHook, Widget)]
 pub struct DeleteChatModal {
     #[deref]

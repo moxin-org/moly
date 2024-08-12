@@ -33,7 +33,10 @@ live_design! {
                     padding: { left: 25, right: 25, bottom: 58 }
 
                     list = <PortalList> {
-                        ChatHistoryCard = <ChatHistoryCard> {margin: {top: 20}}
+                        ChatHistoryCard = <ChatHistoryCard> {
+                            padding: {top: 20}
+                            cursor: Default
+                        }
                     }
                 }
             }
