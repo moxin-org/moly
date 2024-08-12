@@ -7,7 +7,6 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    import crate::shared::portal::*;
 
     PopupNotification = {{PopupNotification}} {
         width: Fill

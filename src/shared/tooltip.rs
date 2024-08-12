@@ -8,7 +8,6 @@ live_design! {
     import makepad_draw::shader::draw_color::DrawColor;
     import crate::shared::widgets::*;
     import crate::shared::styles::*;
-    import crate::shared::modal::*;
 
     Tooltip = {{Tooltip}}{   
         width: Fill,
