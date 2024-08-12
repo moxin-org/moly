@@ -114,16 +114,20 @@ impl Store {
 
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            if let Some(file_id) = &chat.last_used_file_id {
-                if let Some(file) = self.downloads.get_file(file_id) {
-                    chat.send_message_to_model(
-                        prompt,
-                        file,
-                        self.chats.model_loader.clone(),
-                        &self.backend,
-                    );
-                    chat.save();
-                }
+            let wanted_file = chat
+                .last_used_file_id
+                .as_ref()
+                .and_then(|file_id| self.downloads.get_file(file_id))
+                .or_else(|| self.chats.loaded_model.as_ref());
+
+            if let Some(file) = wanted_file {
+                chat.send_message_to_model(
+                    prompt,
+                    file,
+                    self.chats.model_loader.clone(),
+                    &self.backend,
+                );
+                chat.save();
             }
         }
     }
@@ -139,17 +143,21 @@ impl Store {
     // used after `edit_chat_message` and keep concerns separated.
     pub fn edit_chat_message_regenerating(&mut self, message_id: usize, updated_message: String) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            if let Some(file_id) = &chat.last_used_file_id {
-                if let Some(file) = self.downloads.get_file(file_id) {
-                    chat.remove_messages_from(message_id);
-                    chat.send_message_to_model(
-                        updated_message,
-                        file,
-                        self.chats.model_loader.clone(),
-                        &self.backend,
-                    );
-                    chat.save();
-                }
+            let wanted_file = chat
+                .last_used_file_id
+                .as_ref()
+                .and_then(|file_id| self.downloads.get_file(file_id))
+                .or_else(|| self.chats.loaded_model.as_ref());
+
+            if let Some(file) = wanted_file {
+                chat.remove_messages_from(message_id);
+                chat.send_message_to_model(
+                    updated_message,
+                    file,
+                    self.chats.model_loader.clone(),
+                    &self.backend,
+                );
+                chat.save();
             }
         }
     }
