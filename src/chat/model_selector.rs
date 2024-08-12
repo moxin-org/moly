@@ -48,7 +48,7 @@ live_design! {
 
             cursor: Hand,
 
-            content = <View> { 
+            content = <View> {
                 width: Fill,
                 height: Fit,
                 flow: Overlay,
@@ -239,7 +239,8 @@ impl Widget for ModelSelector {
                     .apply_over(cx, live! {height: (height)});
 
                 let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
-                self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
+                self.view(id!(icon_drop.icon))
+                    .apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
 
                 self.redraw(cx);
             }
@@ -349,7 +350,8 @@ impl ModelSelector {
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
-        self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
+        self.view(id!(icon_drop.icon))
+            .apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
         self.animator_cut(cx, id!(open.hide));
         self.redraw(cx);
     }
@@ -364,6 +366,8 @@ impl ModelSelector {
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
+        self.view(id!(choose)).set_visible(false);
+
         let is_loading = store.chats.model_loader.is_loading();
         let loaded_file = store.chats.loaded_model.as_ref();
 
@@ -374,62 +378,48 @@ impl ModelSelector {
             .and_then(|file_id| store.downloads.get_file(&file_id).cloned())
             .or_else(|| loaded_file.cloned());
 
-        let model = file
-            .as_ref()
-            .map(|f| store.downloads.get_model_by_file_id(&f.id).cloned())
-            .flatten();
+        if let Some(file) = file {
+            let selected_view = self.view(id!(selected));
+            selected_view.set_visible(true);
 
-        let file_name = file.as_ref().map(|f| f.name.trim()).unwrap_or("");
-        let architecture = model.as_ref().map(|m| m.architecture.trim()).unwrap_or("");
-        let params_size = model.as_ref().map(|m| m.size.trim()).unwrap_or("");
-        let file_size = file
-            .as_ref()
-            .map(|f| format_model_size(f.size.trim()).ok())
-            .flatten()
-            .unwrap_or("".into());
+            let text_color = if Some(&file.id) == loaded_file.map(|f| &f.id) {
+                hex_rgb_color(0x000000)
+            } else {
+                hex_rgb_color(0x667085)
+            };
 
-        let is_architecture_visible = !architecture.is_empty() && !is_loading;
-        let is_params_size_visible = !params_size.is_empty() && !is_loading;
-        let is_file_size_visible = !file_size.is_empty() && !is_loading;
+            let caption = if is_loading {
+                format!("Loading {}", file.name.trim())
+            } else {
+                file.name.trim().to_string()
+            };
 
-        let caption = if is_loading {
-            format!("Loading {}", file_name)
-        } else {
-            file_name.to_string()
-        };
+            let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
+            let is_file_size_visible = !file_size.is_empty() && !is_loading;
 
-        let is_loaded_file = match (file, loaded_file) {
-            (Some(f), Some(lf)) => f.id == lf.id,
-            (None, None) => true,
-            _ => false,
-        };
+            selected_view.apply_over(
+                cx,
+                live! {
+                    label = { text: (caption), draw_text: { color: (text_color) }}
+                    file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size), draw_text: { color: (text_color) }}}
+                },
+            );
 
-        let text_enabled_color = hex_rgb_color(0x000000);
-        let text_disabled_color = hex_rgb_color(0x667085);
+            if let Some(model) = store.downloads.get_model_by_file_id(&file.id) {
+                let architecture = model.architecture.trim();
+                let params_size = model.size.trim();
+                let is_architecture_visible = !architecture.is_empty() && !is_loading;
+                let is_params_size_visible = !params_size.is_empty() && !is_loading;
 
-        let text_color = if is_loaded_file {
-            text_enabled_color
-        } else {
-            text_disabled_color
-        };
-
-        self.view(id!(choose)).apply_over(
-            cx,
-            live! {
-                visible: false
-            },
-        );
-
-        self.view(id!(selected)).apply_over(
-            cx,
-            live! {
-                visible: true
-                label = { text: (caption), draw_text: { color: (text_color) }}
-                architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture), draw_text: { color: (text_color) }}}
-                params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size), draw_text: { color: (text_color) }}}
-                file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size), draw_text: { color: (text_color) }}}
-            },
-        );
+                selected_view.apply_over(
+                    cx,
+                    live! {
+                        architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture), draw_text: { color: (text_color) }}}
+                        params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size), draw_text: { color: (text_color) }}}
+                    },
+                );
+            }
+        }
 
         self.redraw(cx);
     }
