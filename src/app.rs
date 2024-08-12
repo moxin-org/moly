@@ -1,6 +1,3 @@
-use crate::chat::chat_history_card_options::{
-    ChatHistoryCardOptionsAction, ChatHistoryCardOptionsWidgetRefExt,
-};
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
@@ -10,7 +7,6 @@ use crate::shared::download_notification_popup::{
     DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
-use crate::shared::portal::PortalAction;
 use makepad_widgets::*;
 
 live_design! {
@@ -19,7 +15,6 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
-    import crate::shared::portal::*;
     import crate::shared::popup_notification::*;
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
@@ -29,7 +24,6 @@ live_design! {
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
-    import crate::chat::chat_history_card_options::ChatHistoryCardOptions ;
 
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
@@ -109,12 +103,6 @@ live_design! {
                         discover_frame = <LandingScreen> {visible: true}
                         chat_frame = <ChatScreen> {visible: false}
                         my_models_frame = <MyModelsScreen> {visible: false}
-                    }
-                }
-
-                portal_root = <Portal> {
-                    chat_history_card_options_portal_view = <PortalView> {
-                        chat_history_card_options = <ChatHistoryCardOptions> {}
                     }
                 }
 
@@ -224,12 +212,6 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            // TODO: Hack for error that when you first open the portal, doesnt draw until an event
-            // this forces the entire ui to rerender, still weird that only happens the first time.
-            if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
-                self.ui.redraw(cx);
-            }
-
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
@@ -248,16 +230,6 @@ impl MatchEvent for App {
             if let ChatAction::Resume = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
-            }
-
-            if let ChatHistoryCardOptionsAction::Selected(chat_id, cords) =
-                action.as_widget_action().cast()
-            {
-                let mut chat_history_card_options = self
-                    .ui
-                    .chat_history_card_options(id!(chat_history_card_options));
-                // TODO: Would be cool to listen for this action inside of the widget itself.
-                let _ = chat_history_card_options.selected(cx, chat_id, cords);
             }
         }
     }

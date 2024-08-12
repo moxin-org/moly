@@ -1,4 +1,4 @@
-use crate::shared::{portal::PortalAction, utils::hugging_face_model_url};
+use crate::shared::{actions::OverlayWidgetAction, utils::hugging_face_model_url};
 use makepad_widgets::*;
 
 use super::downloaded_files_row::DownloadedFilesRowProps;
@@ -211,7 +211,7 @@ impl WidgetMatchEvent for ModelInfoModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
         }
 
         if self

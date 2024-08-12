@@ -1,9 +1,6 @@
 use makepad_widgets::*;
 
-use crate::{
-    data::{chats::chat::ChatID, store::Store},
-    shared::portal::PortalAction,
-};
+use crate::{data::{chats::chat::ChatID, store::Store}, shared::actions::OverlayWidgetAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -179,7 +176,7 @@ impl WidgetMatchEvent for DeleteChatModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
         }
 
         if self
@@ -188,7 +185,7 @@ impl WidgetMatchEvent for DeleteChatModal {
         {
             let store = scope.data.get_mut::<Store>().unwrap();
             store.delete_chat(self.chat_id);
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
             cx.redraw_all();
         }
 
@@ -196,7 +193,7 @@ impl WidgetMatchEvent for DeleteChatModal {
             .button(id!(wrapper.body.actions.cancel_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
         }
     }
 }

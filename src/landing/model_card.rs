@@ -1,7 +1,7 @@
 use crate::data::store::ModelWithDownloadInfo;
+use crate::shared::actions::OverlayWidgetAction;
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalWidgetExt;
-use crate::shared::portal::PortalAction;
 use crate::shared::utils::hugging_face_model_url;
 use chrono::Utc;
 use makepad_widgets::*;
@@ -448,7 +448,7 @@ impl WidgetMatchEvent for ModelCardViewAllModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
         }
     }
 }

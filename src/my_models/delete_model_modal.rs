@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::portal::PortalAction};
+use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::actions::OverlayWidgetAction};
 
 use super::downloaded_files_row::DownloadedFilesRowProps;
 
@@ -170,7 +170,7 @@ impl WidgetMatchEvent for DeleteModelModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
         }
 
         if self
@@ -186,14 +186,14 @@ impl WidgetMatchEvent for DeleteModelModal {
             store
                 .delete_file(self.file_id.clone())
                 .expect("Failed to delete file");
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
         }
 
         if self
             .button(id!(wrapper.body.actions.cancel_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
         }
     }
 }

@@ -15,3 +15,9 @@ pub enum DownloadAction {
     Cancel(FileID),
     None,
 }
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum OverlayWidgetAction {
+    None,
+    Close,
+}

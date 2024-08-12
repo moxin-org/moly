@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use super::portal::PortalAction;
+use super::actions::OverlayWidgetAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -88,14 +88,8 @@ impl Widget for PopupNotification {
 impl WidgetMatchEvent for PopupNotification {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         for action in actions {
-            match action.as_widget_action().cast::<PortalAction>() {
-                // TODO - This should be a method on the Modal widget.
-                // Let's migrate when other uses for this action are removed.
-                PortalAction::Close => {
-                    self.opened = false;
-                    self.draw_bg.redraw(cx);
-                }
-                _ => {}
+            if let OverlayWidgetAction::Close = action.as_widget_action().cast() {
+                self.close(cx);
             }
         }
     }
