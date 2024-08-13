@@ -116,7 +116,7 @@ impl Store {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             let wanted_file = self
                 .chats
-                .get_or_init_chat_file_id(chat.id)
+                .get_or_init_chat_file_id(&mut chat)
                 .map(|file_id| self.downloads.get_file(&file_id))
                 .flatten();
 
@@ -145,7 +145,7 @@ impl Store {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             let wanted_file = self
                 .chats
-                .get_or_init_chat_file_id(chat.id)
+                .get_or_init_chat_file_id(&mut chat)
                 .map(|file_id| self.downloads.get_file(&file_id))
                 .flatten();
 

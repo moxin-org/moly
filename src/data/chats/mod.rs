@@ -129,10 +129,11 @@ impl Chats {
     }
 
     /// Get the file id to use with this chat, or the loaded file id as a fallback.
+    /// The fallback is used if the chat does not have a file id set, or, if it has
+    /// one but references a no longer existing (deleted) file.
+    ///
     /// If the fallback is used, the chat is updated with this, and persisted.
-    pub fn get_or_init_chat_file_id(&self, chat_id: ChatID) -> Option<FileID> {
-        let mut chat = self.get_chat_by_id(chat_id)?.borrow_mut();
-
+    pub fn get_or_init_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
         if let Some(file_id) = chat.last_used_file_id.clone() {
             Some(file_id)
         } else {
