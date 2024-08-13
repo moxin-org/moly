@@ -1,8 +1,8 @@
+use crate::shared::actions::ChatAction;
+use crate::shared::modal::ModalWidgetExt;
+use crate::shared::utils::format_model_size;
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
-use crate::shared::utils::format_model_size;
-use crate::shared::modal::ModalWidgetExt;
-use crate::shared::actions::ChatAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -108,23 +108,6 @@ live_design! {
             draw_icon: {
                 svg_file: (ICON_START_CHAT)
                 color: (MODEL_CTA_COLOR)
-            }
-        }
-
-        resume_chat_button = <DownloadedFilesRowButton> {
-            width: 140
-            visible: false
-            draw_bg: {
-                color: (MODEL_CTA_COLOR)
-            }
-            text: "Resume Chat",
-            draw_text: {
-                color: #fff
-                text_style: <BOLD_FONT>{font_size: 9}
-            }
-            draw_icon: {
-                svg_file: (ICON_PLAY)
-                color: #fff
             }
         }
 
@@ -265,8 +248,6 @@ impl Widget for DownloadedFilesRow {
 
         self.button(id!(start_chat_button))
             .set_visible(!props.show_resume);
-        self.button(id!(resume_chat_button))
-            .set_visible(props.show_resume);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -279,12 +260,6 @@ impl WidgetMatchEvent for DownloadedFilesRow {
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
                 cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
-            }
-        }
-
-        if self.button(id!(resume_chat_button)).clicked(actions) {
-            if let Some(_) = &self.file_id {
-                cx.widget_action(widget_uid, &scope.path, ChatAction::Resume);
             }
         }
 

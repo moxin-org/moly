@@ -21,7 +21,6 @@ live_design! {
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
-    RESUME_CHAT = dep("crate://self/resources/icons/play_arrow.svg")
 
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
@@ -66,17 +65,6 @@ live_design! {
         draw_icon: {
             svg_file: (START_CHAT),
             color: #087443
-        }
-    }
-
-    ResumeChatButton = <ModelCardButton> {
-        draw_bg: { color: #099250, border_color: #09925033 }
-        text: "Resume Chat"
-        draw_text: {
-            color: #fff;
-        }
-        draw_icon: {
-            svg_file: (RESUME_CHAT),
         }
     }
 
@@ -202,7 +190,6 @@ live_design! {
         cell4 = {
             download_button = <DownloadButton> { visible: false }
             start_chat_button = <StartChatButton> { visible: false }
-            resume_chat_button = <ResumeChatButton> { visible: false }
             download_pending_controls = <DownloadPendingControls> { visible: false }
         }
     }
@@ -258,7 +245,8 @@ impl Widget for ModelFilesItem {
                 matches!(download.status, PendingDownloadsStatus::Downloading);
             let is_retry_download_visible =
                 matches!(download.status, PendingDownloadsStatus::Error);
-            let is_cancel_download_visible = !matches!(download.status, PendingDownloadsStatus::Initializing);
+            let is_cancel_download_visible =
+                !matches!(download.status, PendingDownloadsStatus::Initializing);
 
             let status_color = match download.status {
                 PendingDownloadsStatus::Downloading | PendingDownloadsStatus::Initializing => {
@@ -303,7 +291,6 @@ impl Widget for ModelFilesItem {
                         }
                     }
                     start_chat_button = { visible: false }
-                    resume_chat_button = { visible: false }
                     download_button = { visible: false }
                 }},
             );
@@ -314,7 +301,6 @@ impl Widget for ModelFilesItem {
                     live! { cell4 = {
                         download_pending_controls = { visible: false }
                         start_chat_button = { visible: false }
-                        resume_chat_button = { visible: true }
                         download_button = { visible: false }
                     }},
                 );
@@ -324,7 +310,6 @@ impl Widget for ModelFilesItem {
                     live! { cell4 = {
                         download_pending_controls = { visible: false }
                         start_chat_button = { visible: true }
-                        resume_chat_button = { visible: false }
                         download_button = { visible: false }
                     }},
                 );
@@ -335,7 +320,6 @@ impl Widget for ModelFilesItem {
                 live! { cell4 = {
                     download_pending_controls = { visible: false }
                     start_chat_button = { visible: false }
-                    resume_chat_button = { visible: false }
                     download_button = { visible: true }
                 }},
             );
@@ -362,10 +346,6 @@ impl WidgetMatchEvent for ModelFilesItem {
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
             cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
-        }
-
-        if self.button(id!(resume_chat_button)).clicked(&actions) {
-            cx.widget_action(widget_uid, &scope.path, ChatAction::Resume);
         }
 
         if [id!(resume_download_button), id!(retry_download_button)]
