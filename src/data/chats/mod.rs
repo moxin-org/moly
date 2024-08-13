@@ -128,6 +128,21 @@ impl Chats {
         Ok(())
     }
 
+    /// Get the file id to use with this chat, or the loaded file id as a fallback.
+    /// If the fallback is used, the chat is updated with this, and persisted.
+    pub fn get_or_init_chat_file_id(&self, chat_id: ChatID) -> Option<FileID> {
+        let mut chat = self.get_chat_by_id(chat_id)?.borrow_mut();
+
+        if let Some(file_id) = chat.last_used_file_id.clone() {
+            Some(file_id)
+        } else {
+            let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
+            chat.last_used_file_id = Some(file_id.clone());
+            chat.save();
+            Some(file_id)
+        }
+    }
+
     pub fn create_empty_chat(&mut self) {
         let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
 

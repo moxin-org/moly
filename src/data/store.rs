@@ -114,11 +114,11 @@ impl Store {
 
     pub fn send_chat_message(&mut self, prompt: String) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            let wanted_file = chat
-                .last_used_file_id
-                .as_ref()
-                .and_then(|file_id| self.downloads.get_file(file_id))
-                .or_else(|| self.chats.loaded_model.as_ref());
+            let wanted_file = self
+                .chats
+                .get_or_init_chat_file_id(chat.id)
+                .map(|file_id| self.downloads.get_file(&file_id))
+                .flatten();
 
             if let Some(file) = wanted_file {
                 chat.send_message_to_model(
@@ -143,11 +143,11 @@ impl Store {
     // used after `edit_chat_message` and keep concerns separated.
     pub fn edit_chat_message_regenerating(&mut self, message_id: usize, updated_message: String) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            let wanted_file = chat
-                .last_used_file_id
-                .as_ref()
-                .and_then(|file_id| self.downloads.get_file(file_id))
-                .or_else(|| self.chats.loaded_model.as_ref());
+            let wanted_file = self
+                .chats
+                .get_or_init_chat_file_id(chat.id)
+                .map(|file_id| self.downloads.get_file(&file_id))
+                .flatten();
 
             if let Some(file) = wanted_file {
                 chat.remove_messages_from(message_id);
