@@ -63,6 +63,7 @@ impl Chats {
         if self.model_loader.is_loading() {
             return;
         }
+
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
             chat.last_used_file_id = Some(file.id.clone());
             chat.save();
@@ -154,21 +155,14 @@ impl Chats {
     }
 
     pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
-        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
-        new_chat.borrow().save();
+        let mut new_chat = Chat::new(self.chats_dir.clone());
+        new_chat.last_used_file_id = Some(file.id.clone());
+        new_chat.save();
 
-        self.cancel_chat_streaming();
+        self.current_chat_id = Some(new_chat.id);
+        self.saved_chats.push(RefCell::new(new_chat));
 
-        self.current_chat_id = Some(new_chat.borrow().id);
-        self.saved_chats.push(new_chat);
-
-        if self
-            .loaded_model
-            .as_ref()
-            .map_or(true, |m| *m.id != file.id)
-        {
-            let _ = self.load_model(&file);
-        }
+        self.load_model(file);
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
