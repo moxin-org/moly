@@ -183,7 +183,6 @@ live_design! {
 
 pub struct DownloadedFilesRowProps {
     pub downloaded_file: DownloadedFile,
-    pub show_resume: bool,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -245,9 +244,6 @@ impl Widget for DownloadedFilesRow {
         let formatted_date = downloaded_file.downloaded_at.format("%d/%m/%Y").to_string();
         self.label(id!(h_wrapper.date_added_tag.date_added))
             .set_text(&formatted_date);
-
-        self.button(id!(start_chat_button))
-            .set_visible(!props.show_resume);
 
         self.view.draw_walk(cx, scope, walk)
     }
