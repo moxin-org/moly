@@ -295,25 +295,14 @@ impl Widget for ModelFilesItem {
                 }},
             );
         } else if files_info.file.downloaded {
-            if files_info.is_current_chat {
-                self.apply_over(
-                    cx,
-                    live! { cell4 = {
-                        download_pending_controls = { visible: false }
-                        start_chat_button = { visible: false }
-                        download_button = { visible: false }
-                    }},
-                );
-            } else {
-                self.apply_over(
-                    cx,
-                    live! { cell4 = {
-                        download_pending_controls = { visible: false }
-                        start_chat_button = { visible: true }
-                        download_button = { visible: false }
-                    }},
-                );
-            }
+            self.apply_over(
+                cx,
+                live! { cell4 = {
+                    download_pending_controls = { visible: false }
+                    start_chat_button = { visible: true }
+                    download_button = { visible: false }
+                }},
+            );
         } else {
             self.apply_over(
                 cx,
