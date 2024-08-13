@@ -60,14 +60,19 @@ impl Chats {
     pub fn load_model(&mut self, file: &File) {
         self.cancel_chat_streaming();
 
+        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
+            let new_file_id = Some(file.id.clone());
+
+            if chat.last_used_file_id != new_file_id {
+                chat.last_used_file_id = new_file_id;
+                chat.save();
+            }
+        }
+
         if self.model_loader.is_loading() {
             return;
         }
 
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.last_used_file_id = Some(file.id.clone());
-            chat.save();
-        }
         self.model_loader
             .load_async(file.id.clone(), self.backend.command_sender.clone());
     }
