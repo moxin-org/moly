@@ -511,6 +511,8 @@ impl WidgetMatchEvent for ChatPanel {
             }
 
             if let ModelSelectorAction::Selected(downloaded_file) = action.cast() {
+                store.load_model(&downloaded_file.file);
+
                 if let Some(chat) = store.chats.get_current_chat() {
                     chat.borrow_mut().last_used_file_id = Some(downloaded_file.file.id.clone());
                     chat.borrow().save();
