@@ -91,7 +91,7 @@ live_design! {
                 height: Fit,
                 align: {x: 1.0, y: 0.5},
                 margin: {left: 10, right: 6},
-                visible: true,
+                visible: false,
 
                 icon = <RotatedImage> {
                     height: 14,
@@ -285,6 +285,12 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+
+            self.view(id!(icon_drop)).apply_over(
+                cx,
+                live!{
+                    visible: true
+                });
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -412,6 +418,12 @@ impl ModelSelector {
                     file_size_tag = { visible: (size_visible), caption = { text: (size) }}
                 },
             );
+            
+            self.view(id!(icon_drop)).apply_over(
+                cx,
+                live!{
+                    visible: true
+                });
         }
 
         self.redraw(cx);
