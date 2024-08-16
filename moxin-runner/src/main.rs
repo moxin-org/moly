@@ -328,10 +328,13 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
         // The default `/tmp/` dir used in `install_v2.sh` isn't always accessible to bundled apps.
         .arg(&format!("--tmpdir={}", temp_dir.display()));
 
-    // If the current CPU doesn't support AVX512, tell the install script to
-    // the WASI-nn plugin built without AVX support.
+    let cuda = get_cuda_version();
+    println!("  --> Found CUDA installation: {cuda:?}");
+
+    // If the current machine doesn't have CUDA and the CPU doesn't support AVX512,
+    // tell the install script to select the no-AVX WASI-nn plugin version.
     #[cfg(target_arch = "x86_64")]
-    if !is_x86_feature_detected!("avx512f") {
+    if cuda.is_none() && !is_x86_feature_detected!("avx512f") {
         bash_cmd.arg("--noavx");
     }
 
@@ -470,6 +473,7 @@ fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
 
 
 /// Versions of CUDA that WasmEdge supports.
+#[derive(Debug)]
 enum CudaVersion {
     /// CUDA Version 12
     V12,
@@ -482,26 +486,32 @@ enum CudaVersion {
 /// This function first runs `nvcc --version` on both Linux and Windows,
 /// and if that fails, it will try `/usr/local/cuda/bin/nvcc --version` on Linux only.
 fn get_cuda_version() -> Option<CudaVersion> {
-    let mut output = Command::new("nvcc")
-        .arg("--version")
-        .output();
-
-    #[cfg(target_os = "linux")] {
-        output = output.or_else(|_|
-            Command::new("/usr/local/cuda/bin/nvcc")
-                .arg("--version")
-                .output()
-        );
+    #[cfg(target_os = "macos")] {
+        None
     }
 
-    let output = output.ok()?;
-    let output = String::from_utf8_lossy(&output.stdout);
-    if output.contains("V12") {
-        Some(CudaVersion::V12)
-    } else if output.contains("V11") {
-        Some(CudaVersion::V11)
-    } else {
-        None
+    #[cfg(not(target_os = "macos"))] {
+        let mut output = Command::new("nvcc")
+            .arg("--version")
+            .output();
+
+        #[cfg(target_os = "linux")] {
+            output = output.or_else(|_|
+                Command::new("/usr/local/cuda/bin/nvcc")
+                    .arg("--version")
+                    .output()
+            );
+        }
+
+        let output = output.ok()?;
+        let output = String::from_utf8_lossy(&output.stdout);
+        if output.contains("V12") {
+            Some(CudaVersion::V12)
+        } else if output.contains("V11") {
+            Some(CudaVersion::V11)
+        } else {
+            None
+        }
     }
 }
 
