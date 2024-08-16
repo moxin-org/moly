@@ -118,10 +118,9 @@ impl Tooltip {
     }
 
     pub fn show_with_options(&mut self, cx: &mut Cx, pos: DVec2, text: &str) {
-        self.opened = true;
         self.set_text(text);
         self.set_pos(cx, pos);
-        self.redraw(cx);
+        self.show(cx);
     }
 
     pub fn hide(&mut self, cx: &mut Cx) {
