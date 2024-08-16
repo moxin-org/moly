@@ -103,7 +103,7 @@ impl Widget for Tooltip {
 }
 
 impl Tooltip {
-    fn set_pos(&mut self, cx: &mut Cx, pos: DVec2) {
+    pub fn set_pos(&mut self, cx: &mut Cx, pos: DVec2) {
         self.apply_over(
             cx,
             live! {
@@ -111,18 +111,26 @@ impl Tooltip {
             },
         );
     }
+
+    pub fn show(&mut self, cx: &mut Cx) {
+        self.opened = true;
+        self.redraw(cx);
+    }
+
+    pub fn show_with_options(&mut self, cx: &mut Cx, pos: DVec2, text: &str) {
+        self.opened = true;
+        self.set_text(text);
+        self.set_pos(cx, pos);
+        self.redraw(cx);
+    }
+
+    pub fn hide(&mut self, cx: &mut Cx) {
+        self.opened = false;
+        self.redraw(cx);
+    }
 }
 
 impl TooltipRef {
-    pub fn show(&mut self, cx: &mut Cx, pos: DVec2, text: &str) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.opened = true;
-            inner.set_text(text);
-            inner.set_pos(cx, pos);
-            inner.redraw(cx);
-        }
-    }
-
     pub fn set_text(&mut self, text: &str) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_text(text);
@@ -135,9 +143,21 @@ impl TooltipRef {
         }
     }
 
-    pub fn hide(&mut self) {
+    pub fn show(&mut self, cx: &mut Cx) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.opened = false;
+            inner.show(cx);
+        }
+    }
+
+    pub fn show_with_options(&mut self, cx: &mut Cx, pos: DVec2, text: &str) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.show_with_options(cx, pos, text);
+        }
+    }
+
+    pub fn hide(&mut self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.hide(cx);
         }
     }
 }
