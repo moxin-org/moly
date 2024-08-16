@@ -96,20 +96,42 @@ impl Widget for Tooltip {
 
         DrawStep::done()
     }
+
+    fn set_text(&mut self, text: &str) {
+        self.label(id!(tooltip_label)).set_text(text);
+    }
+}
+
+impl Tooltip {
+    fn set_pos(&mut self, cx: &mut Cx, pos: DVec2) {
+        self.apply_over(
+            cx,
+            live! {
+                content: { margin: { left: (pos.x), top: (pos.y) } }
+            },
+        );
+    }
 }
 
 impl TooltipRef {
     pub fn show(&mut self, cx: &mut Cx, pos: DVec2, text: &str) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.opened = true;
-            inner.apply_over(
-                cx,
-                live! {
-                    content: { margin: { left: (pos.x), top: (pos.y) } }
-                },
-            );
-            inner.label(id!(tooltip_label)).set_text(text);
+            inner.set_text(text);
+            inner.set_pos(cx, pos);
             inner.redraw(cx);
+        }
+    }
+
+    pub fn set_text(&mut self, text: &str) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_text(text);
+        }
+    }
+
+    pub fn set_pos(&mut self, cx: &mut Cx, pos: DVec2) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_pos(cx, pos);
         }
     }
 
