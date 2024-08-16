@@ -1,4 +1,4 @@
-use crate::shared::{actions::OverlayWidgetAction, utils::hugging_face_model_url};
+use crate::shared::utils::hugging_face_model_url;
 use makepad_widgets::*;
 
 use super::downloaded_files_row::DownloadedFilesRowProps;
@@ -160,6 +160,12 @@ live_design! {
     }
 }
 
+#[derive(Clone, Debug, DefaultNone)]
+pub enum ModelInfoModalAction {
+    None,
+    CloseButtonClicked,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelInfoModal {
     #[deref]
@@ -211,7 +217,7 @@ impl WidgetMatchEvent for ModelInfoModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, ModelInfoModalAction::CloseButtonClicked);
         }
 
         if self

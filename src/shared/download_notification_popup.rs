@@ -3,8 +3,6 @@ use moxin_protocol::data::{File, FileID};
 
 use crate::shared::actions::DownloadAction;
 
-use super::actions::OverlayWidgetAction;
-
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
@@ -199,6 +197,15 @@ pub enum PopupAction {
     NavigateToMyModels,
 }
 
+#[derive(Clone, Debug, DefaultNone)]
+pub enum DownloadNotificationPopupAction {
+    None,
+    // User has dimissed the popup by clicking the close button, so the popup should be closed by the owner widget.
+    CloseButtonClicked,
+    // User has clicked any of the links in the popup, so the popup should be closed by the owner widget.
+    ActionLinkClicked,
+}
+
 #[derive(Default)]
 pub enum DownloadResult {
     #[default]
@@ -241,7 +248,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::CloseButtonClicked);
         }
 
         if self
@@ -250,7 +257,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
         {
             // TODO: Abstract the navigation actions on a single enum for the whole app.
             cx.widget_action(widget_uid, &scope.path, PopupAction::NavigateToMyModels);
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::ActionLinkClicked);
         }
 
         if self.link_label(id!(retry_link)).clicked(actions) {
@@ -260,7 +267,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
                 &scope.path,
                 DownloadAction::Play(file_id.clone()),
             );
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::ActionLinkClicked);
         }
 
         if self.link_label(id!(cancel_link)).clicked(actions) {
@@ -270,7 +277,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
                 &scope.path,
                 DownloadAction::Cancel(file_id.clone()),
             );
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::ActionLinkClicked);
         }
     }
 }

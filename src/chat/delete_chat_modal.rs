@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::{data::{chats::chat::ChatID, store::Store}, shared::actions::OverlayWidgetAction};
+use crate::data::{chats::chat::ChatID, store::Store};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -139,6 +139,14 @@ pub struct DeleteChatModal {
     chat_id: ChatID,
 }
 
+#[derive(Clone, Debug, DefaultNone)]
+pub enum DeleteChatModalAction {
+    None,
+    CloseButtonClicked,
+    ChatDeleted,
+    Cancelled,
+}
+
 impl Widget for DeleteChatModal {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
@@ -176,7 +184,7 @@ impl WidgetMatchEvent for DeleteChatModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::CloseButtonClicked);
         }
 
         if self
@@ -185,7 +193,7 @@ impl WidgetMatchEvent for DeleteChatModal {
         {
             let store = scope.data.get_mut::<Store>().unwrap();
             store.delete_chat(self.chat_id);
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::ChatDeleted);
             cx.redraw_all();
         }
 
@@ -193,7 +201,7 @@ impl WidgetMatchEvent for DeleteChatModal {
             .button(id!(wrapper.body.actions.cancel_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::Cancelled);
         }
     }
 }

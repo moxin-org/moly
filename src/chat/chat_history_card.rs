@@ -6,8 +6,11 @@ use chrono::{DateTime, Local, TimeZone};
 
 use makepad_widgets::*;
 
-use super::chat_history_card_options::ChatHistoryCardOptionsWidgetExt;
 use super::delete_chat_modal::DeleteChatModalWidgetExt;
+use super::{
+    chat_history_card_options::ChatHistoryCardOptionsWidgetExt,
+    delete_chat_modal::DeleteChatModalAction,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -312,10 +315,14 @@ impl WidgetMatchEvent for ChatHistoryCard {
         let chat_options_wrapper_rect = self.view(id!(chat_options_wrapper)).area().rect(cx);
         if self.button(id!(chat_options)).clicked(actions) {
             let wrapper_coords = chat_options_wrapper_rect.pos;
-            let coords = dvec2(wrapper_coords.x, wrapper_coords.y + chat_options_wrapper_rect.size.y);
+            let coords = dvec2(
+                wrapper_coords.x,
+                wrapper_coords.y + chat_options_wrapper_rect.size.y,
+            );
 
-            self.chat_history_card_options(id!(chat_history_card_options)).selected(cx, self.chat_id);
-            
+            self.chat_history_card_options(id!(chat_history_card_options))
+                .selected(cx, self.chat_id);
+
             let modal = self.modal(id!(chat_history_card_options_modal));
             modal.apply_over(
                 cx,
@@ -337,6 +344,17 @@ impl WidgetMatchEvent for ChatHistoryCard {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(self.chat_id);
                 self.redraw(cx);
+            }
+        }
+
+        for action in actions {
+            if matches!(
+                action.as_widget_action().cast(),
+                DeleteChatModalAction::Cancelled
+                    | DeleteChatModalAction::CloseButtonClicked
+                    | DeleteChatModalAction::ChatDeleted
+            ) {
+                self.modal(id!(delete_chat_modal)).close(cx);
             }
         }
     }
@@ -396,7 +414,8 @@ impl ChatHistoryCard {
                 }
                 ChatHistoryCardAction::DeleteChatOptionSelected(chat_id) => {
                     if chat_id == self.chat_id {
-                        let mut delete_modal_inner = self.delete_chat_modal(id!(delete_chat_modal_inner));
+                        let mut delete_modal_inner =
+                            self.delete_chat_modal(id!(delete_chat_modal_inner));
                         delete_modal_inner.set_chat_id(self.chat_id);
 
                         self.modal(id!(delete_chat_modal)).open(cx);
@@ -407,7 +426,10 @@ impl ChatHistoryCard {
 
             // If the modal is dissmised (such as, clicking outside) we need to reset the hover state
             // of the open chat options button.
-            if self.modal(id!(chat_history_card_options_modal)).dismissed(actions) {
+            if self
+                .modal(id!(chat_history_card_options_modal))
+                .dismissed(actions)
+            {
                 self.button(id!(chat_options)).reset_hover(cx);
             }
         }

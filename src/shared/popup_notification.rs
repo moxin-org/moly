@@ -1,7 +1,5 @@
 use makepad_widgets::*;
 
-use super::actions::OverlayWidgetAction;
-
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
@@ -62,7 +60,6 @@ impl Widget for PopupNotification {
         }
 
         self.content.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, _walk: Walk) -> DrawStep {
@@ -81,16 +78,6 @@ impl Widget for PopupNotification {
         self.draw_list.end(cx);
 
         DrawStep::done()
-    }
-}
-
-impl WidgetMatchEvent for PopupNotification {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        for action in actions {
-            if let OverlayWidgetAction::Close = action.as_widget_action().cast() {
-                self.close(cx);
-            }
-        }
     }
 }
 

@@ -1,5 +1,4 @@
 use crate::data::store::ModelWithDownloadInfo;
-use crate::shared::actions::OverlayWidgetAction;
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::hugging_face_model_url;
@@ -414,7 +413,20 @@ impl WidgetMatchEvent for ModelCard {
             self.modal(id!(modal)).open(cx);
             self.redraw(cx);
         }
+
+        for action in actions {
+            if let ModelCardViewAllModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+                self.modal(id!(modal)).close(cx);
+                self.redraw(cx);
+            }
+        }
     }
+}
+
+#[derive(Clone, Debug, DefaultNone)]
+enum ModelCardViewAllModalAction {
+    None,
+    CloseButtonClicked,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -448,7 +460,7 @@ impl WidgetMatchEvent for ModelCardViewAllModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, OverlayWidgetAction::Close);
+            cx.widget_action(widget_uid, &scope.path, ModelCardViewAllModalAction::CloseButtonClicked);
         }
     }
 }

@@ -4,7 +4,7 @@ use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
+    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
@@ -106,11 +106,11 @@ live_design! {
                     }
                 }
 
-                popup_download_notification = <PopupNotification> {
+                popup_notification = <PopupNotification> {
                     content: {
-                        popup_download_success = <DownloadNotificationPopup> {}
+                        popup_download_notification = <DownloadNotificationPopup> {}
                     }
-                } 
+                }
             }
         }
     }
@@ -231,6 +231,14 @@ impl MatchEvent for App {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
+
+            if matches!(
+                action.as_widget_action().cast(),
+                DownloadNotificationPopupAction::ActionLinkClicked
+                    | DownloadNotificationPopupAction::CloseButtonClicked
+            ) {
+                self.ui.popup_notification(id!(popup_notification)).open(cx);
+            }
         }
     }
 }
@@ -240,7 +248,7 @@ impl App {
         if let Some(notification) = self.store.downloads.next_download_notification() {
             let mut popup = self
                 .ui
-                .download_notification_popup(id!(popup_download_success));
+                .download_notification_popup(id!(popup_download_notification));
 
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
@@ -251,7 +259,7 @@ impl App {
                 }
             }
 
-            self.ui.popup_notification(id!(popup_download_notification)).open(cx);
+            self.ui.popup_notification(id!(popup_notification)).open(cx);
         }
     }
 }

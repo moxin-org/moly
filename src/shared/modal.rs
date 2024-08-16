@@ -1,7 +1,5 @@
 use makepad_widgets::*;
 
-use super::actions::OverlayWidgetAction;
-
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
@@ -86,8 +84,6 @@ impl Widget for Modal {
         self.content.handle_event(cx, event, scope);
         cx.sweep_lock(self.draw_bg.area());
 
-        self.widget_match_event(cx, event, scope);
-
         // Check if there was a click outside of the content (bg), then close if true.
         let content_rec = self.content.area().rect(cx);
         if let Hit::FingerUp(fe) =
@@ -120,18 +116,6 @@ impl Widget for Modal {
         self.draw_list.end(cx);
 
         DrawStep::done()
-    }
-}
-
-impl WidgetMatchEvent for Modal {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        for action in actions {
-            if let OverlayWidgetAction::Close = action.as_widget_action().cast() {
-                let widget_uid = self.content.widget_uid();
-                cx.widget_action(widget_uid, &scope.path, ModalAction::Dismissed);
-                self.close(cx);
-            }
-        }
     }
 }
 
