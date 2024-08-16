@@ -99,8 +99,9 @@ impl Widget for Tooltip {
 }
 
 impl TooltipRef {
-    pub fn set_text_and_pos(&mut self, cx: &mut Cx, text: &str, pos: DVec2) {
+    pub fn show(&mut self, cx: &mut Cx, pos: DVec2, text: &str) {
         if let Some(mut inner) = self.borrow_mut() {
+            inner.opened = true;
             inner.apply_over(
                 cx,
                 live! {
@@ -112,13 +113,7 @@ impl TooltipRef {
         }
     }
 
-    pub fn show_tooltip(&mut self) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.opened = true;
-        }
-    }
-
-    pub fn hide_tooltip(&mut self) {
+    pub fn hide(&mut self) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.opened = false;
         }

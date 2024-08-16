@@ -428,11 +428,10 @@ impl ChatParams {
         let mut tooltip = self.deref.tooltip(id!(tooltip));
 
         if let Some(rect) = slider.label_hover_in(&actions) {
-            tooltip.set_text_and_pos(cx, &text, rect.pos + offset);
-            tooltip.show_tooltip();
+            tooltip.show(cx, rect.pos + offset, &text);
         }
         if slider.label_hover_out(&actions) {
-            tooltip.hide_tooltip();
+            tooltip.hide();
         }
     }
 
@@ -448,11 +447,10 @@ impl ChatParams {
         let mut tooltip = self.deref.tooltip(id!(tooltip));
 
         if let Some(rect) = label.hover_in(&actions) {
-            tooltip.set_text_and_pos(cx, &text, rect.pos + offset);
-            tooltip.show_tooltip();
+            tooltip.show(cx, rect.pos + offset, &text);
         }
         if label.hover_out(&actions) {
-            tooltip.hide_tooltip();
+            tooltip.hide();
         }
     }
 }
