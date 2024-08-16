@@ -522,17 +522,9 @@ impl WidgetMatchEvent for ChatPanel {
 
             match action.cast() {
                 ChatAction::Start(file_id) => {
-                    let downloaded_file = store
-                        .downloads
-                        .downloaded_files
-                        .iter()
-                        .find(|file| file.file.id == file_id)
-                        .expect("Attempted to start chat with a no longer existing file")
-                        .clone();
-
-                    store
-                        .chats
-                        .create_empty_chat_and_load_file(&downloaded_file.file);
+                    if let Some(file) = store.downloads.get_file(&file_id) {
+                        store.chats.create_empty_chat_and_load_file(file);
+                    }
                 }
                 _ => {}
             }
