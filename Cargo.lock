@@ -2566,6 +2566,8 @@ version = "0.1.0"
 dependencies = [
  "dora-node-api",
  "eyre",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
