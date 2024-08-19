@@ -1,6 +1,9 @@
 use crate::{
     data::store::Store,
-    shared::{actions::ChatAction, utils::format_model_size},
+    shared::{
+        actions::ChatAction,
+        utils::{format_model_size, hex_rgb_color},
+    },
 };
 use makepad_widgets::*;
 
@@ -48,7 +51,7 @@ live_design! {
 
             cursor: Hand,
 
-            content = <View> { 
+            content = <View> {
                 width: Fill,
                 height: Fit,
                 flow: Overlay,
@@ -239,7 +242,8 @@ impl Widget for ModelSelector {
                     .apply_over(cx, live! {height: (height)});
 
                 let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
-                self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
+                self.view(id!(icon_drop.icon))
+                    .apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
 
                 self.redraw(cx);
             }
@@ -360,13 +364,14 @@ impl ModelSelector {
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
-        self.view(id!(icon_drop.icon)).apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
+        self.view(id!(icon_drop.icon))
+            .apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
         self.animator_cut(cx, id!(open.hide));
         self.redraw(cx);
     }
 
     fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-        if store.chats.get_currently_loading_model().is_some() {
+        if store.chats.model_loader.is_loading() {
             self.model_selector_loading(id!(loading))
                 .show_and_animate(cx);
         } else {
@@ -375,61 +380,66 @@ impl ModelSelector {
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
-        self.view(id!(choose)).apply_over(
-            cx,
-            live! {
-                visible: false
-            },
-        );
+        self.view(id!(choose)).set_visible(false);
 
-        if let Some(file) = &store.chats.get_currently_loading_model() {
-            // When a model is being loaded, show the "loading state"
-            let caption = format!("Loading {}", file.name);
-            self.view(id!(selected)).apply_over(
-                cx,
-                live! {
-                    visible: true
-                    label = { text: (caption) }
-                    architecture_tag = { visible: false }
-                    params_size_tag = { visible: false }
-                    file_size_tag = { visible: false }
-                },
-            );
-        } else {
-            let Some(downloaded_file) = store.get_loaded_downloaded_file() else {
-                error!("Error displaying current loaded model");
-                return;
+        let is_loading = store.chats.model_loader.is_loading();
+        let loaded_file = store.chats.loaded_model.as_ref();
+
+        let file = store
+            .chats
+            .get_current_chat()
+            .and_then(|c| c.borrow().last_used_file_id.clone())
+            .and_then(|file_id| store.downloads.get_file(&file_id).cloned())
+            .or_else(|| loaded_file.cloned());
+
+        if let Some(file) = file {
+            let selected_view = self.view(id!(selected));
+            selected_view.set_visible(true);
+
+            let text_color = if Some(&file.id) == loaded_file.map(|f| &f.id) {
+                hex_rgb_color(0x000000)
+            } else {
+                hex_rgb_color(0x667085)
             };
 
-            // When a model is loaded, show the model info
-            let filename = downloaded_file.file.name;
+            let caption = if is_loading {
+                format!("Loading {}", file.name.trim())
+            } else {
+                file.name.trim().to_string()
+            };
 
-            let architecture = downloaded_file.model.architecture;
-            let architecture_visible = !architecture.trim().is_empty();
+            let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
+            let is_file_size_visible = !file_size.is_empty() && !is_loading;
 
-            let param_size = downloaded_file.model.size;
-            let param_size_visible = !param_size.trim().is_empty();
-
-            let size = format_model_size(&downloaded_file.file.size).unwrap_or("".to_string());
-            let size_visible = !size.trim().is_empty();
-
-            self.view(id!(selected)).apply_over(
+            selected_view.apply_over(
                 cx,
                 live! {
-                    visible: true
-                    label = { text: (filename) }
-                    architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) }}
-                    params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) }}
-                    file_size_tag = { visible: (size_visible), caption = { text: (size) }}
+                    label = { text: (caption), draw_text: { color: (text_color) }}
+                    file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size), draw_text: { color: (text_color) }}}
                 },
             );
-            
-            self.view(id!(icon_drop)).apply_over(
-                cx,
-                live!{
-                    visible: true
-                });
+
+            if let Some(model) = store.downloads.get_model_by_file_id(&file.id) {
+                let architecture = model.architecture.trim();
+                let params_size = model.size.trim();
+                let is_architecture_visible = !architecture.is_empty() && !is_loading;
+                let is_params_size_visible = !params_size.is_empty() && !is_loading;
+
+                selected_view.apply_over(
+                    cx,
+                    live! {
+                        architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture), draw_text: { color: (text_color) }}}
+                        params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size), draw_text: { color: (text_color) }}}
+                    },
+                );
+            }
         }
+
+        self.view(id!(icon_drop)).apply_over(
+            cx,
+            live!{
+                visible: true
+            });
 
         self.redraw(cx);
     }
@@ -466,6 +476,5 @@ fn options_to_display(store: &Store) -> bool {
 }
 
 fn no_active_model(store: &Store) -> bool {
-    store.get_loaded_downloaded_file().is_none()
-        && store.chats.get_currently_loading_model().is_none()
+    store.get_loaded_downloaded_file().is_none() && store.get_loading_file().is_none()
 }
