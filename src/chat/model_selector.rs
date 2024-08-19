@@ -94,7 +94,7 @@ live_design! {
                 height: Fit,
                 align: {x: 1.0, y: 0.5},
                 margin: {left: 10, right: 6},
-                visible: true,
+                visible: false,
 
                 icon = <RotatedImage> {
                     height: 14,
@@ -278,6 +278,11 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+            self.view(id!(icon_drop)).apply_over(
+                cx,
+                live!{
+                    visible: false
+                });
         } else if no_active_model(store) {
             choose_label.set_text("Choose a Model");
             let color = vec3(0.0, 0.0, 0.0);
@@ -289,6 +294,12 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+
+            self.view(id!(icon_drop)).apply_over(
+                cx,
+                live!{
+                    visible: true
+                });
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -423,6 +434,12 @@ impl ModelSelector {
                 );
             }
         }
+
+        self.view(id!(icon_drop)).apply_over(
+            cx,
+            live!{
+                visible: true
+            });
 
         self.redraw(cx);
     }
