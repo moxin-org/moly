@@ -274,6 +274,11 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+            self.view(id!(icon_drop)).apply_over(
+                cx,
+                live!{
+                    visible: false
+                });
         } else if no_active_model(store) {
             choose_label.set_text("Choose a Model");
             let color = vec3(0.0, 0.0, 0.0);
