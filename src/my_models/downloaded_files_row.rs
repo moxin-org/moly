@@ -3,6 +3,7 @@ use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
+use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -259,11 +260,26 @@ impl WidgetMatchEvent for DownloadedFilesRow {
         }
 
         if self.button(id!(row_actions.info_button)).clicked(actions) {
-            self.modal(id!(info_modal)).open_modal(cx);
+            self.modal(id!(info_modal)).open(cx);
         }
 
         if self.button(id!(row_actions.delete_button)).clicked(actions) {
-            self.modal(id!(delete_modal)).open_modal(cx);
+            self.modal(id!(delete_modal)).open(cx);
+        }
+
+        for action in actions {
+            if matches!(
+                action.as_widget_action().cast(),
+                DeleteModelModalAction::ModelDeleted
+                    | DeleteModelModalAction::Cancelled
+                    | DeleteModelModalAction::CloseButtonClicked
+            ) {
+                self.modal(id!(delete_modal)).close(cx);
+            }
+
+            if let ModelInfoModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+                self.modal(id!(info_modal)).close(cx);
+            }
         }
     }
 }

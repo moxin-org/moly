@@ -1,7 +1,6 @@
 use crate::data::store::ModelWithDownloadInfo;
 use crate::shared::external_link::ExternalLinkWidgetExt;
 use crate::shared::modal::ModalWidgetExt;
-use crate::shared::portal::PortalAction;
 use crate::shared::utils::hugging_face_model_url;
 use chrono::Utc;
 use makepad_widgets::*;
@@ -257,7 +256,7 @@ live_design! {
                 height: Fit,
                 padding: {bottom: 20}
 
-                modal_model_name = <Label> {
+                view_all_model_name = <Label> {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 16},
                         color: #000
@@ -278,7 +277,7 @@ live_design! {
                     }
                     text: "Model Description"
                 }
-                modal_model_summary = <Label> {
+                view_all_model_summary = <Label> {
                     width: Fill,
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 9},
@@ -411,10 +410,23 @@ impl Widget for ModelCard {
 impl WidgetMatchEvent for ModelCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.link_label(id!(view_all_button.link)).clicked(actions) {
-            self.modal(id!(modal)).open_modal(cx);
+            self.modal(id!(modal)).open(cx);
             self.redraw(cx);
         }
+
+        for action in actions {
+            if let ModelCardViewAllModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+                self.modal(id!(modal)).close(cx);
+                self.redraw(cx);
+            }
+        }
     }
+}
+
+#[derive(Clone, Debug, DefaultNone)]
+enum ModelCardViewAllModalAction {
+    None,
+    CloseButtonClicked,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -433,10 +445,10 @@ impl Widget for ModelCardViewAllModal {
         let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
 
         let name = &model.name;
-        self.label(id!(modal_model_name)).set_text(name);
+        self.label(id!(view_all_model_name)).set_text(name);
 
         let summary = &model.summary;
-        self.label(id!(modal_model_summary)).set_text(summary);
+        self.label(id!(view_all_model_summary)).set_text(summary);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
@@ -448,7 +460,7 @@ impl WidgetMatchEvent for ModelCardViewAllModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, ModelCardViewAllModalAction::CloseButtonClicked);
         }
     }
 }

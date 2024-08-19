@@ -1,16 +1,12 @@
-use crate::chat::chat_history_card_options::{
-    ChatHistoryCardOptionsAction, ChatHistoryCardOptionsWidgetRefExt,
-};
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
-use crate::shared::actions::{ChatAction, DownloadAction, TooltipAction};
+use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
+    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
 };
-use crate::shared::portal::{PortalAction, PortalViewWidgetRefExt, PortalWidgetRefExt};
-use crate::shared::tooltip::TooltipWidgetRefExt;
+use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
 
 live_design! {
@@ -19,18 +15,15 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
-    import crate::shared::portal::*;
-    import crate::shared::modal::*;
+    import crate::shared::popup_notification::*;
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
-    import crate::shared::tooltip::Tooltip;
     import crate::shared::desktop_buttons::MoxinDesktopButton;
 
     import crate::landing::landing_screen::LandingScreen;
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
-    import crate::chat::chat_history_card_options::ChatHistoryCardOptions ;
 
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
@@ -113,18 +106,9 @@ live_design! {
                     }
                 }
 
-                portal_root = <Portal> {
-                    popup_download_success_portal_view = <PortalView> {
-                        align: {x: 1, y: 0}
-                        popup_download_success = <DownloadNotificationPopup> {}
-                    }
-
-                    tooltip_portal_view = <PortalView> {
-                        tooltip = <Tooltip> {}
-                    }
-
-                    chat_history_card_options_portal_view = <PortalView> {
-                        chat_history_card_options = <ChatHistoryCardOptions> {}
+                popup_notification = <PopupNotification> {
+                    content: {
+                        popup_download_notification = <DownloadNotificationPopup> {}
                     }
                 }
             }
@@ -228,12 +212,6 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            // TODO: Hack for error that when you first open the portal, doesnt draw until an event
-            // this forces the entire ui to rerender, still weird that only happens the first time.
-            if let PortalAction::ShowPortalView(_) = action.as_widget_action().cast() {
-                self.ui.redraw(cx);
-            }
-
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
@@ -254,37 +232,12 @@ impl MatchEvent for App {
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
 
-            match action.as_widget_action().cast() {
-                TooltipAction::Show(text, pos) => {
-                    let mut tooltip = self.ui.tooltip(id!(tooltip));
-                    tooltip.set_text(&text);
-
-                    let tooltip_portal_view = self.ui.portal_view(id!(tooltip_portal_view));
-                    tooltip_portal_view.apply_over_and_redraw(
-                        cx,
-                        live! {
-                            padding: { left: (pos.x), top: (pos.y) }
-                        },
-                    );
-
-                    let mut portal = self.ui.portal(id!(portal_root));
-                    let _ = portal.show_portal_view_by_id(cx, live_id!(tooltip_portal_view));
-                }
-                TooltipAction::Hide => {
-                    let mut portal = self.ui.portal(id!(portal_root));
-                    let _ = portal.close(cx);
-                }
-                _ => {}
-            }
-
-            if let ChatHistoryCardOptionsAction::Selected(chat_id, cords) =
-                action.as_widget_action().cast()
-            {
-                let mut chat_history_card_options = self
-                    .ui
-                    .chat_history_card_options(id!(chat_history_card_options));
-                // TODO: Would be cool to listen for this action inside of the widget itself.
-                let _ = chat_history_card_options.selected(cx, chat_id, cords);
+            if matches!(
+                action.as_widget_action().cast(),
+                DownloadNotificationPopupAction::ActionLinkClicked
+                    | DownloadNotificationPopupAction::CloseButtonClicked
+            ) {
+                self.ui.popup_notification(id!(popup_notification)).open(cx);
             }
         }
     }
@@ -295,7 +248,7 @@ impl App {
         if let Some(notification) = self.store.downloads.next_download_notification() {
             let mut popup = self
                 .ui
-                .download_notification_popup(id!(popup_download_success));
+                .download_notification_popup(id!(popup_download_notification));
 
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
@@ -306,8 +259,7 @@ impl App {
                 }
             }
 
-            let mut portal = self.ui.portal(id!(portal_root));
-            let _ = portal.show_portal_view_by_id(cx, live_id!(popup_download_success_portal_view));
+            self.ui.popup_notification(id!(popup_notification)).open(cx);
         }
     }
 }

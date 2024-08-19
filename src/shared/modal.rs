@@ -1,17 +1,12 @@
 use makepad_widgets::*;
 
-use super::portal::PortalAction;
-
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    import crate::shared::portal::*;
 
     Modal = {{Modal}} {
-        opened: false
-
         width: Fill
         height: Fill
         flow: Overlay
@@ -42,10 +37,14 @@ live_design! {
     }
 }
 
+#[derive(Clone, Debug, DefaultNone)]
+pub enum ModalAction {
+    None,
+    Dismissed,
+}
+
 #[derive(Live, Widget)]
 pub struct Modal {
-    #[live]
-    opened: bool,
     #[live]
     #[find]
     content: View,
@@ -62,6 +61,9 @@ pub struct Modal {
     layout: Layout,
     #[walk]
     walk: Walk,
+
+    #[rust]
+    opened: bool,
 }
 
 impl LiveHook for Modal {
@@ -82,14 +84,15 @@ impl Widget for Modal {
         self.content.handle_event(cx, event, scope);
         cx.sweep_lock(self.draw_bg.area());
 
-        self.widget_match_event(cx, event, scope);
-
         // Check if there was a click outside of the content (bg), then close if true.
         let content_rec = self.content.area().rect(cx);
-        if let Hit::FingerUp(fe) = event.hits_with_sweep_area(cx, self.draw_bg.area(), self.draw_bg.area()) {
+        if let Hit::FingerUp(fe) =
+            event.hits_with_sweep_area(cx, self.draw_bg.area(), self.draw_bg.area())
+        {
             if !content_rec.contains(fe.abs) {
                 let widget_uid = self.content.widget_uid();
-                cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+                cx.widget_action(widget_uid, &scope.path, ModalAction::Dismissed);
+                self.close(cx);
             }
         }
     }
@@ -116,27 +119,45 @@ impl Widget for Modal {
     }
 }
 
-impl WidgetMatchEvent for Modal {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        for action in actions {
-            match action.as_widget_action().cast::<PortalAction>() {
-                PortalAction::Close => {
-                    self.opened = false;
-                    self.draw_bg.redraw(cx);
-                    cx.sweep_unlock(self.draw_bg.area())
-                }
-                _ => {}
-            }
-        }
+impl Modal {
+    pub fn open(&mut self, cx: &mut Cx) {
+        self.opened = true;
+        self.draw_bg.redraw(cx);
+        cx.sweep_lock(self.draw_bg.area());
+    }
+
+    pub fn close(&mut self, cx: &mut Cx) {
+        self.opened = false;
+        self.draw_bg.redraw(cx);
+        cx.sweep_unlock(self.draw_bg.area())
+    }
+
+    pub fn dismissed(&self, actions: &Actions) -> bool {
+        matches!(
+            actions.find_widget_action(self.widget_uid()).cast(),
+            ModalAction::Dismissed
+        )
     }
 }
 
 impl ModalRef {
-    pub fn open_modal(&self, cx: &mut Cx) {
+    pub fn open(&self, cx: &mut Cx) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.opened = true;
-            inner.redraw(cx);
-            cx.sweep_lock(inner.draw_bg.area());
+            inner.open(cx);
+        }
+    }
+
+    pub fn close(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.close(cx);
+        }
+    }
+
+    pub fn dismissed(&self, actions: &Actions) -> bool {
+        if let Some(inner) = self.borrow() {
+            inner.dismissed(actions)
+        } else {
+            false
         }
     }
 }
