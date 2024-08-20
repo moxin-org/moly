@@ -331,12 +331,21 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
     let cuda = get_cuda_version();
     println!("  --> Found CUDA installation: {cuda:?}");
 
-    // If the current machine doesn't have CUDA and the CPU doesn't support AVX512,
-    // tell the install script to select the no-AVX WASI-nn plugin version.
-    #[cfg(target_arch = "x86_64")]
-    if cuda.is_none() && !is_x86_feature_detected!("avx512f") {
-        bash_cmd.arg("--noavx");
-    }
+    // The install_v2.sh script doesn't correctly detect CUDA on Linux,
+    // so we force it here based on our own detected version of CUDA.
+    // See: <https://github.com/moxin-org/moxin/issues/225>
+    match cuda {
+        Some(CudaVersion::V12) => { bash_cmd.arg("-c").arg("12"); }
+        Some(CudaVersion::V11) => { bash_cmd.arg("-c").arg("11"); }
+        None => {
+            // If the current machine doesn't have CUDA and the CPU doesn't support AVX512,
+            // tell the install script to select the no-AVX WASI-nn plugin version.
+            #[cfg(target_arch = "x86_64")]
+            if !is_x86_feature_detected!("avx512f") {
+                bash_cmd.arg("--noavx");
+            }
+        }
+    };
 
     let output = bash_cmd
         .spawn()?
@@ -498,6 +507,11 @@ fn get_cuda_version() -> Option<CudaVersion> {
         #[cfg(target_os = "linux")] {
             output = output.or_else(|_|
                 Command::new("/usr/local/cuda/bin/nvcc")
+                    .arg("--version")
+                    .output()
+            );
+            output = output.or_else(|_|
+                Command::new("/opt/cuda/bin/nvcc")
                     .arg("--version")
                     .output()
             );
