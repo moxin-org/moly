@@ -63,10 +63,10 @@ live_design! {
                 radius: 7.0
             }
 
-            show_all_button =  <ActionToggleButton> {}
-            only_recommended_button = <ActionToggleButton> {
+            show_all_button =  <ActionToggleButton> {
                 animator: {selected = {default: on}}
             }
+            only_recommended_button = <ActionToggleButton> {}
         }
     }
 
@@ -146,7 +146,7 @@ live_design! {
         <ModelFilesList> { show_featured: true}
         remaining_files_wrapper = <View> {
             width: Fill,
-            height: 0,
+            height: Fit,
             remaining_files = <ModelFilesList> { show_featured: false}
         }
 
@@ -247,9 +247,9 @@ impl WidgetMatchEvent for ModelFiles {
         for action in actions.iter() {
             match action.as_widget_action().cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
-                    self.hide_immediate(cx);
+                    self.expand_without_animation(cx);
                     self.actual_height = None;
-                    self.radio_button(id!(only_recommended_button)).select(cx, scope);
+                    self.radio_button(id!(show_all_button)).select(cx, scope);
                     self.redraw(cx);
                 }
                 _ => {}
@@ -259,9 +259,9 @@ impl WidgetMatchEvent for ModelFiles {
 }
 
 impl ModelFiles {
-    fn hide_immediate(&mut self, cx: &mut Cx) {
+    fn expand_without_animation(&mut self, cx: &mut Cx) {
         self.view(id!(remaining_files_wrapper))
-            .apply_over(cx, live! {height: 0});
+            .apply_over(cx, live! {height: Fit});
         self.show_all_animation_progress = 0.0;
         self.redraw(cx);
     }
