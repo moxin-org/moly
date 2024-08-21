@@ -47,6 +47,7 @@ enum TitleState {
 struct ChatData {
     id: ChatID,
     last_used_file_id: Option<FileID>,
+    system_prompt: Option<String>,
     messages: Vec<ChatMessage>,
     title: String,
     #[serde(default)]
@@ -139,7 +140,7 @@ impl Chat {
                     messages_update_receiver: rx,
                     chats_dir,
                     inferences_params: ChatInferenceParams::default(),
-                    system_prompt: None,
+                    system_prompt: data.system_prompt,
                     accessed_at: data.accessed_at,
                 };
                 Ok(chat)
@@ -152,6 +153,7 @@ impl Chat {
         let data = ChatData {
             id: self.id,
             last_used_file_id: self.last_used_file_id.clone(),
+            system_prompt: self.system_prompt.clone(),
             messages: self.messages.clone(),
             title: self.title.clone(),
             title_state: self.title_state,
