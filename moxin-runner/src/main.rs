@@ -69,6 +69,7 @@
 #![allow(unused)]
 
 use std::{
+    ffi::OsStr,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -144,9 +145,25 @@ const ENV_LD_LIBRARY_PATH: &str = "LD_LIBRARY_PATH";
 #[cfg(target_os = "macos")]
 const ENV_DYLD_FALLBACK_LIBRARY_PATH: &str = "DYLD_FALLBACK_LIBRARY_PATH";
 
+
 /// Returns the URL of the WASI-NN plugin that should be downloaded, and its inner directory name.
+///
+/// Note that this is only used on Windows, because the install_v2.sh script handles it on Linux.
+///
+/// The plugin selection follows this priority order of hardware features:
+/// 1. The CUDA build, if CUDA V12 is installed.
+/// 2. The default AVX512 build, if on x86_64 and AVX512F is supported.
+/// 3. Otherwise, the noavx build (which itself still requires SSE4.2 or SSE4a).
 #[cfg(windows)]
 fn wasmedge_wasi_nn_plugin_url() -> (&'static str, &'static str) {
+    // Currently, WasmEdge's b3499 release only provides a CUDA 12 build for Windows.
+    if matches!(get_cuda_version(), Some(CudaVersion::V12)) {
+        return (
+            "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip",
+            "WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64",
+        );
+    }
+
     #[cfg(target_arch = "x86_64")]
     if is_x86_feature_detected!("avx512f") {
         return (
@@ -200,13 +217,14 @@ fn main() -> std::io::Result<()> {
         std::env::var(ENV_WASMEDGE_PLUGIN_PATH).ok()
     );
 
-    run_moxin(None).unwrap();
+    run_moxin().unwrap();
     Ok(())
 }
 
 
 #[cfg(not(feature = "macos_bundle"))]
 fn main() -> std::io::Result<()> {
+
     assert_cpu_features();
 
     let (wasmedge_root_dir_in_use, main_dylib_path, wasi_nn_plugin_path) = 
@@ -232,9 +250,55 @@ fn main() -> std::io::Result<()> {
         wasi_nn_plugin_path.display(),
     );
 
+    // These CLI args allow `moxin-runner` to be used to bootstrap a cargo command,
+    // while automatically setting the env vars for you (saving the dev time & effort).
+    let mut install = false;
+    let mut cargo = false;
+    let mut cargo_args = Vec::new();
+    for arg in std::env::args().skip(1) {
+        if arg == "install" || arg == "--install" {
+            install = true;
+            break;
+        }
+        if arg == "cargo" {
+            cargo = true;
+            continue;
+        }
+        if cargo {
+            cargo_args.push(arg);
+        }
+    }
+
+    if install || cargo {
+        println!("Finished installing WasmEdge and WASI-nn plugin.\n");
+    }
+    if install {
+        println!("To build and run Moxin, set these environment variables (see the Moxin README for more):");
+        println!("    1. {}: \"{}\"", ENV_WASMEDGE_DIR, wasmedge_root_dir_in_use.display());
+        println!("    2. {}: \"{}\"", ENV_WASMEDGE_PLUGIN_PATH, wasi_nn_plugin_path.parent().unwrap().display());
+        #[cfg(target_os = "windows")]
+        println!("    3. Prepend this to $PATH: \"{}\"", main_dylib_path.parent().unwrap().display());
+        return Ok(());
+    }
+
     set_env_vars(&wasmedge_root_dir_in_use);
 
-    run_moxin(main_dylib_path.parent())
+    if cargo {
+        let mut cargo_cmd = Command::new("cargo");
+        cargo_cmd.args(cargo_args);
+        println!("Running command: {cargo_cmd:?}");
+        let success = cargo_cmd
+            .spawn()?
+            .wait()?
+            .success();
+        if success {
+            Ok(())
+        } else {
+            Err(std::io::Error::last_os_error())
+        }
+    } else {
+        run_moxin()
+    }
 }
 
 
@@ -312,12 +376,24 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
         // The default `/tmp/` dir used in `install_v2.sh` isn't always accessible to bundled apps.
         .arg(&format!("--tmpdir={}", temp_dir.display()));
 
-    // If the current CPU doesn't support AVX512, tell the install script to
-    // the WASI-nn plugin built without AVX support.
-    #[cfg(target_arch = "x86_64")]
-    if !is_x86_feature_detected!("avx512f") {
-        bash_cmd.arg("--noavx");
-    }
+    let cuda = get_cuda_version();
+    println!("  --> Found CUDA installation: {cuda:?}");
+
+    // The install_v2.sh script doesn't correctly detect CUDA on Linux,
+    // so we force it here based on our own detected version of CUDA.
+    // See: <https://github.com/moxin-org/moxin/issues/225>
+    match cuda {
+        Some(CudaVersion::V12) => { bash_cmd.arg("-c").arg("12"); }
+        Some(CudaVersion::V11) => { bash_cmd.arg("-c").arg("11"); }
+        None => {
+            // If the current machine doesn't have CUDA and the CPU doesn't support AVX512,
+            // tell the install script to select the no-AVX WASI-nn plugin version.
+            #[cfg(target_arch = "x86_64")]
+            if !is_x86_feature_detected!("avx512f") {
+                bash_cmd.arg("--noavx");
+            }
+        }
+    };
 
     let output = bash_cmd
         .spawn()?
@@ -402,69 +478,98 @@ fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std:
 }
 
 
-/// Sets the environment variables defined in the shell script `$WASMEDGE_DIR/env`.
-///
-/// This does the following:
-/// * Prepends `wasmedge_root_dir/bin` to `PATH`.
-/// * Prepends `wasmedge_root_dir/lib` to `DYLD_LIBRARY_PATH`, `DYLD_FALLBACK_LIBRARY_PATH`, and `LIBRARY_PATH`.
-/// * Prepends `wasmedge_root_dir/include` to `C_INCLUDE_PATH` and `CPLUS_INCLUDE_PATH`.
-///
-/// Note that we cannot simply run something like `Command::new("source")...`,
-/// because `source` is a shell builtin, and the environment changes would only be visible
-/// within that new process's shell instance -- not to this program.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+/// Sets the environment variables required for WasmEdge and its plugins to be found.
 fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
-    use std::ffi::OsStr;
-    /// Prepends the given `prefix` to the environment variable with the given `key`.
-    ///
-    /// If the environment variable `key` is not set, it is set to the `prefix` value alone.
-    fn prepend_env_var(env_key: impl AsRef<OsStr>, prefix: impl AsRef<OsStr>) {
-        let key = env_key.as_ref();
-        if let Some(existing) = std::env::var_os(key) {
-            let mut joined_path = std::env::join_paths([prefix.as_ref(), OsStr::new("")]).unwrap();
-            joined_path.push(&existing);
-            std::env::set_var(key, joined_path);
-        } else {
-            std::env::set_var(key, prefix.as_ref());
-        }
+    let wasmedge_root_dir = wasmedge_root_dir_path.as_ref();
+    std::env::set_var(ENV_WASMEDGE_DIR, wasmedge_root_dir);
+    prepend_env_var(ENV_PATH, wasmedge_root_dir.join("bin"));
+
+    #[cfg(target_os = "windows")] {
+        std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, wasmedge_root_dir);
     }
 
-    let wasmedge_root_dir = wasmedge_root_dir_path.as_ref();
-    prepend_env_var(ENV_PATH, wasmedge_root_dir.join("bin"));
-    prepend_env_var(ENV_C_INCLUDE_PATH, wasmedge_root_dir.join("include"));
-    prepend_env_var(ENV_CPLUS_INCLUDE_PATH, wasmedge_root_dir.join("include"));
-    prepend_env_var(ENV_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
-    prepend_env_var(ENV_LD_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
+    #[cfg(any(target_os = "linux", target_os = "macos"))] {
+        prepend_env_var(ENV_C_INCLUDE_PATH, wasmedge_root_dir.join("include"));
+        prepend_env_var(ENV_CPLUS_INCLUDE_PATH, wasmedge_root_dir.join("include"));
+        prepend_env_var(ENV_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
+        prepend_env_var(ENV_LD_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
+    }
 
-    // The DYLD_FALLBACK_LIBRARY_PATH is only used on macOS.
-    #[cfg(target_os = "macos")]
-    prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
+    #[cfg(target_os = "macos")] {
+        prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
+    }
 }
 
 
-/// Applies the environment variables needed for Moxin to find WasmEdge on Windows.
+/// Prepends the given `prefix` to the environment variable with the given `key`.
 ///
-/// Currently, this only does the following:
-/// * Sets [ENV_WASMEDGE_DIR] and [ENV_WASMEDGE_PLUGIN_PATH] to the given `wasmedge_root_dir_path`.
-#[cfg(windows)]
-fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
-    std::env::set_var(ENV_WASMEDGE_DIR, wasmedge_root_dir_path.as_ref());
-    std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, wasmedge_root_dir_path.as_ref());
+/// If the environment variable `key` is not set, it is set to the `prefix` value alone.
+fn prepend_env_var(env_key: impl AsRef<OsStr>, prefix: impl AsRef<OsStr>) {
+    let key = env_key.as_ref();
+    if let Some(existing) = std::env::var_os(key) {
+        let mut joined_path = std::env::join_paths([prefix.as_ref(), OsStr::new("")]).unwrap();
+        joined_path.push(&existing);
+        std::env::set_var(key, joined_path);
+    } else {
+        std::env::set_var(key, prefix.as_ref());
+    }
 }
+
+
+/// Versions of CUDA that WasmEdge supports.
+#[derive(Debug)]
+enum CudaVersion {
+    /// CUDA Version 12
+    V12,
+    /// CUDA Version 11
+    V11,
+}
+
+/// Attempts to discover what version of CUDA is locally installed, if any.
+///
+/// This function first runs `nvcc --version` on both Linux and Windows,
+/// and if that fails, it will try `/usr/local/cuda/bin/nvcc --version` on Linux only.
+fn get_cuda_version() -> Option<CudaVersion> {
+    #[cfg(target_os = "macos")] {
+        None
+    }
+
+    #[cfg(not(target_os = "macos"))] {
+        let mut output = Command::new("nvcc")
+            .arg("--version")
+            .output();
+
+        #[cfg(target_os = "linux")] {
+            output = output.or_else(|_|
+                Command::new("/usr/local/cuda/bin/nvcc")
+                    .arg("--version")
+                    .output()
+            );
+            output = output.or_else(|_|
+                Command::new("/opt/cuda/bin/nvcc")
+                    .arg("--version")
+                    .output()
+            );
+        }
+
+        let output = output.ok()?;
+        let output = String::from_utf8_lossy(&output.stdout);
+        if output.contains("V12") {
+            Some(CudaVersion::V12)
+        } else if output.contains("V11") {
+            Some(CudaVersion::V11)
+        } else {
+            None
+        }
+    }
+}
+
 
 /// Runs the `_moxin_app` binary, which must be located in the same directory as this moxin-runner binary.
-///
-/// An optional path to the directory containing the main WasmEdge dylib can be provided,
-/// which is currently only used to set the path on Windows.
-fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
+fn run_moxin() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
     let args = std::env::args().collect::<Vec<_>>();
-
-    if args.iter().any(|arg| arg == "--install") {
-        println!("Finished installing WasmEdge and WASI-nn plugin.");
-        return Ok(());
-    }
 
     println!("Running the main Moxin binary:
         working directory: {}
@@ -473,22 +578,6 @@ fn run_moxin(_main_wasmedge_dylib_dir: Option<&Path>) -> std::io::Result<()> {
         args,
     );
 
-    // On Windows, the MOXIN_APP_BINARY needs to be able to find the WASMEDGE_MAIN_DYLIB (wasmedge.dll),
-    // so we prepend it to the PATH.
-    #[cfg(windows)] {
-        match (std::env::var_os(ENV_PATH), _main_wasmedge_dylib_dir) {
-            (Some(path), Some(dylib_parent)) => {
-                println!("Prepending \"{}\" to Windows PATH", dylib_parent.display());
-                let new_path = std::env::join_paths(
-                    Some(dylib_parent.to_path_buf())
-                        .into_iter()
-                        .chain(std::env::split_paths(&path))
-                ).expect("BUG: failed to join paths for the main Moxin binary.");
-                std::env::set_var(ENV_PATH, &new_path);
-            }
-            _ => eprintln!("BUG: failed to set PATH for the main Moxin binary."),
-        }
-    }
 
     let main_moxin_binary_path = current_exe_dir.join(MOXIN_APP_BINARY);
     let _output = Command::new(&main_moxin_binary_path)

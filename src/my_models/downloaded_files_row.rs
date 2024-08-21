@@ -1,8 +1,9 @@
+use crate::shared::actions::ChatAction;
+use crate::shared::modal::ModalWidgetExt;
+use crate::shared::utils::format_model_size;
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
-use crate::shared::utils::format_model_size;
-use crate::shared::modal::ModalWidgetExt;
-use crate::shared::actions::ChatAction;
+use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -15,7 +16,6 @@ live_design! {
     import crate::my_models::delete_model_modal::DeleteModelModal;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
-    ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
     MODEL_CTA_COLOR = #127487
@@ -111,23 +111,6 @@ live_design! {
             }
         }
 
-        resume_chat_button = <DownloadedFilesRowButton> {
-            width: 140
-            visible: false
-            draw_bg: {
-                color: (MODEL_CTA_COLOR)
-            }
-            text: "Resume Chat",
-            draw_text: {
-                color: #fff
-                text_style: <BOLD_FONT>{font_size: 9}
-            }
-            draw_icon: {
-                svg_file: (ICON_PLAY)
-                color: #fff
-            }
-        }
-
         <View> { width: Fill, height: Fit }
 
         info_button = <DownloadedFilesRowButton> {
@@ -200,7 +183,6 @@ live_design! {
 
 pub struct DownloadedFilesRowProps {
     pub downloaded_file: DownloadedFile,
-    pub show_resume: bool,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -263,11 +245,6 @@ impl Widget for DownloadedFilesRow {
         self.label(id!(h_wrapper.date_added_tag.date_added))
             .set_text(&formatted_date);
 
-        self.button(id!(start_chat_button))
-            .set_visible(!props.show_resume);
-        self.button(id!(resume_chat_button))
-            .set_visible(props.show_resume);
-
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -282,18 +259,27 @@ impl WidgetMatchEvent for DownloadedFilesRow {
             }
         }
 
-        if self.button(id!(resume_chat_button)).clicked(actions) {
-            if let Some(_) = &self.file_id {
-                cx.widget_action(widget_uid, &scope.path, ChatAction::Resume);
-            }
-        }
-
         if self.button(id!(row_actions.info_button)).clicked(actions) {
-            self.modal(id!(info_modal)).open_modal(cx);
+            self.modal(id!(info_modal)).open(cx);
         }
 
         if self.button(id!(row_actions.delete_button)).clicked(actions) {
-            self.modal(id!(delete_modal)).open_modal(cx);
+            self.modal(id!(delete_modal)).open(cx);
+        }
+
+        for action in actions {
+            if matches!(
+                action.as_widget_action().cast(),
+                DeleteModelModalAction::ModelDeleted
+                    | DeleteModelModalAction::Cancelled
+                    | DeleteModelModalAction::CloseButtonClicked
+            ) {
+                self.modal(id!(delete_modal)).close(cx);
+            }
+
+            if let ModelInfoModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+                self.modal(id!(info_modal)).close(cx);
+            }
         }
     }
 }

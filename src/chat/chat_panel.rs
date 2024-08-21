@@ -512,22 +512,19 @@ impl WidgetMatchEvent for ChatPanel {
 
             if let ModelSelectorAction::Selected(downloaded_file) = action.cast() {
                 store.load_model(&downloaded_file.file);
+
+                if let Some(chat) = store.chats.get_current_chat() {
+                    chat.borrow_mut().last_used_file_id = Some(downloaded_file.file.id.clone());
+                    chat.borrow().save();
+                }
                 self.redraw(cx)
             }
 
             match action.cast() {
                 ChatAction::Start(file_id) => {
-                    let downloaded_file = store
-                        .downloads
-                        .downloaded_files
-                        .iter()
-                        .find(|file| file.file.id == file_id)
-                        .expect("Attempted to start chat with a no longer existing file")
-                        .clone();
-
-                    store
-                        .chats
-                        .create_empty_chat_and_load_file(&downloaded_file.file);
+                    if let Some(file) = store.downloads.get_file(&file_id) {
+                        store.chats.create_empty_chat_and_load_file(file);
+                    }
                 }
                 _ => {}
             }
@@ -538,7 +535,11 @@ impl WidgetMatchEvent for ChatPanel {
                     self.redraw(cx);
                 }
                 ChatLineAction::Edit(id, updated, regenerate) => {
-                    store.chats.edit_chat_message(id, updated, regenerate);
+                    if regenerate {
+                        store.edit_chat_message_regenerating(id, updated)
+                    } else {
+                        store.edit_chat_message(id, updated);
+                    }
                     self.redraw(cx);
                 }
                 _ => {}
@@ -602,7 +603,7 @@ impl ChatPanel {
         } else if store.chats.loaded_model.is_none() {
             State::NoModelSelected
         } else {
-            let is_loading = store.chats.get_currently_loading_model().is_some();
+            let is_loading = store.chats.model_loader.is_loading();
 
             store.chats.get_current_chat().map_or(
                 State::ModelSelectedWithEmptyChat { is_loading },
@@ -762,7 +763,7 @@ impl ChatPanel {
             } | State::ModelSelectedWithEmptyChat { is_loading: false }
         ) {
             let store = scope.data.get_mut::<Store>().unwrap();
-            store.chats.send_chat_message(prompt.clone());
+            store.send_chat_message(prompt.clone());
 
             let prompt_input = self.text_input(id!(main_prompt_input.prompt));
             prompt_input.set_text_and_redraw(cx, "");

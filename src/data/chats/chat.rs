@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
 
+use super::model_loader::ModelLoader;
+
 pub type ChatID = u128;
 
 #[derive(Clone, Debug)]
@@ -45,6 +47,7 @@ enum TitleState {
 struct ChatData {
     id: ChatID,
     last_used_file_id: Option<FileID>,
+    system_prompt: Option<String>,
     messages: Vec<ChatMessage>,
     title: String,
     #[serde(default)]
@@ -137,7 +140,7 @@ impl Chat {
                     messages_update_receiver: rx,
                     chats_dir,
                     inferences_params: ChatInferenceParams::default(),
-                    system_prompt: None,
+                    system_prompt: data.system_prompt,
                     accessed_at: data.accessed_at,
                 };
                 Ok(chat)
@@ -150,6 +153,7 @@ impl Chat {
         let data = ChatData {
             id: self.id,
             last_used_file_id: self.last_used_file_id.clone(),
+            system_prompt: self.system_prompt.clone(),
             messages: self.messages.clone(),
             title: self.title.clone(),
             title_state: self.title_state,
@@ -203,7 +207,13 @@ impl Chat {
             }
         }
     }
-    pub fn send_message_to_model(&mut self, prompt: String, loaded_file: &File, backend: &Backend) {
+    pub fn send_message_to_model(
+        &mut self,
+        prompt: String,
+        wanted_file: &File,
+        mut model_loader: ModelLoader,
+        backend: &Backend,
+    ) {
         let (tx, rx) = channel();
         let mut messages: Vec<_> = self
             .messages
@@ -228,7 +238,7 @@ impl Chat {
                     content: system_prompt.clone(),
                     role: Role::System,
                     name: None,
-                }
+                },
             );
         } else {
             messages.insert(
@@ -237,7 +247,7 @@ impl Chat {
                     content: "You are a helpful, respectful, and honest assistant.".to_string(),
                     role: Role::System,
                     name: None,
-                }
+                },
             );
         }
 
@@ -245,7 +255,7 @@ impl Chat {
         let cmd = Command::Chat(
             ChatRequestData {
                 messages,
-                model: loaded_file.name.clone(),
+                model: wanted_file.name.clone(),
                 frequency_penalty: Some(ip.frequency_penalty),
                 logprobs: None,
                 top_logprobs: None,
@@ -277,51 +287,60 @@ impl Chat {
             content: prompt.clone(),
         });
 
-        self.last_used_file_id = Some(loaded_file.id.clone());
-
         self.messages.push(ChatMessage {
             id: next_id + 1,
             role: Role::Assistant,
-            username: Some(loaded_file.name.clone()),
+            username: Some(wanted_file.name.clone()),
             content: "".to_string(),
         });
 
-        let store_chat_tx = self.messages_update_sender.clone();
-        backend.command_sender.send(cmd).unwrap();
         self.is_streaming = true;
-        thread::spawn(move || loop {
-            if let Ok(response) = rx.recv() {
-                match response {
-                    Ok(ChatResponse::ChatResponseChunk(data)) => {
-                        let mut is_done = false;
 
-                        let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
-                            data.choices[0].delta.content.clone(),
-                        ));
+        let store_chat_tx = self.messages_update_sender.clone();
+        let wanted_file = wanted_file.clone();
+        let command_sender = backend.command_sender.clone();
+        thread::spawn(move || {
+            if let Err(err) = model_loader.load(wanted_file.id, command_sender.clone()) {
+                eprintln!("Error loading model: {}", err);
+                return;
+            }
 
-                        if let Some(_reason) = &data.choices[0].finish_reason {
-                            is_done = true;
-                            let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
+            command_sender.send(cmd).unwrap();
+
+            loop {
+                if let Ok(response) = rx.recv() {
+                    match response {
+                        Ok(ChatResponse::ChatResponseChunk(data)) => {
+                            let mut is_done = false;
+
+                            let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
+                                data.choices[0].delta.content.clone(),
+                            ));
+
+                            if let Some(_reason) = &data.choices[0].finish_reason {
+                                is_done = true;
+                                let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
+                            }
+
+                            SignalToUI::set_ui_signal();
+                            if is_done {
+                                break;
+                            }
                         }
-
-                        SignalToUI::set_ui_signal();
-                        if is_done {
+                        Ok(ChatResponse::ChatFinalResponseData(data)) => {
+                            let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
+                                data.choices[0].message.content.clone(),
+                            ));
+                            let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
+                            SignalToUI::set_ui_signal();
                             break;
                         }
+                        Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
                     }
-                    Ok(ChatResponse::ChatFinalResponseData(data)) => {
-                        let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
-                            data.choices[0].message.content.clone(),
-                        ));
-                        let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
-                        SignalToUI::set_ui_signal();
-                        break;
-                    }
-                    Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
-                }
-            } else {
-                break;
-            };
+                } else {
+                    break;
+                };
+            }
         });
 
         self.update_title_based_on_first_message();

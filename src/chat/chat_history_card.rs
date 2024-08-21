@@ -1,12 +1,16 @@
 use crate::{
     data::{chats::chat::ChatID, store::Store},
-    shared::portal::PortalAction,
+    shared::modal::ModalWidgetExt,
 };
 use chrono::{DateTime, Local, TimeZone};
 
 use makepad_widgets::*;
 
-use super::chat_history_card_options::ChatHistoryCardOptionsAction;
+use super::delete_chat_modal::DeleteChatModalWidgetExt;
+use super::{
+    chat_history_card_options::ChatHistoryCardOptionsWidgetExt,
+    delete_chat_modal::DeleteChatModalAction,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -14,7 +18,10 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
+    import crate::shared::modal::*;
     import crate::chat::shared::ChatAgentAvatar;
+    import crate::chat::chat_history_card_options::ChatHistoryCardOptions;
+    import crate::chat::delete_chat_modal::DeleteChatModal;
 
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -67,6 +74,10 @@ live_design! {
     }
 
     ChatHistoryCard = {{ChatHistoryCard}} {
+        flow: Overlay,
+        width: Fit,
+        height: Fit,
+
         content = <RoundedView> {
             flow: Down
             width: 248
@@ -190,8 +201,22 @@ live_design! {
                     text: "5:29 PM, 5/12/24"
                 }
             }
+        }
 
+        chat_history_card_options_modal = <Modal> {
+            align: {x: 0.0, y: 0.0}
+            bg_view: {
+                visible: false
+            }
+            content: {
+                chat_history_card_options = <ChatHistoryCardOptions> {}
+            }
+        }
 
+        delete_chat_modal = <Modal> {
+            content: {
+                delete_chat_modal_inner = <DeleteChatModal> {}
+            }
         }
     }
 }
@@ -289,20 +314,23 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
         let chat_options_wrapper_rect = self.view(id!(chat_options_wrapper)).area().rect(cx);
         if self.button(id!(chat_options)).clicked(actions) {
-            let cords = chat_options_wrapper_rect.pos;
-            let cords = dvec2(cords.x, cords.y + chat_options_wrapper_rect.size.y);
-
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardOptionsAction::Selected(self.chat_id, cords),
-            );
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                PortalAction::ShowPortalView(live_id!(chat_history_card_options_portal_view)),
+            let wrapper_coords = chat_options_wrapper_rect.pos;
+            let coords = dvec2(
+                wrapper_coords.x,
+                wrapper_coords.y + chat_options_wrapper_rect.size.y,
             );
 
+            self.chat_history_card_options(id!(chat_history_card_options))
+                .selected(cx, self.chat_id);
+
+            let modal = self.modal(id!(chat_history_card_options_modal));
+            modal.apply_over(
+                cx,
+                live! {
+                    content: { margin: { left: (coords.x), top: (coords.y) } }
+                },
+            );
+            modal.open(cx);
             return;
         }
 
@@ -314,8 +342,19 @@ impl WidgetMatchEvent for ChatHistoryCard {
                     ChatHistoryCardAction::ChatSelected(self.chat_id),
                 );
                 let store = scope.data.get_mut::<Store>().unwrap();
-                store.select_chat(self.chat_id);
+                store.chats.set_current_chat(self.chat_id);
                 self.redraw(cx);
+            }
+        }
+
+        for action in actions {
+            if matches!(
+                action.as_widget_action().cast(),
+                DeleteChatModalAction::Cancelled
+                    | DeleteChatModalAction::CloseButtonClicked
+                    | DeleteChatModalAction::ChatDeleted
+            ) {
+                self.modal(id!(delete_chat_modal)).close(cx);
             }
         }
     }
@@ -362,17 +401,36 @@ impl ChatHistoryCard {
     ) {
         for action in actions {
             match action.as_widget_action().cast::<ChatHistoryCardAction>() {
+                ChatHistoryCardAction::MenuClosed(chat_id) => {
+                    if chat_id == self.chat_id {
+                        self.button(id!(chat_options)).reset_hover(cx);
+                        self.modal(id!(chat_history_card_options_modal)).close(cx);
+                    }
+                }
                 ChatHistoryCardAction::ActivateTitleEdition(chat_id) => {
                     if chat_id == self.chat_id {
                         self.transition_title_state(cx);
                     }
                 }
-                ChatHistoryCardAction::MenuClosed(chat_id) => {
+                ChatHistoryCardAction::DeleteChatOptionSelected(chat_id) => {
                     if chat_id == self.chat_id {
-                        self.button(id!(chat_options)).reset_hover(cx);
+                        let mut delete_modal_inner =
+                            self.delete_chat_modal(id!(delete_chat_modal_inner));
+                        delete_modal_inner.set_chat_id(self.chat_id);
+
+                        self.modal(id!(delete_chat_modal)).open(cx);
                     }
                 }
                 _ => {}
+            }
+
+            // If the modal is dissmised (such as, clicking outside) we need to reset the hover state
+            // of the open chat options button.
+            if self
+                .modal(id!(chat_history_card_options_modal))
+                .dismissed(actions)
+            {
+                self.button(id!(chat_options)).reset_hover(cx);
             }
         }
     }
@@ -420,4 +478,5 @@ pub enum ChatHistoryCardAction {
     ChatSelected(ChatID),
     ActivateTitleEdition(ChatID),
     MenuClosed(ChatID),
+    DeleteChatOptionSelected(ChatID),
 }
