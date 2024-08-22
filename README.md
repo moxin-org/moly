@@ -1,6 +1,6 @@
 # Moxin: a Rust AI LLM client built atop [Robius](https://github.com/project-robius)
 
-Moxin is an AI LLM client written in Rust, and demonstrates the power of the [Makepad UI toolkit](https://github.com/makepad/makepad and [Project Robius](https://github.com/project-robius), a framework for multi-platform application development in Rust.
+Moxin is an AI LLM client written in Rust, and demonstrates the power of the [Makepad UI toolkit](https://github.com/makepad/makepad) and [Project Robius](https://github.com/project-robius), a framework for multi-platform application development in Rust.
 
 > ⚠️ Moxin is in beta. Please [file an issue](https://github.com/moxin-org/moxin/issues/new) if you encounter bugs or unexpected results.
 
@@ -13,9 +13,9 @@ The following table shows which host systems can currently be used to build Moxi
 
 ## Building and Running
 
-First, [install Rust](https://www.rust-lang.org/tools/install).
+1. [Install Rust](https://www.rust-lang.org/tools/install).
 
-Obtain the source code for this repository:
+2. Obtain the source code for this repository:
 ```sh
 git clone https://github.com/moxin-org/moxin.git
 ```
