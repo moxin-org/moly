@@ -1,4 +1,6 @@
-use super::chat_history_card::ChatHistoryCardWidgetRefExt;
+use super::{
+    agent_button::AgentButtonWidgetRefExt, chat_history_card::ChatHistoryCardWidgetRefExt,
+};
 use crate::data::store::Store;
 use makepad_widgets::*;
 use moxin_mae::MaeBackend;
@@ -109,7 +111,7 @@ impl Widget for ChatHistory {
                     if item_id < agents_count {
                         let agent = &agents[item_id];
                         let item = list.item(cx, item_id, live_id!(Agent)).unwrap();
-                        item.button(id!(button)).set_text(&agent.name());
+                        item.as_agent_button().set_agent(*agent);
                         item.draw_all(cx, scope);
                         continue;
                     }
