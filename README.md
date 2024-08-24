@@ -1,8 +1,8 @@
 # Moxin: a Rust AI LLM client built atop [Robius](https://github.com/project-robius)
 
-Moxin is an AI LLM client written in Rust to demonstrate the functionality of the Robius, a framework for multi-platform application development in Rust.
+Moxin is an AI LLM client written in Rust, and demonstrates the power of the [Makepad UI toolkit](https://github.com/makepad/makepad) and [Project Robius](https://github.com/project-robius), a framework for multi-platform application development in Rust.
 
-> ⚠️ Moxin is just getting started and is not yet fully functional.
+> ⚠️ Moxin is in beta. Please [file an issue](https://github.com/moxin-org/moxin/issues/new) if you encounter bugs or unexpected results.
 
 The following table shows which host systems can currently be used to build Moxin for which target platforms.
 | Host OS | Target Platform | Builds? | Runs? | Packaging Support                            |
@@ -13,15 +13,26 @@ The following table shows which host systems can currently be used to build Moxi
 
 ## Building and Running
 
-First, [install Rust](https://www.rust-lang.org/tools/install).
+1. [Install Rust](https://www.rust-lang.org/tools/install).
 
-Obtain the source code from this repository:
+2. Obtain the source code for this repository:
 ```sh
 git clone https://github.com/moxin-org/moxin.git
 ```
 
+#### Tip: use `moxin-runner` for easy setup
+
+> [!TIP]
+> On all platforms, you can use our helper program to auto-setup WasmEdge for you and run any `cargo` command:
+> ```sh
+> cargo run -p moxin-runner -- --install    ## finds or installs WasmEdge, then stops.
+> cargo run -p moxin-runner -- cargo build  ## builds Moxin
+> cargo run -p moxin-runner -- cargo run    ## builds and runs Moxin
+> cargo run -p moxin-runner -- cargo [your-command-here]
+> ```
+
 ### macOS
-Install the required WasmEdge WASM runtime:
+Install the required WasmEdge WASM runtime (or use [`moxin-runner`](#tip-use-moxin-runner-for-easy-setup)):
 ```sh
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
 
@@ -35,7 +46,7 @@ cargo run --release
 ```
 
 ### Linux
-Install the required WasmEdge WASM runtime:
+Install the required WasmEdge WASM runtime (or use [`moxin-runner`](#tip-use-moxin-runner-for-easy-setup)):
 ```sh
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
 
@@ -44,10 +55,10 @@ source $HOME/.wasmedge/env
 
 > [!IMPORTANT]
 > If your CPU does not support AVX512, then you should append the `--noavx` option onto the above command.
+> If you use [`moxin-runner`](#tip-use-moxin-runner-for-easy-setup), it will handle this for you.
 
 To build Moxin on Linux, you must install the following dependencies:
 `openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
-
 On a Debian-like Linux distro (e.g., Ubuntu), run the following:
 ```sh
 sudo apt-get update
@@ -60,7 +71,7 @@ cd moxin
 cargo run --release
 ```
 
-## Windows (Windows 10 or higher)
+## Windows (Windows 10, Windows 11 or higher)
 1.  Download and install the LLVM v17.0.6 release for Windows: [Here is a direct link to LLVM-17.0.6-win64.exe](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe), 333MB in size.
 
 > [!IMPORTANT]
@@ -69,68 +80,16 @@ cargo run --release
 2. Restart your PC, or log out and log back in, which allows the LLVM path to be properly
     * Alternatively you can add the LLVM path `C:\Program Files\LLVM\bin` to your system PATH.
 
+3. Use `moxin-runner` to auto-setup WasmEdge and then build & run Moxin:
+```sh
+cargo run -p moxin-runner -- cargo run --release  ## `--release` is optional
+```
 
-> [!TIP]
-> To automatically handle Steps 3 and 4, simply run:
-> ```sh
-> cargo run -p moxin-runner -- --install
-> ```
-
-
-3.  Download the [WasmEdge-0.14.0-windows.zip](https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip) file from [the WasmEdge v0.14.0 release page](https://github.com/WasmEdge/WasmEdge/releases/tag/0.14.0),
-    and then extract it into a directory of your choice.
-    We recommend using your home directory (e.g., `C:\Users\<USERNAME>\`), represented by `$home` in powershell and `%homedrive%%homepath%` in batch-cmd.
-
-    Afterwards, you should see a directory called `WasmEdge-0.14.0-Windows` there.
-        
-    To do this quickly in powershell:
-    ```powershell
-    $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
-    Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip" -OutFile "WasmEdge-0.14.0-windows.zip"
-    Expand-Archive -Force -LiteralPath "WasmEdge-0.14.0-windows.zip" -DestinationPath $home
-    $ProgressPreference = 'Continue' ## restore default progress bars
-    ```
-
-4. Download [the appropriate WasmEdge WASI-NN plugin](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499) (see below for details), extract/unzip it, and copy the `lib\wasmedge` directory from the .zip archive into the `lib\` directory of the above WasmEdge installation directory, e.g., `C:\Users\<USERNAME>\WasmEdge-0.14.0-Windows\lib`.
-
-> [!IMPORTANT]
-> The only file that matters is the plugin file, which must exist at the path `WasmEdge-0.14.0-Windows\lib\wasmedge\wasmedgePluginWasiNN.dll`
-
-* If your computer has a CUDA v12-capable GPU, select [WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip).
-  * Note that **CUDA version 12** is required.
-* If your computer doesn't have CUDA 12, then select either:
-  * [WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip) if your CPU supports AVX-512, or
-  * [WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64.zip](https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/tag/b3499#:~:text=WasmEdge%2Dplugin%2Dwasi_nn%2Dggml%2Dnoavx%2D0.14.0%2Dwindows_x86_64.zip) if your CPU does *not* support AVX-512.
-
-    
-5. Set the `WASMEDGE_DIR` and `WASMEDGE_PLUGIN_PATH` environment variables to point to the `WasmEdge-0.14.0-Windows` directory that you extracted above, and then build Moxin.
-
-> [!IMPORTANT]
-> You may also need to add the `WasmEdge-0.14.0-Windows\bin` directory to your `PATH` environment variable (on some versions of Windows).
-
-    In powershell, you can do this like so:
-    ```powershell
-    $env:WASMEDGE_DIR="$home\WasmEdge-0.14.0-Windows\"
-    $env:WASMEDGE_PLUGIN_PATH="$home\WasmEdge-0.14.0-Windows\"
-    cargo run --release
-    ```
-
-    In Windows `cmd`, you can do this like so:
-    ```batch
-    set WASMEDGE_DIR=%homedrive%%homepath%\WasmEdge-0.14.0-Windows
-    set WASMEDGE_PLUGIN_PATH=%homedrive%%homepath%\WasmEdge-0.14.0-Windows
-    cargo run --release
-    ```
-
-    In a Unix-like shell on Windows (e.g., GitBash, cygwin, msys2, WSL/WSL2):
-    ```sh
-    WASMEDGE_DIR=$HOME/WasmEdge-0.14.0-Windows \
-    WASMEDGE_PLUGIN_PATH=$HOME/WasmEdge-0.14.0-Windows \
-    cargo run --release
-    ```
-
+---------------------------
 
 ## Packaging Moxin for Distribution
+
+> Note: we already have [pre-built releases of Moxin](https://github.com/moxin-org/moxin/releases) available for download.
 
 Install `cargo-packager`:
 ```sh
@@ -173,11 +132,11 @@ chmod +x moxin_0.1.0_x86_64.AppImage
 ### Packaging for Windows
 This can only be run on an actual Windows machine, due to platform restrictions.
 
-First, [follow the above instructions for building on Windows](#windows-windows-10-or-higher).
+First, [follow the above instructions for building on Windows](#windows-windows-10-windows-11-or-higher).
 
 Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate a `setup.exe` file using NSIS:
 ```sh
-WASMEDGE_DIR=path/to/WasmEdge-0.14.0-Windows cargo packager --release --formats nsis --verbose   ## --verbose is optional
+cargo run -p moxin-runner -- cargo packager --release --formats nsis --verbose   ## --verbose is optional
 ```
 
 After the command completes, you should see a Windows installer called `moxin_0.1.0_x64-setup` in the `dist/` directory.
