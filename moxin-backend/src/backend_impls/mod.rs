@@ -408,8 +408,17 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
             )
         });
 
-        let model_indexs = store::model_cards::sync_model_cards_repo(&app_data_dir)
-            .expect("sync model_cards repo error");
+        let model_indexs = store::model_cards::sync_model_cards_repo(&app_data_dir);
+        let model_indexs= match model_indexs{
+            Ok(model_indexs) => {
+                log::info!("sync model cards repo success");
+                model_indexs
+            }
+            Err(e) => {
+                log::error!("sync model cards repo error: {e}");
+                ModelCardManager::empty(app_data_dir.clone())
+            }
+        };
 
         let sql_conn = rusqlite::Connection::open(app_data_dir.join("data.sqlite")).unwrap();
 

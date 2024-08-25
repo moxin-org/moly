@@ -218,8 +218,7 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
 
     if let Err(e) = r {
         log::error!("Failed to pull: {:?}", e);
-        let _ = std::fs::remove_dir_all(&repo_dirs);
-        let _ = open_or_clone(REPO_URL, &repo_dirs)?;
+        log::error!("please remove the repo({:?}) and try again",&repo_dirs);
     }
 
     let index_list = std::fs::read_to_string(repo_dirs.join("index.json"))?;
@@ -421,6 +420,14 @@ pub struct ModelCardManager {
 }
 
 impl ModelCardManager {
+    pub fn empty(app_data_dir:PathBuf) -> Self {
+        Self {
+            app_data_dir,
+            indexs: HashMap::new(),
+            caches: HashMap::new(),
+        }
+    }
+
     pub fn load_model_card(&mut self, index: &ModelIndex) -> anyhow::Result<ModelCard> {
         let r = self
             .caches
