@@ -221,8 +221,16 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
         log::error!("please remove the repo({:?}) and try again",&repo_dirs);
     }
 
-    let index_list = std::fs::read_to_string(repo_dirs.join("index.json"))?;
-    let index_list: Vec<ModelIndex> = serde_json::from_str(&index_list)?;
+    static INDEX_URL: &'static str = "https://github.com/moxin-org/model-cards/releases/download/index_release/index.json";
+
+    let index_list = if let Ok(remote_index)= reqwest::blocking::get(INDEX_URL).and_then(|r|r.json::<Vec<ModelIndex>>()){
+        remote_index
+    }else{
+        let index_list = std::fs::read_to_string(repo_dirs.join("index.json"))?;
+        let index_list: Vec<ModelIndex> = serde_json::from_str(&index_list)?;
+        index_list
+    };
+
     let mut indexs = HashMap::with_capacity(index_list.len());
     for index in index_list {
         indexs.insert(index.id.clone(), index);
@@ -247,6 +255,10 @@ pub struct ModelIndex {
     pub summary: String,
     #[serde(default)]
     pub featured: bool,
+    #[serde(default)]
+    pub like_count: u32,
+    #[serde(default)]
+    pub download_count: u32,
 }
 
 impl ModelIndex {
@@ -267,7 +279,10 @@ impl ModelIndex {
             .join(org_name)
             .join(format!("{}.json", sub_name));
         let model_card = std::fs::read_to_string(model_card_path)?;
-        let model_card: ModelCard = serde_json::from_str(&model_card)?;
+        let mut model_card: ModelCard = serde_json::from_str(&model_card)?;
+        model_card.like_count = self.like_count;
+        model_card.download_count = self.download_count;
+        
         Ok(model_card)
     }
 }
