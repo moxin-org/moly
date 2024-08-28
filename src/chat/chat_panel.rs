@@ -658,6 +658,8 @@ impl ChatPanel {
     ) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
 
+        prompt_input.set_key_focus(cx);
+
         let enabled = match mode {
             PromptInputMode::Enabled => !prompt_input.text().is_empty(),
             PromptInputMode::Disabled => false,
