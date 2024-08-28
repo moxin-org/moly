@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use chrono::{DateTime, Utc};
 use rusqlite::params;
 
-pub use super::remote::Author;
+use super::model_cards::Author;
 
 pub fn create_table_models(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute(

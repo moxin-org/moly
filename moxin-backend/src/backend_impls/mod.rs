@@ -16,7 +16,11 @@ use moxin_protocol::{
     },
 };
 
-use crate::store::{self, ModelFileDownloader, RemoteModel};
+use crate::store::{
+    self,
+    model_cards::{ModelCard, ModelCardManager},
+    ModelFileDownloader,
+};
 
 mod api_server;
 mod chat_ui;
@@ -368,6 +372,7 @@ pub trait BackendModel: Sized {
 
 pub struct BackendImpl<Model: BackendModel> {
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
+    model_indexs: ModelCardManager,
     #[allow(unused)]
     app_data_dir: PathBuf,
     models_dir: PathBuf,
@@ -402,6 +407,19 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                 app_data_dir
             )
         });
+
+        let model_indexs = store::model_cards::sync_model_cards_repo(&app_data_dir);
+        let model_indexs= match model_indexs{
+            Ok(model_indexs) => {
+                log::info!("sync model cards repo success");
+                model_indexs
+            }
+            Err(e) => {
+                log::error!("sync model cards repo error: {e}");
+                ModelCardManager::empty(app_data_dir.clone())
+            }
+        };
+
         let sql_conn = rusqlite::Connection::open(app_data_dir.join("data.sqlite")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
@@ -432,6 +450,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
 
         let mut backend = Self {
             sql_conn,
+            model_indexs,
             app_data_dir,
             models_dir: models_dir.as_ref().into(),
             rx,
@@ -451,11 +470,18 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         match built_in_cmd {
             BuiltInCommand::Model(file) => match file {
                 ModelManagementCommand::GetFeaturedModels(tx) => {
-                    let res = store::RemoteModel::get_featured_model(100, 0);
+                    let res = self.model_indexs.get_featured_model(100, 0);
                     match res {
-                        Ok(remote_model) => {
+                        Ok(indexs) => {
+                            let mut models = Vec::new();
+                            for index in indexs {
+                                if let Ok(card) = self.model_indexs.load_model_card(&index) {
+                                    models.push(card);
+                                }
+                            }
+
                             let sql_conn = self.sql_conn.lock().unwrap();
-                            let models = RemoteModel::to_model(&remote_model, &sql_conn)
+                            let models = ModelCard::to_model(&models, &sql_conn)
                                 .map_err(|e| anyhow::anyhow!("get featured error: {e}"));
 
                             let _ = tx.send(models);
@@ -466,11 +492,25 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                     }
                 }
                 ModelManagementCommand::SearchModels(search_text, tx) => {
-                    let res = store::RemoteModel::search(&search_text, 100, 0);
+                    let res = self.model_indexs.search(&search_text, 100, 0);
                     match res {
-                        Ok(remote_model) => {
+                        Ok(indexs) => {
+                            log::debug!("search models: {}", indexs.len());
                             let sql_conn = self.sql_conn.lock().unwrap();
-                            let models = RemoteModel::to_model(&remote_model, &sql_conn)
+
+                            let mut models = Vec::new();
+                            for index in indexs {
+                                match self.model_indexs.load_model_card(&index){
+                                    Ok(card) => {
+                                        models.push(card);
+                                    }
+                                    Err(e) => {
+                                        log::error!("load model card {} error: {e}",index.id);
+                                    }
+                                }
+                            }
+
+                            let models = ModelCard::to_model(&models, &sql_conn)
                                 .map_err(|e| anyhow::anyhow!("search models error: {e}"));
 
                             let _ = tx.send(models);
@@ -482,15 +522,14 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                 }
                 ModelManagementCommand::DownloadFile(file_id, tx) => {
                     //search model from remote
-                    let search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile)> {
+                    let mut search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile)> {
                         let (model_id, file) = file_id
                             .split_once("#")
                             .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
-                        let mut res = store::RemoteModel::search(&model_id, 10, 0)
-                            .map_err(|e| anyhow::anyhow!("search models error: {e}"))?;
-                        let remote_model = res
-                            .pop()
-                            .ok_or_else(|| anyhow::anyhow!("model not found"))?;
+
+                        let index = self.model_indexs.get_index_by_id(model_id).ok_or(anyhow::anyhow!("No model found"))?.clone();
+                        let remote_model = self.model_indexs.load_model_card(&index)?;
+                    
 
                         let remote_file = remote_model
                             .files
@@ -508,7 +547,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                             released_at: remote_model.released_at,
                             prompt_template: remote_model.prompt_template.clone(),
                             reverse_prompt: remote_model.reverse_prompt.clone(),
-                            author: Arc::new(crate::store::models::Author {
+                            author: Arc::new(crate::store::model_cards::Author {
                                 name: remote_model.author.name,
                                 url: remote_model.author.url,
                                 description: remote_model.author.description,
