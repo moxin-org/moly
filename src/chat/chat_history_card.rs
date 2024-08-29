@@ -339,7 +339,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    ChatHistoryCardAction::ChatSelected(self.chat_id),
+                    ChatHistoryCardAction::ChatSelected,
                 );
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(self.chat_id);
@@ -475,7 +475,7 @@ impl ChatHistoryCardRef {
 #[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
 pub enum ChatHistoryCardAction {
     None,
-    ChatSelected(ChatID),
+    ChatSelected,
     ActivateTitleEdition(ChatID),
     MenuClosed(ChatID),
     DeleteChatOptionSelected(ChatID),
