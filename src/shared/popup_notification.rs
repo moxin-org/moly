@@ -22,6 +22,9 @@ live_design! {
             flow: Overlay
             width: Fit
             height: Fit
+
+            cursor: Default
+            capture_overload: true
         }
     }
 }
