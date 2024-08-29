@@ -237,7 +237,7 @@ impl MatchEvent for App {
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
-                self.ui.popup_notification(id!(popup_notification)).open(cx);
+                self.ui.popup_notification(id!(popup_notification)).close(cx);
             }
         }
     }
