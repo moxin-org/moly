@@ -1,10 +1,9 @@
-use crate::data::store::{ModelWithDownloadInfo, Store};
+use crate::data::store::ModelWithDownloadInfo;
 use crate::shared::external_link::ExternalLinkWidgetExt;
-use crate::shared::portal::PortalAction;
+use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::hugging_face_model_url;
 use chrono::Utc;
 use makepad_widgets::*;
-use moxin_protocol::data::ModelID;
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
@@ -19,6 +18,7 @@ live_design! {
     import crate::landing::shared::*;
     import crate::landing::model_files::ModelFiles;
     import crate::shared::external_link::*;
+    import crate::shared::modal::*;
 
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
@@ -256,7 +256,7 @@ live_design! {
                 height: Fit,
                 padding: {bottom: 20}
 
-                model_name = <Label> {
+                view_all_model_name = <Label> {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 16},
                         color: #000
@@ -277,7 +277,7 @@ live_design! {
                     }
                     text: "Model Description"
                 }
-                model_summary = <Label> {
+                view_all_model_summary = <Label> {
                     width: Fill,
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 9},
@@ -293,6 +293,11 @@ live_design! {
     ModelCard = {{ModelCard}} {
         width: Fill,
         height: Fit,
+
+        // This is necesary because we have a Modal widget inside this widget
+        flow: Overlay,
+
+        cursor: Default,
 
         <RoundedView> {
             width: Fill,
@@ -313,6 +318,12 @@ live_design! {
             <Line> {}
             <ModelInformation> {}
             <ModelFiles> {}
+        }
+
+        modal = <Modal> {
+            content: {
+                <ModelCardViewAllModal> {}
+            }
         }
     }
 }
@@ -397,39 +408,31 @@ impl Widget for ModelCard {
 }
 
 impl WidgetMatchEvent for ModelCard {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.link_label(id!(view_all_button.link)).clicked(actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                PortalAction::ShowPortalView(live_id!(modal_model_card_view_all_portal_view)),
-            );
+            self.modal(id!(modal)).open(cx);
+            self.redraw(cx);
+        }
 
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ViewAllModalAction::ModelSelected(self.model_id.clone()),
-            );
+        for action in actions {
+            if let ModelCardViewAllModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+                self.modal(id!(modal)).close(cx);
+                self.redraw(cx);
+            }
         }
     }
 }
 
-// TODO: Make it so this action and setting the model id from the outside isnt needed
-//       find a way to pass the data inside the Modal action itself.
-#[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
-pub enum ViewAllModalAction {
+#[derive(Clone, Debug, DefaultNone)]
+enum ModelCardViewAllModalAction {
     None,
-    ModelSelected(ModelID),
+    CloseButtonClicked,
 }
 
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelCardViewAllModal {
     #[deref]
     view: View,
-    #[rust]
-    model_id: ModelID,
 }
 
 impl Widget for ModelCardViewAllModal {
@@ -439,20 +442,13 @@ impl Widget for ModelCardViewAllModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
-        let model = store
-            .search
-            .models
-            .iter()
-            .find(|model| model.id == self.model_id);
+        let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
 
-        if let Some(model) = model {
-            let name = &model.name;
-            self.label(id!(model_name)).set_text(name);
+        let name = &model.name;
+        self.label(id!(view_all_model_name)).set_text(name);
 
-            let summary = &model.summary;
-            self.label(id!(model_summary)).set_text(summary);
-        }
+        let summary = &model.summary;
+        self.label(id!(view_all_model_summary)).set_text(summary);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
@@ -464,15 +460,7 @@ impl WidgetMatchEvent for ModelCardViewAllModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
-        }
-    }
-}
-
-impl ModelCardViewAllModalRef {
-    pub fn set_model_id(&mut self, model_id: ModelID) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.model_id = model_id;
+            cx.widget_action(widget_uid, &scope.path, ModelCardViewAllModalAction::CloseButtonClicked);
         }
     }
 }

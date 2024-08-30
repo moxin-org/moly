@@ -106,6 +106,7 @@ pub struct ChatResponseData {
     pub choices: Vec<ChoiceData>,
     pub created: u32,
     pub model: ModelID,
+    #[serde(default)]
     pub system_fingerprint: String,
     pub usage: UsageData,
 

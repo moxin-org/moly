@@ -1,72 +1,118 @@
 # Moxin: a Rust AI LLM client built atop [Robius](https://github.com/project-robius)
 
-Moxin is an AI LLM client written in Rust to demonstrate the functionality of the Robius, a framework for multi-platform application development in Rust.
+Moxin is an AI LLM client written in Rust, and demonstrates the power of the [Makepad UI toolkit](https://github.com/makepad/makepad) and [Project Robius](https://github.com/project-robius), a framework for multi-platform application development in Rust.
 
-> ⚠️ Moxin is just getting started and is not yet fully functional.
+> ⚠️ Moxin is in beta. Please [file an issue](https://github.com/moxin-org/moxin/issues/new) if you encounter bugs or unexpected results.
 
 The following table shows which host systems can currently be used to build Moxin for which target platforms.
 | Host OS | Target Platform | Builds? | Runs? | Packaging Support                            |
 | ------- | --------------- | ------- | ----- | -------------------------------------------- |
 | macOS   | macOS           | ✅      | ✅    | `.app`, [`.dmg`]                             |
 | Linux   | Linux           | ✅      | ✅    | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
+| Windows | Windows (10+)   | ✅      | ✅    | `.exe` (NSIS)                                |
 
 ## Building and Running
 
-First, [install Rust](https://www.rust-lang.org/tools/install).
+1. [Install Rust](https://www.rust-lang.org/tools/install).
 
-Then, install the required WasmEdge WASM runtime:
+2. Obtain the source code for this repository:
+```sh
+git clone https://github.com/moxin-org/moxin.git
+```
 
+#### Tip: use `moxin-runner` for easy setup
+
+> [!TIP]
+> On all platforms, you can use our helper program to auto-setup WasmEdge for you and run any `cargo` command:
+> ```sh
+> cargo run -p moxin-runner -- --install    ## finds or installs WasmEdge, then stops.
+> cargo run -p moxin-runner -- cargo build  ## builds Moxin
+> cargo run -p moxin-runner -- cargo run    ## builds and runs Moxin
+> cargo run -p moxin-runner -- cargo [your-command-here]
+> ```
+
+### macOS
+Install the required WasmEdge WASM runtime (or use [`moxin-runner`](#tip-use-moxin-runner-for-easy-setup)):
 ```sh
 curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
 
 source $HOME/.wasmedge/env
 ```
 
-Obtain the source code from this repository:
-```sh
-git clone https://github.com/moxin-org/moxin.git
-```
-
-### macOS
-
-Then, on a standard desktop platform (macOS), simply run:
-
+Then use `cargo` to build and run Moxin:
 ```sh
 cd moxin
-cargo run
+cargo run --release
 ```
 
 ### Linux
+Install the required WasmEdge WASM runtime (or use [`moxin-runner`](#tip-use-moxin-runner-for-easy-setup)):
+```sh
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+
+source $HOME/.wasmedge/env
+```
+
+> [!IMPORTANT]
+> If your CPU does not support AVX512, then you should append the `--noavx` option onto the above command.
+> If you use [`moxin-runner`](#tip-use-moxin-runner-for-easy-setup), it will handle this for you.
 
 To build Moxin on Linux, you must install the following dependencies:
 `openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
-
 On a Debian-like Linux distro (e.g., Ubuntu), run the following:
 ```sh
 sudo apt-get update
 sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
 ```
 
-Then, run:
-
+Then use `cargo` to build and run Moxin:
 ```sh
 cd moxin
-cargo run
+cargo run --release
 ```
 
+## Windows (Windows 10, Windows 11 or higher)
+1.  Download and install the LLVM v17.0.6 release for Windows: [Here is a direct link to LLVM-17.0.6-win64.exe](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe), 333MB in size.
+
+> [!IMPORTANT]
+> During the setup procedure, make sure to select `Add LLVM to the system PATH for all users` or `for the current user`.
+
+2. Restart your PC, or log out and log back in, which allows the LLVM path to be properly
+    * Alternatively you can add the LLVM path `C:\Program Files\LLVM\bin` to your system PATH.
+
+3. Use `moxin-runner` to auto-setup WasmEdge and then build & run Moxin:
+```sh
+cargo run -p moxin-runner -- cargo run --release  ## `--release` is optional
+```
+
+---------------------------
 
 ## Packaging Moxin for Distribution
 
-Install the version of `cargo-packager` maintained by Project Robius:
+> Note: we already have [pre-built releases of Moxin](https://github.com/moxin-org/moxin/releases) available for download.
+
+Install `cargo-packager`:
 ```sh
-cargo install --force --locked --git https://github.com/project-robius/cargo-packager cargo-packager --branch robius
+rustup update stable  ## Rust version 1.79 or higher is required
+cargo +stable install --force --locked cargo-packager
 ```
+For posterity, these instructions have been tested on `cargo-packager` version 0.10.1, which requires Rust v1.79.
 
 
 ### Packaging for Linux
 On a Debian-based Linux distribution (e.g., Ubuntu), you can generate a `.deb` Debian package, an AppImage, and a pacman installation package.
 
+
+> [!IMPORTANT]
+> You can only generate a `.deb` Debian package on a Debian-based Linux distribution, as `dpkg` is needed.
+ 
+> [!NOTE]
 > The `pacman` package has not yet been tested.
+
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate all three package types at once:
+```sh
+cargo packager --release --verbose   ## --verbose is optional
+```
 
 To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 ```sh
@@ -82,6 +128,19 @@ cd dist/
 chmod +x moxin_0.1.0_x86_64.AppImage
 ./moxin_0.1.0_x86_64.AppImage
 ```
+
+### Packaging for Windows
+This can only be run on an actual Windows machine, due to platform restrictions.
+
+First, [follow the above instructions for building on Windows](#windows-windows-10-windows-11-or-higher).
+
+Ensure you are in the root `moxin` directory, and then you can use `cargo packager` to generate a `setup.exe` file using NSIS:
+```sh
+cargo run -p moxin-runner -- cargo packager --release --formats nsis --verbose   ## --verbose is optional
+```
+
+After the command completes, you should see a Windows installer called `moxin_0.1.0_x64-setup` in the `dist/` directory.
+Double-click that file to install Moxin on your machine, and then run it as you would a regular application.
 
 
 ### Packaging for macOS

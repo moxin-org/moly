@@ -2,7 +2,7 @@ use makepad_widgets::*;
 
 use crate::{
     data::{chats::chat::ChatID, store::Store},
-    shared::actions::TooltipAction,
+    shared::tooltip::TooltipWidgetExt,
 };
 
 live_design! {
@@ -10,11 +10,8 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::FadeView;
-    import crate::shared::widgets::MoxinButton;
-    import crate::shared::widgets::MoxinSlider;
-    import crate::shared::widgets::MoxinSwitch;
-    import crate::shared::widgets::MoxinTextInput;
+    import crate::shared::widgets::*;
+    import crate::shared::tooltip::*;
     import makepad_draw::shader::std::*;
 
     ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_right_panel.svg")
@@ -36,50 +33,8 @@ live_design! {
         }
     }
 
-    ChatParamsActions = <View> {
-        height: Fit
-        flow: Right
-
-        <View> {
-            width: Fill
-            height: Fit
-        }
-
-
-        close_panel_button = <MoxinButton> {
-            width: Fit,
-            height: Fit,
-            icon_walk: {width: 20, height: 20},
-            draw_icon: {
-                svg_file: (ICON_CLOSE_PANEL),
-                fn get_color(self) -> vec4 {
-                    return #475467;
-                }
-            }
-        }
-
-        open_panel_button = <MoxinButton> {
-            width: Fit,
-            height: Fit,
-            visible: false,
-            icon_walk: {width: 20, height: 20},
-            draw_icon: {
-                svg_file: (ICON_OPEN_PANEL),
-                fn get_color(self) -> vec4 {
-                    return #475467;
-                }
-            }
-        }
-    }
-
-    ChatParams = {{ChatParams}} {
-        flow: Overlay,
-        width: Fit,
-        height: Fill,
-
-        main_content = <FadeView> {
-            width: 300
-            height: Fill
+    ChatParams = {{ChatParams}} <MoxinTogglePanel> {
+        open_content = {
             <View> {
                 width: Fill
                 height: Fill
@@ -105,12 +60,13 @@ live_design! {
                     width: Fill
                     spacing: 12
                     padding: {left: 4}
-                    <Label> {
+                    system_prompt_label = <Label> {
                         draw_text: {
                             text_style: <BOLD_FONT>{font_size: 10},
                             color: #000
                         }
                         text: "System Prompt"
+                        hover_actions_enabled: true
                     }
                     <ChatParamsTextInputWrapper> {
                         height: 90,
@@ -170,6 +126,7 @@ live_design! {
                                 color: #000
                             }
                             text: "Stream"
+                            hover_actions_enabled: true
                         }
                         stream = <MoxinSwitch> {
                             // Match the default value to avoid the animation on start.
@@ -201,6 +158,7 @@ live_design! {
                                 color: #000
                             }
                             text: "Stop"
+                            hover_actions_enabled: true
                         }
                         <ChatParamsTextInputWrapper> {
                             height: 65,
@@ -237,39 +195,41 @@ live_design! {
             }
         }
 
-        <ChatParamsActions> {
-            padding: {top: 58, left: 25, right: 25}
-        }
-
-        animator: {
-            panel = {
-                default: show,
-                show = {
-                    redraw: true,
-                    from: {all: Forward {duration: 0.3}}
-                    ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {main_content = { width: 300, draw_bg: {opacity: 1.0} }}
+        persistent_content = {
+            default = {
+                before = {
+                    width: Fill
                 }
-                hide = {
-                    redraw: true,
-                    from: {all: Forward {duration: 0.3}}
-                    ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {main_content = { width: 110, draw_bg: {opacity: 0.0} }}
+                open = {
+                    draw_icon: {
+                        svg_file: (ICON_OPEN_PANEL),
+                    }
+                }
+                close = {
+                    draw_icon: {
+                        svg_file: (ICON_CLOSE_PANEL),
+                    }
                 }
             }
         }
+
+        tooltip = <Tooltip> {}
     }
 }
 
-const TOOLTIP_OFFSET: DVec2 = DVec2 { x: -320.0, y: -30.0 };
+const TOOLTIP_OFFSET: DVec2 = DVec2 {
+    x: -320.0,
+    y: -30.0,
+};
+const TOOLTIP_OFFSET_BOTTOM: DVec2 = DVec2 {
+    x: -320.0,
+    y: -100.0,
+};
 
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatParams {
     #[deref]
-    view: View,
-
-    #[animator]
-    animator: Animator,
+    deref: TogglePanel,
 
     #[rust]
     current_chat_id: Option<ChatID>,
@@ -277,12 +237,8 @@ pub struct ChatParams {
 
 impl Widget for ChatParams {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
+        self.deref.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
-
-        if self.animator_handle_event(cx, event).must_redraw() {
-            self.redraw(cx);
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -324,13 +280,13 @@ impl Widget for ChatParams {
             self.visible = false;
         }
 
-        self.view.draw_walk(cx, scope, walk)
+        self.deref.draw_walk(cx, scope, walk)
     }
 }
 
 impl WidgetMatchEvent for ChatParams {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        self.handle_tooltip_actions(cx, actions, scope);
+        self.handle_tooltip_actions(cx, actions);
 
         let store = scope.data.get_mut::<Store>().unwrap();
         let close = self.button(id!(close_panel_button));
@@ -339,13 +295,13 @@ impl WidgetMatchEvent for ChatParams {
         if close.clicked(&actions) {
             close.set_visible(false);
             open.set_visible(true);
-            self.animator_play(cx, id!(panel.hide));
+            self.set_open(cx, false);
         }
 
         if open.clicked(&actions) {
             open.set_visible(false);
             close.set_visible(true);
-            self.animator_play(cx, id!(panel.show));
+            self.set_open(cx, true);
         }
 
         if let Some(chat) = store.chats.get_current_chat() {
@@ -398,51 +354,65 @@ impl WidgetMatchEvent for ChatParams {
 }
 
 impl ChatParams {
-    fn handle_tooltip_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.animator.animator_in_state(cx, id!(panel.hide)) {
+    fn handle_tooltip_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        if !self.is_open(cx) {
             return;
         }
+
+        self.handle_tooltip_actions_for_label(
+            id!(system_prompt_label),
+            "A system prompt is a fixed prompt providing context and instructions to the model. The system prompt is always included in the provided input to the LLM, regardless of the user prompt.".to_string(),
+            TOOLTIP_OFFSET,
+            cx, actions
+        );
 
         self.handle_tooltip_actions_for_slider(
             id!(temperature),
             "Influences the randomness of the model’s output. A higher value leads to more random and diverse responses, while a lower value produces more predictable outputs.".to_string(),
-            cx, actions, scope
+            TOOLTIP_OFFSET,
+            cx, actions
         );
 
         self.handle_tooltip_actions_for_slider(
             id!(top_p),
             "Top P, also known as nucleus sampling, is another parameter that influences the randomness of LLM output. This parameter determines the threshold probability for including tokens in a candidate set used by the LLM to generate output. Lower values of this parameter result in more precise and fact-based responses from the LLM, while higher values increase randomness and diversity in the generated output.".to_string(),
-            cx, actions, scope
+            TOOLTIP_OFFSET,
+            cx, actions
         );
 
         self.handle_tooltip_actions_for_label(
             id!(stream_label),
             "Streaming is the sending of words as they are created by the AI language model one at a time, so you can show them as they are being generated.".to_string(),
-            cx, actions, scope
+            TOOLTIP_OFFSET,
+            cx, actions
         );
 
         self.handle_tooltip_actions_for_slider(
             id!(max_tokens),
             "The max tokens parameter sets the upper limit for the total number of tokens, encompassing both the input provided to the LLM as a prompt and the output tokens generated by the LLM in response to that prompt.".to_string(),
-            cx, actions, scope
-        );
-
-        self.handle_tooltip_actions_for_slider(
-            id!(frequency_penalty),
-            "This parameter is used to discourage the model from repeating the same words or phrases too frequently within the generated text. It is a value that is added to the log-probability of a token each time it occurs in the generated text. A higher frequency_penalty value will result in the model being more conservative in its use of repeated tokens.".to_string(),
-            cx, actions, scope
-        );
-
-        self.handle_tooltip_actions_for_slider(
-            id!(presence_penalty),
-            "This parameter is used to encourage the model to include a diverse range of tokens in the generated text. It is a value that is subtracted from the log-probability of a token each time it is generated. A higher presence_penalty value will result in the model being more likely to generate tokens that have not yet been included in the generated text.".to_string(),
-            cx, actions, scope
+            TOOLTIP_OFFSET,
+            cx, actions
         );
 
         self.handle_tooltip_actions_for_label(
             id!(stop_label),
             "Stop sequences are used to make the model stop generating tokens at a desired point, such as the end of a sentence or a list. The model response will not contain the stop sequence and you can pass up to four stop sequences.".to_string(),
-            cx, actions, scope
+            TOOLTIP_OFFSET,
+            cx, actions
+        );
+
+        self.handle_tooltip_actions_for_slider(
+            id!(frequency_penalty),
+            "This parameter is used to discourage the model from repeating the same words or phrases too frequently within the generated text. It is a value that is added to the log-probability of a token each time it occurs in the generated text. A higher frequency_penalty value will result in the model being more conservative in its use of repeated tokens.".to_string(),
+            TOOLTIP_OFFSET_BOTTOM,
+            cx, actions
+        );
+
+        self.handle_tooltip_actions_for_slider(
+            id!(presence_penalty),
+            "This parameter is used to encourage the model to include a diverse range of tokens in the generated text. It is a value that is subtracted from the log-probability of a token each time it is generated. A higher presence_penalty value will result in the model being more likely to generate tokens that have not yet been included in the generated text.".to_string(),
+            TOOLTIP_OFFSET_BOTTOM,
+            cx, actions
         );
     }
 
@@ -450,21 +420,18 @@ impl ChatParams {
         &mut self,
         slider_id: &[LiveId],
         text: String,
+        offset: DVec2,
         cx: &mut Cx,
         actions: &Actions,
-        scope: &mut Scope,
     ) {
-        let widget_uid = self.widget_uid();
         let slider = self.slider(slider_id);
+        let mut tooltip = self.deref.tooltip(id!(tooltip));
+
         if let Some(rect) = slider.label_hover_in(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                TooltipAction::Show(text, rect.pos + TOOLTIP_OFFSET),
-            );
+            tooltip.show_with_options(cx, rect.pos + offset, &text);
         }
         if slider.label_hover_out(&actions) {
-            cx.widget_action(widget_uid, &scope.path, TooltipAction::Hide);
+            tooltip.hide(cx);
         }
     }
 
@@ -472,21 +439,18 @@ impl ChatParams {
         &mut self,
         label_id: &[LiveId],
         text: String,
+        offset: DVec2,
         cx: &mut Cx,
         actions: &Actions,
-        scope: &mut Scope,
     ) {
-        let widget_uid = self.widget_uid();
         let label = self.label(label_id);
+        let mut tooltip = self.deref.tooltip(id!(tooltip));
+
         if let Some(rect) = label.hover_in(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                TooltipAction::Show(text, rect.pos + TOOLTIP_OFFSET),
-            );
+            tooltip.show_with_options(cx, rect.pos + offset, &text);
         }
         if label.hover_out(&actions) {
-            cx.widget_action(widget_uid, &scope.path, TooltipAction::Hide);
+            tooltip.hide(cx);
         }
     }
 }

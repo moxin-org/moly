@@ -1,9 +1,9 @@
+use crate::shared::actions::ChatAction;
+use crate::shared::modal::ModalWidgetExt;
+use crate::shared::utils::format_model_size;
 use makepad_widgets::*;
 use moxin_protocol::data::{DownloadedFile, FileID};
-
-use crate::my_models::{delete_model_modal::DeleteModelAction, model_info_modal::ModelInfoAction};
-use crate::shared::utils::format_model_size;
-use crate::shared::{actions::ChatAction, portal::PortalAction};
+use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -11,9 +11,11 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
+    import crate::shared::modal::*;
+    import crate::my_models::model_info_modal::ModelInfoModal;
+    import crate::my_models::delete_model_modal::DeleteModelModal;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
-    ICON_PLAY = dep("crate://self/resources/icons/play_arrow.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
     MODEL_CTA_COLOR = #127487
@@ -30,153 +32,150 @@ live_design! {
         }
     }
 
-    DownloadedFilesRow = {{DownloadedFilesRow}} {
-        // Heads-up: rows break the Portal List without fixed height
-        height: 85,
+    ModelFile = <View> {
         flow: Down
-        width: Fill
-        align: {x: 0.0, y: 0.5}
+        width: 600
 
-        show_bg: true
-        draw_bg: {
-            color: #FFF;
-        }
-
-        separator_line = <Line> {}
         h_wrapper = <View> {
             flow: Right
+            width: Fill
+            spacing: 15
+            name_tag = <View> {
+                width: Fit
+                align: {x: 0.0, y: 0.5}
+                name = <Label> {
+                    width: Fit
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 9}
+                        color: #x0
+                    }
+                }
+            }
+
+            base_model_tag = <View> {
+                width: Fit
+                align: {x: 0.0, y: 0.5}
+                base_model = <AttributeTag> {
+                    draw_bg: { color: #F0D6F5 },
+                }
+            }
+            parameters_tag = <View> {
+                width: Fit
+                align: {x: 0.0, y: 0.5}
+                parameters = <AttributeTag> {
+                    draw_bg: { color: #D4E6F7 },
+                }
+            }
+        }
+        model_version_tag = <View> {
             width: Fit
-            padding: {top: 10, bottom: 10, left: 20, right: 20}
-            spacing: 30
+            align: {x: 0.0, y: 0.5}
+            version = <Label> {
+                width: Fit
+                draw_text: {
+                    wrap: Ellipsis
+                    text_style: <REGULAR_FONT>{font_size: 9}
+                    color: #667085
+                }
+            }
+        }
+    }
+
+    DownloadedFilesTag = <View> {
+        width: 100
+        align: {x: 0.0, y: 0.5}
+        file_size = <Label> {
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 9}
+                color: #x0
+            }
+        }
+    }
+
+    RowActions = <View> {
+        width: 250
+        flow: Right
+        spacing: 10
+        align: {x: 0.0, y: 0.5}
+
+        start_chat_button = <DownloadedFilesRowButton> {
+            width: 140
+            text: "Chat with Model",
+            draw_text: {
+                color: (MODEL_CTA_COLOR)
+                text_style: <REGULAR_FONT>{font_size: 9}
+            }
+            draw_icon: {
+                svg_file: (ICON_START_CHAT)
+                color: (MODEL_CTA_COLOR)
+            }
+        }
+
+        <View> { width: Fill, height: Fit }
+
+        info_button = <DownloadedFilesRowButton> {
+            width: 40
+            draw_icon: {
+                svg_file: (ICON_INFO),
+                color: #0099FF
+            }
+        }
+
+        delete_button = <DownloadedFilesRowButton> {
+            width: 40
+            draw_icon: {
+                svg_file: (ICON_DELETE),
+                color: #B42318
+            }
+        }
+    }
+
+
+    DownloadedFilesRow = {{DownloadedFilesRow}} {
+        // This is necesary because we have a Modal widget inside this widget
+        flow: Overlay,
+        width: Fill,
+        height: Fit,
+
+        <View> {
+            // Heads-up: rows break the Portal List without fixed height
+            height: 85,
+            flow: Down
+            width: Fill
+            align: {x: 0.0, y: 0.5}
+
             show_bg: true
             draw_bg: {
                 color: #FFF;
             }
 
-            model_file = <View> {
-                flow: Down
-                width: 600
-
-                h_wrapper = <View> {
-                    flow: Right
-                    width: Fill
-                    spacing: 15
-                    name_tag = <View> {
-                        width: Fit
-                        align: {x: 0.0, y: 0.5}
-                        name = <Label> {
-                            width: Fit
-                            draw_text: {
-                                text_style: <BOLD_FONT>{font_size: 9}
-                                color: #x0
-                            }
-                        }
-                    }
-
-                    base_model_tag = <View> {
-                        width: Fit
-                        align: {x: 0.0, y: 0.5}
-                        base_model = <AttributeTag> {
-                            draw_bg: { color: #F0D6F5 },
-                        }
-                    }
-                    parameters_tag = <View> {
-                        width: Fit
-                        align: {x: 0.0, y: 0.5}
-                        parameters = <AttributeTag> {
-                            draw_bg: { color: #D4E6F7 },
-                        }
-                    }
-                }
-                model_version_tag = <View> {
-                    width: Fit
-                    align: {x: 0.0, y: 0.5}
-                    version = <Label> {
-                        width: Fit
-                        draw_text: {
-                            wrap: Ellipsis
-                            text_style: <REGULAR_FONT>{font_size: 9}
-                            color: #667085
-                        }
-                    }
-                }
-            }
-
-            file_size_tag = <View> {
-                width: 100
-                align: {x: 0.0, y: 0.5}
-                file_size = <Label> {
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 9}
-                        color: #x0
-                    }
-                }
-            }
-
-            date_added_tag = <View> {
-                width: 100
-                align: {x: 0.0, y: 0.5}
-                date_added = <Label> {
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 9}
-                        color: #x0
-                    }
-                }
-            }
-
-            actions = <View> {
-                width: 250
+            separator_line = <Line> {}
+            h_wrapper = <View> {
                 flow: Right
-                spacing: 10
-                align: {x: 0.0, y: 0.5}
-
-                start_chat_button = <DownloadedFilesRowButton> {
-                    width: 140
-                    text: "Chat with Model",
-                    draw_text: {
-                        color: (MODEL_CTA_COLOR)
-                        text_style: <REGULAR_FONT>{font_size: 9}
-                    }
-                    draw_icon: {
-                        svg_file: (ICON_START_CHAT)
-                        color: (MODEL_CTA_COLOR)
-                    }
+                width: Fit
+                padding: {top: 10, bottom: 10, left: 20, right: 20}
+                spacing: 30
+                show_bg: true
+                draw_bg: {
+                    color: #FFF;
                 }
 
-                resume_chat_button = <DownloadedFilesRowButton> {
-                    width: 140
-                    visible: false
-                    draw_bg: {
-                        color: (MODEL_CTA_COLOR)
-                    }
-                    text: "Resume Chat",
-                    draw_text: {
-                        color: #fff
-                        text_style: <BOLD_FONT>{font_size: 9}
-                    }
-                    draw_icon: {
-                        svg_file: (ICON_PLAY)
-                        color: #fff
-                    }
-                }
+                model_file = <ModelFile> {}
+                file_size_tag = <DownloadedFilesTag> {}
+                date_added_tag = <DownloadedFilesTag> {}
+                row_actions = <RowActions> {}
+            }
+        }
 
-                <View> { width: Fill, height: Fit }
+        info_modal = <Modal> {
+            content: {
+                <ModelInfoModal> {}
+            }
+        }
 
-                info_button = <DownloadedFilesRowButton> {
-                    width: 40
-                    draw_icon: {
-                        svg_file: (ICON_INFO),
-                        color: #0099FF
-                    }
-                }
-
-                delete_button = <DownloadedFilesRowButton> {
-                    width: 40
-                    draw_icon: {
-                        svg_file: (ICON_DELETE),
-                        color: #B42318
-                    }
-                }
+        delete_modal = <Modal> {
+            content: {
+                <DeleteModelModal> {}
             }
         }
     }
@@ -184,7 +183,6 @@ live_design! {
 
 pub struct DownloadedFilesRowProps {
     pub downloaded_file: DownloadedFile,
-    pub show_resume: bool,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -247,11 +245,6 @@ impl Widget for DownloadedFilesRow {
         self.label(id!(h_wrapper.date_added_tag.date_added))
             .set_text(&formatted_date);
 
-        self.button(id!(start_chat_button))
-            .set_visible(!props.show_resume);
-        self.button(id!(resume_chat_button))
-            .set_visible(props.show_resume);
-
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -266,39 +259,26 @@ impl WidgetMatchEvent for DownloadedFilesRow {
             }
         }
 
-        if self.button(id!(resume_chat_button)).clicked(actions) {
-            if let Some(_) = &self.file_id {
-                cx.widget_action(widget_uid, &scope.path, ChatAction::Resume);
-            }
+        if self.button(id!(row_actions.info_button)).clicked(actions) {
+            self.modal(id!(info_modal)).open(cx);
         }
 
-        if self.button(id!(info_button)).clicked(actions) {
-            if let Some(file_id) = &self.file_id {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ModelInfoAction::FileSelected(file_id.clone()),
-                );
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    PortalAction::ShowPortalView(live_id!(modal_model_info_portal_view)),
-                );
-            }
+        if self.button(id!(row_actions.delete_button)).clicked(actions) {
+            self.modal(id!(delete_modal)).open(cx);
         }
 
-        if self.button(id!(delete_button)).clicked(actions) {
-            if let Some(file_id) = &self.file_id {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    DeleteModelAction::FileSelected(file_id.clone()),
-                );
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    PortalAction::ShowPortalView(live_id!(modal_delete_model_portal_view)),
-                );
+        for action in actions {
+            if matches!(
+                action.as_widget_action().cast(),
+                DeleteModelModalAction::ModelDeleted
+                    | DeleteModelModalAction::Cancelled
+                    | DeleteModelModalAction::CloseButtonClicked
+            ) {
+                self.modal(id!(delete_modal)).close(cx);
+            }
+
+            if let ModelInfoModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+                self.modal(id!(info_modal)).close(cx);
             }
         }
     }

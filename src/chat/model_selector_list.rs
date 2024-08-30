@@ -114,9 +114,8 @@ impl Widget for ModelSelectorList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let widget_uid = self.widget_uid();
         for (id, item) in self.items.iter_mut() {
-            //let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
-            if let Hit::FingerDown(fd) = event.hits_with_capture_overload(cx, item.as_view().area(), true) {
-            //if let Some(fd) = item.as_view().finger_down(&actions) {
+            let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
+            if let Some(fd) = item.as_view().finger_down(&actions) {
                 if fd.tap_count == 1 {
                     cx.widget_action(
                         widget_uid,
@@ -135,7 +134,7 @@ impl Widget for ModelSelectorList {
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {
-            self.draw_items(cx, &store.downloads.downloaded_files);
+            self.draw_items(cx, store);
         }
 
         cx.end_turtle_with_area(&mut self.area);
@@ -145,8 +144,9 @@ impl Widget for ModelSelectorList {
 }
 
 impl ModelSelectorList {
-    fn draw_items(&mut self, cx: &mut Cx2d, items: &Vec<DownloadedFile>) {
-        let mut items = items.clone();
+    fn draw_items(&mut self, cx: &mut Cx2d, store: &Store) {
+
+        let mut items = store.downloads.downloaded_files.clone();
         items.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
 
         if items.is_empty() {
@@ -176,6 +176,11 @@ impl ModelSelectorList {
             let size = format_model_size(&items[i].file.size).unwrap_or("".to_string());
             let size_visible = !size.trim().is_empty();
 
+            let mut icon_tick_visible = false;
+            if let Some(loaded_model) = store.get_loaded_downloaded_file() {  
+                icon_tick_visible = self.map_to_downloaded_files.get(&item_id).unwrap().file.id == loaded_model.file.id;
+            }
+
             item_widget.apply_over(
                 cx,
                 live! {
@@ -183,6 +188,7 @@ impl ModelSelectorList {
                     architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) } }
                     params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) } }
                     file_size_tag = { visible: (size_visible), caption = { text: (size) } }
+                    icon_tick_tag = { visible: (icon_tick_visible) }
                 },
             );
 

@@ -88,7 +88,21 @@ impl Store {
     }
 
     pub fn load_model(&mut self, file: &File) {
-        if self.chats.load_model(file).is_ok() {
+        self.chats.load_model(file);
+    }
+
+    fn update_load_model(&mut self) {
+        if self.chats.model_loader.is_loaded() {
+            self.chats.loaded_model = self
+                .chats
+                .model_loader
+                .file_id()
+                .map(|id| self.downloads.get_file(&id))
+                .flatten()
+                .cloned();
+        }
+
+        if let Some(file) = &self.chats.loaded_model {
             self.preferences.set_current_chat_model(file.id.clone());
 
             // If there is no chat, create an empty one
@@ -98,33 +112,62 @@ impl Store {
         }
     }
 
-    pub fn select_chat(&mut self, chat_id: ChatID) {
-        self.chats.set_current_chat(chat_id);
-
-        if let Some(file_id) = self.get_last_used_file_id_in_current_chat() {
-            if self
+    pub fn send_chat_message(&mut self, prompt: String) {
+        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
+            let wanted_file = self
                 .chats
-                .loaded_model
-                .as_ref()
-                .map_or(true, |m| *m.id != file_id)
-            {
-                if let Some(file) = self
-                    .downloads
-                    .downloaded_files
-                    .iter()
-                    .find(|df| df.file.id == *file_id)
-                    .map(|df| df.file.clone())
-                {
-                    let _ = self.load_model(&file);
-                }
+                .get_or_init_chat_file_id(&mut chat)
+                .map(|file_id| self.downloads.get_file(&file_id))
+                .flatten();
+
+            if let Some(file) = wanted_file {
+                chat.send_message_to_model(
+                    prompt,
+                    file,
+                    self.chats.model_loader.clone(),
+                    &self.backend,
+                );
+                chat.save();
             }
         }
     }
 
-    pub fn get_last_used_file_id_in_current_chat(&self) -> Option<FileID> {
+    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
+        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
+            chat.edit_message(message_id, updated_message);
+            chat.save();
+        }
+    }
+
+    // Enhancement: Would be ideal to just have a `regenerate_from` function` to be
+    // used after `edit_chat_message` and keep concerns separated.
+    pub fn edit_chat_message_regenerating(&mut self, message_id: usize, updated_message: String) {
+        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
+            let wanted_file = self
+                .chats
+                .get_or_init_chat_file_id(&mut chat)
+                .map(|file_id| self.downloads.get_file(&file_id))
+                .flatten();
+
+            if let Some(file) = wanted_file {
+                chat.remove_messages_from(message_id);
+                chat.send_message_to_model(
+                    updated_message,
+                    file,
+                    self.chats.model_loader.clone(),
+                    &self.backend,
+                );
+                chat.save();
+            }
+        }
+    }
+
+    pub fn get_loading_file(&self) -> Option<&File> {
         self.chats
-            .get_current_chat()
-            .map(|chat| chat.borrow().last_used_file_id.clone())?
+            .model_loader
+            .get_loading_file_id()
+            .map(|file_id| self.downloads.get_file(&file_id))
+            .flatten()
     }
 
     pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
@@ -222,6 +265,7 @@ impl Store {
         self.update_downloads();
         self.update_chat_messages();
         self.update_search_results();
+        self.update_load_model();
     }
 
     fn update_search_results(&mut self) {
@@ -258,7 +302,7 @@ impl Store {
 
     fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
-            self.select_chat(chat_id);
+            self.chats.set_current_chat(chat_id);
         } else {
             self.chats.create_empty_chat();
         }
@@ -273,7 +317,7 @@ impl Store {
                     .find(|d| d.file.id == *file_id)
                     .map(|d| d.file.clone())
                 {
-                    let _ = self.load_model(&file);
+                    self.load_model(&file);
                 }
             }
         }
