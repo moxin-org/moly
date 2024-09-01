@@ -204,10 +204,11 @@ pub fn open_or_clone<P: AsRef<Path>>(url: &str, repo_path: P) -> Result<Reposito
 pub static REPO_NAME: &'static str = "model-cards";
 
 pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<ModelCardManager> {
-    static REPO_URL: &'static str = "https://github.com/moxin-org/model-cards.git";
+    let repo_url: &'static str =
+        option_env!("MODEL_CARDS_REPO").unwrap_or("https://github.com/moxin-org/model-cards");
     let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
 
-    let repo = open_or_clone(REPO_URL, &repo_dirs)?;
+    let repo = open_or_clone(repo_url, &repo_dirs)?;
     let mut r = Ok(());
     for _ in 0..2 {
         r = pull(&repo, "origin", "main");
@@ -218,14 +219,16 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
 
     if let Err(e) = r {
         log::error!("Failed to pull: {:?}", e);
-        log::error!("please remove the repo({:?}) and try again",&repo_dirs);
+        log::error!("please remove the repo({:?}) and try again", &repo_dirs);
     }
 
-    static INDEX_URL: &'static str = "https://github.com/moxin-org/model-cards/releases/download/index_release/index.json";
+    let index_url = format!("{}/releases/download/index_release/index.json", repo_url);
 
-    let index_list = if let Ok(remote_index)= reqwest::blocking::get(INDEX_URL).and_then(|r|r.json::<Vec<ModelIndex>>()){
+    let index_list = if let Ok(remote_index) =
+        reqwest::blocking::get(index_url).and_then(|r| r.json::<Vec<ModelIndex>>())
+    {
         remote_index
-    }else{
+    } else {
         let index_list = std::fs::read_to_string(repo_dirs.join("index.json"))?;
         let index_list: Vec<ModelIndex> = serde_json::from_str(&index_list)?;
         index_list
@@ -236,8 +239,26 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
         indexs.insert(index.id.clone(), index);
     }
 
+    let embedding_index =
+        if let Ok(embedding_index) = std::fs::read_to_string(repo_dirs.join("embedding.json")) {
+            let embedding_index: EmbeddingIndex = serde_json::from_str(&embedding_index)?;
+            if !embedding_index.check_file_exist(app_data_dir.as_ref()) {
+                if let Ok(_) = embedding_index.download(app_data_dir.as_ref()) {
+                    Some(embedding_index)
+                } else {
+                    log::warn!("Failed to download embedding model");
+                    None
+                }
+            } else {
+                Some(embedding_index)
+            }
+        } else {
+            None
+        };
+
     Ok(ModelCardManager {
         app_data_dir: app_data_dir.as_ref().to_path_buf(),
+        embedding_index,
         indexs,
         caches: HashMap::new(),
     })
@@ -282,7 +303,7 @@ impl ModelIndex {
         let mut model_card: ModelCard = serde_json::from_str(&model_card)?;
         model_card.like_count = self.like_count;
         model_card.download_count = self.download_count;
-        
+
         Ok(model_card)
     }
 }
@@ -430,16 +451,18 @@ impl ModelCard {
 
 pub struct ModelCardManager {
     app_data_dir: PathBuf,
+    embedding_index: Option<EmbeddingIndex>,
     indexs: HashMap<String, ModelIndex>,
     caches: HashMap<String, ModelCard>,
 }
 
 impl ModelCardManager {
-    pub fn empty(app_data_dir:PathBuf) -> Self {
+    pub fn empty(app_data_dir: PathBuf) -> Self {
         Self {
             app_data_dir,
             indexs: HashMap::new(),
             caches: HashMap::new(),
+            embedding_index: None,
         }
     }
 
@@ -492,5 +515,42 @@ impl ModelCardManager {
             .skip(offset)
             .take(limit)
             .collect::<Vec<ModelIndex>>())
+    }
+
+    pub fn embedding_model(&self) -> Option<(PathBuf, u64)> {
+        self.embedding_index
+            .as_ref()
+            .map(|index| (index.file_path(&self.app_data_dir), index.ctx))
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct EmbeddingIndex {
+    id: String,
+    file: String,
+    ctx: u64,
+    download: String,
+}
+
+impl EmbeddingIndex {
+    pub fn file_path(&self, app_data_dir: &Path) -> PathBuf {
+        app_data_dir.join("embedding").join(&self.file)
+    }
+
+    pub fn check_file_exist(&self, app_data_dir: &Path) -> bool {
+        let file_path = self.file_path(app_data_dir);
+        file_path.exists()
+    }
+
+    pub fn download(&self, app_data_dir: &Path) -> anyhow::Result<()> {
+        let file_path = self.file_path(app_data_dir);
+
+        let _ = std::fs::create_dir_all(file_path.parent().unwrap());
+
+        let client = reqwest::blocking::Client::new();
+        let mut resp = client.get(&self.download).send()?;
+        let mut file = std::fs::File::create(file_path)?;
+        std::io::copy(&mut resp, &mut file)?;
+        Ok(())
     }
 }

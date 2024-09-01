@@ -359,6 +359,7 @@ pub trait BackendModel: Sized {
         file: store::download_files::DownloadedFile,
         options: LoadModelOptions,
         tx: Sender<anyhow::Result<LoadModelResponse>>,
+        embedding: Option<(PathBuf, u64)>,
     ) -> Self;
     fn chat(
         &self,
@@ -409,7 +410,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         });
 
         let model_indexs = store::model_cards::sync_model_cards_repo(&app_data_dir);
-        let model_indexs= match model_indexs{
+        let model_indexs = match model_indexs {
             Ok(model_indexs) => {
                 log::info!("sync model cards repo success");
                 model_indexs
@@ -500,12 +501,12 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
 
                             let mut models = Vec::new();
                             for index in indexs {
-                                match self.model_indexs.load_model_card(&index){
+                                match self.model_indexs.load_model_card(&index) {
                                     Ok(card) => {
                                         models.push(card);
                                     }
                                     Err(e) => {
-                                        log::error!("load model card {} error: {e}",index.id);
+                                        log::error!("load model card {} error: {e}", index.id);
                                     }
                                 }
                             }
@@ -650,11 +651,17 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
 
                     match download_file {
                         Ok(file) => {
-                            nn_preload_file(&file);
+                            nn_preload_file(&file, self.model_indexs.embedding_model());
                             let old_model = self.model.take();
 
-                            let model =
-                                Model::new_or_reload(&self.async_rt, old_model, file, options, tx);
+                            let model = Model::new_or_reload(
+                                &self.async_rt,
+                                old_model,
+                                file,
+                                options,
+                                tx,
+                                self.model_indexs.embedding_model(),
+                            );
                             self.model = Some(model);
                         }
                         Err(e) => {
@@ -704,7 +711,10 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
     }
 }
 
-pub fn nn_preload_file(file: &store::download_files::DownloadedFile) {
+pub fn nn_preload_file(
+    file: &store::download_files::DownloadedFile,
+    embedding: Option<(PathBuf, u64)>,
+) {
     let file_path = Path::new(&file.download_dir)
         .join(&file.model_id)
         .join(&file.name);
@@ -715,5 +725,17 @@ pub fn nn_preload_file(file: &store::download_files::DownloadedFile) {
         wasmedge_sdk::plugin::ExecutionTarget::AUTO,
         &file_path,
     );
-    wasmedge_sdk::plugin::PluginManager::nn_preload(vec![preloads]);
+
+    let mut preload_vec = vec![preloads];
+    if let Some((embedding_path, _)) = embedding {
+        let preloads = wasmedge_sdk::plugin::NNPreload::new(
+            "embedding".to_string(),
+            wasmedge_sdk::plugin::GraphEncoding::GGML,
+            wasmedge_sdk::plugin::ExecutionTarget::AUTO,
+            &embedding_path,
+        );
+        preload_vec.push(preloads);
+    }
+
+    wasmedge_sdk::plugin::PluginManager::nn_preload(preload_vec);
 }

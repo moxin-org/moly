@@ -34,12 +34,19 @@ fn create_wasi(
     listen_addr: SocketAddr,
     file: &DownloadedFile,
     load_model: &LoadModelOptions,
+    embedding: Option<(std::path::PathBuf, u64)>,
 ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
     // use model metadata context size
-    let ctx_size = if let Some(n_ctx) = load_model.n_ctx {
-        Some(format!("{}", n_ctx))
+    let ctx_size_str = if let Some(n_ctx) = load_model.n_ctx {
+        format!("{}", n_ctx)
     } else {
-        Some(format!("{}", file.context_size.min(8 * 1024)))
+        format!("{}", file.context_size.min(8 * 1024))
+    };
+
+    let ctx_size = if let Some((_, embedding_ctx)) = embedding {
+        Some(format!("{},{}", ctx_size_str, embedding_ctx))
+    } else {
+        Some(ctx_size_str)
     };
 
     let n_gpu_layers = match load_model.gpu_layers {
@@ -49,14 +56,27 @@ fn create_wasi(
 
     // Set n_batch to a fixed value of 128.
     let batch_size = if let Some(n_batch) = load_model.n_batch {
-        Some(format!("{}", n_batch))
+        n_batch
     } else {
-        Some("128".to_string())
+        128
+    };
+
+    let batch_size = if let Some((_, embedding_ctx)) = embedding {
+        Some(format!("{},{}", batch_size, embedding_ctx))
+    } else {
+        Some(format!("{}", batch_size))
     };
 
     let mut prompt_template = load_model.prompt_template.clone();
     if prompt_template.is_none() && !file.prompt_template.is_empty() {
         prompt_template = Some(file.prompt_template.clone());
+    }
+
+    if embedding.is_some() {
+        if let Some(ref mut prompt_template) = prompt_template {
+            prompt_template.push_str(",");
+            prompt_template.push_str("embedding");
+        }
     }
 
     let reverse_prompt = if file.reverse_prompt.is_empty() {
@@ -67,9 +87,18 @@ fn create_wasi(
 
     let listen_addr = Some(format!("{listen_addr}"));
 
-    let module_alias = file.name.as_ref();
-
-    let mut args = vec!["llama-api-server", "-a", module_alias, "-m", module_alias];
+    let mut module_alias = file.name.clone();
+    if embedding.is_some() {
+        module_alias.push_str(",");
+        module_alias.push_str("embedding");
+    }
+    let mut args = vec![
+        "llama-api-server",
+        "-a",
+        module_alias.as_str(),
+        "-m",
+        module_alias.as_str(),
+    ];
 
     macro_rules! add_args {
         ($flag:expr, $value:expr) => {
@@ -95,12 +124,13 @@ pub fn run_wasm_by_downloaded_file(
     wasm_module: Module,
     file: DownloadedFile,
     load_model: LoadModelOptions,
+    embedding: Option<(std::path::PathBuf, u64)>,
 ) {
     use wasmedge_sdk::AsInstance;
 
     let mut instances = HashMap::new();
 
-    let mut wasi = create_wasi(listen_addr, &file, &load_model).unwrap();
+    let mut wasi = create_wasi(listen_addr, &file, &load_model, embedding).unwrap();
     instances.insert(wasi.name().to_string(), wasi.as_mut());
 
     let mut wasi_nn = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().unwrap();
@@ -141,6 +171,7 @@ impl BackendModel for LLamaEdgeApiServer {
         file: crate::store::download_files::DownloadedFile,
         options: moxin_protocol::protocol::LoadModelOptions,
         tx: std::sync::mpsc::Sender<anyhow::Result<moxin_protocol::protocol::LoadModelResponse>>,
+        embedding: Option<(std::path::PathBuf, u64)>,
     ) -> Self {
         let load_model_options = options.clone();
         let mut need_reload = true;
@@ -187,7 +218,7 @@ impl BackendModel for LLamaEdgeApiServer {
         let file_ = file.clone();
 
         let model_thread = std::thread::spawn(move || {
-            run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options)
+            run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options, embedding)
         });
 
         async_rt.spawn(async move {
