@@ -153,7 +153,8 @@ impl BackendModel for LLamaEdgeApiServer {
             }
             (old_model.wasm_module.clone(), old_model.listen_addr)
         } else {
-            let new_addr = std::net::TcpListener::bind("localhost:0")
+            let addr = std::env::var("MOXIN_API_SERVER_ADDR").unwrap_or("localhost:0".to_string());
+            let new_addr = std::net::TcpListener::bind(&addr)
                 .unwrap()
                 .local_addr()
                 .unwrap();
