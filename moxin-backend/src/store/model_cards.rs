@@ -461,15 +461,16 @@ impl ModelCardManager {
         limit: usize,
         offset: usize,
     ) -> reqwest::Result<Vec<ModelIndex>> {
+        let search_text = search_text.trim().to_ascii_lowercase();
         Ok(self
             .indexs
             .values()
             .filter(|index| {
                 (index.model_type == "instruct" || index.model_type == "chat")
-                    && (index.name.contains(search_text)
-                        || index.architecture.contains(search_text)
-                        || index.id.contains(search_text)
-                        || index.summary.contains(search_text))
+                    && (index.name.to_ascii_lowercase().contains(&search_text)
+                        || index.architecture.to_ascii_lowercase().contains(&search_text)
+                        || index.id.to_ascii_lowercase().contains(&search_text)
+                        || index.summary.to_ascii_lowercase().contains(&search_text))
             })
             .map(Clone::clone)
             .skip(offset)
