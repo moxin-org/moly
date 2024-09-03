@@ -362,7 +362,10 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
 impl ChatHistoryCard {
     pub fn set_chat_id(&mut self, id: ChatID) {
-        self.chat_id = id;
+        if id != self.chat_id {
+            self.chat_id = id;
+            self.title_edition_state = TitleState::Editable;
+        }
     }
 
     fn set_title_text(&mut self, text: &str) {
