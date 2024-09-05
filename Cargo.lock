@@ -121,6 +121,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
+name = "arrayref"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d151e35f61089500b617991b791fc8bfd237ae50cd5950803758a179b41e67a"
+
+[[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
+
+[[package]]
 name = "ashpd"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -325,6 +337,12 @@ name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
+
+[[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bindgen"
@@ -637,6 +655,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "data-url"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c297a1c74b71ae29df00c3e22dd9534821d60eb9af5a0192823fa2acea70c2a"
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -794,6 +818,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8c02a5121d4ea3eb16a80748c74f5549a5665e4c21333c6098f283870fbdea6"
 
 [[package]]
+name = "fdeflate"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f9bfee30e4dedf0ab8b422f03af778d9612b63f502710fc500a334ebe2de645"
+dependencies = [
+ "simd-adler32",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -814,6 +847,12 @@ dependencies = [
  "crc32fast",
  "miniz_oxide 0.8.0",
 ]
+
+[[package]]
+name = "float-cmp"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
 
 [[package]]
 name = "fnv"
@@ -1166,6 +1205,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "imagesize"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "029d73f573d8e8d63e6d5020011d3255b28c3ba85d6cf870a07184ed23de9284"
+
+[[package]]
 name = "indexmap"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1240,6 +1285,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1868808506b929d7b0cfa8f75951347aa71bb21144b7791bae35d9bccfcfe37a"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "kurbo"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e5aa9f0f96a938266bdb12928a67169e8d22c6a786fda8ed984b85e6ba93c3c"
+dependencies = [
+ "arrayvec",
+ "smallvec",
 ]
 
 [[package]]
@@ -1382,7 +1437,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-live"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1391,7 +1446,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1399,7 +1454,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-widget"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1408,7 +1463,7 @@ dependencies = [
 [[package]]
 name = "makepad-draw"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "ab_glyph_rasterizer",
  "fxhash",
@@ -1418,22 +1473,24 @@ dependencies = [
  "makepad-vector",
  "sdfer",
  "unicode-bidi",
+ "unicode-linebreak",
+ "unicode-segmentation",
 ]
 
 [[package]]
 name = "makepad-futures"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 
 [[package]]
 name = "makepad-futures-legacy"
 version = "0.7.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 
 [[package]]
 name = "makepad-html"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-live-id",
 ]
@@ -1441,7 +1498,7 @@ dependencies = [
 [[package]]
 name = "makepad-http"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 
 [[package]]
 name = "makepad-jni-sys"
@@ -1452,7 +1509,7 @@ checksum = "9775cbec5fa0647500c3e5de7c850280a88335d1d2d770e5aa2332b801ba7064"
 [[package]]
 name = "makepad-live-compiler"
 version = "0.5.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -1462,7 +1519,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-live-id-macros",
 ]
@@ -1470,7 +1527,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id-macros"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1478,7 +1535,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-tokenizer"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -1488,7 +1545,7 @@ dependencies = [
 [[package]]
 name = "makepad-markdown"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-live-id",
 ]
@@ -1496,17 +1553,17 @@ dependencies = [
 [[package]]
 name = "makepad-math"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 
 [[package]]
 name = "makepad-micro-serde"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-micro-serde-derive",
 ]
@@ -1514,7 +1571,7 @@ dependencies = [
 [[package]]
 name = "makepad-micro-serde-derive"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1522,12 +1579,12 @@ dependencies = [
 [[package]]
 name = "makepad-objc-sys"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 
 [[package]]
 name = "makepad-platform"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-android-state",
  "makepad-futures",
@@ -1545,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "makepad-rustybuzz"
 version = "0.8.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "bitflags 1.3.2",
  "bytemuck",
@@ -1560,7 +1617,7 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "0.5.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-live-compiler",
 ]
@@ -1568,15 +1625,16 @@ dependencies = [
 [[package]]
 name = "makepad-vector"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
+ "resvg",
  "ttf-parser",
 ]
 
 [[package]]
 name = "makepad-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -1585,7 +1643,7 @@ dependencies = [
 [[package]]
 name = "makepad-widgets"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
@@ -1593,12 +1651,13 @@ dependencies = [
  "makepad-markdown",
  "makepad-zune-jpeg",
  "makepad-zune-png",
+ "unicode-segmentation",
 ]
 
 [[package]]
 name = "makepad-windows"
 version = "0.51.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "windows-core 0.51.1",
  "windows-targets 0.48.5",
@@ -1607,7 +1666,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-core"
 version = "0.2.14"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "bitflags 2.6.0",
 ]
@@ -1615,7 +1674,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-inflate"
 version = "0.2.54"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "simd-adler32",
 ]
@@ -1623,7 +1682,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-jpeg"
 version = "0.3.17"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-zune-core",
 ]
@@ -1631,7 +1690,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.2.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "makepad-zune-core",
  "makepad-zune-inflate",
@@ -1680,6 +1739,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8a240ddb74feaf34a79a7add65a741f3167852fba007066dcac1ca548d89c08"
 dependencies = [
  "adler",
+ "simd-adler32",
 ]
 
 [[package]]
@@ -2049,8 +2109,14 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90fcb95eef784c2ac79119d1dd819e162b5da872ce6f3c3abe1e8ca1c082f72b"
 dependencies = [
- "siphasher",
+ "siphasher 0.3.11",
 ]
+
+[[package]]
+name = "pico-args"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
 name = "pin-project-lite"
@@ -2080,6 +2146,19 @@ name = "pkg-config"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
+
+[[package]]
+name = "png"
+version = "0.17.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06e4b0d3d1312775e782c86c91a111aa1f910cbb65e1337f9975b5f9a554b5e1"
+dependencies = [
+ "bitflags 1.3.2",
+ "crc32fast",
+ "fdeflate",
+ "flate2",
+ "miniz_oxide 0.7.4",
+]
 
 [[package]]
 name = "polling"
@@ -2235,7 +2314,7 @@ version = "0.11.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd67538700a17451e7cba03ac727fb961abb7607553461627b97de0b89cf4a62"
 dependencies = [
- "base64",
+ "base64 0.21.7",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -2276,6 +2355,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "resvg"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "944d052815156ac8fa77eaac055220e95ba0b01fa8887108ca710c03805d9051"
+dependencies = [
+ "log",
+ "pico-args",
+ "rgb",
+ "svgtypes",
+ "tiny-skia",
+ "usvg",
+]
+
+[[package]]
 name = "rfd"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2296,6 +2389,15 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "rgb"
+version = "0.8.50"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57397d16646700483b67d2dd6511d79318f9d057fdbd21a4066aeac8b41d310a"
+dependencies = [
+ "bytemuck",
 ]
 
 [[package]]
@@ -2346,6 +2448,12 @@ dependencies = [
  "objc2-foundation",
  "windows 0.57.0",
 ]
+
+[[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rusqlite"
@@ -2404,7 +2512,7 @@ version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c74cae0a4cf6ccbbf5f359f08efdf8ee7e1dc532573bf0db71968cb56b1448c"
 dependencies = [
- "base64",
+ "base64 0.21.7",
 ]
 
 [[package]]
@@ -2613,10 +2721,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
 
 [[package]]
+name = "simplecss"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a11be7c62927d9427e9f40f3444d5499d868648e2edbc4e2116de69e7ec0e89d"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38b58827f4464d87d377d175e90bf58eb00fd8716ff0a62f80356b5e61555d0d"
+
+[[package]]
+name = "siphasher"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
 name = "slab"
@@ -2654,6 +2777,25 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "strict-num"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6637bab7722d379c8b41ba849228d680cc12d0a45ba1fa2b48f2a30577a06731"
+dependencies = [
+ "float-cmp",
+]
+
+[[package]]
+name = "svgtypes"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "794de53cc48eaabeed0ab6a3404a65f40b3e38c067e4435883a65d2aa4ca000e"
+dependencies = [
+ "kurbo",
+ "siphasher 1.0.1",
+]
 
 [[package]]
 name = "syn"
@@ -2746,6 +2888,32 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.76",
+]
+
+[[package]]
+name = "tiny-skia"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83d13394d44dae3207b52a326c0c85a8bf87f1541f23b0d143811088497b09ab"
+dependencies = [
+ "arrayref",
+ "arrayvec",
+ "bytemuck",
+ "cfg-if",
+ "log",
+ "png",
+ "tiny-skia-path",
+]
+
+[[package]]
+name = "tiny-skia-path"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c9e7fc0c2e86a30b117d0462aa261b72b7a99b7ebd7deb3a14ceda95c5bdc93"
+dependencies = [
+ "arrayref",
+ "bytemuck",
+ "strict-num",
 ]
 
 [[package]]
@@ -2887,8 +3055,8 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "ttf-parser"
-version = "0.19.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+version = "0.21.1"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 
 [[package]]
 name = "typenum"
@@ -2930,6 +3098,12 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+
+[[package]]
+name = "unicode-linebreak"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b09c83c3c29d37506a3e260c08c03743a6bb66a9cd432c6934ab501a190571f"
 
 [[package]]
 name = "unicode-normalization"
@@ -2987,6 +3161,28 @@ name = "urlencoding"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "daf8dba3b7eb870caf1ddeed7bc9d2a049f3cfdfae7cb521b087cc33ae4c49da"
+
+[[package]]
+name = "usvg"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b84ea542ae85c715f07b082438a4231c3760539d902e11d093847a0b22963032"
+dependencies = [
+ "base64 0.22.1",
+ "data-url",
+ "flate2",
+ "imagesize",
+ "kurbo",
+ "log",
+ "pico-args",
+ "roxmltree",
+ "simplecss",
+ "siphasher 1.0.1",
+ "strict-num",
+ "svgtypes",
+ "tiny-skia-path",
+ "xmlwriter",
+]
 
 [[package]]
 name = "utf8parse"
@@ -3287,7 +3483,7 @@ dependencies = [
 [[package]]
 name = "windows-core"
 version = "0.51.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-release-v1#0ebc96d484c420266d76af8ab499c8325ec1c42d"
+source = "git+https://github.com/makepad/makepad?branch=rik#406ce5dcdea8e9cc2f42ff02f15ca5a712e0375d"
 dependencies = [
  "windows-targets 0.48.5",
 ]
@@ -3607,6 +3803,12 @@ dependencies = [
  "libc",
  "windows-sys 0.59.0",
 ]
+
+[[package]]
+name = "xmlwriter"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "zbus"
