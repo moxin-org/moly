@@ -9,7 +9,7 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::shared::styles::*;
 
-    Tooltip = {{Tooltip}}{   
+    Tooltip = {{Tooltip}}{
         width: Fill,
         height: Fill,
 
@@ -30,16 +30,16 @@ live_design! {
             <RoundedView> {
                 width: Fit,
                 height: Fit,
-    
+
                 padding: 16,
-    
+
                 draw_bg: {
                     color: #fff,
                     border_width: 1.0,
                     border_color: #D0D5DD,
                     radius: 2.
                 }
-    
+
                 tooltip_label = <Label> {
                     width: 270,
                     draw_text: {
@@ -62,10 +62,10 @@ pub struct Tooltip {
     #[find]
     content: View,
 
-    #[redraw]
     #[rust(DrawList2d::new(cx))]
     draw_list: DrawList2d,
 
+    #[redraw]
     #[live]
     draw_bg: DrawQuad,
     #[layout]
