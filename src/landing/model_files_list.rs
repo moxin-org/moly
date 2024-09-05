@@ -66,6 +66,10 @@ impl Widget for ModelFilesList {
 }
 
 impl WidgetNode for ModelFilesList {
+    fn area(&self) -> Area {
+        self.area
+    }
+
     fn walk(&mut self, _cx: &mut Cx) -> Walk {
         self.walk
     }
