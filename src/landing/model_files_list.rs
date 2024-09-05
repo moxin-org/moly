@@ -74,10 +74,17 @@ impl WidgetNode for ModelFilesList {
         self.area.redraw(cx)
     }
 
-    fn find_widgets(&mut self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet) {
-        for item in self.items.values_mut() {
+    fn find_widgets(&self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet) {
+        for item in self.items.values() {
             item.find_widgets(path, cached, results);
         }
+    }
+
+    fn uid_to_widget(&self, ui: WidgetUid) -> WidgetRef {
+        self.items.values()
+            .map(|item| item.uid_to_widget(ui))
+            .find(|x| !x.is_empty())
+            .unwrap_or(WidgetRef::empty())
     }
 }
 

@@ -48,7 +48,7 @@ pub struct Modal {
     #[live]
     #[find]
     content: View,
-    #[live]
+    #[live] #[area]
     bg_view: View,
 
     #[redraw]

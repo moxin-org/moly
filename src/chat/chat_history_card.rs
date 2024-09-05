@@ -31,8 +31,8 @@ live_design! {
         padding: 0,
         empty_message: ""
 
-        draw_text: {
-            text_style:<REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+        draw_label: {
+            text_style:<REGULAR_FONT>{font_size: 10},
             word: Wrap,
 
             instance prompt_enabled: 0.0

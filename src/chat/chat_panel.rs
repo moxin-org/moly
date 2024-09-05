@@ -80,7 +80,6 @@ live_design! {
                                 sep_color: (#12778a)
                                 quote_bg_color: (#12778a)
                                 quote_fg_color: (#106a7b)
-                                block_color: (#12778a)
                                 code_color: (#12778a)
                             }
                         }
@@ -145,7 +144,6 @@ live_design! {
                                 sep_color: (#EDEDED)
                                 quote_bg_color: (#EDEDED)
                                 quote_fg_color: (#969696)
-                                block_color: (#EDEDED)
                                 code_color: (#EDEDED)
                             }
                         }
@@ -226,7 +224,7 @@ live_design! {
                 radius: 30.0
                 color: #fff
             }
-            draw_text: {
+            draw_label: {
                 text_style:<REGULAR_FONT>{font_size: 10},
 
                 instance prompt_enabled: 0.0
@@ -691,7 +689,7 @@ impl ChatPanel {
         prompt_input.apply_over(
             cx,
             live! {
-                draw_text: { prompt_enabled: (prompt_enabled) }
+                draw_label: { prompt_enabled: (prompt_enabled) }
             },
         );
 

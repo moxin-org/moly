@@ -24,7 +24,6 @@ pub enum StoreAction {
 pub struct FileWithDownloadInfo {
     pub file: File,
     pub download: Option<PendingDownload>,
-    pub is_current_chat: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -210,16 +209,10 @@ impl Store {
                     .iter()
                     .find(|d| d.file.id == file.id)
                     .cloned();
-                let is_current_chat = self
-                    .chats
-                    .loaded_model
-                    .clone()
-                    .map_or(false, |loaded| loaded.id == file.id);
 
                 FileWithDownloadInfo {
                     file: file.clone(),
                     download,
-                    is_current_chat,
                 }
             })
             .collect();
