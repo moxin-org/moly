@@ -196,7 +196,7 @@ impl SortingRef {
     }
 
     pub fn set_selected_item(&self, criteria: SortCriteria) {
-        let Some(mut inner) = self.borrow_mut() else {
+        let Some(inner) = self.borrow_mut() else {
             return;
         };
         let criteria_id = match criteria {

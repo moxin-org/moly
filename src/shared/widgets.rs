@@ -47,7 +47,7 @@ live_design! {
         }
 
         attr_name = <Label> {
-            draw_text:{
+            draw_text: {
                 wrap: Word
                 text_style: <REGULAR_FONT>{font_size: 8},
                 color: #x0
@@ -302,7 +302,7 @@ live_design! {
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
     MoxinTextInput = <TextInput> {
-        draw_text: {
+        draw_label: {
             text_style:<REGULAR_FONT>{font_size: 12},
             fn get_color(self) -> vec4 {
                 return #555
@@ -328,7 +328,7 @@ live_design! {
         }
 
         // TODO find a way to override colors
-        draw_select: {
+        draw_selection: {
             instance hover: 0.0
             instance focus: 0.0
             uniform border_radius: 2.0
@@ -388,7 +388,7 @@ live_design! {
             color: #000
         }
         text_input: {
-            draw_text: {
+            draw_label: {
                 text_style: <BOLD_FONT>{font_size: 11},
                 fn get_color(self) -> vec4 {
                     return #000;
