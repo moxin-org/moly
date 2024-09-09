@@ -108,7 +108,10 @@ impl Chats {
         if let Some(chat) = self.get_current_chat() {
             chat.borrow_mut().cancel_streaming(self.backend.as_ref());
             let mut chat = self.get_current_chat().unwrap().borrow_mut();
-            chat.messages.pop();
+            let message = chat.messages.last_mut().unwrap();
+            if message.content.trim().is_empty() {
+                chat.messages.pop();
+            }
         }
     }
 
