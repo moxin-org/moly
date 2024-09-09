@@ -25,6 +25,7 @@ pub struct LLamaEdgeApiServer {
     listen_addr: SocketAddr,
     load_model_options: LoadModelOptions,
     wasm_module: Module,
+    embedding: Option<(std::path::PathBuf, u64)>,
     running_controller: tokio::sync::broadcast::Sender<()>,
     #[allow(dead_code)]
     model_thread: std::thread::JoinHandle<()>,
@@ -179,6 +180,7 @@ impl BackendModel for LLamaEdgeApiServer {
             if old_model.id == file.id.as_str()
                 && old_model.load_model_options.n_ctx == options.n_ctx
                 && old_model.load_model_options.n_batch == options.n_batch
+                && old_model.embedding == embedding
             {
                 need_reload = false;
             }
@@ -217,8 +219,10 @@ impl BackendModel for LLamaEdgeApiServer {
 
         let file_ = file.clone();
 
+        let embedding_ = embedding.clone();
+
         let model_thread = std::thread::spawn(move || {
-            run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options, embedding)
+            run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options, embedding_)
         });
 
         async_rt.spawn(async move {
@@ -258,6 +262,7 @@ impl BackendModel for LLamaEdgeApiServer {
         let new_model = Self {
             id: file_id,
             wasm_module,
+            embedding,
             listen_addr,
             running_controller,
             model_thread,

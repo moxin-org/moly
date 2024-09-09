@@ -248,17 +248,22 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
         if let Ok(embedding_index) = std::fs::read_to_string(repo_dirs.join("embedding.json")) {
             let embedding_index: EmbeddingIndex = serde_json::from_str(&embedding_index)?;
             if !embedding_index.check_file_exist(app_data_dir.as_ref()) {
-                if let Ok(_) = embedding_index.download(app_data_dir.as_ref()) {
-                    Some(embedding_index)
-                } else {
-                    log::warn!("Failed to download embedding model");
-                    None
-                }
+                let app_data_dir_path = app_data_dir.as_ref().to_path_buf();
+                let r = std::thread::spawn(move || {
+                    if let Ok(_) = embedding_index.download(&app_data_dir_path) {
+                        log::debug!("Downloaded embedding model ok");
+                        Some(embedding_index)
+                    } else {
+                        log::warn!("Failed to download embedding model");
+                        None
+                    }
+                });
+                EmbeddingState::Pending(r)
             } else {
-                Some(embedding_index)
+                EmbeddingState::Finish(Some(embedding_index))
             }
         } else {
-            None
+            EmbeddingState::Finish(None)
         };
 
     Ok(ModelCardManager {
@@ -456,9 +461,14 @@ impl ModelCard {
 
 pub struct ModelCardManager {
     app_data_dir: PathBuf,
-    embedding_index: Option<EmbeddingIndex>,
+    embedding_index: EmbeddingState,
     indexs: HashMap<String, ModelIndex>,
     caches: HashMap<String, ModelCard>,
+}
+
+pub enum EmbeddingState {
+    Pending(std::thread::JoinHandle<Option<EmbeddingIndex>>),
+    Finish(Option<EmbeddingIndex>),
 }
 
 impl ModelCardManager {
@@ -467,7 +477,7 @@ impl ModelCardManager {
             app_data_dir,
             indexs: HashMap::new(),
             caches: HashMap::new(),
-            embedding_index: None,
+            embedding_index: EmbeddingState::Finish(None),
         }
     }
 
@@ -522,10 +532,35 @@ impl ModelCardManager {
             .collect::<Vec<ModelIndex>>())
     }
 
-    pub fn embedding_model(&self) -> Option<(PathBuf, u64)> {
-        self.embedding_index
-            .as_ref()
-            .map(|index| (index.file_path(&self.app_data_dir), index.ctx))
+    pub fn embedding_model(&mut self) -> Option<(PathBuf, u64)> {
+        match &self.embedding_index {
+            EmbeddingState::Pending(res) => {
+                if res.is_finished() {
+                    ()
+                } else {
+                    return None;
+                }
+            }
+            EmbeddingState::Finish(None) => return None,
+            EmbeddingState::Finish(Some(index)) => {
+                return Some((index.file_path(&self.app_data_dir), index.ctx))
+            }
+        };
+
+        let state = std::mem::replace(&mut self.embedding_index, EmbeddingState::Finish(None));
+        let res = match state {
+            EmbeddingState::Pending(res) => res.join().unwrap(),
+            EmbeddingState::Finish(_) => unreachable!(),
+        };
+
+        match res {
+            Some(index) => {
+                let r = (index.file_path(&self.app_data_dir), index.ctx);
+                self.embedding_index = EmbeddingState::Finish(Some(index));
+                Some(r)
+            }
+            None => None,
+        }
     }
 }
 
