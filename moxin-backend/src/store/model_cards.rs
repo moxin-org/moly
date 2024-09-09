@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use git2::Repository;
+use git2::{ProxyOptions, Repository};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -37,9 +37,14 @@ fn do_fetch<'a>(
 
     let mut fo = git2::FetchOptions::new();
     fo.remote_callbacks(cb);
+    if let Ok(proxy) = std::env::var("https_proxy").or_else(|_| std::env::var("all_proxy")) {
+        let mut proxy_opt = ProxyOptions::new();
+        proxy_opt.url(&proxy);
+        fo.proxy_options(proxy_opt);
+    }
     // Always fetch all tags.
     // Perform a download and also update tips
-    fo.download_tags(git2::AutotagOption::All);
+    // fo.download_tags(git2::AutotagOption::All);
     log::debug!("Fetching {} for repo", remote.name().unwrap());
     remote.fetch(refs, Some(&mut fo), None)?;
 
@@ -48,7 +53,7 @@ fn do_fetch<'a>(
     let stats = remote.stats();
     if stats.local_objects() > 0 {
         log::debug!(
-            "\rReceived {}/{} objects in {} bytes (used {} local \
+            "Received {}/{} objects in {} bytes (used {} local \
              objects)",
             stats.indexed_objects(),
             stats.total_objects(),
@@ -57,7 +62,7 @@ fn do_fetch<'a>(
         );
     } else {
         log::debug!(
-            "\rReceived {}/{} objects in {} bytes",
+            "Received {}/{} objects in {} bytes",
             stats.indexed_objects(),
             stats.total_objects(),
             stats.received_bytes()
