@@ -90,7 +90,7 @@ live_design! {
             }
 
             input = <MoxinTextInput> {
-                width: Fit,
+                width: Fill,
                 height: Fit,
                 empty_message: "Search Model by Keyword"
             }
