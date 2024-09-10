@@ -1,6 +1,7 @@
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use makepad_widgets::*;
+use moxin_protocol::data::Model;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -9,6 +10,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::landing::model_card::ModelCard;
     import crate::landing::search_loading::SearchLoading;
+    import crate::landing::agent_list::AgentList;
 
     ModelList = {{ModelList}} {
         width: Fill,
@@ -27,6 +29,14 @@ live_design! {
                 // "capture" the events, so we don't want to handle them here.
                 capture_overload: false,
 
+                AgentList = <AgentList> {}
+                Header = <Label> {
+                    margin: {bottom: 20, top: 35}
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 16},
+                        color: #000
+                    }
+                }
                 Model = <ModelCard> {
                     margin: {bottom: 30},
                 }
@@ -87,20 +97,48 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let models = &store.search.models;
-        let models_count = models.len();
+
+        enum Item<'a> {
+            AgentList,
+            Header(&'a str),
+            Model(&'a Model),
+        }
+
+        let mut items = Vec::new();
+
+        if store.search.keyword.is_none() {
+            items.push(Item::Header("Featured Agents"));
+            items.push(Item::AgentList);
+            items.push(Item::Header("Models"));
+        }
+
+        items.extend(store.search.models.iter().map(Item::Model));
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
-                list.set_item_range(cx, 0, models_count);
+                list.set_item_range(cx, 0, items.len());
                 while let Some(item_id) = list.next_visible_item(cx) {
-                    let item = list.item(cx, item_id, live_id!(Model)).unwrap();
-
-                    if item_id < models_count {
-                        let model = &models[item_id];
-                        let mut model_with_download_info =
-                            store.add_download_info_to_model(model);
-                        item.draw_all(cx, &mut Scope::with_data(&mut model_with_download_info));
+                    if item_id < items.len() {
+                        match items[item_id] {
+                            Item::Header(text) => {
+                                let item = list.item(cx, item_id, live_id!(Header)).unwrap();
+                                item.set_text(text);
+                                item.draw_all(cx, &mut Scope::empty());
+                            }
+                            Item::AgentList => {
+                                let item = list.item(cx, item_id, live_id!(AgentList)).unwrap();
+                                item.draw_all(cx, &mut Scope::empty());
+                            }
+                            Item::Model(model) => {
+                                let item = list.item(cx, item_id, live_id!(Model)).unwrap();
+                                let mut model_with_download_info =
+                                    store.add_download_info_to_model(model);
+                                item.draw_all(
+                                    cx,
+                                    &mut Scope::with_data(&mut model_with_download_info),
+                                );
+                            }
+                        }
                     }
                 }
             }
