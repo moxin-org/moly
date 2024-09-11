@@ -91,7 +91,7 @@ live_design! {
                             radius: 5.0,
                             color: #fff
                         }
-                        draw_text: {
+                        draw_label: {
                             text_style: <REGULAR_FONT>{font_size: 10},
                             color: #475467
                         }
