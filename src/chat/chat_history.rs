@@ -1,5 +1,5 @@
-use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
 use super::agent_button::AgentButtonWidgetRefExt;
+use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
 use crate::data::store::Store;
 use makepad_widgets::*;
 use moxin_mae::MaeBackend;
@@ -43,9 +43,8 @@ live_design! {
                     margin: { top: 120 }
                     padding: { left: 14, right: 14, bottom: 58 }
 
-                    drag_scrolling: false,
-
                     list = <PortalList> {
+                        drag_scrolling: false,
                         AgentHeading = <HeadingLabel> { text: "AGENTS" }
                         Agent = <AgentButton> { create_new_chat: true }
                         ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
@@ -127,7 +126,7 @@ impl Widget for ChatHistory {
                         item.draw_all(cx, scope);
                         continue;
                     }
-                    
+
                     let entity_id = item_id - 1;
 
                     if entity_id < agents_count {
@@ -147,10 +146,10 @@ impl Widget for ChatHistory {
                     }
 
                     let entity_id = entity_id - 1;
-                    
+
                     if entity_id < chats_count {
                         let mut item = list
-                            .item(cx, item_id,  live_id!(ChatHistoryCard))
+                            .item(cx, item_id, live_id!(ChatHistoryCard))
                             .unwrap()
                             .as_chat_history_card();
                         let _ = item.set_chat_id(chat_ids[entity_id]);
@@ -174,11 +173,7 @@ impl WidgetMatchEvent for ChatHistory {
 
             // Make sure text input is focused and other necessary setup happens.
             let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::ChatSelected,
-            );
+            cx.widget_action(widget_uid, &scope.path, ChatHistoryCardAction::ChatSelected);
 
             self.redraw(cx);
         }
