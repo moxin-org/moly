@@ -43,6 +43,8 @@ live_design! {
                     margin: { top: 120 }
                     padding: { left: 14, right: 14, bottom: 58 }
 
+                    drag_scrolling: false,
+
                     list = <PortalList> {
                         AgentHeading = <HeadingLabel> { text: "AGENTS" }
                         Agent = <AgentButton> { create_new_chat: true }
@@ -126,32 +128,32 @@ impl Widget for ChatHistory {
                         continue;
                     }
                     
-                    let item_id = item_id - 1;
+                    let entity_id = item_id - 1;
 
-                    if item_id < agents_count {
-                        let agent = &agents[item_id];
+                    if entity_id < agents_count {
+                        let agent = &agents[entity_id];
                         let item = list.item(cx, item_id, live_id!(Agent)).unwrap();
                         item.as_agent_button().set_agent(agent, false);
                         item.draw_all(cx, scope);
                         continue;
                     }
 
-                    let item_id = item_id - agents_count;
+                    let entity_id = entity_id - agents_count;
 
-                    if item_id == 0 {
+                    if entity_id == 0 {
                         let item = list.item(cx, item_id, live_id!(ChatsHeading)).unwrap();
                         item.draw_all(cx, scope);
                         continue;
                     }
 
-                    let item_id = item_id - 1;
+                    let entity_id = entity_id - 1;
                     
-                    if item_id < chats_count {
+                    if entity_id < chats_count {
                         let mut item = list
                             .item(cx, item_id,  live_id!(ChatHistoryCard))
                             .unwrap()
                             .as_chat_history_card();
-                        let _ = item.set_chat_id(chat_ids[item_id]);
+                        let _ = item.set_chat_id(chat_ids[entity_id]);
                         item.draw_all(cx, scope);
                         continue;
                     }
