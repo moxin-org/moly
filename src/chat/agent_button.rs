@@ -18,7 +18,7 @@ live_design!(
         visible: false,
         height: 40,
         align: { x: 0.0, y: 0.5 },
-        padding: { top: 4, bottom: 4 },
+        padding: { left: 9, top: 4, bottom: 4, right: 9 },
         spacing: 10,
 
         cursor: Hand
@@ -28,11 +28,9 @@ live_design!(
             color: #0000
         }
 
-        agent_avatar = <ChatAgentAvatar> {
-            padding: { left: 9 },
-        }
+        agent_avatar = <ChatAgentAvatar> {}
         text_layout = <View> {
-            width: Fit,
+            width: Fill,
             height: Fit,
             flow: Right,
             spacing: 10
@@ -47,13 +45,14 @@ live_design!(
             }
             description = <View> {
                 visible: false,
-                width: Fit,
+                width: Fill,
                 height: Fit,
                 label = <Label> {
-                    width: Fit,
+                    width: Fill,
                     height: Fit,
                     draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 9},
+                        wrap: Ellipsis,
+                        text_style: <REGULAR_FONT>{font_size: 9, height_factor: 1.1},
                         color: #667085,
                     }
                 }

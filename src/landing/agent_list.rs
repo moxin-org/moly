@@ -23,6 +23,8 @@ live_design! {
         button = <AgentButton> {
             width: Fill,
             height: Fill,
+            padding: {left: 15, right: 15},
+            spacing: 15,
             create_new_chat: true,
 
             draw_bg: {
@@ -35,7 +37,21 @@ live_design! {
                 }
             }
             text_layout = {
+                height: 65,
                 flow: Down,
+                caption = {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 11},
+                    }
+                }
+                description = {
+                    label = {
+                        draw_text: {
+                            wrap: Word,
+                            color: #1D2939,
+                        }
+                    }
+                }
             }
         }
     }
