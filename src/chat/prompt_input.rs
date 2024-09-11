@@ -181,7 +181,7 @@ live_design! {
                             radius: 10.0
                             color: #fff
                         }
-                        draw_text: {
+                        draw_label: {
                             text_style:<REGULAR_FONT>{font_size: 10},
 
                             instance prompt_enabled: 0.0

@@ -151,17 +151,16 @@ impl Store {
     }
 
     pub fn send_message_to_current_entity(&mut self, prompt: String, regenerate_from: Option<usize>) {
-        if let Some(chat) = self.chats.get_current_chat() {
-            match chat.borrow().associated_entity {
-                Some(ChatEntity::Agent(agent)) => {
-                    self.send_agent_message(agent, prompt, regenerate_from);
-                    return;
-                }
-                _ => ()
+        let entity = self.chats.get_current_chat().and_then(|c| c.borrow().associated_entity.clone());
+
+        match entity {
+            Some(ChatEntity::Agent(agent)) => {
+                self.send_agent_message(agent, prompt, regenerate_from);
+            }
+            _ => {
+                self.send_chat_message(prompt, regenerate_from);
             }
         }
-
-        self.send_chat_message(prompt, regenerate_from);
     }
 
     pub fn send_chat_message(&mut self, prompt: String, regenerate_from: Option<usize>) {
