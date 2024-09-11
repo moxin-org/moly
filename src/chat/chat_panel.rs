@@ -783,7 +783,7 @@ impl ChatPanel {
             {
                 store.send_agent_message(agent_selected, prompt.clone(), regenerate_from);
             } else {
-                store.send_chat_message(prompt.clone(), regenerate_from);
+                store.send_message_to_current_entity(prompt.clone(), regenerate_from);
             }
 
             self.prompt_input(id!(main_prompt_input)).reset_text(false);
