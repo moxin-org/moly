@@ -1,17 +1,12 @@
 use crate::chat::chat_panel::ChatPanelAction;
-use crate::chat::delete_chat_modal::{DeleteChatAction, DeleteChatModalWidgetRefExt};
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
-use crate::landing::model_card::{ModelCardViewAllModalWidgetRefExt, ViewAllModalAction};
 use crate::landing::model_files_item::ModelFileItemAction;
-use crate::my_models::delete_model_modal::{DeleteModelAction, DeleteModelModalWidgetRefExt};
-use crate::my_models::model_info_modal::{ModelInfoAction, ModelInfoModalWidgetRefExt};
-use crate::shared::actions::{ChatAction, DownloadAction, TooltipAction};
+use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction,
+    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
 };
-use crate::shared::portal::{PortalViewWidgetRefExt, PortalWidgetRefExt};
-use crate::shared::tooltip::TooltipWidgetRefExt;
+use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
 
 live_design! {
@@ -20,18 +15,15 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
-    import crate::shared::portal::*;
-    import crate::shared::modal::*;
+    import crate::shared::popup_notification::*;
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
-    import crate::shared::tooltip::Tooltip;
+    import crate::shared::desktop_buttons::MoxinDesktopButton;
+
     import crate::landing::landing_screen::LandingScreen;
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
-    import crate::my_models::delete_model_modal::DeleteModelModal;
-    import crate::chat::delete_chat_modal::DeleteChatModal;
-    import crate::my_models::model_info_modal::ModelInfoModal;
 
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
@@ -42,6 +34,17 @@ live_design! {
         ui: <Window> {
             window: {inner_size: vec2(1440, 1024)},
             pass: {clear_color: #fff}
+
+            caption_bar = {
+                caption_label = <View> {} // empty view to remove the default caption label
+                windows_buttons = <View> {
+                    visible: false,
+                    width: Fit, height: Fit,
+                    min = <MoxinDesktopButton> {draw_bg: {button_type: WindowsMin}}
+                    max = <MoxinDesktopButton> {draw_bg: {button_type: WindowsMax}}
+                    close = <MoxinDesktopButton> {draw_bg: {button_type: WindowsClose}}
+                }
+            }
 
             body = {
                 flow: Overlay
@@ -103,46 +106,9 @@ live_design! {
                     }
                 }
 
-                portal_root = <Portal> {
-                    modal_model_card_view_all_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                model_card_view_all_modal = <ModelCardViewAllModal> {}
-                            }
-                        }
-                    }
-
-                    modal_delete_model_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                delete_model_modal = <DeleteModelModal> {}
-                            }
-                        }
-                    }
-
-                    modal_delete_chat_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                delete_chat_modal = <DeleteChatModal> {}
-                            }
-                        }
-                    }
-
-                    modal_model_info_portal_view = <PortalView> {
-                        modal = <Modal> {
-                            content = {
-                                model_info_modal = <ModelInfoModal> {}
-                            }
-                        }
-                    }
-
-                    popup_download_success_portal_view = <PortalView> {
-                        align: {x: 1, y: 0}
-                        popup_download_success = <DownloadNotificationPopup> {}
-                    }
-
-                    tooltip_portal_view = <PortalView> {
-                        tooltip = <Tooltip> {}
+                popup_notification = <PopupNotification> {
+                    content: {
+                        popup_download_notification = <DownloadNotificationPopup> {}
                     }
                 }
             }
@@ -236,51 +202,14 @@ impl MatchEvent for App {
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Pause(file_id) => {
-                    self.store.downloads.pause_download_file(file_id);
+                    self.store.downloads.pause_download_file(&file_id);
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Cancel(file_id) => {
-                    self.store.downloads.cancel_download_file(file_id);
+                    self.store.downloads.cancel_download_file(&file_id);
                     self.ui.redraw(cx);
                 }
                 _ => {}
-            }
-
-            // Set modal viewall model id
-            if let ViewAllModalAction::ModelSelected(model_id) = action.as_widget_action().cast() {
-                let mut modal = self
-                    .ui
-                    .model_card_view_all_modal(id!(model_card_view_all_modal));
-                modal.set_model_id(model_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
-            }
-
-            // Set modal viewall model id
-            if let DeleteModelAction::FileSelected(file_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.delete_model_modal(id!(delete_model_modal));
-                modal.set_file_id(file_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
-            }
-
-            // Set modal viewall model id
-            if let DeleteChatAction::ChatSelected(chat_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.delete_chat_modal(id!(delete_chat_modal));
-                modal.set_chat_id(chat_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
-            }
-
-            if let ModelInfoAction::FileSelected(file_id) = action.as_widget_action().cast() {
-                let mut modal = self.ui.model_info_modal(id!(model_info_modal));
-                modal.set_file_id(file_id);
-                // TODO: Hack for error that when you first open the modal, doesnt draw until an event
-                // this forces the entire ui to rerender, still weird that only happens the first time.
-                self.ui.redraw(cx);
             }
 
             if let ChatAction::Start(_) = action.as_widget_action().cast() {
@@ -303,24 +232,12 @@ impl MatchEvent for App {
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
 
-            match action.as_widget_action().cast() {
-                TooltipAction::Show(text, pos) => {
-                    let mut tooltip = self.ui.tooltip(id!(tooltip));
-                    tooltip.set_text(&text);
-
-                    let tooltip_portal_view = self.ui.portal_view(id!(tooltip_portal_view));
-                    tooltip_portal_view.apply_over_and_redraw(cx, live!{
-                        padding: { left: (pos.x), top: (pos.y) }
-                    });
-                    
-                    let mut portal = self.ui.portal(id!(portal_root));
-                    let _ = portal.show_portal_view_by_id(cx, live_id!(tooltip_portal_view));
-                }
-                TooltipAction::Hide => {
-                    let mut portal = self.ui.portal(id!(portal_root));
-                    let _ = portal.close(cx);
-                }
-                _ => {}
+            if matches!(
+                action.as_widget_action().cast(),
+                DownloadNotificationPopupAction::ActionLinkClicked
+                    | DownloadNotificationPopupAction::CloseButtonClicked
+            ) {
+                self.ui.popup_notification(id!(popup_notification)).open(cx);
             }
         }
     }
@@ -331,7 +248,7 @@ impl App {
         if let Some(notification) = self.store.downloads.next_download_notification() {
             let mut popup = self
                 .ui
-                .download_notification_popup(id!(popup_download_success));
+                .download_notification_popup(id!(popup_download_notification));
 
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
@@ -342,8 +259,7 @@ impl App {
                 }
             }
 
-            let mut portal = self.ui.portal(id!(portal_root));
-            let _ = portal.show_portal_view_by_id(cx, live_id!(popup_download_success_portal_view));
+            self.ui.popup_notification(id!(popup_notification)).open(cx);
         }
     }
 }

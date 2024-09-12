@@ -28,11 +28,10 @@ pub struct LoadModelOptions {
     pub prompt_template: Option<String>,
     pub gpu_layers: GPULayers,
     pub use_mlock: bool,
-    pub n_batch: u32,
-    pub n_ctx: u32,
+    pub n_batch: Option<u32>,
+    pub n_ctx: Option<u32>,
     pub rope_freq_scale: f32,
     pub rope_freq_base: f32,
-
     // TBD Not really sure if this is something backend manages or if it is matter of
     // the client (if it is done by tweaking the JSON payload for the chat completition)
     pub context_overflow_policy: ContextOverflowPolicy,
@@ -42,6 +41,10 @@ pub struct LoadModelOptions {
 pub struct LoadedModelInfo {
     pub file_id: FileID,
     pub model_id: ModelID,
+
+    // The port where the local server is listening for the model.
+    // if 0, the server is not running.
+    pub listen_port: u16,
 
     // JSON formatted string with the model information. See "Model Inspector" in LMStudio.
     pub information: String,

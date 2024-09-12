@@ -13,6 +13,7 @@ pub enum DownloadFileAction {
 
 #[derive(Clone, Copy, Debug)]
 pub enum DownloadState {
+    Initializing(f64),
     Downloading(f64),
     Errored(f64),
     Completed,
@@ -21,7 +22,6 @@ pub enum DownloadState {
 #[derive(Debug)]
 pub struct Download {
     pub file: File,
-    pub model: Model,
     pub sender: Sender<DownloadFileAction>,
     pub receiver: Receiver<DownloadFileAction>,
     pub state: DownloadState,
@@ -29,14 +29,13 @@ pub struct Download {
 }
 
 impl Download {
-    pub fn new(file: File, model: Model, progress: f64, backend: &Backend) -> Self {
+    pub fn new(file: File, progress: f64, backend: &Backend) -> Self {
         let (tx, rx) = channel();
         let mut download = Self {
             file: file,
-            model: model,
             sender: tx,
             receiver: rx,
-            state: DownloadState::Downloading(progress),
+            state: DownloadState::Initializing(progress),
             notification_pending: false,
         };
 
@@ -104,12 +103,17 @@ impl Download {
         }
     }
 
+    pub fn is_initializing(&self) -> bool {
+        matches!(self.state, DownloadState::Initializing(..))
+    }
+
     pub fn is_complete(&self) -> bool {
         matches!(self.state, DownloadState::Completed)
     }
 
     pub fn get_progress(&self) -> f64 {
         match self.state {
+            DownloadState::Initializing(progress) => progress,
             DownloadState::Downloading(progress) => progress,
             DownloadState::Errored(progress) => progress,
             DownloadState::Completed => 1.0,

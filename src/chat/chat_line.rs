@@ -87,8 +87,14 @@ live_design! {
     EditTextInput = <MoxinTextInput> {
         width: Fill,
         height: Fit,
-        padding: 0,
+        padding: 20,
         empty_message: ""
+
+        draw_bg: {
+            color: #fff,
+            border_width: 1.0
+            border_color: #D0D5DD
+        }
 
         draw_text: {
             text_style:<REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
@@ -104,7 +110,7 @@ live_design! {
     ChatLineBody = <View> {
         width: Fill,
         height: Fit,
-        spacing: 12,
+        spacing: 20,
         flow: Down,
 
         sender_name_layout = <View> {

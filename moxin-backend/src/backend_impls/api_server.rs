@@ -23,6 +23,7 @@ static WASM: &[u8] = include_bytes!("../../wasm/llama-api-server.wasm");
 pub struct LLamaEdgeApiServer {
     id: String,
     listen_addr: SocketAddr,
+    load_model_options: LoadModelOptions,
     wasm_module: Module,
     running_controller: tokio::sync::broadcast::Sender<()>,
     #[allow(dead_code)]
@@ -35,7 +36,11 @@ fn create_wasi(
     load_model: &LoadModelOptions,
 ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
     // use model metadata context size
-    let ctx_size = Some(format!("{}", file.context_size));
+    let ctx_size = if let Some(n_ctx) = load_model.n_ctx {
+        Some(format!("{}", n_ctx))
+    } else {
+        Some(format!("{}", file.context_size.min(8 * 1024)))
+    };
 
     let n_gpu_layers = match load_model.gpu_layers {
         moxin_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
@@ -43,7 +48,11 @@ fn create_wasi(
     };
 
     // Set n_batch to a fixed value of 128.
-    let batch_size = Some(format!("128"));
+    let batch_size = if let Some(n_batch) = load_model.n_batch {
+        Some(format!("{}", n_batch))
+    } else {
+        Some("128".to_string())
+    };
 
     let mut prompt_template = load_model.prompt_template.clone();
     if prompt_template.is_none() && !file.prompt_template.is_empty() {
@@ -97,15 +106,6 @@ pub fn run_wasm_by_downloaded_file(
     let mut wasi_nn = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().unwrap();
     instances.insert(wasi_nn.name().unwrap(), &mut wasi_nn);
 
-    let mut wasi_logger = wasmedge_sdk::plugin::PluginManager::create_plugin_instance(
-        "wasi_logging",
-        "wasi:logging/logging",
-    );
-
-    if let Ok(wasi_logger) = &mut wasi_logger {
-        instances.insert(wasi_logger.name().unwrap(), wasi_logger);
-    }
-
     let store = Store::new(None, instances).unwrap();
     let mut vm = Vm::new(store);
     vm.register_module(None, wasm_module.clone()).unwrap();
@@ -142,17 +142,23 @@ impl BackendModel for LLamaEdgeApiServer {
         options: moxin_protocol::protocol::LoadModelOptions,
         tx: std::sync::mpsc::Sender<anyhow::Result<moxin_protocol::protocol::LoadModelResponse>>,
     ) -> Self {
+        let load_model_options = options.clone();
         let mut need_reload = true;
         let (wasm_module, listen_addr) = if let Some(old_model) = &old_model {
-            if old_model.id == file.id.as_str() {
+            if old_model.id == file.id.as_str()
+                && old_model.load_model_options.n_ctx == options.n_ctx
+                && old_model.load_model_options.n_batch == options.n_batch
+            {
                 need_reload = false;
             }
             (old_model.wasm_module.clone(), old_model.listen_addr)
         } else {
-            (
-                Module::from_bytes(None, WASM).unwrap(),
-                ([0, 0, 0, 0], 8080).into(),
-            )
+            let new_addr = std::net::TcpListener::bind("localhost:0")
+                .unwrap()
+                .local_addr()
+                .unwrap();
+
+            (Module::from_bytes(None, WASM).unwrap(), new_addr)
         };
 
         if !need_reload {
@@ -161,6 +167,7 @@ impl BackendModel for LLamaEdgeApiServer {
                     file_id: file.id.to_string(),
                     model_id: file.model_id,
                     information: "".to_string(),
+                    listen_port: listen_addr.port(),
                 },
             )));
             return old_model.unwrap();
@@ -174,7 +181,8 @@ impl BackendModel for LLamaEdgeApiServer {
 
         let file_id = file.id.to_string();
 
-        let url = format!("http://{}/echo", listen_addr);
+        let listen_port = listen_addr.port();
+        let url = format!("http://localhost:{}/echo", listen_port);
 
         let file_ = file.clone();
 
@@ -185,7 +193,13 @@ impl BackendModel for LLamaEdgeApiServer {
         async_rt.spawn(async move {
             let mut test_server = false;
             for _i in 0..600 {
-                let r = reqwest::get(&url).await;
+                let r = reqwest::ClientBuilder::new()
+                    .no_proxy()
+                    .build()
+                    .unwrap()
+                    .get(&url)
+                    .send()
+                    .await;
                 if let Ok(resp) = r {
                     if resp.status().is_success() {
                         test_server = true;
@@ -200,6 +214,7 @@ impl BackendModel for LLamaEdgeApiServer {
                         file_id: file_.id.to_string(),
                         model_id: file_.model_id,
                         information: "".to_string(),
+                        listen_port,
                     },
                 )));
             } else {
@@ -215,6 +230,7 @@ impl BackendModel for LLamaEdgeApiServer {
             listen_addr,
             running_controller,
             model_thread,
+            load_model_options,
         };
 
         new_model
@@ -227,12 +243,18 @@ impl BackendModel for LLamaEdgeApiServer {
         tx: std::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
     ) -> bool {
         let is_stream = data.stream.unwrap_or(false);
-        let url = format!("http://{}/v1/chat/completions", self.listen_addr);
+        let url = format!(
+            "http://localhost:{}/v1/chat/completions",
+            self.listen_addr.port()
+        );
         let mut cancel = self.running_controller.subscribe();
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
-            let resp = reqwest::Client::new()
+            let resp = reqwest::ClientBuilder::new()
+                .no_proxy()
+                .build()
+                .unwrap()
                 .post(url)
                 .body(request_body)
                 .send()
@@ -290,8 +312,13 @@ impl BackendModel for LLamaEdgeApiServer {
     }
 
     fn stop(self, _async_rt: &tokio::runtime::Runtime) {
-        let url = format!("http://{}/admin/exit", self.listen_addr);
-        let _ = reqwest::blocking::get(url);
+        let url = format!("http://localhost:{}/admin/exit", self.listen_addr.port());
+        let _ = reqwest::blocking::ClientBuilder::new()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .get(url)
+            .send();
         let _ = self.model_thread.join();
     }
 }

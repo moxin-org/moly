@@ -92,14 +92,20 @@ live_design! {
                             }
                         }
                     }
-                    input_container = {
-                        input = {
-                            draw_bg: {
-                                color: #15859A
-                            }
+                    edit_buttons = {
+                        save = {
+                            draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
                             draw_text: {
                                 fn get_color(self) -> vec4 {
-                                    return #fff;
+                                    return #099250;
+                                }
+                            }
+                        }
+                        save_and_regenerate = {
+                            draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
+                            draw_text: {
+                                fn get_color(self) -> vec4 {
+                                    return #099250;
                                 }
                             }
                         }
@@ -116,10 +122,7 @@ live_design! {
         main_section = {
             body_section = {
                 bubble = {
-                    draw_bg: {
-                        border_width: 1.0,
-                        border_color: #D0D5DD,
-                    }
+                    padding: {left: 0, bottom: 0, top: 0}
                     markdown_message_container = {
                         markdown_message = {
                             draw_normal: {
@@ -152,10 +155,11 @@ live_design! {
         }
     }
 
-    JumpToButtom = <View> {
+    JumpToBottom = <View> {
         width: Fill,
         height: Fill,
-        align: {x: 0.5, y: 1.0},
+        align: {x: 1.0, y: 1.0},
+        padding: {bottom: 60},
 
         jump_to_bottom = <CircleButton> {
             width: 34,
@@ -250,161 +254,168 @@ live_design! {
     }
 
     ChatPanel = {{ChatPanel}} {
-        width: 650,
-        height: Fill,
-        margin: {top: 0, left: 20, right: 20, bottom: 20},
+        flow: Overlay
+        width: Fill
+        height: Fill
 
-        flow: Overlay,
+        <View> {
+            flow: Overlay
+            width: Fill
+            height: Fill
+            padding: {left: 25, right: 25, bottom: 20},
 
-        no_downloaded_model = <View> {
-            width: Fill,
-            height: Fill,
-
-            flow: Down,
-            align: {x: 0.5, y: 0.5},
-
-            <View> {
+            no_downloaded_model = <View> {
+                visible: false,
                 width: Fill,
                 height: Fill,
+
                 flow: Down,
-                spacing: 30,
                 align: {x: 0.5, y: 0.5},
 
-                <Label> {
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 12},
-                        color: #667085
-                    }
-                    text: "You haven’t downloaded any models yet."
-                }
-                go_to_discover_button = <MoxinButton> {
-                    width: Fit,
-                    height: Fit,
+                <View> {
+                    width: Fill,
+                    height: Fill,
+                    flow: Down,
+                    spacing: 30,
+                    align: {x: 0.5, y: 0.5},
 
-                    draw_bg: {
-                        border_color: #D0D5DD,
-                        border_width: 1.0,
-                        color: #fff,
-                        color_hover: #E2F1F1,
-                        radius: 2.0,
+                    <Label> {
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 12},
+                            color: #667085
+                        }
+                        text: "You haven’t downloaded any models yet."
                     }
+                    go_to_discover_button = <MoxinButton> {
+                        width: Fit,
+                        height: Fit,
 
-                    padding: {top: 14, right: 12, bottom: 14, left: 12}
-                    text: "Go To Discover"
-                    draw_text: {
-                        text_style: <BOLD_FONT>{font_size: 12},
-                        fn get_color(self) -> vec4 {
-                            return #087443;
+                        draw_bg: {
+                            border_color: #D0D5DD,
+                            border_width: 1.0,
+                            color: #fff,
+                            color_hover: #E2F1F1,
+                            radius: 2.0,
+                        }
+
+                        padding: {top: 14, right: 12, bottom: 14, left: 12}
+                        text: "Go To Discover"
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 12},
+                            fn get_color(self) -> vec4 {
+                                return #087443;
+                            }
                         }
                     }
                 }
+
+                <View> {
+                    width: Fill, height: Fit
+                    flow: Down,
+                    align: {x: 0.5, y: 0.5},
+                    no_downloaded_model_prompt_input = <ChatPromptInput> {}
+                }
+
             }
 
-            <View> {
-                width: Fill, height: Fit
-                flow: Down,
-                align: {x: 0.5, y: 0.5},
-                no_downloaded_model_prompt_input = <ChatPromptInput> {}
-            }
-
-        }
-
-        no_model = <View> {
-            width: Fill,
-            height: Fill,
-
-            flow: Down,
-            align: {x: 0.5, y: 0.5},
-
-            <View> {
+            no_model = <View> {
+                visible: false,
                 width: Fill,
                 height: Fill,
+
+                flow: Down,
+                align: {x: 0.5, y: 0.5},
+
+                <View> {
+                    width: Fill,
+                    height: Fill,
+                    flow: Down,
+                    spacing: 30,
+                    align: {x: 0.5, y: 0.5},
+
+                    <Icon> {
+                        draw_icon: {
+                            svg_file: dep("crate://self/resources/icons/chat.svg"),
+                            color: #D0D5DD
+                        }
+                        icon_walk: {width: 128, height: 128}
+                    }
+
+                    <Label> {
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 14},
+                            color: #667085
+                        }
+                        text: "Start chatting by choosing a model from above"
+                    }
+                }
+
+                <View> {
+                    width: Fill, height: Fit
+                    flow: Down,
+                    align: {x: 0.5, y: 0.5},
+                    no_model_prompt_input = <ChatPromptInput> {}
+                }
+
+            }
+
+            empty_conversation = <View> {
+                visible: false,
+
+                width: Fill,
+                height: Fill,
+
                 flow: Down,
                 spacing: 30,
                 align: {x: 0.5, y: 0.5},
 
-                <Icon> {
-                    draw_icon: {
-                        svg_file: dep("crate://self/resources/icons/chat.svg"),
-                        color: #D0D5DD
-                    }
-                    icon_walk: {width: 128, height: 128}
-                }
-
+                <ChatAgentAvatar> {}
                 <Label> {
                     draw_text: {
                         text_style: <REGULAR_FONT>{font_size: 14},
-                        color: #667085
+                        color: #101828
                     }
-                    text: "Start chatting by choosing a model from above"
+                    text: "How can I help you?"
                 }
             }
 
-            <View> {
-                width: Fill, height: Fit
-                flow: Down,
-                align: {x: 0.5, y: 0.5},
-                no_model_prompt_input = <ChatPromptInput> {}
-            }
+            main = <View> {
+                visible: false
 
-        }
-
-        empty_conversation = <View> {
-            visible: false,
-
-            width: Fill,
-            height: Fill,
-
-            flow: Down,
-            spacing: 30,
-            align: {x: 0.5, y: 0.5},
-
-            <ChatAgentAvatar> {}
-            <Label> {
-                draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 14},
-                    color: #101828
-                }
-                text: "How can I help you?"
-            }
-        }
-
-        main = <View> {
-            visible: false
-
-            width: Fill,
-            height: Fill,
-
-            margin: { top: 86 }
-            spacing: 4,
-            flow: Down,
-
-            <View> {
                 width: Fill,
                 height: Fill,
 
-                flow: Overlay
-                chat = <PortalList> {
-                    scroll_bar: {
-                        bar_size: 0.0,
-                    }
+                margin: { top: 86 }
+                spacing: 4,
+                flow: Down,
+
+                <View> {
                     width: Fill,
                     height: Fill,
 
-                    drag_scrolling: false,
+                    flow: Overlay
+                    chat = <PortalList> {
+                        scroll_bar: {
+                            bar_size: 0.0,
+                        }
+                        width: Fill,
+                        height: Fill,
 
-                    UserChatLine = <UserChatLine> {}
-                    ModelChatLine = <ModelChatLine> {}
-                    EndOfChat = <View> {height: 0.1}
+                        drag_scrolling: false,
+
+                        UserChatLine = <UserChatLine> {}
+                        ModelChatLine = <ModelChatLine> {}
+                        EndOfChat = <View> {height: 0.1}
+                    }
                 }
 
-                <JumpToButtom> {}
+                main_prompt_input = <ChatPromptInput> {}
             }
 
-            main_prompt_input = <ChatPromptInput> {}
+            model_selector = <ModelSelector> {}
         }
 
-        model_selector = <ModelSelector> {}
+        <JumpToBottom> {}
     }
 }
 
@@ -416,11 +427,23 @@ enum State {
     Unknown,
     NoModelsAvailable,
     NoModelSelected,
-    ModelSelectedWithEmptyChat,
+    ModelSelectedWithEmptyChat {
+        is_loading: bool,
+    },
     ModelSelectedWithChat {
+        is_loading: bool,
         sticked_to_bottom: bool,
         is_streaming: bool,
     },
+}
+
+enum PromptInputMode {
+    Enabled,
+    Disabled,
+}
+enum PromptInputButton {
+    Send,
+    Stop,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -446,6 +469,7 @@ impl Widget for ChatPanel {
                 State::ModelSelectedWithChat {
                     is_streaming: true,
                     sticked_to_bottom,
+                    ..
                 } => {
                     if sticked_to_bottom {
                         self.scroll_messages_to_bottom(cx);
@@ -488,22 +512,19 @@ impl WidgetMatchEvent for ChatPanel {
 
             if let ModelSelectorAction::Selected(downloaded_file) = action.cast() {
                 store.load_model(&downloaded_file.file);
+
+                if let Some(chat) = store.chats.get_current_chat() {
+                    chat.borrow_mut().last_used_file_id = Some(downloaded_file.file.id.clone());
+                    chat.borrow().save();
+                }
                 self.redraw(cx)
             }
 
             match action.cast() {
                 ChatAction::Start(file_id) => {
-                    let downloaded_file = store
-                        .downloads
-                        .downloaded_files
-                        .iter()
-                        .find(|file| file.file.id == file_id)
-                        .expect("Attempted to start chat with a no longer existing file")
-                        .clone();
-
-                    store
-                        .chats
-                        .create_empty_chat_and_load_file(&downloaded_file.file);
+                    if let Some(file) = store.downloads.get_file(&file_id) {
+                        store.chats.create_empty_chat_and_load_file(file);
+                    }
                 }
                 _ => {}
             }
@@ -514,7 +535,11 @@ impl WidgetMatchEvent for ChatPanel {
                     self.redraw(cx);
                 }
                 ChatLineAction::Edit(id, updated, regenerate) => {
-                    store.chats.edit_chat_message(id, updated, regenerate);
+                    if regenerate {
+                        store.edit_chat_message_regenerating(id, updated)
+                    } else {
+                        store.edit_chat_message(id, updated);
+                    }
                     self.redraw(cx);
                 }
                 _ => {}
@@ -543,7 +568,7 @@ impl WidgetMatchEvent for ChatPanel {
                 is_streaming: false,
                 ..
             }
-            | State::ModelSelectedWithEmptyChat => {
+            | State::ModelSelectedWithEmptyChat { .. } => {
                 self.handle_prompt_input_actions(cx, actions, scope);
             }
             State::ModelSelectedWithChat {
@@ -571,142 +596,119 @@ impl WidgetMatchEvent for ChatPanel {
 impl ChatPanel {
     fn update_state(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+        //let loader = &store.chats.model_loader;
 
         self.state = if store.downloads.downloaded_files.is_empty() {
             State::NoModelsAvailable
         } else if store.chats.loaded_model.is_none() {
             State::NoModelSelected
         } else {
-            store
-                .chats
-                .get_current_chat()
-                .map_or(State::ModelSelectedWithEmptyChat, |chat| {
+            let is_loading = store.chats.model_loader.is_loading();
+
+            store.chats.get_current_chat().map_or(
+                State::ModelSelectedWithEmptyChat { is_loading },
+                |chat| {
                     if chat.borrow().messages.is_empty() {
-                        State::ModelSelectedWithEmptyChat
+                        State::ModelSelectedWithEmptyChat { is_loading }
                     } else {
                         State::ModelSelectedWithChat {
+                            is_loading,
                             sticked_to_bottom: self.portal_list_end_reached
                                 || !matches!(self.state, State::ModelSelectedWithChat { .. }),
                             is_streaming: chat.borrow().is_streaming,
                         }
                     }
-                })
+                },
+            )
         };
     }
 
     fn update_prompt_input(&mut self, cx: &mut Cx) {
         match self.state {
-            State::ModelSelectedWithEmptyChat
+            State::ModelSelectedWithEmptyChat { is_loading: true }
             | State::ModelSelectedWithChat {
+                is_loading: true, ..
+            } => {
+                self.activate_prompt_input(cx, PromptInputMode::Disabled, PromptInputButton::Send);
+            }
+            State::ModelSelectedWithEmptyChat { is_loading: false }
+            | State::ModelSelectedWithChat {
+                is_loading: false,
                 is_streaming: false,
                 ..
             } => {
-                self.enable_or_disable_prompt_buttons(cx);
-                self.show_prompt_send_button(cx);
+                self.activate_prompt_input(cx, PromptInputMode::Enabled, PromptInputButton::Send);
             }
             State::ModelSelectedWithChat {
                 is_streaming: true, ..
             } => {
-                let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-                prompt_input.apply_over(
-                    cx,
-                    live! {
-                        draw_text: { prompt_enabled: 0.0 }
-                    },
-                );
-                self.show_prompt_input_stop_button(cx);
+                self.activate_prompt_input(cx, PromptInputMode::Disabled, PromptInputButton::Stop);
             }
-            _ => {}
+            _ => {
+                // Input prompts should not be visible in other conditions
+            }
         }
     }
 
-    fn enable_or_disable_prompt_buttons(&mut self, cx: &mut Cx) {
+    fn activate_prompt_input(
+        &mut self,
+        cx: &mut Cx,
+        mode: PromptInputMode,
+        button: PromptInputButton,
+    ) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        let enable = if !prompt_input.text().is_empty() {
-            1.0
+
+        let enabled = match mode {
+            PromptInputMode::Enabled => !prompt_input.text().is_empty(),
+            PromptInputMode::Disabled => false,
+        };
+
+        let (button_color, prompt_enabled) = if enabled {
+            (vec3(0.0, 0.0, 0.0), 1.0)
         } else {
-            0.0
+            // The color code is #D0D5DD
+            (vec3(0.816, 0.835, 0.867), 0.0)
         };
 
         prompt_input.apply_over(
             cx,
             live! {
-                draw_text: { prompt_enabled: (enable) }
+                draw_text: { prompt_enabled: (prompt_enabled) }
             },
         );
-    }
 
-    fn show_prompt_send_button(&mut self, cx: &mut Cx) {
-        self.button(id!(main_prompt_input.prompt_send_button))
-            .set_visible(true);
-        self.button(id!(main_prompt_input.prompt_stop_button))
-            .set_visible(false);
-
-        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        if !prompt_input.text().is_empty() {
-            self.enable_prompt_buttons(cx);
-        } else {
-            self.disable_prompt_buttons(cx);
+        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
+        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
+        match button {
+            PromptInputButton::Send => {
+                // The send button is enabled or not based on the prompt input
+                send_button.set_visible(true);
+                send_button.set_enabled(enabled);
+                send_button.apply_over(
+                    cx,
+                    live! {
+                        draw_bg: {
+                            color: (button_color)
+                        }
+                    },
+                );
+                stop_button.set_visible(false);
+            }
+            PromptInputButton::Stop => {
+                // The stop button is always enabled, when visible
+                stop_button.set_visible(true);
+                stop_button.set_enabled(true);
+                stop_button.apply_over(
+                    cx,
+                    live! {
+                        draw_bg: {
+                            color: #x000
+                        }
+                    },
+                );
+                send_button.set_visible(false);
+            }
         }
-    }
-
-    fn show_prompt_input_stop_button(&mut self, cx: &mut Cx) {
-        self.button(id!(main_prompt_input.prompt_send_button))
-            .set_visible(false);
-        self.button(id!(main_prompt_input.prompt_stop_button))
-            .set_visible(true);
-
-        self.enable_prompt_buttons(cx);
-    }
-
-    fn enable_prompt_buttons(&mut self, cx: &mut Cx) {
-        let enabled_color = vec3(0.0, 0.0, 0.0);
-        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
-        send_button.set_enabled(true);
-        send_button.apply_over(
-            cx,
-            live! {
-                draw_bg: {
-                    color: (enabled_color)
-                }
-            },
-        );
-
-        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
-        stop_button.set_enabled(true);
-        stop_button.apply_over(
-            cx,
-            live! {
-                draw_bg: {
-                    color: (enabled_color)
-                }
-            },
-        );
-    }
-
-    fn disable_prompt_buttons(&mut self, cx: &mut Cx) {
-        let disabled_color = vec3(0.816, 0.835, 0.867); // #D0D5DD
-        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
-        send_button.set_enabled(true);
-        send_button.apply_over(
-            cx,
-            live! {
-                draw_bg: {
-                    color: (disabled_color)
-                }
-            },
-        );
-
-        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
-        stop_button.set_enabled(false);
-        stop_button.apply_over(
-            cx,
-            live! {
-                draw_bg: {
-                    color: (disabled_color)
-                }
-            },
-        );
     }
 
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
@@ -729,7 +731,7 @@ impl ChatPanel {
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt_input = self.text_input(id!(main_prompt_input.prompt));
         if let Some(_text) = prompt_input.changed(actions) {
-            self.update_prompt_input(cx);
+            self.redraw(cx);
         }
 
         if self
@@ -745,20 +747,32 @@ impl ChatPanel {
     }
 
     fn send_message(&mut self, cx: &mut Cx, scope: &mut Scope, prompt: String) {
+        // Check if we have any text to send
         if prompt.trim().is_empty() {
             return;
         }
 
-        let store = scope.data.get_mut::<Store>().unwrap();
-        store.chats.send_chat_message(prompt.clone());
+        // Let's confirm we're in an appropriate state to send a message
+        self.update_state(scope);
+        if matches!(
+            self.state,
+            State::ModelSelectedWithChat {
+                is_streaming: false,
+                is_loading: false,
+                ..
+            } | State::ModelSelectedWithEmptyChat { is_loading: false }
+        ) {
+            let store = scope.data.get_mut::<Store>().unwrap();
+            store.send_chat_message(prompt.clone());
 
-        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        prompt_input.set_text_and_redraw(cx, "");
-        prompt_input.set_cursor(0, 0);
-        self.update_prompt_input(cx);
+            let prompt_input = self.text_input(id!(main_prompt_input.prompt));
+            prompt_input.set_text_and_redraw(cx, "");
+            prompt_input.set_cursor(0, 0);
 
-        // Scroll to the bottom when the message is sent
-        self.scroll_messages_to_bottom(cx);
+            // Scroll to the bottom when the message is sent
+            self.scroll_messages_to_bottom(cx);
+            self.redraw(cx);
+        }
     }
 
     fn update_view(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
@@ -766,7 +780,7 @@ impl ChatPanel {
         self.update_prompt_input(cx);
 
         match self.state {
-            State::ModelSelectedWithEmptyChat => {
+            State::ModelSelectedWithEmptyChat { .. } => {
                 let store = scope.data.get::<Store>().unwrap();
 
                 self.view(id!(empty_conversation))
@@ -801,7 +815,7 @@ impl ChatPanel {
 
                 no_model.set_visible(true);
             }
-            State::ModelSelectedWithEmptyChat => {
+            State::ModelSelectedWithEmptyChat { .. } => {
                 jump_to_bottom.set_visible(false);
                 no_downloaded_model.set_visible(false);
                 no_model.set_visible(false);

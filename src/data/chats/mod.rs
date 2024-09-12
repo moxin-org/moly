@@ -1,19 +1,24 @@
 pub mod chat;
+pub mod model_loader;
 
 use anyhow::{Context, Result};
 use chat::{Chat, ChatID};
+use model_loader::ModelLoader;
 use moxin_backend::Backend;
-use moxin_protocol::protocol::{Command, LoadModelResponse};
-use moxin_protocol::{data::*, protocol::LoadModelOptions};
+use moxin_protocol::data::*;
+use moxin_protocol::protocol::Command;
 use std::fs;
-use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::channel};
+use std::sync::mpsc::channel;
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use super::filesystem::setup_chats_folder;
 
 pub struct Chats {
     pub backend: Rc<Backend>,
     pub saved_chats: Vec<RefCell<Chat>>,
+
     pub loaded_model: Option<File>,
+    pub model_loader: ModelLoader,
 
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
@@ -26,6 +31,7 @@ impl Chats {
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
+            model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
         }
     }
@@ -51,44 +57,24 @@ impl Chats {
             .map(|c| c.borrow().id)
     }
 
-    pub fn load_model(&mut self, file: &File) -> Result<()> {
-        let (tx, rx) = channel();
-        let cmd = Command::LoadModel(
-            file.id.clone(),
-            LoadModelOptions {
-                prompt_template: None,
-                gpu_layers: moxin_protocol::protocol::GPULayers::Max,
-                use_mlock: false,
-                n_batch: 512,
-                n_ctx: 512,
-                rope_freq_scale: 0.0,
-                rope_freq_base: 0.0,
-                context_overflow_policy:
-                    moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
-            },
-            tx,
-        );
+    pub fn load_model(&mut self, file: &File) {
+        self.cancel_chat_streaming();
 
-        self.backend.as_ref().command_sender.send(cmd).unwrap();
+        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
+            let new_file_id = Some(file.id.clone());
 
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(LoadModelResponse::Completed(_)) => {
-                    self.loaded_model = Some(file.clone());
-                    Ok(())
-                }
-                Ok(_) => {
-                    eprintln!("Error loading model: Unexpected response");
-                    Err(anyhow::anyhow!("Error loading model: Unexpected response"))
-                }
-                Err(err) => {
-                    eprintln!("Error loading model: {:?}", err);
-                    Err(err)
-                }
+            if chat.last_used_file_id != new_file_id {
+                chat.last_used_file_id = new_file_id;
+                chat.save();
             }
-        } else {
-            Err(anyhow::anyhow!("Error loading model"))
         }
+
+        if self.model_loader.is_loading() {
+            return;
+        }
+
+        self.model_loader
+            .load_async(file.id.clone(), self.backend.command_sender.clone());
     }
 
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
@@ -110,24 +96,12 @@ impl Chats {
     }
 
     pub fn set_current_chat(&mut self, chat_id: ChatID) {
+        self.cancel_chat_streaming();
         self.current_chat_id = Some(chat_id);
 
         let mut chat = self.get_current_chat().unwrap().borrow_mut();
         chat.update_accessed_at();
         chat.save();
-    }
-
-    pub fn send_chat_message(&mut self, prompt: String) {
-        let Some(loaded_model) = self.loaded_model.as_ref() else {
-            println!("Skip sending message because loaded model not found");
-            return;
-        };
-
-        if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut()
-                .send_message_to_model(prompt, loaded_model, self.backend.as_ref());
-            chat.borrow().save();
-        }
     }
 
     pub fn cancel_chat_streaming(&mut self) {
@@ -140,34 +114,6 @@ impl Chats {
         if let Some(chat) = self.get_current_chat() {
             chat.borrow_mut().delete_message(message_id);
             chat.borrow().save();
-        }
-    }
-
-    pub fn edit_chat_message(
-        &mut self,
-        message_id: usize,
-        updated_message: String,
-        regenerate: bool,
-    ) {
-        if let Some(chat) = &mut self.get_current_chat() {
-            let mut chat = chat.borrow_mut();
-            if regenerate {
-                if let Some(loaded_model) = self.loaded_model.as_ref() {
-                    if chat.is_streaming {
-                        chat.cancel_streaming(self.backend.as_ref());
-                    }
-
-                    chat.remove_messages_from(message_id);
-                    chat.send_message_to_model(
-                        updated_message,
-                        loaded_model,
-                        self.backend.as_ref(),
-                    );
-                }
-            } else {
-                chat.edit_message(message_id, updated_message);
-            }
-            chat.save();
         }
     }
 
@@ -188,6 +134,22 @@ impl Chats {
         Ok(())
     }
 
+    /// Get the file id to use with this chat, or the loaded file id as a fallback.
+    /// The fallback is used if the chat does not have a file id set, or, if it has
+    /// one but references a no longer existing (deleted) file.
+    ///
+    /// If the fallback is used, the chat is updated with this, and persisted.
+    pub fn get_or_init_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
+        if let Some(file_id) = chat.last_used_file_id.clone() {
+            Some(file_id)
+        } else {
+            let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
+            chat.last_used_file_id = Some(file_id.clone());
+            chat.save();
+            Some(file_id)
+        }
+    }
+
     pub fn create_empty_chat(&mut self) {
         let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
 
@@ -198,19 +160,14 @@ impl Chats {
     }
 
     pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
-        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
-        new_chat.borrow().save();
+        let mut new_chat = Chat::new(self.chats_dir.clone());
+        new_chat.last_used_file_id = Some(file.id.clone());
+        new_chat.save();
 
-        self.current_chat_id = Some(new_chat.borrow().id);
-        self.saved_chats.push(new_chat);
+        self.current_chat_id = Some(new_chat.id);
+        self.saved_chats.push(RefCell::new(new_chat));
 
-        if self
-            .loaded_model
-            .as_ref()
-            .map_or(true, |m| *m.id != file.id)
-        {
-            let _ = self.load_model(file);
-        }
+        self.load_model(file);
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {

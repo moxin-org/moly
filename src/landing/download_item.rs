@@ -146,7 +146,7 @@ live_design! {
 
     Actions = <View> {
         width: Fill,
-        height: Fit,
+        height: 40,
         flow: Right,
         spacing: 12,
 
@@ -188,6 +188,8 @@ live_design! {
         margin: {bottom: 16},
         spacing: 30,
         align: {x: 0.0, y: 0.5},
+
+        cursor: Default,
 
         draw_bg: {
             border_color: #EAECF0,
@@ -232,6 +234,29 @@ impl Widget for DownloadItem {
         let progress_bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
         let label = self.label(id!(progress));
         match download.status {
+            PendingDownloadsStatus::Initializing => {
+                let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
+
+                label.set_text(&format!("Downloading {:.1}%", download.progress));
+                label.apply_over(
+                    cx,
+                    live! { draw_text: { color: (downloading_color) }
+                    },
+                );
+
+                self.view(id!(progress_bar)).apply_over(
+                    cx,
+                    live! {
+                        width: (progress_bar_width)
+                        draw_bg: { color: (downloading_color) }
+                    },
+                );
+
+                self.button(id!(pause_button)).set_visible(false);
+                self.button(id!(play_button)).set_visible(false);
+                self.button(id!(retry_button)).set_visible(false);
+                self.button(id!(cancel_button)).set_visible(false);
+            }
             PendingDownloadsStatus::Downloading => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
 
@@ -253,6 +278,7 @@ impl Widget for DownloadItem {
                 self.button(id!(pause_button)).set_visible(true);
                 self.button(id!(play_button)).set_visible(false);
                 self.button(id!(retry_button)).set_visible(false);
+                self.button(id!(cancel_button)).set_visible(true);
             }
             PendingDownloadsStatus::Paused => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
@@ -275,6 +301,7 @@ impl Widget for DownloadItem {
                 self.button(id!(pause_button)).set_visible(false);
                 self.button(id!(play_button)).set_visible(true);
                 self.button(id!(retry_button)).set_visible(false);
+                self.button(id!(cancel_button)).set_visible(true);
             }
             PendingDownloadsStatus::Error => {
                 let failed_color = vec3(0.7, 0.11, 0.09); // #B42318
@@ -297,6 +324,7 @@ impl Widget for DownloadItem {
                 self.button(id!(pause_button)).set_visible(false);
                 self.button(id!(play_button)).set_visible(false);
                 self.button(id!(retry_button)).set_visible(true);
+                self.button(id!(cancel_button)).set_visible(true);
             }
         }
 

@@ -1,9 +1,7 @@
-use crate::{
-    data::store::Store,
-    shared::{portal::PortalAction, utils::hugging_face_model_url},
-};
+use crate::shared::utils::hugging_face_model_url;
 use makepad_widgets::*;
-use moxin_protocol::data::{FileID, ModelID};
+
+use super::downloaded_files_row::DownloadedFilesRowProps;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -162,12 +160,16 @@ live_design! {
     }
 }
 
+#[derive(Clone, Debug, DefaultNone)]
+pub enum ModelInfoModalAction {
+    None,
+    CloseButtonClicked,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelInfoModal {
     #[deref]
     view: View,
-    #[rust]
-    file_id: String,
     #[rust]
     model_id: String,
     #[rust]
@@ -181,16 +183,8 @@ impl Widget for ModelInfoModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope
-            .data
-            .get::<Store>()
-            .unwrap()
-            .downloads
-            .downloaded_files;
-        let downloaded_file = downloaded_files
-            .iter()
-            .find(|f| f.file.id.eq(&self.file_id))
-            .expect("Downloaded file not found");
+        let props = scope.props.get::<DownloadedFilesRowProps>().unwrap();
+        let downloaded_file = &props.downloaded_file;
 
         self.model_id = downloaded_file.model.id.clone();
 
@@ -223,7 +217,7 @@ impl WidgetMatchEvent for ModelInfoModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, ModelInfoModalAction::CloseButtonClicked);
         }
 
         if self
@@ -243,18 +237,4 @@ impl WidgetMatchEvent for ModelInfoModal {
             }
         }
     }
-}
-
-impl ModelInfoModalRef {
-    pub fn set_file_id(&mut self, file_id: ModelID) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.file_id = file_id;
-        }
-    }
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-pub enum ModelInfoAction {
-    FileSelected(FileID),
-    None,
 }

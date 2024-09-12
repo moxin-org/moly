@@ -1,10 +1,16 @@
 use crate::{
     data::store::Store,
-    shared::{actions::ChatAction, utils::format_model_size},
+    shared::{
+        actions::ChatAction,
+        utils::{format_model_size, hex_rgb_color},
+    },
 };
 use makepad_widgets::*;
 
-use super::model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt};
+use super::{
+    model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt},
+    model_selector_loading::ModelSelectorLoadingWidgetExt,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -14,44 +20,89 @@ live_design! {
 
     import crate::chat::model_info::ModelInfo;
     import crate::chat::model_selector_list::ModelSelectorList;
+    import crate::chat::model_selector_loading::ModelSelectorLoading;
+
+    ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
+
 
     ModelSelectorButton = <RoundedView> {
         width: Fill,
         height: 54,
+        flow: Overlay,
 
-        align: {x: 0.0, y: 0.5},
-        padding: 16,
+        loading = <ModelSelectorLoading> {
+            width: Fill,
+            height: Fill,
+            visible: false,
+        }
 
         draw_bg: {
             instance radius: 3.0,
             color: #F9FAFB,
         }
 
-        cursor: Hand,
-
-        choose = <View> {
+        <View> {
             width: Fill,
-            height: Fit,
+            height: Fill,
+            flow: Right,
 
-            align: {x: 0.5, y: 0.5},
+            align: {x: 0.0, y: 0.5},
+            padding: {left: 16, right: 16, top: 0, bottom: 0},
 
-            label = <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 11},
-                    color: #000
+            cursor: Hand,
+
+            content = <View> {
+                width: Fill,
+                height: Fit,
+                flow: Overlay,
+                padding: {left: 16, top: 0, bottom: 0, right: 0},
+
+                choose = <View> {
+                    width: Fill,
+                    height: Fit,
+
+                    align: {x: 0.0, y: 0.5},
+                    padding: 16,
+
+                    label = <Label> {
+                        draw_text:{
+                            text_style: <BOLD_FONT>{font_size: 11},
+                            color: #000
+                        }
+                        text: "Choose a model"
+                    }
                 }
-                text: "Choose a model"
-            }
-        }
-        selected = <ModelInfo> {
-            width: Fit,
-            height: Fit,
-            show_bg: false,
-            visible: false,
 
-            label = {
-                draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 11},
+                selected = <ModelInfo> {
+                    width: Fit,
+                    height: Fit,
+                    show_bg: false,
+                    visible: false,
+
+                    padding: 0,
+
+                    label = {
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 11},
+                        }
+                    }
+                }
+            }
+
+            icon_drop = <RoundedView> {
+                width: Fit,
+                height: Fit,
+                align: {x: 1.0, y: 0.5},
+                margin: {left: 10, right: 6},
+                visible: false,
+
+                icon = <RotatedImage> {
+                    height: 14,
+                    width: 14,
+                    source: (ICON_DROP),
+                    draw_bg: {
+                        rotation: 0.0
+                    }
                 }
             }
         }
@@ -93,6 +144,7 @@ live_design! {
         options = <ModelSelectorOptions> {}
 
         open_animation_progress: 0.0,
+        rotate_animation_progress: 0.0
         animator: {
             open = {
                 default: hide,
@@ -100,13 +152,13 @@ live_design! {
                     redraw: true,
                     from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {open_animation_progress: 1.0}
+                    apply: {open_animation_progress: 1.0, rotate_animation_progress: 1.0}
                 }
                 hide = {
                     redraw: true,
                     from: {all: Forward {duration: 0.3}}
                     ease: ExpDecay {d1: 0.80, d2: 0.97}
-                    apply: {open_animation_progress: 0.0}
+                    apply: {open_animation_progress: 0.0, rotate_animation_progress: 0.0}
                 }
             }
         }
@@ -127,6 +179,9 @@ pub struct ModelSelector {
     #[live]
     open_animation_progress: f64,
 
+    #[live]
+    rotate_animation_progress: f64,
+
     #[rust]
     hide_animation_timer: Timer,
 
@@ -141,8 +196,10 @@ impl Widget for ModelSelector {
 
         let store = scope.data.get::<Store>().unwrap();
 
-        if let Hit::FingerDown(fd) = event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true) {
-            if no_options_to_display(store) {
+        if let Hit::FingerDown(fd) =
+            event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
+        {
+            if !options_to_display(store) {
                 return;
             };
             if fd.tap_count == 1 {
@@ -183,6 +240,11 @@ impl Widget for ModelSelector {
                 let height = self.open_animation_progress * total_height;
                 self.view(id!(options.list_container))
                     .apply_over(cx, live! {height: (height)});
+
+                let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
+                self.view(id!(icon_drop.icon))
+                    .apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
+
                 self.redraw(cx);
             }
         }
@@ -203,7 +265,9 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        if no_options_to_display(store) {
+        self.update_loading_model_state(cx, store);
+
+        if !options_to_display(store) {
             choose_label.set_text("No Available Models");
             let color = vec3(0.596, 0.635, 0.702);
             choose_label.apply_over(
@@ -214,6 +278,11 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+            self.view(id!(icon_drop)).apply_over(
+                cx,
+                live!{
+                    visible: false
+                });
         } else if no_active_model(store) {
             choose_label.set_text("Choose a Model");
             let color = vec3(0.0, 0.0, 0.0);
@@ -225,6 +294,12 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+
+            self.view(id!(icon_drop)).apply_over(
+                cx,
+                live!{
+                    visible: true
+                });
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -237,38 +312,35 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        // let store = scope.data.get::<Store>().unwrap();
+        let store = scope.data.get::<Store>().unwrap();
 
-        // if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
-        //     if no_options_to_display(store) {
-        //         return;
-        //     };
-        //     if fd.tap_count == 1 {
-        //         self.open = !self.open;
+        if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
+            if options_to_display(store) && fd.tap_count == 1 {
+                self.open = !self.open;
 
-        //         if self.open {
-        //             let list = self.model_selector_list(id!(options.list_container.list));
-        //             let height = list.get_height();
-        //             if height > MAX_OPTIONS_HEIGHT {
-        //                 self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
-        //             } else {
-        //                 self.options_list_height = Some(height);
-        //             }
+                if self.open {
+                    let list = self.model_selector_list(id!(options.list_container.list));
+                    let height = list.get_height();
+                    if height > MAX_OPTIONS_HEIGHT {
+                        self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
+                    } else {
+                        self.options_list_height = Some(height);
+                    }
 
-        //             self.view(id!(options)).apply_over(
-        //                 cx,
-        //                 live! {
-        //                     height: Fit,
-        //                 },
-        //             );
+                    self.view(id!(options)).apply_over(
+                        cx,
+                        live! {
+                            height: Fit,
+                        },
+                    );
 
-        //             self.animator_play(cx, id!(open.show));
-        //         } else {
-        //             self.hide_animation_timer = cx.start_timeout(0.3);
-        //             self.animator_play(cx, id!(open.hide));
-        //         }
-        //     }
-        // }
+                    self.animator_play(cx, id!(open.show));
+                } else {
+                    self.hide_animation_timer = cx.start_timeout(0.3);
+                    self.animator_play(cx, id!(open.hide));
+                }
+            }
+        }
 
         for action in actions {
             match action.as_widget_action().cast() {
@@ -292,41 +364,83 @@ impl ModelSelector {
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
+        self.view(id!(icon_drop.icon))
+            .apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
         self.animator_cut(cx, id!(open.hide));
+        self.redraw(cx);
+    }
+
+    fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
+        if store.chats.model_loader.is_loading() {
+            self.model_selector_loading(id!(loading))
+                .show_and_animate(cx);
+        } else {
+            self.model_selector_loading(id!(loading)).hide();
+        }
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
-        let Some(downloaded_file) = store.get_loaded_downloaded_file() else {
-            return;
-        };
+        self.view(id!(choose)).set_visible(false);
 
-        self.view(id!(choose)).apply_over(
+        let is_loading = store.chats.model_loader.is_loading();
+        let loaded_file = store.chats.loaded_model.as_ref();
+
+        let file = store
+            .chats
+            .get_current_chat()
+            .and_then(|c| c.borrow().last_used_file_id.clone())
+            .and_then(|file_id| store.downloads.get_file(&file_id).cloned())
+            .or_else(|| loaded_file.cloned());
+
+        if let Some(file) = file {
+            let selected_view = self.view(id!(selected));
+            selected_view.set_visible(true);
+
+            let text_color = if Some(&file.id) == loaded_file.map(|f| &f.id) {
+                hex_rgb_color(0x000000)
+            } else {
+                hex_rgb_color(0x667085)
+            };
+
+            let caption = if is_loading {
+                format!("Loading {}", file.name.trim())
+            } else {
+                file.name.trim().to_string()
+            };
+
+            let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
+            let is_file_size_visible = !file_size.is_empty() && !is_loading;
+
+            selected_view.apply_over(
+                cx,
+                live! {
+                    label = { text: (caption), draw_text: { color: (text_color) }}
+                    file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size), draw_text: { color: (text_color) }}}
+                },
+            );
+
+            if let Some(model) = store.downloads.get_model_by_file_id(&file.id) {
+                let architecture = model.architecture.trim();
+                let params_size = model.size.trim();
+                let is_architecture_visible = !architecture.is_empty() && !is_loading;
+                let is_params_size_visible = !params_size.is_empty() && !is_loading;
+
+                selected_view.apply_over(
+                    cx,
+                    live! {
+                        architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture), draw_text: { color: (text_color) }}}
+                        params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size), draw_text: { color: (text_color) }}}
+                    },
+                );
+            }
+        }
+
+        self.view(id!(icon_drop)).apply_over(
             cx,
-            live! {
-                visible: false
-            },
-        );
-        let filename = downloaded_file.file.name;
-
-        let architecture = downloaded_file.model.architecture;
-        let architecture_visible = !architecture.trim().is_empty();
-
-        let param_size = downloaded_file.model.size;
-        let param_size_visible = !param_size.trim().is_empty();
-
-        let size = format_model_size(&downloaded_file.file.size).unwrap_or("".to_string());
-        let size_visible = !size.trim().is_empty();
-
-        self.view(id!(selected)).apply_over(
-            cx,
-            live! {
+            live!{
                 visible: true
-                label = { text: (filename) }
-                architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) }}
-                params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) }}
-                file_size_tag = { visible: (size_visible), caption = { text: (size) }}
-            },
-        );
+            });
+
         self.redraw(cx);
     }
 
@@ -357,10 +471,10 @@ impl ModelSelectorRef {
     }
 }
 
-fn no_options_to_display(store: &Store) -> bool {
-    store.downloads.downloaded_files.is_empty()
+fn options_to_display(store: &Store) -> bool {
+    !store.downloads.downloaded_files.is_empty()
 }
 
 fn no_active_model(store: &Store) -> bool {
-    store.get_loaded_downloaded_file().is_none()
+    store.get_loaded_downloaded_file().is_none() && store.get_loading_file().is_none()
 }

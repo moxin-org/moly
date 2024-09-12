@@ -1,7 +1,8 @@
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
 
-use crate::{chat::chat_panel::ChatPanelAction, data::store::Store, shared::portal::PortalAction};
+use crate::{chat::chat_panel::ChatPanelAction, data::store::Store};
+
+use super::downloaded_files_row::DownloadedFilesRowProps;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -132,10 +133,12 @@ live_design! {
     }
 }
 
-#[derive(Clone, DefaultNone, Debug)]
-pub enum DeleteModelAction {
-    FileSelected(FileID),
+#[derive(Clone, Debug, DefaultNone)]
+pub enum DeleteModelModalAction {
     None,
+    CloseButtonClicked,
+    ModelDeleted,
+    Cancelled,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -153,17 +156,10 @@ impl Widget for DeleteModelModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let downloaded_files = &scope
-            .data
-            .get::<Store>()
-            .unwrap()
-            .downloads
-            .downloaded_files;
+        let props = scope.props.get::<DownloadedFilesRowProps>().unwrap();
+        let downloaded_file = &props.downloaded_file;
 
-        let downloaded_file = downloaded_files
-            .iter()
-            .find(|f| f.file.id.eq(&self.file_id))
-            .expect("Downloaded file not found");
+        self.file_id = downloaded_file.file.id.clone();
 
         let prompt_text = format!(
             "Are you sure you want to delete {}?\nThis action cannot be undone.",
@@ -182,7 +178,7 @@ impl WidgetMatchEvent for DeleteModelModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DeleteModelModalAction::CloseButtonClicked);
         }
 
         if self
@@ -198,22 +194,14 @@ impl WidgetMatchEvent for DeleteModelModal {
             store
                 .delete_file(self.file_id.clone())
                 .expect("Failed to delete file");
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
+            cx.widget_action(widget_uid, &scope.path, DeleteModelModalAction::ModelDeleted);
         }
 
         if self
             .button(id!(wrapper.body.actions.cancel_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, PortalAction::Close);
-        }
-    }
-}
-
-impl DeleteModelModalRef {
-    pub fn set_file_id(&mut self, file_id: FileID) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.file_id = file_id;
+            cx.widget_action(widget_uid, &scope.path, DeleteModelModalAction::Cancelled);
         }
     }
 }
