@@ -224,7 +224,7 @@ live_design! {
                 radius: 30.0
                 color: #fff
             }
-            draw_label: {
+            draw_text: {
                 text_style:<REGULAR_FONT>{font_size: 10},
 
                 instance prompt_enabled: 0.0
@@ -689,7 +689,7 @@ impl ChatPanel {
         prompt_input.apply_over(
             cx,
             live! {
-                draw_label: { prompt_enabled: (prompt_enabled) }
+                draw_text: { prompt_enabled: (prompt_enabled) }
             },
         );
 

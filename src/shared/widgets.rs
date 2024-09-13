@@ -302,7 +302,7 @@ live_design! {
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
     MoxinTextInput = <TextInput> {
-        draw_label: {
+        draw_text: {
             text_style:<REGULAR_FONT>{font_size: 12},
             fn get_color(self) -> vec4 {
                 return #555
@@ -388,7 +388,7 @@ live_design! {
             color: #000
         }
         text_input: {
-            draw_label: {
+            draw_text: {
                 text_style: <BOLD_FONT>{font_size: 11},
                 fn get_color(self) -> vec4 {
                     return #000;
