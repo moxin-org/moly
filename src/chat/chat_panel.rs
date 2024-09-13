@@ -245,6 +245,7 @@ live_design! {
         }
 
         prompt_stop_button = <PromptButton> {
+            visible: false,
             draw_icon: {
                 svg_file: (ICON_STOP),
             }
