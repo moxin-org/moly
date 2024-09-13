@@ -22,6 +22,9 @@ live_design! {
             flow: Overlay
             width: Fit
             height: Fit
+
+            cursor: Default
+            capture_overload: true
         }
     }
 }
@@ -32,10 +35,10 @@ pub struct PopupNotification {
     #[find]
     content: View,
 
-    #[redraw]
     #[rust(DrawList2d::new(cx))]
     draw_list: DrawList2d,
 
+    #[redraw]
     #[live]
     draw_bg: DrawQuad,
     #[layout]

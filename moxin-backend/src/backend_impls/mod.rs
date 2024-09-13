@@ -16,7 +16,11 @@ use moxin_protocol::{
     },
 };
 
-use crate::store::{self, ModelFileDownloader, RemoteModel};
+use crate::store::{
+    self,
+    model_cards::{ModelCard, ModelCardManager},
+    ModelFileDownloader,
+};
 
 mod api_server;
 mod chat_ui;
@@ -355,6 +359,7 @@ pub trait BackendModel: Sized {
         file: store::download_files::DownloadedFile,
         options: LoadModelOptions,
         tx: Sender<anyhow::Result<LoadModelResponse>>,
+        embedding: Option<(PathBuf, u64)>,
     ) -> Self;
     fn chat(
         &self,
@@ -368,6 +373,7 @@ pub trait BackendModel: Sized {
 
 pub struct BackendImpl<Model: BackendModel> {
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
+    model_indexs: ModelCardManager,
     #[allow(unused)]
     app_data_dir: PathBuf,
     models_dir: PathBuf,
@@ -402,6 +408,19 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                 app_data_dir
             )
         });
+
+        let model_indexs = store::model_cards::sync_model_cards_repo(&app_data_dir);
+        let model_indexs = match model_indexs {
+            Ok(model_indexs) => {
+                log::info!("sync model cards repo success");
+                model_indexs
+            }
+            Err(e) => {
+                log::error!("sync model cards repo error: {e}");
+                ModelCardManager::empty(app_data_dir.clone())
+            }
+        };
+
         let sql_conn = rusqlite::Connection::open(app_data_dir.join("data.sqlite")).unwrap();
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
@@ -432,6 +451,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
 
         let mut backend = Self {
             sql_conn,
+            model_indexs,
             app_data_dir,
             models_dir: models_dir.as_ref().into(),
             rx,
@@ -451,11 +471,18 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         match built_in_cmd {
             BuiltInCommand::Model(file) => match file {
                 ModelManagementCommand::GetFeaturedModels(tx) => {
-                    let res = store::RemoteModel::get_featured_model(100, 0);
+                    let res = self.model_indexs.get_featured_model(100, 0);
                     match res {
-                        Ok(remote_model) => {
+                        Ok(indexs) => {
+                            let mut models = Vec::new();
+                            for index in indexs {
+                                if let Ok(card) = self.model_indexs.load_model_card(&index) {
+                                    models.push(card);
+                                }
+                            }
+
                             let sql_conn = self.sql_conn.lock().unwrap();
-                            let models = RemoteModel::to_model(&remote_model, &sql_conn)
+                            let models = ModelCard::to_model(&models, &sql_conn)
                                 .map_err(|e| anyhow::anyhow!("get featured error: {e}"));
 
                             let _ = tx.send(models);
@@ -466,11 +493,25 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                     }
                 }
                 ModelManagementCommand::SearchModels(search_text, tx) => {
-                    let res = store::RemoteModel::search(&search_text, 100, 0);
+                    let res = self.model_indexs.search(&search_text, 100, 0);
                     match res {
-                        Ok(remote_model) => {
+                        Ok(indexs) => {
+                            log::debug!("search models: {}", indexs.len());
                             let sql_conn = self.sql_conn.lock().unwrap();
-                            let models = RemoteModel::to_model(&remote_model, &sql_conn)
+
+                            let mut models = Vec::new();
+                            for index in indexs {
+                                match self.model_indexs.load_model_card(&index) {
+                                    Ok(card) => {
+                                        models.push(card);
+                                    }
+                                    Err(e) => {
+                                        log::error!("load model card {} error: {e}", index.id);
+                                    }
+                                }
+                            }
+
+                            let models = ModelCard::to_model(&models, &sql_conn)
                                 .map_err(|e| anyhow::anyhow!("search models error: {e}"));
 
                             let _ = tx.send(models);
@@ -482,15 +523,14 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                 }
                 ModelManagementCommand::DownloadFile(file_id, tx) => {
                     //search model from remote
-                    let search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile)> {
+                    let mut search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile)> {
                         let (model_id, file) = file_id
                             .split_once("#")
                             .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
-                        let mut res = store::RemoteModel::search(&model_id, 10, 0)
-                            .map_err(|e| anyhow::anyhow!("search models error: {e}"))?;
-                        let remote_model = res
-                            .pop()
-                            .ok_or_else(|| anyhow::anyhow!("model not found"))?;
+
+                        let index = self.model_indexs.get_index_by_id(model_id).ok_or(anyhow::anyhow!("No model found"))?.clone();
+                        let remote_model = self.model_indexs.load_model_card(&index)?;
+                    
 
                         let remote_file = remote_model
                             .files
@@ -508,7 +548,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                             released_at: remote_model.released_at,
                             prompt_template: remote_model.prompt_template.clone(),
                             reverse_prompt: remote_model.reverse_prompt.clone(),
-                            author: Arc::new(crate::store::models::Author {
+                            author: Arc::new(crate::store::model_cards::Author {
                                 name: remote_model.author.name,
                                 url: remote_model.author.url,
                                 description: remote_model.author.description,
@@ -611,11 +651,17 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
 
                     match download_file {
                         Ok(file) => {
-                            nn_preload_file(&file);
+                            nn_preload_file(&file, self.model_indexs.embedding_model());
                             let old_model = self.model.take();
 
-                            let model =
-                                Model::new_or_reload(&self.async_rt, old_model, file, options, tx);
+                            let model = Model::new_or_reload(
+                                &self.async_rt,
+                                old_model,
+                                file,
+                                options,
+                                tx,
+                                self.model_indexs.embedding_model(),
+                            );
                             self.model = Some(model);
                         }
                         Err(e) => {
@@ -665,7 +711,10 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
     }
 }
 
-pub fn nn_preload_file(file: &store::download_files::DownloadedFile) {
+pub fn nn_preload_file(
+    file: &store::download_files::DownloadedFile,
+    embedding: Option<(PathBuf, u64)>,
+) {
     let file_path = Path::new(&file.download_dir)
         .join(&file.model_id)
         .join(&file.name);
@@ -676,5 +725,17 @@ pub fn nn_preload_file(file: &store::download_files::DownloadedFile) {
         wasmedge_sdk::plugin::ExecutionTarget::AUTO,
         &file_path,
     );
-    wasmedge_sdk::plugin::PluginManager::nn_preload(vec![preloads]);
+
+    let mut preload_vec = vec![preloads];
+    if let Some((embedding_path, _)) = embedding {
+        let preloads = wasmedge_sdk::plugin::NNPreload::new(
+            "embedding".to_string(),
+            wasmedge_sdk::plugin::GraphEncoding::GGML,
+            wasmedge_sdk::plugin::ExecutionTarget::AUTO,
+            &embedding_path,
+        );
+        preload_vec.push(preloads);
+    }
+
+    wasmedge_sdk::plugin::PluginManager::nn_preload(preload_vec);
 }

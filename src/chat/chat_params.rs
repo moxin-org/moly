@@ -81,7 +81,7 @@ live_design! {
                                     border_width: 0
                                 }
                                 draw_text: {
-                                    text_style: {font_size: 10},
+                                    text_style: <REGULAR_FONT>{font_size: 10},
                                 }
                             }
                         }
@@ -173,7 +173,7 @@ live_design! {
                                         border_width: 0,
                                     }
                                     draw_text: {
-                                        text_style: {font_size: 10},
+                                        text_style: <REGULAR_FONT>{font_size: 10},
                                     }
                                 }
                             }

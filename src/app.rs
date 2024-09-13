@@ -227,17 +227,12 @@ impl MatchEvent for App {
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let ChatAction::Resume = action.as_widget_action().cast() {
-                let chat_radio_button = self.ui.radio_button(id!(chat_tab));
-                chat_radio_button.select(cx, &mut Scope::empty());
-            }
-
             if matches!(
                 action.as_widget_action().cast(),
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
-                self.ui.popup_notification(id!(popup_notification)).open(cx);
+                self.ui.popup_notification(id!(popup_notification)).close(cx);
             }
         }
     }

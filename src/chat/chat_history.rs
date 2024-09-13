@@ -1,4 +1,4 @@
-use super::chat_history_card::ChatHistoryCardWidgetRefExt;
+use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
 use crate::data::store::Store;
 use makepad_widgets::*;
 
@@ -122,6 +122,15 @@ impl WidgetMatchEvent for ChatHistory {
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
             store.chats.create_empty_chat();
+
+            // Make sure text input is focused and other necessary setup happens.
+            let widget_uid = self.widget_uid();
+            cx.widget_action(
+                widget_uid,
+                &scope.path,
+                ChatHistoryCardAction::ChatSelected,
+            );
+
             self.redraw(cx);
         }
 
