@@ -82,7 +82,7 @@ live_design! {
                                     color: #0000
                                     border_width: 0
                                 }
-                                draw_label: {
+                                draw_text: {
                                     text_style: <REGULAR_FONT>{font_size: 10},
                                 }
                             }
@@ -174,7 +174,7 @@ live_design! {
                                         color: #0000,
                                         border_width: 0,
                                     }
-                                    draw_label: {
+                                    draw_text: {
                                         text_style: <REGULAR_FONT>{font_size: 10},
                                     }
                                 }

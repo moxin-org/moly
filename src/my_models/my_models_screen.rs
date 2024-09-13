@@ -105,7 +105,7 @@ live_design! {
 
             empty_message: "Filter files"
 
-            draw_label: {
+            draw_text: {
                 text_style:<REGULAR_FONT>{font_size: 11},
             }
         }

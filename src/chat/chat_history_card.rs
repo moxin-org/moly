@@ -31,7 +31,7 @@ live_design! {
         padding: 6,
         empty_message: ""
 
-        draw_label: {
+        draw_text: {
             text_style:<REGULAR_FONT>{font_size: 10},
             word: Wrap,
 

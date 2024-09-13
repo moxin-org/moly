@@ -833,6 +833,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "convert_case"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -957,6 +966,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5efa2b3d7902f4b634a20cae3c9c4e6209dc4779feb6863329607560143efa70"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "ctor"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edb49164822f3ee45b17acd4a208cfc1251410cf0cad9a833234c9890774dd9f"
+dependencies = [
+ "quote",
+ "syn 2.0.77",
 ]
 
 [[package]]
@@ -1651,6 +1670,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
+name = "hilog-sys"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0de0e35e8534a70b5af5ccc943ffa3e2dcfe481b2b983c9fd514d7421a46b69e"
+
+[[package]]
 name = "home"
 version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1909,9 +1934,9 @@ dependencies = [
 
 [[package]]
 name = "kurbo"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e5aa9f0f96a938266bdb12928a67169e8d22c6a786fda8ed984b85e6ba93c3c"
+checksum = "89234b2cc610a7dd927ebde6b41dd1a5d4214cffaef4cf1fb2195d592f92518f"
 dependencies = [
  "arrayvec",
  "smallvec",
@@ -2136,7 +2161,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-live"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -2145,7 +2170,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -2153,7 +2178,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-widget"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -2162,7 +2187,7 @@ dependencies = [
 [[package]]
 name = "makepad-draw"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "ab_glyph_rasterizer",
  "fxhash",
@@ -2179,17 +2204,17 @@ dependencies = [
 [[package]]
 name = "makepad-futures"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 
 [[package]]
 name = "makepad-futures-legacy"
 version = "0.7.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 
 [[package]]
 name = "makepad-html"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-live-id",
 ]
@@ -2197,7 +2222,7 @@ dependencies = [
 [[package]]
 name = "makepad-http"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 
 [[package]]
 name = "makepad-jni-sys"
@@ -2208,7 +2233,7 @@ checksum = "9775cbec5fa0647500c3e5de7c850280a88335d1d2d770e5aa2332b801ba7064"
 [[package]]
 name = "makepad-live-compiler"
 version = "0.5.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -2218,7 +2243,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-live-id-macros",
 ]
@@ -2226,7 +2251,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id-macros"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -2234,7 +2259,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-tokenizer"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -2244,7 +2269,7 @@ dependencies = [
 [[package]]
 name = "makepad-markdown"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-live-id",
 ]
@@ -2252,17 +2277,17 @@ dependencies = [
 [[package]]
 name = "makepad-math"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 
 [[package]]
 name = "makepad-micro-serde"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-micro-serde-derive",
 ]
@@ -2270,7 +2295,7 @@ dependencies = [
 [[package]]
 name = "makepad-micro-serde-derive"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -2278,13 +2303,14 @@ dependencies = [
 [[package]]
 name = "makepad-objc-sys"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 
 [[package]]
 name = "makepad-platform"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
+ "hilog-sys",
  "makepad-android-state",
  "makepad-futures",
  "makepad-futures-legacy",
@@ -2294,6 +2320,9 @@ dependencies = [
  "makepad-shader-compiler",
  "makepad-wasm-bridge",
  "makepad-windows",
+ "napi-derive-ohos",
+ "napi-ohos",
+ "ohos-sys",
  "smallvec",
  "windows-targets 0.48.5",
 ]
@@ -2301,7 +2330,7 @@ dependencies = [
 [[package]]
 name = "makepad-rustybuzz"
 version = "0.8.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "bitflags 1.3.2",
  "bytemuck",
@@ -2316,7 +2345,7 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "0.5.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-live-compiler",
 ]
@@ -2324,7 +2353,7 @@ dependencies = [
 [[package]]
 name = "makepad-vector"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "resvg",
  "ttf-parser",
@@ -2333,7 +2362,7 @@ dependencies = [
 [[package]]
 name = "makepad-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -2342,7 +2371,7 @@ dependencies = [
 [[package]]
 name = "makepad-widgets"
 version = "0.6.0"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
@@ -2356,7 +2385,7 @@ dependencies = [
 [[package]]
 name = "makepad-windows"
 version = "0.51.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "windows-core 0.51.1",
  "windows-targets 0.48.5",
@@ -2365,7 +2394,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-core"
 version = "0.2.14"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "bitflags 2.6.0",
 ]
@@ -2373,7 +2402,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-inflate"
 version = "0.2.54"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "simd-adler32",
 ]
@@ -2381,7 +2410,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-jpeg"
 version = "0.3.17"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-zune-core",
 ]
@@ -2389,7 +2418,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.2.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "makepad-zune-core",
  "makepad-zune-inflate",
@@ -2566,6 +2595,55 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a51313c5820b0b02bd422f4b44776fbf47961755c74ce64afc73bfad10226c3"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "napi-derive-backend-ohos"
+version = "0.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6b18d697bedddd2d4c9f8f76b49fe65bd81ed1c55a7eec21ba40c176c236ddc"
+dependencies = [
+ "convert_case",
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 2.0.77",
+]
+
+[[package]]
+name = "napi-derive-ohos"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8462d74a2d6c7a671bd610f99f9ba34c739aadd2da4d8dd9f109a7e666cc2ad2"
+dependencies = [
+ "cfg-if",
+ "convert_case",
+ "napi-derive-backend-ohos",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.77",
+]
+
+[[package]]
+name = "napi-ohos"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad5a3bbb2ae61f345b8c11776f2e79fc2bb71d1901af9a5f81f03c9238a05d86"
+dependencies = [
+ "bitflags 2.6.0",
+ "ctor",
+ "napi-sys-ohos",
+ "once_cell",
+]
+
+[[package]]
+name = "napi-sys-ohos"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f101404db01422d034db5afa63eefff6d9c8f66c0894278bc456b4c30954e166"
+dependencies = [
+ "libloading",
 ]
 
 [[package]]
@@ -2808,6 +2886,12 @@ checksum = "084f1a5821ac4c651660a94a7153d27ac9d8a53736203f58b31945ded098070a"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "ohos-sys"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d380ab6c951261a0e44306245bc960b3b3367f099a7da7156bd1a3cacaf783c"
 
 [[package]]
 name = "once_cell"
@@ -3235,9 +3319,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a908a6e00f1fdd0dfd9c0eb08ce85126f6d8bbda50017e74bc4a4b7d4a926a4"
+checksum = "0884ad60e090bf1345b93da0a5de8923c93884cd03f40dfcfddd3b4bee661853"
 dependencies = [
  "bitflags 2.6.0",
 ]
@@ -4294,7 +4378,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "ttf-parser"
 version = "0.21.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 
 [[package]]
 name = "typenum"
@@ -4790,7 +4874,7 @@ dependencies = [
 [[package]]
 name = "windows-core"
 version = "0.51.1"
-source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#56a44a575c4b1a71404ba3cca8439d64abf14477"
+source = "git+https://github.com/jmbejar/makepad?branch=moxin-mae-integration-new#2658fdf5aa89e335f64bd317acc39edadf110c5f"
 dependencies = [
  "windows-targets 0.48.5",
 ]

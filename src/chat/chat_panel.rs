@@ -665,7 +665,7 @@ impl ChatPanel {
         prompt_input.apply_over(
             cx,
             live! {
-                draw_label: { prompt_enabled: (prompt_enabled) }
+                draw_text: { prompt_enabled: (prompt_enabled) }
             },
         );
 
