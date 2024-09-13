@@ -96,8 +96,8 @@ live_design! {
             border_color: #D0D5DD
         }
 
-        draw_text: {
-            text_style:<REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+        draw_label: {
+            text_style:<REGULAR_FONT>{font_size: 10},
             word: Wrap,
 
             instance prompt_enabled: 0.0
@@ -402,14 +402,14 @@ impl ChatLine {
 
 impl ChatLineRef {
     pub fn set_sender_name(&mut self, text: &str) {
-        let Some(mut inner) = self.borrow_mut() else {
+        let Some(inner) = self.borrow_mut() else {
             return;
         };
         inner.label(id!(sender_name)).set_text(text);
     }
 
     pub fn set_avatar_text(&mut self, text: &str) {
-        let Some(mut inner) = self.borrow_mut() else {
+        let Some(inner) = self.borrow_mut() else {
             return;
         };
         inner.label(id!(avatar_label)).set_text(text);
@@ -467,7 +467,7 @@ impl ChatLineRef {
     }
 
     pub fn set_regenerate_button_visible(&mut self, visible: bool) {
-        let Some(mut inner) = self.borrow_mut() else {
+        let Some(inner) = self.borrow_mut() else {
             return;
         };
         inner.button(id!(save_and_regenerate)).set_visible(visible);

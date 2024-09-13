@@ -80,7 +80,6 @@ live_design! {
                                 sep_color: (#12778a)
                                 quote_bg_color: (#12778a)
                                 quote_fg_color: (#106a7b)
-                                block_color: (#12778a)
                                 code_color: (#12778a)
                             }
                         }
@@ -145,7 +144,6 @@ live_design! {
                                 sep_color: (#EDEDED)
                                 quote_bg_color: (#EDEDED)
                                 quote_fg_color: (#969696)
-                                block_color: (#EDEDED)
                                 code_color: (#EDEDED)
                             }
                         }
@@ -226,7 +224,7 @@ live_design! {
                 radius: 30.0
                 color: #fff
             }
-            draw_text: {
+            draw_label: {
                 text_style:<REGULAR_FONT>{font_size: 10},
 
                 instance prompt_enabled: 0.0
@@ -456,6 +454,9 @@ pub struct ChatPanel {
 
     #[rust]
     portal_list_end_reached: bool,
+
+    #[rust(false)]
+    focus_on_prompt_input_pending: bool,
 }
 
 impl Widget for ChatPanel {
@@ -486,6 +487,17 @@ impl Widget for ChatPanel {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.update_view(cx, scope);
 
+        // We need to make sure we're drawing this widget in order to focus on the prompt input
+        // Otherwise, when navigating from another section this command would happen before the widget is drawn
+        // (not having any effect).
+        if self.focus_on_prompt_input_pending {
+            self.focus_on_prompt_input_pending = false;
+            let prompt_input = self.text_input(id!(main_prompt_input.prompt));
+            prompt_input.set_text("");
+            prompt_input.set_cursor(0, 0);
+            prompt_input.set_key_focus(cx);
+        }
+
         while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 self.draw_messages(cx, scope, &mut list);
@@ -505,8 +517,9 @@ impl WidgetMatchEvent for ChatPanel {
             .iter()
             .filter_map(|action| action.as_widget_action())
         {
-            if let ChatHistoryCardAction::ChatSelected(_) = action.cast() {
+            if let ChatHistoryCardAction::ChatSelected = action.cast() {
                 self.reset_scroll_messages(&store);
+                self.focus_on_prompt_input_pending = true;
                 self.redraw(cx);
             }
 
@@ -517,6 +530,8 @@ impl WidgetMatchEvent for ChatPanel {
                     chat.borrow_mut().last_used_file_id = Some(downloaded_file.file.id.clone());
                     chat.borrow().save();
                 }
+
+                self.focus_on_prompt_input_pending = true;
                 self.redraw(cx)
             }
 
@@ -524,6 +539,7 @@ impl WidgetMatchEvent for ChatPanel {
                 ChatAction::Start(file_id) => {
                     if let Some(file) = store.downloads.get_file(&file_id) {
                         store.chats.create_empty_chat_and_load_file(file);
+                        self.focus_on_prompt_input_pending = true;
                     }
                 }
                 _ => {}
@@ -673,7 +689,7 @@ impl ChatPanel {
         prompt_input.apply_over(
             cx,
             live! {
-                draw_text: { prompt_enabled: (prompt_enabled) }
+                draw_label: { prompt_enabled: (prompt_enabled) }
             },
         );
 

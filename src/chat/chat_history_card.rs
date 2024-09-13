@@ -31,8 +31,8 @@ live_design! {
         padding: 0,
         empty_message: ""
 
-        draw_text: {
-            text_style:<REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+        draw_label: {
+            text_style:<REGULAR_FONT>{font_size: 10},
             word: Wrap,
 
             instance prompt_enabled: 0.0
@@ -339,7 +339,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
                 cx.widget_action(
                     widget_uid,
                     &scope.path,
-                    ChatHistoryCardAction::ChatSelected(self.chat_id),
+                    ChatHistoryCardAction::ChatSelected,
                 );
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(self.chat_id);
@@ -362,7 +362,10 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
 impl ChatHistoryCard {
     pub fn set_chat_id(&mut self, id: ChatID) {
-        self.chat_id = id;
+        if id != self.chat_id {
+            self.chat_id = id;
+            self.title_edition_state = TitleState::Editable;
+        }
     }
 
     fn set_title_text(&mut self, text: &str) {
@@ -475,7 +478,7 @@ impl ChatHistoryCardRef {
 #[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
 pub enum ChatHistoryCardAction {
     None,
-    ChatSelected(ChatID),
+    ChatSelected,
     ActivateTitleEdition(ChatID),
     MenuClosed(ChatID),
     DeleteChatOptionSelected(ChatID),

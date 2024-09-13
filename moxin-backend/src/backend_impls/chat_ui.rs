@@ -24,6 +24,7 @@ impl Into<StopReason> for TokenError {
 use std::{
     collections::HashMap,
     io::Read,
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc::{Receiver, Sender},
@@ -316,8 +317,13 @@ pub fn module(data: ChatBotUi) -> wasmedge_sdk::WasmEdgeResult<ImportObject<Chat
 fn create_wasi(
     file: &DownloadedFile,
     load_model: &LoadModelOptions,
+    embedding: Option<(PathBuf, u64)>,
 ) -> wasmedge_sdk::WasmEdgeResult<WasiModule> {
-    let ctx_size = Some(format!("{}", file.context_size));
+    let ctx_size = if let Some((_, embedding_ctx)) = embedding {
+        Some(format!("{},{}", file.context_size, embedding_ctx))
+    } else {
+        Some(format!("{}", file.context_size))
+    };
 
     let n_gpu_layers = match load_model.gpu_layers {
         moxin_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
@@ -332,15 +338,26 @@ fn create_wasi(
         prompt_template = Some(file.prompt_template.clone());
     }
 
+    if embedding.is_some() {
+        if let Some(ref mut prompt_template) = prompt_template {
+            prompt_template.push_str(",");
+            prompt_template.push_str("embedding");
+        }
+    }
+
     let reverse_prompt = if file.reverse_prompt.is_empty() {
         None
     } else {
         Some(file.reverse_prompt.clone())
     };
 
-    let module_alias = file.name.as_ref();
+    let mut module_alias = file.name.clone();
+    if embedding.is_some() {
+        module_alias.push_str(",");
+        module_alias.push_str("embedding");
+    }
 
-    let mut args = vec!["chat_ui.wasm", "-a", module_alias];
+    let mut args = vec!["chat_ui.wasm", "-a", module_alias.as_str()];
 
     macro_rules! add_args {
         ($flag:expr, $value:expr) => {
@@ -367,13 +384,14 @@ pub fn run_wasm_by_downloaded_file(
     file: DownloadedFile,
     load_model: LoadModelOptions,
     tx: Sender<anyhow::Result<LoadModelResponse>>,
+    embedding: Option<(PathBuf, u64)>,
 ) {
     use wasmedge_sdk::vm::SyncInst;
     use wasmedge_sdk::AsInstance;
 
     let mut instances: HashMap<String, &mut (dyn SyncInst)> = HashMap::new();
 
-    let mut wasi = create_wasi(&file, &load_model).unwrap();
+    let mut wasi = create_wasi(&file, &load_model, embedding).unwrap();
     let mut chatui = module(ChatBotUi::new(
         request_rx,
         model_running_controller,
@@ -414,6 +432,7 @@ impl super::BackendModel for ChatBotModel {
         file: DownloadedFile,
         options: LoadModelOptions,
         tx: Sender<anyhow::Result<LoadModelResponse>>,
+        embedding: Option<(PathBuf, u64)>,
     ) -> Self {
         let mut need_reload = true;
 
@@ -452,6 +471,7 @@ impl super::BackendModel for ChatBotModel {
                 file,
                 options,
                 tx,
+                embedding,
             )
         });
 
