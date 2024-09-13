@@ -4,31 +4,33 @@ use markdown::MarkdownAction;
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
-
     import crate::shared::styles::*;
-    import crate::chat::chat_panel::ChatPanel;
-    import crate::chat::chat_history::ChatHistory;
-    import crate::chat::chat_params::ChatParams;
+    import crate::battle::messages::Messages;
+    import crate::battle::prompt::Prompt;
+    import crate::battle::agent_selector::AgentSelector;
+
+    GAP = 12;
 
     BattleScreen = {{BattleScreen}} {
-        width: Fill,
-        height: Fill,
+        flow: Down,
+        padding: (GAP),
+        spacing: (GAP),
         <View> {
-            width: Fill,
-            height: Fill,
-            align: {x: 0.5},
-            padding: {top: 48, bottom: 48 }
-
-            chat_panel = <ChatPanel> {}
+            spacing: (GAP),
+            <View> {
+                flow: Down,
+                spacing: (GAP),
+                <AgentSelector> {}
+                <Messages> {}
+            }
+            <View> {
+                flow: Down,
+                spacing: (GAP),
+                <AgentSelector> {}
+                <Messages> {}
+            }
         }
-        <View> {
-            width: Fill,
-            height: Fill,
-            align: {x: 0.5},
-            padding: {top: 48, bottom: 48 }
-
-            chat_panel = <ChatPanel> {}
-        }
+        <Prompt> {}
     }
 }
 
@@ -40,13 +42,8 @@ pub struct BattleScreen {
 
 impl Widget for BattleScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        // TODO This check is actually copied from Makepad view.rs file
-        // It's not clear why it's needed here, but without this line
-        // the "View all files" link in Discover section does not work after visiting the chat screen
-        if self.visible || !event.requires_visibility() {
-            self.view.handle_event(cx, event, scope);
-            self.widget_match_event(cx, event, scope);
-        }
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
