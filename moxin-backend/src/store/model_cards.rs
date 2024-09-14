@@ -213,14 +213,31 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
         option_env!("MODEL_CARDS_REPO").unwrap_or("https://github.com/moxin-org/model-cards");
     let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
 
-    let repo = open_or_clone(repo_url, &repo_dirs)?;
+    // let repo = open_or_clone(repo_url, &repo_dirs)?;
+    // let mut r = Ok(());
+    // for _ in 0..2 {
+    //     r = pull(&repo, "origin", "main");
+    //     if r.is_ok() {
+    //         break;
+    //     }
+    // }
+
+    let origin_dir = std::env::current_dir()?;
     let mut r = Ok(());
-    for _ in 0..2 {
-        r = pull(&repo, "origin", "main");
-        if r.is_ok() {
-            break;
+    if !repo_dirs.exists() {
+        log::info!("Cloning model-cards repo, url:{:?}, path: {:?}", repo_url, repo_dirs);
+        libra::exec(vec!["clone", repo_url, repo_dirs.to_str().unwrap()])?;
+    } else {
+        log::info!("Pulling model-cards repo, path: {:?}", repo_dirs);
+        std::env::set_current_dir(&repo_dirs)?;
+        for _ in 0..2 {
+            r = libra::exec(vec!["pull"]);
+            if r.is_ok() {
+                break;
+            }
         }
     }
+    std::env::set_current_dir(&origin_dir)?;
 
     if let Err(e) = r {
         log::error!("Failed to pull: {:?}", e);
