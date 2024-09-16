@@ -13,23 +13,29 @@ live_design! {
     import crate::shared::styles::*;
 
     AgentSelector = {{AgentSelector}} {
-        // height: 60,
         height: Fit,
-        show_bg: true,
-        draw_bg: {
-            color: #7777de,
-        },
-
         agent_template: <View> {
             height: Fit,
             agent = <Meta> {}
             button = <MoxinButton> {
+                draw_text: {
+                    color: #000,
+                }
+                draw_bg: {
+                    radius: 0.0,
+                    border_width: 0.0,
+                }
                 width: Fill,
                 height: 45,
             }
         },
-
-        clip = <View> {
+        clip = <CachedRoundedView> {
+            draw_bg: {
+                border_width: 1.25,
+                border_color: #D0D5DD,
+                color: #fff,
+                radius: 5.0
+            },
             list = <ComputedList> {}
         }
     }

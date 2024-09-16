@@ -11,7 +11,6 @@ live_design! {
         height: Fit,
         align: {y: 0.5}
         padding: {top: 8, bottom: 8, left: 10, right: 10},
-        show_bg: true,
         draw_bg: {
             border_width: 1.0,
             border_color: #D0D5DD,
