@@ -1,5 +1,8 @@
 use makepad_widgets::*;
 use markdown::MarkdownAction;
+use moxin_mae::MaeBackend;
+
+use super::agent_selector::AgentSelectorWidgetExt;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -12,29 +15,32 @@ live_design! {
     GAP = 12;
 
     BattleScreen = {{BattleScreen}} {
-        flow: Down,
-        padding: (GAP),
-        spacing: (GAP),
-        <View> {
+        content = <View> {
+            flow: Down,
+            visible: false,
+            padding: (GAP),
             spacing: (GAP),
             <View> {
-                flow: Down,
                 spacing: (GAP),
-                <AgentSelector> {}
-                <Messages> {}
+                <View> {
+                    flow: Down,
+                    spacing: (GAP),
+                    agent_selector = <AgentSelector> {}
+                    <Messages> {}
+                }
+                <View> {
+                    flow: Down,
+                    spacing: (GAP),
+                    <AgentSelector> {}
+                    <Messages> {}
+                }
             }
-            <View> {
-                flow: Down,
-                spacing: (GAP),
-                <AgentSelector> {}
-                <Messages> {}
-            }
+            <Prompt> {}
         }
-        <Prompt> {}
     }
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Live, Widget)]
 pub struct BattleScreen {
     #[deref]
     view: View,
@@ -57,6 +63,17 @@ impl WidgetMatchEvent for BattleScreen {
             if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
                 let _ = robius_open::Uri::new(&url).open();
             }
+        }
+    }
+}
+
+impl LiveHook for BattleScreen {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        // Enable this screen only if there are enough agents, quick solution.
+        let agents = MaeBackend::available_agents();
+        if agents.len() >= 2 {
+            self.view(id!(content)).set_visible(true);
+            self.agent_selector(id!(agent_selector)).set_agents(agents);
         }
     }
 }
