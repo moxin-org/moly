@@ -70,10 +70,8 @@ impl WidgetMatchEvent for BattleScreen {
 impl LiveHook for BattleScreen {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         // Enable this screen only if there are enough agents, quick solution.
-        let agents = MaeBackend::available_agents();
-        if agents.len() >= 2 {
+        if MaeBackend::available_agents().len() >= 2 {
             self.view(id!(content)).set_visible(true);
-            self.agent_selector(id!(agent_selector)).set_agents(agents);
         }
     }
 }
