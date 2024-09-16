@@ -5,6 +5,7 @@ pub mod computed_list;
 pub mod desktop_buttons;
 pub mod download_notification_popup;
 pub mod external_link;
+pub mod meta;
 pub mod modal;
 pub mod popup_notification;
 pub mod resource_imports;
@@ -14,6 +15,7 @@ pub mod utils;
 pub mod widgets;
 
 pub fn live_design(cx: &mut Cx) {
+    meta::live_design(cx);
     computed_list::live_design(cx);
     styles::live_design(cx);
     resource_imports::live_design(cx);
