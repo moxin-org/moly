@@ -4,13 +4,38 @@ live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
-    Prompt = {{Prompt}} {
-        width: Fill,
-        height: 50,
+    import crate::shared::styles::*;
+    import crate::shared::widgets::*;
+
+    Prompt = {{Prompt}} <RoundedView> {
+        height: Fit,
+        align: {y: 0.5}
+        padding: {top: 8, bottom: 8, left: 10, right: 10},
         show_bg: true,
         draw_bg: {
-            color: #77de77,
+            border_width: 1.0,
+            border_color: #D0D5DD,
+            color: #fff,
+            radius: 5.0
+        }
+        input = <MoxinTextInput> {
+            draw_label: {
+                text_style: <REGULAR_FONT> { font_size: 11 },
+            }
+            draw_bg: {
+                color: vec4(0, 0, 0, 0),
+            },
+            width: Fill,
+            height: Fit,
+            empty_message: "Enter a message",
         },
+        button = <MoxinButton> {
+            height: 35,
+            draw_bg: {
+                color: #000,
+            },
+            text: "Fight!",
+        }
     }
 }
 
