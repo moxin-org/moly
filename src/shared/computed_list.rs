@@ -57,6 +57,11 @@ impl ComputedList {
     pub fn len(&self) -> usize {
         self.items.len()
     }
+
+    /// Returns an iterator over the widgets in the list.
+    pub fn items(&self) -> impl Iterator<Item = &WidgetRef> {
+        self.items.iter()
+    }
 }
 
 impl ComputedListRef {
