@@ -8,8 +8,7 @@ use crate::{
 use makepad_widgets::*;
 
 use super::{
-    model_selector_item::ModelSelectorAction,
-    model_selector_list::ModelSelectorListWidgetExt,
+    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt,
     model_selector_loading::ModelSelectorLoadingWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
 };
 
@@ -297,9 +296,10 @@ impl Widget for ModelSelector {
             );
             self.view(id!(icon_drop)).apply_over(
                 cx,
-                live!{
+                live! {
                     visible: false
-                });
+                },
+            );
         } else if no_active_model(store) {
             choose_label.set_text("Choose a Model");
             let color = vec3(0.0, 0.0, 0.0);
@@ -314,9 +314,10 @@ impl Widget for ModelSelector {
 
             self.view(id!(icon_drop)).apply_over(
                 cx,
-                live!{
+                live! {
                     visible: true
-                });
+                },
+            );
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -423,7 +424,7 @@ impl ModelSelector {
                 .set_agent(&agent);
 
             return;
-        } 
+        }
 
         let file = match chat_entity {
             Some(ChatEntity::ModelFile(file_id)) => store.downloads.get_file(&file_id).cloned(),
@@ -476,9 +477,10 @@ impl ModelSelector {
 
         self.view(id!(icon_drop)).apply_over(
             cx,
-            live!{
+            live! {
                 visible: true
-            });
+            },
+        );
 
         self.redraw(cx);
     }

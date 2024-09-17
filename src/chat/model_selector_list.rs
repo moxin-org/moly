@@ -118,7 +118,8 @@ impl ModelSelectorList {
                 Some(ChatEntity::Agent(_)) => None,
                 _ => store.chats.loaded_model.as_ref().map(|m| m.id.clone()),
             };
-            let icon_tick_visible = current_file_id.as_ref() == Some(&self.map_to_downloaded_files.get(&item_id).unwrap().file.id);
+            let icon_tick_visible = current_file_id.as_ref()
+                == Some(&self.map_to_downloaded_files.get(&item_id).unwrap().file.id);
 
             item_widget.apply_over(
                 cx,

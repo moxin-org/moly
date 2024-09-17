@@ -121,6 +121,7 @@ pub struct Chat {
     pub inferences_params: ChatInferenceParams,
     pub system_prompt: Option<String>,
     pub accessed_at: chrono::DateTime<chrono::Utc>,
+    pub persistent: bool,
 
     title: String,
     title_state: TitleState,
@@ -148,6 +149,7 @@ impl Chat {
             inferences_params: ChatInferenceParams::default(),
             system_prompt: None,
             accessed_at: chrono::Utc::now(),
+            persistent: true,
         }
     }
 
@@ -178,6 +180,7 @@ impl Chat {
                     inferences_params: ChatInferenceParams::default(),
                     system_prompt: data.system_prompt,
                     accessed_at: data.accessed_at,
+                    persistent: true,
                 };
                 Ok(chat)
             }
@@ -186,6 +189,10 @@ impl Chat {
     }
 
     pub fn save(&self) {
+        if !self.persistent {
+            return;
+        }
+
         let data = ChatData {
             id: self.id,
             associated_entity: self.associated_entity.clone(),
