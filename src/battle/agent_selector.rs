@@ -12,6 +12,9 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::shared::styles::*;
 
+    COLLAPSED_HEIGHT = 45;
+    EXPANDED_HEIGHT = (COLLAPSED_HEIGHT * 3);
+
     AgentSelector = {{AgentSelector}} {
         height: Fit,
         agent_template: <View> {
@@ -43,15 +46,25 @@ live_design! {
                 list = <ComputedList> {}
             }
 
+        },
+        animator: {
+            mode = {
+                default: collapsed,
+                collapsed = {
+                    redraw: true,
+                    from: { all: Forward { duration: 0.20 } }
+                    ease: ExpDecay { d1: 0.80, d2: 0.97 }
+                    apply: { height: (COLLAPSED_HEIGHT) }
+                }
+                expanded = {
+                    redraw: true,
+                    from: { all: Forward { duration: 0.20 } }
+                    ease: ExpDecay { d1: 0.80, d2: 0.97 }
+                    apply: { height: (EXPANDED_HEIGHT) }
+                }
+            }
         }
     }
-}
-
-#[derive(Default)]
-enum LayoutMode {
-    #[default]
-    Collapsed,
-    Expanded,
 }
 
 #[derive(Live, Widget)]
@@ -59,30 +72,24 @@ pub struct AgentSelector {
     #[deref]
     view: View,
 
-    #[rust]
-    layout_mode: LayoutMode,
-
     #[live]
     agent_template: Option<LivePtr>,
+
+    #[animator]
+    animator: Animator,
 }
 
 impl Widget for AgentSelector {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        match self.layout_mode {
-            LayoutMode::Collapsed => {
-                self.view(id!(clip)).apply_over(cx, live! { height: 45 });
-            }
-            LayoutMode::Expanded => {
-                self.view(id!(clip))
-                    .apply_over(cx, live! { height: (45 * 3) });
-            }
-        }
-
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -101,18 +108,19 @@ impl WidgetMatchEvent for AgentSelector {
 
         if let Some(agent) = clicked_agent {
             self.recompute_list(cx, agent);
-            self.toggle_layout_mode();
+            self.toggle_layout_mode(cx);
             self.redraw(cx);
         }
     }
 }
 
 impl AgentSelector {
-    fn toggle_layout_mode(&mut self) {
-        self.layout_mode = match self.layout_mode {
-            LayoutMode::Collapsed => LayoutMode::Expanded,
-            LayoutMode::Expanded => LayoutMode::Collapsed,
-        };
+    fn toggle_layout_mode(&mut self, cx: &mut Cx) {
+        if self.animator.animator_in_state(cx, id!(mode.collapsed)) {
+            self.animator_play(cx, id!(mode.expanded));
+        } else {
+            self.animator_play(cx, id!(mode.collapsed));
+        }
     }
 
     fn selected_agent(&self) -> Option<MaeAgent> {
