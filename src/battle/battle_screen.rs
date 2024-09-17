@@ -2,8 +2,6 @@ use makepad_widgets::*;
 use markdown::MarkdownAction;
 use moxin_mae::MaeBackend;
 
-use super::agent_selector::AgentSelectorWidgetExt;
-
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
@@ -14,6 +12,14 @@ live_design! {
 
     GAP = 12;
 
+    Half = <View> {
+        flow: Overlay,
+        <Messages> {
+            margin: {top: (45 + GAP)},
+        }
+        <AgentSelector> {}
+    }
+
     BattleScreen = {{BattleScreen}} {
         content = <View> {
             flow: Down,
@@ -22,18 +28,8 @@ live_design! {
             spacing: (GAP),
             <View> {
                 spacing: (GAP),
-                <View> {
-                    flow: Down,
-                    spacing: (GAP),
-                    agent_selector = <AgentSelector> {}
-                    <Messages> {}
-                }
-                <View> {
-                    flow: Down,
-                    spacing: (GAP),
-                    <AgentSelector> {}
-                    <Messages> {}
-                }
+                <Half> {}
+                <Half> {}
             }
             <Prompt> {}
         }

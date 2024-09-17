@@ -33,10 +33,16 @@ live_design! {
             draw_bg: {
                 border_width: 1.25,
                 border_color: #D0D5DD,
-                color: #fff,
                 radius: 5.0
             },
-            list = <ComputedList> {}
+            <View> {
+                show_bg: true,
+                draw_bg: {
+                    color: #F5F7FA,
+                },
+                list = <ComputedList> {}
+            }
+
         }
     }
 }
