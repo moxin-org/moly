@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use makepad_widgets::*;
 
 live_design! {
@@ -28,7 +30,7 @@ live_design! {
             height: Fit,
             empty_message: "Enter a message",
         },
-        button = <MoxinButton> {
+        submit = <MoxinButton> {
             height: 35,
             draw_bg: {
                 color: #000,
@@ -57,4 +59,27 @@ impl Widget for Prompt {
 
 impl WidgetMatchEvent for Prompt {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {}
+}
+
+impl Prompt {
+    pub fn submitted(&self, actions: &Actions) -> bool {
+        let submit = self.button(id!(submit));
+        submit.clicked(actions)
+    }
+
+    pub fn text(&self) -> String {
+        self.text_input(id!(input)).text()
+    }
+}
+
+impl PromptRef {
+    pub fn submitted(&self, actions: &Actions) -> bool {
+        self.borrow()
+            .map(|inner| inner.submitted(actions))
+            .unwrap_or(false)
+    }
+
+    pub fn text(&self) -> String {
+        self.borrow().map(|inner| inner.text()).unwrap_or_default()
+    }
 }

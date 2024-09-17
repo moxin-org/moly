@@ -2,6 +2,8 @@ use makepad_widgets::*;
 use markdown::MarkdownAction;
 use moxin_mae::MaeBackend;
 
+use super::{messages::MessagesWidgetExt, prompt::PromptWidgetExt};
+
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
@@ -14,7 +16,7 @@ live_design! {
 
     Half = <View> {
         flow: Overlay,
-        <Messages> {
+        messages = <Messages> {
             margin: {top: (45 + GAP)},
         }
         <AgentSelector> {}
@@ -28,10 +30,10 @@ live_design! {
             spacing: (GAP),
             <View> {
                 spacing: (GAP),
-                <Half> {}
-                <Half> {}
+                left = <Half> {}
+                right = <Half> {}
             }
-            <Prompt> {}
+            prompt = <Prompt> {}
         }
     }
 }
@@ -54,7 +56,21 @@ impl Widget for BattleScreen {
 }
 
 impl WidgetMatchEvent for BattleScreen {
-    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        let prompt = self.prompt(id!(prompt));
+        let left_messages = self.messages(id!(left.messages));
+        let right_messages = self.messages(id!(right.messages));
+
+        if prompt.submitted(actions) {
+            let text = prompt.text();
+
+            left_messages.add_message(text.clone());
+            right_messages.add_message(text);
+
+            left_messages.redraw(cx);
+            right_messages.redraw(cx);
+        }
+
         for action in actions {
             if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
                 let _ = robius_open::Uri::new(&url).open();
