@@ -102,8 +102,11 @@ impl Store {
             eprintln!("No AgentOps API key found");
         }
 
-        let mae_backend = Rc::new(MaeBackend::new(options));
-        //let mae_backend = Rc::new(MaeBackend::new_fake());
+        let mae_backend = if std::env::var("MAE_BACKEND").unwrap_or_default() == "fake" {
+            Rc::new(MaeBackend::new_fake())
+        } else {
+            Rc::new(MaeBackend::new(options))
+        };
 
         let mut store = Self {
             backend: backend.clone(),
@@ -150,8 +153,15 @@ impl Store {
         }
     }
 
-    pub fn send_message_to_current_entity(&mut self, prompt: String, regenerate_from: Option<usize>) {
-        let entity = self.chats.get_current_chat().and_then(|c| c.borrow().associated_entity.clone());
+    pub fn send_message_to_current_entity(
+        &mut self,
+        prompt: String,
+        regenerate_from: Option<usize>,
+    ) {
+        let entity = self
+            .chats
+            .get_current_chat()
+            .and_then(|c| c.borrow().associated_entity.clone());
 
         match entity {
             Some(ChatEntity::Agent(agent)) => {
@@ -179,7 +189,7 @@ impl Store {
                     prompt,
                     file,
                     self.chats.model_loader.clone(),
-                    &self.backend
+                    &self.backend,
                 );
                 chat.save();
             }
@@ -190,7 +200,12 @@ impl Store {
         MaeBackend::available_agents()
     }
 
-    pub fn send_agent_message(&self, agent: MaeAgent, prompt: String, regenerate_from: Option<usize>) {
+    pub fn send_agent_message(
+        &self,
+        agent: MaeAgent,
+        prompt: String,
+        regenerate_from: Option<usize>,
+    ) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             if let Some(message_id) = regenerate_from {
                 chat.remove_messages_from(message_id);
@@ -241,7 +256,7 @@ impl Store {
             None => {
                 // Fallback to loaded model if exists
                 self.chats.loaded_model.as_ref().map(|m| m.name.clone())
-            },
+            }
         }
     }
 
