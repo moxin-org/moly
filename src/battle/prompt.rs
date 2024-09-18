@@ -20,7 +20,7 @@ live_design! {
             radius: 5.0
         }
         input = <MoxinTextInput> {
-            draw_label: {
+            draw_text: {
                 text_style: <REGULAR_FONT> { font_size: 11 },
             }
             draw_bg: {
