@@ -74,6 +74,7 @@ impl WidgetMatchEvent for BattleScreen {
         let left_messages = self.messages(id!(left.messages));
         let right_messages = self.messages(id!(right.messages));
         let mut redraw = false;
+        let mut scroll_to_bottom = false;
 
         if prompt.submitted(actions) {
             let text = prompt.text();
@@ -99,6 +100,7 @@ impl WidgetMatchEvent for BattleScreen {
             self.right_mae.send_prompt(right_agent, text);
 
             redraw = true;
+            scroll_to_bottom = true;
         }
 
         self.left_mae
@@ -107,6 +109,7 @@ impl WidgetMatchEvent for BattleScreen {
             .for_each(|m| {
                 left_messages.add_message(Message::Agent(m.clone()));
                 redraw = true;
+                scroll_to_bottom = true;
             });
 
         self.right_mae
@@ -115,12 +118,18 @@ impl WidgetMatchEvent for BattleScreen {
             .for_each(|m| {
                 right_messages.add_message(Message::Agent(m.clone()));
                 redraw = true;
+                scroll_to_bottom = true;
             });
 
         for action in actions {
             if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
                 let _ = robius_open::Uri::new(&url).open();
             }
+        }
+
+        if scroll_to_bottom {
+            left_messages.scroll_to_bottom(cx);
+            right_messages.scroll_to_bottom(cx);
         }
 
         if redraw {

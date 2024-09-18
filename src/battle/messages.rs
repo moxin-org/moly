@@ -106,12 +106,23 @@ impl Messages {
     pub fn add_message(&mut self, message: Message) {
         self.messages.push(message);
     }
+
+    pub fn scroll_to_bottom(&self, cx: &mut Cx) {
+        self.portal_list(id!(list))
+            .smooth_scroll_to_end(cx, 10, 80.0);
+    }
 }
 
 impl MessagesRef {
     pub fn add_message(&self, message: Message) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.add_message(message);
+        }
+    }
+
+    pub fn scroll_to_bottom(&self, cx: &mut Cx) {
+        if let Some(inner) = self.borrow() {
+            inner.scroll_to_bottom(cx);
         }
     }
 }
