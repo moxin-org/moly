@@ -1,6 +1,6 @@
 use crate::data::store::Store;
 use makepad_widgets::{Actions, Cx, Scope};
-use moxin_mae::{MaeAgent, MaeAgentCommand, MaeAgentResponse};
+use moxin_mae::{should_be_fake, MaeAgent, MaeAgentCommand, MaeAgentResponse};
 use std::{
     sync::mpsc::{channel, Sender},
     thread::spawn,
@@ -40,6 +40,12 @@ impl Mae {
         spawn(move || {
             // Break and dispose the thread if this instance is dropped.
             while let Ok(response) = rx.recv() {
+                // Simulate some delay if using a fake backend.
+                // This is handled here and not in the backend implementation so
+                // the delay affects only this instance of the interface and not others.
+                if should_be_fake() {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                }
                 Cx::post_action((id, response))
             }
         });

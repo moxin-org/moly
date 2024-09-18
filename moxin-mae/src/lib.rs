@@ -154,6 +154,14 @@ impl MaeBackend {
     }
 
     pub fn new(options: HashMap<String, String>) -> Self {
+        if should_be_fake() {
+            return Self::new_fake();
+        }
+
+        Self::new_with_options(options)
+    }
+
+    pub fn new_with_options(options: HashMap<String, String>) -> Self {
         let (command_sender, command_receiver) = channel();
         let backend = Self { command_sender };
 
@@ -371,4 +379,8 @@ impl MaeBackend {
 
         backend
     }
+}
+
+pub fn should_be_fake() -> bool {
+    std::env::var("MAE_BACKEND").unwrap_or_default() == "fake"
 }
