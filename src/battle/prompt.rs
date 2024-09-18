@@ -9,6 +9,8 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
+    SEND_ICON = dep("crate://self/resources/icons/prompt.svg")
+
     Prompt = {{Prompt}} <RoundedView> {
         height: Fit,
         align: {y: 0.5}
@@ -17,10 +19,10 @@ live_design! {
             border_width: 1.0,
             border_color: #D0D5DD,
             color: #fff,
-            radius: 5.0
+            radius: 12.0
         }
         input = <MoxinTextInput> {
-            draw_label: {
+            draw_text: {
                 text_style: <REGULAR_FONT> { font_size: 11 },
             }
             draw_bg: {
@@ -31,11 +33,17 @@ live_design! {
             empty_message: "Enter a message",
         },
         submit = <MoxinButton> {
-            height: 35,
+            width: 28,
+            height: 28,
             draw_bg: {
+                radius: 6.5,
                 color: #000,
             },
-            text: "Fight!",
+            icon_walk: {width: 12, height: 12},
+            draw_icon: {
+                color: #fff,
+                svg_file: (SEND_ICON),
+            }
         }
     }
 }
