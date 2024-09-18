@@ -101,10 +101,10 @@ live_design! {
                 draw_icon: {
                     svg_file: (ICON_CLOSE),
                     fn get_color(self) -> vec4 {
-                        return #666;
+                        return #8;
                     }
                 }
-                icon_walk: {width: 17, height: 17}
+                icon_walk: {width: 10, height: 10}
             }
         }
 
@@ -207,14 +207,21 @@ impl WidgetMatchEvent for SearchBar {
             }
         }
 
-        if let Some(_) = input.changed(actions) {
-            x_button.set_visible(true);
-            cx.stop_timer(self.search_timer);
-            self.search_timer = cx.start_timeout(self.search_debounce_time);
+        if let Some(val) = input.changed(actions) {
+            if val.is_empty() {
+                x_button.set_visible(false);
+                cx.stop_timer(self.search_timer);
+                self.search_timer = cx.start_timeout(self.search_debounce_time);
+            } else {
+                x_button.set_visible(true);
+                cx.stop_timer(self.search_timer);
+                self.search_timer = cx.start_timeout(self.search_debounce_time);
+            }
         }
 
         if self.button(id!(x_button)).clicked(actions) {
             input.set_text_and_redraw(cx, "");
+            x_button.set_visible(false);
         }
     }
 }
