@@ -720,7 +720,7 @@ pub fn nn_preload_file(
         .join(&file.name);
 
     let preloads = wasmedge_sdk::plugin::NNPreload::new(
-        file.name.clone(),
+        "moxin-chat",
         wasmedge_sdk::plugin::GraphEncoding::GGML,
         wasmedge_sdk::plugin::ExecutionTarget::AUTO,
         &file_path,
@@ -729,7 +729,7 @@ pub fn nn_preload_file(
     let mut preload_vec = vec![preloads];
     if let Some((embedding_path, _)) = embedding {
         let preloads = wasmedge_sdk::plugin::NNPreload::new(
-            "embedding".to_string(),
+            "moxin-embedding",
             wasmedge_sdk::plugin::GraphEncoding::GGML,
             wasmedge_sdk::plugin::ExecutionTarget::AUTO,
             &embedding_path,
