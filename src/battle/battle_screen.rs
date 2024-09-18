@@ -77,6 +77,7 @@ impl WidgetMatchEvent for BattleScreen {
 
         if prompt.submitted(actions) {
             let text = prompt.text();
+            prompt.clear();
 
             left_messages.add_message(Message::User(text.clone()));
             right_messages.add_message(Message::User(text.clone()));
@@ -84,18 +85,20 @@ impl WidgetMatchEvent for BattleScreen {
             left_messages.add_message(Message::AgentWriting);
             right_messages.add_message(Message::AgentWriting);
 
-            redraw = true;
-
             let left_agent = self
                 .agent_selector(id!(left.selector))
                 .selected_agent()
                 .unwrap();
+
             let right_agent = self
                 .agent_selector(id!(right.selector))
                 .selected_agent()
                 .unwrap();
+
             self.left_mae.send_prompt(left_agent, text.clone());
             self.right_mae.send_prompt(right_agent, text);
+
+            redraw = true;
         }
 
         self.left_mae

@@ -69,6 +69,10 @@ impl Prompt {
     pub fn text(&self) -> String {
         self.text_input(id!(input)).text()
     }
+
+    pub fn clear(&self) {
+        self.text_input(id!(input)).set_text("");
+    }
 }
 
 impl PromptRef {
@@ -80,5 +84,9 @@ impl PromptRef {
 
     pub fn text(&self) -> String {
         self.borrow().map(|inner| inner.text()).unwrap_or_default()
+    }
+
+    pub fn clear(&self) {
+        self.borrow().map(|inner| inner.clear());
     }
 }
