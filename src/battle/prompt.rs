@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use makepad_widgets::*;
 
 live_design! {
