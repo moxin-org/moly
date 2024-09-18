@@ -123,7 +123,7 @@ impl AgentSelector {
         }
     }
 
-    fn selected_agent(&self) -> Option<MaeAgent> {
+    pub fn selected_agent(&self) -> Option<MaeAgent> {
         self.computed_list(id!(list))
             .borrow()
             .map(|list| {
@@ -145,6 +145,12 @@ impl AgentSelector {
             widget.meta(id!(agent)).set_value(a);
             widget
         });
+    }
+}
+
+impl AgentSelectorRef {
+    pub fn selected_agent(&self) -> Option<MaeAgent> {
+        self.borrow().map(|inner| inner.selected_agent()).flatten()
     }
 }
 

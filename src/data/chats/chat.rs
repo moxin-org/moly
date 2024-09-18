@@ -563,7 +563,7 @@ impl Chat {
     }
 }
 
-trait MaeAgentResponseFormatter {
+pub trait MaeAgentResponseFormatter {
     fn to_text_messgae(&self) -> String;
 }
 

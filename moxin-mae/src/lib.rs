@@ -81,7 +81,9 @@ impl MaeAgent {
     pub fn short_description(&self) -> String {
         match self {
             MaeAgent::Reasoner => "Helps to find good questions about any topic".to_string(),
-            MaeAgent::SearchAssistant => "Your assistant to find information on the web".to_string(),
+            MaeAgent::SearchAssistant => {
+                "Your assistant to find information on the web".to_string()
+            }
             MaeAgent::ResearchScholar => "Expert in academic research".to_string(),
         }
     }
@@ -134,6 +136,12 @@ pub enum MaeAgentCommand {
 
 pub struct MaeBackend {
     pub command_sender: mpsc::Sender<MaeAgentCommand>,
+}
+
+impl Default for MaeBackend {
+    fn default() -> Self {
+        Self::new(HashMap::new())
+    }
 }
 
 impl MaeBackend {

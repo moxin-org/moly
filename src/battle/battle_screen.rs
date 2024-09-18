@@ -1,8 +1,18 @@
+use std::sync::mpsc::channel;
+
 use makepad_widgets::*;
 use markdown::MarkdownAction;
-use moxin_mae::MaeBackend;
+use moxin_mae::{MaeAgentCommand, MaeBackend};
+use std::sync::mpsc::Sender;
 
-use super::{messages::MessagesWidgetExt, prompt::PromptWidgetExt};
+use crate::data::{chats::chat::MaeAgentResponseFormatter, store::Store};
+
+use super::{
+    agent_selector::AgentSelectorWidgetExt,
+    mae::{self, Mae},
+    messages::{Message, MessagesWidgetExt},
+    prompt::PromptWidgetExt,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -19,7 +29,7 @@ live_design! {
         messages = <Messages> {
             margin: {top: (45 + GAP)},
         }
-        <AgentSelector> {}
+        selector = <AgentSelector> {}
     }
 
     BattleScreen = {{BattleScreen}} {
@@ -42,10 +52,14 @@ live_design! {
 pub struct BattleScreen {
     #[deref]
     view: View,
+
+    #[rust(Mae::new())]
+    mae: Mae,
 }
 
 impl Widget for BattleScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.mae.ensure_initialized(scope);
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
@@ -60,21 +74,47 @@ impl WidgetMatchEvent for BattleScreen {
         let prompt = self.prompt(id!(prompt));
         let left_messages = self.messages(id!(left.messages));
         let right_messages = self.messages(id!(right.messages));
+        let mut redraw = false;
 
         if prompt.submitted(actions) {
             let text = prompt.text();
 
-            left_messages.add_message(text.clone());
-            right_messages.add_message(text);
+            left_messages.add_message(Message::User(text.clone()));
+            right_messages.add_message(Message::User(text.clone()));
 
-            left_messages.redraw(cx);
-            right_messages.redraw(cx);
+            left_messages.add_message(Message::AgentWriting);
+            right_messages.add_message(Message::AgentWriting);
+
+            redraw = true;
+
+            let left_agent = self
+                .agent_selector(id!(left.selector))
+                .selected_agent()
+                .unwrap();
+            let right_agent = self
+                .agent_selector(id!(right.selector))
+                .selected_agent()
+                .unwrap();
+            self.mae.send_prompt(left_agent, text.clone());
+            self.mae.send_prompt(right_agent, text);
         }
+
+        mae::responses(actions)
+            .map(|r| r.to_text_messgae())
+            .for_each(|m| {
+                left_messages.add_message(Message::Agent(m.clone()));
+                right_messages.add_message(Message::Agent(m));
+                redraw = true;
+            });
 
         for action in actions {
             if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
                 let _ = robius_open::Uri::new(&url).open();
             }
+        }
+
+        if redraw {
+            self.redraw(cx);
         }
     }
 }

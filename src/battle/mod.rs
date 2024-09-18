@@ -1,5 +1,6 @@
 pub mod agent_selector;
 pub mod battle_screen;
+pub mod mae;
 pub mod messages;
 pub mod prompt;
 

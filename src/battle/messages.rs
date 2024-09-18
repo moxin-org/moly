@@ -43,13 +43,19 @@ live_design! {
     }
 }
 
+pub enum Message {
+    User(String),
+    Agent(String),
+    AgentWriting,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct Messages {
     #[deref]
     view: View,
 
     #[rust]
-    messages: Vec<String>,
+    messages: Vec<Message>,
 }
 
 impl Widget for Messages {
@@ -67,13 +73,23 @@ impl Widget for Messages {
                         continue;
                     }
 
-                    let item = if index % 2 == 0 {
-                        list.item(cx, index, live_id!(UserLine)).unwrap()
-                    } else {
-                        list.item(cx, index, live_id!(AgentLine)).unwrap()
-                    };
-                    item.label(id!(text)).set_text(&self.messages[index]);
-                    item.draw_all(cx, scope);
+                    match &self.messages[index] {
+                        Message::User(text) => {
+                            let item = list.item(cx, index, live_id!(UserLine)).unwrap();
+                            item.label(id!(text)).set_text(text);
+                            item.draw_all(cx, scope);
+                        }
+                        Message::Agent(text) => {
+                            let item = list.item(cx, index, live_id!(AgentLine)).unwrap();
+                            item.label(id!(text)).set_text(text);
+                            item.draw_all(cx, scope);
+                        }
+                        Message::AgentWriting => {
+                            let item = list.item(cx, index, live_id!(AgentLine)).unwrap();
+                            item.label(id!(text)).set_text("Agent is typing...");
+                            item.draw_all(cx, scope);
+                        }
+                    }
                 }
             }
         }
@@ -87,13 +103,13 @@ impl WidgetMatchEvent for Messages {
 }
 
 impl Messages {
-    pub fn add_message(&mut self, message: String) {
+    pub fn add_message(&mut self, message: Message) {
         self.messages.push(message);
     }
 }
 
 impl MessagesRef {
-    pub fn add_message(&self, message: String) {
+    pub fn add_message(&self, message: Message) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.add_message(message);
         }
