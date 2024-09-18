@@ -64,7 +64,8 @@ impl WidgetMatchEvent for Prompt {
 impl Prompt {
     pub fn submitted(&self, actions: &Actions) -> bool {
         let submit = self.button(id!(submit));
-        submit.clicked(actions)
+        let input = self.text_input(id!(input));
+        submit.clicked(actions) || input.returned(actions).is_some()
     }
 
     pub fn text(&self) -> String {
