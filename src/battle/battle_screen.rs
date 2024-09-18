@@ -1,15 +1,10 @@
-use std::sync::mpsc::channel;
-
+use crate::data::chats::chat::MaeAgentResponseFormatter;
 use makepad_widgets::*;
 use markdown::MarkdownAction;
-use moxin_mae::{MaeAgentCommand, MaeBackend};
-use std::sync::mpsc::Sender;
-
-use crate::data::{chats::chat::MaeAgentResponseFormatter, store::Store};
 
 use super::{
     agent_selector::AgentSelectorWidgetExt,
-    mae::{self, Mae},
+    mae::Mae,
     messages::{Message, MessagesWidgetExt},
     prompt::PromptWidgetExt,
 };
@@ -54,12 +49,16 @@ pub struct BattleScreen {
     view: View,
 
     #[rust(Mae::new())]
-    mae: Mae,
+    left_mae: Mae,
+
+    #[rust(Mae::new())]
+    right_mae: Mae,
 }
 
 impl Widget for BattleScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.mae.ensure_initialized(scope);
+        self.left_mae.ensure_initialized(scope);
+        self.right_mae.ensure_initialized(scope);
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
@@ -95,15 +94,23 @@ impl WidgetMatchEvent for BattleScreen {
                 .agent_selector(id!(right.selector))
                 .selected_agent()
                 .unwrap();
-            self.mae.send_prompt(left_agent, text.clone());
-            self.mae.send_prompt(right_agent, text);
+            self.left_mae.send_prompt(left_agent, text.clone());
+            self.right_mae.send_prompt(right_agent, text);
         }
 
-        mae::responses(actions)
+        self.left_mae
+            .responses(actions)
             .map(|r| r.to_text_messgae())
             .for_each(|m| {
                 left_messages.add_message(Message::Agent(m.clone()));
-                right_messages.add_message(Message::Agent(m));
+                redraw = true;
+            });
+
+        self.right_mae
+            .responses(actions)
+            .map(|r| r.to_text_messgae())
+            .for_each(|m| {
+                right_messages.add_message(Message::Agent(m.clone()));
                 redraw = true;
             });
 
@@ -122,7 +129,7 @@ impl WidgetMatchEvent for BattleScreen {
 impl LiveHook for BattleScreen {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         // Enable this screen only if there are enough agents, quick solution.
-        if MaeBackend::available_agents().len() >= 2 {
+        if moxin_mae::MaeBackend::available_agents().len() >= 2 {
             self.view(id!(content)).set_visible(true);
         }
     }

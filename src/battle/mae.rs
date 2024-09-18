@@ -6,17 +6,25 @@ use std::{
     thread::spawn,
 };
 
+/// Interface to MAE that takes adventage of the new `Cx::post_action` and provides
+/// isolated message handling.
 pub struct Mae {
+    /// Identify this mae instance to handle responses in isolation.
+    id: usize,
+
     /// Send messages here, to translate them from raw `mpsc` based communication
-    /// to `Cx::post_action`.
+    /// to `Cx::post_action` with added isolation.
     ///
     /// See `new` implementation for details.
     ///
     /// This is just to be compatible with the current mae backend which requires
-    /// to pass a `Receiver`.
+    /// to pass a `Receiver` and doesn't provide a way to filter responses based
+    /// on the sender.
     response_sender: Sender<MaeAgentResponse>,
 
     /// Lazy initialization to be compatible with the store.
+    ///
+    /// See `ensure_initialized` implementation for details.
     command_sender: Option<Sender<MaeAgentCommand>>,
 }
 
@@ -24,21 +32,26 @@ impl Mae {
     /// Creates a new `Mae` instance.
     /// You still need to call `ensure_initialized`.
     pub fn new() -> Self {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);
+
         let (tx, rx) = channel();
         spawn(move || {
             // Break and dispose the thread if this instance is dropped.
             while let Ok(response) = rx.recv() {
-                Cx::post_action(response)
+                Cx::post_action((id, response))
             }
         });
 
         Self {
+            id,
             response_sender: tx,
             command_sender: None,
         }
     }
 
-    /// Compatibility trick to steal the already initialized sender from the store.
+    /// Compatibility trick to steal the already configured sender from the store.
     pub fn ensure_initialized(&mut self, scope: &mut Scope) {
         if self.command_sender.is_none() {
             let store = scope.data.get::<Store>().expect("store not found");
@@ -58,7 +71,7 @@ impl Mae {
             .expect("can't communicate with mae's thread");
     }
 
-    /// Sends prompt to an agent.
+    /// Sends a prompt to an agent.
     pub fn send_prompt(&self, agent: MaeAgent, prompt: String) {
         self.send(MaeAgentCommand::SendTask(
             prompt,
@@ -66,13 +79,16 @@ impl Mae {
             self.response_sender.clone(),
         ));
     }
-}
 
-/// Handle global responses from mae.
-///
-/// Note: Could be improved to handle responses for a specific widget.
-pub fn responses(actions: &Actions) -> impl Iterator<Item = &MaeAgentResponse> {
-    actions
-        .iter()
-        .filter_map(move |action| action.downcast_ref())
+    /// Handle responses sent from this specific mae instance.
+    pub fn responses<'a>(
+        &'a self,
+        actions: &'a Actions,
+    ) -> impl Iterator<Item = &'a MaeAgentResponse> {
+        actions
+            .iter()
+            .filter_map(move |action| action.downcast_ref::<(usize, MaeAgentResponse)>())
+            .filter(|(id, _)| *id == self.id)
+            .map(|(_, response)| response)
+    }
 }
