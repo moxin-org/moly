@@ -37,6 +37,7 @@ live_design! {
             }
         }
     }
+
     AgentLine = <View> {
         flow: Down,
         height: Fit,
@@ -55,6 +56,12 @@ live_design! {
         bubble = <Bubble> {margin: {left: 16}}
     }
 
+    LoadingLine = <AgentLine> {
+        bubble = {
+            text = <ChatLineLoading> {}
+        }
+    }
+
     Messages = {{Messages}} {
         flow: Down,
         width: Fill,
@@ -63,7 +70,7 @@ live_design! {
         list = <PortalList> {
             UserLine = <UserLine> {}
             AgentLine = <AgentLine> {}
-            LoadingLine = <ChatLineLoading> {}
+            LoadingLine = <LoadingLine> {}
         }
     }
 }
@@ -71,7 +78,7 @@ live_design! {
 pub enum Message {
     User(String),
     Agent(MaeAgent, String),
-    AgentWriting,
+    AgentWriting(MaeAgent),
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -111,8 +118,10 @@ impl Widget for Messages {
                             item.label(id!(text)).set_text(text);
                             item.draw_all(cx, scope);
                         }
-                        Message::AgentWriting => {
+                        Message::AgentWriting(agent) => {
                             let item = list.item(cx, index, live_id!(LoadingLine)).unwrap();
+                            item.chat_agent_avatar(id!(avatar)).set_agent(agent);
+                            item.label(id!(name)).set_text(&agent.name());
                             item.draw_all(cx, scope);
                         }
                     }
@@ -130,7 +139,7 @@ impl WidgetMatchEvent for Messages {
 
 impl Messages {
     pub fn add_message(&mut self, message: Message) {
-        if let Some(Message::AgentWriting) = self.messages.last() {
+        if let Some(Message::AgentWriting(_)) = self.messages.last() {
             self.messages.pop();
         }
 
