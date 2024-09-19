@@ -1,7 +1,10 @@
 use makepad_widgets::*;
 use moxin_mae::{MaeAgent, MaeBackend};
 
-use crate::shared::{computed_list::ComputedListWidgetExt, meta::MetaWidgetRefExt};
+use crate::{
+    chat::shared::ChatAgentAvatarWidgetRefExt,
+    shared::{computed_list::ComputedListWidgetExt, meta::MetaWidgetRefExt},
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -12,29 +15,40 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::shared::styles::*;
 
+    import crate::chat::shared::ChatAgentAvatar;
+
     COLLAPSED_HEIGHT = 45;
     EXPANDED_HEIGHT = (COLLAPSED_HEIGHT * 3);
 
     AgentSelector = {{AgentSelector}} {
         height: Fit,
         agent_template: <View> {
-            height: Fit,
+            flow: Overlay,
+            height: 45,
             agent = <Meta> {}
-            button = <MoxinButton> {
-                draw_text: {
-                    color: #000,
+            <View> {
+                align: {x: 0.5, y: 0.5},
+                spacing: 10,
+                avatar = <ChatAgentAvatar> {}
+                text = <Label> {
+                    draw_text: {
+                        text_style: <BOLD_FONT> { font_size: 10 },
+                        color: #000,
+                    }
                 }
+            }
+            button = <MoxinButton> {
+                width: Fill,
+                height: Fill,
                 draw_bg: {
                     radius: 0.0,
                     border_width: 0.0,
                 }
-                width: Fill,
-                height: 45,
             }
         },
         clip = <CachedRoundedView> {
             draw_bg: {
-                border_width: 1.25,
+                border_width: 1.0,
                 border_color: #D0D5DD,
                 radius: 5.0
             },
@@ -141,7 +155,8 @@ impl AgentSelector {
 
         self.computed_list(id!(list)).compute_from(agents, |a| {
             let widget = WidgetRef::new_from_ptr(cx, self.agent_template);
-            widget.button(id!(button)).set_text(&a.name());
+            widget.label(id!(text)).set_text(&a.name());
+            widget.chat_agent_avatar(id!(avatar)).set_agent(&a);
             widget.meta(id!(agent)).set_value(a);
             widget
         });
