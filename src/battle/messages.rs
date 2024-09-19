@@ -1,29 +1,35 @@
 use makepad_widgets::*;
+use moxin_mae::MaeAgent;
+
+use crate::chat::shared::ChatAgentAvatarWidgetRefExt;
 
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
+    import crate::shared::styles::*;
     import crate::chat::chat_line_loading::ChatLineLoading;
+    import crate::chat::shared::ChatAgentAvatar;
 
-    ChatLine = <View> {
+    Bubble = <RoundedView> {
         height: Fit,
+        padding: {left: 16, right: 18, top: 18, bottom: 14},
         margin: {bottom: 16},
-        bubble = <RoundedView> {
-            height: Fit,
-            padding: {left: 16, right: 18, top: 18, bottom: 14},
-            show_bg: true,
-            draw_bg: {
-                radius: 12.0,
-            },
-            text = <Label> {
-                width: Fill,
-                draw_text: {color: #000}
+        show_bg: true,
+        draw_bg: {
+            radius: 12.0,
+        },
+        text = <Label> {
+            width: Fill,
+            draw_text: {
+                text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+                color: #000
             }
         }
     }
 
-    UserLine = <ChatLine> {
-        bubble = {
+    UserLine = <View> {
+        height: Fit,
+        bubble = <Bubble> {
             margin: {left: 100}
             draw_bg: {color: #15859A}
             text = {
@@ -31,8 +37,23 @@ live_design! {
             }
         }
     }
-
-    AgentLine = <ChatLine> {}
+    AgentLine = <View> {
+        flow: Down,
+        height: Fit,
+        sender = <View> {
+            height: Fit,
+            spacing: 8,
+            align: {y: 0.5}
+            avatar = <ChatAgentAvatar> {}
+            name = <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 10},
+                    color: #000
+                }
+            }
+        }
+        bubble = <Bubble> {margin: {left: 16}}
+    }
 
     Messages = {{Messages}} {
         flow: Down,
@@ -49,7 +70,7 @@ live_design! {
 
 pub enum Message {
     User(String),
-    Agent(String),
+    Agent(MaeAgent, String),
     AgentWriting,
 }
 
@@ -83,8 +104,10 @@ impl Widget for Messages {
                             item.label(id!(text)).set_text(text);
                             item.draw_all(cx, scope);
                         }
-                        Message::Agent(text) => {
+                        Message::Agent(agent, text) => {
                             let item = list.item(cx, index, live_id!(AgentLine)).unwrap();
+                            item.chat_agent_avatar(id!(avatar)).set_agent(agent);
+                            item.label(id!(name)).set_text(&agent.name());
                             item.label(id!(text)).set_text(text);
                             item.draw_all(cx, scope);
                         }

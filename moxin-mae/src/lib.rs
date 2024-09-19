@@ -129,6 +129,17 @@ pub enum MaeAgentResponse {
     ResearchScholarUpdate(String),
 }
 
+impl MaeAgentResponse {
+    pub fn to_agent(&self) -> MaeAgent {
+        match self {
+            MaeAgentResponse::ReasonerResponse(_) => MaeAgent::Reasoner,
+            MaeAgentResponse::SearchAssistantResponse(_) => MaeAgent::SearchAssistant,
+            MaeAgentResponse::ResearchScholarResponse(_) => MaeAgent::ResearchScholar,
+            MaeAgentResponse::ResearchScholarUpdate(_) => MaeAgent::ResearchScholar,
+        }
+    }
+}
+
 pub enum MaeAgentCommand {
     SendTask(String, MaeAgent, mpsc::Sender<MaeAgentResponse>),
     CancelTask,

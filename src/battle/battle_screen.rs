@@ -17,12 +17,13 @@ live_design! {
     import crate::battle::prompt::Prompt;
     import crate::battle::agent_selector::AgentSelector;
 
-    GAP = 12;
+    SM_GAP = 14;
+    MD_GAP = 28;
 
     Half = <View> {
         flow: Overlay,
         messages = <Messages> {
-            margin: {top: (45 + GAP)},
+            margin: {top: (45 + MD_GAP)},
         }
         selector = <AgentSelector> {}
     }
@@ -31,10 +32,11 @@ live_design! {
         content = <View> {
             flow: Down,
             visible: false,
-            padding: (GAP),
-            spacing: (GAP),
+            padding: {top: 40, bottom: 40, left: (MD_GAP), right: (MD_GAP)},
+
+            spacing: (SM_GAP),
             <View> {
-                spacing: (GAP),
+                spacing: (MD_GAP),
                 left = <Half> {}
                 right = <Half> {}
             }
@@ -105,18 +107,18 @@ impl WidgetMatchEvent for BattleScreen {
 
         self.left_mae
             .responses(actions)
-            .map(|r| r.to_text_messgae())
-            .for_each(|m| {
-                left_messages.add_message(Message::Agent(m.clone()));
+            .map(|r| (r.to_agent(), r.to_text_messgae()))
+            .for_each(|(a, m)| {
+                left_messages.add_message(Message::Agent(a, m.clone()));
                 redraw = true;
                 scroll_to_bottom = true;
             });
 
         self.right_mae
             .responses(actions)
-            .map(|r| r.to_text_messgae())
-            .for_each(|m| {
-                right_messages.add_message(Message::Agent(m.clone()));
+            .map(|r| (r.to_agent(), r.to_text_messgae()))
+            .for_each(|(a, m)| {
+                right_messages.add_message(Message::Agent(a, m.clone()));
                 redraw = true;
                 scroll_to_bottom = true;
             });
