@@ -16,6 +16,7 @@ live_design! {
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
+    ICON_LINK = dep("crate://self/resources/icons/share.svg")
 
     ChatLineEditButton = <MoxinButton> {
         width: 56,
@@ -240,10 +241,16 @@ live_design! {
                     delete_button = <ChatLineActionButton> {
                         draw_icon: { svg_file: (ICON_DELETE) }
                     }
+                    link_button = <ChatLineActionButton> {
+                        visible: false,
+                        draw_icon: {
+                            svg_file: (ICON_LINK),
+                            color_hover: #b1e
+                        }
+                    }
                 }
             }
         }
-
     }
 }
 
@@ -275,6 +282,9 @@ pub struct ChatLine {
 
     #[rust]
     hovered: bool,
+
+    #[rust]
+    code_block: String,
 }
 
 impl Widget for ChatLine {
@@ -292,6 +302,7 @@ impl Widget for ChatLine {
                 if self.hovered != hovered {
                     self.hovered = hovered;
                     self.view(id!(actions_section.actions)).set_visible(hovered);
+                    self.show_or_hide_link_button(scope);
                     self.redraw(cx);
                 }
             }
@@ -358,6 +369,20 @@ impl ChatLine {
             let text_to_copy = self.text_input(id!(input)).text();
             cx.copy_to_clipboard(&text_to_copy);
         }
+
+        if self.button(id!(link_button)).clicked(&actions) {
+            if self.code_block.contains("rust") {
+                let code_block = &self.code_block[4..];
+            } else if self.code_block.contains("rs"){
+                let code_block = &self.code_block[2..];
+            }
+            // 转化code成为encode
+            // let playground_url = &format!("https://play.rust-lang.org/?code={}", );
+
+            if let Err(e) = robius_open::Uri::new("https://play.rust-lang.org").open() {
+                error!("Error opening URL: {:?}", e);
+            }
+        }
     }
 
     pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
@@ -396,6 +421,19 @@ impl ChatLine {
 
         if self.button(id!(cancel)).clicked(&actions) {
             self.set_edit_mode(cx, false);
+        }
+    }
+
+    pub fn show_or_hide_link_button(&mut self, scope: &mut Scope) {
+        let latest_message = self.markdown(id!(markdown_message)).text();
+        if !latest_message.is_empty() {
+            // this mean its markdown
+            let code_block = extract_code_block(&latest_message);
+            if code_block.contains("rust") || code_block.contains("rs") {
+                self.button(id!(link_button)).set_visible(true);
+                self.code_block = code_block.to_owned(); // to_string 还是 to_owned
+                log!("{}", self.code_block);  
+            }
         }
     }
 }
@@ -471,5 +509,25 @@ impl ChatLineRef {
             return;
         };
         inner.button(id!(save_and_regenerate)).set_visible(visible);
+    }
+}
+
+fn find_code_block_index(content: &String) -> Option<(usize, usize)> {
+    if let Some(start) = content.find("```") {
+        if let Some(end) = content[start + 3..].find("```") {
+            Some((start + 3, start + 3 + end)) 
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+fn extract_code_block(content: &String) -> &str {
+    if let Some((start, end)) = find_code_block_index(content) {
+        &content[start..end]
+    } else {
+        "Can't find the code block"
     }
 }
