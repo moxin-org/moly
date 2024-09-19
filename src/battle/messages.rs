@@ -3,9 +3,11 @@ use makepad_widgets::*;
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
+    import crate::chat::chat_line_loading::ChatLineLoading;
 
     ChatLine = <View> {
         height: Fit,
+        margin: {bottom: 16},
         bubble = <RoundedView> {
             height: Fit,
             padding: {left: 16, right: 18, top: 18, bottom: 14},
@@ -29,6 +31,7 @@ live_design! {
             }
         }
     }
+
     AgentLine = <ChatLine> {}
 
     Messages = {{Messages}} {
@@ -39,6 +42,7 @@ live_design! {
         list = <PortalList> {
             UserLine = <UserLine> {}
             AgentLine = <AgentLine> {}
+            LoadingLine = <ChatLineLoading> {}
         }
     }
 }
@@ -85,8 +89,7 @@ impl Widget for Messages {
                             item.draw_all(cx, scope);
                         }
                         Message::AgentWriting => {
-                            let item = list.item(cx, index, live_id!(AgentLine)).unwrap();
-                            item.label(id!(text)).set_text("Agent is typing...");
+                            let item = list.item(cx, index, live_id!(LoadingLine)).unwrap();
                             item.draw_all(cx, scope);
                         }
                     }
@@ -104,6 +107,10 @@ impl WidgetMatchEvent for Messages {
 
 impl Messages {
     pub fn add_message(&mut self, message: Message) {
+        if let Some(Message::AgentWriting) = self.messages.last() {
+            self.messages.pop();
+        }
+
         self.messages.push(message);
     }
 
