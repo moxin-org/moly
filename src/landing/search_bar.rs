@@ -96,7 +96,7 @@ live_design! {
                 empty_message: "Search Model by Keyword"
             }
 
-            x_button = <MoxinButton> {
+            clear_text_button = <MoxinButton> {
                 visible: false,
                 draw_icon: {
                     svg_file: (ICON_CLOSE),
@@ -191,7 +191,7 @@ impl Widget for SearchBar {
 impl WidgetMatchEvent for SearchBar {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let input = self.text_input(id!(input));
-        let x_button = self.button(id!(x_button));
+        let clear_text_button = self.button(id!(clear_text_button));
 
         if let Some(keywords) = input.returned(actions) {
             if keywords.len() > 0 {
@@ -207,21 +207,15 @@ impl WidgetMatchEvent for SearchBar {
             }
         }
 
-        if let Some(val) = input.changed(actions) {
-            if val.is_empty() {
-                x_button.set_visible(false);
-                cx.stop_timer(self.search_timer);
-                self.search_timer = cx.start_timeout(self.search_debounce_time);
-            } else {
-                x_button.set_visible(true);
-                cx.stop_timer(self.search_timer);
-                self.search_timer = cx.start_timeout(self.search_debounce_time);
-            }
+        if let Some(text) = input.changed(actions) {
+            clear_text_button.set_visible(!text.is_empty());
+            cx.stop_timer(self.search_timer);
+            self.search_timer = cx.start_timeout(self.search_debounce_time);
         }
 
-        if self.button(id!(x_button)).clicked(actions) {
+        if self.button(id!(clear_text_button)).clicked(actions) {
             input.set_text_and_redraw(cx, "");
-            x_button.set_visible(false);
+            clear_text_button.set_visible(false);
         }
     }
 }
