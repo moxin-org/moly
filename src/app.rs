@@ -92,7 +92,7 @@ live_design! {
                             }
                         }
                         battle_tab = <SidebarMenuButton> {
-                            text: "Battle",
+                            text: "Arena",
                             draw_icon: {
                                 svg_file: (ICON_CHAT),
                             }
