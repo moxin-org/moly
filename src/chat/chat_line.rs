@@ -3,6 +3,7 @@ use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
+use urlencoding::encode;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -371,15 +372,14 @@ impl ChatLine {
         }
 
         if self.button(id!(link_button)).clicked(&actions) {
-            if self.code_block.contains("rust") {
-                let code_block = &self.code_block[4..];
-            } else if self.code_block.contains("rs"){
-                let code_block = &self.code_block[2..];
-            }
-            // 转化code成为encode
-            // let playground_url = &format!("https://play.rust-lang.org/?code={}", );
+            let encoded_code = encode(&self.code_block);
 
-            if let Err(e) = robius_open::Uri::new("https://play.rust-lang.org").open() {
+            let playground_url = &format!(
+                "https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&code={}",
+                encoded_code
+            );
+
+            if let Err(e) = robius_open::Uri::new(playground_url).open() {
                 error!("Error opening URL: {:?}", e);
             }
         }
@@ -429,10 +429,12 @@ impl ChatLine {
         if !latest_message.is_empty() {
             // this mean its markdown
             let code_block = extract_code_block(&latest_message);
-            if code_block.contains("rust") || code_block.contains("rs") {
+            if code_block.contains("rust") {
                 self.button(id!(link_button)).set_visible(true);
-                self.code_block = code_block.to_owned(); // to_string 还是 to_owned
-                log!("{}", self.code_block);  
+                self.code_block = code_block[4..].to_owned();
+            } else if code_block.contains("rs") {
+                self.button(id!(link_button)).set_visible(true);
+                self.code_block = code_block[2..].to_owned();
             }
         }
     }
