@@ -15,8 +15,12 @@ live_design! {
             border_width: 1.0,
             border_color: #D0D5DD,
             color: #fff,
-            radius: 5.0
+            radius: 12.0
         }
+
+        send_icon: dep("crate://self/resources/icons/prompt.svg")
+        stop_icon: dep("crate://self/resources/icons/stop.svg")
+
         input = <MoxinTextInput> {
             draw_text: {
                 text_style: <REGULAR_FONT> { font_size: 11 },
@@ -30,18 +34,45 @@ live_design! {
         },
         submit = <MoxinButton> {
             height: 35,
+            width: 35,
             draw_bg: {
+                radius: 8,
                 color: #000,
             },
-            text: "Fight!",
         }
     }
+}
+
+#[derive(Default)]
+enum Task {
+    #[default]
+    Submit,
+    Stop,
+}
+
+#[derive(Default)]
+enum Interactivity {
+    #[default]
+    Enabled,
+    Disabled,
 }
 
 #[derive(Live, LiveHook, Widget)]
 pub struct Prompt {
     #[deref]
     view: View,
+
+    #[live]
+    send_icon: LiveValue,
+
+    #[live]
+    stop_icon: LiveValue,
+
+    #[rust]
+    task: Task,
+
+    #[rust]
+    interactivity: Interactivity,
 }
 
 impl Widget for Prompt {
@@ -51,6 +82,15 @@ impl Widget for Prompt {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.button(id!(submit)).apply_over(
+            cx,
+            live! {
+                draw_icon: {
+                    svg_file: (self.send_icon),
+                }
+            },
+        );
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
