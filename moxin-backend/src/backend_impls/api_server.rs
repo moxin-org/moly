@@ -88,10 +88,10 @@ fn create_wasi(
 
     let listen_addr = Some(format!("{listen_addr}"));
 
-    let mut module_alias = file.name.clone();
+    let mut module_alias = "moxin-chat".to_string();
     if embedding.is_some() {
         module_alias.push_str(",");
-        module_alias.push_str("embedding");
+        module_alias.push_str("moxin-embedding");
     }
     let mut args = vec![
         "llama-api-server",
@@ -276,7 +276,7 @@ impl BackendModel for LLamaEdgeApiServer {
     fn chat(
         &self,
         async_rt: &tokio::runtime::Runtime,
-        data: moxin_protocol::open_ai::ChatRequestData,
+        mut data: moxin_protocol::open_ai::ChatRequestData,
         tx: std::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
     ) -> bool {
         let is_stream = data.stream.unwrap_or(false);
@@ -285,6 +285,8 @@ impl BackendModel for LLamaEdgeApiServer {
             self.listen_addr.port()
         );
         let mut cancel = self.running_controller.subscribe();
+
+        data.model = "moxin-chat".to_string();
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
