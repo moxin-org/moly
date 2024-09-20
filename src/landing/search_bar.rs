@@ -14,6 +14,7 @@ live_design! {
     import crate::landing::sorting::Sorting;
 
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
+    ICON_CLOSE = dep("crate://self/resources/icons/close.svg")
 
     SearchBar = {{SearchBar}} {
         width: Fill,
@@ -93,6 +94,17 @@ live_design! {
                 width: Fill,
                 height: Fit,
                 empty_message: "Search Model by Keyword"
+            }
+
+            clear_text_button = <MoxinButton> {
+                visible: false,
+                draw_icon: {
+                    svg_file: (ICON_CLOSE),
+                    fn get_color(self) -> vec4 {
+                        return #8;
+                    }
+                }
+                icon_walk: {width: 10, height: 10}
             }
         }
 
@@ -179,6 +191,7 @@ impl Widget for SearchBar {
 impl WidgetMatchEvent for SearchBar {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let input = self.text_input(id!(input));
+        let clear_text_button = self.button(id!(clear_text_button));
 
         if let Some(keywords) = input.returned(actions) {
             if keywords.len() > 0 {
@@ -194,9 +207,15 @@ impl WidgetMatchEvent for SearchBar {
             }
         }
 
-        if let Some(_) = input.changed(actions) {
+        if let Some(text) = input.changed(actions) {
+            clear_text_button.set_visible(!text.is_empty());
             cx.stop_timer(self.search_timer);
             self.search_timer = cx.start_timeout(self.search_debounce_time);
+        }
+
+        if self.button(id!(clear_text_button)).clicked(actions) {
+            input.set_text_and_redraw(cx, "");
+            clear_text_button.set_visible(false);
         }
     }
 }
