@@ -1,17 +1,17 @@
 use makepad_widgets::*;
 
 live_design!(
-    ComputedList = {{ComputedList}} {
+    List = {{List}} {
         flow: Down,
         width: Fill,
         height: Fill,
     }
 );
 
-/// Minimalistic list of widgets mapped from your data, eagerly rendered and
+/// Minimalistic list of dynamic widgets created from your data, eagerly rendered and
 /// with a known size.
 #[derive(Live, Widget, LiveHook)]
-pub struct ComputedList {
+pub struct List {
     #[walk]
     walk: Walk,
 
@@ -26,7 +26,7 @@ pub struct ComputedList {
     items: Vec<WidgetRef>,
 }
 
-impl Widget for ComputedList {
+impl Widget for List {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.items.iter().for_each(|item| {
             item.handle_event(cx, event, scope);
@@ -43,14 +43,19 @@ impl Widget for ComputedList {
     }
 }
 
-impl ComputedList {
+impl List {
+    /// Set to an already generated list of widgets.
+    pub fn set_items(&mut self, items: Vec<WidgetRef>) {
+        self.items = items;
+    }
+
     /// Build each widget mapping them from your data.
     pub fn compute_from<T, I: Iterator<Item = T>>(
         &mut self,
         iter: I,
         f: impl FnMut(T) -> WidgetRef,
     ) {
-        self.items = iter.map(f).collect();
+        self.set_items(iter.map(f).collect());
     }
 
     /// Returns the number of items in the list.
@@ -64,7 +69,14 @@ impl ComputedList {
     }
 }
 
-impl ComputedListRef {
+impl ListRef {
+    /// Calls `set_items` on the inner widget.
+    pub fn set_items(&mut self, items: Vec<WidgetRef>) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_items(items);
+        }
+    }
+
     /// Calls `compute_from` on the inner widget.
     pub fn compute_from<T, I: Iterator<Item = T>>(&self, iter: I, f: impl FnMut(T) -> WidgetRef) {
         if let Some(mut inner) = self.borrow_mut() {

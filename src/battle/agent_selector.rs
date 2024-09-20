@@ -1,16 +1,16 @@
 use makepad_widgets::*;
-use moxin_mae::{MaeAgent, MaeBackend};
+use moxin_mae::MaeAgent;
 
 use crate::{
     chat::shared::ChatAgentAvatarWidgetRefExt,
-    shared::{computed_list::ComputedListWidgetExt, meta::MetaWidgetRefExt},
+    shared::{list::ListWidgetExt, meta::MetaWidgetRefExt},
 };
 
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
-    import crate::shared::computed_list::*;
+    import crate::shared::list::*;
     import crate::shared::meta::*;
     import crate::shared::widgets::*;
     import crate::shared::styles::*;
@@ -57,7 +57,7 @@ live_design! {
                 draw_bg: {
                     color: #F5F7FA,
                 },
-                list = <ComputedList> {}
+                list = <List> {}
             }
 
         },
@@ -81,7 +81,7 @@ live_design! {
     }
 }
 
-#[derive(Live, Widget)]
+#[derive(Live, Widget, LiveHook)]
 pub struct AgentSelector {
     #[deref]
     view: View,
@@ -91,6 +91,12 @@ pub struct AgentSelector {
 
     #[animator]
     animator: Animator,
+
+    #[rust]
+    agents: Vec<MaeAgent>,
+
+    #[rust]
+    recompute: bool,
 }
 
 impl Widget for AgentSelector {
@@ -100,6 +106,11 @@ impl Widget for AgentSelector {
 
         if self.animator_handle_event(cx, event).must_redraw() {
             self.redraw(cx);
+        }
+
+        if self.recompute {
+            self.recompute_list(cx);
+            self.recompute = false;
         }
     }
 
@@ -111,7 +122,7 @@ impl Widget for AgentSelector {
 impl WidgetMatchEvent for AgentSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let clicked_agent = self
-            .computed_list(id!(list))
+            .list(id!(list))
             .borrow()
             .map(|list| {
                 list.items()
@@ -121,7 +132,8 @@ impl WidgetMatchEvent for AgentSelector {
             .flatten();
 
         if let Some(agent) = clicked_agent {
-            self.recompute_list(cx, agent);
+            self.set_agent(agent);
+            self.recompute_list(cx);
             self.toggle_layout_mode(cx);
             self.redraw(cx);
         }
@@ -138,7 +150,7 @@ impl AgentSelector {
     }
 
     pub fn selected_agent(&self) -> Option<MaeAgent> {
-        self.computed_list(id!(list))
+        self.list(id!(list))
             .borrow()
             .map(|list| {
                 list.items()
@@ -148,31 +160,42 @@ impl AgentSelector {
             .flatten()
     }
 
-    fn recompute_list(&self, cx: &mut Cx, agent: MaeAgent) {
-        let agents = MaeBackend::available_agents();
-        let agents = agents.iter().filter(|a| **a != agent).copied();
-        let agents = std::iter::once(agent).chain(agents);
+    pub fn set_agents(&mut self, agents: Vec<MaeAgent>) {
+        self.agents = agents;
+        self.recompute = true;
+    }
 
-        self.computed_list(id!(list)).compute_from(agents, |a| {
+    pub fn set_agent(&mut self, agent: MaeAgent) {
+        self.agents = std::iter::once(agent)
+            .chain(self.agents.iter().copied().filter(|a| *a != agent))
+            .collect();
+
+        self.recompute = true;
+    }
+
+    fn recompute_list(&self, cx: &mut Cx) {
+        let items = self.agents.iter().copied().map(|a| {
             let widget = WidgetRef::new_from_ptr(cx, self.agent_template);
             widget.label(id!(text)).set_text(&a.name());
             widget.chat_agent_avatar(id!(avatar)).set_agent(&a);
             widget.meta(id!(agent)).set_value(a);
             widget
         });
+
+        self.list(id!(list)).set_items(items.collect());
     }
 }
 
 impl AgentSelectorRef {
+    pub fn set_agents(&self, agents: Vec<MaeAgent>) {
+        self.borrow_mut().map(|mut inner| inner.set_agents(agents));
+    }
+
+    pub fn set_agent(&self, agent: MaeAgent) {
+        self.borrow_mut().map(|mut inner| inner.set_agent(agent));
+    }
+
     pub fn selected_agent(&self) -> Option<MaeAgent> {
         self.borrow().map(|inner| inner.selected_agent()).flatten()
-    }
-}
-
-impl LiveHook for AgentSelector {
-    fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        if let Some(agent) = MaeBackend::available_agents().first() {
-            self.recompute_list(cx, *agent);
-        }
     }
 }

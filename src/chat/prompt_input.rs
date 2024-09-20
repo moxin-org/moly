@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moxin_mae::{MaeAgent, MaeBackend};
 
-use crate::shared::{actions::ChatAction, computed_list::ComputedListWidgetExt};
+use crate::shared::{actions::ChatAction, list::ListWidgetExt};
 
 use super::{
     agent_button::AgentButtonWidgetRefExt, model_selector_item::ModelSelectorAction,
@@ -21,7 +21,7 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
-    import crate::shared::computed_list::*;
+    import crate::shared::list::*;
     import crate::chat::agent_button::*;
     import crate::chat::shared::ChatAgentAvatar;
 
@@ -97,7 +97,7 @@ live_design! {
                         }
                     }
 
-                    list = <ComputedList> { height: Fit }
+                    list = <List> { height: Fit }
                 }
             }
 
@@ -409,7 +409,7 @@ impl PromptInput {
 
     fn compute_agent_list(&mut self, cx: &mut Cx) {
         let search = self.text_input(id!(agent_search_input)).text();
-        let list = self.computed_list(id!(agent_autocomplete.list));
+        let list = self.list(id!(agent_autocomplete.list));
         let agents = MaeBackend::available_agents();
         let agents = filter_agents(agents.iter(), &search);
 
@@ -447,7 +447,7 @@ impl PromptInput {
     }
 
     fn on_agent_search_keyboard_move(&mut self, cx: &mut Cx, delta: i32) {
-        let items_len = self.computed_list(id!(agent_autocomplete.list)).len();
+        let items_len = self.list(id!(agent_autocomplete.list)).len();
 
         if items_len == 0 {
             return;

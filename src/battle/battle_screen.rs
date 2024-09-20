@@ -5,7 +5,7 @@ use markdown::MarkdownAction;
 use super::{
     agent_selector::AgentSelectorWidgetExt,
     mae::Mae,
-    messages::{Message, MessagesWidgetExt, MessagesWidgetRefExt},
+    messages::{Message, MessagesWidgetExt},
     no_messages::NoMessagesWidgetExt,
     prompt::PromptWidgetExt,
 };
@@ -176,9 +176,23 @@ impl WidgetMatchEvent for BattleScreen {
 
 impl LiveHook for BattleScreen {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        let agents = moxin_mae::MaeBackend::available_agents();
+
         // Enable this screen only if there are enough agents, quick solution.
-        if moxin_mae::MaeBackend::available_agents().len() >= 2 {
+        if agents.len() >= 2 {
             self.view(id!(content)).set_visible(true);
+
+            let left_agent = agents[0];
+            let right_agent = agents[1];
+
+            let left_selector = self.agent_selector(id!(left.selector));
+            let right_selector = self.agent_selector(id!(right.selector));
+
+            left_selector.set_agents(agents.clone());
+            left_selector.set_agent(left_agent);
+
+            right_selector.set_agents(agents);
+            right_selector.set_agent(right_agent);
         }
     }
 }

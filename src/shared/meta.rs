@@ -13,7 +13,7 @@ live_design! {
 
 /// A non visual widget that can store any value.
 ///
-/// Useful paired with `PortalList` or `ComputedList` to link data to dynamic widgets.
+/// Useful paired with `PortalList` or `List` to link data to dynamic widgets.
 /// Safer than manually keeping a mapping between data and widgets since the data will be
 /// destroyed automatically if this widget is destroyed. No risk of forgetting a call to `clear`.
 #[derive(Live, LiveHook, Widget)]
