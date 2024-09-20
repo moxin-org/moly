@@ -150,6 +150,10 @@ impl Messages {
         self.portal_list(id!(list))
             .smooth_scroll_to_end(cx, 10, 80.0);
     }
+
+    pub fn len(&self) -> usize {
+        self.messages.len()
+    }
 }
 
 impl MessagesRef {
@@ -163,5 +167,9 @@ impl MessagesRef {
         if let Some(inner) = self.borrow() {
             inner.scroll_to_bottom(cx);
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.borrow().map(|inner| inner.len()).unwrap_or(0)
     }
 }

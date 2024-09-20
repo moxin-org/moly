@@ -5,7 +5,8 @@ use markdown::MarkdownAction;
 use super::{
     agent_selector::AgentSelectorWidgetExt,
     mae::Mae,
-    messages::{Message, MessagesWidgetExt},
+    messages::{Message, MessagesWidgetExt, MessagesWidgetRefExt},
+    no_messages::NoMessagesWidgetExt,
     prompt::PromptWidgetExt,
 };
 
@@ -16,14 +17,21 @@ live_design! {
     import crate::battle::messages::Messages;
     import crate::battle::prompt::Prompt;
     import crate::battle::agent_selector::AgentSelector;
+    import crate::battle::no_messages::NoMessages;
+    import crate::chat::shared::ChatAgentAvatar;
 
     SM_GAP = 14;
     MD_GAP = 28;
+    SELECTOR_HEIGHT = 45;
 
     Half = <View> {
         flow: Overlay,
         messages = <Messages> {
-            margin: {top: (45 + MD_GAP)},
+            margin: {top: (SELECTOR_HEIGHT + MD_GAP)},
+        }
+        no_messages = <NoMessages> {
+            visible: false,
+            margin: {top: (SELECTOR_HEIGHT + MD_GAP)},
         }
         selector = <AgentSelector> {}
     }
@@ -66,6 +74,32 @@ impl Widget for BattleScreen {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let left_messages = self.messages(id!(left.messages));
+        // let right_messages = self.messages(id!(right.messages));
+        let left_no_messages = self.no_messages(id!(left.no_messages));
+        let right_no_messages = self.no_messages(id!(right.no_messages));
+
+        if left_messages.len() == 0 {
+            let left_agent = self
+                .agent_selector(id!(left.selector))
+                .selected_agent()
+                .unwrap();
+
+            let right_agent = self
+                .agent_selector(id!(right.selector))
+                .selected_agent()
+                .unwrap();
+
+            left_no_messages.set_visible(true);
+            left_no_messages.set_agent(left_agent);
+
+            right_no_messages.set_visible(true);
+            right_no_messages.set_agent(right_agent);
+        } else {
+            left_no_messages.set_visible(false);
+            right_no_messages.set_visible(false);
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
