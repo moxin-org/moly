@@ -96,7 +96,7 @@ live_design! {
             border_color: #D0D5DD
         }
 
-        draw_label: {
+        draw_text: {
             text_style:<REGULAR_FONT>{font_size: 10},
             word: Wrap,
 
