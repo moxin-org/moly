@@ -9,6 +9,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::chat::chat_line_loading::ChatLineLoading;
     import crate::chat::shared::ChatAgentAvatar;
+    import crate::battle::agent_markdown::AgentMarkdown;
 
     Bubble = <RoundedView> {
         height: Fit,
@@ -17,13 +18,6 @@ live_design! {
         show_bg: true,
         draw_bg: {
             radius: 12.0,
-        },
-        text = <Label> {
-            width: Fill,
-            draw_text: {
-                text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
-                color: #000
-            }
         }
     }
 
@@ -32,8 +26,12 @@ live_design! {
         bubble = <Bubble> {
             margin: {left: 100}
             draw_bg: {color: #15859A}
-            text = {
-                draw_text: {color: #fff}
+            text = <Label> {
+                width: Fill,
+                draw_text: {
+                    text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+                    color: #fff
+                }
             }
         }
     }
@@ -53,7 +51,10 @@ live_design! {
                 }
             }
         }
-        bubble = <Bubble> {margin: {left: 16}}
+        bubble = <Bubble> {
+            margin: {left: 16}
+            text = <AgentMarkdown> {}
+        }
     }
 
     LoadingLine = <AgentLine> {
@@ -117,7 +118,13 @@ impl Widget for Messages {
                             let item = list.item(cx, index, live_id!(AgentLine)).unwrap();
                             item.chat_agent_avatar(id!(avatar)).set_agent(agent);
                             item.label(id!(name)).set_text(&agent.name());
-                            item.label(id!(text)).set_text(text);
+                            // Workaround: Because I had to set `paragraph_spacing` to 0 in `AgentMarkdown`,
+                            // we need to add a "blank" line as a workaround.
+                            //
+                            // Warning: If you ever read the text from this widget and not
+                            // from the list, you should remove the unicode character.
+                            item.label(id!(text))
+                                .set_text(&text.replace("\n\n", "\n\n\u{00A0}\n\n"));
                             item.draw_all(cx, scope);
                         }
                         Message::AgentWriting(agent) => {
