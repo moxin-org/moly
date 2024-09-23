@@ -9,6 +9,7 @@ use crate::shared::download_notification_popup::{
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
+use markdown::MarkdownAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -185,6 +186,10 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
+            if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
+                let _ = robius_open::Uri::new(&url).open();
+            }
+
             match action.as_widget_action().cast() {
                 StoreAction::Search(keywords) => {
                     self.store.search.load_search_results(keywords);

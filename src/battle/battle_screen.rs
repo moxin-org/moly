@@ -1,6 +1,5 @@
 use crate::data::chats::chat::MaeAgentResponseFormatter;
 use makepad_widgets::*;
-use markdown::MarkdownAction;
 
 use super::{
     agent_selector::AgentSelectorWidgetExt,
@@ -156,12 +155,6 @@ impl WidgetMatchEvent for BattleScreen {
                 redraw = true;
                 scroll_to_bottom = true;
             });
-
-        for action in actions {
-            if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
-                let _ = robius_open::Uri::new(&url).open();
-            }
-        }
 
         if scroll_to_bottom {
             left_messages.scroll_to_bottom(cx);
