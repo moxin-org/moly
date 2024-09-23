@@ -68,6 +68,9 @@ live_design! {
         height: Fill,
 
         list = <PortalList> {
+            scroll_bar: {
+                bar_size: 0.0,
+            }
             UserLine = <UserLine> {}
             AgentLine = <AgentLine> {}
             LoadingLine = <LoadingLine> {}
