@@ -23,5 +23,4 @@ rusqlite = { version = "0.30.0", features = ["bundled"] }
 serde = "1.0.197"
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3.30"
-git2 = { version = "0.19.0", features = ["vendored-libgit2", "vendored-openssl"] }
 libra = { git = "https://github.com/web3infra-foundation/mega.git", branch = "main", package = "libra"}
