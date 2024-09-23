@@ -229,9 +229,10 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
         libra::exec(vec!["clone", repo_url, repo_dirs.to_str().unwrap()])?;
     } else {
         log::info!("Pulling model-cards repo, path: {:?}", repo_dirs);
+        // CAUTION: set_current_dir will affect of the whole process
         std::env::set_current_dir(&repo_dirs)?;
         for _ in 0..2 {
-            r = libra::exec(vec!["pull"]);
+            r = libra::exec(vec!["pull", "origin", "main"]);
             if r.is_ok() {
                 break;
             }
