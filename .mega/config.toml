@@ -36,18 +36,7 @@ min_connection = 16
 sqlx_logging = false
 
 
-[ssh]
-ssh_key_path = "${base_dir}/ssh"
-
 [storage]
-# raw object stroage type, can be `local` or `remote`
-raw_obj_storage_type = "LOCAL"
-
-## If the object file size exceeds the threshold value, it will be handled by file storage instead of the database, Unit is KB
-big_obj_threshold = 1024
-
-# set the local path of the project storage
-raw_obj_local_path = "${base_dir}/objects"
 
 obs_access_key = ""
 obs_secret_key = ""
@@ -64,6 +53,7 @@ obs_endpoint = "https://obs.cn-east-3.myhuaweicloud.com"
 ## Mega treats files under this directory as import repo and other directories as monorepo
 import_dir = "/third-part"
 
+disable_http_push = false
 
 [pack]
 # The maximum memory used by decode, Unit is GB

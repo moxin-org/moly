@@ -2,7 +2,7 @@ pub mod download_files;
 pub mod models;
 pub mod remote;
 
-// pub mod pending_downloads;
+pub mod model_cards;
 
 use std::path::Path;
 

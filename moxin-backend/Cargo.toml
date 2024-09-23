@@ -12,6 +12,8 @@ wasmedge-sdk = { version = "0.14.0", default-features = false, features = [
     "wasi_nn",
 ] }
 log = "0.4.21"
+env_logger = "0.11.5"
+
 anyhow = "1.0"
 serde_json = "1.0"
 crossbeam = "0.8"
@@ -21,3 +23,4 @@ rusqlite = { version = "0.30.0", features = ["bundled"] }
 serde = "1.0.197"
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3.30"
+libra = { git = "https://github.com/web3infra-foundation/mega.git", branch = "main", package = "libra"}
