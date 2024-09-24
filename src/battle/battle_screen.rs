@@ -1,4 +1,4 @@
-use super::messages::{Message, MessagesWidgetExt};
+use super::{battle_service::BattleService, messages::MessagesWidgetExt};
 use makepad_widgets::*;
 
 live_design! {
@@ -22,7 +22,6 @@ live_design! {
     BattleScreen = {{BattleScreen}} {
         content = <View> {
             flow: Down,
-            visible: false,
             padding: {top: 40, bottom: 40, left: (MD_GAP), right: (MD_GAP)},
 
             spacing: (SM_GAP),
@@ -40,6 +39,12 @@ live_design! {
 pub struct BattleScreen {
     #[deref]
     view: View,
+
+    #[rust(BattleService::new())]
+    service: BattleService,
+
+    #[rust]
+    round_index: usize,
 }
 
 impl Widget for BattleScreen {
@@ -60,6 +65,18 @@ impl WidgetMatchEvent for BattleScreen {
         let mut redraw = false;
         let mut scroll_to_bottom = false;
 
+        if let Some(error) = self.service.failed(actions) {
+            eprintln!("{}", error);
+        }
+
+        if let Some(sheet) = self.service.battle_sheet_downloaded(actions) {
+            self.round_index = 0;
+            left_messages.set_messages(sheet.rounds[0].chats[0].messages.clone());
+            right_messages.set_messages(sheet.rounds[0].chats[1].messages.clone());
+            redraw = true;
+            scroll_to_bottom = true;
+        }
+
         if scroll_to_bottom {
             left_messages.scroll_to_bottom(cx);
             right_messages.scroll_to_bottom(cx);
@@ -71,4 +88,8 @@ impl WidgetMatchEvent for BattleScreen {
     }
 }
 
-impl LiveHook for BattleScreen {}
+impl LiveHook for BattleScreen {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        self.service.download_battle_sheet("abc123".into());
+    }
+}

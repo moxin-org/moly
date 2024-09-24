@@ -1,0 +1,91 @@
+{
+  "rounds": [
+    {
+      "chats": [
+        {
+          "messages": [
+            {
+              "sender": "user",
+              "body": "how to lose weight?"
+            },
+            {
+              "sender": "agent",
+              "body": "do exercise"
+            }
+          ]
+        },
+        {
+          "messages": [
+            {
+              "sender": "user",
+              "body": "how to lose weight?"
+            },
+            {
+              "sender": "agent",
+              "body": "do not eat biscuits"
+            }
+          ]
+        }
+      ],
+      "weight": null
+    },
+    {
+      "chats": [
+        {
+          "messages": [
+            {
+              "sender": "user",
+              "body": "how to forget her?"
+            },
+            {
+              "sender": "agent",
+              "body": "coding in rust"
+            }
+          ]
+        },
+        {
+          "messages": [
+            {
+              "sender": "user",
+              "body": "how to forget her?"
+            },
+            {
+              "sender": "agent",
+              "body": "idk bro"
+            }
+          ]
+        }
+      ],
+      "weight": null
+    },
+    {
+      "chats": [
+        {
+          "messages": [
+            {
+              "sender": "user",
+              "body": "hello"
+            },
+            {
+              "sender": "agent",
+              "body": "world"
+            }
+          ]
+        },
+        {
+          "messages": [
+            {
+              "sender": "user",
+              "body": "hello"
+            },
+            {
+              "sender": "agent",
+              "body": "is it me you're looking for?"
+            }
+          ]
+        }
+      ],
+      "weight": null
+    }
+  ]
+}

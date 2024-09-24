@@ -1,6 +1,8 @@
 pub mod agent_markdown;
 pub mod agent_selector;
 pub mod battle_screen;
+pub mod battle_service;
+pub mod battle_sheet;
 pub mod mae;
 pub mod messages;
 pub mod no_messages;
