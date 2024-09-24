@@ -1,4 +1,4 @@
-use super::{battle_service::BattleService, messages::MessagesWidgetExt};
+use super::{battle_service::BattleService, messages::MessagesWidgetExt, vote::VoteWidgetExt};
 use makepad_widgets::*;
 
 live_design! {
@@ -6,6 +6,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
     import crate::shared::styles::*;
     import crate::battle::messages::Messages;
+    import crate::battle::vote::Vote;
 
     SM_GAP = 14;
     MD_GAP = 28;
@@ -16,7 +17,16 @@ live_design! {
         messages = <Messages> {
             margin: {top: (SELECTOR_HEIGHT + MD_GAP)},
         }
-        title = <Label> {} // ex selector
+        title_layout = <View> {
+            height: Fit,
+            align: { x: 0.5 },
+            title = <Label> {
+                draw_text: {
+                    color: #000,
+                    text_style: <BOLD_FONT> { font_size: 18 }
+                }
+            }
+        }
     }
 
     BattleScreen = {{BattleScreen}} {
@@ -27,10 +37,18 @@ live_design! {
             spacing: (SM_GAP),
             <View> {
                 spacing: (MD_GAP),
-                left = <Half> {}
-                right = <Half> {}
+                left = <Half> {
+                    title_layout = {
+                        title = { text: "Agent A" }
+                    }
+                }
+                right = <Half> {
+                    title_layout = {
+                        title = { text: "Agent B" }
+                    }
+                }
             }
-            vote = <View> {} // ex prompt
+            vote = <Vote> {}
         }
     }
 }
@@ -64,6 +82,11 @@ impl WidgetMatchEvent for BattleScreen {
         let right_messages = self.messages(id!(right.messages));
         let mut redraw = false;
         let mut scroll_to_bottom = false;
+
+        if let Some(weight) = self.vote(id!(vote)).voted(actions) {
+            println!("Voted: {}", weight);
+            self.round_index = self.round_index + 1;
+        }
 
         if let Some(error) = self.service.failed(actions) {
             eprintln!("{}", error);
