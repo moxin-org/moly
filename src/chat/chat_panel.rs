@@ -60,27 +60,28 @@ live_design! {
                     }
                     markdown_message_container = {
                         markdown_message = {
+                            font_color: #fff,
                             draw_normal: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_italic: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_bold: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_bold_italic: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_fixed: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_block: {
-                                line_color: (#fff)
-                                sep_color: (#12778a)
-                                quote_bg_color: (#12778a)
-                                quote_fg_color: (#106a7b)
-                                code_color: (#12778a)
+                                line_color: #fff
+                                sep_color: #12778a
+                                quote_bg_color: #12778a
+                                quote_fg_color: #106a7b
+                                code_color: #12778a
                             }
                         }
                     }
