@@ -160,6 +160,12 @@ impl WidgetMatchEvent for BattleScreen {
             scroll_to_bottom = true;
         }
 
+        if self.service.battle_sheet_sent(actions) {
+            self.loading_frame().set_visible(false);
+            self.ending_frame().set_visible(true);
+            redraw = true;
+        }
+
         if scroll_to_bottom {
             self.left_messages().scroll_to_bottom(cx);
             self.right_messages().scroll_to_bottom(cx);
@@ -203,6 +209,10 @@ impl BattleScreen {
         self.start(id!(start))
     }
 
+    fn ending_frame(&self) -> ViewRef {
+        self.view(id!(end))
+    }
+
     fn round_frame(&self) -> ViewRef {
         self.view(id!(compare))
     }
@@ -215,7 +225,7 @@ impl BattleScreen {
         self.label(id!(counter))
     }
 
-    fn update_round(&self) {
+    fn update_round(&mut self) {
         if let Some(index) = self.current_round_index() {
             let round = self.current_round().unwrap();
 
@@ -228,6 +238,10 @@ impl BattleScreen {
             let rounds_count = self.sheet.as_ref().unwrap().rounds.len();
             self.counter()
                 .set_text(&format!("{} / {}", index + 1, rounds_count));
+        } else {
+            self.service.send_battle_sheet(self.sheet.take().unwrap());
+            self.round_frame().set_visible(false);
+            self.loading_frame().set_visible(true);
         }
     }
 }

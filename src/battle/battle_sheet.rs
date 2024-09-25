@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sheet {
+    #[serde(default)]
+    pub code: String,
     pub rounds: Vec<Round>,
 }
 

@@ -18,7 +18,7 @@ impl BattleService {
         Self { id }
     }
 
-    pub fn download_battle_sheet(&self, _code: String) {
+    pub fn download_battle_sheet(&self, code: String) {
         let id = self.id;
         std::thread::spawn(move || {
             // let response = reqwest get json...
@@ -26,9 +26,22 @@ impl BattleService {
 
             let text = include_str!("battle_sheet.json");
             match serde_json::from_str::<Sheet>(text) {
-                Ok(sheet) => Cx::post_action((id, Response::BattleSheetDownloaded(sheet))),
+                Ok(mut sheet) => {
+                    sheet.code = code;
+                    Cx::post_action((id, Response::BattleSheetDownloaded(sheet)));
+                }
                 Err(err) => Cx::post_action((id, Response::Error(err.to_string()))),
             };
+        });
+    }
+
+    pub fn send_battle_sheet(&self, _sheet: Sheet) {
+        let id = self.id;
+        std::thread::spawn(move || {
+            // let response = reqwest post json...
+            std::thread::sleep(std::time::Duration::from_secs(3));
+
+            Cx::post_action((id, Response::BattleSheetSent));
         });
     }
 
@@ -39,6 +52,11 @@ impl BattleService {
                 _ => None,
             })
             .next()
+    }
+
+    pub fn battle_sheet_sent(&self, actions: &Actions) -> bool {
+        self.responses(actions)
+            .any(|response| matches!(response, Response::BattleSheetSent))
     }
 
     pub fn failed<'a>(&'a self, actions: &'a Actions) -> Option<&'a str> {
@@ -68,6 +86,7 @@ impl BattleService {
 #[derive(Debug, Clone, DefaultNone)]
 enum Response {
     BattleSheetDownloaded(Sheet),
+    BattleSheetSent,
     Error(String),
     None,
 }
