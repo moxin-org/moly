@@ -7,7 +7,7 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::battle::styles::*;
 
-    Start = {{Start}} {
+    Opening = {{Opening}} {
         flow: Down,
         align: {x: 0.5, y: 0.5},
         spacing: (SM_GAP),
@@ -31,12 +31,12 @@ live_design! {
 }
 
 #[derive(Live, Widget, LiveHook)]
-pub struct Start {
+pub struct Opening {
     #[deref]
     view: View,
 }
 
-impl Widget for Start {
+impl Widget for Opening {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
     }
@@ -46,25 +46,25 @@ impl Widget for Start {
     }
 }
 
-impl Start {
-    fn input(&self) -> TextInputRef {
+impl Opening {
+    fn input_ref(&self) -> TextInputRef {
         self.text_input(id!(input))
     }
 
-    fn btn(&self) -> ButtonRef {
+    fn button_ref(&self) -> ButtonRef {
         self.button(id!(button))
     }
 
     pub fn submitted(&self, actions: &Actions) -> bool {
-        self.input().returned(actions).is_some() || self.btn().clicked(actions)
+        self.input_ref().returned(actions).is_some() || self.button_ref().clicked(actions)
     }
 
     pub fn code(&self) -> String {
-        self.input().text()
+        self.input_ref().text()
     }
 }
 
-impl StartRef {
+impl OpeningRef {
     pub fn submitted(&self, actions: &Actions) -> bool {
         self.borrow().map(|s| s.submitted(actions)).unwrap_or(false)
     }
