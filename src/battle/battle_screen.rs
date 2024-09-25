@@ -50,18 +50,29 @@ live_design! {
         content = <View> {
             flow: Down,
             padding: {top: 40, bottom: 40, left: (MD_GAP), right: (MD_GAP)},
-
             spacing: (MD_GAP),
             <View> {
-                spacing: (MD_GAP),
-                left = <Half> {
-                    title_layout = {
-                        title = { text: "Agent A" }
+                flow: Overlay,
+                <View> {
+                    spacing: (MD_GAP),
+                    left = <Half> {
+                        title_layout = {
+                            title = { text: "Agent A" }
+                        }
+                    }
+                    right = <Half> {
+                        title_layout = {
+                            title = { text: "Agent B" }
+                        }
                     }
                 }
-                right = <Half> {
-                    title_layout = {
-                        title = { text: "Agent B" }
+                <View> {
+                    align: {x: 0.5}
+                    counter = <Label> {
+                        draw_text: {
+                            color: #000,
+                            text_style: <BOLD_FONT> { font_size: 14 }
+                        }
                     }
                 }
             }
@@ -165,6 +176,10 @@ impl BattleScreen {
 
             self.messages(id!(right.messages))
                 .set_messages(round.chats[1].messages.clone());
+
+            let rounds_count = self.sheet.as_ref().unwrap().rounds.len();
+            self.label(id!(counter))
+                .set_text(&format!("{} / {}", index + 1, rounds_count));
         }
     }
 }
