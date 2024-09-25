@@ -1,7 +1,8 @@
 use super::{
     battle_service::BattleService,
     battle_sheet::{Round, Sheet},
-    messages::MessagesWidgetExt,
+    messages::{MessagesRef, MessagesWidgetExt},
+    start::{StartRef, StartWidgetExt},
     vote::VoteWidgetExt,
 };
 use makepad_widgets::*;
@@ -10,12 +11,12 @@ live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
     import crate::shared::styles::*;
+    import crate::shared::widgets::*;
     import crate::battle::messages::Messages;
     import crate::battle::vote::Vote;
-
-    SM_GAP = 14;
-    MD_GAP = 28;
-    SELECTOR_HEIGHT = 45;
+    import crate::battle::start::Start;
+    import crate::battle::spinner::Spinner;
+    import crate::battle::styles::*;
 
     Half = <View> {
         flow: Down,
@@ -43,11 +44,30 @@ live_design! {
     }
 
     BattleScreen = {{BattleScreen}} {
+        flow: Overlay,
         show_bg: true,
         draw_bg: {
             color: #F8F8F8,
         }
-        content = <View> {
+        start = <Start> {}
+        end = <View> {
+            visible: false,
+            align: {x: 0.5, y: 0.5},
+            <Label> {
+                draw_text: {
+                    color: #000,
+                    text_style: <BOLD_FONT> { font_size: 14 }
+                }
+                text: "You're done! Thank you for participating. ✅"
+            }
+        }
+        loading = <View> {
+            visible: false,
+            align: {x: 0.5, y: 0.5},
+            <Spinner> {}
+        }
+        compare = <View> {
+            visible: false,
             flow: Down,
             padding: {top: 40, bottom: 40, left: (MD_GAP), right: (MD_GAP)},
             spacing: (MD_GAP),
@@ -81,7 +101,7 @@ live_design! {
     }
 }
 
-#[derive(Live, Widget)]
+#[derive(Live, Widget, LiveHook)]
 pub struct BattleScreen {
     #[deref]
     view: View,
@@ -109,10 +129,18 @@ impl WidgetMatchEvent for BattleScreen {
         let mut redraw = false;
         let mut scroll_to_bottom = false;
 
+        if self.start_frame().submitted(actions) {
+            self.service
+                .download_battle_sheet(self.start_frame().code());
+            self.start_frame().borrow_mut().unwrap().visible = false;
+            self.loading_frame().set_visible(true);
+            redraw = true;
+        }
+
         if let Some(weight) = self.vote(id!(vote)).voted(actions) {
             if let Some(round) = self.current_round_mut() {
                 round.weight = weight.into();
-                self.update_view();
+                self.update_round();
                 redraw = true;
                 scroll_to_bottom = true;
             }
@@ -124,26 +152,22 @@ impl WidgetMatchEvent for BattleScreen {
 
         if let Some(sheet) = self.service.battle_sheet_downloaded(actions) {
             self.sheet = sheet.clone().into();
-            self.update_view();
+            self.loading_frame().set_visible(false);
+            self.round_frame().set_visible(true);
+            self.update_round();
 
             redraw = true;
             scroll_to_bottom = true;
         }
 
         if scroll_to_bottom {
-            self.messages(id!(left.messages)).scroll_to_bottom(cx);
-            self.messages(id!(right.messages)).scroll_to_bottom(cx);
+            self.left_messages().scroll_to_bottom(cx);
+            self.right_messages().scroll_to_bottom(cx);
         }
 
         if redraw {
             self.redraw(cx);
         }
-    }
-}
-
-impl LiveHook for BattleScreen {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.service.download_battle_sheet("abc123".into());
     }
 }
 
@@ -167,18 +191,42 @@ impl BattleScreen {
             .flatten()
     }
 
-    fn update_view(&self) {
+    fn left_messages(&self) -> MessagesRef {
+        self.messages(id!(left.messages))
+    }
+
+    fn right_messages(&self) -> MessagesRef {
+        self.messages(id!(right.messages))
+    }
+
+    fn start_frame(&self) -> StartRef {
+        self.start(id!(start))
+    }
+
+    fn round_frame(&self) -> ViewRef {
+        self.view(id!(compare))
+    }
+
+    fn loading_frame(&self) -> ViewRef {
+        self.view(id!(loading))
+    }
+
+    fn counter(&self) -> LabelRef {
+        self.label(id!(counter))
+    }
+
+    fn update_round(&self) {
         if let Some(index) = self.current_round_index() {
             let round = self.current_round().unwrap();
 
-            self.messages(id!(left.messages))
+            self.left_messages()
                 .set_messages(round.chats[0].messages.clone());
 
-            self.messages(id!(right.messages))
+            self.right_messages()
                 .set_messages(round.chats[1].messages.clone());
 
             let rounds_count = self.sheet.as_ref().unwrap().rounds.len();
-            self.label(id!(counter))
+            self.counter()
                 .set_text(&format!("{} / {}", index + 1, rounds_count));
         }
     }

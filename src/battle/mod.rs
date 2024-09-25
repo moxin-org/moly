@@ -7,11 +7,17 @@ pub mod mae;
 pub mod messages;
 pub mod no_messages;
 pub mod prompt;
+pub mod spinner;
+pub mod start;
+pub mod styles;
 pub mod vote;
 
 use makepad_widgets::Cx;
 
 pub fn live_design(cx: &mut Cx) {
+    styles::live_design(cx);
+    start::live_design(cx);
+    spinner::live_design(cx);
     vote::live_design(cx);
     agent_markdown::live_design(cx);
     no_messages::live_design(cx);

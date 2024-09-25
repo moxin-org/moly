@@ -22,7 +22,7 @@ impl BattleService {
         let id = self.id;
         std::thread::spawn(move || {
             // let response = reqwest get json...
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(std::time::Duration::from_secs(3));
 
             let text = include_str!("battle_sheet.json");
             match serde_json::from_str::<Sheet>(text) {
