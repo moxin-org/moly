@@ -1,4 +1,9 @@
-use super::{battle_service::BattleService, messages::MessagesWidgetExt, vote::VoteWidgetExt};
+use super::{
+    battle_service::BattleService,
+    battle_sheet::{Round, Sheet},
+    messages::MessagesWidgetExt,
+    vote::VoteWidgetExt,
+};
 use makepad_widgets::*;
 
 live_design! {
@@ -62,7 +67,7 @@ pub struct BattleScreen {
     service: BattleService,
 
     #[rust]
-    round_index: usize,
+    sheet: Option<Sheet>,
 }
 
 impl Widget for BattleScreen {
@@ -78,14 +83,16 @@ impl Widget for BattleScreen {
 
 impl WidgetMatchEvent for BattleScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        let left_messages = self.messages(id!(left.messages));
-        let right_messages = self.messages(id!(right.messages));
         let mut redraw = false;
         let mut scroll_to_bottom = false;
 
         if let Some(weight) = self.vote(id!(vote)).voted(actions) {
-            println!("Voted: {}", weight);
-            self.round_index = self.round_index + 1;
+            if let Some(round) = self.current_round_mut() {
+                round.weight = weight.into();
+                self.update_view();
+                redraw = true;
+                scroll_to_bottom = true;
+            }
         }
 
         if let Some(error) = self.service.failed(actions) {
@@ -93,16 +100,16 @@ impl WidgetMatchEvent for BattleScreen {
         }
 
         if let Some(sheet) = self.service.battle_sheet_downloaded(actions) {
-            self.round_index = 0;
-            left_messages.set_messages(sheet.rounds[0].chats[0].messages.clone());
-            right_messages.set_messages(sheet.rounds[0].chats[1].messages.clone());
+            self.sheet = sheet.clone().into();
+            self.update_view();
+
             redraw = true;
             scroll_to_bottom = true;
         }
 
         if scroll_to_bottom {
-            left_messages.scroll_to_bottom(cx);
-            right_messages.scroll_to_bottom(cx);
+            self.messages(id!(left.messages)).scroll_to_bottom(cx);
+            self.messages(id!(right.messages)).scroll_to_bottom(cx);
         }
 
         if redraw {
@@ -114,5 +121,38 @@ impl WidgetMatchEvent for BattleScreen {
 impl LiveHook for BattleScreen {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         self.service.download_battle_sheet("abc123".into());
+    }
+}
+
+impl BattleScreen {
+    fn current_round_index(&self) -> Option<usize> {
+        self.sheet
+            .as_ref()
+            .map(|s| s.rounds.iter().position(|r| r.weight.is_none()))
+            .flatten()
+    }
+
+    fn current_round(&self) -> Option<&Round> {
+        self.current_round_index()
+            .map(|i| self.sheet.as_ref().map(|s| &s.rounds[i]))
+            .flatten()
+    }
+
+    fn current_round_mut(&mut self) -> Option<&mut Round> {
+        self.current_round_index()
+            .map(|i| self.sheet.as_mut().map(|s| &mut s.rounds[i]))
+            .flatten()
+    }
+
+    fn update_view(&self) {
+        if let Some(index) = self.current_round_index() {
+            let round = self.current_round().unwrap();
+
+            self.messages(id!(left.messages))
+                .set_messages(round.chats[0].messages.clone());
+
+            self.messages(id!(right.messages))
+                .set_messages(round.chats[1].messages.clone());
+        }
     }
 }
