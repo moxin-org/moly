@@ -11,6 +11,16 @@ live_design! {
         flow: Down,
         align: {x: 0.5, y: 0.5},
         spacing: (SM_GAP),
+        <Icon> {
+            margin: {bottom: (MD_GAP)},
+            draw_icon: {
+                svg_file: dep("crate://self/resources/icons/my_models.svg"),
+                fn get_color(self) -> vec4 {
+                    return #6b7475;
+                }
+            }
+            icon_walk: {width: 250, height: 250}
+        }
         <Label> {
             draw_text: {
                 color: #000,

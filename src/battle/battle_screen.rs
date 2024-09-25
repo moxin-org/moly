@@ -51,14 +51,25 @@ live_design! {
         }
         opening = <Opening> {}
         ending = <View> {
+            flow: Down,
             visible: false,
             align: {x: 0.5, y: 0.5},
+            <Icon> {
+                margin: {bottom: (LG_GAP)},
+                draw_icon: {
+                    svg_file: dep("crate://self/resources/icons/my_models.svg"),
+                    fn get_color(self) -> vec4 {
+                        return #0d0;
+                    }
+                }
+                icon_walk: {width: 250, height: 250}
+            }
             <Label> {
                 draw_text: {
                     color: #000,
                     text_style: <BOLD_FONT> { font_size: 14 }
                 }
-                text: "You're done! Thank you for participating. ✅"
+                text: "You're done! Thank you for participating."
             }
         }
         loading = <View> {
