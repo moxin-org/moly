@@ -8,8 +8,8 @@ live_design! {
     import crate::shared::widgets::*;
 
     VoteButton = <MoxinButton> {
-        height: 35,
-        width: 35,
+        height: 55,
+        width: 55,
         draw_bg: {
             radius: 8,
             color: #000,
@@ -18,7 +18,8 @@ live_design! {
 
     Vote = {{Vote}} <View> {
         height: Fit,
-        align: {x: 0.5}
+        align: {x: 0.5},
+        spacing: 24,
         a2 = <VoteButton> {text: "A"}
         a1 = <VoteButton> {text: "A-"}
         o0 = <VoteButton> {text: "0"}

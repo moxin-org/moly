@@ -18,28 +18,40 @@ live_design! {
     SELECTOR_HEIGHT = 45;
 
     Half = <View> {
-        flow: Overlay,
-        messages = <Messages> {
-            margin: {top: (SELECTOR_HEIGHT + MD_GAP)},
-        }
+        flow: Down,
+        spacing: (MD_GAP),
         title_layout = <View> {
             height: Fit,
             align: { x: 0.5 },
             title = <Label> {
                 draw_text: {
                     color: #000,
-                    text_style: <BOLD_FONT> { font_size: 18 }
+                    text_style: <BOLD_FONT> { font_size: 14 }
                 }
             }
+        }
+        <RoundedView> {
+            padding: {top: 24, bottom: 24, left: 20, right: 20},
+            draw_bg: {
+                color: #fff,
+                border_color: #f6f6f6,
+                border_width: 1.5,
+                radius: 15,
+            }
+            messages = <Messages> {}
         }
     }
 
     BattleScreen = {{BattleScreen}} {
+        show_bg: true,
+        draw_bg: {
+            color: #F8F8F8,
+        }
         content = <View> {
             flow: Down,
             padding: {top: 40, bottom: 40, left: (MD_GAP), right: (MD_GAP)},
 
-            spacing: (SM_GAP),
+            spacing: (MD_GAP),
             <View> {
                 spacing: (MD_GAP),
                 left = <Half> {
