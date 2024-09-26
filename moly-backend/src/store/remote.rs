@@ -4,8 +4,8 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
-use moxin_protocol::data::Model;
-use moxin_protocol::protocol::FileDownloadResponse;
+use moly_protocol::data::Model;
+use moly_protocol::protocol::FileDownloadResponse;
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -254,8 +254,8 @@ impl ModelFileDownloader {
                 }
 
                 Ok(Some(FileDownloadResponse::Completed(
-                    moxin_protocol::data::DownloadedFile {
-                        file: moxin_protocol::data::File {
+                    moly_protocol::data::DownloadedFile {
+                        file: moly_protocol::data::File {
                             id: file.id.as_ref().clone(),
                             name: file.name.clone(),
                             size: file.size.clone(),
@@ -273,7 +273,7 @@ impl ModelFileDownloader {
                         model: Model::default(),
                         downloaded_at: file.downloaded_at,
                         compatibility_guess:
-                            moxin_protocol::data::CompatibilityGuess::PossiblySupported,
+                            moly_protocol::data::CompatibilityGuess::PossiblySupported,
                         information: String::new(),
                     },
                 )))

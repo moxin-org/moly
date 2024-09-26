@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
+use moly_protocol::data::DownloadedFile;
 
 use crate::data::store::Store;
 

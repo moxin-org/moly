@@ -1,6 +1,6 @@
 use crate::data::store::Store;
 use makepad_widgets::*;
-use moxin_protocol::data::PendingDownloadsStatus;
+use moly_protocol::data::PendingDownloadsStatus;
 
 live_design! {
     import makepad_widgets::base::*;

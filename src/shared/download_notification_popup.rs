@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID};
+use moly_protocol::data::{File, FileID};
 
 use crate::shared::actions::DownloadAction;
 

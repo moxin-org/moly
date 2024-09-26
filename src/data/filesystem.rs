@@ -12,11 +12,11 @@ pub const APP_NAME: &str = "moxin";
 
 pub fn project_dirs() -> &'static ProjectDirs {
     // This can be redesigned once std::sync::LazyLock is stabilized.
-    static MOXIN_PROJECT_DIRS: OnceLock<ProjectDirs> = OnceLock::new();
+    static MOLY_PROJECT_DIRS: OnceLock<ProjectDirs> = OnceLock::new();
 
-    MOXIN_PROJECT_DIRS.get_or_init(|| {
+    MOLY_PROJECT_DIRS.get_or_init(|| {
         ProjectDirs::from(APP_QUALIFIER, APP_ORGANIZATION, APP_NAME)
-            .expect("Failed to obtain Moxin project directories")
+            .expect("Failed to obtain Moly project directories")
     })
 }
 

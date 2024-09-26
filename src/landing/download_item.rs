@@ -3,7 +3,7 @@ use crate::shared::{
     utils::{format_model_downloaded_size, format_model_size},
 };
 use makepad_widgets::*;
-use moxin_protocol::data::{FileID, PendingDownload, PendingDownloadsStatus};
+use moly_protocol::data::{FileID, PendingDownload, PendingDownloadsStatus};
 
 live_design! {
     import makepad_widgets::base::*;

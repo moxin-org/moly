@@ -6,13 +6,13 @@ pub mod model_cards;
 
 use std::path::Path;
 
-use moxin_protocol::data::FileID;
+use moly_protocol::data::FileID;
 
 pub use remote::*;
 
 pub fn get_all_download_file(
     conn: &rusqlite::Connection,
-) -> rusqlite::Result<Vec<moxin_protocol::data::DownloadedFile>> {
+) -> rusqlite::Result<Vec<moly_protocol::data::DownloadedFile>> {
     let files = download_files::DownloadedFile::get_finished(&conn)?;
     let models = models::Model::get_all(&conn)?;
 
@@ -20,7 +20,7 @@ pub fn get_all_download_file(
 
     for (_id, file) in files {
         let model = if let Some(model) = models.get(&file.model_id) {
-            moxin_protocol::data::Model {
+            moly_protocol::data::Model {
                 id: model.id.to_string(),
                 name: model.name.clone(),
                 summary: model.summary.clone(),
@@ -29,7 +29,7 @@ pub fn get_all_download_file(
                 architecture: model.architecture.clone(),
                 released_at: model.released_at.clone(),
                 files: vec![],
-                author: moxin_protocol::data::Author {
+                author: moly_protocol::data::Author {
                     name: model.author.name.clone(),
                     url: model.author.url.clone(),
                     description: model.author.description.clone(),
@@ -39,7 +39,7 @@ pub fn get_all_download_file(
                 metrics: Default::default(),
             }
         } else {
-            moxin_protocol::data::Model::default()
+            moly_protocol::data::Model::default()
         };
 
         let downloaded_path = Path::new(&file.download_dir)
@@ -48,8 +48,8 @@ pub fn get_all_download_file(
 
         let downloaded_path = downloaded_path.to_str().map(|s| s.to_string());
 
-        let downloaded_file = moxin_protocol::data::DownloadedFile {
-            file: moxin_protocol::data::File {
+        let downloaded_file = moly_protocol::data::DownloadedFile {
+            file: moly_protocol::data::File {
                 id: file.id.to_string(),
                 name: file.name,
                 size: file.size,
@@ -61,7 +61,7 @@ pub fn get_all_download_file(
             },
             model,
             downloaded_at: file.downloaded_at,
-            compatibility_guess: moxin_protocol::data::CompatibilityGuess::PossiblySupported,
+            compatibility_guess: moly_protocol::data::CompatibilityGuess::PossiblySupported,
             information: String::new(),
         };
 
@@ -73,7 +73,7 @@ pub fn get_all_download_file(
 
 pub fn get_all_pending_downloads(
     conn: &rusqlite::Connection,
-) -> rusqlite::Result<Vec<moxin_protocol::data::PendingDownload>> {
+) -> rusqlite::Result<Vec<moly_protocol::data::PendingDownload>> {
     let files = download_files::DownloadedFile::get_pending(&conn)?;
 
     let models = models::Model::get_all(&conn)?;
@@ -81,7 +81,7 @@ pub fn get_all_pending_downloads(
     let mut result = Vec::with_capacity(files.len());
 
     for (_file_id, file) in files {
-        let result_file = moxin_protocol::data::File {
+        let result_file = moly_protocol::data::File {
             id: file.id.to_string(),
             name: file.name.clone(),
             size: file.size.clone(),
@@ -93,7 +93,7 @@ pub fn get_all_pending_downloads(
         };
 
         let model = if let Some(model) = models.get(&file.model_id) {
-            moxin_protocol::data::Model {
+            moly_protocol::data::Model {
                 id: model.id.to_string(),
                 name: model.name.clone(),
                 summary: model.summary.clone(),
@@ -102,7 +102,7 @@ pub fn get_all_pending_downloads(
                 architecture: model.architecture.clone(),
                 released_at: model.released_at.clone(),
                 files: vec![],
-                author: moxin_protocol::data::Author {
+                author: moly_protocol::data::Author {
                     name: model.author.name.clone(),
                     url: model.author.url.clone(),
                     description: model.author.description.clone(),
@@ -112,7 +112,7 @@ pub fn get_all_pending_downloads(
                 metrics: Default::default(),
             }
         } else {
-            moxin_protocol::data::Model::default()
+            moly_protocol::data::Model::default()
         };
 
         let file_path = Path::new(&file.download_dir)
@@ -126,11 +126,11 @@ pub fn get_all_pending_downloads(
         };
         let progress = (downloaded as f64 / file.file_size as f64) * 100.0;
 
-        let pending_download = moxin_protocol::data::PendingDownload {
+        let pending_download = moly_protocol::data::PendingDownload {
             file: result_file,
             model,
             progress,
-            status: moxin_protocol::data::PendingDownloadsStatus::Paused,
+            status: moly_protocol::data::PendingDownloadsStatus::Paused,
             //status: item.status.into(),
         };
 

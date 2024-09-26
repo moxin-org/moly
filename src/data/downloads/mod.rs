@@ -2,8 +2,8 @@ pub mod download;
 
 use anyhow::{Context, Result};
 use download::{Download, DownloadState};
-use moxin_backend::Backend;
-use moxin_protocol::{
+use moly_backend::Backend;
+use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus},
     protocol::Command,
 };

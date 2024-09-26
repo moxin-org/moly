@@ -1,7 +1,7 @@
 use makepad_widgets::SignalToUI;
-use moxin_backend::Backend;
-use moxin_protocol::data::*;
-use moxin_protocol::protocol::{Command, FileDownloadResponse};
+use moly_backend::Backend;
+use moly_protocol::data::*;
+use moly_protocol::protocol::{Command, FileDownloadResponse};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 

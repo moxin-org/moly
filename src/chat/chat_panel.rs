@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
+use moly_protocol::data::FileID;
 use std::cell::{Ref, RefCell, RefMut};
 
 use crate::{

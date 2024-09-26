@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID, PendingDownloadsStatus};
+use moly_protocol::data::{File, FileID, PendingDownloadsStatus};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::{

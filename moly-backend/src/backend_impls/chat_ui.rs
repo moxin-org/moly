@@ -33,7 +33,7 @@ use std::{
     thread::JoinHandle,
 };
 
-use moxin_protocol::{
+use moly_protocol::{
     open_ai::{
         ChatRequestData, ChatResponse, ChatResponseChunkData, ChatResponseData, ChoiceData,
         ChunkChoiceData, MessageData, Role, StopReason, UsageData,
@@ -326,8 +326,8 @@ fn create_wasi(
     };
 
     let n_gpu_layers = match load_model.gpu_layers {
-        moxin_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
-        moxin_protocol::protocol::GPULayers::Max => None,
+        moly_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
+        moly_protocol::protocol::GPULayers::Max => None,
     };
 
     // Set n_batch to a fixed value of 128.
