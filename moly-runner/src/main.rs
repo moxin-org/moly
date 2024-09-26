@@ -381,7 +381,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 
     // The install_v2.sh script doesn't correctly detect CUDA on Linux,
     // so we force it here based on our own detected version of CUDA.
-    // See: <https://github.com/moxin-org/moxin/issues/225>
+    // See: <https://github.com/moxin-org/moly/issues/225>
     match cuda {
         Some(CudaVersion::V12) => { bash_cmd.arg("-c").arg("12"); }
         Some(CudaVersion::V11) => { bash_cmd.arg("-c").arg("11"); }

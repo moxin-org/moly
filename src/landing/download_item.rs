@@ -10,7 +10,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::MoxinButton;
+    import crate::shared::widgets::MolyButton;
 
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
@@ -127,7 +127,7 @@ live_design! {
         }
     }
 
-    ActionButton = <MoxinButton> {
+    ActionButton = <MolyButton> {
         width: 40,
         height: 40,
 

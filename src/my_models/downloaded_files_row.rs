@@ -20,7 +20,7 @@ live_design! {
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
     MODEL_CTA_COLOR = #127487
 
-    DownloadedFilesRowButton = <MoxinButton> {
+    DownloadedFilesRowButton = <MolyButton> {
         height: 40
 
         draw_bg: {

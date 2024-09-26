@@ -48,7 +48,7 @@ rfd = "0.14.1"
 ## Configuration for `cargo packager`
 [package.metadata.packager]
 product_name = "Moly"
-identifier = "com.moxin-org.moxin"
+identifier = "com.moxin-org.moly"
 category = "Utility"
 authors = ["Moxin Organization <moxin-org@github.com>"]
 publisher = "moxin-org"

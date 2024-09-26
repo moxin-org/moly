@@ -8,7 +8,7 @@ use std::{
 
 pub const APP_QUALIFIER: &str = "com";
 pub const APP_ORGANIZATION: &str = "moxin-org";
-pub const APP_NAME: &str = "moxin";
+pub const APP_NAME: &str = "moly";
 
 pub fn project_dirs() -> &'static ProjectDirs {
     // This can be redesigned once std::sync::LazyLock is stabilized.

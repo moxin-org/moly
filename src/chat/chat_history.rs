@@ -15,7 +15,7 @@ live_design! {
 
     ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
 
-    ChatHistory = {{ChatHistory}} <MoxinTogglePanel> {
+    ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
         open_content = {
             <View> {
                 width: Fill,
@@ -45,7 +45,7 @@ live_design! {
         persistent_content = {
             default = {
                 after = {
-                    new_chat_button = <MoxinButton> {
+                    new_chat_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
                         icon_walk: {margin: { top: -1 }, width: 21, height: 21},
