@@ -19,6 +19,7 @@ live_design! {
     import crate::battle::spinner::Spinner;
     import crate::battle::styles::*;
     import crate::battle::failure::Failure;
+    import crate::battle::ending::Ending;
 
     Half = <View> {
         flow: Down,
@@ -52,27 +53,8 @@ live_design! {
             color: #F8F8F8,
         }
         opening = <Opening> {}
-        ending = <View> {
-            flow: Down,
+        ending = <Ending> {
             visible: false,
-            align: {x: 0.5, y: 0.5},
-            <Icon> {
-                margin: {bottom: (LG_GAP)},
-                draw_icon: {
-                    svg_file: dep("crate://self/resources/icons/my_models.svg"),
-                    fn get_color(self) -> vec4 {
-                        return #0d0;
-                    }
-                }
-                icon_walk: {width: 250, height: 250}
-            }
-            <Label> {
-                draw_text: {
-                    color: #000,
-                    text_style: <BOLD_FONT> { font_size: 14 }
-                }
-                text: "You're done! Thank you for participating."
-            }
         }
         loading = <View> {
             visible: false,
