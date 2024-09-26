@@ -1,6 +1,7 @@
 use super::{
     battle_service::BattleService,
     battle_sheet::{Round, Sheet},
+    failure::{FailureRef, FailureWidgetExt},
     messages::{MessagesRef, MessagesWidgetExt},
     opening::{OpeningRef, OpeningWidgetExt},
     vote::{VoteRef, VoteWidgetExt},
@@ -17,6 +18,7 @@ live_design! {
     import crate::battle::opening::Opening;
     import crate::battle::spinner::Spinner;
     import crate::battle::styles::*;
+    import crate::battle::failure::Failure;
 
     Half = <View> {
         flow: Down,
@@ -109,6 +111,9 @@ live_design! {
             }
             vote = <Vote> {}
         }
+        failure = <Failure> {
+            visible: false,
+        }
     }
 }
 
@@ -145,8 +150,8 @@ impl WidgetMatchEvent for BattleScreen {
             self.handle_voted(cx, weight);
         }
 
-        if let Some(error) = self.service.failed(actions) {
-            eprintln!("{}", error);
+        if let Some(error) = self.service.failed(actions).map(|e| e.to_string()) {
+            self.handle_failure(cx, error);
         }
 
         if let Some(sheet) = self.service.battle_sheet_downloaded(actions).cloned() {
@@ -155,6 +160,10 @@ impl WidgetMatchEvent for BattleScreen {
 
         if self.service.battle_sheet_sent(actions) {
             self.handle_battle_sheet_sent(cx);
+        }
+
+        if self.failure_ref().retried(actions) {
+            self.handle_retry(cx);
         }
     }
 }
@@ -191,6 +200,10 @@ impl BattleScreen {
 
     fn vote_ref(&self) -> VoteRef {
         self.vote(id!(vote))
+    }
+
+    fn failure_ref(&self) -> FailureRef {
+        self.failure(id!(failure))
     }
 }
 
@@ -247,6 +260,17 @@ impl BattleScreen {
         self.show_frame(self.loading_ref().widget_uid());
         self.redraw(cx);
     }
+
+    fn handle_failure(&mut self, cx: &mut Cx, error: String) {
+        self.failure_ref().set_message(&error);
+        self.show_frame(self.failure_ref().widget_uid());
+        self.redraw(cx);
+    }
+
+    fn handle_retry(&mut self, cx: &mut Cx) {
+        self.show_frame(self.opening_ref().widget_uid());
+        self.redraw(cx);
+    }
 }
 
 // other stuff
@@ -279,6 +303,8 @@ impl BattleScreen {
 
         self.ending_ref()
             .set_visible(self.ending_ref().widget_uid() == uid);
+
+        self.failure_ref().borrow_mut().unwrap().visible = self.failure_ref().widget_uid() == uid;
 
         self.opening_ref().borrow_mut().unwrap().visible = self.opening_ref().widget_uid() == uid;
     }

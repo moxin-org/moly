@@ -2,6 +2,7 @@ pub mod agent_markdown;
 pub mod battle_screen;
 pub mod battle_service;
 pub mod battle_sheet;
+pub mod failure;
 pub mod messages;
 pub mod opening;
 pub mod spinner;
@@ -18,4 +19,5 @@ pub fn live_design(cx: &mut Cx) {
     agent_markdown::live_design(cx);
     messages::live_design(cx);
     battle_screen::live_design(cx);
+    failure::live_design(cx);
 }

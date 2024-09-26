@@ -24,6 +24,17 @@ impl BattleService {
             // let response = reqwest get json...
             std::thread::sleep(std::time::Duration::from_secs(3));
 
+            // Simulate failure on the first call
+            static FIRST_CALL: std::sync::atomic::AtomicBool =
+                std::sync::atomic::AtomicBool::new(true);
+            if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                Cx::post_action((
+                    id,
+                    Response::Error("Failed to download battle sheet".to_string()),
+                ));
+                return;
+            }
+
             let text = include_str!("battle_sheet.json");
             match serde_json::from_str::<Sheet>(text) {
                 Ok(mut sheet) => {
