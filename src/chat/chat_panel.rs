@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
+use moly_protocol::data::FileID;
 use std::cell::{Ref, RefCell, RefMut};
 
 use crate::{
@@ -33,7 +33,7 @@ live_design! {
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
-    CircleButton = <MoxinButton> {
+    CircleButton = <MolyButton> {
         padding: {right: 4},
         margin: {bottom: 2},
 
@@ -216,7 +216,7 @@ live_design! {
             border_width: 1.0,
         }
 
-        prompt = <MoxinTextInput> {
+        prompt = <MolyTextInput> {
             width: Fill,
             height: Fit,
 
@@ -286,7 +286,7 @@ live_design! {
                         }
                         text: "You haven’t downloaded any models yet."
                     }
-                    go_to_discover_button = <MoxinButton> {
+                    go_to_discover_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
 

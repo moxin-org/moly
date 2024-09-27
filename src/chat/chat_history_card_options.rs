@@ -31,7 +31,7 @@ live_design! {
                 radius: 2.
             }
 
-            edit_chat_name = <MoxinButton> {
+            edit_chat_name = <MolyButton> {
                 width: Fit
                 height: Fit
                 padding: { top: 12, right: 12, bottom: 12, left: 12}
@@ -60,7 +60,7 @@ live_design! {
             }
 
 
-            delete_chat = <MoxinButton> {
+            delete_chat = <MolyButton> {
                 width: Fill
                 height: Fit
                 padding: { top: 12, right: 12, bottom: 12, left: 12}

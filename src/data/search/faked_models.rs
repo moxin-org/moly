@@ -1,4 +1,4 @@
-use moxin_protocol::data::{File, Model};
+use moly_protocol::data::{File, Model};
 
 use lipsum::lipsum;
 use rand::distributions::{Alphanumeric, DistString};

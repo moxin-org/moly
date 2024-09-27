@@ -150,7 +150,7 @@ live_design! {
 
     // Customized button widget, based on the RoundedView shaders with some modifications
     // which is a better fit with our application UI design
-    MoxinButton = <Button> {
+    MolyButton = <Button> {
         draw_bg: {
             instance color: #0000
             instance color_hover: #fff
@@ -236,7 +236,7 @@ live_design! {
         reset_hover_on_click: true
     }
 
-    MoxinRadioButtonTab = <RadioButtonTab> {
+    MolyRadioButtonTab = <RadioButtonTab> {
         padding: 10,
 
         draw_radio: {
@@ -301,7 +301,7 @@ live_design! {
 
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
-    MoxinTextInput = <TextInput> {
+    MolyTextInput = <TextInput> {
         draw_text: {
             text_style:<REGULAR_FONT>{font_size: 12},
             fn get_color(self) -> vec4 {
@@ -379,7 +379,7 @@ live_design! {
         }
     }
 
-    MoxinSlider =  <Slider> {
+    MolySlider =  <Slider> {
         height: 40
         width: Fill
         draw_text: {
@@ -433,7 +433,7 @@ live_design! {
         }
     }
 
-    MoxinSwitch = <CheckBoxToggle> {
+    MolySwitch = <CheckBoxToggle> {
         // U+200e as text.
         // Nasty trick cause not setting `text` nor using a simple space works to
         // render the widget without label.
@@ -469,7 +469,7 @@ live_design! {
         }
     }
 
-    TogglePanelButton = <MoxinButton> {
+    TogglePanelButton = <MolyButton> {
         width: Fit,
         height: Fit,
         icon_walk: {width: 20, height: 20},
@@ -480,7 +480,7 @@ live_design! {
         }
     }
 
-    MoxinTogglePanel = <TogglePanel> {
+    MolyTogglePanel = <TogglePanel> {
         persistent_content = {
             default = {
                 open = <TogglePanelButton> {

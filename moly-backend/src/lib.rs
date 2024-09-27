@@ -1,7 +1,7 @@
 mod backend_impls;
 mod store;
 
-use moxin_protocol::protocol::Command;
+use moly_protocol::protocol::Command;
 use std::{path::Path, sync::mpsc};
 
 pub struct Backend {

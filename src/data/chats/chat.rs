@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
-use moxin_backend::Backend;
-use moxin_protocol::data::{File, FileID};
-use moxin_protocol::open_ai::*;
-use moxin_protocol::protocol::Command;
+use moly_backend::Backend;
+use moly_protocol::data::{File, FileID};
+use moly_protocol::open_ai::*;
+use moly_protocol::protocol::Command;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;

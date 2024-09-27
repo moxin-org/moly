@@ -90,13 +90,13 @@ live_design! {
                 icon_walk: {width: 17, height: 17}
             }
 
-            input = <MoxinTextInput> {
+            input = <MolyTextInput> {
                 width: Fill,
                 height: Fit,
                 empty_message: "Search Model by Keyword"
             }
 
-            clear_text_button = <MoxinButton> {
+            clear_text_button = <MolyButton> {
                 visible: false,
                 draw_icon: {
                     svg_file: (ICON_CLOSE),

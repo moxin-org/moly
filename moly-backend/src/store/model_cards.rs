@@ -325,9 +325,9 @@ pub struct Author {
     pub description: String,
 }
 
-impl Into<moxin_protocol::data::Author> for Author {
-    fn into(self) -> moxin_protocol::data::Author {
-        moxin_protocol::data::Author {
+impl Into<moly_protocol::data::Author> for Author {
+    fn into(self) -> moly_protocol::data::Author {
+        moly_protocol::data::Author {
             name: self.name,
             url: self.url,
             description: self.description,
@@ -388,7 +388,7 @@ impl ModelCard {
     pub fn to_model(
         remote_models: &[Self],
         conn: &rusqlite::Connection,
-    ) -> rusqlite::Result<Vec<moxin_protocol::data::Model>> {
+    ) -> rusqlite::Result<Vec<moly_protocol::data::Model>> {
         let model_ids = remote_models
             .iter()
             .map(|m| m.id.clone())
@@ -399,7 +399,7 @@ impl ModelCard {
             model_id: &str,
             remote_files: &[RemoteFile],
             save_files: &HashMap<Arc<String>, super::download_files::DownloadedFile>,
-        ) -> rusqlite::Result<Vec<moxin_protocol::data::File>> {
+        ) -> rusqlite::Result<Vec<moly_protocol::data::File>> {
             let mut files = vec![];
             for remote_f in remote_files {
                 let file_id = format!("{}#{}", model_id, remote_f.name);
@@ -413,7 +413,7 @@ impl ModelCard {
                         .unwrap_or_default()
                 });
 
-                let file = moxin_protocol::data::File {
+                let file = moly_protocol::data::File {
                     id: file_id,
                     name: remote_f.name.clone(),
                     size: remote_f.size.clone(),
@@ -433,7 +433,7 @@ impl ModelCard {
         let mut models = Vec::with_capacity(remote_models.len());
 
         for remote_m in remote_models {
-            let model = moxin_protocol::data::Model {
+            let model = moly_protocol::data::Model {
                 id: remote_m.id.clone(),
                 name: remote_m.name.clone(),
                 summary: remote_m.summary.clone(),
@@ -442,7 +442,7 @@ impl ModelCard {
                 architecture: remote_m.architecture.clone(),
                 released_at: remote_m.released_at.clone(),
                 files: to_file(&remote_m.id, &remote_m.files, &files)?,
-                author: moxin_protocol::data::Author {
+                author: moly_protocol::data::Author {
                     name: remote_m.author.name.clone(),
                     url: remote_m.author.url.clone(),
                     description: remote_m.author.description.clone(),

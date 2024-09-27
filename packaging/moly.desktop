@@ -8,7 +8,7 @@ Icon={{icon}}
 Name={{name}}
 Terminal=false
 Type=Application
-StartupWMClass=_moxin_app
+StartupWMClass=_moly_app
 {{#if mime_type}}
 MimeType={{mime_type}}
 {{/if}}

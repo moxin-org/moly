@@ -1,18 +1,18 @@
-//! This `moxin-runner` application is a "companion" binary to the main `moxin` application.
+//! This `moly-runner` application is a "companion" binary to the main `moly` application.
 //!
-//! This binary is reponsible for discovering the "Moxin-local" wasmedge installation,
+//! This binary is reponsible for discovering the "Moly-local" wasmedge installation,
 //! installing a local instance of wasmedge if it's missing, and then setting up
-//! the environment properly such that the main `moxin` app can locate
+//! the environment properly such that the main `moly` app can locate
 //! the app-local wasmedge dylibs and plugin dylibs.
 //!
-//! By "app-local" or "Moxin-local", we mean that the wasmedge dylibs and plugins
+//! By "app-local" or "Moly-local", we mean that the wasmedge dylibs and plugins
 //! are installed in an app-specific data directory, the same as (or adjacent to) the location
 //! where the app's data files, cached data, or preferences are stored.
 //!
-//! Moxin intentionally does not rely on a global installation of WasmEdge,
+//! Moly intentionally does not rely on a global installation of WasmEdge,
 //! as it cannot guarantee the precise version and build configuration of that installation.
 //!
-//! The steps of this `moxin-runner` app are as follows.
+//! The steps of this `moly-runner` app are as follows.
 //! First, we discover the app-local wasmedge installation, which should be located within
 //! the app's data directory as given by the [directories::ProjectDirs::data_dir()`] function.
 //! See: <https://docs.rs/directories/latest/directories/struct.ProjectDirs.html#method.data_dir>.
@@ -56,7 +56,7 @@
 //! * `LIBRARY_PATH`, `(DY)LD_LIBRARY_PATH`: `$(WASMEDGE_DIR)/lib`
 //! * `C_INCLUDE_PATH`, `CPLUS_INCLUDE_PATH`: `$(WASMEDGE_DIR)/include`
 //!
-//! Moxin needs two wasmedge dylibs:
+//! Moly needs two wasmedge dylibs:
 //! 1. the main `libwasmedge.0.dylib`,
 //!    which is located in `$HOME/.wasmedge/lib/libwasmedge.0.dylib`.
 //! 2. the wasi-nn plugin `libwasmedgePluginWasiNN.dylib`,
@@ -74,7 +74,7 @@ use std::{
     process::Command,
 };
 
-pub const MOXIN_APP_BINARY: &str = "_moxin_app";
+pub const MOLY_APP_BINARY: &str = "_moly_app";
 
 /// The name of the wasmedge root directory.
 const WASMEDGE_ROOT_DIR_NAME: &str = {
@@ -208,8 +208,8 @@ fn main() -> std::io::Result<()> {
     // inside the app bundle, which is within the parent directory of the executables in the app bundle.
     //
     // Thus, we set the `WASMEDGE_PLUGIN_PATH` environment variable to `../Frameworks`,
-    // because the run_moxin() function will set the current working directory to `Contents/MacOS/`
-    // within the app bundle, which is the subdirectory that contains the actual moxin executables.
+    // because the run_moly() function will set the current working directory to `Contents/MacOS/`
+    // within the app bundle, which is the subdirectory that contains the actual moly executables.
     std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, "../Frameworks");
 
     println!("Running within a macOS app bundle.
@@ -217,7 +217,7 @@ fn main() -> std::io::Result<()> {
         std::env::var(ENV_WASMEDGE_PLUGIN_PATH).ok()
     );
 
-    run_moxin().unwrap();
+    run_moly().unwrap();
     Ok(())
 }
 
@@ -250,7 +250,7 @@ fn main() -> std::io::Result<()> {
         wasi_nn_plugin_path.display(),
     );
 
-    // These CLI args allow `moxin-runner` to be used to bootstrap a cargo command,
+    // These CLI args allow `moly-runner` to be used to bootstrap a cargo command,
     // while automatically setting the env vars for you (saving the dev time & effort).
     let mut install = false;
     let mut cargo = false;
@@ -273,7 +273,7 @@ fn main() -> std::io::Result<()> {
         println!("Finished installing WasmEdge and WASI-nn plugin.\n");
     }
     if install {
-        println!("To build and run Moxin, set these environment variables (see the Moxin README for more):");
+        println!("To build and run Moly, set these environment variables (see the Moly README for more):");
         println!("    1. {}: \"{}\"", ENV_WASMEDGE_DIR, wasmedge_root_dir_in_use.display());
         println!("    2. {}: \"{}\"", ENV_WASMEDGE_PLUGIN_PATH, wasi_nn_plugin_path.parent().unwrap().display());
         #[cfg(target_os = "windows")]
@@ -297,7 +297,7 @@ fn main() -> std::io::Result<()> {
             Err(std::io::Error::last_os_error())
         }
     } else {
-        run_moxin()
+        run_moly()
     }
 }
 
@@ -310,7 +310,7 @@ fn existing_wasmedge_default_dir() -> Option<PathBuf> {
 
 pub const APP_QUALIFIER: &str = "com";
 pub const APP_ORGANIZATION: &str = "moxin-org";
-pub const APP_NAME: &str = "moxin";
+pub const APP_NAME: &str = "moly";
 
 /// Returns the path to the default WasmEdge root directory,
 /// which is currently in the app data directory.
@@ -381,7 +381,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 
     // The install_v2.sh script doesn't correctly detect CUDA on Linux,
     // so we force it here based on our own detected version of CUDA.
-    // See: <https://github.com/moxin-org/moxin/issues/225>
+    // See: <https://github.com/moxin-org/moly/issues/225>
     match cuda {
         Some(CudaVersion::V12) => { bash_cmd.arg("-c").arg("12"); }
         Some(CudaVersion::V11) => { bash_cmd.arg("-c").arg("11"); }
@@ -417,7 +417,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 
 
 /// Installs WasmEdge by calling out to PowerShell to run the Windows installation steps
-/// provided in the main Moxin README.
+/// provided in the main Moly README.
 ///
 /// The PowerShell script we run simply downloads and extracts the main WasmEdge files and the Wasi-NN plugin.
 #[cfg(windows)]
@@ -565,13 +565,13 @@ fn get_cuda_version() -> Option<CudaVersion> {
 }
 
 
-/// Runs the `_moxin_app` binary, which must be located in the same directory as this moxin-runner binary.
-fn run_moxin() -> std::io::Result<()> {
+/// Runs the `_moly_app` binary, which must be located in the same directory as this moly-runner binary.
+fn run_moly() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
     let args = std::env::args().collect::<Vec<_>>();
 
-    println!("Running the main Moxin binary:
+    println!("Running the main Moly binary:
         working directory: {}
         args: {:?}",
         current_exe_dir.display(),
@@ -579,16 +579,16 @@ fn run_moxin() -> std::io::Result<()> {
     );
 
 
-    let main_moxin_binary_path = current_exe_dir.join(MOXIN_APP_BINARY);
-    let _output = Command::new(&main_moxin_binary_path)
+    let main_moly_binary_path = current_exe_dir.join(MOLY_APP_BINARY);
+    let _output = Command::new(&main_moly_binary_path)
         .current_dir(current_exe_dir)
         .args(args.into_iter().skip(1)) // skip the first arg (the binary name)
         .spawn()
         .inspect_err(|e| if e.kind() == std::io::ErrorKind::NotFound {
-            eprintln!("\nError: couldn't find the main Moxin binary at {}\n\
-                \t--> Have you compiled the main Moxin app yet?\n\
+            eprintln!("\nError: couldn't find the main Moly binary at {}\n\
+                \t--> Have you compiled the main Moly app yet?\n\
                 \t--> If not, run `cargo build [--release]` first.\n",
-                main_moxin_binary_path.display(),
+                main_moly_binary_path.display(),
             );
         })?
         .wait_with_output()?;
@@ -680,7 +680,7 @@ fn assert_cpu_features() {
                 MessageBoxW(
                     0,
                     windows_sys::w!(
-                        "Moxin requires the CPU to support either AVX512, SSE4.2, or SSE4a,\
+                        "Moly requires the CPU to support either AVX512, SSE4.2, or SSE4a,\
                         but the current CPU does not support any of those SIMD versions.\n\n\
                         The list of supported CPU features has been logged to the console.\
                     "),
@@ -689,6 +689,6 @@ fn assert_cpu_features() {
                 );
             }
         }
-        panic!("\nError: this CPU does not support AVX512, SSE4.2, or SSE4a, one of which is required by Moxin.\n")
+        panic!("\nError: this CPU does not support AVX512, SSE4.2, or SSE4a, one of which is required by Moly.\n")
     }
 }

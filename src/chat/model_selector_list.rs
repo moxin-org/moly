@@ -1,6 +1,6 @@
 use crate::{data::store::Store, shared::utils::format_model_size};
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
+use moly_protocol::data::DownloadedFile;
 use std::collections::HashMap;
 
 live_design! {
