@@ -5,11 +5,14 @@ Moxin is an AI LLM client written in Rust, and demonstrates the power of the [Ma
 > ⚠️ Moly is in beta. Please [file an issue](https://github.com/moxin-org/moly/issues/new) if you encounter bugs or unexpected results.
 
 The following table shows which host systems can currently be used to build Moxin for which target platforms.
-| Host OS | Target Platform | Builds? | Runs? | Packaging Support |
+
+<!-- prettier-ignore-start -->
+| Host OS | Target Platform | Builds? | Runs? | Packaging Support                            |
 | ------- | --------------- | ------- | ----- | -------------------------------------------- |
-| macOS | macOS | ✅ | ✅ | `.app`, [`.dmg`] |
-| Linux | Linux | ✅ | ✅ | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
-| Windows | Windows (10+) | ✅ | ✅ | `.exe` (NSIS) |
+| macOS   | macOS           | ✅      | ✅    | `.app`, [`.dmg`]                             |
+| Linux   | Linux           | ✅      | ✅    | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
+| Windows | Windows (10+)   | ✅      | ✅    | `.exe` (NSIS)                                |
+<!-- prettier-ignore-end -->
 
 ## Building and Running
 
