@@ -64,7 +64,7 @@ source $HOME/.wasmedge/env
 > If your CPU does not support AVX512, then you should append the `--noavx` option onto the above command.
 > If you use [`moly-runner`](#tip-use-moly-runner-for-easy-setup), it will handle this for you.
 
-To build Moxin on Linux, you must install the following dependencies:
+To build Moly on Linux, you must install the following dependencies:
 `openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
 On a Debian-like Linux distro (e.g., Ubuntu), run the following:
 
