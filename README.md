@@ -188,7 +188,7 @@ cargo packager --release --verbose   ## --verbose is optional
 > ```
 > Creating disk image...
 > hdiutil: create failed - Operation not permitted
-> could not access /Volumes/Moxin/Moxin.app - Operation not permitted
+> could not access /Volumes/Moly/Moly.app - Operation not permitted
 > ```
 >
 > then you need to grant "App Management" permissions to the app in which you ran the `cargo packager` command, e.g., Terminal, Visual Studio Code, etc.
