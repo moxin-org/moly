@@ -419,7 +419,7 @@ live_design! {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-pub enum State {
+enum State {
     /// `Unknown` is simply the default state, meaning the state has not been loaded yet,
     /// and therefore indicates a development error if it is encountered.
     #[default]
