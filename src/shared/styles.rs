@@ -6,13 +6,11 @@ live_design! {
     const MODEL_LINK_FONT_COLOR = #x155EEF
     SIDEBAR_BG_COLOR = #F8F8F8
 
-    REGULAR_FONT = {
-        font_size: (12),
-        font: (THEME_FONT_REGULAR)
+    REGULAR_FONT = <THEME_FONT_REGULAR>{
+        font_size: (12)
     }
 
-    BOLD_FONT = {
-        font_size: (12),
-        font: (THEME_FONT_BOLD)
+    BOLD_FONT = <THEME_FONT_BOLD>{
+        font_size: (12)
     }
 }
