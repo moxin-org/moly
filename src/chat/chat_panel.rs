@@ -419,7 +419,7 @@ live_design! {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-enum State {
+pub enum State {
     /// `Unknown` is simply the default state, meaning the state has not been loaded yet,
     /// and therefore indicates a development error if it is encountered.
     #[default]
@@ -882,7 +882,6 @@ impl ChatPanel {
                     chat_line_item.set_regenerate_button_visible(true);
                 };
 
-                chat_line_item.set_message_text(cx, &chat_line_data.content);
                 chat_line_item.set_message_id(chat_line_data.id);
 
                 // Disable actions for the last chat line when model is streaming
@@ -894,8 +893,10 @@ impl ChatPanel {
                     }
                 ) && item_id == messages_count - 1
                 {
+                    chat_line_item.set_message_text(cx, &chat_line_data.content, true);
                     chat_line_item.set_actions_enabled(cx, false);
                 } else {
+                    chat_line_item.set_message_text(cx, &chat_line_data.content, false);
                     chat_line_item.set_actions_enabled(cx, true);
                 }
 
