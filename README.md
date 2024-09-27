@@ -197,7 +197,7 @@ cargo packager --release --verbose   ## --verbose is optional
 > Then, try the above `cargo packager` command again.
 
 After the command completes, you should see both the `Moly.app` and the `.dmg` in the `dist/` directory.
-You can immediately double-click the `Moxin.app` bundle to run it, or you can double-click the `.dmg` file to
+You can immediately double-click the `Moly.app` bundle to run it, or you can double-click the `.dmg` file to
 
 > Note that the `.dmg` is what should be distributed for installation on other machines, not the `.app`.
 
