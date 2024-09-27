@@ -1,10 +1,10 @@
-# Moxin: a Rust AI LLM client built atop [Robius](https://github.com/project-robius)
+# Moly: a Rust AI LLM client built atop [Robius](https://github.com/project-robius)
 
-Moxin is an AI LLM client written in Rust, and demonstrates the power of the [Makepad UI toolkit](https://github.com/makepad/makepad) and [Project Robius](https://github.com/project-robius), a framework for multi-platform application development in Rust.
+Moly is an AI LLM client written in Rust, and demonstrates the power of the [Makepad UI toolkit](https://github.com/makepad/makepad) and [Project Robius](https://github.com/project-robius), a framework for multi-platform application development in Rust.
 
 > ⚠️ Moly is in beta. Please [file an issue](https://github.com/moxin-org/moly/issues/new) if you encounter bugs or unexpected results.
 
-The following table shows which host systems can currently be used to build Moxin for which target platforms.
+The following table shows which host systems can currently be used to build Moly for which target platforms.
 
 <!-- prettier-ignore-start -->
 | Host OS | Target Platform | Builds? | Runs? | Packaging Support                            |
@@ -46,7 +46,7 @@ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/insta
 source $HOME/.wasmedge/env
 ```
 
-Then use `cargo` to build and run Moxin:
+Then use `cargo` to build and run Moly:
 
 ```sh
 cd moly
@@ -76,7 +76,7 @@ sudo apt-get update
 sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
 ```
 
-Then use `cargo` to build and run Moxin:
+Then use `cargo` to build and run Moly:
 
 ```sh
 cd moly
@@ -94,7 +94,7 @@ cargo run --release
 
    - Alternatively you can add the LLVM path `C:\Program Files\LLVM\bin` to your system PATH.
 
-3. Use `moly-runner` to auto-setup WasmEdge and then build & run Moxin:
+3. Use `moly-runner` to auto-setup WasmEdge and then build & run Moly:
 
 ```sh
 cargo run -p moly-runner -- cargo run --release  ## `--release` is optional
@@ -102,9 +102,9 @@ cargo run -p moly-runner -- cargo run --release  ## `--release` is optional
 
 ---
 
-## Packaging Moxin for Distribution
+## Packaging Moly for Distribution
 
-> Note: we already have [pre-built releases of Moxin](https://github.com/moxin-org/moly/releases) available for download.
+> Note: we already have [pre-built releases of Moly](https://github.com/moxin-org/moly/releases) available for download.
 
 Install `cargo-packager`:
 
@@ -131,14 +131,14 @@ Ensure you are in the root `moly` directory, and then you can use `cargo package
 cargo packager --release --verbose   ## --verbose is optional
 ```
 
-To install the Moxin app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
+To install the Moly app from the `.deb`package on a Debian-based Linux distribution (e.g., Ubuntu), run:
 
 ```sh
 cd dist/
 sudo apt install ./moly_0.1.0_amd64.deb  ## The "./" part is required
 ```
 
-We recommend using `apt install` to install the `.deb` file instead of `dpkg -i`, because `apt` will auto-install all of Moxin's required dependencies, whereas `dpkg` will require you to install them manually.
+We recommend using `apt install` to install the `.deb` file instead of `dpkg -i`, because `apt` will auto-install all of Moly's required dependencies, whereas `dpkg` will require you to install them manually.
 
 To run the AppImage bundle, simply set the file as executable and then run it:
 
