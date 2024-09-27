@@ -158,7 +158,7 @@ cargo run -p moly-runner -- cargo packager --release --formats nsis --verbose   
 ```
 
 After the command completes, you should see a Windows installer called `moly_0.1.0_x64-setup` in the `dist/` directory.
-Double-click that file to install Moxin on your machine, and then run it as you would a regular application.
+Double-click that file to install Moly on your machine, and then run it as you would a regular application.
 
 ### Packaging for macOS
 
