@@ -28,8 +28,8 @@ git clone https://github.com/moxin-org/moly.git
 >
 > ```sh
 > cargo run -p moly-runner -- --install    ## finds or installs WasmEdge, then stops.
-> cargo run -p moly-runner -- cargo build  ## builds Moxin
-> cargo run -p moly-runner -- cargo run    ## builds and runs Moxin
+> cargo run -p moly-runner -- cargo build  ## builds Moly
+> cargo run -p moly-runner -- cargo run    ## builds and runs Moly
 > cargo run -p moly-runner -- cargo [your-command-here]
 > ```
 
