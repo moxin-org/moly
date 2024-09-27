@@ -13,6 +13,7 @@ live_design! {
     import crate::shared::resource_imports::*;
 
     MolyHtml = <Html> {
+        font_color: #000,
         draw_fixed: { color: #x0 }
         draw_block: {
             code_color: (#EAECF0)

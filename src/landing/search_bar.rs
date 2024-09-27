@@ -216,6 +216,11 @@ impl WidgetMatchEvent for SearchBar {
         if self.button(id!(clear_text_button)).clicked(actions) {
             input.set_text_and_redraw(cx, "");
             clear_text_button.set_visible(false);
+            input.set_key_focus(cx);
+
+            // Also trigger a search reset
+            let widget_uid = self.widget_uid();
+            cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
         }
     }
 }
