@@ -180,7 +180,7 @@ cargo packager --release --verbose   ## --verbose is optional
 > ERROR cargo_packager::cli: Error running create-dmg script: File exists (os error 17)
 > ```
 >
-> then open Finder and unmount any Moxin-related disk images, then try the above `cargo packager` command again.
+> then open Finder and unmount any Moly-related disk images, then try the above `cargo packager` command again.
 
 > [!TIP]
 > If you receive an error like so:
