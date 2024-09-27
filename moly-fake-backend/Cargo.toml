@@ -1,10 +1,10 @@
 [package]
-name = "moxin-fake-backend"
+name = "moly-fake-backend"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-moxin-protocol = { path = "../moxin-protocol" }
+moly-protocol = { path = "../moly-protocol" }
 chrono = "0.4"

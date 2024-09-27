@@ -9,12 +9,12 @@ fn main() {
         std::fs::OpenOptions::new()
             .append(true)
             .create(true)
-            .open(tmp.join("moxin_incoming_url.txt"))
+            .open(tmp.join("moly_incoming_url.txt"))
             .and_then(|mut f| 
                 f.write_all(format!("[{now:?}] Received incoming URL: {incoming_url:?}\n\n").as_bytes())
             )
             .unwrap();
     });
 
-    moxin::app::app_main()
+    moly::app::app_main()
 }

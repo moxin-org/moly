@@ -8,7 +8,7 @@ live_design! {
     import makepad_widgets::theme_desktop_dark::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::MoxinRadioButtonTab;
+    import crate::shared::widgets::MolyRadioButtonTab;
 
     import crate::landing::model_files_item::ModelFilesRow;
     import crate::landing::model_files_list::ModelFilesList;
@@ -16,7 +16,7 @@ live_design! {
     ICON_ADD = dep("crate://self/resources/icons/add.svg")
     ICON_REMOVE = dep("crate://self/resources/icons/remove.svg")
 
-    ActionToggleButton = <MoxinRadioButtonTab> {
+    ActionToggleButton = <MolyRadioButtonTab> {
         width: Fit,
         height: 40,
         padding: { left: 20, top: 10, bottom: 10, right: 20 },

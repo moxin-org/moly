@@ -33,7 +33,7 @@ live_design! {
         }
     }
 
-    ChatParams = {{ChatParams}} <MoxinTogglePanel> {
+    ChatParams = {{ChatParams}} <MolyTogglePanel> {
         open_content = {
             <View> {
                 width: Fill
@@ -71,7 +71,7 @@ live_design! {
                     <ChatParamsTextInputWrapper> {
                         height: 90,
                         scrolled_content = {
-                            system_prompt = <MoxinTextInput> {
+                            system_prompt = <MolyTextInput> {
                                 width: Fill,
                                 height: Fit,
                                 empty_message: "Enter a system prompt"
@@ -100,14 +100,14 @@ live_design! {
                     flow: Down
                     spacing: 24
 
-                    temperature = <MoxinSlider> {
+                    temperature = <MolySlider> {
                         default: 1.0
                         text: "Temperature"
                         min: 0.0
                         max: 2.0
                     }
 
-                    top_p = <MoxinSlider> {
+                    top_p = <MolySlider> {
                         text: "Top P"
                         min: 0.0
                         max: 1.0
@@ -128,7 +128,7 @@ live_design! {
                             text: "Stream"
                             hover_actions_enabled: true
                         }
-                        stream = <MoxinSwitch> {
+                        stream = <MolySwitch> {
                             // Match the default value to avoid the animation on start.
                             animator: {
                                 selected = {
@@ -138,7 +138,7 @@ live_design! {
                         }
                     }
 
-                    max_tokens = <MoxinSlider> {
+                    max_tokens = <MolySlider> {
                         text: "Max Tokens"
                         min: 100.0
                         max: 2048.0
@@ -163,7 +163,7 @@ live_design! {
                         <ChatParamsTextInputWrapper> {
                             height: 65,
                             scrolled_content = {
-                                stop = <MoxinTextInput> {
+                                stop = <MolyTextInput> {
                                     width: Fill,
                                     height: Fit,
                                     empty_message: " "
@@ -180,13 +180,13 @@ live_design! {
                         }
                     }
 
-                    frequency_penalty = <MoxinSlider> {
+                    frequency_penalty = <MolySlider> {
                         text: "Frequency Penalty"
                         min: 0.0
                         max: 1.0
                     }
 
-                    presence_penalty = <MoxinSlider> {
+                    presence_penalty = <MolySlider> {
                         text: "Presence Penalty"
                         min: 0.0
                         max: 1.0

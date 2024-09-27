@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
+use moly_protocol::data::FileID;
 use std::cell::{Ref, RefCell, RefMut};
 
 use crate::{
@@ -33,7 +33,7 @@ live_design! {
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
-    CircleButton = <MoxinButton> {
+    CircleButton = <MolyButton> {
         padding: {right: 4},
         margin: {bottom: 2},
 
@@ -60,27 +60,28 @@ live_design! {
                     }
                     markdown_message_container = {
                         markdown_message = {
+                            font_color: #fff,
                             draw_normal: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_italic: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_bold: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_bold_italic: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_fixed: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_block: {
-                                line_color: (#fff)
-                                sep_color: (#12778a)
-                                quote_bg_color: (#12778a)
-                                quote_fg_color: (#106a7b)
-                                code_color: (#12778a)
+                                line_color: #fff
+                                sep_color: #12778a
+                                quote_bg_color: #12778a
+                                quote_fg_color: #106a7b
+                                code_color: #12778a
                             }
                         }
                     }
@@ -215,7 +216,7 @@ live_design! {
             border_width: 1.0,
         }
 
-        prompt = <MoxinTextInput> {
+        prompt = <MolyTextInput> {
             width: Fill,
             height: Fit,
 
@@ -285,7 +286,7 @@ live_design! {
                         }
                         text: "You haven’t downloaded any models yet."
                     }
-                    go_to_discover_button = <MoxinButton> {
+                    go_to_discover_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
 

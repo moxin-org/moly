@@ -239,7 +239,7 @@ live_design! {
                 height: Fit,
                 filler_x = <View> {width: Fill, height: Fit}
 
-                close_button = <MoxinButton> {
+                close_button = <MolyButton> {
                     width: Fit,
                     height: Fit,
 

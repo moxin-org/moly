@@ -1,6 +1,6 @@
 use crate::data::store::Store;
 use makepad_widgets::*;
-use moxin_protocol::data::PendingDownloadsStatus;
+use moly_protocol::data::PendingDownloadsStatus;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -14,7 +14,7 @@ live_design! {
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
 
-    CollapseButton = <MoxinButton> {
+    CollapseButton = <MolyButton> {
         width: Fit, height: Fit
         draw_icon: {
             svg_file: (ICON_COLLAPSE)

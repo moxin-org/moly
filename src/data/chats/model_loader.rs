@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use makepad_widgets::SignalToUI;
-use moxin_protocol::{
+use moly_protocol::{
     data::FileID,
     protocol::{Command, LoadModelOptions, LoadModelResponse},
 };
@@ -150,11 +150,11 @@ fn dispatch_load_command(
         file_id,
         LoadModelOptions {
             prompt_template: None,
-            gpu_layers: moxin_protocol::protocol::GPULayers::Max,
+            gpu_layers: moly_protocol::protocol::GPULayers::Max,
             use_mlock: false,
             rope_freq_scale: 0.0,
             rope_freq_base: 0.0,
-            context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
             n_batch: None,
             n_ctx: None,
         },

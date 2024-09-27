@@ -1,6 +1,6 @@
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
-use moxin_protocol::protocol::Command;
+use moly_protocol::data::DownloadedFile;
+use moly_protocol::protocol::Command;
 use std::path::PathBuf;
 
 use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
@@ -20,7 +20,7 @@ live_design! {
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_SHOW_IN_FILES = dep("crate://self/resources/icons/visibility.svg")
 
-    DownloadLocationButton = <MoxinButton> {
+    DownloadLocationButton = <MolyButton> {
         width: Fit,
         height: 28,
         padding: {top: 6, bottom: 6, left: 14, right: 14}
@@ -44,7 +44,7 @@ live_design! {
         enabled: true
     }
 
-    ShowInFilesButton = <MoxinButton> {
+    ShowInFilesButton = <MolyButton> {
         width: Fit,
         height: 28,
         margin: {left: 10}
@@ -99,7 +99,7 @@ live_design! {
             icon_walk: {width: 14, height: Fit}
         }
 
-        input = <MoxinTextInput> {
+        input = <MolyTextInput> {
             width: 260,
             height: Fit,
 

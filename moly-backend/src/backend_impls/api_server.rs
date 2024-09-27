@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::SocketAddr};
 
 use anyhow::anyhow;
 use futures_util::StreamExt;
-use moxin_protocol::{
+use moly_protocol::{
     open_ai::{
         ChatResponse, ChatResponseChunkData, ChatResponseData, ChunkChoiceData, MessageData, Role,
         StopReason,
@@ -51,8 +51,8 @@ fn create_wasi(
     };
 
     let n_gpu_layers = match load_model.gpu_layers {
-        moxin_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
-        moxin_protocol::protocol::GPULayers::Max => None,
+        moly_protocol::protocol::GPULayers::Specific(n) => Some(n.to_string()),
+        moly_protocol::protocol::GPULayers::Max => None,
     };
 
     // Set n_batch to a fixed value of 128.
@@ -88,10 +88,10 @@ fn create_wasi(
 
     let listen_addr = Some(format!("{listen_addr}"));
 
-    let mut module_alias = file.name.clone();
+    let mut module_alias = "moly-chat".to_string();
     if embedding.is_some() {
         module_alias.push_str(",");
-        module_alias.push_str("embedding");
+        module_alias.push_str("moly-embedding");
     }
     let mut args = vec![
         "llama-api-server",
@@ -170,8 +170,8 @@ impl BackendModel for LLamaEdgeApiServer {
         async_rt: &tokio::runtime::Runtime,
         old_model: Option<Self>,
         file: crate::store::download_files::DownloadedFile,
-        options: moxin_protocol::protocol::LoadModelOptions,
-        tx: std::sync::mpsc::Sender<anyhow::Result<moxin_protocol::protocol::LoadModelResponse>>,
+        options: moly_protocol::protocol::LoadModelOptions,
+        tx: std::sync::mpsc::Sender<anyhow::Result<moly_protocol::protocol::LoadModelResponse>>,
         embedding: Option<(std::path::PathBuf, u64)>,
     ) -> Self {
         let load_model_options = options.clone();
@@ -186,7 +186,7 @@ impl BackendModel for LLamaEdgeApiServer {
             }
             (old_model.wasm_module.clone(), old_model.listen_addr)
         } else {
-            let addr = std::env::var("MOXIN_API_SERVER_ADDR").unwrap_or("localhost:0".to_string());
+            let addr = std::env::var("MOLY_API_SERVER_ADDR").unwrap_or("localhost:0".to_string());
             let new_addr = std::net::TcpListener::bind(&addr)
                 .unwrap()
                 .local_addr()
@@ -196,8 +196,8 @@ impl BackendModel for LLamaEdgeApiServer {
         };
 
         if !need_reload {
-            let _ = tx.send(Ok(moxin_protocol::protocol::LoadModelResponse::Completed(
-                moxin_protocol::protocol::LoadedModelInfo {
+            let _ = tx.send(Ok(moly_protocol::protocol::LoadModelResponse::Completed(
+                moly_protocol::protocol::LoadedModelInfo {
                     file_id: file.id.to_string(),
                     model_id: file.model_id,
                     information: "".to_string(),
@@ -245,8 +245,8 @@ impl BackendModel for LLamaEdgeApiServer {
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             }
             if test_server {
-                let _ = tx.send(Ok(moxin_protocol::protocol::LoadModelResponse::Completed(
-                    moxin_protocol::protocol::LoadedModelInfo {
+                let _ = tx.send(Ok(moly_protocol::protocol::LoadModelResponse::Completed(
+                    moly_protocol::protocol::LoadedModelInfo {
                         file_id: file_.id.to_string(),
                         model_id: file_.model_id,
                         information: "".to_string(),
@@ -276,7 +276,7 @@ impl BackendModel for LLamaEdgeApiServer {
     fn chat(
         &self,
         async_rt: &tokio::runtime::Runtime,
-        data: moxin_protocol::open_ai::ChatRequestData,
+        mut data: moly_protocol::open_ai::ChatRequestData,
         tx: std::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
     ) -> bool {
         let is_stream = data.stream.unwrap_or(false);
@@ -285,6 +285,8 @@ impl BackendModel for LLamaEdgeApiServer {
             self.listen_addr.port()
         );
         let mut cancel = self.running_controller.subscribe();
+
+        data.model = "moly-chat".to_string();
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();

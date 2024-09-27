@@ -1,5 +1,5 @@
 [package]
-name = "moxin-protocol"
+name = "moly-protocol"
 version = "0.1.0"
 edition = "2021"
 

@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID, PendingDownloadsStatus};
+use moly_protocol::data::{File, FileID, PendingDownloadsStatus};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::{
@@ -16,7 +16,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::MoxinButton;
+    import crate::shared::widgets::MolyButton;
     import crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
@@ -43,7 +43,7 @@ live_design! {
         cell4 = <View> { width: 250, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
     }
 
-    ModelCardButton = <MoxinButton> {
+    ModelCardButton = <MolyButton> {
         width: 140,
         height: 32,
     }
@@ -68,7 +68,7 @@ live_design! {
         }
     }
 
-    DownloadPendingButton = <MoxinButton> {
+    DownloadPendingButton = <MolyButton> {
         width: 25,
         height: 25,
         padding: 4,
