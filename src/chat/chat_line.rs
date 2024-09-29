@@ -420,19 +420,19 @@ impl ChatLineRef {
             return;
         };
 
-        if is_streaming && !text.is_empty() {
-            let output = format!("{}{}", text, "●");
-            inner.text_input(id!(input)).set_text(&output.trim());
-            inner.label(id!(plain_text_message)).set_text(&output.trim());
-            inner.markdown(id!(markdown_message)).set_text(&output.trim());
-        } else {
-            inner.text_input(id!(input)).set_text(text.trim());
-            inner.label(id!(plain_text_message)).set_text(text.trim());
-            inner.markdown(id!(markdown_message)).set_text(text.trim());
-        }
         match inner.edition_state {
-
+            
             ChatLineState::Editable | ChatLineState::NotEditable => {
+                if is_streaming && !text.is_empty() {
+                    let output = format!("{}{}", text, "●");
+                    inner.text_input(id!(input)).set_text(&output.trim());
+                    inner.label(id!(plain_text_message)).set_text(&output.trim());
+                    inner.markdown(id!(markdown_message)).set_text(&output.trim());
+                } else {
+                    inner.text_input(id!(input)).set_text(text.trim());
+                    inner.label(id!(plain_text_message)).set_text(text.trim());
+                    inner.markdown(id!(markdown_message)).set_text(text.trim());
+                }
 
                 // We know only AI assistant messages could be empty, so it is never
                 // displayed in user's chat lines.
