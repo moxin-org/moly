@@ -28,7 +28,10 @@ live_design! {
             text: "You're done! Thank you for participating."
         }
         button = <MoxinButton> {
-            text: "End",
+            // For some reason, putting a margin bottom in the label doesn't
+            // work propertly.
+            margin: {top: (SM_GAP)},
+            text: "Finish",
             draw_bg: {
                 color: #000,
             },
