@@ -72,6 +72,10 @@ impl Opening {
     pub fn code(&self) -> String {
         self.input_ref().text()
     }
+
+    pub fn clear(&self) {
+        self.input_ref().set_text("");
+    }
 }
 
 impl OpeningRef {
@@ -81,5 +85,9 @@ impl OpeningRef {
 
     pub fn code(&self) -> String {
         self.borrow().map(|s| s.code()).unwrap_or_default()
+    }
+
+    pub fn clear(&self) {
+        self.borrow().map(|s| s.clear());
     }
 }

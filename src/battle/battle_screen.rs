@@ -1,4 +1,5 @@
 use super::{
+    ending::{EndingRef, EndingWidgetExt},
     failure::{FailureRef, FailureWidgetExt},
     messages::{MessagesRef, MessagesWidgetExt},
     opening::{OpeningRef, OpeningWidgetExt},
@@ -15,6 +16,7 @@ live_design! {
     import crate::battle::messages::Messages;
     import crate::battle::vote::Vote;
     import crate::battle::opening::Opening;
+    import crate::battle::opening::Ending;
     import crate::battle::spinner::Spinner;
     import crate::battle::styles::*;
     import crate::battle::failure::Failure;
@@ -162,6 +164,10 @@ impl WidgetMatchEvent for BattleScreen {
         if self.failure_ref().retried(actions) {
             self.handle_retry(cx);
         }
+
+        if self.ending_ref().ended(actions) {
+            self.handle_ended(cx);
+        }
     }
 }
 
@@ -179,8 +185,8 @@ impl BattleScreen {
         self.opening(id!(opening))
     }
 
-    fn ending_ref(&self) -> ViewRef {
-        self.view(id!(ending))
+    fn ending_ref(&self) -> EndingRef {
+        self.ending(id!(ending))
     }
 
     fn round_ref(&self) -> ViewRef {
@@ -278,6 +284,14 @@ impl BattleScreen {
         self.show_frame(self.opening_ref().widget_uid());
         self.redraw(cx);
     }
+
+    fn handle_ended(&mut self, cx: &mut Cx) {
+        // TODO: Handle outcomes.
+        self.service.clear_sheet();
+        self.opening_ref().clear();
+        self.show_frame(self.opening_ref().widget_uid());
+        self.redraw(cx);
+    }
 }
 
 // other stuff
@@ -308,11 +322,8 @@ impl BattleScreen {
         self.round_ref()
             .set_visible(self.round_ref().widget_uid() == uid);
 
-        self.ending_ref()
-            .set_visible(self.ending_ref().widget_uid() == uid);
-
         self.failure_ref().borrow_mut().unwrap().visible = self.failure_ref().widget_uid() == uid;
-
         self.opening_ref().borrow_mut().unwrap().visible = self.opening_ref().widget_uid() == uid;
+        self.ending_ref().borrow_mut().unwrap().visible = self.ending_ref().widget_uid() == uid;
     }
 }

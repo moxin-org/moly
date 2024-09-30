@@ -27,6 +27,12 @@ fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
     Ok(())
 }
 
+fn clear_sheet_blocking() -> Result<()> {
+    let path = battle_sheet_path();
+    std::fs::remove_file(path)?;
+    Ok(())
+}
+
 /// Try to download the battle sheet corresponding to the given code from the remote.
 fn download_sheet_blocking(code: String) -> Result<Sheet> {
     // simulate fetching from server
@@ -83,6 +89,19 @@ impl Service {
             std::thread::sleep(std::time::Duration::from_secs(3));
             Cx::post_action((id, Response::SheetSent));
         });
+    }
+
+    pub fn clear_sheet(&self) {
+        let id = self.id;
+        std::thread::spawn(move || match clear_sheet_blocking() {
+            Ok(()) => Cx::post_action((id, Response::SheetCleared)),
+            Err(err) => Cx::post_action((id, Response::ClearSheetError(err))),
+        });
+    }
+
+    pub fn sheet_cleared(&self, actions: &Actions) -> bool {
+        self.responses(actions)
+            .any(|response| matches!(response, Response::SheetCleared))
     }
 
     pub fn battle_sheet_downloaded<'a>(&'a self, actions: &'a Actions) -> Option<&'a Sheet> {
@@ -159,7 +178,9 @@ enum Response {
     SheetLoaded(Sheet),
     SheetSent,
     SheetSaved,
+    SheetCleared,
     DownloadSheetError(Error),
     RestoreSheetError(Error),
     SaveSheetError(Error),
+    ClearSheetError(Error),
 }
