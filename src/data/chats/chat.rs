@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
 use moxin_backend::Backend;
 use moxin_mae::MaeAgentCommand::{self, SendTask};
-use moxin_mae::{MaeAgent, MaeAgentResponse, MaeBackend};
+use moxin_mae::{MaeAgent, MaeBackend};
 use moxin_protocol::data::{File, FileID};
 use moxin_protocol::open_ai::*;
 use moxin_protocol::protocol::Command;
@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, channel, Receiver, Sender};
 use std::thread;
-use std::time::Duration;
 
 use crate::data::filesystem::{read_from_file, write_to_file};
 
@@ -441,46 +440,6 @@ impl Chat {
                             break '_loop;
                         }
                 }
-                // match rx.recv() {
-                //     Ok(MaeAgentResponse::ResearchScholarUpdate(completed_step)) => {
-                //         println!(
-                //             "Received ResearchScholarUpdate from agent: {:?}",
-                //             completed_step
-                //         );
-                //         // TODO rename ModelAppendDelta if this is valid for models and agents
-                //         let _ = store_chat_tx.send(ChatMessageAction::ModelAppendDelta(
-                //             MaeAgentResponse::ResearchScholarUpdate(completed_step)
-                //                 .to_text_messgae(),
-                //         ));
-
-                //         // Give some time between posting partial updates
-                //         had_some_update = true;
-                //         thread::sleep(Duration::from_millis(500));
-                //         SignalToUI::set_ui_signal();
-                //     }
-                //     Ok(response) => {
-                //         println!("Received response from agent: {:?}", response);
-                //         let _ = store_chat_tx.send(ChatMessageAction::MaeAgentResult(
-                //             response.to_text_messgae(),
-                //             agent.clone(),
-                //         ));
-
-                //         // Give some time to display the previos partial udpate if it existed
-                //         if had_some_update {
-                //             thread::sleep(Duration::from_millis(2000));
-                //         }
-
-                //         SignalToUI::set_ui_signal();
-                //         break '_loop;
-                //     }
-                //     Err(e) => {
-                //         println!("Error receiving response from agent: {:?}", e);
-                //         let _ = store_chat_tx.send(ChatMessageAction::MaeAgentCancelled);
-
-                //         SignalToUI::set_ui_signal();
-                //         break '_loop;
-                //     }
-                // }
             }
         });
 
@@ -577,59 +536,5 @@ impl Chat {
 
     pub fn was_cancelled(&self) -> bool {
         matches!(self.state, ChatState::Cancelled(_))
-    }
-}
-
-pub trait MaeAgentResponseFormatter {
-    fn to_text_messgae(&self) -> String;
-}
-
-impl MaeAgentResponseFormatter for MaeAgentResponse {
-    fn to_text_messgae(&self) -> String {
-        match self {
-            MaeAgentResponse::ReasonerResponse(response) => response.result.clone(),
-            MaeAgentResponse::ResearchScholarResponse(response) => response.suggestion.clone(),
-            MaeAgentResponse::SearchAssistantResponse(response) => {
-                let mut formatted = format!("{}\n\n", response.result.web_search_results);
-
-                let resouces_list = response
-                    .result
-                    .web_search_resource
-                    .iter()
-                    .enumerate()
-                    .map(|(i, r)| {
-                        format!(
-                            "{}- [{}]({})\n",
-                            i + 1,
-                            r.name.replace("[", "\\[").replace("]", "\\]"),
-                            r.url
-                        )
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n\n");
-
-                formatted.push_str(&resouces_list);
-                formatted
-            }
-            MaeAgentResponse::ResearchScholarUpdate(completed_step) => {
-                match completed_step.as_str() {
-                    "keywords" => {
-                        format!("Keywords were extracted from the task input.\n\nSearching and downloading papers (it could take some time)...\n\n")
-                    }
-                    "papers_info" => {
-                        format!("Papers were downloaded and their information was extracted.\n\nAnalyzing papers...\n\n")
-                    }
-                    "paper_analyze_result" => {
-                        format!("Papers were analyzed. Writing report...\n\n")
-                    }
-                    "writer_report" => {
-                        format!("Wrapping up...\n\n")
-                    }
-                    _ => {
-                        format!("")
-                    }
-                }
-            }
-        }
     }
 }
