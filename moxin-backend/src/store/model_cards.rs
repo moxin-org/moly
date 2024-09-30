@@ -10,7 +10,7 @@ pub static REPO_NAME: &'static str = "model-cards";
 
 pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<ModelCardManager> {
     let repo_url: &'static str =
-        option_env!("MODEL_CARDS_REPO").unwrap_or("https://github.com/moxin-org/model-cards");
+        option_env!("MODEL_CARDS_REPO").unwrap_or("https://git.gitmono.org/project/moxin/model-cards.git");
     let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
 
     // Sync the repo by `libra`
@@ -44,6 +44,7 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
     {
         remote_index
     } else {
+        log::warn!("Failed to get remote index, load local index");
         let index_list = std::fs::read_to_string(repo_dirs.join("index.json"))?;
         let index_list: Vec<ModelIndex> = serde_json::from_str(&index_list)?;
         index_list
