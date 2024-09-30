@@ -51,12 +51,13 @@ live_design! {
         draw_bg: {
             color: #F8F8F8,
         }
-        opening = <Opening> {}
+        opening = <Opening> {
+            visible: false,
+        }
         ending = <Ending> {
             visible: false,
         }
         loading = <View> {
-            visible: false,
             align: {x: 0.5, y: 0.5},
             <Spinner> {}
         }
@@ -98,7 +99,7 @@ live_design! {
     }
 }
 
-#[derive(Live, Widget, LiveHook)]
+#[derive(Live, Widget)]
 pub struct BattleScreen {
     #[deref]
     view: View,
@@ -110,6 +111,12 @@ pub struct BattleScreen {
 
     #[rust]
     sheet: Option<battle::Sheet>,
+}
+
+impl LiveHook for BattleScreen {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        self.service.restore_sheet();
+    }
 }
 
 impl Widget for BattleScreen {
@@ -129,12 +136,20 @@ impl WidgetMatchEvent for BattleScreen {
             self.handle_opening_submitted(cx);
         }
 
-        if let Some(weight) = self.vote_ref().voted(actions) {
-            self.handle_voted(cx, weight);
+        if let Some(_) = self.service.restore_sheet_failed(actions) {
+            self.handle_restore_sheet_failure(cx);
         }
 
-        if let Some(error) = self.service.failed(actions).map(|e| e.to_string()) {
-            self.handle_failure(cx, error);
+        if let Some(error) = self
+            .service
+            .download_sheet_failed(actions)
+            .map(|e| e.to_string())
+        {
+            self.handle_download_sheet_failure(cx, error);
+        }
+
+        if let Some(weight) = self.vote_ref().voted(actions) {
+            self.handle_voted(cx, weight);
         }
 
         if let Some(sheet) = self.service.battle_sheet_downloaded(actions).cloned() {
@@ -239,14 +254,19 @@ impl BattleScreen {
 
     fn handle_opening_submitted(&mut self, cx: &mut Cx) {
         let code = self.opening_ref().code();
-        self.service.download_battle_sheet(code);
+        self.service.download_sheet(code);
         self.show_frame(self.loading_ref().widget_uid());
         self.redraw(cx);
     }
 
-    fn handle_failure(&mut self, cx: &mut Cx, error: String) {
+    fn handle_download_sheet_failure(&mut self, cx: &mut Cx, error: String) {
         self.failure_ref().set_message(&error);
         self.show_frame(self.failure_ref().widget_uid());
+        self.redraw(cx);
+    }
+
+    fn handle_restore_sheet_failure(&mut self, cx: &mut Cx) {
+        self.show_frame(self.opening_ref().widget_uid());
         self.redraw(cx);
     }
 

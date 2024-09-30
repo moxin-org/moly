@@ -1,5 +1,46 @@
 use super::models::*;
-use makepad_widgets::{Actions, Cx, DefaultNone};
+use crate::data::filesystem;
+use anyhow::{anyhow, Error, Result};
+use makepad_widgets::{Actions, Cx};
+use std::path::PathBuf;
+
+pub const SHEET_FILE_NAME: &'static str = "current_battle_sheet.json";
+
+/// Get the built path to the current battle sheet file.
+pub fn battle_sheet_path() -> PathBuf {
+    let dirs = filesystem::project_dirs();
+    dirs.cache_dir().join(SHEET_FILE_NAME)
+}
+
+/// Try reading the in-progress, persisted battle sheet.
+fn restore_sheet_blocking() -> Result<Sheet> {
+    let path = battle_sheet_path();
+    let text = filesystem::read_from_file(path)?;
+    let sheet = serde_json::from_str::<Sheet>(&text)?;
+    Ok(sheet)
+}
+
+/// Try to download the battle sheet corresponding to the given code from the remote.
+fn download_sheet_blocking(code: String) -> Result<Sheet> {
+    // simulate fetching from server
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    // Simulate failure on the first call
+    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        return Err(anyhow!("Failed to download battle sheet"));
+    }
+
+    let text = include_str!("sheet.json");
+
+    let path = battle_sheet_path();
+    filesystem::write_to_file(path, text)?;
+
+    let mut sheet = serde_json::from_str::<Sheet>(text)?;
+    sheet.code = code;
+
+    Ok(sheet)
+}
 
 /// Isolated interface to connect and work with the remote battle server.
 pub struct Service {
@@ -17,48 +58,34 @@ impl Service {
         Self { id }
     }
 
-    pub fn download_battle_sheet(&self, code: String) {
+    pub fn restore_sheet(&self) {
         let id = self.id;
-        std::thread::spawn(move || {
-            // let response = reqwest get json...
-            std::thread::sleep(std::time::Duration::from_secs(3));
+        std::thread::spawn(move || match restore_sheet_blocking() {
+            Ok(sheet) => Cx::post_action((id, Response::SheetLoaded(sheet))),
+            Err(err) => Cx::post_action((id, Response::RestoreSheetError(err))),
+        });
+    }
 
-            // Simulate failure on the first call
-            static FIRST_CALL: std::sync::atomic::AtomicBool =
-                std::sync::atomic::AtomicBool::new(true);
-            if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-                Cx::post_action((
-                    id,
-                    Response::Error("Failed to download battle sheet".to_string()),
-                ));
-                return;
-            }
-
-            let text = include_str!("sheet.json");
-            match serde_json::from_str::<Sheet>(text) {
-                Ok(mut sheet) => {
-                    sheet.code = code;
-                    Cx::post_action((id, Response::BattleSheetDownloaded(sheet)));
-                }
-                Err(err) => Cx::post_action((id, Response::Error(err.to_string()))),
-            };
+    pub fn download_sheet(&self, code: String) {
+        let id = self.id;
+        std::thread::spawn(move || match download_sheet_blocking(code) {
+            Ok(sheet) => Cx::post_action((id, Response::SheetLoaded(sheet))),
+            Err(err) => Cx::post_action((id, Response::DownloadSheetError(err))),
         });
     }
 
     pub fn send_battle_sheet(&self, _sheet: Sheet) {
         let id = self.id;
         std::thread::spawn(move || {
-            // let response = reqwest post json...
             std::thread::sleep(std::time::Duration::from_secs(3));
-
-            Cx::post_action((id, Response::BattleSheetSent));
+            Cx::post_action((id, Response::SheetSent));
         });
     }
 
     pub fn battle_sheet_downloaded<'a>(&'a self, actions: &'a Actions) -> Option<&'a Sheet> {
         self.responses(actions)
             .filter_map(|response| match response {
-                Response::BattleSheetDownloaded(sheet) => Some(sheet),
+                Response::SheetLoaded(sheet) => Some(sheet),
                 _ => None,
             })
             .next()
@@ -66,13 +93,22 @@ impl Service {
 
     pub fn battle_sheet_sent(&self, actions: &Actions) -> bool {
         self.responses(actions)
-            .any(|response| matches!(response, Response::BattleSheetSent))
+            .any(|response| matches!(response, Response::SheetSent))
     }
 
-    pub fn failed<'a>(&'a self, actions: &'a Actions) -> Option<&'a str> {
+    pub fn download_sheet_failed<'a>(&'a self, actions: &'a Actions) -> Option<&'a Error> {
         self.responses(actions)
             .filter_map(|response| match response {
-                Response::Error(err) => Some(err.as_str()),
+                Response::DownloadSheetError(err) => Some(err),
+                _ => None,
+            })
+            .next()
+    }
+
+    pub fn restore_sheet_failed<'a>(&'a self, actions: &'a Actions) -> Option<&'a Error> {
+        self.responses(actions)
+            .filter_map(|response| match response {
+                Response::RestoreSheetError(err) => Some(err),
                 _ => None,
             })
             .next()
@@ -93,10 +129,10 @@ impl Service {
 /// Doesn't actually need private, nor the `responses` function, but just exposing
 /// event handling thru methods like button's `clicked` is less error prone and more
 /// elegant, so would be ideal to not use this from outside.
-#[derive(Debug, Clone, DefaultNone)]
+#[derive(Debug)]
 enum Response {
-    BattleSheetDownloaded(Sheet),
-    BattleSheetSent,
-    Error(String),
-    None,
+    SheetLoaded(Sheet),
+    SheetSent,
+    DownloadSheetError(Error),
+    RestoreSheetError(Error),
 }
