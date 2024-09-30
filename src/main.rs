@@ -1,7 +1,7 @@
 use std::{env, fs, io, thread};
 use mega;
 use std::io::Write;
-use moxin::data::filesystem::project_dirs;
+use moly::data::filesystem::project_dirs;
 
 fn main() {
     robius_url_handler::register_handler(|incoming_url| {
