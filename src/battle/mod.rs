@@ -1,5 +1,6 @@
 pub mod agent_markdown;
 pub mod battle_screen;
+pub mod dragonfly;
 pub mod ending;
 pub mod failure;
 pub mod messages;
