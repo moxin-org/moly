@@ -1,16 +1,11 @@
-use dora_node_api::{
-    self,
-    arrow::{array::StringArray, datatypes},
-    dora_core::config::{DataId, NodeId},
-    DoraNode, Event, MetadataParameters,
-};
+use moxin_protocol::open_ai::{MessageData, Role, UsageData};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
     sync::mpsc::{self, channel},
 };
+use tokio::task::JoinHandle;
 
-use dora_node_api::arrow::array::AsArray;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MaeResponseReasoner {
@@ -87,61 +82,10 @@ impl MaeAgent {
             MaeAgent::ResearchScholar => "Expert in academic research".to_string(),
         }
     }
-
-    pub fn workflow(&self) -> MaeAgentWorkflow {
-        match self {
-            MaeAgent::Reasoner => MaeAgentWorkflow::BasicReasoner("reasoner_agent.yml".to_string()),
-            MaeAgent::SearchAssistant => {
-                MaeAgentWorkflow::BasicReasoner("web_search_by_dspy.yml".to_string())
-            }
-            MaeAgent::ResearchScholar => MaeAgentWorkflow::ResearchScholar,
-        }
-    }
-
-    pub fn parse_response(&self, response: String) -> MaeAgentResponse {
-        match self {
-            MaeAgent::Reasoner => {
-                let response = serde_json::from_str::<MaeResponseReasoner>(&response).unwrap();
-                MaeAgentResponse::ReasonerResponse(response)
-            }
-            MaeAgent::SearchAssistant => {
-                let response =
-                    serde_json::from_str::<MaeResponseSearchAssistant>(&response).unwrap();
-                MaeAgentResponse::SearchAssistantResponse(response)
-            }
-            MaeAgent::ResearchScholar => {
-                let response =
-                    serde_json::from_str::<MaeResponseResearchScholar>(&response).unwrap();
-                MaeAgentResponse::ResearchScholarResponse(response)
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum MaeAgentResponse {
-    ReasonerResponse(MaeResponseReasoner),
-    SearchAssistantResponse(MaeResponseSearchAssistant),
-    ResearchScholarResponse(MaeResponseResearchScholar),
-
-    // This is not a final response, it is an indication that the agent is still working
-    // but some step was completed
-    ResearchScholarUpdate(String),
-}
-
-impl MaeAgentResponse {
-    pub fn to_agent(&self) -> MaeAgent {
-        match self {
-            MaeAgentResponse::ReasonerResponse(_) => MaeAgent::Reasoner,
-            MaeAgentResponse::SearchAssistantResponse(_) => MaeAgent::SearchAssistant,
-            MaeAgentResponse::ResearchScholarResponse(_) => MaeAgent::ResearchScholar,
-            MaeAgentResponse::ResearchScholarUpdate(_) => MaeAgent::ResearchScholar,
-        }
-    }
 }
 
 pub enum MaeAgentCommand {
-    SendTask(String, MaeAgent, mpsc::Sender<MaeAgentResponse>),
+    SendTask(String, MaeAgent, mpsc::Sender<ChatResponse>),
     CancelTask,
 }
 
@@ -174,6 +118,7 @@ impl MaeBackend {
 
     pub fn new_with_options(options: HashMap<String, String>) -> Self {
         let (command_sender, command_receiver) = channel();
+
         let backend = Self { command_sender };
 
         std::thread::spawn(move || {
@@ -187,157 +132,52 @@ impl MaeBackend {
         command_receiver: mpsc::Receiver<MaeAgentCommand>,
         options: HashMap<String, String>,
     ) {
-        let Ok((mut node, _events)) =
-            DoraNode::init_from_node_id(NodeId::from("reasoner_task_input".to_string()))
-        else {
-            eprintln!("Failed to initialize node: reasoner_task_input");
-            return;
-        };
-
-        let Ok((mut paper_node, _events)) =
-            DoraNode::init_from_node_id(NodeId::from("paper_task_input".to_string()))
-        else {
-            eprintln!("Failed to initialize node: paper_task_input");
-            return;
-        };
-
-        let Ok((_node, mut events)) =
-            DoraNode::init_from_node_id(NodeId::from("reasoner_output_moxin".to_string()))
-        else {
-            eprintln!("Failed to initialize node: reasoner_output_moxin");
-            return;
-        };
-
-        let Ok((_node, mut paper_events)) =
-            DoraNode::init_from_node_id(NodeId::from("paper_output_moxin".to_string()))
-        else {
-            eprintln!("Failed to initialize node: paper_output_moxin");
-            return;
-        };
-
-        println!("MAE backend started");
+        println!("MoFa backend started");
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let mut current_request: Option<JoinHandle<()>> = None;
 
         loop {
-            let sender_to_frontend: mpsc::Sender<MaeAgentResponse>;
-            let current_agent: MaeAgent;
-
-            // Receive command from frontend
             match command_receiver.recv().unwrap() {
-                MaeAgentCommand::SendTask(task, agent, tx) => {
-                    match agent.workflow() {
-                        MaeAgentWorkflow::BasicReasoner(definition_file) => {
-                            // Information sent to MAE agent goes in the form of an array
-                            // It contains:
-                            // 1. The task to be performed (user prompt)
-                            // 2. The definition file of the agent
-                            // 3. A hash map of options encoded in JSON format
-                            let data = StringArray::from(vec![
-                                task.trim().to_string(),
-                                definition_file,
-                                serde_json::to_string(&options).unwrap(),
-                            ]);
-
-                            node.send_output(
-                                DataId::from("reasoner_task".to_string()),
-                                MetadataParameters::default(),
-                                data,
-                            )
-                            .expect("failed to send task to reasoner");
-                        }
-                        MaeAgentWorkflow::ResearchScholar => {
-                            // Information sent to MAE agent goes in the form of an array
-                            // It contains:
-                            // 1. The task to be performed (user prompt)
-                            // 3. A hash map of options encoded in JSON format
-                            let data = StringArray::from(vec![
-                                task.trim().to_string(),
-                                serde_json::to_string(&options).unwrap(),
-                            ]);
-
-                            paper_node
-                                .send_output(
-                                    DataId::from("task".to_string()),
-                                    MetadataParameters::default(),
-                                    data,
-                                )
-                                .expect("failed to send task to reasoner");
-                        }
+                MaeAgentCommand::SendTask(task, _agent, tx) => {
+                    if let Some(handle) = current_request.take() {
+                        handle.abort();
                     }
+                    let data = ChatRequest {
+                        model: "simple".to_string(),
+                        messages: vec![MessageData {
+                            role: Role::User,
+                            content: task,
+                        }],
+                    };
+                    let request_body = serde_json::to_string(&data).unwrap();
+                    let client = reqwest::Client::new();
+                    current_request = Some(rt.spawn(async move {
+                        let resp = client.post("http://localhost:9901/api/chat/completions")
+                            .json(&data)
+                            .send()
+                            .await
+                            .expect("Failed to send request");
 
-                    sender_to_frontend = tx;
-                    current_agent = agent;
-                }
+                        let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
+                        match resp {
+                            Ok(resp) => {
+                                dbg!(request_body, &resp);
+                                let _ = tx.send(ChatResponse::ChatFinalResponseData(resp.clone()));
+                            }
+                            Err(e) => {
+                                eprintln!("{e}");
+                            }
+                        }
+                    }));
+                },
                 MaeAgentCommand::CancelTask => {
-                    // Cancel this loop iteration and wait for the next command
+                    dbg!("Canceling task");
+                    if let Some(handle) = current_request.take() {
+                        handle.abort();
+                    }
                     continue;
                 }
             }
-
-            // Listen for events from reasoner to send the response to frontend
-            let the_events = match current_agent {
-                MaeAgent::Reasoner | MaeAgent::SearchAssistant => &mut events,
-                MaeAgent::ResearchScholar => &mut paper_events,
-            };
-
-            '_while: while let Some(event) = the_events.recv() {
-                if Self::was_cancelled(&command_receiver) {
-                    // Cancel this loop iteration and wait for the next command
-                    // TODO send an input to the workflow to actually cancel the task in MAE
-                    break '_while;
-                }
-
-                match event {
-                    Event::Input {
-                        id,
-                        metadata: _,
-                        data,
-                    } => {
-                        match data.data_type() {
-                            datatypes::DataType::Utf8 => {
-                                // We are expecting more than one value in the response because of the options
-                                // that are carried in the array in all the workflow.
-                                // Here we simply discard the options and take the first value
-                                let array: &StringArray =
-                                    data.as_string_opt().expect("not a string array");
-                                let received_string: &str = array.value(0);
-
-                                match id.as_str() {
-                                    // "paper_result" is the output identifier for the paper agent
-                                    // "reasoner_result" is the output identifier for the reasoner agent
-                                    "paper_result" | "reasoner_result" => {
-                                        let parsed = current_agent
-                                            .parse_response(received_string.to_string());
-                                        sender_to_frontend
-                                            .send(parsed)
-                                            .expect("failed to send command");
-
-                                        // Stop listening for events after receiving the actual response
-                                        break '_while;
-                                    }
-                                    completed_step => {
-                                        sender_to_frontend
-                                            .send(MaeAgentResponse::ResearchScholarUpdate(
-                                                completed_step.to_string(),
-                                            ))
-                                            .expect("failed to send command");
-                                    }
-                                }
-                            }
-                            _other => {
-                                println!("Received id: {}, data: {:#?}", id, data);
-                            }
-                        }
-                    }
-                    _other => {}
-                }
-            }
-        }
-    }
-
-    fn was_cancelled(receiver: &mpsc::Receiver<MaeAgentCommand>) -> bool {
-        match receiver.try_recv() {
-            Ok(MaeAgentCommand::CancelTask) => true,
-            _ => false,
         }
     }
 
@@ -350,38 +190,29 @@ impl MaeBackend {
             loop {
                 // Receive command from frontend
                 match command_receiver.recv().unwrap() {
-                    MaeAgentCommand::SendTask(task, agent, tx) => match agent {
-                        MaeAgent::Reasoner => {
-                            let response = MaeResponseReasoner {
-                                task: task.clone(),
-                                result: "This is a fake response".to_string(),
-                            };
-                            tx.send(MaeAgentResponse::ReasonerResponse(response))
-                                .expect("failed to send command");
-                        }
-                        MaeAgent::SearchAssistant => {
-                            let response = MaeResponseSearchAssistant {
-                                task: task.clone(),
-                                result: MaeResponseSearchAssistantResult {
-                                    web_search_results: "This is a fake response".to_string(),
-                                    web_search_resource: vec![MaeResponseSearchAssistantResource {
-                                        name: "Fake resource".to_string(),
-                                        url: "https://fake.com".to_string(),
-                                        snippet: "This is a fake snippet".to_string(),
-                                    }],
+                    MaeAgentCommand::SendTask(_task, _agent, tx) => {
+                        let data = ChatResponseData {
+                            id: "fake".to_string(),
+                            choices: vec![ChoiceData {
+                                finish_reason: StopReason::Stop,
+                                index: 0,
+                                message: MessageData {
+                                    content: "This is a fake response".to_string(),
+                                    role: Role::System,
                                 },
-                            };
-                            tx.send(MaeAgentResponse::SearchAssistantResponse(response))
-                                .expect("failed to send command");
-                        }
-                        MaeAgent::ResearchScholar => {
-                            let response = MaeResponseResearchScholar {
-                                task: task.clone(),
-                                suggestion: "This is a fake response".to_string(),
-                            };
-                            tx.send(MaeAgentResponse::ResearchScholarResponse(response))
-                                .expect("failed to send command");
-                        }
+                                logprobs: None,
+                            }],
+                            created: 0,
+                            model: "fake".to_string(),
+                            system_fingerprint: "".to_string(),
+                            usage: UsageData {
+                                completion_tokens: 0,
+                                prompt_tokens: 0,
+                                total_tokens: 0,
+                            },
+                            object: "".to_string(),
+                        };
+                        let _ = tx.send(ChatResponse::ChatFinalResponseData(data));
                     },
                     _ => (),
                 }
@@ -394,4 +225,59 @@ impl MaeBackend {
 
 pub fn should_be_fake() -> bool {
     std::env::var("MAE_BACKEND").unwrap_or_default() == "fake"
+}
+
+// TODO Fix stop reason "complete" in MoFa
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum StopReason {
+    #[serde(rename = "complete")]
+    Stop,
+    #[serde(rename = "length")]
+    Length,
+    #[serde(rename = "content_filter")]
+    ContentFilter,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ChoiceData {
+    pub finish_reason: StopReason,
+    pub index: u32,
+    pub message: MessageData,
+    // todo: ask for a fix in MoFa
+    pub logprobs: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ChatResponseData {
+    pub id: String,
+    pub choices: Vec<ChoiceData>,
+    pub created: u32,
+    pub model: String,
+    #[serde(default)]
+    pub system_fingerprint: String,
+    pub usage: UsageData,
+
+    #[serde(default = "response_object")]
+    pub object: String,
+}
+
+fn response_object() -> String {
+    "chat.completion".to_string()
+}
+
+// TODO remove this, use the one defined in moxin-protocol when possible
+#[derive(Clone, Debug)]
+pub enum ChatResponse {
+    // https://platform.openai.com/docs/api-reference/chat/object
+    ChatFinalResponseData(ChatResponseData),
+}
+
+// ====
+
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct ChatRequest {
+    model: String,
+    messages: Vec<MessageData>, 
 }

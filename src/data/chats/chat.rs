@@ -425,45 +425,62 @@ impl Chat {
             let mut had_some_update = false;
             '_loop: loop {
                 match rx.recv() {
-                    Ok(MaeAgentResponse::ResearchScholarUpdate(completed_step)) => {
-                        println!(
-                            "Received ResearchScholarUpdate from agent: {:?}",
-                            completed_step
-                        );
-                        // TODO rename ModelAppendDelta if this is valid for models and agents
-                        let _ = store_chat_tx.send(ChatMessageAction::ModelAppendDelta(
-                            MaeAgentResponse::ResearchScholarUpdate(completed_step)
-                                .to_text_messgae(),
-                        ));
-
-                        // Give some time between posting partial updates
-                        had_some_update = true;
-                        thread::sleep(Duration::from_millis(500));
-                        SignalToUI::set_ui_signal();
-                    }
-                    Ok(response) => {
-                        println!("Received response from agent: {:?}", response);
+                    Ok(moxin_mae::ChatResponse::ChatFinalResponseData(data)) => {
                         let _ = store_chat_tx.send(ChatMessageAction::MaeAgentResult(
-                            response.to_text_messgae(),
+                            data.choices[0].message.content.clone(),
                             agent.clone(),
                         ));
-
-                        // Give some time to display the previos partial udpate if it existed
-                        if had_some_update {
-                            thread::sleep(Duration::from_millis(2000));
-                        }
-
                         SignalToUI::set_ui_signal();
                         break '_loop;
-                    }
+                    },
                     Err(e) => {
-                        println!("Error receiving response from agent: {:?}", e);
-                        let _ = store_chat_tx.send(ChatMessageAction::MaeAgentCancelled);
-
-                        SignalToUI::set_ui_signal();
-                        break '_loop;
-                    }
+                            println!("Error receiving response from agent: {:?}", e);
+                            let _ = store_chat_tx.send(ChatMessageAction::MaeAgentCancelled);
+    
+                            SignalToUI::set_ui_signal();
+                            break '_loop;
+                        }
                 }
+                // match rx.recv() {
+                //     Ok(MaeAgentResponse::ResearchScholarUpdate(completed_step)) => {
+                //         println!(
+                //             "Received ResearchScholarUpdate from agent: {:?}",
+                //             completed_step
+                //         );
+                //         // TODO rename ModelAppendDelta if this is valid for models and agents
+                //         let _ = store_chat_tx.send(ChatMessageAction::ModelAppendDelta(
+                //             MaeAgentResponse::ResearchScholarUpdate(completed_step)
+                //                 .to_text_messgae(),
+                //         ));
+
+                //         // Give some time between posting partial updates
+                //         had_some_update = true;
+                //         thread::sleep(Duration::from_millis(500));
+                //         SignalToUI::set_ui_signal();
+                //     }
+                //     Ok(response) => {
+                //         println!("Received response from agent: {:?}", response);
+                //         let _ = store_chat_tx.send(ChatMessageAction::MaeAgentResult(
+                //             response.to_text_messgae(),
+                //             agent.clone(),
+                //         ));
+
+                //         // Give some time to display the previos partial udpate if it existed
+                //         if had_some_update {
+                //             thread::sleep(Duration::from_millis(2000));
+                //         }
+
+                //         SignalToUI::set_ui_signal();
+                //         break '_loop;
+                //     }
+                //     Err(e) => {
+                //         println!("Error receiving response from agent: {:?}", e);
+                //         let _ = store_chat_tx.send(ChatMessageAction::MaeAgentCancelled);
+
+                //         SignalToUI::set_ui_signal();
+                //         break '_loop;
+                //     }
+                // }
             }
         });
 
