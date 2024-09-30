@@ -65,7 +65,7 @@ live_design! {
         width: Fill, height: Fit,
         font_size: 10.0,
         draw_normal: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
+            text_style: <REGULAR_FONT>{ height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }
         draw_italic: {
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
