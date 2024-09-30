@@ -140,13 +140,12 @@ impl WidgetMatchEvent for BattleScreen {
             self.handle_restore_sheet_failure(cx);
         }
 
-        if let Some(error) = self
-            .service
-            .download_sheet_failed(actions)
-            .map(|e| e.to_string())
-        {
-            self.handle_download_sheet_failure(cx, error);
+        if let Some(error) = self.service.download_sheet_failed(actions) {
+            self.handle_download_sheet_failure(cx, error.to_string());
         }
+
+        // TODO: Handle persistence ok.
+        // TODO: Handle persistence error.
 
         if let Some(weight) = self.vote_ref().voted(actions) {
             self.handle_voted(cx, weight);
@@ -208,6 +207,11 @@ impl BattleScreen {
 // event handlers
 impl BattleScreen {
     fn handle_round_updated(&mut self, cx: &mut Cx) {
+        // TODO: Address possible concurrency issues and maybe move form here.
+        if let Some(sheet) = self.sheet.as_ref() {
+            self.service.save_sheet(sheet.clone());
+        }
+
         if let Some(index) = self.current_round_index() {
             let round = self.current_round().unwrap();
 

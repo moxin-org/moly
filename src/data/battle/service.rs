@@ -20,6 +20,13 @@ fn restore_sheet_blocking() -> Result<Sheet> {
     Ok(sheet)
 }
 
+fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
+    let text = serde_json::to_string(&sheet)?;
+    let path = battle_sheet_path();
+    filesystem::write_to_file(path, &text)?;
+    Ok(())
+}
+
 /// Try to download the battle sheet corresponding to the given code from the remote.
 fn download_sheet_blocking(code: String) -> Result<Sheet> {
     // simulate fetching from server
@@ -32,10 +39,6 @@ fn download_sheet_blocking(code: String) -> Result<Sheet> {
     }
 
     let text = include_str!("sheet.json");
-
-    let path = battle_sheet_path();
-    filesystem::write_to_file(path, text)?;
-
     let mut sheet = serde_json::from_str::<Sheet>(text)?;
     sheet.code = code;
 
@@ -114,6 +117,28 @@ impl Service {
             .next()
     }
 
+    pub fn save_sheet(&self, sheet: Sheet) {
+        let id = self.id;
+        std::thread::spawn(move || match save_sheet_blocking(&sheet) {
+            Ok(()) => Cx::post_action((id, Response::SheetSaved)),
+            Err(err) => Cx::post_action((id, Response::SaveSheetError(err))),
+        });
+    }
+
+    pub fn save_sheet_failed<'a>(&'a self, actions: &'a Actions) -> Option<&'a Error> {
+        self.responses(actions)
+            .filter_map(|response| match response {
+                Response::SaveSheetError(err) => Some(err),
+                _ => None,
+            })
+            .next()
+    }
+
+    pub fn sheet_saved(&self, actions: &Actions) -> bool {
+        self.responses(actions)
+            .any(|response| matches!(response, Response::SheetSaved))
+    }
+
     /// Handle responses sent from this specific instance.
     fn responses<'a>(&'a self, actions: &'a Actions) -> impl Iterator<Item = &'a Response> {
         actions
@@ -133,6 +158,8 @@ impl Service {
 enum Response {
     SheetLoaded(Sheet),
     SheetSent,
+    SheetSaved,
     DownloadSheetError(Error),
     RestoreSheetError(Error),
+    SaveSheetError(Error),
 }
