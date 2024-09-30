@@ -420,25 +420,22 @@ impl Chat {
         self.state = ChatState::Receiving;
 
         let store_chat_tx = self.messages_update_sender.clone();
-        std::thread::spawn(move || {
-            let mut had_some_update = false;
-            '_loop: loop {
-                match rx.recv() {
-                    Ok(moxin_mae::ChatResponse::ChatFinalResponseData(data)) => {
-                        let _ = store_chat_tx.send(ChatMessageAction::MaeAgentResult(
-                            data.choices[0].message.content.clone(),
-                            agent.clone(),
-                        ));
-                        SignalToUI::set_ui_signal();
-                        break '_loop;
-                    },
-                    Err(e) => {
-                            println!("Error receiving response from agent: {:?}", e);
-                            let _ = store_chat_tx.send(ChatMessageAction::MaeAgentCancelled);
-    
-                            SignalToUI::set_ui_signal();
-                            break '_loop;
-                        }
+        std::thread::spawn(move || '_loop: loop {
+            match rx.recv() {
+                Ok(moxin_mae::ChatResponse::ChatFinalResponseData(data)) => {
+                    let _ = store_chat_tx.send(ChatMessageAction::MaeAgentResult(
+                        data.choices[0].message.content.clone(),
+                        agent.clone(),
+                    ));
+                    SignalToUI::set_ui_signal();
+                    break '_loop;
+                }
+                Err(e) => {
+                    println!("Error receiving response from agent: {:?}", e);
+                    let _ = store_chat_tx.send(ChatMessageAction::MaeAgentCancelled);
+
+                    SignalToUI::set_ui_signal();
+                    break '_loop;
                 }
             }
         });
