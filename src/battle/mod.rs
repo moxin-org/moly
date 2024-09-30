@@ -1,7 +1,5 @@
 pub mod agent_markdown;
 pub mod battle_screen;
-pub mod battle_service;
-pub mod battle_sheet;
 pub mod ending;
 pub mod failure;
 pub mod messages;

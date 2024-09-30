@@ -1,11 +1,10 @@
 use super::{
-    battle_service::BattleService,
-    battle_sheet::{Round, Sheet},
     failure::{FailureRef, FailureWidgetExt},
     messages::{MessagesRef, MessagesWidgetExt},
     opening::{OpeningRef, OpeningWidgetExt},
     vote::{VoteRef, VoteWidgetExt},
 };
+use crate::data::battle::{self, Service};
 use makepad_widgets::*;
 
 live_design! {
@@ -104,11 +103,13 @@ pub struct BattleScreen {
     #[deref]
     view: View,
 
-    #[rust(BattleService::new())]
-    service: BattleService,
+    #[rust(battle::Service::new())]
+    // Issue: For some reason, makepad's macro doesn't like `battle::Service`
+    // in this line.
+    service: Service,
 
     #[rust]
-    sheet: Option<Sheet>,
+    sheet: Option<battle::Sheet>,
 }
 
 impl Widget for BattleScreen {
@@ -221,7 +222,7 @@ impl BattleScreen {
         self.redraw(cx);
     }
 
-    fn handle_battle_sheet_downloaded(&mut self, cx: &mut Cx, sheet: Sheet) {
+    fn handle_battle_sheet_downloaded(&mut self, cx: &mut Cx, sheet: battle::Sheet) {
         self.sheet = Some(sheet);
         self.show_frame(self.round_ref().widget_uid());
         self.handle_round_updated(cx);
@@ -264,13 +265,13 @@ impl BattleScreen {
             .flatten()
     }
 
-    fn current_round(&self) -> Option<&Round> {
+    fn current_round(&self) -> Option<&battle::Round> {
         self.current_round_index()
             .map(|i| self.sheet.as_ref().map(|s| &s.rounds[i]))
             .flatten()
     }
 
-    fn current_round_mut(&mut self) -> Option<&mut Round> {
+    fn current_round_mut(&mut self) -> Option<&mut battle::Round> {
         self.current_round_index()
             .map(|i| self.sheet.as_mut().map(|s| &mut s.rounds[i]))
             .flatten()

@@ -1,4 +1,4 @@
-use super::battle_sheet::{Message, Sender};
+use crate::data::battle;
 use makepad_widgets::*;
 
 live_design! {
@@ -61,7 +61,7 @@ pub struct Messages {
     view: View,
 
     #[rust]
-    messages: Vec<Message>,
+    messages: Vec<battle::Message>,
 }
 
 impl Widget for Messages {
@@ -80,8 +80,8 @@ impl Widget for Messages {
 
                     let message = &self.messages[index];
                     let template = match message.sender {
-                        Sender::User => live_id!(UserLine),
-                        Sender::Agent => live_id!(AgentLine),
+                        battle::Sender::User => live_id!(UserLine),
+                        battle::Sender::Agent => live_id!(AgentLine),
                     };
 
                     let item = list.item(cx, index, template).unwrap();
@@ -96,7 +96,7 @@ impl Widget for Messages {
 }
 
 impl Messages {
-    pub fn set_messages(&mut self, messages: Vec<Message>) {
+    pub fn set_messages(&mut self, messages: Vec<battle::Message>) {
         self.messages = messages;
     }
 
@@ -111,7 +111,7 @@ impl Messages {
 }
 
 impl MessagesRef {
-    pub fn set_messages(&self, messages: Vec<Message>) {
+    pub fn set_messages(&self, messages: Vec<battle::Message>) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_messages(messages);
         }

@@ -1,15 +1,14 @@
+use super::models::*;
 use makepad_widgets::{Actions, Cx, DefaultNone};
 
-use super::battle_sheet::Sheet;
-
 /// Isolated interface to connect and work with the remote battle server.
-pub struct BattleService {
+pub struct Service {
     /// Identify this instance to handle responses in isolation.
     /// `Cx::post_action` by itself is global.
     id: usize,
 }
 
-impl BattleService {
+impl Service {
     /// Create a new identified instance.
     pub fn new() -> Self {
         use std::sync::atomic::{AtomicUsize, Ordering};
@@ -35,7 +34,7 @@ impl BattleService {
                 return;
             }
 
-            let text = include_str!("battle_sheet.json");
+            let text = include_str!("sheet.json");
             match serde_json::from_str::<Sheet>(text) {
                 Ok(mut sheet) => {
                     sheet.code = code;
