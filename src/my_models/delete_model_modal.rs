@@ -10,7 +10,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::MoxinButton;
+    import crate::shared::widgets::MolyButton;
     import crate::shared::resource_imports::*;
 
     DeleteModelModal = {{DeleteModelModal}} {
@@ -52,7 +52,7 @@ live_design! {
 
                 filler_x = <View> {width: Fill, height: Fit}
 
-                close_button = <MoxinButton> {
+                close_button = <MolyButton> {
                     width: Fit,
                     height: Fit,
 
@@ -92,7 +92,7 @@ live_design! {
                     align: {x: 1.0, y: 0.5}
                     spacing: 20
 
-                    cancel_button = <MoxinButton> {
+                    cancel_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
@@ -111,7 +111,7 @@ live_design! {
                         }
                     }
 
-                    delete_button = <MoxinButton> {
+                    delete_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}

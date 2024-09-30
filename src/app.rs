@@ -18,7 +18,7 @@ live_design! {
     import crate::shared::popup_notification::*;
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
-    import crate::shared::desktop_buttons::MoxinDesktopButton;
+    import crate::shared::desktop_buttons::MolyDesktopButton;
 
     import crate::landing::landing_screen::LandingScreen;
     import crate::landing::model_card::ModelCardViewAllModal;
@@ -40,9 +40,9 @@ live_design! {
                 windows_buttons = <View> {
                     visible: false,
                     width: Fit, height: Fit,
-                    min = <MoxinDesktopButton> {draw_bg: {button_type: WindowsMin}}
-                    max = <MoxinDesktopButton> {draw_bg: {button_type: WindowsMax}}
-                    close = <MoxinDesktopButton> {draw_bg: {button_type: WindowsClose}}
+                    min = <MolyDesktopButton> {draw_bg: {button_type: WindowsMin}}
+                    max = <MolyDesktopButton> {draw_bg: {button_type: WindowsMax}}
+                    close = <MolyDesktopButton> {draw_bg: {button_type: WindowsClose}}
                 }
             }
 
