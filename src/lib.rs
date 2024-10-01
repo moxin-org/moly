@@ -1,6 +1,5 @@
 pub mod app;
 
-mod battle;
 mod chat;
 mod data;
 mod landing;
