@@ -10,15 +10,11 @@ live_design! {
     Ending = {{Ending}} {
         flow: Down,
         align: {x: 0.5, y: 0.5},
-        <Icon> {
+        <Image> {
             margin: {bottom: (LG_GAP)},
-            draw_icon: {
-                svg_file: dep("crate://self/resources/icons/my_models.svg"),
-                fn get_color(self) -> vec4 {
-                    return #0d0;
-                }
-            }
-            icon_walk: {width: 250, height: 250}
+            source: dep("crate://self/resources/icons/prerendered/output/ok.png"),
+            width: 250,
+            height: 250,
         }
         <Label> {
             draw_text: {

@@ -11,15 +11,11 @@ live_design! {
         flow: Down,
         align: {x: 0.5, y: 0.5},
         spacing: (SM_GAP),
-        <Icon> {
+        <Image> {
             margin: {bottom: (MD_GAP)},
-            draw_icon: {
-                svg_file: dep("crate://self/resources/icons/discover.svg"),
-                fn get_color(self) -> vec4 {
-                    return #ff0000;
-                }
-            }
-            icon_walk: {width: 250, height: 250}
+            source: dep("crate://self/resources/icons/prerendered/output/error.png"),
+            width: 250,
+            height: 250,
         }
         message = <Label> {
             draw_text: {
