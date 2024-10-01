@@ -1,11 +1,11 @@
 use crate::data::battle;
 
 use super::{
-    dragonfly::Dragonfly,
     ending::{EndingRef, EndingWidgetExt},
     failure::{FailureRef, FailureWidgetExt},
     messages::{MessagesRef, MessagesWidgetExt},
     opening::{OpeningRef, OpeningWidgetExt},
+    ui_runner::UiRunner,
     vote::{VoteRef, VoteWidgetExt},
 };
 use makepad_widgets::*;
@@ -109,8 +109,8 @@ pub struct BattleScreen {
     #[deref]
     view: View,
 
-    #[rust(Dragonfly::new())]
-    df: Dragonfly,
+    #[rust(UiRunner::new())]
+    ui_runner: UiRunner,
 
     #[rust]
     sheet: Option<battle::Sheet>,
@@ -118,9 +118,10 @@ pub struct BattleScreen {
 
 impl LiveHook for BattleScreen {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.df.spawn(|df| {
+        let ui = self.ui_runner;
+        std::thread::spawn(move || {
             let sheet = battle::restore_sheet_blocking();
-            df.run(move |s: &mut Self, cx| {
+            ui.run(move |s: &mut Self, cx| {
                 match sheet {
                     Ok(sheet) => {
                         let completed = sheet.is_completed();
@@ -146,7 +147,7 @@ impl Widget for BattleScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
-        self.df.clone().handle(self, cx, event);
+        self.ui_runner.handle(cx, event, self);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -220,33 +221,33 @@ impl BattleScreen {
         self.redraw(cx);
 
         let code = self.opening_ref().code();
-        self.df
-            .spawn(move |df| match battle::download_sheet_blocking(code) {
-                Ok(sheet) => {
-                    if let Err(error) = battle::save_sheet_blocking(&sheet) {
-                        df.run(move |s: &mut Self, cx| {
-                            s.failure_ref().set_message(&error.to_string());
-                            s.show_frame(s.failure_ref().widget_uid());
-                            s.redraw(cx);
-                        });
-
-                        return;
-                    }
-
-                    df.run(move |s: &mut Self, cx| {
-                        s.set_sheet(Some(sheet));
-                        s.show_frame(s.round_ref().widget_uid());
-                        s.redraw(cx);
-                    });
-                }
-                Err(error) => {
-                    df.run(move |s: &mut Self, cx| {
+        let ui = self.ui_runner;
+        std::thread::spawn(move || match battle::download_sheet_blocking(code) {
+            Ok(sheet) => {
+                if let Err(error) = battle::save_sheet_blocking(&sheet) {
+                    ui.run(move |s: &mut Self, cx| {
                         s.failure_ref().set_message(&error.to_string());
                         s.show_frame(s.failure_ref().widget_uid());
                         s.redraw(cx);
                     });
+
+                    return;
                 }
-            });
+
+                ui.run(move |s: &mut Self, cx| {
+                    s.set_sheet(Some(sheet));
+                    s.show_frame(s.round_ref().widget_uid());
+                    s.redraw(cx);
+                });
+            }
+            Err(error) => {
+                ui.run(move |s: &mut Self, cx| {
+                    s.failure_ref().set_message(&error.to_string());
+                    s.show_frame(s.failure_ref().widget_uid());
+                    s.redraw(cx);
+                });
+            }
+        });
     }
 
     fn handle_vote(&mut self, weight: i8) {
@@ -254,9 +255,10 @@ impl BattleScreen {
         sheet.current_round_mut().unwrap().vote = Some(weight);
 
         let sheet = sheet.clone();
-        self.df.spawn(move |df| {
+        let ui = self.ui_runner;
+        std::thread::spawn(move || {
             if let Err(error) = battle::save_sheet_blocking(&sheet) {
-                df.run(move |s: &mut Self, cx| {
+                ui.run(move |s: &mut Self, cx| {
                     s.failure_ref().set_message(&error.to_string());
                     s.show_frame(s.failure_ref().widget_uid());
                     s.redraw(cx);
@@ -266,20 +268,20 @@ impl BattleScreen {
             }
 
             let sheet_clone = sheet.clone();
-            df.run(move |s: &mut Self, cx| {
+            ui.run(move |s: &mut Self, cx| {
                 s.set_sheet(Some(sheet_clone));
                 s.redraw(cx);
             });
 
             if sheet.is_completed() {
-                df.run(|s: &mut Self, cx| {
+                ui.run(|s: &mut Self, cx| {
                     s.show_frame(s.loading_ref().widget_uid());
                     s.redraw(cx);
                 });
 
                 let result = battle::send_sheet_blocking(sheet);
 
-                df.run(move |s: &mut Self, cx| {
+                ui.run(move |s: &mut Self, cx| {
                     if let Err(error) = result {
                         s.failure_ref().set_message(&error.to_string());
                         s.show_frame(s.failure_ref().widget_uid());
@@ -300,9 +302,10 @@ impl BattleScreen {
     }
 
     fn handle_end(&mut self) {
-        self.df.spawn(|df| {
+        let ui = self.ui_runner;
+        std::thread::spawn(move || {
             let result = battle::clear_sheet_blocking();
-            df.run(move |s: &mut Self, cx| {
+            ui.run(move |s: &mut Self, cx| {
                 if let Err(error) = result {
                     s.failure_ref().set_message(&error.to_string());
                     s.show_frame(s.failure_ref().widget_uid());
