@@ -94,7 +94,7 @@ pub struct MaeBackend {
 
 impl Default for MaeBackend {
     fn default() -> Self {
-        Self::new(HashMap::new())
+        Self::new()
     }
 }
 
@@ -107,30 +107,22 @@ impl MaeBackend {
         ]
     }
 
-    pub fn new(options: HashMap<String, String>) -> Self {
+    pub fn new() -> Self {
         if should_be_fake() {
             return Self::new_fake();
         }
 
-        Self::new_with_options(options)
-    }
-
-    pub fn new_with_options(options: HashMap<String, String>) -> Self {
         let (command_sender, command_receiver) = channel();
-
         let backend = Self { command_sender };
 
         std::thread::spawn(move || {
-            Self::main_loop(command_receiver, options);
+            Self::main_loop(command_receiver);
         });
 
         backend
     }
 
-    pub fn main_loop(
-        command_receiver: mpsc::Receiver<MaeAgentCommand>,
-        options: HashMap<String, String>,
-    ) {
+    pub fn main_loop(command_receiver: mpsc::Receiver<MaeAgentCommand>) {
         println!("MoFa backend started");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;

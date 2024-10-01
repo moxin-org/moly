@@ -7,8 +7,8 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moly_backend::Backend;
-use moxin_mae::{MaeAgent, MaeBackend};
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
+use moxin_mae::{MaeAgent, MaeBackend};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -72,37 +72,7 @@ impl Store {
             DEFAULT_MAX_DOWNLOAD_THREADS,
         ));
 
-        // Temporary solution to load API keys from environment variables
-        if std::env::var("MODEL_API_KEY").is_ok() {
-            preferences.open_ai_api_key = Some(std::env::var("MODEL_API_KEY").unwrap());
-        }
-        if std::env::var("SERPER_API_KEY").is_ok() {
-            preferences.serper_api_key = Some(std::env::var("SERPER_API_KEY").unwrap());
-        }
-        if std::env::var("AGENTOPS_API_KEY").is_ok() {
-            preferences.agentops_api_key = Some(std::env::var("AGENTOPS_API_KEY").unwrap());
-        }
-        preferences.save();
-        // End of temporary solution
-
-        let mut options: HashMap<String, String> = HashMap::new();
-        if let Some(api_key) = &preferences.open_ai_api_key {
-            options.insert("model_api_key".to_string(), api_key.to_string());
-        } else {
-            eprintln!("No OpenAI API key found");
-        }
-        if let Some(api_key) = &preferences.serper_api_key {
-            options.insert("serper_api_key".to_string(), api_key.to_string());
-        } else {
-            eprintln!("No Serper API key found");
-        }
-        if let Some(api_key) = &preferences.agentops_api_key {
-            options.insert("agentops_api_key".to_string(), api_key.to_string());
-        } else {
-            eprintln!("No AgentOps API key found");
-        }
-
-        let mae_backend = Rc::new(MaeBackend::new(options));
+        let mae_backend = Rc::new(MaeBackend::new());
 
         let mut store = Self {
             backend: backend.clone(),
