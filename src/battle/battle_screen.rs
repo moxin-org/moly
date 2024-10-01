@@ -149,11 +149,11 @@ impl Widget for BattleScreen {
 impl WidgetMatchEvent for BattleScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.opening_ref().submitted(actions) {
-            self.handle_opening_submitted();
+            self.handle_opening_submit();
         }
 
         if let Some(weight) = self.vote_ref().voted(actions) {
-            self.handle_voted(cx, weight);
+            self.handle_vote(cx, weight);
         }
 
         if self.failure_ref().retried(actions) {
@@ -161,11 +161,8 @@ impl WidgetMatchEvent for BattleScreen {
         }
 
         if self.ending_ref().ended(actions) {
-            self.handle_ended(cx);
+            self.handle_end(cx);
         }
-
-        // TODO: Handle persistence ok.
-        // TODO: Handle persistence error.
     }
 }
 
@@ -210,116 +207,16 @@ impl BattleScreen {
 
 // event handlers
 impl BattleScreen {
-    fn handle_round_updated(&mut self, cx: &mut Cx) {
-        let sheet = self.sheet.clone().unwrap();
-        self.dragonfly.spawn(move |df| {
-            if let Err(error) = battle::save_sheet_blocking(&sheet) {
-                df.run(move |s: &mut Self, cx| {
-                    s.failure_ref().set_message(&error.to_string());
-                    s.show_frame(s.failure_ref().widget_uid());
-                    // TODO: Handle retry button.
-                    s.redraw(cx);
-                });
+    fn handle_opening_submit(&mut self) {}
 
-                return;
-            }
-
-            if let Some(index) = sheet.current_round_index() {
-                let round = sheet.current_round().unwrap();
-
-                df.run(move |s: &mut Self, cx| {
-                    s.left_messages_ref()
-                        .set_messages(round.chats[0].messages.clone());
-
-                    s.right_messages_ref()
-                        .set_messages(round.chats[1].messages.clone());
-
-                    s.left_messages_ref().scroll_to_bottom(cx);
-                    s.right_messages_ref().scroll_to_bottom(cx);
-
-                    let rounds_count = sheet.rounds.len();
-                    s.counter_ref()
-                        .set_text(&format!("{} / {}", index + 1, rounds_count));
-                    s.redraw(cx);
-                });
-            } else {
-            }
-        });
-
-        // TODO: Address possible concurrency issues and maybe move form here.
-        if let Some(sheet) = self.sheet.as_ref() {
-            self.service.save_sheet(sheet.clone());
-        }
-
-        if let Some(index) = self.current_round_index() {
-            let round = self.current_round().unwrap();
-
-            self.left_messages_ref()
-                .set_messages(round.chats[0].messages.clone());
-
-            self.right_messages_ref()
-                .set_messages(round.chats[1].messages.clone());
-
-            self.left_messages_ref().scroll_to_bottom(cx);
-            self.right_messages_ref().scroll_to_bottom(cx);
-
-            let rounds_count = self.sheet.as_ref().unwrap().rounds.len();
-            self.counter_ref()
-                .set_text(&format!("{} / {}", index + 1, rounds_count));
-        } else {
-            self.service.send_battle_sheet(self.sheet.take().unwrap());
-            self.round_ref().set_visible(false);
-            self.loading_ref().set_visible(true);
-        }
-
-        self.redraw(cx);
-    }
-
-    fn handle_battle_sheet_sent(&mut self, cx: &mut Cx) {
-        self.show_frame(self.ending_ref().widget_uid());
-        self.redraw(cx);
-    }
-
-    fn handle_voted(&mut self, cx: &mut Cx, weight: i8) {
-        if let Some(round) = self.current_round_mut() {
-            round.weight = Some(weight);
-            self.handle_round_updated(cx);
-            self.redraw(cx);
-        }
-    }
-
-    fn handle_opening_submitted(&mut self) {
-        let code = self.opening_ref().code();
-        self.dragonfly.spawn(move |df| {
-            let sheet = battle::download_sheet_blocking(code);
-            df.run(move |s: &mut Self, cx| {
-                match sheet {
-                    Ok(sheet) => {
-                        s.sheet = Some(sheet);
-                        s.show_frame(s.round_ref().widget_uid());
-                    }
-                    Err(error) => {
-                        s.failure_ref().set_message(&error.to_string());
-                        s.show_frame(s.failure_ref().widget_uid());
-                    }
-                }
-                s.redraw(cx);
-            });
-        });
-    }
+    fn handle_vote(&mut self, cx: &mut Cx, weight: i8) {}
 
     fn handle_retry(&mut self, cx: &mut Cx) {
         self.show_frame(self.opening_ref().widget_uid());
         self.redraw(cx);
     }
 
-    fn handle_ended(&mut self, cx: &mut Cx) {
-        // TODO: Handle outcomes.
-        self.service.clear_sheet();
-        self.opening_ref().clear();
-        self.show_frame(self.opening_ref().widget_uid());
-        self.redraw(cx);
-    }
+    fn handle_end(&mut self, cx: &mut Cx) {}
 }
 
 // other stuff
