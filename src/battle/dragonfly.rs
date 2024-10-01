@@ -3,11 +3,11 @@ use std::sync::{Arc, Mutex};
 
 /// Unlocks the potential of modifying the UI "directly" from a different thread.
 ///
-/// Closoures passed to `Dragonfly::run` will be executed on the UI thread with
+/// Closures passed to `Dragonfly::run` will be executed on the UI thread with
 /// access to your widget and context.
 ///
 /// The name "Dragonfly" is inspired by the insect's ability to move in all directions.
-/// (ctually, it's just the first word it came to my mind, I accept suggestions.
+/// Actually, it's just the first word it came to my mind, I accept suggestions :P
 #[derive(Debug, Clone)]
 pub struct Dragonfly {
     id: usize,

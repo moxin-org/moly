@@ -7,6 +7,20 @@ pub struct Sheet {
     pub rounds: Vec<Round>,
 }
 
+impl Sheet {
+    pub fn current_round_index(&self) -> Option<usize> {
+        self.rounds.iter().position(|r| r.weight.is_none())
+    }
+
+    pub fn current_round(&self) -> Option<&Round> {
+        self.current_round_index().map(|i| &self.rounds[i])
+    }
+
+    pub fn current_round_mut(&mut self) -> Option<&mut Round> {
+        self.current_round_index().map(move |i| &mut self.rounds[i])
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Round {
     pub chats: Vec<Chat>,

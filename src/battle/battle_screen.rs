@@ -1,11 +1,13 @@
+use crate::data::battle;
+
 use super::{
+    dragonfly::Dragonfly,
     ending::{EndingRef, EndingWidgetExt},
     failure::{FailureRef, FailureWidgetExt},
     messages::{MessagesRef, MessagesWidgetExt},
     opening::{OpeningRef, OpeningWidgetExt},
     vote::{VoteRef, VoteWidgetExt},
 };
-use crate::data::battle::{self, Service};
 use makepad_widgets::*;
 
 live_design! {
@@ -106,10 +108,8 @@ pub struct BattleScreen {
     #[deref]
     view: View,
 
-    #[rust(battle::Service::new())]
-    // Issue: For some reason, makepad's macro doesn't like `battle::Service`
-    // in this line.
-    service: Service,
+    #[rust(Dragonfly::new())]
+    dragonfly: Dragonfly,
 
     #[rust]
     sheet: Option<battle::Sheet>,
@@ -117,7 +117,21 @@ pub struct BattleScreen {
 
 impl LiveHook for BattleScreen {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.service.restore_sheet();
+        self.dragonfly.spawn(|df| {
+            let sheet = battle::restore_sheet_blocking();
+            df.run(move |s: &mut Self, cx| {
+                match sheet {
+                    Ok(sheet) => {
+                        s.sheet = Some(sheet);
+                        s.show_frame(s.round_ref().widget_uid());
+                    }
+                    Err(_) => {
+                        s.show_frame(s.opening_ref().widget_uid());
+                    }
+                }
+                s.redraw(cx);
+            });
+        });
     }
 }
 
@@ -135,30 +149,11 @@ impl Widget for BattleScreen {
 impl WidgetMatchEvent for BattleScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.opening_ref().submitted(actions) {
-            self.handle_opening_submitted(cx);
+            self.handle_opening_submitted();
         }
-
-        if let Some(_) = self.service.restore_sheet_failed(actions) {
-            self.handle_restore_sheet_failure(cx);
-        }
-
-        if let Some(error) = self.service.download_sheet_failed(actions) {
-            self.handle_download_sheet_failure(cx, error.to_string());
-        }
-
-        // TODO: Handle persistence ok.
-        // TODO: Handle persistence error.
 
         if let Some(weight) = self.vote_ref().voted(actions) {
             self.handle_voted(cx, weight);
-        }
-
-        if let Some(sheet) = self.service.battle_sheet_downloaded(actions).cloned() {
-            self.handle_battle_sheet_downloaded(cx, sheet);
-        }
-
-        if self.service.battle_sheet_sent(actions) {
-            self.handle_battle_sheet_sent(cx);
         }
 
         if self.failure_ref().retried(actions) {
@@ -168,6 +163,9 @@ impl WidgetMatchEvent for BattleScreen {
         if self.ending_ref().ended(actions) {
             self.handle_ended(cx);
         }
+
+        // TODO: Handle persistence ok.
+        // TODO: Handle persistence error.
     }
 }
 
@@ -213,6 +211,41 @@ impl BattleScreen {
 // event handlers
 impl BattleScreen {
     fn handle_round_updated(&mut self, cx: &mut Cx) {
+        let sheet = self.sheet.clone().unwrap();
+        self.dragonfly.spawn(move |df| {
+            if let Err(error) = battle::save_sheet_blocking(&sheet) {
+                df.run(move |s: &mut Self, cx| {
+                    s.failure_ref().set_message(&error.to_string());
+                    s.show_frame(s.failure_ref().widget_uid());
+                    // TODO: Handle retry button.
+                    s.redraw(cx);
+                });
+
+                return;
+            }
+
+            if let Some(index) = sheet.current_round_index() {
+                let round = sheet.current_round().unwrap();
+
+                df.run(move |s: &mut Self, cx| {
+                    s.left_messages_ref()
+                        .set_messages(round.chats[0].messages.clone());
+
+                    s.right_messages_ref()
+                        .set_messages(round.chats[1].messages.clone());
+
+                    s.left_messages_ref().scroll_to_bottom(cx);
+                    s.right_messages_ref().scroll_to_bottom(cx);
+
+                    let rounds_count = sheet.rounds.len();
+                    s.counter_ref()
+                        .set_text(&format!("{} / {}", index + 1, rounds_count));
+                    s.redraw(cx);
+                });
+            } else {
+            }
+        });
+
         // TODO: Address possible concurrency issues and maybe move form here.
         if let Some(sheet) = self.sheet.as_ref() {
             self.service.save_sheet(sheet.clone());
@@ -247,13 +280,6 @@ impl BattleScreen {
         self.redraw(cx);
     }
 
-    fn handle_battle_sheet_downloaded(&mut self, cx: &mut Cx, sheet: battle::Sheet) {
-        self.sheet = Some(sheet);
-        self.show_frame(self.round_ref().widget_uid());
-        self.handle_round_updated(cx);
-        self.redraw(cx);
-    }
-
     fn handle_voted(&mut self, cx: &mut Cx, weight: i8) {
         if let Some(round) = self.current_round_mut() {
             round.weight = Some(weight);
@@ -262,22 +288,24 @@ impl BattleScreen {
         }
     }
 
-    fn handle_opening_submitted(&mut self, cx: &mut Cx) {
+    fn handle_opening_submitted(&mut self) {
         let code = self.opening_ref().code();
-        self.service.download_sheet(code);
-        self.show_frame(self.loading_ref().widget_uid());
-        self.redraw(cx);
-    }
-
-    fn handle_download_sheet_failure(&mut self, cx: &mut Cx, error: String) {
-        self.failure_ref().set_message(&error);
-        self.show_frame(self.failure_ref().widget_uid());
-        self.redraw(cx);
-    }
-
-    fn handle_restore_sheet_failure(&mut self, cx: &mut Cx) {
-        self.show_frame(self.opening_ref().widget_uid());
-        self.redraw(cx);
+        self.dragonfly.spawn(move |df| {
+            let sheet = battle::download_sheet_blocking(code);
+            df.run(move |s: &mut Self, cx| {
+                match sheet {
+                    Ok(sheet) => {
+                        s.sheet = Some(sheet);
+                        s.show_frame(s.round_ref().widget_uid());
+                    }
+                    Err(error) => {
+                        s.failure_ref().set_message(&error.to_string());
+                        s.show_frame(s.failure_ref().widget_uid());
+                    }
+                }
+                s.redraw(cx);
+            });
+        });
     }
 
     fn handle_retry(&mut self, cx: &mut Cx) {
@@ -296,25 +324,6 @@ impl BattleScreen {
 
 // other stuff
 impl BattleScreen {
-    fn current_round_index(&self) -> Option<usize> {
-        self.sheet
-            .as_ref()
-            .map(|s| s.rounds.iter().position(|r| r.weight.is_none()))
-            .flatten()
-    }
-
-    fn current_round(&self) -> Option<&battle::Round> {
-        self.current_round_index()
-            .map(|i| self.sheet.as_ref().map(|s| &s.rounds[i]))
-            .flatten()
-    }
-
-    fn current_round_mut(&mut self) -> Option<&mut battle::Round> {
-        self.current_round_index()
-            .map(|i| self.sheet.as_mut().map(|s| &mut s.rounds[i]))
-            .flatten()
-    }
-
     fn show_frame(&self, uid: WidgetUid) {
         self.loading_ref()
             .set_visible(self.loading_ref().widget_uid() == uid);
