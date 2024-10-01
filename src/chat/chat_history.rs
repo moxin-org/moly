@@ -2,7 +2,7 @@ use super::agent_button::AgentButtonWidgetRefExt;
 use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
 use crate::data::store::Store;
 use makepad_widgets::*;
-use moxin_mae::MaeBackend;
+use moly_mofa::MofaBackend;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -100,7 +100,7 @@ impl Widget for ChatHistory {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let agents = MaeBackend::available_agents();
+        let agents = MofaBackend::available_agents();
         let mut chat_ids = store
             .chats
             .saved_chats

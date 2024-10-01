@@ -8,8 +8,7 @@ use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
 use moly_backend::Backend;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
-use moxin_mae::{MaeAgent, MaeBackend};
-use std::collections::HashMap;
+use moly_mofa::{MofaAgent, MofaBackend};
 use std::rc::Rc;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
@@ -47,7 +46,7 @@ pub struct Store {
     /// communicate with the backend thread.
     pub backend: Rc<Backend>,
 
-    pub mae_backend: Rc<MaeBackend>,
+    pub mae_backend: Rc<MofaBackend>,
 
     pub search: Search,
     pub downloads: Downloads,
@@ -63,7 +62,7 @@ impl Default for Store {
 
 impl Store {
     pub fn new() -> Self {
-        let mut preferences = Preferences::load();
+        let preferences = Preferences::load();
         let app_data_dir = project_dirs().data_dir();
 
         let backend = Rc::new(Backend::new(
@@ -72,7 +71,7 @@ impl Store {
             DEFAULT_MAX_DOWNLOAD_THREADS,
         ));
 
-        let mae_backend = Rc::new(MaeBackend::new());
+        let mae_backend = Rc::new(MofaBackend::new());
 
         let mut store = Self {
             backend: backend.clone(),
@@ -162,13 +161,13 @@ impl Store {
         }
     }
 
-    pub fn agents_list(&self) -> Vec<MaeAgent> {
-        MaeBackend::available_agents()
+    pub fn agents_list(&self) -> Vec<MofaAgent> {
+        MofaBackend::available_agents()
     }
 
     pub fn send_agent_message(
         &self,
-        agent: MaeAgent,
+        agent: MofaAgent,
         prompt: String,
         regenerate_from: Option<usize>,
     ) {

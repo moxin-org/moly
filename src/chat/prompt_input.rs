@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_mae::{MaeAgent, MaeBackend};
+use moly_mofa::{MofaAgent, MofaBackend};
 
 use crate::shared::{actions::ChatAction, list::ListWidgetExt};
 
@@ -10,7 +10,7 @@ use super::{
 
 #[derive(Debug, DefaultNone, Clone)]
 pub enum PromptInputAction {
-    AgentSelected(MaeAgent),
+    AgentSelected(MofaAgent),
     None,
 }
 
@@ -235,7 +235,7 @@ pub struct PromptInput {
     prompt_pending_focus: bool,
 
     #[rust]
-    pub agent_selected: Option<MaeAgent>,
+    pub agent_selected: Option<MofaAgent>,
 }
 
 impl Widget for PromptInput {
@@ -354,7 +354,7 @@ impl PromptInput {
         self.prev_prompt = current;
     }
 
-    fn on_agent_selected(&mut self, agent: &MaeAgent) {
+    fn on_agent_selected(&mut self, agent: &MofaAgent) {
         self.agent_selected = Some(*agent);
         self.hide_agent_autocomplete();
         self.view(id!(selected_agent_bubble)).set_visible(true);
@@ -400,7 +400,7 @@ impl PromptInput {
     }
 
     fn on_agent_search_submit(&mut self, current: String) {
-        let agents = MaeBackend::available_agents();
+        let agents = MofaBackend::available_agents();
         let agents = agents.iter();
         if let Some(agent) = filter_agents(agents, &current).nth(self.agents_keyboard_focus_index) {
             self.on_agent_selected(agent);
@@ -410,7 +410,7 @@ impl PromptInput {
     fn compute_agent_list(&mut self, cx: &mut Cx) {
         let search = self.text_input(id!(agent_search_input)).text();
         let list = self.list(id!(agent_autocomplete.list));
-        let agents = MaeBackend::available_agents();
+        let agents = MofaBackend::available_agents();
         let agents = filter_agents(agents.iter(), &search);
 
         list.compute_from(agents.enumerate(), |(idx, agent)| {
@@ -502,10 +502,10 @@ impl PromptInputRef {
     }
 }
 
-fn filter_agents<'a, A: Iterator<Item = &'a MaeAgent>>(
+fn filter_agents<'a, A: Iterator<Item = &'a MofaAgent>>(
     agents: A,
     search: &str,
-) -> impl Iterator<Item = &'a MaeAgent> {
+) -> impl Iterator<Item = &'a MofaAgent> {
     let terms = search
         .split_whitespace()
         .map(|s| s.to_ascii_lowercase())

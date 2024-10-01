@@ -1804,8 +1804,8 @@ dependencies = [
  "makepad-widgets",
  "moly-backend",
  "moly-fake-backend",
+ "moly-mofa",
  "moly-protocol",
- "moxin-mae",
  "rand",
  "rfd",
  "robius-open",
@@ -1845,6 +1845,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "moly-mofa"
+version = "0.1.0"
+dependencies = [
+ "eyre",
+ "moly-protocol",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "moly-protocol"
 version = "0.1.0"
 dependencies = [
@@ -1860,18 +1872,6 @@ dependencies = [
  "directories",
  "powershell_script",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "moxin-mae"
-version = "0.1.0"
-dependencies = [
- "eyre",
- "moly-protocol",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]

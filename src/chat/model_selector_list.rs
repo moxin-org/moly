@@ -3,7 +3,7 @@ use crate::{
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
-use moxin_mae::MaeBackend;
+use moly_mofa::MofaBackend;
 use moly_protocol::data::DownloadedFile;
 use std::collections::HashMap;
 
@@ -150,7 +150,7 @@ impl ModelSelectorList {
             total_height += separator_widget.as_view().area().rect(cx).size.y;
         }
 
-        let agents = MaeBackend::available_agents();
+        let agents = MofaBackend::available_agents();
         for i in 0..agents.len() {
             let item_id = LiveId((models_count + 1 + i) as u64).into();
             let item_widget = self.items.get_or_insert(cx, item_id, |cx| {

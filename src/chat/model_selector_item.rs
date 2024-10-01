@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_mae::MaeAgent;
+use moly_mofa::MofaAgent;
 use moly_protocol::data::DownloadedFile;
 
 use super::shared::ChatAgentAvatarWidgetExt;
@@ -70,14 +70,14 @@ live_design! {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelSelectorAction {
     ModelSelected(DownloadedFile),
-    AgentSelected(MaeAgent),
+    AgentSelected(MofaAgent),
     None,
 }
 
 #[derive(Clone, DefaultNone, Debug)]
 enum ModelSelectorEntity {
     Model(DownloadedFile),
-    Agent(MaeAgent),
+    Agent(MofaAgent),
     None
 }
 
@@ -125,7 +125,7 @@ impl ModelSelectorItemRef {
         inner.entity = ModelSelectorEntity::Model(model);
     }
 
-    pub fn set_agent(&mut self, agent: MaeAgent) {
+    pub fn set_agent(&mut self, agent: MofaAgent) {
         let Some(mut inner) = self.borrow_mut() else { return };
         inner.entity = ModelSelectorEntity::Agent(agent);
 

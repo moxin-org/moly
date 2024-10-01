@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_mae::MaeAgent;
+use moly_mofa::MofaAgent;
 
 use crate::shared::actions::{ChatAction, ChatHandler};
 
@@ -103,7 +103,7 @@ pub struct AgentButton {
     view: View,
 
     #[rust]
-    agent: Option<MaeAgent>,
+    agent: Option<MofaAgent>,
 
     #[live(false)]
     create_new_chat: bool,
@@ -148,7 +148,7 @@ impl WidgetMatchEvent for AgentButton {
 }
 
 impl AgentButton {
-    pub fn set_agent(&mut self, agent: &MaeAgent, show_description: bool) {
+    pub fn set_agent(&mut self, agent: &MofaAgent, show_description: bool) {
         self.visible = true;
         self.label(id!(caption)).set_text(&agent.name());
         self.chat_agent_avatar(id!(agent_avatar)).set_agent(agent);
@@ -164,7 +164,7 @@ impl AgentButton {
 }
 
 impl AgentButtonRef {
-    pub fn set_agent(&mut self, agent: &MaeAgent, show_description: bool) {
+    pub fn set_agent(&mut self, agent: &MofaAgent, show_description: bool) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_agent(agent, show_description);
         }

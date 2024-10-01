@@ -2,7 +2,7 @@ use crate::chat::agent_button::AgentButtonWidgetRefExt;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use makepad_widgets::*;
-use moxin_mae::{MaeAgent, MaeBackend};
+use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::Model;
 
 live_design! {
@@ -152,11 +152,11 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let agents = MaeBackend::available_agents();
+        let agents = MofaBackend::available_agents();
 
         enum Item<'a> {
             AgentRow {
-                agents: &'a [MaeAgent],
+                agents: &'a [MofaAgent],
                 margin_bottom: f32,
             },
             Header(&'static str),

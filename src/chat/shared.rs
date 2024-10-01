@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_mae::MaeAgent;
+use moly_mofa::MofaAgent;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -81,11 +81,11 @@ impl Widget for ChatAgentAvatar {
 }
 
 impl ChatAgentAvatar {
-    pub fn set_agent(&mut self, agent: &MaeAgent) {
+    pub fn set_agent(&mut self, agent: &MofaAgent) {
         let dep = match agent {
-            MaeAgent::Reasoner => self.reasoner_agent_icon.clone(),
-            MaeAgent::ResearchScholar => self.research_scholar_icon.clone(),
-            MaeAgent::SearchAssistant => self.search_assistant_icon.clone(),
+            MofaAgent::Reasoner => self.reasoner_agent_icon.clone(),
+            MofaAgent::ResearchScholar => self.research_scholar_icon.clone(),
+            MofaAgent::SearchAssistant => self.search_assistant_icon.clone(),
         };
 
         self.pending_image_update = Some(dep);
@@ -93,7 +93,7 @@ impl ChatAgentAvatar {
 }
 
 impl ChatAgentAvatarRef {
-    pub fn set_agent(&mut self, agent: &MaeAgent) {
+    pub fn set_agent(&mut self, agent: &MofaAgent) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_agent(agent);
         }

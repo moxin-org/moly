@@ -4,7 +4,7 @@ use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
-use moxin_mae::MaeAgent;
+use moly_mofa::MofaAgent;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -434,7 +434,7 @@ impl ChatLineRef {
         inner.label(id!(avatar_label)).set_text(text);
     }
 
-    pub fn set_model_avatar(&mut self, agent: &MaeAgent) {
+    pub fn set_model_avatar(&mut self, agent: &MofaAgent) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };

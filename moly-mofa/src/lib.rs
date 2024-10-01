@@ -1,109 +1,106 @@
 use moly_protocol::open_ai::{MessageData, Role, UsageData};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{
-    collections::HashMap,
-    sync::mpsc::{self, channel},
-};
+use std::sync::mpsc::{self, channel};
 use tokio::task::JoinHandle;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MaeResponseReasoner {
+pub struct MofaResponseReasoner {
     pub task: String,
     pub result: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MaeResponseResearchScholar {
+pub struct MofaResponseResearchScholar {
     pub task: String,
     pub suggestion: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MaeResponseSearchAssistantResource {
+pub struct MofaResponseSearchAssistantResource {
     pub name: String,
     pub url: String,
     pub snippet: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MaeResponseSearchAssistantResult {
+pub struct MofaResponseSearchAssistantResult {
     pub web_search_results: String,
     #[serde(deserialize_with = "parse_web_search_resource")]
-    pub web_search_resource: Vec<MaeResponseSearchAssistantResource>,
+    pub web_search_resource: Vec<MofaResponseSearchAssistantResource>,
 }
 
 fn parse_web_search_resource<'de, D>(
     deserializer: D,
-) -> Result<Vec<MaeResponseSearchAssistantResource>, D::Error>
+) -> Result<Vec<MofaResponseSearchAssistantResource>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    let resources: Vec<MaeResponseSearchAssistantResource> =
+    let resources: Vec<MofaResponseSearchAssistantResource> =
         serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
 
     Ok(resources)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MaeResponseSearchAssistant {
+pub struct MofaResponseSearchAssistant {
     pub task: String,
-    pub result: MaeResponseSearchAssistantResult,
+    pub result: MofaResponseSearchAssistantResult,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-pub enum MaeAgent {
+pub enum MofaAgent {
     Reasoner,
     SearchAssistant,
     ResearchScholar,
 }
 
-pub enum MaeAgentWorkflow {
+pub enum MofaAgentWorkflow {
     BasicReasoner(String),
     ResearchScholar,
 }
 
-impl MaeAgent {
+impl MofaAgent {
     pub fn name(&self) -> String {
         match self {
-            MaeAgent::Reasoner => "Reasoner Agent".to_string(),
-            MaeAgent::SearchAssistant => "Search Assistant".to_string(),
-            MaeAgent::ResearchScholar => "Research Scholar".to_string(),
+            MofaAgent::Reasoner => "Reasoner Agent".to_string(),
+            MofaAgent::SearchAssistant => "Search Assistant".to_string(),
+            MofaAgent::ResearchScholar => "Research Scholar".to_string(),
         }
     }
 
     pub fn short_description(&self) -> String {
         match self {
-            MaeAgent::Reasoner => "Helps to find good questions about any topic".to_string(),
-            MaeAgent::SearchAssistant => {
+            MofaAgent::Reasoner => "Helps to find good questions about any topic".to_string(),
+            MofaAgent::SearchAssistant => {
                 "Your assistant to find information on the web".to_string()
             }
-            MaeAgent::ResearchScholar => "Expert in academic research".to_string(),
+            MofaAgent::ResearchScholar => "Expert in academic research".to_string(),
         }
     }
 }
 
-pub enum MaeAgentCommand {
-    SendTask(String, MaeAgent, mpsc::Sender<ChatResponse>),
+pub enum MofaAgentCommand {
+    SendTask(String, MofaAgent, mpsc::Sender<ChatResponse>),
     CancelTask,
 }
 
-pub struct MaeBackend {
-    pub command_sender: mpsc::Sender<MaeAgentCommand>,
+pub struct MofaBackend {
+    pub command_sender: mpsc::Sender<MofaAgentCommand>,
 }
 
-impl Default for MaeBackend {
+impl Default for MofaBackend {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MaeBackend {
-    pub fn available_agents() -> Vec<MaeAgent> {
+impl MofaBackend {
+    pub fn available_agents() -> Vec<MofaAgent> {
         vec![
-            MaeAgent::Reasoner,
-            MaeAgent::SearchAssistant,
-            MaeAgent::ResearchScholar,
+            MofaAgent::Reasoner,
+            MofaAgent::SearchAssistant,
+            MofaAgent::ResearchScholar,
         ]
     }
 
@@ -122,14 +119,14 @@ impl MaeBackend {
         backend
     }
 
-    pub fn main_loop(command_receiver: mpsc::Receiver<MaeAgentCommand>) {
+    pub fn main_loop(command_receiver: mpsc::Receiver<MofaAgentCommand>) {
         println!("MoFa backend started");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 
         loop {
             match command_receiver.recv().unwrap() {
-                MaeAgentCommand::SendTask(task, _agent, tx) => {
+                MofaAgentCommand::SendTask(task, _agent, tx) => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
@@ -162,7 +159,7 @@ impl MaeBackend {
                         }
                     }));
                 }
-                MaeAgentCommand::CancelTask => {
+                MofaAgentCommand::CancelTask => {
                     dbg!("Canceling task");
                     if let Some(handle) = current_request.take() {
                         handle.abort();
@@ -182,7 +179,7 @@ impl MaeBackend {
             loop {
                 // Receive command from frontend
                 match command_receiver.recv().unwrap() {
-                    MaeAgentCommand::SendTask(_task, _agent, tx) => {
+                    MofaAgentCommand::SendTask(_task, _agent, tx) => {
                         let data = ChatResponseData {
                             id: "fake".to_string(),
                             choices: vec![ChoiceData {

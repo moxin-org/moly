@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
 use moly_backend::Backend;
-use moxin_mae::MaeAgentCommand::{self, SendTask};
-use moxin_mae::{MaeAgent, MaeBackend};
+use moly_mofa::MofaAgentCommand::{self, SendTask};
+use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::{File, FileID};
 use moly_protocol::open_ai::*;
 use moly_protocol::protocol::Command;
@@ -21,14 +21,14 @@ pub type ChatID = u128;
 pub enum ChatMessageAction {
     ModelAppendDelta(String),
     ModelStreamingDone,
-    MaeAgentResult(String, MaeAgent),
-    MaeAgentCancelled,
+    MofaAgentResult(String, MofaAgent),
+    MofaAgentCancelled,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ChatEntity {
     ModelFile(FileID),
-    Agent(MaeAgent),
+    Agent(MofaAgent),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -391,9 +391,9 @@ impl Chat {
 
     pub fn send_message_to_agent(
         &mut self,
-        agent: MaeAgent,
+        agent: MofaAgent,
         prompt: String,
-        mae_backend: &MaeBackend,
+        mae_backend: &MofaBackend,
     ) {
         let (tx, rx) = mpsc::channel();
         mae_backend
@@ -422,8 +422,8 @@ impl Chat {
         let store_chat_tx = self.messages_update_sender.clone();
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
-                Ok(moxin_mae::ChatResponse::ChatFinalResponseData(data)) => {
-                    let _ = store_chat_tx.send(ChatMessageAction::MaeAgentResult(
+                Ok(moly_mofa::ChatResponse::ChatFinalResponseData(data)) => {
+                    let _ = store_chat_tx.send(ChatMessageAction::MofaAgentResult(
                         data.choices[0].message.content.clone(),
                         agent.clone(),
                     ));
@@ -432,7 +432,7 @@ impl Chat {
                 }
                 Err(e) => {
                     println!("Error receiving response from agent: {:?}", e);
-                    let _ = store_chat_tx.send(ChatMessageAction::MaeAgentCancelled);
+                    let _ = store_chat_tx.send(ChatMessageAction::MofaAgentCancelled);
 
                     SignalToUI::set_ui_signal();
                     break '_loop;
@@ -462,12 +462,12 @@ impl Chat {
         }
     }
 
-    pub fn cancel_agent_interaction(&mut self, mae_backend: &MaeBackend) {
+    pub fn cancel_agent_interaction(&mut self, mae_backend: &MofaBackend) {
         if matches!(self.state, ChatState::Idle | ChatState::Cancelled(_)) {
             return;
         }
 
-        let cmd = MaeAgentCommand::CancelTask;
+        let cmd = MofaAgentCommand::CancelTask;
         mae_backend.command_sender.send(cmd).unwrap();
 
         self.state = ChatState::Cancelled(true);
@@ -489,12 +489,12 @@ impl Chat {
                     }
                     self.state = ChatState::Idle;
                 }
-                ChatMessageAction::MaeAgentResult(response, _agent) => {
+                ChatMessageAction::MofaAgentResult(response, _agent) => {
                     let last = self.messages.last_mut().unwrap();
                     last.content = response;
                     self.state = ChatState::Idle;
                 }
-                ChatMessageAction::MaeAgentCancelled => {
+                ChatMessageAction::MofaAgentCancelled => {
                     self.state = ChatState::Idle;
                     // Remove the last message sent by the user
                     self.messages.pop();

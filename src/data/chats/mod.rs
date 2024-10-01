@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use chat::{Chat, ChatEntity, ChatID};
 use model_loader::ModelLoader;
 use moly_backend::Backend;
-use moxin_mae::{MaeAgent, MaeBackend};
+use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
 use std::fs;
@@ -16,7 +16,7 @@ use super::filesystem::setup_chats_folder;
 
 pub struct Chats {
     pub backend: Rc<Backend>,
-    pub mae_backend: Rc<MaeBackend>,
+    pub mae_backend: Rc<MofaBackend>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub loaded_model: Option<File>,
@@ -27,7 +27,7 @@ pub struct Chats {
 }
 
 impl Chats {
-    pub fn new(backend: Rc<Backend>, mae_backend: Rc<MaeBackend>) -> Self {
+    pub fn new(backend: Rc<Backend>, mae_backend: Rc<MofaBackend>) -> Self {
         Self {
             backend,
             mae_backend,
@@ -170,7 +170,7 @@ impl Chats {
         self.saved_chats.push(new_chat);
     }
 
-    pub fn create_empty_chat_with_agent(&mut self, agent: MaeAgent) {
+    pub fn create_empty_chat_with_agent(&mut self, agent: MofaAgent) {
         self.create_empty_chat();
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
             chat.associated_entity = Some(ChatEntity::Agent(agent));
