@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Result};
 use makepad_widgets::SignalToUI;
-use moxin_backend::Backend;
+use moly_backend::Backend;
 use moxin_mae::MaeAgentCommand::{self, SendTask};
 use moxin_mae::{MaeAgent, MaeBackend};
-use moxin_protocol::data::{File, FileID};
-use moxin_protocol::open_ai::*;
-use moxin_protocol::protocol::Command;
+use moly_protocol::data::{File, FileID};
+use moly_protocol::open_ai::*;
+use moly_protocol::protocol::Command;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, channel, Receiver, Sender};

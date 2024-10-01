@@ -7,7 +7,7 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
-    VoteButton = <MoxinButton> {
+    VoteButton = <MolyButton> {
         height: 55,
         width: 55,
         draw_bg: {

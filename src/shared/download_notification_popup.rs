@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::{File, FileID};
+use moly_protocol::data::{File, FileID};
 
 use crate::shared::actions::DownloadAction;
 
@@ -9,7 +9,7 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::resource_imports::*;
-    import crate::shared::widgets::MoxinButton;
+    import crate::shared::widgets::MolyButton;
     import crate::landing::shared::*;
     import makepad_draw::shader::std::*;
 
@@ -90,7 +90,7 @@ live_design! {
         }
     }
 
-    PopupCloseButton = <MoxinButton> {
+    PopupCloseButton = <MolyButton> {
         width: Fit,
         height: Fit,
 

@@ -28,10 +28,10 @@ live_design! {
             }
             text: "Welcome to the battle!"
         }
-        input = <MoxinTextInput> {
+        input = <MolyTextInput> {
             empty_message: "Enter your code...",
         }
-        button = <MoxinButton> {
+        button = <MolyButton> {
             text: "Start",
             draw_bg: {
                 color: #000,

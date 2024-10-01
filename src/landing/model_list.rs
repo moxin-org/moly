@@ -3,7 +3,7 @@ use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use makepad_widgets::*;
 use moxin_mae::{MaeAgent, MaeBackend};
-use moxin_protocol::data::Model;
+use moly_protocol::data::Model;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -186,7 +186,7 @@ impl Widget for ModelList {
                     if item_id < items.len() {
                         match items[item_id] {
                             Item::Header(text) => {
-                                let item = list.item(cx, item_id, live_id!(Header)).unwrap();
+                                let item = list.item(cx, item_id, live_id!(Header));
                                 item.set_text(text);
                                 item.draw_all(cx, &mut Scope::empty());
                             }
@@ -194,7 +194,7 @@ impl Widget for ModelList {
                                 agents,
                                 margin_bottom,
                             } => {
-                                let row = list.item(cx, item_id, live_id!(AgentRow)).unwrap();
+                                let row = list.item(cx, item_id, live_id!(AgentRow));
 
                                 row.apply_over(
                                     cx,
@@ -222,7 +222,7 @@ impl Widget for ModelList {
                                 row.draw_all(cx, &mut Scope::empty());
                             }
                             Item::Model(model) => {
-                                let item = list.item(cx, item_id, live_id!(Model)).unwrap();
+                                let item = list.item(cx, item_id, live_id!(Model));
                                 let mut model_with_download_info =
                                     store.add_download_info_to_model(model);
                                 item.draw_all(

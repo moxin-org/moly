@@ -6,9 +6,9 @@ use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{DefaultNone, SignalToUI};
-use moxin_backend::Backend;
+use moly_backend::Backend;
 use moxin_mae::{MaeAgent, MaeBackend};
-use moxin_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
+use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::collections::HashMap;
 use std::rc::Rc;
 

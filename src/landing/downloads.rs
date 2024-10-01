@@ -1,6 +1,6 @@
 use crate::data::store::Store;
 use makepad_widgets::*;
-use moxin_protocol::data::PendingDownloadsStatus;
+use moly_protocol::data::PendingDownloadsStatus;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -14,7 +14,7 @@ live_design! {
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
 
-    CollapseButton = <MoxinButton> {
+    CollapseButton = <MolyButton> {
         width: Fit, height: Fit
         draw_icon: {
             svg_file: (ICON_COLLAPSE)
@@ -158,7 +158,12 @@ impl Widget for Downloads {
 
         let download_count = pending_downloads
             .iter()
-            .filter(|d| matches!(d.status, PendingDownloadsStatus::Downloading | PendingDownloadsStatus::Initializing))
+            .filter(|d| {
+                matches!(
+                    d.status,
+                    PendingDownloadsStatus::Downloading | PendingDownloadsStatus::Initializing
+                )
+            })
             .count();
         self.label(id!(downloading_count))
             .set_text(&format!("{} downloading", download_count));
@@ -176,7 +181,8 @@ impl Widget for Downloads {
             .count();
 
         if failed_count > 0 {
-            self.label(id!(failed_count)).set_text(&format!("{} failed", failed_count));
+            self.label(id!(failed_count))
+                .set_text(&format!("{} failed", failed_count));
         } else {
             self.label(id!(failed_count)).set_text("");
         }
@@ -185,7 +191,7 @@ impl Widget for Downloads {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, downloads_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
-                    let item = list.item(cx, item_id, live_id!(DownloadItem)).unwrap();
+                    let item = list.item(cx, item_id, live_id!(DownloadItem));
 
                     if item_id < downloads_count {
                         let download = &pending_downloads[item_id];
@@ -220,8 +226,8 @@ impl Downloads {
 
     fn set_collapse_button_open(&mut self, cx: &mut Cx, is_open: bool) {
         let rotation_angle = if is_open { 0.0 } else { 180.0 };
-        self.button(id!(collapse))
-        .apply_over(cx, 
+        self.button(id!(collapse)).apply_over(
+            cx,
             live! {
                 draw_icon: { rotation_angle: (rotation_angle) }
             },

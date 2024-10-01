@@ -1,6 +1,6 @@
 use makepad_widgets::DefaultNone;
 use moxin_mae::MaeAgent;
-use moxin_protocol::data::FileID;
+use moly_protocol::data::FileID;
 
 #[derive(Clone, Debug)]
 pub enum ChatHandler {

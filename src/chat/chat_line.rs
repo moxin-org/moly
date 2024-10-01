@@ -21,7 +21,7 @@ live_design! {
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
-    ChatLineEditButton = <MoxinButton> {
+    ChatLineEditButton = <MolyButton> {
         width: 56,
         height: 31,
         spacing: 6,
@@ -65,6 +65,7 @@ live_design! {
         padding: 0,
         line_spacing: (LINE_SPACING),
         paragraph_spacing: 20.0,
+        font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
         draw_normal: {
@@ -97,7 +98,7 @@ live_design! {
         }
     }
 
-    EditTextInput = <MoxinTextInput> {
+    EditTextInput = <MolyTextInput> {
         width: Fill,
         height: Fit,
         padding: 20,
@@ -198,7 +199,7 @@ live_design! {
         }
     }
 
-    ChatLineActionButton = <MoxinButton> {
+    ChatLineActionButton = <MolyButton> {
         width: 14
         height: 14
         draw_icon: {

@@ -84,7 +84,7 @@ impl Widget for Messages {
                         Sender::Agent => live_id!(AgentLine),
                     };
 
-                    let item = list.item(cx, index, template).unwrap();
+                    let item = list.item(cx, index, template);
                     item.label(id!(text)).set_text(&message.body);
                     item.draw_all(cx, scope);
                 }

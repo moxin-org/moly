@@ -1,0 +1,22 @@
+[package]
+name = "moly-runner"
+version = "0.1.0"
+edition = "2021"
+description = "A companion app that runs before Moly to handle wasmedge configuration and more"
+
+[dependencies]
+directories = "5.0.1"
+
+[target.'cfg(windows)'.dependencies]
+## For running a powershell script, which downloads and extracts/installs WasmEdge
+powershell_script = "1.1.0"
+## For showing a dialog box modal when the CPU is unsupported.
+windows-sys = { version = "0.52", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
+
+[[bin]]
+name = "moly"
+path = "src/main.rs"
+
+[features]
+## Enable this feature when you are packaging Moly into a macOS app bundle.
+macos_bundle = []

@@ -1,11 +1,10 @@
-use moxin_protocol::open_ai::{MessageData, Role, UsageData};
+use moly_protocol::open_ai::{MessageData, Role, UsageData};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
     sync::mpsc::{self, channel},
 };
 use tokio::task::JoinHandle;
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MaeResponseReasoner {
@@ -152,7 +151,8 @@ impl MaeBackend {
                     let request_body = serde_json::to_string(&data).unwrap();
                     let client = reqwest::Client::new();
                     current_request = Some(rt.spawn(async move {
-                        let resp = client.post("http://localhost:9901/api/chat/completions")
+                        let resp = client
+                            .post("http://localhost:9901/api/chat/completions")
                             .json(&data)
                             .send()
                             .await
@@ -169,7 +169,7 @@ impl MaeBackend {
                             }
                         }
                     }));
-                },
+                }
                 MaeAgentCommand::CancelTask => {
                     dbg!("Canceling task");
                     if let Some(handle) = current_request.take() {
@@ -213,7 +213,7 @@ impl MaeBackend {
                             object: "".to_string(),
                         };
                         let _ = tx.send(ChatResponse::ChatFinalResponseData(data));
-                    },
+                    }
                     _ => (),
                 }
             }
@@ -266,7 +266,6 @@ fn response_object() -> String {
     "chat.completion".to_string()
 }
 
-// TODO remove this, use the one defined in moxin-protocol when possible
 #[derive(Clone, Debug)]
 pub enum ChatResponse {
     // https://platform.openai.com/docs/api-reference/chat/object
@@ -275,9 +274,8 @@ pub enum ChatResponse {
 
 // ====
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ChatRequest {
     model: String,
-    messages: Vec<MessageData>, 
+    messages: Vec<MessageData>,
 }

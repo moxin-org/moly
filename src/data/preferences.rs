@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use moxin_protocol::data::FileID;
+use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 
 use super::filesystem::{

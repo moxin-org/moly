@@ -4,7 +4,7 @@ use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
 use crate::shared::{actions::ChatAction, utils::human_readable_name};
 use makepad_widgets::*;
-use moxin_protocol::data::{DownloadedFile, FileID};
+use moly_protocol::data::{DownloadedFile, FileID};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -21,7 +21,7 @@ live_design! {
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
     MODEL_CTA_COLOR = #127487
 
-    DownloadedFilesRowButton = <MoxinButton> {
+    DownloadedFilesRowButton = <MolyButton> {
         height: 40
 
         draw_bg: {

@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::DownloadedFile;
+use moly_protocol::data::DownloadedFile;
 
 use crate::data::store::Store;
 
@@ -123,13 +123,13 @@ impl Widget for DownloadedFilesTable {
                         if item_id == 0 {
                             // Draw header row
                             template = live_id!(HeaderRow);
-                            let item = list.item(cx, item_id, template).unwrap();
+                            let item = list.item(cx, item_id, template);
                             item.draw_all(cx, scope);
                             continue;
                         }
 
                         template = live_id!(ItemRow);
-                        let item = list.item(cx, item_id, template).unwrap();
+                        let item = list.item(cx, item_id, template);
 
                         let file_data = &self.current_results[item_id - 1];
 

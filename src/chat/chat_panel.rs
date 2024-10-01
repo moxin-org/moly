@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moxin_protocol::data::FileID;
+use moly_protocol::data::FileID;
 use std::cell::{Ref, RefCell, RefMut};
 
 use crate::{
@@ -36,7 +36,7 @@ live_design! {
 
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
-    CircleButton = <MoxinButton> {
+    CircleButton = <MolyButton> {
         padding: {right: 4},
         margin: {bottom: 2},
 
@@ -63,27 +63,28 @@ live_design! {
                     }
                     markdown_message_container = {
                         markdown_message = {
+                            font_color: #fff,
                             draw_normal: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_italic: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_bold: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_bold_italic: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_fixed: {
-                                color: (#fff),
+                                color: #fff,
                             }
                             draw_block: {
-                                line_color: (#fff)
-                                sep_color: (#12778a)
-                                quote_bg_color: (#12778a)
-                                quote_fg_color: (#106a7b)
-                                code_color: (#12778a)
+                                line_color: #fff
+                                sep_color: #12778a
+                                quote_bg_color: #12778a
+                                quote_fg_color: #106a7b
+                                code_color: #12778a
                             }
                         }
                     }
@@ -215,7 +216,7 @@ live_design! {
                         }
                         text: "You haven’t downloaded any models yet."
                     }
-                    go_to_discover_button = <MoxinButton> {
+                    go_to_discover_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
 
@@ -894,7 +895,7 @@ impl ChatPanel {
                 let item;
                 let mut chat_line_item;
                 if chat_line_data.is_assistant() {
-                    item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
+                    item = list.item(cx, item_id, live_id!(ModelChatLine));
                     chat_line_item = item.as_chat_line();
 
                     let username = chat_line_data.username.as_ref().map_or("", String::as_str);
@@ -913,7 +914,7 @@ impl ChatPanel {
                         _ => {}
                     }
                 } else {
-                    item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
+                    item = list.item(cx, item_id, live_id!(UserChatLine));
                     chat_line_item = item.as_chat_line();
                     chat_line_item.set_regenerate_button_visible(true);
                 };
@@ -938,7 +939,7 @@ impl ChatPanel {
                 item.draw_all(cx, &mut Scope::empty());
             } else {
                 self.portal_list_end_reached = true;
-                let item = list.item(cx, item_id, live_id!(EndOfChat)).unwrap();
+                let item = list.item(cx, item_id, live_id!(EndOfChat));
                 item.draw_all(cx, &mut Scope::empty());
             }
         }

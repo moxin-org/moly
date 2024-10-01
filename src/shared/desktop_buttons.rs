@@ -7,7 +7,7 @@ live_design! {
 
     // Overrides the dark theme colors of the desktop buttons.
     // This is a temporaty fix until theme system allows for more flexible color overrides.
-    MoxinDesktopButton = <DesktopButton> {
+    MolyDesktopButton = <DesktopButton> {
         draw_bg: {
             instance stroke_color: #5
             instance button_color: #f

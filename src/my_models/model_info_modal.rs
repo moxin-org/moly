@@ -9,10 +9,11 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
-    import crate::shared::widgets::MoxinButton;
+    import crate::shared::widgets::MolyButton;
     import crate::shared::resource_imports::*;
 
-    MoxinHtml = <Html> {
+    MolyHtml = <Html> {
+        font_color: #000,
         draw_fixed: { color: #x0 }
         draw_block: {
             code_color: (#EAECF0)
@@ -59,7 +60,7 @@ live_design! {
 
                 filler_x = <View> {width: Fill, height: Fit}
 
-                close_button = <MoxinButton> {
+                close_button = <MolyButton> {
                     width: Fit,
                     height: Fit,
                     margin: {top: -6}
@@ -89,7 +90,7 @@ live_design! {
                         color: #344054
                     }
                 }
-                path = <MoxinHtml> {
+                path = <MolyHtml> {
                     width: Fill
                     font_size: 10
                     code_layout: { line_spacing: (5.0), padding: 9 }
@@ -102,14 +103,14 @@ live_design! {
                 flow: Down,
                 spacing: 20,
 
-                metadata = <MoxinHtml> {}
+                metadata = <MolyHtml> {}
                 actions = <View> {
                     width: Fill, height: Fit
                     flow: Right,
                     align: {x: 0.0, y: 0.5}
                     spacing: 20
 
-                    copy_button = <MoxinButton> {
+                    copy_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
@@ -136,7 +137,7 @@ live_design! {
                             color: #x0
                         }
                     }
-                    external_link = <MoxinButton> {
+                    external_link = <MolyButton> {
                         width: Fit,
                         height: Fit,
                         padding: {top: 10, bottom: 10, left: 14, right: 14}

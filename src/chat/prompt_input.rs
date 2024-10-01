@@ -28,7 +28,7 @@ live_design! {
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
 
-    CircleButton = <MoxinButton> {
+    CircleButton = <MolyButton> {
         padding: {right: 4},
         margin: {bottom: 2},
 
@@ -82,7 +82,7 @@ live_design! {
                         radius: 5.0
                     }
 
-                    agent_search_input = <MoxinTextInput> {
+                    agent_search_input = <MolyTextInput> {
                         width: Fill,
                         height: Fit,
                         margin: {bottom: 4},
@@ -151,7 +151,7 @@ live_design! {
                             color: #000
                         }
                     }
-                    agent_deselect_button = <MoxinButton> {
+                    agent_deselect_button = <MolyButton> {
                         width: 8,
                         height: 8,
                         padding: 0,
@@ -172,7 +172,7 @@ live_design! {
                     flow: Right,
                     width: Fill,
                     height: Fit,
-                    prompt = <MoxinTextInput> {
+                    prompt = <MolyTextInput> {
                         width: Fill,
                         height: Fit,
 

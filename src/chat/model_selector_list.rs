@@ -4,7 +4,7 @@ use crate::{
 };
 use makepad_widgets::*;
 use moxin_mae::MaeBackend;
-use moxin_protocol::data::DownloadedFile;
+use moly_protocol::data::DownloadedFile;
 use std::collections::HashMap;
 
 use super::model_selector_item::ModelSelectorItemWidgetRefExt;

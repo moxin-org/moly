@@ -26,7 +26,7 @@ live_design! {
         }
     }
 
-    ChatHistory = {{ChatHistory}} <MoxinTogglePanel> {
+    ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
         open_content = {
             <View> {
                 width: Fill,
@@ -61,7 +61,7 @@ live_design! {
             margin: { left: -10 },
             default = {
                 after = {
-                    new_chat_button = <MoxinButton> {
+                    new_chat_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
                         icon_walk: {margin: { left: -6, top: -1 }, width: 21, height: 21},
@@ -122,7 +122,7 @@ impl Widget for ChatHistory {
                 list.set_item_range(cx, 0, items_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
                     if item_id == 0 {
-                        let item = list.item(cx, item_id, live_id!(AgentHeading)).unwrap();
+                        let item = list.item(cx, item_id, live_id!(AgentHeading));
                         item.draw_all(cx, scope);
                         continue;
                     }
@@ -131,7 +131,7 @@ impl Widget for ChatHistory {
 
                     if entity_id < agents_count {
                         let agent = &agents[entity_id];
-                        let item = list.item(cx, item_id, live_id!(Agent)).unwrap();
+                        let item = list.item(cx, item_id, live_id!(Agent));
                         item.as_agent_button().set_agent(agent, false);
                         item.draw_all(cx, scope);
                         continue;
@@ -140,7 +140,7 @@ impl Widget for ChatHistory {
                     let entity_id = entity_id - agents_count;
 
                     if entity_id == 0 {
-                        let item = list.item(cx, item_id, live_id!(ChatsHeading)).unwrap();
+                        let item = list.item(cx, item_id, live_id!(ChatsHeading));
                         item.draw_all(cx, scope);
                         continue;
                     }
@@ -150,7 +150,6 @@ impl Widget for ChatHistory {
                     if entity_id < chats_count {
                         let mut item = list
                             .item(cx, item_id, live_id!(ChatHistoryCard))
-                            .unwrap()
                             .as_chat_history_card();
                         let _ = item.set_chat_id(chat_ids[entity_id]);
                         item.draw_all(cx, scope);
