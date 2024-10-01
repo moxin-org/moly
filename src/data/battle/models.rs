@@ -12,7 +12,7 @@ pub struct Sheet {
 
 impl Sheet {
     pub fn current_round_index(&self) -> Option<usize> {
-        self.rounds.iter().position(|r| r.weight.is_none())
+        self.rounds.iter().position(|r| r.vote.is_none())
     }
 
     pub fn current_round(&self) -> Option<&Round> {
@@ -33,7 +33,10 @@ impl Sheet {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Round {
     pub chats: Vec<Chat>,
-    pub weight: Option<i8>,
+    /// The user's vote. `None` if not voted yet.
+    /// Values should go from -2 to 2, where 0 is neutral, negative is for the
+    /// first chat, and positive for the second.
+    pub vote: Option<i8>,
 }
 
 /// Minimalistic representation of a chat. Contains a list of messages.

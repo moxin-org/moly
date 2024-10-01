@@ -251,7 +251,7 @@ impl BattleScreen {
 
     fn handle_vote(&mut self, weight: i8) {
         let sheet = self.sheet.as_mut().unwrap();
-        sheet.current_round_mut().unwrap().weight = Some(weight);
+        sheet.current_round_mut().unwrap().vote = Some(weight);
 
         let sheet = sheet.clone();
         self.df.spawn(move |df| {

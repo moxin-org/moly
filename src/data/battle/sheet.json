@@ -1,4 +1,5 @@
 {
+  "code": "abc123",
   "rounds": [
     {
       "chats": [
@@ -27,7 +28,7 @@
           ]
         }
       ],
-      "weight": null
+      "vote": null
     },
     {
       "chats": [
@@ -56,7 +57,7 @@
           ]
         }
       ],
-      "weight": null
+      "vote": null
     },
     {
       "chats": [
@@ -85,7 +86,7 @@
           ]
         }
       ],
-      "weight": null
+      "vote": null
     }
   ]
 }
