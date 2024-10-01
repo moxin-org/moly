@@ -19,6 +19,7 @@ pub fn restore_sheet_blocking() -> Result<Sheet> {
     Ok(sheet)
 }
 
+// Try saving the in-progress sheet to disk.
 pub fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
     let text = serde_json::to_string(&sheet)?;
     let path = battle_sheet_path();
@@ -26,6 +27,7 @@ pub fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
     Ok(())
 }
 
+/// Remove the in progress sheet from disk.
 pub fn clear_sheet_blocking() -> Result<()> {
     let path = battle_sheet_path();
     std::fs::remove_file(path)?;
@@ -50,6 +52,7 @@ pub fn download_sheet_blocking(code: String) -> Result<Sheet> {
     Ok(sheet)
 }
 
+/// Try to send the completed sheet to the server.
 pub fn send_sheet_blocking(_sheet: Sheet) -> Result<()> {
     // simulate sending to server
     std::thread::sleep(std::time::Duration::from_secs(3));

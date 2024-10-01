@@ -13,13 +13,15 @@ use makepad_widgets::*;
 live_design! {
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
+
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
+    import crate::battle::styles::*;
+
     import crate::battle::messages::Messages;
     import crate::battle::vote::Vote;
     import crate::battle::opening::Opening;
     import crate::battle::spinner::Spinner;
-    import crate::battle::styles::*;
     import crate::battle::failure::Failure;
     import crate::battle::ending::Ending;
 

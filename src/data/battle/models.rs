@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+/// A sheet contains all the Q&A rounds of a battle. To be filled.
+///
+/// Called "sheet" like a "spreadsheet".
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sheet {
     #[serde(default)]
@@ -25,23 +28,28 @@ impl Sheet {
     }
 }
 
+/// A round to play/answer. Contains the pair of chats to display, and a
+/// weight/vote to be filled by the user.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Round {
     pub chats: Vec<Chat>,
     pub weight: Option<i8>,
 }
 
+/// Minimalistic representation of a chat. Contains a list of messages.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Chat {
     pub messages: Vec<Message>,
 }
 
+/// Minimalistic representation of a message. Contains the body and the sender.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Message {
     pub body: String,
     pub sender: Sender,
 }
 
+/// Who sent the message.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Sender {
