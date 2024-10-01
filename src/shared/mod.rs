@@ -4,6 +4,7 @@ pub mod actions;
 pub mod desktop_buttons;
 pub mod download_notification_popup;
 pub mod external_link;
+pub mod list;
 pub mod modal;
 pub mod popup_notification;
 pub mod resource_imports;
@@ -14,6 +15,7 @@ pub mod widgets;
 
 pub fn live_design(cx: &mut Cx) {
     styles::live_design(cx);
+    list::live_design(cx);
     resource_imports::live_design(cx);
     widgets::live_design(cx);
     modal::live_design(cx);

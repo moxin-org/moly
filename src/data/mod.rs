@@ -1,4 +1,6 @@
 mod filesystem;
+
+pub mod battle;
 pub mod chats;
 pub mod downloads;
 pub mod preferences;
