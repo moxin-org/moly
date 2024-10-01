@@ -1,7 +1,6 @@
 use super::models::*;
 use crate::data::filesystem;
-use anyhow::{anyhow, Error, Result};
-use makepad_widgets::{Actions, Cx};
+use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
 pub const SHEET_FILE_NAME: &'static str = "current_battle_sheet.json";
@@ -49,4 +48,17 @@ pub fn download_sheet_blocking(code: String) -> Result<Sheet> {
     sheet.code = code;
 
     Ok(sheet)
+}
+
+pub fn send_sheet_blocking(_sheet: Sheet) -> Result<()> {
+    // simulate sending to server
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    // Simulate failure on the first call
+    // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+    //     return Err(anyhow!("Failed to send battle sheet"));
+    // }
+
+    Ok(())
 }

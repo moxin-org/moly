@@ -19,6 +19,10 @@ impl Sheet {
     pub fn current_round_mut(&mut self) -> Option<&mut Round> {
         self.current_round_index().map(move |i| &mut self.rounds[i])
     }
+
+    pub fn is_completed(&self) -> bool {
+        self.current_round_index().is_none()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

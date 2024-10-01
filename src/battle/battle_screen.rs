@@ -18,7 +18,6 @@ live_design! {
     import crate::battle::messages::Messages;
     import crate::battle::vote::Vote;
     import crate::battle::opening::Opening;
-    import crate::battle::opening::Ending;
     import crate::battle::spinner::Spinner;
     import crate::battle::styles::*;
     import crate::battle::failure::Failure;
@@ -109,7 +108,7 @@ pub struct BattleScreen {
     view: View,
 
     #[rust(Dragonfly::new())]
-    dragonfly: Dragonfly,
+    df: Dragonfly,
 
     #[rust]
     sheet: Option<battle::Sheet>,
@@ -117,13 +116,19 @@ pub struct BattleScreen {
 
 impl LiveHook for BattleScreen {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.dragonfly.spawn(|df| {
+        self.df.spawn(|df| {
             let sheet = battle::restore_sheet_blocking();
             df.run(move |s: &mut Self, cx| {
                 match sheet {
                     Ok(sheet) => {
-                        s.sheet = Some(sheet);
-                        s.show_frame(s.round_ref().widget_uid());
+                        let completed = sheet.is_completed();
+                        s.set_sheet(Some(sheet));
+
+                        if completed {
+                            s.show_frame(s.ending_ref().widget_uid());
+                        } else {
+                            s.show_frame(s.round_ref().widget_uid());
+                        }
                     }
                     Err(_) => {
                         s.show_frame(s.opening_ref().widget_uid());
@@ -139,6 +144,7 @@ impl Widget for BattleScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+        self.df.clone().handle(self, cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -149,11 +155,11 @@ impl Widget for BattleScreen {
 impl WidgetMatchEvent for BattleScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.opening_ref().submitted(actions) {
-            self.handle_opening_submit();
+            self.handle_opening_submit(cx);
         }
 
         if let Some(weight) = self.vote_ref().voted(actions) {
-            self.handle_vote(cx, weight);
+            self.handle_vote(weight);
         }
 
         if self.failure_ref().retried(actions) {
@@ -161,7 +167,7 @@ impl WidgetMatchEvent for BattleScreen {
         }
 
         if self.ending_ref().ended(actions) {
-            self.handle_end(cx);
+            self.handle_end();
         }
     }
 }
@@ -207,20 +213,132 @@ impl BattleScreen {
 
 // event handlers
 impl BattleScreen {
-    fn handle_opening_submit(&mut self) {}
+    fn handle_opening_submit(&mut self, cx: &mut Cx) {
+        self.show_frame(self.loading_ref().widget_uid());
+        self.redraw(cx);
 
-    fn handle_vote(&mut self, cx: &mut Cx, weight: i8) {}
+        let code = self.opening_ref().code();
+        self.df
+            .spawn(move |df| match battle::download_sheet_blocking(code) {
+                Ok(sheet) => {
+                    if let Err(error) = battle::save_sheet_blocking(&sheet) {
+                        df.run(move |s: &mut Self, cx| {
+                            s.failure_ref().set_message(&error.to_string());
+                            s.show_frame(s.failure_ref().widget_uid());
+                            s.redraw(cx);
+                        });
+
+                        return;
+                    }
+
+                    df.run(move |s: &mut Self, cx| {
+                        s.set_sheet(Some(sheet));
+                        s.show_frame(s.round_ref().widget_uid());
+                        s.redraw(cx);
+                    });
+                }
+                Err(error) => {
+                    df.run(move |s: &mut Self, cx| {
+                        s.failure_ref().set_message(&error.to_string());
+                        s.show_frame(s.failure_ref().widget_uid());
+                        s.redraw(cx);
+                    });
+                }
+            });
+    }
+
+    fn handle_vote(&mut self, weight: i8) {
+        let sheet = self.sheet.as_mut().unwrap();
+        sheet.current_round_mut().unwrap().weight = Some(weight);
+
+        let sheet = sheet.clone();
+        self.df.spawn(move |df| {
+            if let Err(error) = battle::save_sheet_blocking(&sheet) {
+                df.run(move |s: &mut Self, cx| {
+                    s.failure_ref().set_message(&error.to_string());
+                    s.show_frame(s.failure_ref().widget_uid());
+                    s.redraw(cx);
+                });
+
+                return;
+            }
+
+            let sheet_clone = sheet.clone();
+            df.run(move |s: &mut Self, cx| {
+                s.set_sheet(Some(sheet_clone));
+                s.redraw(cx);
+            });
+
+            if sheet.is_completed() {
+                df.run(|s: &mut Self, cx| {
+                    s.show_frame(s.loading_ref().widget_uid());
+                    s.redraw(cx);
+                });
+
+                let result = battle::send_sheet_blocking(sheet);
+
+                df.run(move |s: &mut Self, cx| {
+                    if let Err(error) = result {
+                        s.failure_ref().set_message(&error.to_string());
+                        s.show_frame(s.failure_ref().widget_uid());
+                        s.redraw(cx);
+                        return;
+                    }
+
+                    s.show_frame(s.ending_ref().widget_uid());
+                    s.redraw(cx);
+                });
+            }
+        });
+    }
 
     fn handle_retry(&mut self, cx: &mut Cx) {
         self.show_frame(self.opening_ref().widget_uid());
         self.redraw(cx);
     }
 
-    fn handle_end(&mut self, cx: &mut Cx) {}
+    fn handle_end(&mut self) {
+        self.df.spawn(|df| {
+            let result = battle::clear_sheet_blocking();
+            df.run(move |s: &mut Self, cx| {
+                if let Err(error) = result {
+                    s.failure_ref().set_message(&error.to_string());
+                    s.show_frame(s.failure_ref().widget_uid());
+                    s.redraw(cx);
+                    return;
+                }
+
+                s.set_sheet(None);
+                s.show_frame(s.opening_ref().widget_uid());
+                s.redraw(cx);
+            });
+        });
+    }
 }
 
 // other stuff
 impl BattleScreen {
+    fn set_sheet(&mut self, sheet: Option<battle::Sheet>) {
+        self.sheet = sheet;
+
+        if let Some(sheet) = self.sheet.as_ref() {
+            if let Some(round) = sheet.current_round() {
+                self.left_messages_ref()
+                    .set_messages(round.chats[0].messages.clone());
+                self.right_messages_ref()
+                    .set_messages(round.chats[1].messages.clone());
+
+                let rounds_count = sheet.rounds.len();
+                let current_round_index = sheet.current_round_index().unwrap();
+                self.counter_ref().set_text(&format!(
+                    "{}/{}",
+                    current_round_index + 1,
+                    rounds_count
+                ));
+            }
+        }
+    }
+
     fn show_frame(&self, uid: WidgetUid) {
         self.loading_ref()
             .set_visible(self.loading_ref().widget_uid() == uid);
