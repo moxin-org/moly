@@ -24,8 +24,11 @@ impl Dragonfly {
     }
 
     /// Handle the event and execute the scheduled functions.
-    ///
     /// Call this in your `handle_event` method.
+    ///
+    /// Scheduled functons can only run once, so after being run here, they will
+    /// not run anywhere else. Therefore, you should call this method from a single
+    /// place in your code.
     ///
     /// If you stored this instance in the target itself (for example, your widget),
     /// you will need to call this like `self.dragonfly.clone().handle(self, cx, event)`.
@@ -37,16 +40,18 @@ impl Dragonfly {
                         continue;
                     }
 
-                    (action.f.lock().unwrap())(target, cx);
+                    if let Some(f) = action.f.lock().unwrap().take() {
+                        (f)(target, cx);
+                    }
                 }
             }
         }
     }
 
     /// Run the provided closure on the UI thread.
-    pub fn run<T: 'static>(&self, f: impl FnMut(&mut T, &mut Cx) + Send + 'static) {
+    pub fn run<T: 'static>(&self, f: impl FnOnce(&mut T, &mut Cx) + Send + 'static) {
         let action = DragonflyAction {
-            f: Arc::new(Mutex::new(Box::new(f))),
+            f: Arc::new(Mutex::new(Some(Box::new(f)))),
             id: self.id,
         };
 
@@ -66,7 +71,7 @@ impl Dragonfly {
 }
 
 struct DragonflyAction<T> {
-    f: Arc<Mutex<Box<dyn FnMut(&mut T, &mut Cx) + Send + 'static>>>,
+    f: Arc<Mutex<Option<Box<dyn FnOnce(&mut T, &mut Cx) + Send + 'static>>>>,
     id: usize,
 }
 
