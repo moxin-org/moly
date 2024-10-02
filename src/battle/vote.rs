@@ -88,6 +88,29 @@ live_design! {
             }
             <EdgeLabel> { text: "B better" }
         }
+        tooltip = <Tooltip> {
+            content: <RoundedView> {
+                width: Fit,
+                height: Fit,
+                content = <RoundedView> {
+                    width: Fit,
+                    height: Fit,
+                    padding: {left: 10, right: 10, top: 5, bottom: 5},
+                    draw_bg: {
+                        color: #15859A,
+                        radius: 5.0,
+                    },
+                    tooltip_label = <Label> {
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{height_factor: 1.3, font_size: 12},
+                            color: #fff,
+                        }
+                    }
+                }
+            }
+
+
+        }
     }
 }
 
@@ -100,6 +123,7 @@ pub struct Vote {
 impl Widget for Vote {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.handle_tooltip(cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -130,6 +154,45 @@ impl Vote {
         }
 
         None
+    }
+
+    fn handle_tooltip(&mut self, cx: &mut Cx, event: &Event) {
+        if let Event::MouseMove(event) = event {
+            let mut tooltip = self.tooltip(id!(tooltip));
+            let buttons_ids = [id!(a2), id!(a1), id!(o0), id!(b1), id!(b2)];
+            let tooltip_messages = [
+                "A is much better",
+                "A is slightly better",
+                "Tie",
+                "B is slightly better",
+                "B is much better",
+            ];
+
+            let pointer_pos = event.abs;
+
+            let hovered_button =
+                buttons_ids
+                    .iter()
+                    .zip(tooltip_messages.iter())
+                    .find_map(|(button_id, message)| {
+                        let button = self.button(*button_id);
+                        if button.area().rect(cx).contains(pointer_pos) {
+                            Some((button, message))
+                        } else {
+                            None
+                        }
+                    });
+
+            if let Some((button, message)) = hovered_button {
+                let tooltip_rect = println!("hovered");
+                let rect = button.area().rect(cx);
+                let y = rect.pos.y - 5.0;
+                let x = rect.pos.x - rect.size.x / 2.0;
+                tooltip.show_with_options(cx, DVec2 { x, y }, message);
+            } else {
+                tooltip.hide(cx);
+            }
+        };
     }
 }
 
