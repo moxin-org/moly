@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload Dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
           gh release upload ${{ github.event.inputs.release_tags }} moly_*.deb --clobber
@@ -106,7 +106,7 @@ jobs:
       
       - name: Upload Dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
           gh release upload ${{ github.event.inputs.release_tags }} Moly_*.dmg --clobber
@@ -155,7 +155,7 @@ jobs:
           ls dist/
       - name: Upload Dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
           $file=Get-ChildItem -Filter *.exe
