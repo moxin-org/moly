@@ -7,24 +7,87 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
+    SM_SIZE = 32;
+    MD_SIZE = 44;
+    LG_SIZE = 60;
+
+    SM_RADIUS = 7;
+    MD_RADIUS = 10;
+    LG_RADIUS = 15;
+
     VoteButton = <MolyButton> {
-        height: 55,
-        width: 55,
         draw_bg: {
-            radius: 8,
-            color: #000,
+            border_color: #15859A,
+            color: #dae8ec,
         },
     }
 
+    EdgeLabel = <Label> {
+        draw_text: {
+            text_style: <BOLD_FONT>{height_factor: 1.3, font_size: 14},
+            color: #000,
+        }
+    }
+
     Vote = {{Vote}} <View> {
+        flow: Overlay,
         height: Fit,
-        align: {x: 0.5},
-        spacing: 24,
-        a2 = <VoteButton> {text: "A"}
-        a1 = <VoteButton> {text: "A-"}
-        o0 = <VoteButton> {text: "0"}
-        b1 = <VoteButton> {text: "B-"}
-        b2 = <VoteButton> {text: "B"}
+        align: {x: 0.5, y: 0.5},
+        <View> {
+            height: 1.5,
+            width: 500,
+            show_bg: true,
+            draw_bg: {
+                color: #15859A,
+            }
+        }
+        <View> {
+            height: Fit,
+            width: Fit,
+            align: {x: 0.5, y: 0.5},
+            <EdgeLabel> { text: "A better" }
+            a2 = <VoteButton> {
+                margin: {left: 30},
+                height: (LG_SIZE),
+                width: (LG_SIZE),
+                draw_bg: {
+                    radius: (LG_RADIUS),
+                },
+            }
+            a1 = <VoteButton> {
+                margin: {left: 120},
+                height: (MD_SIZE),
+                width: (MD_SIZE),
+                draw_bg: {
+                    radius: (MD_RADIUS),
+                }
+            }
+            o0 = <VoteButton> {
+                margin: {left: 60, right: 60},
+                height: (SM_SIZE),
+                width: (SM_SIZE),
+                draw_bg: {
+                    radius: (SM_RADIUS),
+                }
+            }
+            b1 = <VoteButton> {
+                margin: {right: 120},
+                height: (MD_SIZE),
+                width: (MD_SIZE),
+                draw_bg: {
+                    radius: (MD_RADIUS),
+                }
+            }
+            b2 = <VoteButton> {
+                margin: {right: 30},
+                height: (LG_SIZE),
+                width: (LG_SIZE),
+                draw_bg: {
+                    radius: (LG_RADIUS),
+                }
+            }
+            <EdgeLabel> { text: "B better" }
+        }
     }
 }
 
