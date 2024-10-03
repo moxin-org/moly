@@ -11,6 +11,12 @@ pub struct UiRunner {
     id: usize,
 }
 
+impl Default for UiRunner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UiRunner {
     /// Create a new isolated instance.
     ///

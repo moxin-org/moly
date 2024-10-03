@@ -109,7 +109,7 @@ pub struct BattleScreen {
     #[deref]
     view: View,
 
-    #[rust(UiRunner::new())]
+    #[rust]
     ui_runner: UiRunner,
 
     #[rust]
