@@ -7,7 +7,7 @@ use std::{
 };
 
 use chrono::Utc;
-use moxin_protocol::{
+use moly_protocol::{
     data::{DownloadedFile, FileID, Model, PendingDownload},
     open_ai::{ChatRequestData, ChatResponse},
     protocol::{
@@ -115,7 +115,7 @@ impl From<Command> for BuiltInCommand {
 
 #[test]
 fn test_chat() {
-    use moxin_protocol::open_ai::*;
+    use moly_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
     let bk = BackendImpl::<chat_ui::ChatBotModel>::build_command_sender(
@@ -138,11 +138,11 @@ fn test_chat() {
         file.file.id.clone(),
         LoadModelOptions {
             prompt_template: None,
-            gpu_layers: moxin_protocol::protocol::GPULayers::Max,
+            gpu_layers: moly_protocol::protocol::GPULayers::Max,
             use_mlock: false,
             rope_freq_scale: 0.0,
             rope_freq_base: 0.0,
-            context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
             n_batch: Some(128),
             n_ctx: Some(1024),
         },
@@ -190,7 +190,7 @@ fn test_chat() {
 
 #[test]
 fn test_chat_stop() {
-    use moxin_protocol::open_ai::*;
+    use moly_protocol::open_ai::*;
 
     let home = std::env::var("HOME").unwrap();
     let bk = BackendImpl::<chat_ui::ChatBotModel>::build_command_sender(
@@ -213,13 +213,13 @@ fn test_chat_stop() {
         file.file.id.clone(),
         LoadModelOptions {
             prompt_template: None,
-            gpu_layers: moxin_protocol::protocol::GPULayers::Max,
+            gpu_layers: moly_protocol::protocol::GPULayers::Max,
             use_mlock: false,
             n_batch: Some(128),
             n_ctx: Some(1024),
             rope_freq_scale: 0.0,
             rope_freq_base: 0.0,
-            context_overflow_policy: moxin_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
         },
         tx,
     );
@@ -404,7 +404,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
         std::fs::create_dir_all(&app_data_dir).unwrap_or_else(|_| {
             panic!(
-                "Failed to create the Moxin app data directory at {:?}",
+                "Failed to create the Moly app data directory at {:?}",
                 app_data_dir
             )
         });
@@ -720,7 +720,7 @@ pub fn nn_preload_file(
         .join(&file.name);
 
     let preloads = wasmedge_sdk::plugin::NNPreload::new(
-        file.name.clone(),
+        "moly-chat",
         wasmedge_sdk::plugin::GraphEncoding::GGML,
         wasmedge_sdk::plugin::ExecutionTarget::AUTO,
         &file_path,
@@ -729,7 +729,7 @@ pub fn nn_preload_file(
     let mut preload_vec = vec![preloads];
     if let Some((embedding_path, _)) = embedding {
         let preloads = wasmedge_sdk::plugin::NNPreload::new(
-            "embedding".to_string(),
+            "moly-embedding",
             wasmedge_sdk::plugin::GraphEncoding::GGML,
             wasmedge_sdk::plugin::ExecutionTarget::AUTO,
             &embedding_path,

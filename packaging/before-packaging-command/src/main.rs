@@ -31,30 +31,30 @@ use cargo_metadata::MetadataCommand;
 /// that must be set for the given package format.
 ///
 /// * For macOS app bundles, this should be set to `../Resources`.
-///   * This only works because the `moxin-runner` binary sets the current working directory
-///     to the directory where the binary is located, which is `Moxin.app/Contents/MacOS/`.
-///     (See the `run_moxin` function in `moxin-runner/src/main.rs` for more details.)
-///   * In a macOS app bundle, the resources directory is in `Moxin.app/Context/Resources/`,
+///   * This only works because the `moly-runner` binary sets the current working directory
+///     to the directory where the binary is located, which is `Moly.app/Contents/MacOS/`.
+///     (See the `run_moly` function in `moly-runner/src/main.rs` for more details.)
+///   * In a macOS app bundle, the resources directory is in `Moly.app/Context/Resources/`,
 ///     so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources`. 
 ///     This must be relative to the binary's location, i.e. up one parent directory.
 /// * For AppImage packages, this should be set to a relative path that goes up two parent directories
 ///   to account for the fact that AppImage binaries run in a simulated `usr/bin/` directory.
-///   * Thus, we need to get to the simulated `usr/lib/` directory for Moxin's resources, 
-///     which currently works out to `../../usr/lib/moxin`.
+///   * Thus, we need to get to the simulated `usr/lib/` directory for Moly's resources, 
+///     which currently works out to `../../usr/lib/moly`.
 ///   * Note that this must be a relative path, not an absolute path.
 /// * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
-///   which is currently `/usr/lib/moxin-runner`.
+///   which is currently `/usr/lib/moly-runner`.
 ///   * This is the directory in which `dpkg` copies app resource files to
 ///     when a user installs the `.deb` package.
 /// * For Windows NSIS packages, this should be set to `.` (the current dir).
 ///  * This is because the NSIS installer script copies the resources to the same directory
-///    as the installed binaries, and our `moxin-runner` app changes the current working directory
-///    to that same directory before running the main Moxin binary.
+///    as the installed binaries, and our `moly-runner` app changes the current working directory
+///    to that same directory before running the main Moly binary.
 fn makepad_package_dir_value(package_format: &str) -> &'static str {
     match package_format {
         "app" | "dmg" => "../Resources",
-        "appimage" => "../../usr/lib/moxin",
-        "deb" | "pacman" => "/usr/lib/moxin",
+        "appimage" => "../../usr/lib/moly",
+        "deb" | "pacman" => "/usr/lib/moly",
         "nsis" => ".",
         _other => panic!("Unsupported package format: {}", _other),
     }
@@ -101,15 +101,15 @@ fn main() -> std::io::Result<()> {
 /// 2. Recursively copies the resources from the `makepad-widgets` crate to a subdirectory
 ///    of the directory created in step 1, which is currently `./dist/resources/makepad_widgets/`.
 ///    The location of the `makepad-widgets` crate is determined using `cargo-metadata`.
-/// 3. Recursively copies the Moxin-specific `./resources` directory to `./dist/resources/moxin/`.
+/// 3. Recursively copies the Moly-specific `./resources` directory to `./dist/resources/moly/`.
 /// 4. (If macOS) Downloads WasmEdge and sets up the plugins into the `./wasmedge/` directory.
 fn before_packaging(host_os: &str) -> std::io::Result<()> {
     let cwd = std::env::current_dir()?;
     let dist_resources_dir = cwd.join("dist").join("resources");
     fs::create_dir_all(&dist_resources_dir)?;
 
-    let moxin_resources_dest = dist_resources_dir.join("moxin").join("resources");
-    let moxin_resources_src = cwd.join("resources");
+    let moly_resources_dest = dist_resources_dir.join("moly").join("resources");
+    let moly_resources_src = cwd.join("resources");
     let makepad_widgets_resources_dest = dist_resources_dir.join("makepad_widgets").join("resources");
     let makepad_widgets_resources_src = {
         let cargo_metadata = MetadataCommand::new()
@@ -146,8 +146,8 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
     println!("Copying makepad-widgets resources...\n  --> From: {}\n      to:   {}", makepad_widgets_resources_src.as_std_path().display(), makepad_widgets_resources_dest.display());
     copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
     println!("  --> Done!");
-    println!("Copying moxin resources...\n  --> From {}\n      to:   {}", moxin_resources_src.display(), moxin_resources_dest.display());
-    copy_recursively(&moxin_resources_src, &moxin_resources_dest)?;
+    println!("Copying moly resources...\n  --> From {}\n      to:   {}", moly_resources_src.display(), moly_resources_dest.display());
+    copy_recursively(&moly_resources_src, &moly_resources_dest)?;
     println!("  --> Done!");
 
     if host_os == "macos" {
@@ -265,7 +265,7 @@ fn before_each_package(host_os: &str) -> std::io::Result<()> {
 /// This function effectively runs the following shell commands:
 /// ```sh
 ///    MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release --features macos_bundle \
-///    && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moxin_app;
+///    && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moly_app;
 /// ```
 fn before_each_package_macos(package_format: &str, host_os: &str) -> std::io::Result<()> {
     assert!(host_os == "macos", "'app' and 'dmg' packages can only be created on macOS.");
@@ -280,7 +280,7 @@ fn before_each_package_macos(package_format: &str, host_os: &str) -> std::io::Re
     let install_name_tool_cmd = Command::new("install_name_tool")
         .arg("-add_rpath")
         .arg("@executable_path/../Frameworks")
-        .arg("./target/release/_moxin_app")
+        .arg("./target/release/_moly_app")
         .spawn()?;
 
     let output = install_name_tool_cmd.wait_with_output()?;
@@ -318,7 +318,7 @@ fn before_each_package_appimage(package_format: &str, host_os: &str) -> std::io:
 ///
 /// This function effectively runs the following shell commands:
 /// ```sh
-///    for path in $(ldd target/release/_moxin_app | awk '{print $3}'); do \
+///    for path in $(ldd target/release/_moly_app | awk '{print $3}'); do \
 ///        basename "$/path" ; \
 ///    done \
 ///    | xargs dpkg -S 2> /dev/null | awk '{print $1}' | awk -F ':' '{print $1}' | sort | uniq > ./dist/depends_deb.txt; \
@@ -337,7 +337,7 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     // Create Debian dependencies file by running `ldd` on the binary
     // and then running `dpkg -S` on each unique shared libraries outputted by `ldd`.
     let ldd_output = Command::new("ldd")
-        .arg("target/release/_moxin_app")
+        .arg("target/release/_moly_app")
         .output()?;
 
     let ldd_output = if ldd_output.status.success() {
@@ -385,7 +385,7 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     dpkgs.sort();
     dpkgs.dedup();
     println!("Sorted and de-duplicated dependencies: {:#?}", dpkgs);
-    // `curl` is a fixed dependency for the moxin-runner binary.
+    // `curl` is a fixed dependency for the moly-runner binary.
     dpkgs.push("curl".to_string());
     std::fs::write("./dist/depends_deb.txt", dpkgs.join("\n"))?;
     
@@ -460,8 +460,8 @@ fn strip_unneeded_linux_binaries(host_os: &str) -> std::io::Result<()> {
         .arg("--strip-unneeded")
         .arg("--remove-section=.comment")
         .arg("--remove-section=.note")
-        .arg("target/release/_moxin_app")
-        .arg("target/release/moxin")
+        .arg("target/release/_moly_app")
+        .arg("target/release/moly")
         .spawn()?;
 
     let output = strip_cmd.wait_with_output()?;

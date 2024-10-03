@@ -1,7 +1,7 @@
 use std::{env, fs, io, thread};
 use mega;
 use std::io::Write;
-use moxin::data::filesystem::project_dirs;
+use moly::data::filesystem::project_dirs;
 
 fn main() {
     robius_url_handler::register_handler(|incoming_url| {
@@ -12,14 +12,14 @@ fn main() {
         std::fs::OpenOptions::new()
             .append(true)
             .create(true)
-            .open(tmp.join("moxin_incoming_url.txt"))
+            .open(tmp.join("moly_incoming_url.txt"))
             .and_then(|mut f| 
                 f.write_all(format!("[{now:?}] Received incoming URL: {incoming_url:?}\n\n").as_bytes())
             )
             .unwrap();
     });
     run_mega_server();
-    moxin::app::app_main()
+    moly::app::app_main()
 }
 
 /// Start the Mega server in a separate thread.

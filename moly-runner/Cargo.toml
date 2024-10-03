@@ -1,8 +1,8 @@
 [package]
-name = "moxin-runner"
+name = "moly-runner"
 version = "0.1.0"
 edition = "2021"
-description = "A companion app that runs before Moxin to handle wasmedge configuration and more"
+description = "A companion app that runs before Moly to handle wasmedge configuration and more"
 
 [dependencies]
 directories = "5.0.1"
@@ -14,9 +14,9 @@ powershell_script = "1.1.0"
 windows-sys = { version = "0.52", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
 
 [[bin]]
-name = "moxin"
+name = "moly"
 path = "src/main.rs"
 
 [features]
-## Enable this feature when you are packaging Moxin into a macOS app bundle.
+## Enable this feature when you are packaging Moly into a macOS app bundle.
 macos_bundle = []

@@ -1,6 +1,6 @@
 pub mod fake_data;
 
-use moxin_protocol::protocol::Command;
+use moly_protocol::protocol::Command;
 use std::sync::mpsc;
 
 pub struct Backend {
