@@ -14,8 +14,8 @@ live_design! {
         <Image> {
             margin: {bottom: (MD_GAP)},
             source: dep("crate://self/resources/icons/prerendered/output/battle.png"),
-            width: 250,
-            height: 250,
+            width: 338,
+            height: 280,
         }
         <Label> {
             draw_text: {
