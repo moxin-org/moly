@@ -118,6 +118,9 @@ live_design! {
 pub struct Vote {
     #[deref]
     view: View,
+
+    #[rust]
+    tooltip_position_pending: bool,
 }
 
 impl Widget for Vote {
@@ -157,8 +160,15 @@ impl Vote {
     }
 
     fn handle_tooltip(&mut self, cx: &mut Cx, event: &Event) {
+        let mut tooltip = self.tooltip(id!(tooltip));
+
+        if self.tooltip_position_pending {
+            self.tooltip_position_pending = false;
+
+            return;
+        }
+
         if let Event::MouseMove(event) = event {
-            let mut tooltip = self.tooltip(id!(tooltip));
             let buttons_ids = [id!(a2), id!(a1), id!(o0), id!(b1), id!(b2)];
             let tooltip_messages = [
                 "A is much better",
@@ -184,7 +194,7 @@ impl Vote {
                     });
 
             if let Some((button, message)) = hovered_button {
-                let tooltip_rect = println!("hovered");
+                // let tooltip_rect = println!("hovered");
                 let rect = button.area().rect(cx);
                 let y = rect.pos.y - 5.0;
                 let x = rect.pos.x - rect.size.x / 2.0;
