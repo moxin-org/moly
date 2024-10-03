@@ -1,3 +1,4 @@
+use super::ui_runner::UiRunner;
 use makepad_widgets::*;
 
 live_design! {
@@ -13,14 +14,13 @@ live_design! {
         height: Fit,
         width: Fit,
 
-        <Icon> {
-            draw_icon: {
-                svg_file: dep("crate://self/resources/icons/discover.svg"),
-                fn get_color(self) -> vec4 {
-                    return #127487;
-                }
+        img = <RotatedImage> {
+            source: dep("crate://self/resources/icons/prerendered/output/battle.png"),
+            width: 50,
+            height: 50,
+            draw_bg: {
+                rotation: 180.,
             }
-            icon_walk: {width: 50, height: 50}
         }
 
         <Label> {
@@ -28,20 +28,49 @@ live_design! {
                 text_style: {font_size: 10},
                 color: #000
             }
-            text: "Trust me, I'm spinning."
+            text: ""
         }
     }
 }
 
-#[derive(Live, Widget, LiveHook)]
+#[derive(Live, Widget)]
 pub struct Spinner {
     #[deref]
     view: View,
+
+    #[rust]
+    last_angle: f32,
+
+    #[rust]
+    ui_runner: UiRunner,
+}
+
+impl LiveHook for Spinner {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        // TODO: I'm in a hurry, don't judge me. I will fix this later.
+        let ui = self.ui_runner;
+        std::thread::spawn(move || loop {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            ui.run::<Self>(|s, cx| {
+                s.last_angle = s.last_angle + 0.5;
+                s.image(id!(img)).apply_over(
+                    cx,
+                    live! {
+                        draw_bg: {
+                            rotation: (s.last_angle),
+                        }
+                    },
+                );
+                s.redraw(cx);
+            });
+        });
+    }
 }
 
 impl Widget for Spinner {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        self.ui_runner.handle(cx, event, self);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
