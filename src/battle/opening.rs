@@ -8,30 +8,35 @@ live_design! {
     import crate::battle::styles::*;
 
     Opening = {{Opening}} {
-        flow: Down,
         align: {x: 0.5, y: 0.5},
-        spacing: (SM_GAP),
+        spacing: (LG_GAP * 3),
         <Image> {
             margin: {bottom: (MD_GAP)},
             source: dep("crate://self/resources/icons/prerendered/output/battle.png"),
             width: 338,
             height: 280,
         }
-        <Label> {
-            draw_text: {
-                color: #000,
-                text_style: <BOLD_FONT> { font_size: 14 }
+        <View> {
+            flow: Down,
+            width: Fit,
+            height: Fit,
+            spacing: (SM_GAP),
+            <Label> {
+                draw_text: {
+                    color: #000,
+                    text_style: <BOLD_FONT> { font_size: 18 }
+                }
+                text: "Welcome to the agents arena"
             }
-            text: "Welcome to the battle!"
-        }
-        input = <MolyTextInput> {
-            empty_message: "Enter your code...",
-        }
-        button = <MolyButton> {
-            text: "Start",
-            draw_bg: {
-                color: #000,
-            },
+            input = <MolyTextInput> {
+                empty_message: "Enter your code...",
+            }
+            button = <MolyButton> {
+                text: "Start",
+                draw_bg: {
+                    color: #000,
+                },
+            }
         }
     }
 }
