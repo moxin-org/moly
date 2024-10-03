@@ -15,7 +15,7 @@ live_design! {
         width: Fit,
 
         img = <RotatedImage> {
-            source: dep("crate://self/resources/icons/prerendered/output/battle.png"),
+            source: dep("crate://self/resources/icons/prerendered/output/spinner.png"),
             width: 50,
             height: 50,
             draw_bg: {
