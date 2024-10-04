@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use makepad_widgets::SignalToUI;
 use moly_protocol::{
     data::FileID,
-    protocol::{Command, LoadModelOptions, LoadModelResponse},
+    protocol::{Command, LoadModelOptions, LoadModelResponse, LoadedModelInfo},
 };
 use std::{
     sync::{
@@ -18,7 +18,7 @@ pub enum ModelLoaderStatus {
     #[default]
     Unloaded,
     Loading,
-    Loaded,
+    Loaded(LoadedModelInfo),
     Failed,
 }
 
@@ -46,7 +46,7 @@ impl ModelLoader {
             ModelLoaderStatus::Loading => {
                 return Err(anyhow!("ModelLoader is already loading a model"));
             }
-            ModelLoaderStatus::Loaded => {
+            ModelLoaderStatus::Loaded(_) => {
                 if let Some(prev_file_id) = self.file_id() {
                     if prev_file_id == file_id {
                         return Ok(());
@@ -63,8 +63,8 @@ impl ModelLoader {
 
         let result = if let Ok(response) = response {
             match response {
-                Ok(LoadModelResponse::Completed(_)) => {
-                    self.set_status(ModelLoaderStatus::Loaded);
+                Ok(LoadModelResponse::Completed(info)) => {
+                    self.set_status(ModelLoaderStatus::Loaded(info));
                     Ok(())
                 }
                 Ok(response) => {
@@ -111,7 +111,7 @@ impl ModelLoader {
     }
 
     pub fn is_loaded(&self) -> bool {
-        matches!(self.status(), ModelLoaderStatus::Loaded)
+        matches!(self.status(), ModelLoaderStatus::Loaded(_))
     }
 
     pub fn is_loading(&self) -> bool {
