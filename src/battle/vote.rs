@@ -120,7 +120,7 @@ pub struct Vote {
     view: View,
 
     #[rust]
-    tooltip_position_pending: bool,
+    move_tooltip_over: Option<ButtonRef>,
 }
 
 impl Widget for Vote {
@@ -162,8 +162,12 @@ impl Vote {
     fn handle_tooltip(&mut self, cx: &mut Cx, event: &Event) {
         let mut tooltip = self.tooltip(id!(tooltip));
 
-        if self.tooltip_position_pending {
-            self.tooltip_position_pending = false;
+        if let Some(button) = self.move_tooltip_over.take() {
+            let tooltip_content_rect = tooltip.view(id!(content)).area().rect(cx);
+            let btn_rect = button.area().rect(cx);
+            let y = btn_rect.pos.y - tooltip_content_rect.size.y - 5.0;
+            let x = btn_rect.pos.x + btn_rect.size.x / 2.0 - tooltip_content_rect.size.x / 2.0;
+            tooltip.set_pos(cx, DVec2 { x, y });
 
             return;
         }
@@ -194,11 +198,9 @@ impl Vote {
                     });
 
             if let Some((button, message)) = hovered_button {
-                // let tooltip_rect = println!("hovered");
-                let rect = button.area().rect(cx);
-                let y = rect.pos.y - 5.0;
-                let x = rect.pos.x - rect.size.x / 2.0;
-                tooltip.show_with_options(cx, DVec2 { x, y }, message);
+                tooltip.set_text(message);
+                tooltip.show(cx);
+                self.move_tooltip_over = Some(button);
             } else {
                 tooltip.hide(cx);
             }
