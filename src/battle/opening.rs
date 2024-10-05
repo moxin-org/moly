@@ -18,24 +18,50 @@ live_design! {
         }
         <View> {
             flow: Down,
-            width: Fit,
+            width: 300,
             height: Fit,
-            spacing: (SM_GAP),
             <Label> {
                 draw_text: {
                     color: #000,
                     text_style: <BOLD_FONT> { font_size: 18 }
                 }
-                text: "Welcome to the agents arena"
+                text: "Agents Arena"
             }
-            input = <MolyTextInput> {
-                empty_message: "Enter your code...",
+            <Label> {
+                margin: {top: 3.0}
+                width: Fill,
+                draw_text: {
+                    color: #000,
+                    text_style: <REGULAR_FONT> { font_size: 11 }
+                }
+                text: "To join the game, please enter the code that was provided to you."
+            }
+            <RoundedView> {
+                margin: {top: 14.0},
+                width: Fill,
+                height: Fit,
+                padding: 4.0,
+                draw_bg: {
+                    radius: 4.0,
+                    border_color: #D0D5DD,
+                    border_width: 1.0,
+                }
+                input = <MolyTextInput> {
+                    draw_bg: {
+                        fn pixel(self) -> vec4 {
+                            return vec4(0.0, 0.0, 0.0, 0.0);
+                        }
+                    }
+                    width: Fill,
+                    empty_message: "Your code",
+                }
             }
             button = <MolyButton> {
+                margin: {top: 14.0},
+                width: Fill,
+                padding: {top: (SM_GAP), bottom: (SM_GAP)},
                 text: "Start",
-                draw_bg: {
-                    color: #000,
-                },
+                draw_bg: { color: #099250 }
             }
         }
     }
