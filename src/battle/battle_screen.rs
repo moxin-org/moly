@@ -26,36 +26,11 @@ live_design! {
     import crate::battle::ending::Ending;
 
     Half = <View> {
-        flow: Down,
-        spacing: (MD_GAP),
-        title_layout = <View> {
-            height: Fit,
-            align: { x: 0.5 },
-            title = <Label> {
-                draw_text: {
-                    color: #000,
-                    text_style: <BOLD_FONT> { font_size: 14 }
-                }
-            }
-        }
-        <RoundedView> {
-            padding: {top: 24, bottom: 24, left: 20, right: 20},
-            draw_bg: {
-                color: #fff,
-                border_color: #f6f6f6,
-                border_width: 1.5,
-                radius: 15,
-            }
-            messages = <Messages> {}
-        }
+        messages = <Messages> {}
     }
 
     BattleScreen = {{BattleScreen}} {
         flow: Overlay,
-        show_bg: true,
-        draw_bg: {
-            color: #F8F8F8,
-        }
         opening = <Opening> {
             visible: false,
         }
@@ -69,32 +44,25 @@ live_design! {
         round = <View> {
             visible: false,
             flow: Down,
-            padding: {top: 40, bottom: 40, left: (MD_GAP), right: (MD_GAP)},
+            align: {x: 0.5},
+            padding: {top: 40, bottom: 40, left: (LG_GAP), right: (LG_GAP)},
             spacing: (MD_GAP),
+            counter = <Label> {
+                draw_text: {
+                    color: #000,
+                    text_style: <BOLD_FONT> { font_size: 14 }
+                }
+            }
             <View> {
-                flow: Overlay,
+                spacing: (MD_GAP),
+                left = <Half> {}
                 <View> {
-                    spacing: (MD_GAP),
-                    left = <Half> {
-                        title_layout = {
-                            title = { text: "Agent A" }
-                        }
-                    }
-                    right = <Half> {
-                        title_layout = {
-                            title = { text: "Agent B" }
-                        }
-                    }
+                    width: 1.5,
+                    height: Fill,
+                    show_bg: true,
+                    draw_bg: { color: #15859A }
                 }
-                <View> {
-                    align: {x: 0.5}
-                    counter = <Label> {
-                        draw_text: {
-                            color: #000,
-                            text_style: <BOLD_FONT> { font_size: 14 }
-                        }
-                    }
-                }
+                right = <Half> {}
             }
             vote = <Vote> {}
         }

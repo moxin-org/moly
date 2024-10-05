@@ -35,7 +35,7 @@ live_design! {
     AgentLine = <View> {
         height: Fit,
         bubble = <Bubble> {
-            margin: {left: 16}
+            padding: {left: 0},
             text = <AgentMarkdown> {}
         }
     }

@@ -45,7 +45,7 @@ live_design! {
             height: Fit,
             width: Fit,
             align: {x: 0.5, y: 0.5},
-            <EdgeLabel> { text: "A better" }
+            <EdgeLabel> { text: "Left is better" }
             a2 = <VoteButton> {
                 margin: {left: 30},
                 height: (LG_SIZE),
@@ -86,7 +86,7 @@ live_design! {
                     radius: (LG_RADIUS),
                 }
             }
-            <EdgeLabel> { text: "B better" }
+            <EdgeLabel> { text: "Right is better" }
         }
         tooltip = <Tooltip> {
             content: <RoundedView> {
