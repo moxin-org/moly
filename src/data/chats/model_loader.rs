@@ -41,15 +41,18 @@ impl ModelLoader {
         &mut self,
         file_id: FileID,
         command_sender: Sender<Command>,
+        override_port: Option<u16>,
     ) -> Result<(), anyhow::Error> {
         match self.status() {
             ModelLoaderStatus::Loading => {
                 return Err(anyhow!("ModelLoader is already loading a model"));
             }
             ModelLoaderStatus::Loaded(_) => {
-                if let Some(prev_file_id) = self.file_id() {
-                    if prev_file_id == file_id {
-                        return Ok(());
+                if override_port.is_none() {
+                    if let Some(prev_file_id) = self.file_id() {
+                        if prev_file_id == file_id {
+                            return Ok(());
+                        }
                     }
                 }
             }
@@ -59,7 +62,7 @@ impl ModelLoader {
         self.set_status(ModelLoaderStatus::Loading);
         self.set_file_id(Some(file_id.clone()));
 
-        let response = dispatch_load_command(command_sender, file_id.clone()).recv();
+        let response = dispatch_load_command(command_sender, file_id.clone(), override_port).recv();
 
         let result = if let Ok(response) = response {
             match response {
@@ -85,10 +88,15 @@ impl ModelLoader {
         result
     }
 
-    pub fn load_async(&mut self, file_id: FileID, command_sender: Sender<Command>) {
+    pub fn load_async(
+        &mut self,
+        file_id: FileID,
+        command_sender: Sender<Command>,
+        override_port: Option<u16>,
+    ) {
         let mut self_clone = self.clone();
         thread::spawn(move || {
-            if let Err(err) = self_clone.load(file_id, command_sender) {
+            if let Err(err) = self_clone.load(file_id, command_sender, override_port) {
                 eprintln!("Error loading model: {}", err);
             }
         });
@@ -144,11 +152,15 @@ impl ModelLoader {
 fn dispatch_load_command(
     command_sender: Sender<Command>,
     file_id: String,
+    override_port: Option<u16>,
 ) -> Receiver<Result<LoadModelResponse, anyhow::Error>> {
     let (tx, rx) = channel();
+
+    let override_server_address = override_port.map(|port| format!("localhost:{}", port));
     let cmd = Command::LoadModel(
         file_id,
         LoadModelOptions {
+            override_server_address,
             prompt_template: None,
             gpu_layers: moly_protocol::protocol::GPULayers::Max,
             use_mlock: false,

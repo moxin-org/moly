@@ -177,14 +177,26 @@ impl BackendModel for LLamaEdgeApiServer {
         let load_model_options = options.clone();
         let mut need_reload = true;
         let (wasm_module, listen_addr) = if let Some(old_model) = &old_model {
+            let listen_addr =
+                load_model_options
+                    .override_server_address
+                    .clone()
+                    .map_or(old_model.listen_addr, |addr| {
+                        std::net::TcpListener::bind(&addr)
+                            .unwrap()
+                            .local_addr()
+                            .unwrap()
+                    });
+
             if old_model.id == file.id.as_str()
+                && listen_addr == old_model.listen_addr
                 && old_model.load_model_options.n_ctx == options.n_ctx
                 && old_model.load_model_options.n_batch == options.n_batch
                 && old_model.embedding == embedding
             {
                 need_reload = false;
             }
-            (old_model.wasm_module.clone(), old_model.listen_addr)
+            (old_model.wasm_module.clone(), listen_addr)
         } else {
             let addr = std::env::var("MOLY_API_SERVER_ADDR").unwrap_or("localhost:0".to_string());
             let new_addr = std::net::TcpListener::bind(&addr)

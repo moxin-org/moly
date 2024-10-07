@@ -87,7 +87,18 @@ impl Store {
     }
 
     pub fn load_model(&mut self, file: &File) {
-        self.chats.load_model(file);
+        self.chats.load_model(file, None);
+    }
+
+    pub fn update_server_port(&mut self, server_port: u16) {
+        if let Some(file) = &self.chats.loaded_model {
+            dbg!(server_port);
+
+            if self.chats.model_loader.is_loaded() {
+                dbg!(server_port);
+                self.chats.load_model(&file.clone(), Some(server_port));
+            }
+        }
     }
 
     fn update_load_model(&mut self) {
