@@ -27,10 +27,9 @@ live_design! {
             // For some reason, putting a margin bottom in the label doesn't
             // work propertly.
             margin: {top: (SM_GAP)},
+            padding: {top: (SM_GAP), bottom: (SM_GAP), left: (MD_GAP), right: (MD_GAP)},
             text: "Finish",
-            draw_bg: {
-                color: #000,
-            },
+            draw_bg: { color: #099250 }
         }
     }
 }
