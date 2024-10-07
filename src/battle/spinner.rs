@@ -1,4 +1,3 @@
-use super::ui_runner::UiRunner;
 use makepad_widgets::*;
 
 live_design! {
@@ -30,47 +29,47 @@ live_design! {
             }
             text: ""
         }
+
+        animator: {
+            spinner = {
+                default: off
+                off = {
+                    from: {all: Forward {duration: 2.0}}
+                    apply: {
+                        img = { draw_bg: { rotation: 0. } }
+                    }
+                }
+                spin = {
+                    redraw: true,
+                    from: {all: Loop {duration: 1.0, end: 1.0}}
+                    apply: {
+                        img = { draw_bg: { rotation: 6.283 } }
+                    }
+                }
+            }
+        }
     }
 }
 
-#[derive(Live, Widget)]
+#[derive(Live, LiveHook, Widget)]
 pub struct Spinner {
     #[deref]
     view: View,
 
-    #[rust]
-    last_angle: f32,
-
-    #[rust]
-    ui_runner: UiRunner,
-}
-
-impl LiveHook for Spinner {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        // TODO: I'm in a hurry, don't judge me. I will fix this later.
-        let ui = self.ui_runner;
-        std::thread::spawn(move || loop {
-            std::thread::sleep(std::time::Duration::from_millis(50));
-            ui.run::<Self>(|s, cx| {
-                s.last_angle = s.last_angle + 0.5;
-                s.image(id!(img)).apply_over(
-                    cx,
-                    live! {
-                        draw_bg: {
-                            rotation: (s.last_angle),
-                        }
-                    },
-                );
-                s.redraw(cx);
-            });
-        });
-    }
+    #[animator]
+    animator: Animator,
 }
 
 impl Widget for Spinner {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
+        if self.animator.need_init() {
+            self.animator_play(cx, id!(spinner.spin));
+        }
+
         self.view.handle_event(cx, event, scope);
-        self.ui_runner.handle(cx, event, self);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
