@@ -1,13 +1,8 @@
 use crate::data::battle;
 
 use super::{
-    ending::{EndingRef, EndingWidgetExt},
-    failure::{FailureRef, FailureWidgetExt},
-    messages::{MessagesRef, MessagesWidgetExt},
-    opening::{OpeningRef, OpeningWidgetExt},
-    spinner::{SpinnerRef, SpinnerWidgetExt},
-    ui_runner::UiRunner,
-    vote::{VoteRef, VoteWidgetExt},
+    ending::EndingWidgetExt, failure::FailureWidgetExt, messages::MessagesWidgetExt,
+    opening::OpeningWidgetExt, spinner::SpinnerWidgetExt, ui_runner::UiRunner, vote::VoteWidgetExt,
 };
 use makepad_widgets::*;
 
@@ -30,45 +25,53 @@ live_design! {
         messages = <Messages> {}
     }
 
+    Frame = <View> {
+        visible: false,
+    }
+
     BattleScreen = {{BattleScreen}} {
         flow: Overlay,
-        opening = <Opening> {
-            visible: false,
+        opening_frame = <Frame> {
+            opening = <Opening> {}
         }
-        ending = <Ending> {
-            visible: false,
+        ending_frame = <Frame> {
+            ending = <Ending> {}
         }
-        loading = <View> {
-            align: {x: 0.5, y: 0.5},
-            spinner = <Spinner> {}
-        }
-        round = <View> {
-            visible: false,
-            flow: Down,
-            align: {x: 0.5},
-            padding: {top: 40, bottom: 40, left: (LG_GAP), right: (LG_GAP)},
-            spacing: (MD_GAP),
-            counter = <Label> {
-                draw_text: {
-                    color: #000,
-                    text_style: <BOLD_FONT> { font_size: 14 }
-                }
-            }
-            <View> {
+        round_frame = <Frame> {
+            round = <View> {
+                flow: Down,
+                align: {x: 0.5},
+                padding: {top: 40, bottom: 40, left: (LG_GAP), right: (LG_GAP)},
                 spacing: (MD_GAP),
-                left = <Half> {}
-                <View> {
-                    width: 1.5,
-                    height: Fill,
-                    show_bg: true,
-                    draw_bg: { color: #15859A }
+                counter = <Label> {
+                    draw_text: {
+                        color: #000,
+                        text_style: <BOLD_FONT> { font_size: 14 }
+                    }
                 }
-                right = <Half> {}
+                <View> {
+                    spacing: (MD_GAP),
+                    left = <Half> {}
+                    <View> {
+                        width: 1.5,
+                        height: Fill,
+                        show_bg: true,
+                        draw_bg: { color: #15859A }
+                    }
+                    right = <Half> {}
+                }
+                vote = <Vote> {}
             }
-            vote = <Vote> {}
         }
-        failure = <Failure> {
-            visible: false,
+        loading_frame = <Frame> {
+            visible: true,
+            loading = <View> {
+                align: {x: 0.5, y: 0.5},
+                spinner = <Spinner> {}
+            }
+        }
+        failure_frame = <Frame> {
+            failure = <Failure> {}
         }
     }
 }
@@ -120,64 +123,21 @@ impl Widget for BattleScreen {
 
 impl WidgetMatchEvent for BattleScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.opening_ref().submitted(actions) {
+        if self.opening(id!(opening)).submitted(actions) {
             self.handle_opening_submit(cx);
         }
 
-        if let Some(weight) = self.vote_ref().voted(actions) {
+        if let Some(weight) = self.vote(id!(vote)).voted(actions) {
             self.handle_vote(weight);
         }
 
-        if self.failure_ref().retried(actions) {
+        if self.failure(id!(failure)).retried(actions) {
             self.handle_retry(cx);
         }
 
-        if self.ending_ref().ended(actions) {
+        if self.ending(id!(ending)).ended(actions) {
             self.handle_end();
         }
-    }
-}
-
-// widget accessors
-impl BattleScreen {
-    fn left_messages_ref(&self) -> MessagesRef {
-        self.messages(id!(left.messages))
-    }
-
-    fn right_messages_ref(&self) -> MessagesRef {
-        self.messages(id!(right.messages))
-    }
-
-    fn opening_ref(&self) -> OpeningRef {
-        self.opening(id!(opening))
-    }
-
-    fn ending_ref(&self) -> EndingRef {
-        self.ending(id!(ending))
-    }
-
-    fn round_ref(&self) -> ViewRef {
-        self.view(id!(round))
-    }
-
-    fn loading_ref(&self) -> ViewRef {
-        self.view(id!(loading))
-    }
-
-    fn counter_ref(&self) -> LabelRef {
-        self.label(id!(counter))
-    }
-
-    fn vote_ref(&self) -> VoteRef {
-        self.vote(id!(vote))
-    }
-
-    fn failure_ref(&self) -> FailureRef {
-        self.failure(id!(failure))
-    }
-
-    fn spinner_ref(&self) -> SpinnerRef {
-        self.spinner(id!(spinner))
     }
 }
 
@@ -187,7 +147,7 @@ impl BattleScreen {
         self.show_loading_frame("Downloading sheet...");
         self.redraw(cx);
 
-        let code = self.opening_ref().code();
+        let code = self.opening(id!(opening)).code();
         let ui = self.ui_runner;
         std::thread::spawn(move || match battle::download_sheet_blocking(code) {
             Ok(sheet) => {
@@ -279,14 +239,14 @@ impl BattleScreen {
 
         if let Some(sheet) = self.sheet.as_ref() {
             if let Some(round) = sheet.current_round() {
-                self.left_messages_ref()
+                self.messages(id!(left.messages))
                     .set_messages(round.chats[0].messages.clone());
-                self.right_messages_ref()
+                self.messages(id!(right.messages))
                     .set_messages(round.chats[1].messages.clone());
 
                 let rounds_count = sheet.rounds.len();
                 let current_round_index = sheet.current_round_index().unwrap();
-                self.counter_ref().set_text(&format!(
+                self.label(id!(counter)).set_text(&format!(
                     "{}/{}",
                     current_round_index + 1,
                     rounds_count
@@ -296,39 +256,45 @@ impl BattleScreen {
     }
 
     fn show_loading_frame(&mut self, message: &str) {
-        self.spinner_ref().set_message(message);
+        self.spinner(id!(spinner)).set_message(message);
         self.hide_all_frames();
-        self.loading_ref().set_visible(true);
+        self.view(id!(loading_frame)).set_visible(true);
     }
 
     fn show_round_frame(&mut self, sheet: battle::Sheet) {
         self.set_sheet(Some(sheet));
         self.hide_all_frames();
-        self.round_ref().set_visible(true);
+        self.view(id!(round_frame)).set_visible(true);
     }
 
     fn show_failure_frame(&mut self, message: &str) {
         self.hide_all_frames();
-        self.failure_ref().set_message(message);
-        self.failure_ref().borrow_mut().unwrap().visible = true;
+        self.failure(id!(failure)).set_message(message);
+        self.view(id!(failure_frame)).set_visible(true);
     }
 
     fn show_opening_frame(&mut self) {
-        self.opening_ref().clear();
+        self.opening(id!(opening)).clear();
         self.hide_all_frames();
-        self.opening_ref().borrow_mut().unwrap().visible = true;
+        self.view(id!(opening_frame)).set_visible(true);
     }
 
     fn show_ending_frame(&mut self) {
         self.hide_all_frames();
-        self.ending_ref().borrow_mut().unwrap().visible = true;
+        self.view(id!(ending_frame)).set_visible(true);
     }
 
     fn hide_all_frames(&mut self) {
-        self.loading_ref().set_visible(false);
-        self.round_ref().set_visible(false);
-        self.failure_ref().borrow_mut().unwrap().visible = false;
-        self.opening_ref().borrow_mut().unwrap().visible = false;
-        self.ending_ref().borrow_mut().unwrap().visible = false;
+        [
+            id!(opening_frame),
+            id!(ending_frame),
+            id!(loading_frame),
+            id!(round_frame),
+            id!(failure_frame),
+        ]
+        .iter()
+        .for_each(|id| {
+            self.view(*id).set_visible(false);
+        });
     }
 }
