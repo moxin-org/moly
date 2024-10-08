@@ -22,7 +22,7 @@ live_design! {
             }
         }
 
-        <Label> {
+        message = <Label> {
             draw_text: {
                 text_style: {font_size: 10},
                 color: #000
@@ -74,5 +74,17 @@ impl Widget for Spinner {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl Spinner {
+    pub fn set_message(&mut self, message: &str) {
+        self.label(id!(message)).set_text(message);
+    }
+}
+
+impl SpinnerRef {
+    pub fn set_message(&mut self, message: &str) {
+        self.borrow_mut().map(|mut s| s.set_message(message));
     }
 }

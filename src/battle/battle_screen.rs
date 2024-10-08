@@ -5,6 +5,7 @@ use super::{
     failure::{FailureRef, FailureWidgetExt},
     messages::{MessagesRef, MessagesWidgetExt},
     opening::{OpeningRef, OpeningWidgetExt},
+    spinner::{SpinnerRef, SpinnerWidgetExt},
     ui_runner::UiRunner,
     vote::{VoteRef, VoteWidgetExt},
 };
@@ -39,7 +40,7 @@ live_design! {
         }
         loading = <View> {
             align: {x: 0.5, y: 0.5},
-            <Spinner> {}
+            spinner = <Spinner> {}
         }
         round = <View> {
             visible: false,
@@ -92,17 +93,14 @@ impl LiveHook for BattleScreen {
             ui.defer(move |s: &mut Self, cx| {
                 match sheet {
                     Ok(sheet) => {
-                        let completed = sheet.is_completed();
-                        s.set_sheet(Some(sheet));
-
-                        if completed {
-                            s.show_frame(s.ending_ref().widget_uid());
+                        if sheet.is_completed() {
+                            s.show_ending_frame();
                         } else {
-                            s.show_frame(s.round_ref().widget_uid());
+                            s.show_round_frame(sheet);
                         }
                     }
                     Err(_) => {
-                        s.show_frame(s.opening_ref().widget_uid());
+                        s.show_opening_frame();
                     }
                 }
                 s.redraw(cx);
@@ -180,12 +178,16 @@ impl BattleScreen {
     fn failure_ref(&self) -> FailureRef {
         self.failure(id!(failure))
     }
+
+    fn spinner_ref(&self) -> SpinnerRef {
+        self.spinner(id!(spinner))
+    }
 }
 
 // event handlers
 impl BattleScreen {
     fn handle_opening_submit(&mut self, cx: &mut Cx) {
-        self.show_frame(self.loading_ref().widget_uid());
+        self.show_loading_frame("Downloading sheet...");
         self.redraw(cx);
 
         let code = self.opening_ref().code();
@@ -194,8 +196,7 @@ impl BattleScreen {
             Ok(sheet) => {
                 if let Err(error) = battle::save_sheet_blocking(&sheet) {
                     ui.defer(move |s: &mut Self, cx| {
-                        s.failure_ref().set_message(&error.to_string());
-                        s.show_frame(s.failure_ref().widget_uid());
+                        s.show_failure_frame(&error.to_string());
                         s.redraw(cx);
                     });
 
@@ -203,15 +204,13 @@ impl BattleScreen {
                 }
 
                 ui.defer(move |s: &mut Self, cx| {
-                    s.set_sheet(Some(sheet));
-                    s.show_frame(s.round_ref().widget_uid());
+                    s.show_round_frame(sheet);
                     s.redraw(cx);
                 });
             }
             Err(error) => {
                 ui.defer(move |s: &mut Self, cx| {
-                    s.failure_ref().set_message(&error.to_string());
-                    s.show_frame(s.failure_ref().widget_uid());
+                    s.show_failure_frame(&error.to_string());
                     s.redraw(cx);
                 });
             }
@@ -227,8 +226,7 @@ impl BattleScreen {
         std::thread::spawn(move || {
             if let Err(error) = battle::save_sheet_blocking(&sheet) {
                 ui.defer(move |s: &mut Self, cx| {
-                    s.failure_ref().set_message(&error.to_string());
-                    s.show_frame(s.failure_ref().widget_uid());
+                    s.show_failure_frame(&error.to_string());
                     s.redraw(cx);
                 });
 
@@ -243,7 +241,7 @@ impl BattleScreen {
 
             if sheet.is_completed() {
                 ui.defer(|s: &mut Self, cx| {
-                    s.show_frame(s.loading_ref().widget_uid());
+                    s.show_loading_frame("Sending answers...");
                     s.redraw(cx);
                 });
 
@@ -251,13 +249,12 @@ impl BattleScreen {
 
                 ui.defer(move |s: &mut Self, cx| {
                     if let Err(error) = result {
-                        s.failure_ref().set_message(&error.to_string());
-                        s.show_frame(s.failure_ref().widget_uid());
+                        s.show_failure_frame(&error.to_string());
                         s.redraw(cx);
                         return;
                     }
 
-                    s.show_frame(s.ending_ref().widget_uid());
+                    s.show_ending_frame();
                     s.redraw(cx);
                 });
             }
@@ -265,7 +262,7 @@ impl BattleScreen {
     }
 
     fn handle_retry(&mut self, cx: &mut Cx) {
-        self.show_frame(self.opening_ref().widget_uid());
+        self.show_opening_frame();
         self.redraw(cx);
     }
 
@@ -275,14 +272,13 @@ impl BattleScreen {
             let result = battle::clear_sheet_blocking();
             ui.defer(move |s: &mut Self, cx| {
                 if let Err(error) = result {
-                    s.failure_ref().set_message(&error.to_string());
-                    s.show_frame(s.failure_ref().widget_uid());
+                    s.show_failure_frame(&error.to_string());
                     s.redraw(cx);
                     return;
                 }
 
                 s.set_sheet(None);
-                s.show_frame(s.opening_ref().widget_uid());
+                s.show_opening_frame();
                 s.redraw(cx);
             });
         });
@@ -312,15 +308,40 @@ impl BattleScreen {
         }
     }
 
-    fn show_frame(&self, uid: WidgetUid) {
-        self.loading_ref()
-            .set_visible(self.loading_ref().widget_uid() == uid);
+    fn show_loading_frame(&mut self, message: &str) {
+        self.spinner_ref().set_message(message);
+        self.hide_all_frames();
+        self.loading_ref().set_visible(true);
+    }
 
-        self.round_ref()
-            .set_visible(self.round_ref().widget_uid() == uid);
+    fn show_round_frame(&mut self, sheet: battle::Sheet) {
+        self.set_sheet(Some(sheet));
+        self.hide_all_frames();
+        self.round_ref().set_visible(true);
+    }
 
-        self.failure_ref().borrow_mut().unwrap().visible = self.failure_ref().widget_uid() == uid;
-        self.opening_ref().borrow_mut().unwrap().visible = self.opening_ref().widget_uid() == uid;
-        self.ending_ref().borrow_mut().unwrap().visible = self.ending_ref().widget_uid() == uid;
+    fn show_failure_frame(&mut self, message: &str) {
+        self.hide_all_frames();
+        self.failure_ref().set_message(message);
+        self.failure_ref().borrow_mut().unwrap().visible = true;
+    }
+
+    fn show_opening_frame(&mut self) {
+        self.opening_ref().clear();
+        self.hide_all_frames();
+        self.opening_ref().borrow_mut().unwrap().visible = true;
+    }
+
+    fn show_ending_frame(&mut self) {
+        self.hide_all_frames();
+        self.ending_ref().borrow_mut().unwrap().visible = true;
+    }
+
+    fn hide_all_frames(&mut self) {
+        self.loading_ref().set_visible(false);
+        self.round_ref().set_visible(false);
+        self.failure_ref().borrow_mut().unwrap().visible = false;
+        self.opening_ref().borrow_mut().unwrap().visible = false;
+        self.ending_ref().borrow_mut().unwrap().visible = false;
     }
 }
