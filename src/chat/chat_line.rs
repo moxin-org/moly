@@ -7,6 +7,7 @@ use makepad_markdown::parse_markdown;
 use moly_mofa::MofaAgent;
 
 live_design! {
+    import makepad_code_editor::code_view::CodeView;
     import makepad_widgets::base::*;
     import makepad_widgets::theme_desktop_dark::*;
 
@@ -68,6 +69,15 @@ live_design! {
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
+        code_block = <CodeView> {
+            editor: {
+                pad_left_top: vec2(10.0,10.0)
+                width: Fill,
+                height: Fit,
+                draw_bg: { color: #3c3c3c },
+            }
+        }
+        use_code_block_widget: true,
         draw_normal: {
             text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
         }

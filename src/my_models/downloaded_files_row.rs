@@ -273,16 +273,11 @@ impl WidgetMatchEvent for DownloadedFilesRow {
         }
 
         for action in actions {
-            if matches!(
-                action.as_widget_action().cast(),
-                DeleteModelModalAction::ModelDeleted
-                    | DeleteModelModalAction::Cancelled
-                    | DeleteModelModalAction::CloseButtonClicked
-            ) {
+            if let DeleteModelModalAction::ModalDismissed = action.cast() {
                 self.modal(id!(delete_modal)).close(cx);
             }
 
-            if let ModelInfoModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+            if let ModelInfoModalAction::ModalDismissed = action.cast() {
                 self.modal(id!(info_modal)).close(cx);
             }
         }
