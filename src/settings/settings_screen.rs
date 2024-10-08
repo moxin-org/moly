@@ -26,8 +26,7 @@ live_design! {
             height: Fill,
         }
 
-        no_model = <View> {
-            visible: false,
+        <View> {
             width: Fill, height: Fill
             flow: Down
             align: {x: 0.0, y: 0.0}
@@ -35,141 +34,135 @@ live_design! {
 
             spacing: 20
 
-            header = <View> {
-                width: Fill, height: Fit
-                spacing: 15
-                flow: Right
-                align: {x: 0.0, y: 1.0}
-
-                title = <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 30}
-                        color: #000
-                    }
-                    text: "Settings"
-                }
-            }
-
             <Label> {
                 draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 12}
+                    text_style: <BOLD_FONT>{font_size: 30}
                     color: #000
                 }
-                text: "Local inference options will appear once you have a model loaded."
-            }
-        }
-
-        main = <View> {
-            width: Fill, height: Fill
-            flow: Down
-            align: {x: 0.0, y: 0.0}
-            padding: 60
-
-            spacing: 20
-
-            header = <View> {
-                width: Fill, height: Fit
-                spacing: 15
-                flow: Right
-                align: {x: 0.0, y: 1.0}
-
-                title = <Label> {
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 30}
-                        color: #000
-                    }
-                    text: "Settings"
-                }
+                text: "Settings"
             }
 
-            <HorizontalFiller> { height: 40 }
-
-            <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 16}
-                    color: #000
-                }
-                text: "Local inference server information"
-            }
-
-            <View> {
-                width: Fit, height: Fit
-                flow: Right
-                spacing: 10
-                align: {x: 0.0, y: 0.5}
-
+            no_model = <View> {
+                visible: false,
+                width: Fill, height: Fill
                 <Label> {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 12}
                         color: #000
                     }
-                    text: "Port number:"
+                    text: "Local inference options will appear once you have a model loaded."
                 }
+            }
+            
 
-                on_edit = <View> {
-                    visible: false,
-                    width: Fit, height: Fit
+            main = <View> {
+                width: Fill, height: Fill
+                flow: Down
+                align: {x: 0.0, y: 0.0}
 
-                    port_number_input = <MolyTextInput> {
-                        width: 100,
-                        height: Fit,
-                        draw_text: {
-                            text_style: <REGULAR_FONT>{font_size: 12}
-                            color: #000
-                        }
+                spacing: 10
+
+                <HorizontalFiller> { height: 40 }
+
+                <Label> {
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 16}
+                        color: #000
                     }
+                    text: "Local inference server information"
                 }
 
-                editable = <View> {
+                <View> {
                     width: Fit, height: Fit
+                    flow: Right
                     spacing: 10
                     align: {x: 0.0, y: 0.5}
 
-                    port_number_label = <Label> {
+                    <Label> {
                         draw_text:{
                             text_style: <REGULAR_FONT>{font_size: 12}
                             color: #000
                         }
+                        text: "Port number:"
                     }
 
-                    edit_port_number = <MolyButton> {
-                        width: Fit
-                        height: Fit
+                    on_edit = <View> {
+                        visible: false,
+                        width: Fit, height: Fit
 
-                        draw_bg: {
-                            border_width: 1,
-                            radius: 3
+                        port_number_input = <MolyTextInput> {
+                            width: 100,
+                            height: Fit,
+                            draw_text: {
+                                text_style: <REGULAR_FONT>{font_size: 12}
+                                color: #000
+                            }
+                        }
+                    }
+
+                    editable = <View> {
+                        width: Fit, height: Fit
+                        spacing: 10
+                        align: {x: 0.0, y: 0.5}
+
+                        port_number_label = <Label> {
+                            draw_text:{
+                                text_style: <REGULAR_FONT>{font_size: 12}
+                                color: #000
+                            }
                         }
 
-                        margin: {bottom: 4}
+                        edit_port_number = <MolyButton> {
+                            width: Fit
+                            height: Fit
 
-                        icon_walk: {width: 14, height: 14}
-                        draw_icon: {
-                            svg_file: (ICON_EDIT),
-                            fn get_color(self) -> vec4 {
-                                return #000;
+                            draw_bg: {
+                                border_width: 1,
+                                radius: 3
+                            }
+
+                            margin: {bottom: 4}
+
+                            icon_walk: {width: 14, height: 14}
+                            draw_icon: {
+                                svg_file: (ICON_EDIT),
+                                fn get_color(self) -> vec4 {
+                                    return #000;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            <HorizontalFiller> { height: 10 }
-
-            <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 16}
-                    color: #000
+                load_error_label = <View> {
+                    visible: false,
+                    width: Fit, height: Fit
+                    <Label> {
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 12}
+                            color: #000
+                        }
+                        text: "Something went wrong while loading the model using this port number. Please try another one."
+                    }
                 }
-                text: "Client code examples"
-            }
 
-            code_snippet = <CodeView> {
-                editor: {
-                    pad_left_top: vec2(10.0,10.0)
-                    width: Fill,
-                    height: Fit,
-                    draw_bg: { color: #3c3c3c },
+                <HorizontalFiller> { height: 10 }
+
+                <Label> {
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 16}
+                        color: #000
+                    }
+                    text: "Client code examples"
+                }
+
+                code_snippet = <CodeView> {
+                    editor: {
+                        pad_left_top: vec2(10.0,10.0)
+                        width: Fill,
+                        height: Fit,
+                        draw_bg: { color: #3c3c3c },
+                    }
                 }
             }
         }
@@ -204,8 +197,13 @@ impl Widget for SettingsScreen {
         if let Event::Signal = event {
             // TODO: Use cx.action to send a more specific message, otherwise it could be refreshing all the time
             let store = scope.data.get_mut::<Store>().unwrap();
-            if !store.chats.model_loader.is_loading() {
+            if store.chats.model_loader.is_loaded() {
                 self.override_port = None;
+            }
+            if store.chats.model_loader.is_failed() {
+                self.view(id!(load_error_label)).set_visible(true);
+            } else {
+                self.view(id!(load_error_label)).set_visible(false);
             }
         }
     }
@@ -249,8 +247,8 @@ curl http://localhost:{}/v1/chat/completions \\
 -d '{{ 
 \"model\": \"moly-chat\",
 \"messages\": [ 
-{{ \"role\": \"system\", \"content\": \"Always answer in rhymes.\" }},
-{{ \"role\": \"user\", \"content\": \"Introduce yourself.\" }}
+{{ \"role\": \"system\", \"content\": \"Use positive language and offer helpful solutions to their problems.\" }},
+{{ \"role\": \"user\", \"content\": \"What is the currency used in Spain?\" }}
 ], 
 \"temperature\": 0.7, 
 \"stream\": true
