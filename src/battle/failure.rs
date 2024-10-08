@@ -26,6 +26,8 @@ live_design! {
         }
         retry = <MolyButton> {
             text: "Dismiss",
+            margin: {top: (SM_GAP)},
+            padding: {top: (SM_GAP), bottom: (SM_GAP), left: (MD_GAP), right: (MD_GAP)},
             draw_bg: {
                 color: #000,
             },

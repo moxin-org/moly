@@ -128,7 +128,8 @@ impl WidgetMatchEvent for BattleScreen {
         }
 
         if let Some(weight) = self.vote(id!(vote)).voted(actions) {
-            self.handle_vote(weight);
+            let round_index = self.sheet.as_ref().unwrap().current_round_index().unwrap();
+            self.handle_vote(round_index, weight);
         }
 
         if self.ending(id!(ending)).ended(actions) {
@@ -167,13 +168,13 @@ impl BattleScreen {
         });
     }
 
-    fn handle_vote(&mut self, weight: i8) {
-        let sheet = self.sheet.as_mut().unwrap();
-        sheet.current_round_mut().unwrap().vote = Some(weight);
+    fn handle_vote(&mut self, round_index: usize, weight: i8) {
+        self.show_loading_frame("Saving answers to disk...");
 
-        let sheet = sheet.clone();
+        let mut sheet = self.sheet.as_ref().unwrap().clone();
         let ui = self.ui_runner;
         std::thread::spawn(move || {
+            sheet.rounds[round_index].vote = Some(weight);
             if let Err(error) = battle::save_sheet_blocking(&sheet) {
                 ui.defer_with_redraw(move |s: &mut Self, _cx| {
                     s.show_failure_frame(&error.to_string());
@@ -182,27 +183,25 @@ impl BattleScreen {
                 return;
             }
 
-            let sheet_clone = sheet.clone();
-            ui.defer_with_redraw(move |s: &mut Self, _cx| {
-                s.set_sheet(Some(sheet_clone));
-            });
-
             if sheet.is_completed() {
-                ui.defer_with_redraw(|s: &mut Self, _cx| {
-                    s.show_loading_frame("Sending answers...");
-                });
-
-                let result = battle::send_sheet_blocking(sheet);
-
-                ui.defer_with_redraw(move |s: &mut Self, _cx| {
-                    if let Err(error) = result {
+                if let Err(error) = battle::send_sheet_blocking(sheet) {
+                    ui.defer_with_redraw(move |s: &mut Self, _cx| {
                         s.show_failure_frame(&error.to_string());
-                        return;
-                    }
+                    });
 
+                    return;
+                }
+
+                ui.defer_with_redraw(|s: &mut Self, _cx| {
                     s.show_ending_frame();
                 });
+
+                return;
             }
+
+            ui.defer_with_redraw(|s: &mut Self, _cx| {
+                s.show_round_frame(sheet);
+            });
         });
     }
 
