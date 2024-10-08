@@ -90,20 +90,17 @@ impl LiveHook for BattleScreen {
         let ui = self.ui_runner;
         std::thread::spawn(move || {
             let sheet = battle::restore_sheet_blocking();
-            ui.defer(move |s: &mut Self, cx| {
-                match sheet {
-                    Ok(sheet) => {
-                        if sheet.is_completed() {
-                            s.show_ending_frame();
-                        } else {
-                            s.show_round_frame(sheet);
-                        }
-                    }
-                    Err(_) => {
-                        s.show_opening_frame();
+            ui.defer_with_redraw(move |s: &mut Self, _cx| match sheet {
+                Ok(sheet) => {
+                    if sheet.is_completed() {
+                        s.show_ending_frame();
+                    } else {
+                        s.show_round_frame(sheet);
                     }
                 }
-                s.redraw(cx);
+                Err(_) => {
+                    s.show_opening_frame();
+                }
             });
         });
     }
@@ -195,23 +192,20 @@ impl BattleScreen {
         std::thread::spawn(move || match battle::download_sheet_blocking(code) {
             Ok(sheet) => {
                 if let Err(error) = battle::save_sheet_blocking(&sheet) {
-                    ui.defer(move |s: &mut Self, cx| {
+                    ui.defer_with_redraw(move |s: &mut Self, _cx| {
                         s.show_failure_frame(&error.to_string());
-                        s.redraw(cx);
                     });
 
                     return;
                 }
 
-                ui.defer(move |s: &mut Self, cx| {
+                ui.defer_with_redraw(move |s: &mut Self, _cx| {
                     s.show_round_frame(sheet);
-                    s.redraw(cx);
                 });
             }
             Err(error) => {
-                ui.defer(move |s: &mut Self, cx| {
+                ui.defer_with_redraw(move |s: &mut Self, _cx| {
                     s.show_failure_frame(&error.to_string());
-                    s.redraw(cx);
                 });
             }
         });
@@ -225,37 +219,32 @@ impl BattleScreen {
         let ui = self.ui_runner;
         std::thread::spawn(move || {
             if let Err(error) = battle::save_sheet_blocking(&sheet) {
-                ui.defer(move |s: &mut Self, cx| {
+                ui.defer_with_redraw(move |s: &mut Self, _cx| {
                     s.show_failure_frame(&error.to_string());
-                    s.redraw(cx);
                 });
 
                 return;
             }
 
             let sheet_clone = sheet.clone();
-            ui.defer(move |s: &mut Self, cx| {
+            ui.defer_with_redraw(move |s: &mut Self, _cx| {
                 s.set_sheet(Some(sheet_clone));
-                s.redraw(cx);
             });
 
             if sheet.is_completed() {
-                ui.defer(|s: &mut Self, cx| {
+                ui.defer_with_redraw(|s: &mut Self, _cx| {
                     s.show_loading_frame("Sending answers...");
-                    s.redraw(cx);
                 });
 
                 let result = battle::send_sheet_blocking(sheet);
 
-                ui.defer(move |s: &mut Self, cx| {
+                ui.defer_with_redraw(move |s: &mut Self, _cx| {
                     if let Err(error) = result {
                         s.show_failure_frame(&error.to_string());
-                        s.redraw(cx);
                         return;
                     }
 
                     s.show_ending_frame();
-                    s.redraw(cx);
                 });
             }
         });
@@ -270,16 +259,14 @@ impl BattleScreen {
         let ui = self.ui_runner;
         std::thread::spawn(move || {
             let result = battle::clear_sheet_blocking();
-            ui.defer(move |s: &mut Self, cx| {
+            ui.defer_with_redraw(move |s: &mut Self, _cx| {
                 if let Err(error) = result {
                     s.show_failure_frame(&error.to_string());
-                    s.redraw(cx);
                     return;
                 }
 
                 s.set_sheet(None);
                 s.show_opening_frame();
-                s.redraw(cx);
             });
         });
     }

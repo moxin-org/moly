@@ -43,19 +43,27 @@ impl UiRunner {
     /// ```
     ///
     /// Once a function has been handled, it will never run again.
-    pub fn handle<T: 'static>(self, cx: &mut Cx, event: &Event, widget: &mut T) {
+    pub fn handle<W: Widget + 'static>(self, cx: &mut Cx, event: &Event, widget: &mut W) {
+        let mut redraw = false;
+
         if let Event::Actions(actions) = event {
             for action in actions {
-                if let Some(action) = action.downcast_ref::<UiRunnerAction<T>>() {
+                if let Some(action) = action.downcast_ref::<UiRunnerAction<W>>() {
                     if action.id != self.id {
                         continue;
                     }
+
+                    redraw |= action.redraw;
 
                     if let Some(f) = action.f.lock().unwrap().take() {
                         (f)(widget, cx);
                     }
                 }
             }
+        }
+
+        if redraw {
+            widget.redraw(cx);
         }
     }
 
@@ -64,9 +72,24 @@ impl UiRunner {
     /// Note: You will need to specify the type of the target widget, and it should
     /// match the target type being handled by the `UiRunner::handle` method, or it
     /// will be ignored.
-    pub fn defer<T: 'static>(self, f: impl FnOnce(&mut T, &mut Cx) + Send + 'static) {
+    pub fn defer<W: Widget + 'static>(self, f: impl FnOnce(&mut W, &mut Cx) + Send + 'static) {
         let action = UiRunnerAction {
             f: Arc::new(Mutex::new(Some(Box::new(f)))),
+            redraw: false,
+            id: self.id,
+        };
+
+        Cx::post_action(action);
+    }
+
+    /// Same as `defer`, but also redraws the widget after the closure has run.
+    pub fn defer_with_redraw<W: Widget + 'static>(
+        self,
+        f: impl FnOnce(&mut W, &mut Cx) + Send + 'static,
+    ) {
+        let action = UiRunnerAction {
+            f: Arc::new(Mutex::new(Some(Box::new(f)))),
+            redraw: true,
             id: self.id,
         };
 
@@ -74,12 +97,13 @@ impl UiRunner {
     }
 }
 
-struct UiRunnerAction<T> {
-    f: Arc<Mutex<Option<Box<dyn FnOnce(&mut T, &mut Cx) + Send + 'static>>>>,
+struct UiRunnerAction<W: Widget> {
+    f: Arc<Mutex<Option<Box<dyn FnOnce(&mut W, &mut Cx) + Send + 'static>>>>,
+    redraw: bool,
     id: usize,
 }
 
-impl<T> std::fmt::Debug for UiRunnerAction<T> {
+impl<W: Widget> std::fmt::Debug for UiRunnerAction<W> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UiRunnerAction")
             .field("id", &self.id)
