@@ -89,7 +89,7 @@ impl LiveHook for BattleScreen {
         let ui = self.ui_runner;
         std::thread::spawn(move || {
             let sheet = battle::restore_sheet_blocking();
-            ui.run(move |s: &mut Self, cx| {
+            ui.defer(move |s: &mut Self, cx| {
                 match sheet {
                     Ok(sheet) => {
                         let completed = sheet.is_completed();
@@ -193,7 +193,7 @@ impl BattleScreen {
         std::thread::spawn(move || match battle::download_sheet_blocking(code) {
             Ok(sheet) => {
                 if let Err(error) = battle::save_sheet_blocking(&sheet) {
-                    ui.run(move |s: &mut Self, cx| {
+                    ui.defer(move |s: &mut Self, cx| {
                         s.failure_ref().set_message(&error.to_string());
                         s.show_frame(s.failure_ref().widget_uid());
                         s.redraw(cx);
@@ -202,14 +202,14 @@ impl BattleScreen {
                     return;
                 }
 
-                ui.run(move |s: &mut Self, cx| {
+                ui.defer(move |s: &mut Self, cx| {
                     s.set_sheet(Some(sheet));
                     s.show_frame(s.round_ref().widget_uid());
                     s.redraw(cx);
                 });
             }
             Err(error) => {
-                ui.run(move |s: &mut Self, cx| {
+                ui.defer(move |s: &mut Self, cx| {
                     s.failure_ref().set_message(&error.to_string());
                     s.show_frame(s.failure_ref().widget_uid());
                     s.redraw(cx);
@@ -226,7 +226,7 @@ impl BattleScreen {
         let ui = self.ui_runner;
         std::thread::spawn(move || {
             if let Err(error) = battle::save_sheet_blocking(&sheet) {
-                ui.run(move |s: &mut Self, cx| {
+                ui.defer(move |s: &mut Self, cx| {
                     s.failure_ref().set_message(&error.to_string());
                     s.show_frame(s.failure_ref().widget_uid());
                     s.redraw(cx);
@@ -236,20 +236,20 @@ impl BattleScreen {
             }
 
             let sheet_clone = sheet.clone();
-            ui.run(move |s: &mut Self, cx| {
+            ui.defer(move |s: &mut Self, cx| {
                 s.set_sheet(Some(sheet_clone));
                 s.redraw(cx);
             });
 
             if sheet.is_completed() {
-                ui.run(|s: &mut Self, cx| {
+                ui.defer(|s: &mut Self, cx| {
                     s.show_frame(s.loading_ref().widget_uid());
                     s.redraw(cx);
                 });
 
                 let result = battle::send_sheet_blocking(sheet);
 
-                ui.run(move |s: &mut Self, cx| {
+                ui.defer(move |s: &mut Self, cx| {
                     if let Err(error) = result {
                         s.failure_ref().set_message(&error.to_string());
                         s.show_frame(s.failure_ref().widget_uid());
@@ -273,7 +273,7 @@ impl BattleScreen {
         let ui = self.ui_runner;
         std::thread::spawn(move || {
             let result = battle::clear_sheet_blocking();
-            ui.run(move |s: &mut Self, cx| {
+            ui.defer(move |s: &mut Self, cx| {
                 if let Err(error) = result {
                     s.failure_ref().set_message(&error.to_string());
                     s.show_frame(s.failure_ref().widget_uid());

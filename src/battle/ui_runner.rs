@@ -33,7 +33,7 @@ impl UiRunner {
 
     /// Handle all functions scheduled thru this instance.
     ///
-    /// You should call this once from yout `handle_event` method, like:
+    /// You should call this once from your `handle_event` method, like:
     ///
     /// ```rust
     /// fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
@@ -43,7 +43,7 @@ impl UiRunner {
     /// ```
     ///
     /// Once a function has been handled, it will never run again.
-    pub fn handle<T: 'static>(self, cx: &mut Cx, event: &Event, target: &mut T) {
+    pub fn handle<T: 'static>(self, cx: &mut Cx, event: &Event, widget: &mut T) {
         if let Event::Actions(actions) = event {
             for action in actions {
                 if let Some(action) = action.downcast_ref::<UiRunnerAction<T>>() {
@@ -52,7 +52,7 @@ impl UiRunner {
                     }
 
                     if let Some(f) = action.f.lock().unwrap().take() {
-                        (f)(target, cx);
+                        (f)(widget, cx);
                     }
                 }
             }
@@ -64,7 +64,7 @@ impl UiRunner {
     /// Note: You will need to specify the type of the target widget, and it should
     /// match the target type being handled by the `UiRunner::handle` method, or it
     /// will be ignored.
-    pub fn run<T: 'static>(self, f: impl FnOnce(&mut T, &mut Cx) + Send + 'static) {
+    pub fn defer<T: 'static>(self, f: impl FnOnce(&mut T, &mut Cx) + Send + 'static) {
         let action = UiRunnerAction {
             f: Arc::new(Mutex::new(Some(Box::new(f)))),
             id: self.id,
