@@ -25,7 +25,7 @@ live_design! {
             text: "An error occurred."
         }
         retry = <MolyButton> {
-            text: "Retry",
+            text: "Dismiss",
             draw_bg: {
                 color: #000,
             },
@@ -37,11 +37,21 @@ live_design! {
 pub struct Failure {
     #[deref]
     view: View,
+
+    #[rust]
+    recovery_cb: Option<Box<dyn FnOnce() + 'static>>,
 }
 
 impl Widget for Failure {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        if let Event::Actions(actions) = event {
+            if self.button(id!(retry)).clicked(actions) {
+                if let Some(recovery_cb) = self.recovery_cb.take() {
+                    recovery_cb();
+                }
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -50,27 +60,25 @@ impl Widget for Failure {
 }
 
 impl Failure {
-    fn retry_ref(&self) -> ButtonRef {
-        self.button(id!(retry))
-    }
-
-    pub fn retried(&self, actions: &Actions) -> bool {
-        self.retry_ref().clicked(actions)
-    }
-
     pub fn set_message(&self, message: &str) {
         self.label(id!(message)).set_text(message);
+    }
+
+    pub fn set_recovery_cb(&mut self, recovery_cb: impl FnOnce() + 'static) {
+        self.recovery_cb = Some(Box::new(recovery_cb));
     }
 }
 
 impl FailureRef {
-    pub fn retried(&self, actions: &Actions) -> bool {
-        self.borrow().map(|s| s.retried(actions)).unwrap_or(false)
-    }
-
     pub fn set_message(&self, message: &str) {
         if let Some(failure) = self.borrow_mut() {
             failure.set_message(message);
+        }
+    }
+
+    pub fn set_recovery_cb(&self, recovery_cb: impl FnOnce() + 'static) {
+        if let Some(mut failure) = self.borrow_mut() {
+            failure.set_recovery_cb(recovery_cb);
         }
     }
 }

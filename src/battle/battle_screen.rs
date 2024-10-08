@@ -131,10 +131,6 @@ impl WidgetMatchEvent for BattleScreen {
             self.handle_vote(weight);
         }
 
-        if self.failure(id!(failure)).retried(actions) {
-            self.handle_retry(cx);
-        }
-
         if self.ending(id!(ending)).ended(actions) {
             self.handle_end();
         }
@@ -210,11 +206,6 @@ impl BattleScreen {
         });
     }
 
-    fn handle_retry(&mut self, cx: &mut Cx) {
-        self.show_opening_frame();
-        self.redraw(cx);
-    }
-
     fn handle_end(&mut self) {
         let ui = self.ui_runner;
         std::thread::spawn(move || {
@@ -262,6 +253,14 @@ impl BattleScreen {
     }
 
     fn show_round_frame(&mut self, sheet: battle::Sheet) {
+        let ui = self.ui_runner;
+        let sheet_backup = sheet.clone();
+        self.failure(id!(failure)).set_recovery_cb(move || {
+            ui.defer_with_redraw(|s: &mut Self, _cx| {
+                s.show_round_frame(sheet_backup);
+            });
+        });
+
         self.set_sheet(Some(sheet));
         self.hide_all_frames();
         self.view(id!(round_frame)).set_visible(true);
@@ -274,12 +273,26 @@ impl BattleScreen {
     }
 
     fn show_opening_frame(&mut self) {
+        let ui = self.ui_runner;
+        self.failure(id!(failure)).set_recovery_cb(move || {
+            ui.defer_with_redraw(|s: &mut Self, _cx| {
+                s.show_opening_frame();
+            });
+        });
+
         self.opening(id!(opening)).clear();
         self.hide_all_frames();
         self.view(id!(opening_frame)).set_visible(true);
     }
 
     fn show_ending_frame(&mut self) {
+        let ui = self.ui_runner;
+        self.failure(id!(failure)).set_recovery_cb(move || {
+            ui.defer_with_redraw(|s: &mut Self, _cx| {
+                s.show_ending_frame();
+            });
+        });
+
         self.hide_all_frames();
         self.view(id!(ending_frame)).set_visible(true);
     }
