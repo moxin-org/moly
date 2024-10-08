@@ -73,6 +73,16 @@ live_design! {
         failure_frame = <Frame> {
             failure = <Failure> {}
         }
+        blocker_overlay_frame = <Frame> {
+            // Workaround: A button captures mouse events so it works well to block
+            // the screen in (probably) fast operations where a spinner would flicker.
+            // For some reason I can't achieve the same effect with a view using only the DSL.
+            <MolyButton> {
+                width: Fill,
+                height: Fill,
+                draw_bg: { color: #00000000, border_color: #00000000, color_hover: #00000000, border_color_hover: #00000000 }
+            }
+        }
     }
 }
 
@@ -129,7 +139,7 @@ impl WidgetMatchEvent for BattleScreen {
 
         if let Some(weight) = self.vote(id!(vote)).voted(actions) {
             let round_index = self.sheet.as_ref().unwrap().current_round_index().unwrap();
-            self.handle_vote(round_index, weight);
+            self.handle_vote(cx, round_index, weight);
         }
 
         if self.ending(id!(ending)).ended(actions) {
@@ -168,8 +178,9 @@ impl BattleScreen {
         });
     }
 
-    fn handle_vote(&mut self, round_index: usize, weight: i8) {
-        self.show_loading_frame("Saving answers to disk...");
+    fn handle_vote(&mut self, cx: &mut Cx, round_index: usize, weight: i8) {
+        self.show_blocker_overlay_frame();
+        self.redraw(cx);
 
         let mut sheet = self.sheet.as_ref().unwrap().clone();
         let ui = self.ui_runner;
@@ -184,6 +195,10 @@ impl BattleScreen {
             }
 
             if sheet.is_completed() {
+                ui.defer_with_redraw(|s: &mut Self, _cx| {
+                    s.show_loading_frame("Sending sheet...");
+                });
+
                 if let Err(error) = battle::send_sheet_blocking(sheet) {
                     ui.defer_with_redraw(move |s: &mut Self, _cx| {
                         s.show_failure_frame(&error.to_string());
@@ -296,6 +311,11 @@ impl BattleScreen {
         self.view(id!(ending_frame)).set_visible(true);
     }
 
+    fn show_blocker_overlay_frame(&mut self) {
+        // This is an overlay to block user interactions so it doesn't hide other frames.
+        self.view(id!(blocker_frame)).set_visible(true);
+    }
+
     fn hide_all_frames(&mut self) {
         [
             id!(opening_frame),
@@ -303,6 +323,7 @@ impl BattleScreen {
             id!(loading_frame),
             id!(round_frame),
             id!(failure_frame),
+            id!(blocker_frame),
         ]
         .iter()
         .for_each(|id| {
