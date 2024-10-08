@@ -1,4 +1,4 @@
-use moly_protocol::open_ai::{MessageData, Role, UsageData};
+use moly_protocol::open_ai::{ChatResponseData, ChoiceData, MessageData, Role, StopReason, UsageData};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::sync::mpsc::{self, channel};
 use tokio::task::JoinHandle;
@@ -137,11 +137,10 @@ impl MofaBackend {
                             content: task,
                         }],
                     };
-                    let request_body = serde_json::to_string(&data).unwrap();
                     let client = reqwest::Client::new();
                     current_request = Some(rt.spawn(async move {
                         let resp = client
-                            .post("http://localhost:9901/api/chat/completions")
+                            .post("http://localhost:8000/v1/chat/completions")
                             .json(&data)
                             .send()
                             .await
@@ -150,7 +149,7 @@ impl MofaBackend {
                         let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
                         match resp {
                             Ok(resp) => {
-                                dbg!(request_body, &resp);
+                                dbg!("success",  &resp);
                                 let _ = tx.send(ChatResponse::ChatFinalResponseData(resp.clone()));
                             }
                             Err(e) => {
@@ -214,45 +213,6 @@ impl MofaBackend {
 
 pub fn should_be_fake() -> bool {
     std::env::var("MAE_BACKEND").unwrap_or_default() == "fake"
-}
-
-// TODO Fix stop reason "complete" in MoFa
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum StopReason {
-    #[serde(rename = "complete")]
-    Stop,
-    #[serde(rename = "length")]
-    Length,
-    #[serde(rename = "content_filter")]
-    ContentFilter,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ChoiceData {
-    pub finish_reason: StopReason,
-    pub index: u32,
-    pub message: MessageData,
-    // todo: ask for a fix in MoFa
-    pub logprobs: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ChatResponseData {
-    pub id: String,
-    pub choices: Vec<ChoiceData>,
-    pub created: u32,
-    pub model: String,
-    #[serde(default)]
-    pub system_fingerprint: String,
-    pub usage: UsageData,
-
-    #[serde(default = "response_object")]
-    pub object: String,
-}
-
-fn response_object() -> String {
-    "chat.completion".to_string()
 }
 
 #[derive(Clone, Debug)]

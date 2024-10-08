@@ -401,8 +401,10 @@ impl Chat {
             .send(SendTask(prompt.clone(), agent.clone(), tx.clone()))
             .expect("failed to send message to agent");
 
+        let next_id = self.messages.last().map(|m| m.id).unwrap_or(0) + 1;
+
         self.messages.push(ChatMessage {
-            id: self.messages.len() + 1,
+            id: next_id,
             role: Role::User,
             username: None,
             entity: None,
@@ -410,7 +412,7 @@ impl Chat {
         });
 
         self.messages.push(ChatMessage {
-            id: self.messages.len() + 1,
+            id: next_id + 1,
             role: Role::Assistant,
             username: Some(agent.name()),
             entity: Some(ChatEntity::Agent(agent.clone())),
