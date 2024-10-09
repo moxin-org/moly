@@ -209,11 +209,11 @@ pub fn open_or_clone<P: AsRef<Path>>(url: &str, repo_path: P) -> Result<Reposito
 pub static REPO_NAME: &'static str = "model-cards";
 
 pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<ModelCardManager> {
-    let repo_url: &'static str =
-        option_env!("MODEL_CARDS_REPO").unwrap_or("https://github.com/moxin-org/model-cards");
+    let repo_url = std::env::var("MODEL_CARDS_REPO")
+        .unwrap_or("https://github.com/moxin-org/model-cards".to_string());
     let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
 
-    let repo = open_or_clone(repo_url, &repo_dirs)?;
+    let repo = open_or_clone(&repo_url, &repo_dirs)?;
     let mut r = Ok(());
     for _ in 0..2 {
         r = pull(&repo, "origin", "main");
@@ -506,7 +506,10 @@ impl ModelCardManager {
             .filter(|index| {
                 (index.model_type == "instruct" || index.model_type == "chat")
                     && (index.name.to_ascii_lowercase().contains(&search_text)
-                        || index.architecture.to_ascii_lowercase().contains(&search_text)
+                        || index
+                            .architecture
+                            .to_ascii_lowercase()
+                            .contains(&search_text)
                         || index.id.to_ascii_lowercase().contains(&search_text)
                         || index.summary.to_ascii_lowercase().contains(&search_text))
             })
