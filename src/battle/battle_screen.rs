@@ -56,7 +56,14 @@ live_design! {
                         width: 1.5,
                         height: Fill,
                         show_bg: true,
-                        draw_bg: { color: #15859A }
+                        draw_bg: {
+                            fn pixel(self) -> vec4{
+                                let distance_from_center = abs(self.pos.y - 0.5);
+                                let dist = distance_from_center * 1.5;
+                                let color = mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(#15859A.xyz, 0.8), 1.0 - dist);
+                                return mix(color, vec4(0.0, 0.0, 0.0, 0.0), dist);
+                            }
+                        }
                     }
                     right = <Half> {}
                 }
