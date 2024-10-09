@@ -7,18 +7,30 @@ live_design! {
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
+    import makepad_draw::shader::std::*;
+
     SM_SIZE = 32;
     MD_SIZE = 44;
     LG_SIZE = 60;
 
-    SM_RADIUS = 7;
-    MD_RADIUS = 10;
-    LG_RADIUS = 15;
-
-    VoteButton = <MolyButton> {
+    VoteButton = <Button> {
         draw_bg: {
-            border_color: #15859A,
-            color: #dae8ec,
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
+                sdf.circle(
+                    self.rect_size.x * 0.5,
+                    self.rect_size.y * 0.5,
+                    self.rect_size.x * 0.5 - 1.0
+                );
+
+                let fill_color = mix(#dae8ec, #fff, self.pos.x);
+                let stroke_color = mix(#15859A, #fff, self.pos.x);
+
+                sdf.fill_keep(fill_color)
+                sdf.stroke(stroke_color, 1)
+
+                return sdf.result;
+            }
         },
     }
 
@@ -38,7 +50,12 @@ live_design! {
             width: 500,
             show_bg: true,
             draw_bg: {
-                color: #15859A,
+                fn pixel(self) -> vec4{
+                    let distance_from_center = abs(self.pos.x - 0.5);
+                    let dist = distance_from_center * 1.5;
+                    let color = mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(#15859A.xyz, 0.8), 1.0 - dist);
+                    return mix(color, vec4(0.0, 0.0, 0.0, 0.0), dist);
+                }
             }
         }
         <View> {
@@ -50,41 +67,26 @@ live_design! {
                 margin: {left: 30},
                 height: (LG_SIZE),
                 width: (LG_SIZE),
-                draw_bg: {
-                    radius: (LG_RADIUS),
-                },
             }
             a1 = <VoteButton> {
                 margin: {left: 120},
                 height: (MD_SIZE),
                 width: (MD_SIZE),
-                draw_bg: {
-                    radius: (MD_RADIUS),
-                }
             }
             o0 = <VoteButton> {
                 margin: {left: 60, right: 60},
                 height: (SM_SIZE),
                 width: (SM_SIZE),
-                draw_bg: {
-                    radius: (SM_RADIUS),
-                }
             }
             b1 = <VoteButton> {
                 margin: {right: 120},
                 height: (MD_SIZE),
                 width: (MD_SIZE),
-                draw_bg: {
-                    radius: (MD_RADIUS),
-                }
             }
             b2 = <VoteButton> {
                 margin: {right: 30},
                 height: (LG_SIZE),
                 width: (LG_SIZE),
-                draw_bg: {
-                    radius: (LG_RADIUS),
-                }
             }
             <EdgeLabel> { text: "Right is better" }
         }
