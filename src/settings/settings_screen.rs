@@ -153,7 +153,7 @@ live_design! {
                         text_style: <BOLD_FONT>{font_size: 16}
                         color: #000
                     }
-                    text: "Client code examples"
+                    text: "Client code example"
                 }
 
                 code_snippet = <CodeView> {

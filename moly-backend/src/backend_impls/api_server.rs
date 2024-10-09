@@ -185,8 +185,8 @@ impl BackendModel for LLamaEdgeApiServer {
                     match std::net::TcpListener::bind(&addr) {
                         Ok(listener) => listener.local_addr().unwrap(),
                         Err(_) => {
-                            eprintln!("Failed to start the model on port {}", addr);
-                            eprintln!("Using the previous port {}", old_model.listen_addr.port());
+                            eprintln!("Failed to start the model on address {}", addr);
+                            eprintln!("Using the previous one {}", old_model.listen_addr);
                             old_model.listen_addr
                         }
                     }
