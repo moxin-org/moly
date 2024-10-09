@@ -17,6 +17,7 @@ live_design! {
     import makepad_draw::shader::std::*;
 
     import crate::shared::styles::*;
+    import crate::shared::widgets::*;
     import crate::shared::popup_notification::*;
     import crate::shared::widgets::SidebarMenuButton;
     import crate::shared::download_notification_popup::DownloadNotificationPopup;
@@ -26,10 +27,12 @@ live_design! {
     import crate::landing::model_card::ModelCardViewAllModal;
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
+    import crate::settings::settings_screen::SettingsScreen;
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
+    ICON_SETTINGS = dep("crate://self/resources/icons/settings.svg")
 
     App = {{App}} {
         ui: <Window> {
@@ -58,8 +61,9 @@ live_design! {
 
                     sidebar_menu = <RoundedView> {
                         width: 100,
+                        height: Fill,
                         flow: Down, spacing: 20.0,
-                        padding: { top: 80 }
+                        padding: { top: 80, bottom: 20 },
 
                         align: {x: 0.5, y: 0.0},
 
@@ -90,6 +94,13 @@ live_design! {
                                 svg_file: (ICON_MY_MODELS),
                             }
                         }
+                        <HorizontalFiller> {}
+                        settings_tab = <SidebarMenuButton> {
+                            text: "Settings",
+                            draw_icon: {
+                                svg_file: (ICON_SETTINGS),
+                            }
+                        }
                     }
 
                     application_pages = <View> {
@@ -104,6 +115,7 @@ live_design! {
                         discover_frame = <LandingScreen> {visible: true}
                         chat_frame = <ChatScreen> {visible: false}
                         my_models_frame = <MyModelsScreen> {visible: false}
+                        settings_frame = <SettingsScreen> {visible: false}
                     }
                 }
 
@@ -137,6 +149,7 @@ impl LiveRegister for App {
         crate::landing::live_design(cx);
         crate::chat::live_design(cx);
         crate::my_models::live_design(cx);
+        crate::settings::live_design(cx);
     }
 }
 
@@ -162,6 +175,7 @@ impl MatchEvent for App {
                 sidebar_menu.discover_tab,
                 sidebar_menu.chat_tab,
                 sidebar_menu.my_models_tab,
+                sidebar_menu.settings_tab,
             ))
             .selected_to_visible(
                 cx,
@@ -171,6 +185,7 @@ impl MatchEvent for App {
                     application_pages.discover_frame,
                     application_pages.chat_frame,
                     application_pages.my_models_frame,
+                    application_pages.settings_frame,
                 ),
             );
 

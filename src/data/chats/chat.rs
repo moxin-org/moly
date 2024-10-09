@@ -342,7 +342,7 @@ impl Chat {
         let wanted_file = wanted_file.clone();
         let command_sender = backend.command_sender.clone();
         thread::spawn(move || {
-            if let Err(err) = model_loader.load(wanted_file.id, command_sender.clone()) {
+            if let Err(err) = model_loader.load(wanted_file.id, command_sender.clone(), None) {
                 eprintln!("Error loading model: {}", err);
                 return;
             }

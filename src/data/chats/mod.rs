@@ -24,6 +24,8 @@ pub struct Chats {
 
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
+
+    override_port: Option<u16>,
 }
 
 impl Chats {
@@ -36,6 +38,7 @@ impl Chats {
             loaded_model: None,
             model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
+            override_port: None,
         }
     }
 
@@ -60,7 +63,7 @@ impl Chats {
             .map(|c| c.borrow().id)
     }
 
-    pub fn load_model(&mut self, file: &File) {
+    pub fn load_model(&mut self, file: &File, override_port: Option<u16>) {
         self.cancel_chat_streaming();
 
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
@@ -76,8 +79,9 @@ impl Chats {
             return;
         }
 
+        self.override_port = override_port;
         self.model_loader
-            .load_async(file.id.clone(), self.backend.command_sender.clone());
+            .load_async(file.id.clone(), self.backend.command_sender.clone(), override_port);
     }
 
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
@@ -186,7 +190,7 @@ impl Chats {
         self.current_chat_id = Some(new_chat.id);
         self.saved_chats.push(RefCell::new(new_chat));
 
-        self.load_model(file);
+        self.load_model(file, None);
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {

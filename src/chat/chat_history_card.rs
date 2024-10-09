@@ -515,6 +515,22 @@ impl ChatHistoryCard {
             self.transition_title_state(cx)
         }
 
+        if let Some(val) = self.text_input(id!(title_input)).returned(actions) {
+            let chat = store
+                .chats
+                .saved_chats
+                .iter()
+                .find(|c| c.borrow().id == self.chat_id)
+                .unwrap();
+
+            if !val.trim().is_empty() && chat.borrow().get_title() != val {
+                chat.borrow_mut().set_title(val.clone());
+                chat.borrow().save();
+            }
+
+            self.transition_title_state(cx)
+        }
+
         if self.button(id!(cancel)).clicked(actions) {
             self.transition_title_state(cx)
         }
