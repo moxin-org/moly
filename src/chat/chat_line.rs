@@ -389,6 +389,19 @@ impl ChatLine {
             self.set_edit_mode(cx, false);
         }
 
+        if let Some(val) = self.text_input(id!(input)).returned(actions) {
+            if !val.trim().is_empty() {
+                let widget_id = self.view.widget_uid();
+                cx.widget_action(
+                    widget_id,
+                    &scope.path,
+                    ChatLineAction::Edit(self.message_id, val, false),
+                );
+            }
+
+            self.set_edit_mode(cx, false);
+        }
+
         if self.button(id!(save_and_regenerate)).clicked(&actions) {
             let updated_message = self.text_input(id!(input)).text();
 
