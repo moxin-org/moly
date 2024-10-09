@@ -248,7 +248,7 @@ live_design! {
                                 text_style: <REGULAR_FONT>{font_size: 10}
                                 color: #B42318
                             }
-                            text: "MoFa server is not running" 
+                            text: "MoFa server is not properly running. Please check the address." 
                         } 
                     }
                 }

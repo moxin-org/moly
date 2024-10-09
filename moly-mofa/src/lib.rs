@@ -194,16 +194,17 @@ impl MofaBackend {
 
                     match resp {
                         Ok(r) => {
-                            tx.send(TestServerResponse::Success).unwrap();
+                            if r.status().is_success() {
+                                tx.send(TestServerResponse::Success).unwrap();
+                            } else {
+                                tx.send(TestServerResponse::Failure).unwrap();
+                            }
                         }
                         Err(e) => {
                             tx.send(TestServerResponse::Failure).unwrap();
                             eprintln!("{e}");
                         }
                     };
-
-                    tx.send(TestServerResponse::Failure).unwrap();
-                    // TODO
                 }
             }
         }
