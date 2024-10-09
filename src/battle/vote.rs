@@ -16,20 +16,21 @@ live_design! {
     VoteButton = <Button> {
         draw_bg: {
             fn pixel(self) -> vec4 {
-                let sdf = Sdf2d::viewport(self.pos * self.rect_size)
-                sdf.circle(
-                    self.rect_size.x * 0.5,
-                    self.rect_size.y * 0.5,
-                    self.rect_size.x * 0.5 - 1.0
-                );
+                let fill_color = #dae8ec
+                let stroke_color = mix(#15859A, vec4(0.0, 0.0, 0.0, 0.0), self.pos.x * 0.5);
 
-                let fill_color = mix(#dae8ec, #fff, self.pos.x);
-                let stroke_color = mix(#15859A, #fff, self.pos.x);
+                let center = vec2(0.5, 0.5);
+                let distance_from_center = distance(self.pos, center);
 
-                sdf.fill_keep(fill_color)
-                sdf.stroke(stroke_color, 1)
+                if distance_from_center > 0.5 {
+                    return vec4(0.0, 0.0, 0.0, 0.0);
+                }
 
-                return sdf.result;
+                if distance_from_center > 0.475 {
+                    return stroke_color;
+                }
+
+                return fill_color;
             }
         },
     }
