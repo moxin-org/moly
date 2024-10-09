@@ -212,36 +212,6 @@ live_design! {
                         }
                         text: "http://localhost:8000"
                     }
-
-                    <HorizontalFiller> { height: 10 }
-
-                    <Label> {
-                        draw_text:{
-                            text_style: <BOLD_FONT>{font_size: 12}
-                            color: #000
-                        }
-                        text: "Custom agents"
-                    }
-
-                    <Label> {
-                        width: Fill
-                        draw_text:{
-                            text_style: <REGULAR_FONT>{font_size: 12}
-                            wrap: Word
-                            color: #000
-                        }
-                        text: "Enter a comma-separated list of custom agents provided by your MoFa installation"
-                    }
-
-                    <MolyTextInput> {
-                        width: Fill
-                        height: Fit
-                        draw_text: {
-                            text_style: <REGULAR_FONT>{font_size: 12}
-                            color: #000
-                        }
-                        text: "example, example2"
-                    }
                 }
             }
     }

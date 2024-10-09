@@ -99,8 +99,11 @@ impl MofaBackend {
     pub fn available_agents() -> Vec<MofaAgent> {
         vec![
             MofaAgent::Reasoner,
-            MofaAgent::SearchAssistant,
-            MofaAgent::ResearchScholar,
+
+            // Keeping only one agent for now. We will revisit this later when MoFa is more stable.
+
+            // MofaAgent::SearchAssistant,
+            // MofaAgent::ResearchScholar,
         ]
     }
 
