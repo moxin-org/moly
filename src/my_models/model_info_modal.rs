@@ -214,7 +214,7 @@ impl Widget for ModelInfoModal {
 }
 
 impl WidgetMatchEvent for ModelInfoModal {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
 
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(ModelInfoModalAction::ModalDismissed);
