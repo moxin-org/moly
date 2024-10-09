@@ -80,9 +80,21 @@ impl MofaAgent {
     }
 }
 
+#[derive(Default)]
+pub struct MofaOptions {
+    pub address: Option<String>,
+}
+
+pub enum TestServerResponse {
+    Success,
+    Failure,
+}
+
 pub enum MofaAgentCommand {
     SendTask(String, MofaAgent, mpsc::Sender<ChatResponse>),
     CancelTask,
+    UpdateServerAddress(String),
+    TestServer(mpsc::Sender<TestServerResponse>),
 }
 
 pub struct MofaBackend {
@@ -99,7 +111,6 @@ impl MofaBackend {
     pub fn available_agents() -> Vec<MofaAgent> {
         vec![
             MofaAgent::Reasoner,
-
             // Keeping only one agent for now. We will revisit this later when MoFa is more stable.
 
             // MofaAgent::SearchAssistant,
@@ -126,6 +137,7 @@ impl MofaBackend {
         println!("MoFa backend started");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
+        let mut options = MofaOptions::default();
 
         loop {
             match command_receiver.recv().unwrap() {
@@ -141,9 +153,10 @@ impl MofaBackend {
                         }],
                     };
                     let client = reqwest::Client::new();
+                    let url = options.address.clone().unwrap_or("http://localhost:8000".to_string());
                     current_request = Some(rt.spawn(async move {
                         let resp = client
-                            .post("http://localhost:8000/v1/chat/completions")
+                            .post(format!("{}/v1/chat/completions", url))
                             .json(&data)
                             .send()
                             .await
@@ -152,7 +165,6 @@ impl MofaBackend {
                         let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
                         match resp {
                             Ok(resp) => {
-                                dbg!("success",  &resp);
                                 let _ = tx.send(ChatResponse::ChatFinalResponseData(resp.clone()));
                             }
                             Err(e) => {
@@ -162,11 +174,36 @@ impl MofaBackend {
                     }));
                 }
                 MofaAgentCommand::CancelTask => {
-                    dbg!("Canceling task");
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
                     continue;
+                }
+                MofaAgentCommand::UpdateServerAddress(address) => {
+                    options.address = Some(address);
+                }
+                MofaAgentCommand::TestServer(tx) => {
+                    let url = options.address.clone().unwrap_or("http://localhost:8000".to_string());
+                    let resp = reqwest::blocking::ClientBuilder::new()
+                        .timeout(std::time::Duration::from_secs(5))
+                        .no_proxy()
+                        .build()
+                        .unwrap()
+                        .get(format!("{}/v1/models", url))
+                        .send();
+
+                    match resp {
+                        Ok(r) => {
+                            tx.send(TestServerResponse::Success).unwrap();
+                        }
+                        Err(e) => {
+                            tx.send(TestServerResponse::Failure).unwrap();
+                            eprintln!("{e}");
+                        }
+                    };
+
+                    tx.send(TestServerResponse::Failure).unwrap();
+                    // TODO
                 }
             }
         }

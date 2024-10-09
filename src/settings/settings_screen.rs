@@ -1,7 +1,10 @@
 use makepad_code_editor::code_view::CodeViewWidgetExt;
 use makepad_widgets::*;
 
-use crate::data::{chats::model_loader::ModelLoaderStatus, store::Store};
+use crate::data::{
+    chats::model_loader::ModelLoaderStatus,
+    store::{MoFaTestServerAction, Store},
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -61,7 +64,7 @@ live_design! {
                             text: "Local inference options will appear once you have a model loaded."
                         }
                     }
-                    
+
                     main = <View> {
                         width: Fill, height: Fit
                         flow: Down
@@ -179,7 +182,7 @@ live_design! {
                         color: #c3c3c3
                     }
                 }
-            
+
                 mofa_options = <View> {
                     width: Fill, height: Fit
                     flow: Down
@@ -203,7 +206,7 @@ live_design! {
                         text: "Server address"
                     }
 
-                    <MolyTextInput> {
+                    mofa_address_input = <MolyTextInput> {
                         width: Fill
                         height: Fit
                         draw_text: {
@@ -211,6 +214,42 @@ live_design! {
                             color: #000
                         }
                         text: "http://localhost:8000"
+                    }
+
+                    mofa_status_label_status = <View> {
+                        visible: false,
+                        width: Fill, height: Fit
+                        <Label> {
+                            draw_text:{
+                                text_style: <REGULAR_FONT>{font_size: 10}
+                                color: #000
+                            }
+                            text: "Checking MoFa server status..."
+                        }
+                    }
+
+                    mofa_status_label_success = <View> {
+                        visible: false,
+                        width: Fill, height: Fit
+                        <Label> {
+                            draw_text:{
+                                text_style: <REGULAR_FONT>{font_size: 10}
+                                color: #099250
+                            }
+                            text: "MoFa server is running"
+                        }
+                    }
+
+                    mofa_status_label_failure = <View> {
+                        visible: false,
+                        width: Fill, height: Fit
+                        <Label> {
+                            draw_text:{
+                                text_style: <REGULAR_FONT>{font_size: 10}
+                                color: #B42318
+                            }
+                            text: "MoFa server is not running" 
+                        } 
                     }
                 }
             }
@@ -280,8 +319,12 @@ impl Widget for SettingsScreen {
         });
 
         if let Some(port) = port {
-            self.view.view(id!(local_server_options.no_model)).set_visible(false);
-            self.view.view(id!(local_server_options.main)).set_visible(true);
+            self.view
+                .view(id!(local_server_options.no_model))
+                .set_visible(false);
+            self.view
+                .view(id!(local_server_options.main))
+                .set_visible(true);
 
             self.view
                 .label(id!(port_number_label))
@@ -306,8 +349,12 @@ curl http://localhost:{}/v1/chat/completions \\
                 port
             ));
         } else {
-            self.view.view(id!(local_server_options.no_model)).set_visible(true);
-            self.view.view(id!(local_server_options.main)).set_visible(false);
+            self.view
+                .view(id!(local_server_options.no_model))
+                .set_visible(true);
+            self.view
+                .view(id!(local_server_options.main))
+                .set_visible(false);
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -346,6 +393,32 @@ impl WidgetMatchEvent for SettingsScreen {
         {
             self.server_port_state = ServerPortState::Editable;
             self.redraw(cx);
+        }
+
+        if let Some(address) = self.view.text_input(id!(mofa_address_input)).returned(actions) {
+            self.view(id!(mofa_status_label_success)).set_visible(false);
+            self.view(id!(mofa_status_label_failure)).set_visible(false);
+            self.view(id!(mofa_status_label_status)).set_visible(true);
+            store.set_mofa_server_address(address);
+            self.redraw(cx);
+        }
+
+        for action in actions {
+            match action.downcast_ref() {
+                Some(MoFaTestServerAction::Success) => {
+                    self.view(id!(mofa_status_label_success)).set_visible(true);
+                    self.view(id!(mofa_status_label_failure)).set_visible(false);
+                    self.view(id!(mofa_status_label_status)).set_visible(false);
+                    self.redraw(cx);
+                }
+                Some(MoFaTestServerAction::Failure) => {
+                    self.view(id!(mofa_status_label_success)).set_visible(false);
+                    self.view(id!(mofa_status_label_failure)).set_visible(true);
+                    self.view(id!(mofa_status_label_status)).set_visible(false);
+                    self.redraw(cx);
+                }
+                _ => {}
+            }
         }
     }
 }

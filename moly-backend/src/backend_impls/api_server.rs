@@ -374,7 +374,7 @@ impl BackendModel for LLamaEdgeApiServer {
 
     fn stop(self, _async_rt: &tokio::runtime::Runtime) {
         let url = format!("http://localhost:{}/admin/exit", self.listen_addr.port());
-        let res = reqwest::blocking::ClientBuilder::new()
+        let _ = reqwest::blocking::ClientBuilder::new()
             .timeout(Duration::from_secs(2))
             .no_proxy()
             .build()

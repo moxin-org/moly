@@ -5,11 +5,16 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{DefaultNone, ActionDefaultRef, SignalToUI};
+use makepad_widgets::{ActionDefaultRef, Cx, DefaultNone, SignalToUI};
 use moly_backend::Backend;
+use moly_mofa::{
+    MofaAgent,
+    MofaAgentCommand::{TestServer, UpdateServerAddress},
+    MofaBackend, TestServerResponse,
+};
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
-use moly_mofa::{MofaAgent, MofaBackend};
 use std::rc::Rc;
+use std::sync::mpsc;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
@@ -20,6 +25,14 @@ pub enum StoreAction {
     Sort(SortCriteria),
     None,
 }
+
+#[derive(Debug, Default, Clone)]
+pub enum MoFaTestServerAction {
+    #[default]
+    Success,
+    Failure,
+}
+
 
 #[derive(Clone, Debug)]
 pub struct FileWithDownloadInfo {
@@ -90,6 +103,8 @@ impl Store {
         store.init_current_chat();
 
         store.search.load_featured_models();
+
+        store.set_test_mofa_server();
         store
     }
 
@@ -185,6 +200,38 @@ impl Store {
             }
             chat.send_message_to_agent(agent, prompt, &self.mae_backend);
         }
+    }
+
+    pub fn set_mofa_server_address(&mut self, address: String) {
+        self.mae_backend
+            .command_sender
+            .send(UpdateServerAddress(address))
+            .expect("failed to update MoFa server address");
+
+        self.set_test_mofa_server();
+    }
+
+    pub fn set_test_mofa_server(&mut self) {
+        let (tx, rx) = mpsc::channel();
+        self.mae_backend
+            .command_sender
+            .send(TestServer(tx.clone()))
+            .expect("failed to update MoFa server address");
+
+        std::thread::spawn(move || {
+            match rx.recv() {
+                Ok(TestServerResponse::Success) => {
+                    Cx::post_action(MoFaTestServerAction::Success);
+                }
+                Ok(TestServerResponse::Failure) => {
+                    Cx::post_action(MoFaTestServerAction::Failure);
+                }
+                Err(e) => {
+                    println!("Error receiving response from MoFa backend: {:?}", e);
+                    Cx::post_action(MoFaTestServerAction::Failure);
+                }
+            }
+        });
     }
 
     pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
