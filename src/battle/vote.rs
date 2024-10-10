@@ -225,7 +225,9 @@ impl LiveHook for Vote {
                 x: 10000.,
                 y: 10000.,
             },
-            "",
+            // We need to init it with a non empty string to avoid flickering,
+            // on the first mouse move event hover, caused by the changing height.
+            "a",
         );
     }
 }
