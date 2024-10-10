@@ -16,7 +16,7 @@ live_design! {
     VoteButton = <Button> {
         draw_bg: {
             fn pixel(self) -> vec4 {
-                let fill_color = #dae8ec
+                let fill_color = mix(#dae8ec, #fff, min(self.hover, 0.3));
                 let stroke_color = mix(#15859A, vec4(0.0, 0.0, 0.0, 0.0), self.pos.x * 0.5);
 
                 let center = vec2(0.5, 0.5);
@@ -26,7 +26,7 @@ live_design! {
                     return vec4(0.0, 0.0, 0.0, 0.0);
                 }
 
-                if distance_from_center > 0.475 {
+                if distance_from_center > 0.465 {
                     return stroke_color;
                 }
 
