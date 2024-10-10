@@ -5,4 +5,4 @@ preferences.json
 /wasmedge
 /WasmEdge*
 .DS_Store
-**/prerendered/output/
+# **/prerendered/output/
