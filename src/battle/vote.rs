@@ -92,38 +92,43 @@ live_design! {
             <EdgeLabel> { text: "Right is better" }
         }
         tooltip = <Tooltip> {
-            content: <RoundedView> {
+            content: <View> {
                 width: Fit,
                 height: Fit,
-                content = <RoundedView> {
-                    width: Fit,
+                content = <View> {
+                    // Content width seems to flicker when set to Fit, making calculations
+                    // fail even for the second pass.
+                    width: 200,
                     height: Fit,
-                    padding: {left: 10, right: 10, top: 5, bottom: 5},
-                    draw_bg: {
-                        color: #15859A,
-                        radius: 5.0,
-                    },
-                    tooltip_label = <Label> {
-                        draw_text: {
-                            text_style: <REGULAR_FONT>{height_factor: 1.3, font_size: 12},
-                            color: #fff,
+                    align: {x: 0.5, y: 0.5},
+                    <RoundedView> {
+                        width: Fit,
+                        height: Fit,
+                        padding: {left: 10, right: 10, top: 5, bottom: 5},
+                        draw_bg: {
+                            color: #15859A,
+                            radius: 5.0,
+                        },
+                        tooltip_label = <Label> {
+                            draw_text: {
+                                text_style: <REGULAR_FONT>{height_factor: 1.3, font_size: 12},
+                                color: #fff,
+                            }
                         }
                     }
                 }
             }
-
-
         }
     }
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Live, Widget)]
 pub struct Vote {
     #[deref]
     view: View,
 
     #[rust]
-    move_tooltip_over: Option<ButtonRef>,
+    position_tooltip: bool,
 }
 
 impl Widget for Vote {
@@ -165,16 +170,6 @@ impl Vote {
     fn handle_tooltip(&mut self, cx: &mut Cx, event: &Event) {
         let mut tooltip = self.tooltip(id!(tooltip));
 
-        if let Some(button) = self.move_tooltip_over.take() {
-            let tooltip_content_rect = tooltip.view(id!(content)).area().rect(cx);
-            let btn_rect = button.area().rect(cx);
-            let y = btn_rect.pos.y - tooltip_content_rect.size.y - 5.0;
-            let x = btn_rect.pos.x + btn_rect.size.x / 2.0 - tooltip_content_rect.size.x / 2.0;
-            tooltip.set_pos(cx, DVec2 { x, y });
-
-            return;
-        }
-
         if let Event::MouseMove(event) = event {
             let buttons_with_messages = [
                 (id!(a2), "A is much better"),
@@ -198,12 +193,28 @@ impl Vote {
                 });
 
             if let Some((button, message)) = hovered_button {
+                if self.position_tooltip {
+                    let tooltip_content_rect = tooltip.view(id!(content)).area().rect(cx);
+                    let btn_rect = button.area().rect(cx);
+                    let y = btn_rect.pos.y - tooltip_content_rect.size.y - 5.0;
+                    let x =
+                        btn_rect.pos.x + btn_rect.size.x / 2.0 - tooltip_content_rect.size.x / 2.0;
+                    tooltip.set_pos(cx, DVec2 { x, y });
+                }
+
                 tooltip.set_text(message);
-                tooltip.show(cx);
-                self.move_tooltip_over = Some(button);
+
+                self.position_tooltip = true;
                 self.redraw(cx);
             } else {
-                tooltip.hide(cx);
+                tooltip.set_pos(
+                    cx,
+                    DVec2 {
+                        x: 10000.,
+                        y: 10000.,
+                    },
+                );
+                self.position_tooltip = false;
                 self.redraw(cx);
             }
         };
@@ -213,5 +224,18 @@ impl Vote {
 impl VoteRef {
     pub fn voted(&self, actions: &Actions) -> Option<i8> {
         self.borrow().map(|inner| inner.voted(actions)).flatten()
+    }
+}
+
+impl LiveHook for Vote {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        self.tooltip(id!(tooltip)).show_with_options(
+            cx,
+            DVec2 {
+                x: 10000.,
+                y: 10000.,
+            },
+            "",
+        );
     }
 }
