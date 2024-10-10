@@ -213,7 +213,7 @@ live_design! {
                             text_style: <REGULAR_FONT>{font_size: 12}
                             color: #000
                         }
-                        text: "http://localhost:8000"
+                        text: "http://mofa-130.openllm.io"
                     }
 
                     mofa_status_label_status = <View> {

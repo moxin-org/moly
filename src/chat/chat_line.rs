@@ -58,45 +58,29 @@ live_design! {
         text: "Cancel"
     }
 
-    TEXT_HEIGHT_FACTOR = 1.3
-    LINE_SPACING = 8.0
-    BLOCK_LINE_SPACING = 12.0
-
     MessageText = <Markdown> {
         padding: 0,
-        line_spacing: (LINE_SPACING),
         paragraph_spacing: 20.0,
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
-        code_block = <CodeView> {
-            editor: {
-                pad_left_top: vec2(10.0,10.0)
-                width: Fill,
-                height: Fit,
-                draw_bg: { color: #3c3c3c },
+        code_block = <View> {   
+            width:Fill,
+            height:Fit,
+            code_view = <CodeView>{
+                editor: {
+                    pad_left_top: vec2(10.0,10.0)
+                    width: Fill,
+                    height: Fit,
+                    draw_bg: { color: #3c3c3c },
+                }
             }
         }
         use_code_block_widget: true,
-        draw_normal: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_italic: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_bold: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_bold_italic: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_fixed: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        list_item_layout: { line_spacing: 5.0, padding: {left: 10.0, right:10, top: 6.0, bottom: 0}, }
+        list_item_layout: { padding: {left: 10.0, right:10, top: 6.0, bottom: 0}, }
         list_item_walk:{margin:0, height:Fit, width:Fill}
-        code_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}}
-        quote_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}}
+        code_layout: { padding: {top: 10.0, bottom: 10.0}}
+        quote_layout: { padding: {top: 10.0, bottom: 10.0}}
 
         link = {
             padding: { top: 1, bottom: 0 },

@@ -19,7 +19,7 @@ live_design! {
             code_color: (#EAECF0)
         }
         font_size: 10
-        code_layout: { line_spacing: (5.0), padding: 15, }
+        code_layout: { padding: 15, }
     }
 
     ModelInfoModal = {{ModelInfoModal}} {
@@ -93,7 +93,7 @@ live_design! {
                 path = <MolyHtml> {
                     width: Fill
                     font_size: 10
-                    code_layout: { line_spacing: (5.0), padding: 9 }
+                    code_layout: { padding: 9 }
                 }
             }
 

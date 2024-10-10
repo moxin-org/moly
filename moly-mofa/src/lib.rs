@@ -107,6 +107,8 @@ impl Default for MofaBackend {
     }
 }
 
+pub const DEFAULT_MOFA_ADDRESS: &str = "http://mofa-130.openllm.io";
+
 impl MofaBackend {
     pub fn available_agents() -> Vec<MofaAgent> {
         vec![
@@ -153,7 +155,7 @@ impl MofaBackend {
                         }],
                     };
                     let client = reqwest::Client::new();
-                    let url = options.address.clone().unwrap_or("http://localhost:8000".to_string());
+                    let url = options.address.clone().unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
                     current_request = Some(rt.spawn(async move {
                         let resp = client
                             .post(format!("{}/v1/chat/completions", url))
@@ -183,7 +185,7 @@ impl MofaBackend {
                     options.address = Some(address);
                 }
                 MofaAgentCommand::TestServer(tx) => {
-                    let url = options.address.clone().unwrap_or("http://localhost:8000".to_string());
+                    let url = options.address.clone().unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
                     let resp = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
                         .no_proxy()
