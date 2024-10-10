@@ -136,9 +136,7 @@ live_design! {
 #[derive(Clone, Debug, DefaultNone)]
 pub enum DeleteModelModalAction {
     None,
-    CloseButtonClicked,
-    ModelDeleted,
-    Cancelled,
+    ModalDismissed,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -178,7 +176,7 @@ impl WidgetMatchEvent for DeleteModelModal {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, DeleteModelModalAction::CloseButtonClicked);
+            cx.action(DeleteModelModalAction::ModalDismissed);
         }
 
         if self
@@ -194,14 +192,14 @@ impl WidgetMatchEvent for DeleteModelModal {
             store
                 .delete_file(self.file_id.clone())
                 .expect("Failed to delete file");
-            cx.widget_action(widget_uid, &scope.path, DeleteModelModalAction::ModelDeleted);
+            cx.action(DeleteModelModalAction::ModalDismissed);
         }
 
         if self
             .button(id!(wrapper.body.actions.cancel_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, DeleteModelModalAction::Cancelled);
+            cx.action(DeleteModelModalAction::ModalDismissed);
         }
     }
 }

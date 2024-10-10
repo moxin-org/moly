@@ -25,6 +25,7 @@ pub enum GPULayers {
 
 #[derive(Clone, Debug)]
 pub struct LoadModelOptions {
+    pub override_server_address: Option<String>,
     pub prompt_template: Option<String>,
     pub gpu_layers: GPULayers,
     pub use_mlock: bool,
