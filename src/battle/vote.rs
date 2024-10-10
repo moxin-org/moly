@@ -37,7 +37,7 @@ live_design! {
 
     EdgeLabel = <Label> {
         draw_text: {
-            text_style: <BOLD_FONT>{height_factor: 1.3, font_size: 14},
+            text_style: <BOLD_FONT>{height_factor: 1.3, font_size: 12},
             color: #000,
         }
     }
