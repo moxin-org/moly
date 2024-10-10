@@ -1,6 +1,6 @@
 use super::models::*;
 use crate::data::filesystem;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::path::PathBuf;
 
 pub const SHEET_FILE_NAME: &'static str = "current_battle_sheet.json";
@@ -22,10 +22,10 @@ pub fn restore_sheet_blocking() -> Result<Sheet> {
 // Try saving the in-progress sheet to disk.
 pub fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
     // Simulate failure on the first call
-    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-        return Err(anyhow!("Filesystem error (42): Permission denied"));
-    }
+    // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+    //     return Err(anyhow!("Filesystem error (42): Permission denied"));
+    // }
 
     let text = serde_json::to_string(&sheet)?;
     let path = battle_sheet_path();
@@ -36,10 +36,10 @@ pub fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
 /// Remove the in progress sheet from disk.
 pub fn clear_sheet_blocking() -> Result<()> {
     // Simulate failure on the first call
-    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-        return Err(anyhow!("Filesystem error (314): Very very very very very very very very very very very very very very very very very very very very very long error"));
-    }
+    // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+    //     return Err(anyhow!("Filesystem error (314): Very very very very very very very very very very very very very very very very very very very very very long error"));
+    // }
 
     let path = battle_sheet_path();
     std::fs::remove_file(path)?;
@@ -52,10 +52,10 @@ pub fn download_sheet_blocking(code: String) -> Result<Sheet> {
     std::thread::sleep(std::time::Duration::from_secs(3));
 
     // Simulate failure on the first call
-    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-        return Err(anyhow!("500 Internal Server Error"));
-    }
+    // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+    //     return Err(anyhow!("500 Internal Server Error"));
+    // }
 
     let text = include_str!("sheet.json");
     let mut sheet = serde_json::from_str::<Sheet>(text)?;
@@ -70,10 +70,10 @@ pub fn send_sheet_blocking(_sheet: Sheet) -> Result<()> {
     std::thread::sleep(std::time::Duration::from_secs(3));
 
     // Simulate failure on the first call
-    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-        return Err(anyhow!("No connecton"));
-    }
+    // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+    //     return Err(anyhow!("No connecton"));
+    // }
 
     Ok(())
 }
