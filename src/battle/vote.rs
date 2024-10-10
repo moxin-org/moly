@@ -126,9 +126,6 @@ live_design! {
 pub struct Vote {
     #[deref]
     view: View,
-
-    #[rust]
-    position_tooltip: bool,
 }
 
 impl Widget for Vote {
@@ -193,18 +190,12 @@ impl Vote {
                 });
 
             if let Some((button, message)) = hovered_button {
-                if self.position_tooltip {
-                    let tooltip_content_rect = tooltip.view(id!(content)).area().rect(cx);
-                    let btn_rect = button.area().rect(cx);
-                    let y = btn_rect.pos.y - tooltip_content_rect.size.y - 5.0;
-                    let x =
-                        btn_rect.pos.x + btn_rect.size.x / 2.0 - tooltip_content_rect.size.x / 2.0;
-                    tooltip.set_pos(cx, DVec2 { x, y });
-                }
-
+                let tooltip_content_rect = tooltip.view(id!(content)).area().rect(cx);
+                let btn_rect = button.area().rect(cx);
+                let y = btn_rect.pos.y - tooltip_content_rect.size.y - 5.0;
+                let x = btn_rect.pos.x + btn_rect.size.x / 2.0 - tooltip_content_rect.size.x / 2.0;
+                tooltip.set_pos(cx, DVec2 { x, y });
                 tooltip.set_text(message);
-
-                self.position_tooltip = true;
                 self.redraw(cx);
             } else {
                 tooltip.set_pos(
@@ -214,7 +205,6 @@ impl Vote {
                         y: 10000.,
                     },
                 );
-                self.position_tooltip = false;
                 self.redraw(cx);
             }
         };
