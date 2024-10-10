@@ -86,8 +86,8 @@ pub struct MofaOptions {
 }
 
 pub enum TestServerResponse {
-    Success,
-    Failure,
+    Success(String),
+    Failure(String),
 }
 
 pub enum MofaAgentCommand {
@@ -107,7 +107,7 @@ impl Default for MofaBackend {
     }
 }
 
-pub const DEFAULT_MOFA_ADDRESS: &str = "http://mofa-130.openllm.io";
+const DEFAULT_MOFA_ADDRESS: &str = "http://mofa-130.openllm.io";
 
 impl MofaBackend {
     pub fn available_agents() -> Vec<MofaAgent> {
@@ -197,13 +197,13 @@ impl MofaBackend {
                     match resp {
                         Ok(r) => {
                             if r.status().is_success() {
-                                tx.send(TestServerResponse::Success).unwrap();
+                                tx.send(TestServerResponse::Success(url)).unwrap();
                             } else {
-                                tx.send(TestServerResponse::Failure).unwrap();
+                                tx.send(TestServerResponse::Failure(url)).unwrap();
                             }
                         }
                         Err(e) => {
-                            tx.send(TestServerResponse::Failure).unwrap();
+                            tx.send(TestServerResponse::Failure(url)).unwrap();
                             eprintln!("{e}");
                         }
                     };

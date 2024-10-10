@@ -3,7 +3,7 @@ use makepad_widgets::*;
 
 use crate::data::{
     chats::model_loader::ModelLoaderStatus,
-    store::{MoFaTestServerAction, Store},
+    store::Store,
 };
 
 live_design! {
@@ -14,6 +14,8 @@ live_design! {
 
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
+
+    import crate::settings::mofa_settings::MofaSettings;
 
     BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
@@ -183,77 +185,9 @@ live_design! {
                     }
                 }
 
-                mofa_options = <View> {
-                    width: Fill, height: Fit
-                    flow: Down
-                    spacing: 20
-
-                    <Label> {
-                        draw_text:{
-                            text_style: <BOLD_FONT>{font_size: 16}
-                            color: #000
-                        }
-                        text: "MoFa options"
-                    }
-
-                    <HorizontalFiller> { height: 10 }
-
-                    <Label> {
-                        draw_text:{
-                            text_style: <BOLD_FONT>{font_size: 12}
-                            color: #000
-                        }
-                        text: "Server address"
-                    }
-
-                    mofa_address_input = <MolyTextInput> {
-                        width: Fill
-                        height: Fit
-                        draw_text: {
-                            text_style: <REGULAR_FONT>{font_size: 12}
-                            color: #000
-                        }
-                        text: "http://mofa-130.openllm.io"
-                    }
-
-                    mofa_status_label_status = <View> {
-                        visible: false,
-                        width: Fill, height: Fit
-                        <Label> {
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 10}
-                                color: #000
-                            }
-                            text: "Checking MoFa server status..."
-                        }
-                    }
-
-                    mofa_status_label_success = <View> {
-                        visible: false,
-                        width: Fill, height: Fit
-                        <Label> {
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 10}
-                                color: #099250
-                            }
-                            text: "MoFa server is running"
-                        }
-                    }
-
-                    mofa_status_label_failure = <View> {
-                        visible: false,
-                        width: Fill, height: Fit
-                        <Label> {
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 10}
-                                color: #B42318
-                            }
-                            text: "MoFa server is not properly running. Please check the address." 
-                        } 
-                    }
-                }
+                mofa_options = <MofaSettings> {}
             }
-    }
+        }
     }
 }
 
@@ -393,32 +327,6 @@ impl WidgetMatchEvent for SettingsScreen {
         {
             self.server_port_state = ServerPortState::Editable;
             self.redraw(cx);
-        }
-
-        if let Some(address) = self.view.text_input(id!(mofa_address_input)).returned(actions) {
-            self.view(id!(mofa_status_label_success)).set_visible(false);
-            self.view(id!(mofa_status_label_failure)).set_visible(false);
-            self.view(id!(mofa_status_label_status)).set_visible(true);
-            store.set_mofa_server_address(address);
-            self.redraw(cx);
-        }
-
-        for action in actions {
-            match action.downcast_ref() {
-                Some(MoFaTestServerAction::Success) => {
-                    self.view(id!(mofa_status_label_success)).set_visible(true);
-                    self.view(id!(mofa_status_label_failure)).set_visible(false);
-                    self.view(id!(mofa_status_label_status)).set_visible(false);
-                    self.redraw(cx);
-                }
-                Some(MoFaTestServerAction::Failure) => {
-                    self.view(id!(mofa_status_label_success)).set_visible(false);
-                    self.view(id!(mofa_status_label_failure)).set_visible(true);
-                    self.view(id!(mofa_status_label_status)).set_visible(false);
-                    self.redraw(cx);
-                }
-                _ => {}
-            }
         }
     }
 }

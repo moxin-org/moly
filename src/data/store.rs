@@ -26,13 +26,12 @@ pub enum StoreAction {
     None,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, DefaultNone, Clone)]
 pub enum MoFaTestServerAction {
-    #[default]
-    Success,
-    Failure,
+    Success(String),
+    Failure(Option<String>),
+    None,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct FileWithDownloadInfo {
@@ -59,7 +58,7 @@ pub struct Store {
     /// communicate with the backend thread.
     pub backend: Rc<Backend>,
 
-    pub mae_backend: Rc<MofaBackend>,
+    pub mofa_backend: Rc<MofaBackend>,
 
     pub search: Search,
     pub downloads: Downloads,
@@ -84,15 +83,15 @@ impl Store {
             DEFAULT_MAX_DOWNLOAD_THREADS,
         ));
 
-        let mae_backend = Rc::new(MofaBackend::new());
+        let mofa_backend = Rc::new(MofaBackend::new());
 
         let mut store = Self {
             backend: backend.clone(),
-            mae_backend: mae_backend.clone(),
+            mofa_backend: mofa_backend.clone(),
 
             search: Search::new(backend.clone()),
             downloads: Downloads::new(backend.clone()),
-            chats: Chats::new(backend, mae_backend),
+            chats: Chats::new(backend, mofa_backend),
             preferences,
         };
 
@@ -198,12 +197,12 @@ impl Store {
             if let Some(message_id) = regenerate_from {
                 chat.remove_messages_from(message_id);
             }
-            chat.send_message_to_agent(agent, prompt, &self.mae_backend);
+            chat.send_message_to_agent(agent, prompt, &self.mofa_backend);
         }
     }
 
     pub fn set_mofa_server_address(&mut self, address: String) {
-        self.mae_backend
+        self.mofa_backend
             .command_sender
             .send(UpdateServerAddress(address))
             .expect("failed to update MoFa server address");
@@ -213,22 +212,22 @@ impl Store {
 
     pub fn set_test_mofa_server(&mut self) {
         let (tx, rx) = mpsc::channel();
-        self.mae_backend
+        self.mofa_backend
             .command_sender
             .send(TestServer(tx.clone()))
             .expect("failed to update MoFa server address");
 
         std::thread::spawn(move || {
             match rx.recv() {
-                Ok(TestServerResponse::Success) => {
-                    Cx::post_action(MoFaTestServerAction::Success);
+                Ok(TestServerResponse::Success(server_address)) => {
+                    Cx::post_action(MoFaTestServerAction::Success(server_address));
                 }
-                Ok(TestServerResponse::Failure) => {
-                    Cx::post_action(MoFaTestServerAction::Failure);
+                Ok(TestServerResponse::Failure(server_address)) => {
+                    Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
                 }
                 Err(e) => {
                     println!("Error receiving response from MoFa backend: {:?}", e);
-                    Cx::post_action(MoFaTestServerAction::Failure);
+                    Cx::post_action(MoFaTestServerAction::Failure(None));
                 }
             }
         });
