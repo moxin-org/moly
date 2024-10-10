@@ -176,36 +176,35 @@ impl Vote {
         }
 
         if let Event::MouseMove(event) = event {
-            let buttons_ids = [id!(a2), id!(a1), id!(o0), id!(b1), id!(b2)];
-            let tooltip_messages = [
-                "A is much better",
-                "A is slightly better",
-                "Tie",
-                "B is slightly better",
-                "B is much better",
+            let buttons_with_messages = [
+                (id!(a2), "A is much better"),
+                (id!(a1), "A is slightly better"),
+                (id!(o0), "Tie"),
+                (id!(b1), "B is slightly better"),
+                (id!(b2), "B is much better"),
             ];
 
             let pointer_pos = event.abs;
 
-            let hovered_button =
-                buttons_ids
-                    .iter()
-                    .zip(tooltip_messages.iter())
-                    .find_map(|(button_id, message)| {
-                        let button = self.button(*button_id);
-                        if button.area().rect(cx).contains(pointer_pos) {
-                            Some((button, message))
-                        } else {
-                            None
-                        }
-                    });
+            let hovered_button = buttons_with_messages
+                .iter()
+                .find_map(|(button_id, message)| {
+                    let button = self.button(*button_id);
+                    if button.area().rect(cx).contains(pointer_pos) {
+                        Some((button, message))
+                    } else {
+                        None
+                    }
+                });
 
             if let Some((button, message)) = hovered_button {
                 tooltip.set_text(message);
                 tooltip.show(cx);
                 self.move_tooltip_over = Some(button);
+                self.redraw(cx);
             } else {
                 tooltip.hide(cx);
+                self.redraw(cx);
             }
         };
     }
