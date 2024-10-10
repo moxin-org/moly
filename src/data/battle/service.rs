@@ -21,6 +21,12 @@ pub fn restore_sheet_blocking() -> Result<Sheet> {
 
 // Try saving the in-progress sheet to disk.
 pub fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
+    // Simulate failure on the first call
+    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        return Err(anyhow!("Filesystem error (42): Permission denied"));
+    }
+
     let text = serde_json::to_string(&sheet)?;
     let path = battle_sheet_path();
     filesystem::write_to_file(path, &text)?;
@@ -29,6 +35,12 @@ pub fn save_sheet_blocking(sheet: &Sheet) -> Result<()> {
 
 /// Remove the in progress sheet from disk.
 pub fn clear_sheet_blocking() -> Result<()> {
+    // Simulate failure on the first call
+    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        return Err(anyhow!("Filesystem error (314): Very very very very very very very very very very very very very very very very very very very very very long error"));
+    }
+
     let path = battle_sheet_path();
     std::fs::remove_file(path)?;
     Ok(())
@@ -42,7 +54,7 @@ pub fn download_sheet_blocking(code: String) -> Result<Sheet> {
     // Simulate failure on the first call
     static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
     if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-        return Err(anyhow!("Failed to download battle sheet"));
+        return Err(anyhow!("500 Internal Server Error"));
     }
 
     let text = include_str!("sheet.json");
@@ -58,10 +70,10 @@ pub fn send_sheet_blocking(_sheet: Sheet) -> Result<()> {
     std::thread::sleep(std::time::Duration::from_secs(3));
 
     // Simulate failure on the first call
-    // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-    // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-    //     return Err(anyhow!("Failed to send battle sheet"));
-    // }
+    static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        return Err(anyhow!("No connecton"));
+    }
 
     Ok(())
 }
