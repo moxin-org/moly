@@ -202,6 +202,7 @@ impl Store {
     }
 
     pub fn set_mofa_server_address(&mut self, address: String) {
+        let address = address.trim_end_matches('/').to_string();
         self.mofa_backend
             .command_sender
             .send(UpdateServerAddress(address))
