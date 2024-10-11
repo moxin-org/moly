@@ -13,26 +13,46 @@ live_design! {
     MD_SIZE = 44;
     LG_SIZE = 60;
 
-    VoteButton = <Button> {
+
+    StripButton = <Button> {
         draw_bg: {
+            // relative radius, 0.0 is rect, 1.0 is full rounded
+            instance left_radius: 0.0;
+            instance right_radius: 0.0;
+            instance step: 1.0;
+            instance step_influence: 0.1;
+
             fn pixel(self) -> vec4 {
-                let fill_color = mix(#dae8ec, #fff, min(self.hover, 0.3));
-                let stroke_color = mix(#15859A, vec4(0.0, 0.0, 0.0, 0.0), self.pos.x * 0.5);
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                // idk why 0.5 must be the minimum nor idk why 0.25 and not 0.5 for the multiplier
+                let rl = mix(0.5, self.rect_size.y * 0.25, self.left_radius);
+                let rr = mix(0.5, self.rect_size.y * 0.25, self.right_radius);
 
-                let center = vec2(0.5, 0.5);
-                let distance_from_center = distance(self.pos, center);
+                // base color
+                let fill_color = #15859A;
 
-                if distance_from_center > 0.5 {
-                    return vec4(0.0, 0.0, 0.0, 0.0);
-                }
+                // make the base color ligther as step grows
+                let fill_color = mix(fill_color, #fff, self.step * self.step_influence);
 
-                if distance_from_center > 0.465 {
-                    return stroke_color;
-                }
+                // make a gradiant over the x axis
+                // use the step_infuence so this gradiant can be continued by the next button
+                let fill_color = mix(fill_color, #fff, self.pos.x * self.step_influence);
 
-                return fill_color;
+                // make the color a little bit ligther when hovered
+                let fill_color = mix(fill_color, #fff, self.hover * 0.3);
+
+                sdf.box_all(0.0, 0.0, self.rect_size.x, self.rect_size.y, rl, rr, rr, rl);
+
+                sdf.fill_keep(fill_color);
+
+                return sdf.result;
             }
         },
+    }
+
+    SizedStripButton = <StripButton> {
+        width: 100.0,
+        height: 32.0,
     }
 
     EdgeLabel = <Label> {
@@ -47,49 +67,40 @@ live_design! {
         height: Fit,
         align: {x: 0.5, y: 0.5},
         <View> {
-            height: 1.5,
-            width: 500,
-            show_bg: true,
-            draw_bg: {
-                fn pixel(self) -> vec4{
-                    let distance_from_center = abs(self.pos.x - 0.5);
-                    let dist = distance_from_center * 1.5;
-                    let color = mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(#15859A.xyz, 0.8), 1.0 - dist);
-                    return mix(color, vec4(0.0, 0.0, 0.0, 0.0), dist);
-                }
-            }
-        }
-        <View> {
             height: Fit,
             width: Fit,
             align: {x: 0.5, y: 0.5},
-            <EdgeLabel> { text: "Left is better" }
-            a2 = <VoteButton> {
-                margin: {left: 30},
-                height: (LG_SIZE),
-                width: (LG_SIZE),
+            spacing: 2,
+
+            <EdgeLabel> { text: "Left is better", margin: {right: 4} }
+            a2 = <SizedStripButton> {
+                draw_bg: {
+                    instance step: 1.0;
+                    left_radius: 1.0;
+                }
             }
-            a1 = <VoteButton> {
-                margin: {left: 120},
-                height: (MD_SIZE),
-                width: (MD_SIZE),
+            a1 = <SizedStripButton> {
+                draw_bg: {
+                    instance step: 2.0;
+                }
             }
-            o0 = <VoteButton> {
-                margin: {left: 60, right: 60},
-                height: (SM_SIZE),
-                width: (SM_SIZE),
+            o0 = <SizedStripButton> {
+                draw_bg: {
+                    instance step: 3.0;
+                }
             }
-            b1 = <VoteButton> {
-                margin: {right: 120},
-                height: (MD_SIZE),
-                width: (MD_SIZE),
+            b1 = <SizedStripButton> {
+                draw_bg: {
+                    instance step: 4.0;
+                }
             }
-            b2 = <VoteButton> {
-                margin: {right: 30},
-                height: (LG_SIZE),
-                width: (LG_SIZE),
+            b2 = <SizedStripButton> {
+                draw_bg: {
+                    instance step: 5.0;
+                    right_radius: 1.0;
+                }
             }
-            <EdgeLabel> { text: "Right is better" }
+            <EdgeLabel> { text: "Right is better", margin: {left: 4} }
         }
         tooltip = <Tooltip> {
             content: <View> {
@@ -192,7 +203,7 @@ impl Vote {
             if let Some((button, message)) = hovered_button {
                 let tooltip_content_rect = tooltip.view(id!(content)).area().rect(cx);
                 let btn_rect = button.area().rect(cx);
-                let y = btn_rect.pos.y - tooltip_content_rect.size.y - 5.0;
+                let y = btn_rect.pos.y - tooltip_content_rect.size.y - 7.5;
                 let x = btn_rect.pos.x + btn_rect.size.x / 2.0 - tooltip_content_rect.size.x / 2.0;
                 tooltip.set_pos(cx, DVec2 { x, y });
                 tooltip.set_text(message);
