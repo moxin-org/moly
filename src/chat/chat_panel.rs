@@ -507,19 +507,6 @@ impl WidgetMatchEvent for ChatPanel {
                 _ => {}
             }
 
-            if let ChatPanelAction::UnloadIfActive(file_id) = action.cast() {
-                if store
-                    .chats
-                    .loaded_model
-                    .as_ref()
-                    .map_or(false, |file| file.id == file_id)
-                {
-                    store.chats.eject_model().expect("Failed to eject model");
-                    self.redraw(cx);
-                    //self.unload_model(cx);
-                }
-            }
-
             match action.cast() {
                 ChatLineAction::Delete(id) => {
                     store.chats.delete_chat_message(id);
@@ -953,7 +940,6 @@ impl ChatPanel {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ChatPanelAction {
-    UnloadIfActive(FileID),
     NavigateToDiscover,
     None,
 }

@@ -184,11 +184,7 @@ impl WidgetMatchEvent for DeleteModelModal {
             .clicked(actions)
         {
             let store = scope.data.get_mut::<Store>().unwrap();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatPanelAction::UnloadIfActive(self.file_id.clone()),
-            );
+
             store
                 .delete_file(self.file_id.clone())
                 .expect("Failed to delete file");

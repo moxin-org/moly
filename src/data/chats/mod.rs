@@ -150,6 +150,18 @@ impl Chats {
         Ok(())
     }
 
+    pub fn remove_file_from_associated_entity(&mut self, file_id: &FileID) {
+        for chat in &self.saved_chats {
+            let mut chat = chat.borrow_mut();
+            if let Some(ChatEntity::ModelFile(chat_file_id)) = &chat.associated_entity {
+                if chat_file_id == file_id {
+                    chat.associated_entity = None;
+                    chat.save();
+                }
+            }
+        }
+    }
+
     /// Get the file id to use with this chat, or the loaded file id as a fallback.
     /// The fallback is used if the chat does not have a file id set, or, if it has
     /// one but references a no longer existing (deleted) file.

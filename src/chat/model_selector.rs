@@ -483,10 +483,6 @@ impl ModelSelector {
     }
 }
 
-// fn options_to_display(store: &Store) -> bool {
-//     !store.downloads.downloaded_files.is_empty()
-// }
-
 fn no_active_model(store: &Store) -> bool {
     let chat_entity = store
             .chats

@@ -218,18 +218,16 @@ impl Store {
             .send(TestServer(tx.clone()))
             .expect("failed to update MoFa server address");
 
-        std::thread::spawn(move || {
-            match rx.recv() {
-                Ok(TestServerResponse::Success(server_address)) => {
-                    Cx::post_action(MoFaTestServerAction::Success(server_address));
-                }
-                Ok(TestServerResponse::Failure(server_address)) => {
-                    Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
-                }
-                Err(e) => {
-                    println!("Error receiving response from MoFa backend: {:?}", e);
-                    Cx::post_action(MoFaTestServerAction::Failure(None));
-                }
+        std::thread::spawn(move || match rx.recv() {
+            Ok(TestServerResponse::Success(server_address)) => {
+                Cx::post_action(MoFaTestServerAction::Success(server_address));
+            }
+            Ok(TestServerResponse::Failure(server_address)) => {
+                Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
+            }
+            Err(e) => {
+                println!("Error receiving response from MoFa backend: {:?}", e);
+                Cx::post_action(MoFaTestServerAction::Failure(None));
             }
         });
     }
@@ -330,6 +328,16 @@ impl Store {
     }
 
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
+        if self
+            .chats
+            .loaded_model
+            .as_ref()
+            .map_or(false, |file| file.id == file_id)
+        {
+            self.chats.eject_model().expect("Failed to eject model");
+        }
+
+        self.chats.remove_file_from_associated_entity(&file_id);
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
