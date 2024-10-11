@@ -31,6 +31,7 @@ live_design! {
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
+    ICON_ARENA = dep("crate://self/resources/icons/arena.svg")
 
     App = {{App}} {
         ui: <Window> {
@@ -94,7 +95,7 @@ live_design! {
                         battle_tab = <SidebarMenuButton> {
                             text: "Arena",
                             draw_icon: {
-                                svg_file: (ICON_CHAT),
+                                svg_file: (ICON_ARENA),
                             }
                         }
                     }
