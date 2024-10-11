@@ -373,6 +373,7 @@ enum PromptInputMode {
     Enabled,
     Disabled,
 }
+#[derive(Debug)]
 enum PromptInputButton {
     Send,
     EnabledStop,
@@ -514,7 +515,8 @@ impl WidgetMatchEvent for ChatPanel {
                     .map_or(false, |file| file.id == file_id)
                 {
                     store.chats.eject_model().expect("Failed to eject model");
-                    self.unload_model(cx);
+                    self.redraw(cx);
+                    //self.unload_model(cx);
                 }
             }
 
@@ -574,29 +576,36 @@ impl WidgetMatchEvent for ChatPanel {
 
 impl ChatPanel {
     fn update_state(&mut self, store: &mut Store) {
-        self.state = if store.downloads.downloaded_files.is_empty() {
-            State::NoModelsAvailable
-        } else if store.chats.loaded_model.is_none() {
-            State::NoModelSelected
-        } else {
-            let is_loading = store.chats.model_loader.is_loading();
+        let chat_entity = store
+            .chats
+            .get_current_chat()
+            .and_then(|c| c.borrow().associated_entity.clone());
 
-            store.chats.get_current_chat().map_or(
-                State::ModelSelectedWithEmptyChat { is_loading },
-                |chat| {
-                    if chat.borrow().messages.is_empty() {
-                        State::ModelSelectedWithEmptyChat { is_loading }
-                    } else {
-                        State::ModelSelectedWithChat {
-                            is_loading,
-                            sticked_to_bottom: self.portal_list_end_reached
-                                || !matches!(self.state, State::ModelSelectedWithChat { .. }),
-                            receiving_response: chat.borrow().is_receiving(),
-                            was_cancelled: chat.borrow().was_cancelled(),
+        self.state = match chat_entity {
+            Some(_) => {
+                // Model or Agent is selected
+                let is_loading = store.chats.model_loader.is_loading();
+
+                store.chats.get_current_chat().map_or(
+                    State::ModelSelectedWithEmptyChat { is_loading },
+                    |chat| {
+                        if chat.borrow().messages.is_empty() {
+                            State::ModelSelectedWithEmptyChat { is_loading }
+                        } else {
+                            State::ModelSelectedWithChat {
+                                is_loading,
+                                sticked_to_bottom: self.portal_list_end_reached
+                                    || !matches!(self.state, State::ModelSelectedWithChat { .. }),
+                                receiving_response: chat.borrow().is_receiving(),
+                                was_cancelled: chat.borrow().was_cancelled(),
+                            }
                         }
-                    }
-                },
-            )
+                    },
+                )
+            }
+            None => {
+                State::NoModelSelected
+            }
         };
     }
 
@@ -638,7 +647,7 @@ impl ChatPanel {
                 );
             }
             _ => {
-                // Input prompts should not be visible in other conditions
+                self.activate_prompt_input(cx, PromptInputMode::Disabled, PromptInputButton::Send);
             }
         }
     }
@@ -670,8 +679,8 @@ impl ChatPanel {
             },
         );
 
-        let send_button = self.button(id!(main_prompt_input.prompt_send_button));
-        let stop_button = self.button(id!(main_prompt_input.prompt_stop_button));
+        let send_button = self.prompt_input(id!(main_prompt_input)).button(id!(prompt_send_button));
+        let stop_button = self.prompt_input(id!(main_prompt_input)).button(id!(prompt_stop_button));
         match button {
             PromptInputButton::Send => {
                 // The send button is enabled or not based on the prompt input
@@ -686,6 +695,7 @@ impl ChatPanel {
                     },
                 );
                 stop_button.set_visible(false);
+                stop_button.redraw(cx);
             }
             PromptInputButton::EnabledStop => {
                 stop_button.set_visible(true);
@@ -726,11 +736,6 @@ impl ChatPanel {
         let messages = get_chat_messages(store).unwrap();
         let index = messages.len().saturating_sub(1);
         list.set_first_id(index);
-    }
-
-    fn unload_model(&mut self, cx: &mut Cx) {
-        self.model_selector(id!(model_selector)).deselect(cx);
-        self.view.redraw(cx);
     }
 
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
@@ -843,15 +848,15 @@ impl ChatPanel {
         let no_model = self.view(id!(no_model));
 
         match self.state {
-            State::NoModelsAvailable => {
-                empty_conversation.set_visible(false);
-                jump_to_bottom.set_visible(false);
-                main.set_visible(false);
-                no_model.set_visible(false);
+            // State::NoModelsAvailable => {
+            //     empty_conversation.set_visible(false);
+            //     jump_to_bottom.set_visible(false);
+            //     main.set_visible(false);
+            //     no_model.set_visible(false);
 
-                no_downloaded_model.set_visible(true);
-            }
-            State::NoModelSelected => {
+            //     no_downloaded_model.set_visible(true);
+            // }
+            State::NoModelsAvailable | State::NoModelSelected => {
                 empty_conversation.set_visible(false);
                 jump_to_bottom.set_visible(false);
                 main.set_visible(false);

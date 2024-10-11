@@ -64,7 +64,7 @@ live_design! {
                     new_chat_button = <MolyButton> {
                         width: Fit,
                         height: Fit,
-                        icon_walk: {margin: { left: -6, top: -1 }, width: 21, height: 21},
+                        icon_walk: {margin: { top: -1 }, width: 21, height: 21},
                         draw_icon: {
                             svg_file: (ICON_NEW_CHAT),
                             fn get_color(self) -> vec4 {

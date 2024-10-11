@@ -111,7 +111,6 @@ live_design! {
                 height: Fit,
                 align: {x: 1.0, y: 0.5},
                 margin: {left: 10, right: 6},
-                visible: false,
 
                 icon = <RotatedImage> {
                     height: 14,
@@ -211,14 +210,14 @@ impl Widget for ModelSelector {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        let store = scope.data.get::<Store>().unwrap();
+        //let store = scope.data.get::<Store>().unwrap();
 
         if let Hit::FingerDown(fd) =
             event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
         {
-            if !options_to_display(store) {
-                return;
-            };
+            // if !options_to_display(store) {
+            //     return;
+            // };
             if fd.tap_count == 1 {
                 self.open = !self.open;
 
@@ -284,24 +283,30 @@ impl Widget for ModelSelector {
 
         self.update_loading_model_state(cx, store);
 
-        if !options_to_display(store) {
-            choose_label.set_text("No Available Models");
-            let color = vec3(0.596, 0.635, 0.702);
-            choose_label.apply_over(
-                cx,
-                live! {
-                    draw_text: {
-                        color: (color)
-                    }
-                },
-            );
-            self.view(id!(icon_drop)).apply_over(
-                cx,
-                live!{
-                    visible: false
-                });
-        } else if no_active_model(store) {
-            choose_label.set_text("Choose a Model");
+        // We assume there is at least one agent available
+
+        // if !options_to_display(store) {
+        //     choose_label.set_text("No Available Models");
+        //     let color = vec3(0.596, 0.635, 0.702);
+        //     choose_label.apply_over(
+        //         cx,
+        //         live! {
+        //             draw_text: {
+        //                 color: (color)
+        //             }
+        //         },
+        //     );
+        //     self.view(id!(icon_drop)).apply_over(
+        //         cx,
+        //         live!{
+        //             visible: false
+        //         });
+        // } else 
+        if no_active_model(store) {
+            self.view(id!(choose)).set_visible(true);
+            self.view(id!(selected_agent)).set_visible(false);
+            self.view(id!(selected_model)).set_visible(false);
+            choose_label.set_text("Choose a Model or Agent");
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,
@@ -312,11 +317,6 @@ impl Widget for ModelSelector {
                 },
             );
 
-            self.view(id!(icon_drop)).apply_over(
-                cx,
-                live!{
-                    visible: true
-                });
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -329,10 +329,11 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get::<Store>().unwrap();
+        //let store = scope.data.get::<Store>().unwrap();
 
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
-            if options_to_display(store) && fd.tap_count == 1 {
+            //if options_to_display(store) && fd.tap_count == 1 {
+            if fd.tap_count == 1 {
                 self.open = !self.open;
 
                 if self.open {
@@ -479,41 +480,18 @@ impl ModelSelector {
             live!{
                 visible: true
             });
-
-        self.redraw(cx);
-    }
-
-    fn deselect(&mut self, cx: &mut Cx) {
-        self.open = false;
-        self.view(id!(selected)).apply_over(
-            cx,
-            live! {
-                visible: false
-            },
-        );
-
-        self.view(id!(choose)).apply_over(
-            cx,
-            live! {
-                visible: true
-            },
-        );
-        self.redraw(cx);
     }
 }
 
-impl ModelSelectorRef {
-    pub fn deselect(&mut self, cx: &mut Cx) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.deselect(cx);
-        }
-    }
-}
-
-fn options_to_display(store: &Store) -> bool {
-    !store.downloads.downloaded_files.is_empty()
-}
+// fn options_to_display(store: &Store) -> bool {
+//     !store.downloads.downloaded_files.is_empty()
+// }
 
 fn no_active_model(store: &Store) -> bool {
-    store.get_loaded_downloaded_file().is_none() && store.get_loading_file().is_none()
+    let chat_entity = store
+            .chats
+            .get_current_chat()
+            .and_then(|c| c.borrow().associated_entity.clone());
+
+    chat_entity.is_none() && store.chats.loaded_model.is_none()
 }

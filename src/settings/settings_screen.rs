@@ -55,9 +55,17 @@ live_design! {
                     flow: Down
                     spacing: 20
 
+                    <Label> {
+                        draw_text:{
+                            text_style: <BOLD_FONT>{font_size: 16}
+                            color: #000
+                        }
+                        text: "Local inference server information"
+                    }
+
                     no_model = <View> {
                         visible: false,
-                        width: Fill, height: Fill
+                        width: Fill, height: Fit
                         <Label> {
                             draw_text:{
                                 text_style: <REGULAR_FONT>{font_size: 12}
@@ -73,14 +81,6 @@ live_design! {
                         align: {x: 0.0, y: 0.0}
 
                         spacing: 10
-
-                        <Label> {
-                            draw_text:{
-                                text_style: <BOLD_FONT>{font_size: 16}
-                                color: #000
-                            }
-                            text: "Local inference server information"
-                        }
 
                         <View> {
                             width: Fit, height: Fit
