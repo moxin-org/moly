@@ -101,6 +101,7 @@ live_design! {
             cursor: Hand
             show_bg: true
             draw_bg: {
+                instance down: 0.0,
                 color: #0000
                 border_width: 0
                 radius: 5
@@ -220,6 +221,25 @@ live_design! {
                         from: {all: Forward {duration: 0.15}}
                         apply: {
                             draw_bg: {color: #EAECEF88}
+                        }
+                    }
+                }
+                down = {
+                    default: off
+                    off = {
+                        from: {all: Forward {duration: 0.5}}
+                        ease: OutExp
+                        apply: {
+                            draw_bg: {instance down: 0.0}
+                        }
+                    }
+                    on = {
+                        ease: OutExp
+                        from: {
+                            all: Forward {duration: 0.2}
+                        }
+                        apply: {
+                            draw_bg: {instance down: 1.0}
                         }
                     }
                 }
