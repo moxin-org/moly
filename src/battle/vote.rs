@@ -180,11 +180,11 @@ impl Vote {
 
         if let Event::MouseMove(event) = event {
             let buttons_with_messages = [
-                (id!(a2), "A is much better"),
-                (id!(a1), "A is slightly better"),
+                (id!(a2), "Left is much better"),
+                (id!(a1), "Left is slightly better"),
                 (id!(o0), "Tie"),
-                (id!(b1), "B is slightly better"),
-                (id!(b2), "B is much better"),
+                (id!(b1), "Right is slightly better"),
+                (id!(b2), "Right is much better"),
             ];
 
             let pointer_pos = event.abs;
