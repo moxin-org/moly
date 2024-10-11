@@ -27,6 +27,7 @@ live_design! {
             height: Fill,
             padding: {left: 15, right: 15},
             spacing: 15,
+            align: {x: 0, y: 0.35},
             create_new_chat: true,
 
             draw_bg: {
@@ -39,7 +40,7 @@ live_design! {
                 }
             }
             text_layout = {
-                height: 65,
+                height: Fit,
                 flow: Down,
                 caption = {
                     draw_text: {
