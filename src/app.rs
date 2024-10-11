@@ -1,4 +1,5 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
@@ -271,6 +272,7 @@ impl App {
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
                     popup.set_data(&file, DownloadResult::Success);
+                    cx.action(ModelSelectorListAction::AddedOrDeletedModel);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
                     popup.set_data(&file, DownloadResult::Failure);

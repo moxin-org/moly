@@ -27,6 +27,12 @@ live_design! {
     }
 }
 
+#[derive(Clone, DefaultNone, Debug)]
+pub enum ModelSelectorListAction {
+    AddedOrDeletedModel,
+    None,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct ModelSelectorList {
     #[redraw]
@@ -64,6 +70,7 @@ impl Widget for ModelSelectorList {
         for (_, item) in self.items.iter_mut() {
             item.handle_event(cx, event, scope)
         }
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -77,6 +84,18 @@ impl Widget for ModelSelectorList {
         cx.end_turtle_with_area(&mut self.area);
 
         DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for ModelSelectorList {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        for action in actions.iter() {
+            if let ModelSelectorListAction::AddedOrDeletedModel = action.cast() {
+                self.items.clear();
+                self.total_height = None;
+                self.redraw(cx);
+            }
+        }
     }
 }
 

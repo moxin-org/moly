@@ -1,11 +1,9 @@
 use makepad_widgets::*;
-use moly_protocol::data::FileID;
 use std::cell::{Ref, RefCell, RefMut};
 
 use crate::{
     chat::{
         chat_line::{ChatLineAction, ChatLineWidgetRefExt},
-        model_selector::ModelSelectorWidgetExt,
         model_selector_item::ModelSelectorAction,
     },
     data::{
@@ -16,8 +14,8 @@ use crate::{
 };
 
 use super::{
-    chat_history_card::ChatHistoryCardAction, prompt_input::PromptInputWidgetExt,
-    shared::ChatAgentAvatarWidgetRefExt,
+    chat_history_card::ChatHistoryCardAction, model_selector_list::ModelSelectorListAction,
+    prompt_input::PromptInputWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
 };
 
 live_design! {
@@ -491,6 +489,10 @@ impl WidgetMatchEvent for ChatPanel {
                 self.redraw(cx);
             }
 
+            if let ModelSelectorListAction::AddedOrDeletedModel = action.cast() {
+                self.redraw(cx);
+            }
+
             match action.cast() {
                 ChatAction::Start(handler) => match handler {
                     ChatHandler::Model(file_id) => {
@@ -568,32 +570,29 @@ impl ChatPanel {
             .get_current_chat()
             .and_then(|c| c.borrow().associated_entity.clone());
 
-        self.state = match chat_entity {
-            Some(_) => {
-                // Model or Agent is selected
-                let is_loading = store.chats.model_loader.is_loading();
+        self.state = if chat_entity.is_none() && store.chats.loaded_model.is_none() {
+            State::NoModelSelected
+        } else {
+            // Model or Agent is selected
+            let is_loading = store.chats.model_loader.is_loading();
 
-                store.chats.get_current_chat().map_or(
-                    State::ModelSelectedWithEmptyChat { is_loading },
-                    |chat| {
-                        if chat.borrow().messages.is_empty() {
-                            State::ModelSelectedWithEmptyChat { is_loading }
-                        } else {
-                            State::ModelSelectedWithChat {
-                                is_loading,
-                                sticked_to_bottom: self.portal_list_end_reached
-                                    || !matches!(self.state, State::ModelSelectedWithChat { .. }),
-                                receiving_response: chat.borrow().is_receiving(),
-                                was_cancelled: chat.borrow().was_cancelled(),
-                            }
+            store.chats.get_current_chat().map_or(
+                State::ModelSelectedWithEmptyChat { is_loading },
+                |chat| {
+                    if chat.borrow().messages.is_empty() {
+                        State::ModelSelectedWithEmptyChat { is_loading }
+                    } else {
+                        State::ModelSelectedWithChat {
+                            is_loading,
+                            sticked_to_bottom: self.portal_list_end_reached
+                                || !matches!(self.state, State::ModelSelectedWithChat { .. }),
+                            receiving_response: chat.borrow().is_receiving(),
+                            was_cancelled: chat.borrow().was_cancelled(),
                         }
-                    },
-                )
-            }
-            None => {
-                State::NoModelSelected
-            }
-        };
+                    }
+                },
+            )
+        }
     }
 
     fn update_prompt_input(&mut self, cx: &mut Cx) {
@@ -666,8 +665,12 @@ impl ChatPanel {
             },
         );
 
-        let send_button = self.prompt_input(id!(main_prompt_input)).button(id!(prompt_send_button));
-        let stop_button = self.prompt_input(id!(main_prompt_input)).button(id!(prompt_stop_button));
+        let send_button = self
+            .prompt_input(id!(main_prompt_input))
+            .button(id!(prompt_send_button));
+        let stop_button = self
+            .prompt_input(id!(main_prompt_input))
+            .button(id!(prompt_stop_button));
         match button {
             PromptInputButton::Send => {
                 // The send button is enabled or not based on the prompt input
