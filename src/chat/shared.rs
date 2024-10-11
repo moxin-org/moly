@@ -83,7 +83,7 @@ impl Widget for ChatAgentAvatar {
 impl ChatAgentAvatar {
     pub fn set_agent(&mut self, agent: &MofaAgent) {
         let dep = match agent {
-            MofaAgent::Reasoner => self.reasoner_agent_icon.clone(),
+            MofaAgent::Reasoner | MofaAgent::Example => self.reasoner_agent_icon.clone(),
             MofaAgent::ResearchScholar => self.research_scholar_icon.clone(),
             MofaAgent::SearchAssistant => self.search_assistant_icon.clone(),
         };

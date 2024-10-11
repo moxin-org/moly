@@ -50,19 +50,16 @@ pub struct MofaResponseSearchAssistant {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub enum MofaAgent {
+    Example,
     Reasoner,
     SearchAssistant,
-    ResearchScholar,
-}
-
-pub enum MofaAgentWorkflow {
-    BasicReasoner(String),
     ResearchScholar,
 }
 
 impl MofaAgent {
     pub fn name(&self) -> String {
         match self {
+            MofaAgent::Example => "Example Agent".to_string(),
             MofaAgent::Reasoner => "Reasoner Agent".to_string(),
             MofaAgent::SearchAssistant => "Search Assistant".to_string(),
             MofaAgent::ResearchScholar => "Research Scholar".to_string(),
@@ -71,6 +68,7 @@ impl MofaAgent {
 
     pub fn short_description(&self) -> String {
         match self {
+            MofaAgent::Example => "This is an example agent implemented by MoFa".to_string(),
             MofaAgent::Reasoner => "Helps to find good questions about any topic".to_string(),
             MofaAgent::SearchAssistant => {
                 "Your assistant to find information on the web".to_string()
@@ -107,14 +105,15 @@ impl Default for MofaBackend {
     }
 }
 
-const DEFAULT_MOFA_ADDRESS: &str = "http://mofa-130.openllm.io";
+const DEFAULT_MOFA_ADDRESS: &str = "http://chat-150.moxin.io";
 
 impl MofaBackend {
     pub fn available_agents() -> Vec<MofaAgent> {
         vec![
-            MofaAgent::Reasoner,
+            MofaAgent::Example,
             // Keeping only one agent for now. We will revisit this later when MoFa is more stable.
 
+            // MofaAgent::Reasoner,
             // MofaAgent::SearchAssistant,
             // MofaAgent::ResearchScholar,
         ]
@@ -148,7 +147,7 @@ impl MofaBackend {
                         handle.abort();
                     }
                     let data = ChatRequest {
-                        model: "simple".to_string(),
+                        model: "example".to_string(),
                         messages: vec![MessageData {
                             role: Role::User,
                             content: task,
