@@ -13,46 +13,47 @@ live_design! {
     MD_SIZE = 44;
     LG_SIZE = 60;
 
-
     StripButton = <Button> {
+        width: Fill,
+        height: Fill,
         draw_bg: {
-            // relative radius, 0.0 is rect, 1.0 is full rounded
-            instance left_radius: 0.0;
-            instance right_radius: 0.0;
-            instance step: 1.0;
-            instance step_influence: 0.1;
-
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                // idk why 0.5 must be the minimum nor idk why 0.25 and not 0.5 for the multiplier
-                let rl = mix(0.5, self.rect_size.y * 0.25, self.left_radius);
-                let rr = mix(0.5, self.rect_size.y * 0.25, self.right_radius);
-
-                // base color
-                let fill_color = #15859A;
-
-                // make the base color ligther as step grows
-                let fill_color = mix(fill_color, #fff, self.step * self.step_influence);
-
-                // make a gradiant over the x axis
-                // use the step_infuence so this gradiant can be continued by the next button
-                let fill_color = mix(fill_color, #fff, self.pos.x * self.step_influence);
-
-                // make the color a little bit ligther when hovered
-                let fill_color = mix(fill_color, #fff, self.hover * 0.3);
-
-                sdf.box_all(0.0, 0.0, self.rect_size.x, self.rect_size.y, rl, rr, rr, rl);
-
-                sdf.fill_keep(fill_color);
-
+                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 0.5);
+                sdf.fill(vec4(#fff.xyz, self.hover * 0.4));
                 return sdf.result;
             }
-        },
+        }
     }
 
-    SizedStripButton = <StripButton> {
-        width: 100.0,
+    Split = <View> { width: 3, show_bg: true, draw_bg: {color: #fff}}
+
+    Strip = <View> {
+        width: (100.0 * 5),
         height: 32.0,
+        show_bg: true,
+        draw_bg: {
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+                // relative radius, 1.0 means fully rounded
+                // don't know why 0.5 is the min or why the multiplier is 0.25 instead of 0.5
+                let r = mix(0.5, self.rect_size.y * 0.25, 1.0);
+
+                let edge_color = #15859A;
+                let middle_color = mix(edge_color, #fff, 0.5);
+
+                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, r);
+
+                // oszilate the color from edge_color to middle_color
+                let blend_factor = abs(mix(-1.0, 1.0, self.pos.x));
+                let fill_color = mix(middle_color, edge_color, blend_factor);
+
+                sdf.fill(fill_color);
+                return sdf.result;
+            }
+
+        }
     }
 
     EdgeLabel = <Label> {
@@ -73,32 +74,16 @@ live_design! {
             spacing: 2,
 
             <EdgeLabel> { text: "Left is better", margin: {right: 4} }
-            a2 = <SizedStripButton> {
-                draw_bg: {
-                    instance step: 1.0;
-                    left_radius: 1.0;
-                }
-            }
-            a1 = <SizedStripButton> {
-                draw_bg: {
-                    instance step: 2.0;
-                }
-            }
-            o0 = <SizedStripButton> {
-                draw_bg: {
-                    instance step: 3.0;
-                }
-            }
-            b1 = <SizedStripButton> {
-                draw_bg: {
-                    instance step: 4.0;
-                }
-            }
-            b2 = <SizedStripButton> {
-                draw_bg: {
-                    instance step: 5.0;
-                    right_radius: 1.0;
-                }
+            <Strip> {
+                a2 = <StripButton> {}
+                <Split> {}
+                a1 = <StripButton> {}
+                <Split> {}
+                o0 = <StripButton> {}
+                <Split> {}
+                b1 = <StripButton> {}
+                <Split> {}
+                b2 = <StripButton> {}
             }
             <EdgeLabel> { text: "Right is better", margin: {left: 4} }
         }
