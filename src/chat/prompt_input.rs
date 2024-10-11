@@ -29,7 +29,7 @@ live_design! {
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
 
     CircleButton = <MolyButton> {
-        padding: {right: 4},
+        padding: {right: 2},
         margin: {bottom: 2},
 
         draw_icon: {
@@ -105,7 +105,7 @@ live_design! {
                 flow: Down,
                 width: Fill,
                 height: Fit,
-                padding: {top: 6, bottom: 6, left: 4, right: 10}
+                padding: {top: 8, bottom: 6, left: 4, right: 10}
                 spacing: 4,
                 align: {x: 0.0, y: 1.0},
 
