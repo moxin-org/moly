@@ -34,7 +34,7 @@ live_design! {
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
     CircleButton = <MolyButton> {
-        padding: {right: 4},
+        padding: {right: 2},
         margin: {bottom: 2},
 
         draw_icon: {
@@ -205,7 +205,7 @@ live_design! {
             color: #fff
         }
 
-        padding: {top: 6, bottom: 6, left: 4, right: 10}
+        padding: {top: 6, bottom: 6, left: 6, right: 10}
 
         spacing: 4,
         align: {x: 0.0, y: 1.0},
@@ -730,7 +730,7 @@ impl ChatPanel {
     }
 
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
-        let mut list = self.portal_list(id!(chat));
+        let list = self.portal_list(id!(chat));
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
