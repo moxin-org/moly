@@ -65,12 +65,12 @@ jobs:
 
       - name: Upload Dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
-          gh release upload ${{ github.event.inputs.release_tags }} moxin_*.deb --clobber
-          gh release upload ${{ github.event.inputs.release_tags }} moxin_*.tar.gz --clobber
-          gh release upload ${{ github.event.inputs.release_tags }} moxin_*.AppImage --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} moly_*.deb --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} moly_*.tar.gz --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} moly_*.AppImage --clobber
 
   build_macos:
     name: MacOS
@@ -106,10 +106,10 @@ jobs:
       
       - name: Upload Dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
-          gh release upload ${{ github.event.inputs.release_tags }} Moxin_*.dmg --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} Moly_*.dmg --clobber
 
   build_windows:
     name: Windows
@@ -155,9 +155,8 @@ jobs:
           ls dist/
       - name: Upload Dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
           $file=Get-ChildItem -Filter *.exe
           gh release upload ${{ github.event.inputs.release_tags }} $file.name --clobber
-
