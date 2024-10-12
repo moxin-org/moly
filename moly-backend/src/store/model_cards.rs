@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use git2::{ProxyOptions, Repository};
+use git2::{FetchOptions, ProxyOptions, Repository};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -196,13 +196,27 @@ pub fn open_or_clone<P: AsRef<Path>>(url: &str, repo_path: P) -> Result<Reposito
         Ok(repo)
     } else {
         log::debug!("open_or_clone: cloning repo");
+        let mut builder = if let Ok(proxy) =
+            std::env::var("https_proxy").or_else(|_| std::env::var("all_proxy"))
+        {
+            let mut proxy_opt = ProxyOptions::new();
+            proxy_opt.url(&proxy);
+            let mut fetch_opt = FetchOptions::new();
+            fetch_opt.proxy_options(proxy_opt);
+            let mut builder = git2::build::RepoBuilder::new();
+            builder.fetch_options(fetch_opt);
+            builder
+        } else {
+            git2::build::RepoBuilder::new()
+        };
+
         for _ in 0..2 {
-            let r = Repository::clone(url, &repo_path);
+            let r = builder.clone(url, repo_path.as_ref());
             if r.is_ok() {
                 return r;
             }
         }
-        Repository::clone(url, &repo_path)
+        builder.clone(url, repo_path.as_ref())
     }
 }
 
@@ -221,15 +235,15 @@ fn get_model_cards_repo() -> (String, String) {
                 .and_then(|r| r.json::<IpResult>())
             {
                 Ok(ip_result) if ip_result.country_code.to_ascii_uppercase() == "CN" => (
-                    "https://gitcode.com/xun_csh/model-cards".to_string(),
+                    "https://gitcode.com/xun_csh/model-cards.git".to_string(),
                     "CN".to_string(),
                 ),
                 Ok(ip_result) => (
-                    "https://github.com/moxin-org/model-cards".to_string(),
+                    "https://github.com/moxin-org/model-cards.git".to_string(),
                     ip_result.country_code.to_ascii_uppercase(),
                 ),
                 _ => (
-                    "https://github.com/moxin-org/model-cards".to_string(),
+                    "https://github.com/moxin-org/model-cards.git".to_string(),
                     ModelCardManager::DEFAULT_COUNTRY_CODE.to_string(),
                 ),
             }
