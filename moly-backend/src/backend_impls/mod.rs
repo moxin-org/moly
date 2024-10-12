@@ -145,6 +145,7 @@ fn test_chat() {
             context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
             n_batch: Some(128),
             n_ctx: Some(1024),
+            override_server_address: None,
         },
         tx,
     );
@@ -220,6 +221,7 @@ fn test_chat_stop() {
             rope_freq_scale: 0.0,
             rope_freq_base: 0.0,
             context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            override_server_address: None,
         },
         tx,
     );
