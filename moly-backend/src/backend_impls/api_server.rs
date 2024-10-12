@@ -181,14 +181,12 @@ impl BackendModel for LLamaEdgeApiServer {
         let (wasm_module, listen_addr) = if let Some(old_model) = &old_model {
             let listen_addr = load_model_options.override_server_address.clone().map_or(
                 old_model.listen_addr,
-                |addr| {
-                    match std::net::TcpListener::bind(&addr) {
-                        Ok(listener) => listener.local_addr().unwrap(),
-                        Err(_) => {
-                            eprintln!("Failed to start the model on address {}", addr);
-                            eprintln!("Using the previous one {}", old_model.listen_addr);
-                            old_model.listen_addr
-                        }
+                |addr| match std::net::TcpListener::bind(&addr) {
+                    Ok(listener) => listener.local_addr().unwrap(),
+                    Err(_) => {
+                        eprintln!("Failed to start the model on address {}", addr);
+                        eprintln!("Using the previous one {}", old_model.listen_addr);
+                        old_model.listen_addr
                     }
                 },
             );
@@ -205,10 +203,23 @@ impl BackendModel for LLamaEdgeApiServer {
             (old_model.wasm_module.clone(), listen_addr)
         } else {
             let addr = std::env::var("MOLY_API_SERVER_ADDR").unwrap_or("localhost:0".to_string());
-            let new_addr = std::net::TcpListener::bind(&addr)
-                .unwrap()
-                .local_addr()
-                .unwrap();
+
+            let listen_addr = load_model_options
+                .override_server_address
+                .clone()
+                .map(|addr| match std::net::TcpListener::bind(&addr) {
+                    Ok(listener) => Some(listener.local_addr().unwrap()),
+                    Err(_) => None,
+                })
+                .flatten();
+
+            let new_addr = match listen_addr {
+                Some(addr) => addr,
+                None => {
+                    let listener = std::net::TcpListener::bind(&addr).unwrap();
+                    listener.local_addr().unwrap()
+                }
+            };
 
             (Module::from_bytes(None, WASM).unwrap(), new_addr)
         };

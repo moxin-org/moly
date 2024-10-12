@@ -35,7 +35,7 @@ live_design! {
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
     CircleButton = <MolyButton> {
-        padding: {right: 4},
+        padding: {right: 2},
         margin: {bottom: 2},
 
         draw_icon: {
