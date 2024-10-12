@@ -212,18 +212,26 @@ pub struct IpResult {
     country_code: String,
 }
 
-fn get_model_cards_repo() -> String {
+fn get_model_cards_repo() -> (String, String) {
     let repo_url = std::env::var("MODEL_CARDS_REPO");
     match repo_url {
-        Ok(url) => url,
+        Ok(url) => (url, ModelCardManager::DEFAULT_COUNTRY_CODE.to_string()),
         Err(_) => {
             match reqwest::blocking::get("http://ip-api.com/json")
                 .and_then(|r| r.json::<IpResult>())
             {
-                Ok(ip_result) if ip_result.country_code == "CN" => {
-                    "https://gitcode.com/xun_csh/model-cards".to_string()
-                }
-                _ => "https://github.com/moxin-org/model-cards".to_string(),
+                Ok(ip_result) if ip_result.country_code.to_ascii_uppercase() == "CN" => (
+                    "https://gitcode.com/xun_csh/model-cards".to_string(),
+                    "CN".to_string(),
+                ),
+                Ok(ip_result) => (
+                    "https://github.com/moxin-org/model-cards".to_string(),
+                    ip_result.country_code.to_ascii_uppercase(),
+                ),
+                _ => (
+                    "https://github.com/moxin-org/model-cards".to_string(),
+                    ModelCardManager::DEFAULT_COUNTRY_CODE.to_string(),
+                ),
             }
         }
     }
@@ -232,7 +240,7 @@ fn get_model_cards_repo() -> String {
 pub static REPO_NAME: &'static str = "model-cards";
 
 pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<ModelCardManager> {
-    let repo_url = get_model_cards_repo();
+    let (repo_url, country_code) = get_model_cards_repo();
     log::info!("Using model_cards repo: {}", repo_url);
     let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
 
@@ -292,6 +300,7 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
     Ok(ModelCardManager {
         app_data_dir: app_data_dir.as_ref().to_path_buf(),
         embedding_index,
+        country_code,
         indexs,
         caches: HashMap::new(),
     })
@@ -398,13 +407,8 @@ pub struct RemoteFile {
     pub tags: Vec<String>,
     #[serde(default)]
     pub sha256: Option<String>,
-    pub download: DownloadUrls,
-}
-
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct DownloadUrls {
     #[serde(default)]
-    pub default: String,
+    pub download: HashMap<String, String>,
 }
 
 impl ModelCard {
@@ -484,6 +488,7 @@ impl ModelCard {
 
 pub struct ModelCardManager {
     app_data_dir: PathBuf,
+    pub country_code: String,
     embedding_index: EmbeddingState,
     indexs: HashMap<String, ModelIndex>,
     caches: HashMap<String, ModelCard>,
@@ -495,11 +500,14 @@ pub enum EmbeddingState {
 }
 
 impl ModelCardManager {
+    const DEFAULT_COUNTRY_CODE: &'static str = "default";
+
     pub fn empty(app_data_dir: PathBuf) -> Self {
         Self {
             app_data_dir,
             indexs: HashMap::new(),
             caches: HashMap::new(),
+            country_code: Self::DEFAULT_COUNTRY_CODE.to_string(),
             embedding_index: EmbeddingState::Finish(None),
         }
     }
