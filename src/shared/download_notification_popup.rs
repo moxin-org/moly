@@ -21,6 +21,7 @@ live_design! {
 
     PopupActionLink = <LinkLabel> {
         width: Fit,
+        margin: 2,
         draw_text: {
             text_style: <BOLD_FONT>{font_size: 9},
             fn get_color(self) -> vec4 {
@@ -39,6 +40,7 @@ live_design! {
 
     PopupSecondaryActionLink = <LinkLabel> {
         width: Fit,
+        margin: 2,
         draw_text: {
             text_style: <BOLD_FONT>{font_size: 9},
             fn get_color(self) -> vec4 {

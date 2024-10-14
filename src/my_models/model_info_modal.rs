@@ -19,7 +19,7 @@ live_design! {
             code_color: (#EAECF0)
         }
         font_size: 10
-        code_layout: { line_spacing: (5.0), padding: 15, }
+        code_layout: { padding: 15, }
     }
 
     ModelInfoModal = {{ModelInfoModal}} {
@@ -93,7 +93,7 @@ live_design! {
                 path = <MolyHtml> {
                     width: Fill
                     font_size: 10
-                    code_layout: { line_spacing: (5.0), padding: 9 }
+                    code_layout: { padding: 9 }
                 }
             }
 
@@ -164,7 +164,7 @@ live_design! {
 #[derive(Clone, Debug, DefaultNone)]
 pub enum ModelInfoModalAction {
     None,
-    CloseButtonClicked,
+    ModalDismissed,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -214,11 +214,10 @@ impl Widget for ModelInfoModal {
 }
 
 impl WidgetMatchEvent for ModelInfoModal {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, ModelInfoModalAction::CloseButtonClicked);
+            cx.action(ModelInfoModalAction::ModalDismissed);
         }
 
         if self

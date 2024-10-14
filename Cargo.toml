@@ -29,6 +29,7 @@ moly-backend = { path = "moly-backend" }
 moly-fake-backend = { path = "moly-fake-backend" }
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
 
 robius-open = "0.1.1"
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }

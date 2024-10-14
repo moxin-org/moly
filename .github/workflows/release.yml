@@ -1,0 +1,162 @@
+name: Release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+on: 
+  workflow_dispatch:
+    inputs:
+      build_ubuntu:
+        description: 'Build Ubuntu'
+        required: false
+        default: 'true'
+      build_macos:
+        description: 'Build MacOS'
+        required: false
+        default: 'true'
+      build_windows:
+        description: 'Build Windows'
+        required: false
+        default: 'true'
+      release_tags:
+        description: 'Release Page Tags'
+        required: true
+
+jobs:
+  build_ubuntu:
+    name: Ubuntu
+    runs-on: ${{ matrix.os }}
+    if: ${{ github.event.inputs.build_ubuntu == 'true' }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        rust: [1.79]
+    env:
+      LD_LIBRARY_PATH: ~\.wasmedge\lib
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install WasmEdge
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+          source $HOME/.wasmedge/env
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Install cargo-packager
+        run: |
+          cargo +stable install --force --locked cargo-packager
+
+      - name: Build
+        run: |
+          source $HOME/.wasmedge/env
+          cargo packager --release --verbose
+          ls dist/
+
+      - name: Upload Dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
+        run: |
+          cd dist/
+          gh release upload ${{ github.event.inputs.release_tags }} moly_*.deb --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} moly_*.tar.gz --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} moly_*.AppImage --clobber
+
+  build_macos:
+    name: MacOS
+    runs-on: ${{ matrix.os }}
+    if: ${{ github.event.inputs.build_macos == 'true' }}
+    strategy:
+      matrix:
+        os: [macos-14, macos-13]
+        rust: [1.79]
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install WasmEdge
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+          source $HOME/.wasmedge/env
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Install cargo-packager
+        run: |
+          cargo +stable install --force --locked cargo-packager
+
+      - name: Build
+        run: |
+          cargo packager --release --verbose
+          ls dist/
+      
+      - name: Upload Dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
+        run: |
+          cd dist/
+          gh release upload ${{ github.event.inputs.release_tags }} Moly_*.dmg --clobber
+
+  build_windows:
+    name: Windows
+    runs-on: windows-2022
+    if: ${{ github.event.inputs.build_windows == 'true' }}
+    strategy:
+      matrix:
+        rust: [1.79]
+    env:
+      WASMEDGE_DIR: ${{ github.workspace }}\WasmEdge-0.14.0-Windows
+    steps:
+      - name: Display ENV
+        run: |
+          echo $env:WASMEDGE_DIR
+
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Download WasmEdge
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip" -OutFile "WasmEdge-0.14.0-windows.zip"
+          Expand-Archive -LiteralPath "WasmEdge-0.14.0-windows.zip" -DestinationPath ${{ github.workspace }}
+          tree /F ${{ github.workspace }}\WasmEdge
+
+      - name: Set up Windows 10 SDK
+        uses: GuillaumeFalourd/setup-windows10-sdk-action@v1.11
+        with:
+          sdk-version: 19041
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Install cargo-packager
+        run: |
+          cargo +stable install --force --locked cargo-packager
+
+      - name: Build
+        run: |
+          cargo packager --release --formats nsis --verbose
+          ls dist/
+      - name: Upload Dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
+        run: |
+          cd dist/
+          $file=Get-ChildItem -Filter *.exe
+          gh release upload ${{ github.event.inputs.release_tags }} $file.name --clobber

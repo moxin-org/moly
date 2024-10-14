@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, net::SocketAddr, time::Duration};
 
 use anyhow::anyhow;
 use futures_util::StreamExt;
@@ -29,6 +29,7 @@ pub struct LLamaEdgeApiServer {
     running_controller: tokio::sync::broadcast::Sender<()>,
     #[allow(dead_code)]
     model_thread: std::thread::JoinHandle<()>,
+    failed: bool,
 }
 
 fn create_wasi(
@@ -176,21 +177,49 @@ impl BackendModel for LLamaEdgeApiServer {
     ) -> Self {
         let load_model_options = options.clone();
         let mut need_reload = true;
+
         let (wasm_module, listen_addr) = if let Some(old_model) = &old_model {
-            if old_model.id == file.id.as_str()
+            let listen_addr = load_model_options.override_server_address.clone().map_or(
+                old_model.listen_addr,
+                |addr| match std::net::TcpListener::bind(&addr) {
+                    Ok(listener) => listener.local_addr().unwrap(),
+                    Err(_) => {
+                        eprintln!("Failed to start the model on address {}", addr);
+                        eprintln!("Using the previous one {}", old_model.listen_addr);
+                        old_model.listen_addr
+                    }
+                },
+            );
+
+            if !old_model.failed
+                && old_model.id == file.id.as_str()
+                && listen_addr == old_model.listen_addr
                 && old_model.load_model_options.n_ctx == options.n_ctx
                 && old_model.load_model_options.n_batch == options.n_batch
                 && old_model.embedding == embedding
             {
                 need_reload = false;
             }
-            (old_model.wasm_module.clone(), old_model.listen_addr)
+            (old_model.wasm_module.clone(), listen_addr)
         } else {
             let addr = std::env::var("MOLY_API_SERVER_ADDR").unwrap_or("localhost:0".to_string());
-            let new_addr = std::net::TcpListener::bind(&addr)
-                .unwrap()
-                .local_addr()
-                .unwrap();
+
+            let listen_addr = load_model_options
+                .override_server_address
+                .clone()
+                .map(|addr| match std::net::TcpListener::bind(&addr) {
+                    Ok(listener) => Some(listener.local_addr().unwrap()),
+                    Err(_) => None,
+                })
+                .flatten();
+
+            let new_addr = match listen_addr {
+                Some(addr) => addr,
+                None => {
+                    let listener = std::net::TcpListener::bind(&addr).unwrap();
+                    listener.local_addr().unwrap()
+                }
+            };
 
             (Module::from_bytes(None, WASM).unwrap(), new_addr)
         };
@@ -207,8 +236,13 @@ impl BackendModel for LLamaEdgeApiServer {
             return old_model.unwrap();
         }
 
+        // Only stop the old model if it is not failed
+        // This is important because the old model may be failed to start due to an
+        // external service running on the same port
         if let Some(old_model) = old_model {
-            old_model.stop(async_rt);
+            if !old_model.failed {
+                old_model.stop(async_rt);
+            }
         }
 
         let wasm_module_ = wasm_module.clone();
@@ -226,37 +260,35 @@ impl BackendModel for LLamaEdgeApiServer {
             run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options, embedding_)
         });
 
-        async_rt.spawn(async move {
-            let mut test_server = false;
-            for _i in 0..600 {
-                let r = reqwest::ClientBuilder::new()
-                    .no_proxy()
-                    .build()
-                    .unwrap()
-                    .get(&url)
-                    .send()
-                    .await;
-                if let Ok(resp) = r {
-                    if resp.status().is_success() {
-                        test_server = true;
-                        break;
-                    }
+        let mut test_server = false;
+        for _i in 0..5 {
+            let r = reqwest::blocking::ClientBuilder::new()
+                .timeout(Duration::from_secs(3))
+                .no_proxy()
+                .build()
+                .unwrap()
+                .get(&url)
+                .send();
+            if let Ok(resp) = r {
+                if resp.status().is_success() {
+                    test_server = true;
+                    break;
                 }
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             }
-            if test_server {
-                let _ = tx.send(Ok(moly_protocol::protocol::LoadModelResponse::Completed(
-                    moly_protocol::protocol::LoadedModelInfo {
-                        file_id: file_.id.to_string(),
-                        model_id: file_.model_id,
-                        information: "".to_string(),
-                        listen_port,
-                    },
-                )));
-            } else {
-                let _ = tx.send(Err(anyhow!("Failed to start the model")));
-            }
-        });
+            let _ = std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+        if test_server {
+            let _ = tx.send(Ok(moly_protocol::protocol::LoadModelResponse::Completed(
+                moly_protocol::protocol::LoadedModelInfo {
+                    file_id: file_.id.to_string(),
+                    model_id: file_.model_id,
+                    information: "".to_string(),
+                    listen_port,
+                },
+            )));
+        } else {
+            let _ = tx.send(Err(anyhow!("Failed to start the model")));
+        }
 
         let running_controller = tokio::sync::broadcast::channel(1).0;
 
@@ -268,6 +300,7 @@ impl BackendModel for LLamaEdgeApiServer {
             running_controller,
             model_thread,
             load_model_options,
+            failed: !test_server,
         };
 
         new_model
@@ -352,12 +385,14 @@ impl BackendModel for LLamaEdgeApiServer {
 
     fn stop(self, _async_rt: &tokio::runtime::Runtime) {
         let url = format!("http://localhost:{}/admin/exit", self.listen_addr.port());
-        let _ = reqwest::blocking::ClientBuilder::new()
+        let res = reqwest::blocking::ClientBuilder::new()
+            .timeout(Duration::from_secs(2))
             .no_proxy()
             .build()
             .unwrap()
             .get(url)
             .send();
+
         let _ = self.model_thread.join();
     }
 }

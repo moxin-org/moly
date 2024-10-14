@@ -5,7 +5,7 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{DefaultNone, SignalToUI};
+use makepad_widgets::{DefaultNone, SignalToUI, ActionDefaultRef};
 use moly_backend::Backend;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
@@ -87,7 +87,15 @@ impl Store {
     }
 
     pub fn load_model(&mut self, file: &File) {
-        self.chats.load_model(file);
+        self.chats.load_model(file, None);
+    }
+
+    pub fn update_server_port(&mut self, server_port: u16) {
+        if let Some(file) = &self.chats.loaded_model {
+            if !self.chats.model_loader.is_loading() {
+                self.chats.load_model(&file.clone(), Some(server_port));
+            }
+        }
     }
 
     fn update_load_model(&mut self) {

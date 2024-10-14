@@ -84,7 +84,7 @@ live_design! {
     DownloadedFilesTag = <View> {
         width: 100
         align: {x: 0.0, y: 0.5}
-        file_size = <Label> {
+        label = <Label> {
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9}
                 color: #x0
@@ -237,12 +237,12 @@ impl Widget for DownloadedFilesRow {
 
         // File size tag
         let file_size = format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
-        self.label(id!(h_wrapper.file_size_tag.file_size))
+        self.label(id!(h_wrapper.file_size_tag.label))
             .set_text(&file_size);
 
         // Added date tag
         let formatted_date = downloaded_file.downloaded_at.format("%d/%m/%Y").to_string();
-        self.label(id!(h_wrapper.date_added_tag.date_added))
+        self.label(id!(h_wrapper.date_added_tag.label))
             .set_text(&formatted_date);
 
         self.view.draw_walk(cx, scope, walk)
@@ -268,16 +268,11 @@ impl WidgetMatchEvent for DownloadedFilesRow {
         }
 
         for action in actions {
-            if matches!(
-                action.as_widget_action().cast(),
-                DeleteModelModalAction::ModelDeleted
-                    | DeleteModelModalAction::Cancelled
-                    | DeleteModelModalAction::CloseButtonClicked
-            ) {
+            if let DeleteModelModalAction::ModalDismissed = action.cast() {
                 self.modal(id!(delete_modal)).close(cx);
             }
 
-            if let ModelInfoModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+            if let ModelInfoModalAction::ModalDismissed = action.cast() {
                 self.modal(id!(info_modal)).close(cx);
             }
         }
