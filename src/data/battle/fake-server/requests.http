@@ -1,0 +1,11 @@
+### Get sheet by id
+GET http://localhost:9800/sheets/abc123
+
+### Update sheet
+PUT http://localhost:9800/sheets/abc123
+Content-Type: application/json
+
+{
+  "name": "This is an invalid sheet :P",
+  "hp": 100
+}

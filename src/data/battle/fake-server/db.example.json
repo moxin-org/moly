@@ -1,0 +1,469 @@
+{
+  "sheets": [
+    {
+      "code": "abc123",
+      "id": "abc123",
+      "rounds": [
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to lose weight?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "do exercise"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to lose weight?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "do not eat biscuits"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to forget her?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "coding in rust"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to forget her?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "idk bro"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "hello"
+                },
+                {
+                  "sender": "agent",
+                  "body": "world"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "hello"
+                },
+                {
+                  "sender": "agent",
+                  "body": "is it me you're looking for?"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        }
+      ]
+    },
+    {
+      "code": "xyz789",
+      "id": "xyz789",
+      "rounds": [
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to get better sleep?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "try to set a consistent bedtime"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to get better sleep?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "avoid caffeine in the evening"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to learn programming?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "start with rust"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to learn programming?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "find online tutorials"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what's the weather today?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "it's sunny and warm"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what's the weather today?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "cloudy with a chance of rain"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        }
+      ]
+    },
+    {
+      "code": "lmn456",
+      "id": "lmn456",
+      "rounds": [
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to improve my focus?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "try meditation"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to improve my focus?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "eliminate distractions"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to save money?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "create a budget"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to save money?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "cut unnecessary expenses"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what is your name?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "I'm your AI assistant"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what is your name?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "You can call me John Doe"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        }
+      ]
+    },
+    {
+      "code": "pqr678",
+      "id": "pqr678",
+      "rounds": [
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to reduce stress?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "practice deep breathing"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to reduce stress?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "take short breaks during work"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what's a good book to read?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "try 'The Alchemist'"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what's a good book to read?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "'1984' is a classic"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what's the best way to exercise?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "mix cardio and strength training"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what's the best way to exercise?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "try running or swimming"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        }
+      ]
+    },
+    {
+      "code": "uvw123",
+      "id": "uvw123",
+      "rounds": [
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to get more energy?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "eat healthy and exercise"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to get more energy?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "get more sleep and hydrate"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to be more productive?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "make a to-do list"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "how to be more productive?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "focus on one task at a time"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        },
+        {
+          "chats": [
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what is your favorite color?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "I don't have personal preferences"
+                }
+              ]
+            },
+            {
+              "messages": [
+                {
+                  "sender": "user",
+                  "body": "what is your favorite color?"
+                },
+                {
+                  "sender": "agent",
+                  "body": "I don't have favorites, but blue is nice"
+                }
+              ]
+            }
+          ],
+          "vote": null
+        }
+      ]
+    }
+  ]
+}
