@@ -401,6 +401,9 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         max_download_threads: usize,
     ) -> Sender<Command> {
         let app_data_dir = app_data_dir.as_ref().to_path_buf();
+
+        log::info!("build by app_data_dir: {:?}", app_data_dir);
+
         wasmedge_sdk::plugin::PluginManager::load(None).unwrap();
         std::fs::create_dir_all(&app_data_dir).unwrap_or_else(|_| {
             panic!(

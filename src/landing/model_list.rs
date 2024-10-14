@@ -94,12 +94,11 @@ impl Widget for ModelList {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, models_count);
                 while let Some(item_id) = list.next_visible_item(cx) {
-                    let item = list.item(cx, item_id, live_id!(Model)).unwrap();
+                    let item = list.item(cx, item_id, live_id!(Model));
 
                     if item_id < models_count {
                         let model = &models[item_id];
-                        let mut model_with_download_info =
-                            store.add_download_info_to_model(model);
+                        let mut model_with_download_info = store.add_download_info_to_model(model);
                         item.draw_all(cx, &mut Scope::with_data(&mut model_with_download_info));
                     }
                 }
