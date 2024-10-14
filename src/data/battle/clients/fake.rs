@@ -1,12 +1,10 @@
-use crate::data::{
-    battle::{client::Client, models::*},
-    filesystem,
-};
+use crate::data::battle::{client::Client, models::*};
 use anyhow::Result;
-use std::path::PathBuf;
 
-pub const SHEET_FILE_NAME: &'static str = "current_battle_sheet.json";
+use super::fs;
 
+/// Client that always returns `sheet.json` data.
+/// `send_sheet_blocking` does nothing.
 pub struct FakeClient;
 
 impl Client for FakeClient {
@@ -17,9 +15,21 @@ impl Client for FakeClient {
         //     return Err(anyhow!("Filesystem error (314): Very very very very very very very very very very very very very very very very very very very very very long error"));
         // }
 
-        let path = battle_sheet_path();
-        std::fs::remove_file(path)?;
-        Ok(())
+        fs::clear_sheet_blocking()
+    }
+
+    fn save_sheet_blocking(&mut self, sheet: &Sheet) -> Result<()> {
+        // Simulate failure on the first call
+        // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+        // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        //     return Err(anyhow!("Filesystem error (42): Permission denied"));
+        // }
+
+        fs::save_sheet_blocking(sheet)
+    }
+
+    fn restore_sheet_blocking(&mut self) -> Result<Sheet> {
+        fs::restore_sheet_blocking()
     }
 
     fn download_sheet_blocking(&mut self, code: String) -> Result<Sheet> {
@@ -39,26 +49,6 @@ impl Client for FakeClient {
         Ok(sheet)
     }
 
-    fn restore_sheet_blocking(&mut self) -> Result<Sheet> {
-        let path = battle_sheet_path();
-        let text = filesystem::read_from_file(path)?;
-        let sheet = serde_json::from_str::<Sheet>(&text)?;
-        Ok(sheet)
-    }
-
-    fn save_sheet_blocking(&mut self, sheet: &Sheet) -> Result<()> {
-        // Simulate failure on the first call
-        // static FIRST_CALL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-        // if FIRST_CALL.swap(false, std::sync::atomic::Ordering::SeqCst) {
-        //     return Err(anyhow!("Filesystem error (42): Permission denied"));
-        // }
-
-        let text = serde_json::to_string(&sheet)?;
-        let path = battle_sheet_path();
-        filesystem::write_to_file(path, &text)?;
-        Ok(())
-    }
-
     fn send_sheet_blocking(&mut self, _sheet: Sheet) -> Result<()> {
         // simulate sending to server
         std::thread::sleep(std::time::Duration::from_secs(3));
@@ -71,10 +61,4 @@ impl Client for FakeClient {
 
         Ok(())
     }
-}
-
-/// Get the built path to the current battle sheet file.
-fn battle_sheet_path() -> PathBuf {
-    let dirs = filesystem::project_dirs();
-    dirs.cache_dir().join(SHEET_FILE_NAME)
 }

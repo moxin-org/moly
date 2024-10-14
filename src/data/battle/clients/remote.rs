@@ -1,22 +1,26 @@
-use crate::data::{
-    battle::{client::Client, models::*},
-    filesystem,
-};
+use crate::data::battle::{client::Client, models::*};
 use anyhow::{anyhow, Context, Result};
 use reqwest::Method;
-use std::path::PathBuf;
 
-pub const SHEET_FILE_NAME: &'static str = "current_battle_sheet.json";
+use super::fs;
 
+/// Client that interacts with a remote HTTP server.
+/// Can be used with the real server, or with a fake one.
 pub struct RemoteClient {
     base_url: String,
 }
 
 impl Client for RemoteClient {
     fn clear_sheet_blocking(&mut self) -> Result<()> {
-        let path = battle_sheet_path();
-        std::fs::remove_file(path)?;
-        Ok(())
+        fs::clear_sheet_blocking()
+    }
+
+    fn restore_sheet_blocking(&mut self) -> Result<Sheet> {
+        fs::restore_sheet_blocking()
+    }
+
+    fn save_sheet_blocking(&mut self, sheet: &Sheet) -> Result<()> {
+        fs::save_sheet_blocking(sheet)
     }
 
     fn download_sheet_blocking(&mut self, code: String) -> Result<Sheet> {
@@ -38,20 +42,6 @@ impl Client for RemoteClient {
                 .with_context(|| "Can not read the error message from the server")?;
             Err(anyhow!("Failed to fetch sheet: {}", message))
         }
-    }
-
-    fn restore_sheet_blocking(&mut self) -> Result<Sheet> {
-        let path = battle_sheet_path();
-        let text = filesystem::read_from_file(path)?;
-        let sheet = serde_json::from_str::<Sheet>(&text)?;
-        Ok(sheet)
-    }
-
-    fn save_sheet_blocking(&mut self, sheet: &Sheet) -> Result<()> {
-        let text = serde_json::to_string(&sheet)?;
-        let path = battle_sheet_path();
-        filesystem::write_to_file(path, &text)?;
-        Ok(())
     }
 
     fn send_sheet_blocking(&mut self, sheet: Sheet) -> Result<()> {
@@ -83,10 +73,4 @@ impl RemoteClient {
         let url = format!("{}/{}", self.base_url, path);
         reqwest::blocking::Client::new().request(method, url)
     }
-}
-
-/// Get the built path to the current (in-progress) battle sheet file.
-fn battle_sheet_path() -> PathBuf {
-    let dirs = filesystem::project_dirs();
-    dirs.cache_dir().join(SHEET_FILE_NAME)
 }
