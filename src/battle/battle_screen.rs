@@ -178,7 +178,13 @@ impl BattleScreen {
                     }
 
                     ui.defer_with_redraw(move |s: &mut Self, _cx| {
-                        s.show_round_frame(sheet);
+                        // Server should not return an already completed sheet,
+                        // but just in case...
+                        if sheet.is_completed() {
+                            s.show_ending_frame();
+                        } else {
+                            s.show_round_frame(sheet);
+                        }
                     });
                 }
                 Err(error) => {
