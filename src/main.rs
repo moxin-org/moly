@@ -34,7 +34,7 @@ fn run_mega_server() {
             file.write_all(config.as_bytes())?;
         }
 
-        let args = vec!["-c", config_path.to_str().unwrap(), "service", "multi", "http"];
+        let args = vec!["-c", config_path.to_str().unwrap(), "service", "multi", "http", "--bootstrap-node", "http://gitmono.org/relay"];
         println!("Starting Mega with args: {:?}", args);
         mega::cli::parse(Some(args)).expect("Failed to start Mega");
         Ok(())
