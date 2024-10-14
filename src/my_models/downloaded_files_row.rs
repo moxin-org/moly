@@ -1,9 +1,10 @@
-use crate::shared::actions::ChatAction;
+use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
+use crate::shared::actions::ChatHandler;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
+use crate::shared::{actions::ChatAction, utils::human_readable_name};
 use makepad_widgets::*;
 use moly_protocol::data::{DownloadedFile, FileID};
-use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -84,7 +85,7 @@ live_design! {
     DownloadedFilesTag = <View> {
         width: 100
         align: {x: 0.0, y: 0.5}
-        file_size = <Label> {
+        label = <Label> {
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9}
                 color: #x0
@@ -237,12 +238,12 @@ impl Widget for DownloadedFilesRow {
 
         // File size tag
         let file_size = format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
-        self.label(id!(h_wrapper.file_size_tag.file_size))
+        self.label(id!(h_wrapper.file_size_tag.label))
             .set_text(&file_size);
 
         // Added date tag
         let formatted_date = downloaded_file.downloaded_at.format("%d/%m/%Y").to_string();
-        self.label(id!(h_wrapper.date_added_tag.date_added))
+        self.label(id!(h_wrapper.date_added_tag.label))
             .set_text(&formatted_date);
 
         self.view.draw_walk(cx, scope, walk)
@@ -255,7 +256,11 @@ impl WidgetMatchEvent for DownloadedFilesRow {
 
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
+                cx.widget_action(
+                    widget_uid,
+                    &scope.path,
+                    ChatAction::Start(ChatHandler::Model(file_id.clone())),
+                );
             }
         }
 
@@ -286,29 +291,6 @@ impl DownloadedFilesRowRef {
         };
         inner.file_id = Some(file_id);
     }
-}
-
-/// Removes dashes, file extension, and capitalizes the first letter of each word.
-fn human_readable_name(name: &str) -> String {
-    let name = name
-        .to_lowercase()
-        .replace("-", " ")
-        .replace(".gguf", "")
-        .replace("chat", "");
-
-    let name = name
-        .split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first_char) => first_char.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(" ");
-
-    name
 }
 
 fn dash_if_empty(input: &str) -> &str {

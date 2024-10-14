@@ -1,13 +1,16 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
+    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult,
+    PopupAction,
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
+use markdown::MarkdownAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -26,7 +29,6 @@ live_design! {
     import crate::chat::chat_screen::ChatScreen;
     import crate::my_models::my_models_screen::MyModelsScreen;
     import crate::settings::settings_screen::SettingsScreen;
-
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
@@ -189,6 +191,10 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
+            if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
+                let _ = robius_open::Uri::new(&url).open();
+            }
+
             match action.as_widget_action().cast() {
                 StoreAction::Search(keywords) => {
                     self.store.search.load_search_results(keywords);
@@ -248,7 +254,9 @@ impl MatchEvent for App {
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
-                self.ui.popup_notification(id!(popup_notification)).close(cx);
+                self.ui
+                    .popup_notification(id!(popup_notification))
+                    .close(cx);
             }
         }
     }
@@ -264,6 +272,7 @@ impl App {
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
                     popup.set_data(&file, DownloadResult::Success);
+                    cx.action(ModelSelectorListAction::AddedOrDeletedModel);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
                     popup.set_data(&file, DownloadResult::Failure);

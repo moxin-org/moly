@@ -15,6 +15,7 @@ live_design! {
         flow: Down,
         link = <LinkLabel> {
             width: Fit,
+            margin: 2,
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9},
                 fn get_color(self) -> vec4 {

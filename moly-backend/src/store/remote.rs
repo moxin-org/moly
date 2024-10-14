@@ -101,34 +101,53 @@ pub struct ModelFileDownloader {
     client: reqwest::Client,
     sql_conn: Arc<Mutex<rusqlite::Connection>>,
     control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
+    country_code: String,
     step: f64,
 }
 
 impl ModelFileDownloader {
+    const DEFAULT_COUNTRY_CODE: &'static str = "default";
     pub fn new(
         client: reqwest::Client,
         sql_conn: Arc<Mutex<rusqlite::Connection>>,
         control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
+        country_code: String,
         step: f64,
     ) -> Self {
         Self {
             client,
             sql_conn,
             control_tx,
+            country_code,
             step,
         }
     }
 
-    fn get_download_url(&self, file: &super::download_files::DownloadedFile) -> String {
-        format!(
-            "https://huggingface.co/{}/resolve/main/{}",
-            file.model_id, file.name
-        )
+    fn get_download_url(
+        &self,
+        file: &super::download_files::DownloadedFile,
+        remote_file: &super::model_cards::RemoteFile,
+    ) -> String {
+        remote_file
+            .download
+            .get(&self.country_code)
+            .cloned()
+            .unwrap_or_else(|| {
+                remote_file
+                    .download
+                    .get(Self::DEFAULT_COUNTRY_CODE)
+                    .cloned()
+                    .unwrap_or(format!(
+                        "https://huggingface.co/{}/resolve/main/{}",
+                        file.model_id, file.name
+                    ))
+            })
     }
 
     async fn download(
         self,
         file: super::download_files::DownloadedFile,
+        remote_file: super::model_cards::RemoteFile,
         tx: Sender<anyhow::Result<FileDownloadResponse>>,
     ) {
         let file_id = file.id.to_string();
@@ -143,7 +162,7 @@ impl ModelFileDownloader {
         };
 
         let r = self
-            .download_file_from_remote(file, &mut send_progress)
+            .download_file_from_remote(file, remote_file, &mut send_progress)
             .await;
 
         match r {
@@ -165,13 +184,15 @@ impl ModelFileDownloader {
         mut download_rx: tokio::sync::mpsc::UnboundedReceiver<(
             super::models::Model,
             super::download_files::DownloadedFile,
+            super::model_cards::RemoteFile,
             Sender<anyhow::Result<FileDownloadResponse>>,
         )>,
     ) {
         let semaphore = Arc::new(tokio::sync::Semaphore::new(max_downloader));
 
-        while let Some((model, mut file, tx)) = download_rx.recv().await {
-            let url = downloader.get_download_url(&file);
+        while let Some((model, mut file, remote_file, tx)) = download_rx.recv().await {
+            let url = downloader.get_download_url(&file, &remote_file);
+            log::info!("Downloading file: {}", url);
 
             let f = async {
                 let content_length = get_file_content_length(&downloader.client, &url)
@@ -200,7 +221,7 @@ impl ModelFileDownloader {
             let semaphore_ = semaphore.clone();
             tokio::spawn(async move {
                 let permit = semaphore_.acquire_owned().await.unwrap();
-                downloader_.download(file, tx).await;
+                downloader_.download(file, remote_file, tx).await;
                 drop(permit);
             });
         }
@@ -209,9 +230,10 @@ impl ModelFileDownloader {
     async fn download_file_from_remote(
         &self,
         mut file: super::download_files::DownloadedFile,
+        remote_file: super::model_cards::RemoteFile,
         report_fn: &mut (dyn FnMut(f64) -> anyhow::Result<()> + Send),
     ) -> anyhow::Result<Option<FileDownloadResponse>> {
-        let url = self.get_download_url(&file);
+        let url = self.get_download_url(&file, &remote_file);
 
         let local_path = Path::new(&file.download_dir)
             .join(&file.model_id)

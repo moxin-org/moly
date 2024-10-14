@@ -18,7 +18,7 @@ use moly_protocol::{
 
 use crate::store::{
     self,
-    model_cards::{ModelCard, ModelCardManager},
+    model_cards::{self, ModelCard, ModelCardManager},
     ModelFileDownloader,
 };
 
@@ -145,6 +145,7 @@ fn test_chat() {
             context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
             n_batch: Some(128),
             n_ctx: Some(1024),
+            override_server_address: None,
         },
         tx,
     );
@@ -220,6 +221,7 @@ fn test_chat_stop() {
             rope_freq_scale: 0.0,
             rope_freq_base: 0.0,
             context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            override_server_address: None,
         },
         tx,
     );
@@ -381,6 +383,7 @@ pub struct BackendImpl<Model: BackendModel> {
     download_tx: tokio::sync::mpsc::UnboundedSender<(
         store::models::Model,
         store::download_files::DownloadedFile,
+        model_cards::RemoteFile,
         Sender<anyhow::Result<FileDownloadResponse>>,
     )>,
     model: Option<Model>,
@@ -444,7 +447,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         {
             let client = reqwest::Client::new();
             let downloader =
-                ModelFileDownloader::new(client, sql_conn.clone(), control_tx.clone(), 0.1);
+                ModelFileDownloader::new(client, sql_conn.clone(), control_tx.clone(),model_indexs.country_code.clone(), 0.1);
             async_rt.spawn(ModelFileDownloader::run_loop(
                 downloader,
                 max_download_threads.max(3),
@@ -526,7 +529,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                 }
                 ModelManagementCommand::DownloadFile(file_id, tx) => {
                     //search model from remote
-                    let mut search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile)> {
+                    let mut search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile,crate::store::model_cards::RemoteFile)> {
                         let (model_id, file) = file_id
                             .split_once("#")
                             .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
@@ -540,6 +543,8 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                             .into_iter()
                             .find(|f| f.name == file)
                             .ok_or_else(|| anyhow::anyhow!("file not found"))?;
+
+                        let remote_file_ = remote_file.clone();
 
                         let download_model = crate::store::models::Model {
                             id: Arc::new(remote_model.id),
@@ -578,12 +583,12 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                             sha256: remote_file.sha256.unwrap_or_default(),
                         };
 
-                        Ok((download_model,download_file))
+                        Ok((download_model,download_file,remote_file_))
                     };
 
                     match search_model_from_remote() {
-                        Ok((model, file)) => {
-                            let _ = self.download_tx.send((model, file, tx));
+                        Ok((model, file,remote_file)) => {
+                            let _ = self.download_tx.send((model, file,remote_file, tx));
                         }
                         Err(e) => {
                             let _ = tx.send(Err(e));

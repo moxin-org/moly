@@ -199,8 +199,7 @@ impl Widget for MyModelsScreen {
         models_summary_label.set_text(&summary);
 
         self.view
-            .label(id!(download_location.label))
-            .label(id!(show_in_files.label))
+            .button(id!(show_in_files))
             .set_text(&file_manager_label());
 
         self.view.draw_walk(cx, scope, walk)

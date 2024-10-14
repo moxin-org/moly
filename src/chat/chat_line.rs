@@ -1,8 +1,10 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
+use crate::chat::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
+use moly_mofa::MofaAgent;
 
 live_design! {
     import makepad_code_editor::code_view::CodeView;
@@ -14,7 +16,9 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::shared::resource_imports::*;
     import crate::chat::chat_line_loading::ChatLineLoading;
-    
+    import crate::chat::shared::ChatModelAvatar;
+    import crate::chat::shared::ChatAgentAvatar;
+
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -54,45 +58,38 @@ live_design! {
         text: "Cancel"
     }
 
-    TEXT_HEIGHT_FACTOR = 1.3
-    LINE_SPACING = 8.0
-    BLOCK_LINE_SPACING = 12.0
-
     MessageText = <Markdown> {
         padding: 0,
-        line_spacing: (LINE_SPACING),
         paragraph_spacing: 20.0,
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
-        code_block = <CodeView> {
-            editor: {
-                pad_left_top: vec2(10.0,10.0)
-                width: Fill,
-                height: Fit,
-                draw_bg: { color: #3c3c3c },
+        code_block = <View> {   
+            width:Fill,
+            height:Fit,
+            code_view = <CodeView>{
+                editor: {
+                    pad_left_top: vec2(10.0,10.0)
+                    width: Fill,
+                    height: Fit,
+                    draw_bg: { color: #3c3c3c },
+                }
             }
         }
         use_code_block_widget: true,
-        draw_normal: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_italic: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_bold: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_bold_italic: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        draw_fixed: {
-            text_style: { height_factor: (TEXT_HEIGHT_FACTOR), line_spacing: (LINE_SPACING) }
-        }
-        list_item_layout: { line_spacing: 5.0, padding: {left: 10.0, right:10, top: 6.0, bottom: 0}, }
+        list_item_layout: { padding: {left: 10.0, right:10, top: 6.0, bottom: 0}, }
         list_item_walk:{margin:0, height:Fit, width:Fill}
-        code_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}}
-        quote_layout: { line_spacing: (BLOCK_LINE_SPACING), padding: {top: 10.0, bottom: 10.0}}
+        code_layout: { padding: {top: 10.0, bottom: 10.0}}
+        quote_layout: { padding: {top: 10.0, bottom: 10.0}}
+
+        link = {
+            padding: { top: 1, bottom: 0 },
+            draw_text: {
+                color: #00f,
+                color_pressed: #f00,
+                color_hover: #0f0,
+            }
+        }
     }
 
     EditTextInput = <MolyTextInput> {
@@ -222,6 +219,9 @@ live_design! {
             width: Fit,
             height: Fit,
             margin: {left: 20, right: 12},
+
+            model = <ChatModelAvatar> {}
+            agent = <ChatAgentAvatar> { visible: false }
         }
 
         main_section = <View> {
@@ -432,11 +432,22 @@ impl ChatLineRef {
         inner.label(id!(sender_name)).set_text(text);
     }
 
-    pub fn set_avatar_text(&mut self, text: &str) {
+    pub fn set_model_avatar_text(&mut self, text: &str) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
+        inner.view(id!(avatar_section.model)).set_visible(true);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(false);
         inner.label(id!(avatar_label)).set_text(text);
+    }
+
+    pub fn set_model_avatar(&mut self, agent: &MofaAgent) {
+        let Some(inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.view(id!(avatar_section.model)).set_visible(false);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(agent);
     }
 
     pub fn set_message_text(&mut self, cx: &mut Cx, text: &str) {
