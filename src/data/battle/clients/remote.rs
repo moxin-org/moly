@@ -24,6 +24,12 @@ impl Client for RemoteClient {
     }
 
     fn download_sheet_blocking(&mut self, code: String) -> Result<Sheet> {
+        let code = code.trim();
+
+        if code.is_empty() {
+            return Err(anyhow!("Sheet code can not be empty"));
+        }
+
         let req = self.request(Method::GET, &format!("sheets/{}", code));
         let res = req
             .send()
@@ -34,7 +40,7 @@ impl Client for RemoteClient {
                 .json::<Sheet>()
                 .with_context(|| "Can not parse the sheet provided by the server")?;
             // Just in case...
-            sheet.code = code;
+            sheet.code = code.to_string();
             Ok(sheet)
         } else {
             let message = res
