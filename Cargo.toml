@@ -43,6 +43,7 @@ lipsum = "0.9"
 rand = "0.8.5"
 
 rfd = "0.14.1"
+reqwest = { version = "0.12.8", features = ["json", "blocking"] }
 
 
 ## Configuration for `cargo packager`
