@@ -22,6 +22,8 @@ pub trait Client {
     fn send_sheet_blocking(&mut self, _sheet: Sheet) -> Result<()>;
 }
 
+/// Pick a client for battle, based on the environment variable.
+/// If an API URL is specified, the remote client will be used.
 // TODO: Can be probably done without boxing, by using a FF.
 pub fn client() -> Box<dyn Client + Send + 'static> {
     match option_env!("MOLY_BATTLE_API") {
