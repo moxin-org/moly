@@ -1,4 +1,7 @@
-use crate::data::battle;
+use crate::data::{
+    battle::{self, client::Client},
+    store::ScopeStoreExt,
+};
 
 use super::{
     ending::EndingWidgetExt, failure::FailureWidgetExt, messages::MessagesWidgetExt,
@@ -103,13 +106,54 @@ pub struct BattleScreen {
 
     #[rust]
     sheet: Option<battle::Sheet>,
+
+    // `after_new_from_doc` doesn't have access to `scope`.
+    #[rust]
+    initialized: bool,
 }
 
-impl LiveHook for BattleScreen {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+impl LiveHook for BattleScreen {}
+
+impl Widget for BattleScreen {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if !self.initialized {
+            self.initialized = true;
+            self.handle_init(cx, scope);
+        }
+
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+        self.ui_runner.handle(cx, event, self);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for BattleScreen {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if self.opening(id!(opening)).submitted(actions) {
+            self.handle_opening_submit(cx, scope);
+        }
+
+        if let Some(weight) = self.vote(id!(vote)).voted(actions) {
+            let round_index = self.sheet.as_ref().unwrap().current_round_index().unwrap();
+            self.handle_vote(cx, scope, round_index, weight);
+        }
+
+        if self.ending(id!(ending)).ended(actions) {
+            self.handle_end(cx, scope);
+        }
+    }
+}
+
+// event handlers
+impl BattleScreen {
+    fn handle_init(&mut self, _cx: &mut Cx, scope: &mut Scope) {
         let ui = self.ui_runner;
+        let mut client = battle::AutoClient::new(scope.preferences().battle_url.clone());
         std::thread::spawn(move || {
-            let mut client = battle::client();
             let sheet = client.restore_sheet_blocking();
             ui.defer_with_redraw(move |s: &mut Self, _cx| match sheet {
                 Ok(sheet) => {
@@ -125,48 +169,15 @@ impl LiveHook for BattleScreen {
             });
         });
     }
-}
 
-impl Widget for BattleScreen {
-    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
-        self.ui_runner.handle(cx, event, self);
-    }
-
-    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view.draw_walk(cx, scope, walk)
-    }
-}
-
-impl WidgetMatchEvent for BattleScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.opening(id!(opening)).submitted(actions) {
-            self.handle_opening_submit(cx);
-        }
-
-        if let Some(weight) = self.vote(id!(vote)).voted(actions) {
-            let round_index = self.sheet.as_ref().unwrap().current_round_index().unwrap();
-            self.handle_vote(cx, round_index, weight);
-        }
-
-        if self.ending(id!(ending)).ended(actions) {
-            self.handle_end();
-        }
-    }
-}
-
-// event handlers
-impl BattleScreen {
-    fn handle_opening_submit(&mut self, cx: &mut Cx) {
+    fn handle_opening_submit(&mut self, cx: &mut Cx, scope: &mut Scope) {
         self.show_loading_frame("Downloading sheet...");
         self.redraw(cx);
 
         let code = self.opening(id!(opening)).code();
         let ui = self.ui_runner;
+        let mut client = battle::AutoClient::new(scope.preferences().battle_url.clone());
         std::thread::spawn(move || {
-            let mut client = battle::client();
-
             match client.download_sheet_blocking(code) {
                 Ok(sheet) => {
                     if let Err(error) = client.save_sheet_blocking(&sheet) {
@@ -196,16 +207,14 @@ impl BattleScreen {
         });
     }
 
-    fn handle_vote(&mut self, cx: &mut Cx, round_index: usize, weight: i8) {
+    fn handle_vote(&mut self, cx: &mut Cx, scope: &mut Scope, round_index: usize, weight: i8) {
         self.show_blocker_overlay_frame();
         self.redraw(cx);
 
         let mut sheet = self.sheet.as_ref().unwrap().clone();
+        let mut client = battle::AutoClient::new(scope.preferences().battle_url.clone());
         let ui = self.ui_runner;
-
         std::thread::spawn(move || {
-            let mut client = battle::client();
-
             sheet.rounds[round_index].vote = Some(weight);
             if let Err(error) = client.save_sheet_blocking(&sheet) {
                 ui.defer_with_redraw(move |s: &mut Self, _cx| {
@@ -241,10 +250,10 @@ impl BattleScreen {
         });
     }
 
-    fn handle_end(&mut self) {
+    fn handle_end(&mut self, _cx: &mut Cx, scope: &mut Scope) {
         let ui = self.ui_runner;
+        let mut client = battle::AutoClient::new(scope.preferences().battle_url.clone());
         std::thread::spawn(move || {
-            let mut client = battle::client();
             let result = client.clear_sheet_blocking();
             ui.defer_with_redraw(move |s: &mut Self, _cx| {
                 if let Err(error) = result {

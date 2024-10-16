@@ -1,11 +1,15 @@
-use crate::data::battle::{client::Client, models::*};
+use crate::data::battle::{client::Client, fs, models::*};
 use anyhow::Result;
-
-use super::fs;
 
 /// Client that always returns `sheet.json` data.
 /// `send_sheet_blocking` does nothing.
 pub struct FakeClient;
+
+impl FakeClient {
+    pub fn new() -> Self {
+        FakeClient
+    }
+}
 
 impl Client for FakeClient {
     fn clear_sheet_blocking(&mut self) -> Result<()> {
@@ -42,7 +46,7 @@ impl Client for FakeClient {
         //     return Err(anyhow!("500 Internal Server Error"));
         // }
 
-        let text = include_str!("sheet.json");
+        let text = include_str!("../sheet.json");
         let mut sheet = serde_json::from_str::<Sheet>(text)?;
         sheet.code = code;
 

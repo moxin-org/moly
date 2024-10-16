@@ -9,6 +9,8 @@ live_design! {
     import makepad_draw::shader::std::*;
     import makepad_code_editor::code_view::CodeView;
 
+    import crate::settings::battle_section::*;
+
     import crate::shared::styles::*;
     import crate::shared::widgets::*;
 
@@ -27,7 +29,7 @@ live_design! {
         }
 
         <View> {
-            width: Fill, height: Fill
+            height: Fit
             flow: Down
             align: {x: 0.0, y: 0.0}
             padding: 60
@@ -44,7 +46,7 @@ live_design! {
 
             no_model = <View> {
                 visible: false,
-                width: Fill, height: Fill
+                height: Fit,
                 <Label> {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 12}
@@ -53,10 +55,10 @@ live_design! {
                     text: "Local inference options will appear once you have a model loaded."
                 }
             }
-            
+
 
             main = <View> {
-                width: Fill, height: Fill
+                height: Fit
                 flow: Down
                 align: {x: 0.0, y: 0.0}
 
@@ -165,6 +167,8 @@ live_design! {
                     }
                 }
             }
+
+            <BattleSection> {}
         }
     }
 }

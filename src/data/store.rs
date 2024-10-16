@@ -5,7 +5,7 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{DefaultNone, SignalToUI, ActionDefaultRef};
+use makepad_widgets::{ActionDefaultRef, DefaultNone, Scope, SignalToUI};
 use moly_backend::Backend;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
@@ -331,5 +331,30 @@ impl Store {
         // For now, we just create a new empty chat because we don't fully
         // support having no chat selected
         self.init_current_chat();
+    }
+}
+
+pub trait ScopeStoreExt {
+    fn store(&mut self) -> &Store;
+    fn store_mut(&mut self) -> &mut Store;
+    fn preferences(&mut self) -> &Preferences;
+    fn preferences_mut(&mut self) -> &mut Preferences;
+}
+
+impl<'a, 'b> ScopeStoreExt for Scope<'a, 'b> {
+    fn store(&mut self) -> &Store {
+        self.data.get::<Store>().unwrap()
+    }
+
+    fn store_mut(&mut self) -> &mut Store {
+        self.data.get_mut::<Store>().unwrap()
+    }
+
+    fn preferences(&mut self) -> &Preferences {
+        &self.store().preferences
+    }
+
+    fn preferences_mut(&mut self) -> &mut Preferences {
+        &mut self.store_mut().preferences
     }
 }

@@ -1,8 +1,6 @@
-use crate::data::battle::{client::Client, models::*};
+use crate::data::battle::{client::Client, fs, models::*};
 use anyhow::{anyhow, Context, Result};
 use reqwest::Method;
-
-use super::fs;
 
 /// Client that interacts with a remote HTTP server.
 /// Can be used with the real server, or with a fake one.

@@ -13,6 +13,7 @@ pub struct Preferences {
     pub current_chat_model: Option<FileID>,
     #[serde(default)]
     pub downloaded_files_dir: PathBuf,
+    pub battle_url: String,
 }
 
 impl Preferences {
@@ -33,6 +34,7 @@ impl Preferences {
             Self {
                 current_chat_model: None,
                 downloaded_files_dir: setup_model_downloads_folder(),
+                battle_url: "http://localhost:9800".into(),
             }
         }
 
