@@ -7,6 +7,8 @@ use super::{
     ending::EndingWidgetExt, failure::FailureWidgetExt, messages::MessagesWidgetExt,
     opening::OpeningWidgetExt, spinner::SpinnerWidgetExt, ui_runner::UiRunner, vote::VoteWidgetExt,
 };
+
+use anyhow::Error;
 use makepad_widgets::*;
 
 live_design! {
@@ -182,7 +184,7 @@ impl BattleScreen {
                 Ok(sheet) => {
                     if let Err(error) = client.save_sheet_blocking(&sheet) {
                         ui.defer_with_redraw(move |s: &mut Self, _cx| {
-                            s.show_failure_frame(&error.to_string());
+                            s.show_failure_frame(&error);
                         });
 
                         return;
@@ -200,7 +202,7 @@ impl BattleScreen {
                 }
                 Err(error) => {
                     ui.defer_with_redraw(move |s: &mut Self, _cx| {
-                        s.show_failure_frame(&error.to_string());
+                        s.show_failure_frame(&error);
                     });
                 }
             }
@@ -218,7 +220,7 @@ impl BattleScreen {
             sheet.rounds[round_index].vote = Some(weight);
             if let Err(error) = client.save_sheet_blocking(&sheet) {
                 ui.defer_with_redraw(move |s: &mut Self, _cx| {
-                    s.show_failure_frame(&error.to_string());
+                    s.show_failure_frame(&error);
                 });
 
                 return;
@@ -231,7 +233,7 @@ impl BattleScreen {
 
                 if let Err(error) = client.send_sheet_blocking(sheet) {
                     ui.defer_with_redraw(move |s: &mut Self, _cx| {
-                        s.show_failure_frame(&error.to_string());
+                        s.show_failure_frame(&error);
                     });
 
                     return;
@@ -257,7 +259,7 @@ impl BattleScreen {
             let result = client.clear_sheet_blocking();
             ui.defer_with_redraw(move |s: &mut Self, _cx| {
                 if let Err(error) = result {
-                    s.show_failure_frame(&error.to_string());
+                    s.show_failure_frame(&error);
                     return;
                 }
 
@@ -311,9 +313,16 @@ impl BattleScreen {
         self.view(id!(round_frame)).set_visible(true);
     }
 
-    fn show_failure_frame(&mut self, message: &str) {
+    fn show_failure_frame(&mut self, error: &Error) {
         self.hide_all_frames();
-        self.failure(id!(failure)).set_message(message);
+
+        let mut message = error.to_string();
+        if error.source().is_some() {
+            message.push_str("\n\nAdditional logs may have been printed to the console");
+            eprintln!("{:?}", &error);
+        }
+
+        self.failure(id!(failure)).set_message(&message);
         self.view(id!(failure_frame)).set_visible(true);
     }
 
