@@ -317,7 +317,10 @@ impl ModelCardManager {
             .filter(|index| {
                 (index.model_type == "instruct" || index.model_type == "chat")
                     && (index.name.to_ascii_lowercase().contains(&search_text)
-                        || index.architecture.to_ascii_lowercase().contains(&search_text)
+                        || index
+                            .architecture
+                            .to_ascii_lowercase()
+                            .contains(&search_text)
                         || index.id.to_ascii_lowercase().contains(&search_text)
                         || index.summary.to_ascii_lowercase().contains(&search_text))
             })

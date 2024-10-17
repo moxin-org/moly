@@ -18,6 +18,10 @@ impl Backend {
         models_dir: M,
         max_download_threads: usize,
     ) -> Backend {
+        #[cfg(debug_assertions)]
+        env_logger::try_init().unwrap_or_else(|_| {
+            eprintln!("Failed to initialize the logger. Maybe another library has already initialized a global logger.");
+        });
         let command_sender = backend_impls::LlamaEdgeApiServerBackend::build_command_sender(
             app_data_dir,
             models_dir,

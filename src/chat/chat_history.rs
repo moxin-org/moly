@@ -103,7 +103,6 @@ impl Widget for ChatHistory {
                     if item_id < chats_count {
                         let mut item = list
                             .item(cx, item_id, live_id!(ChatHistoryCard))
-                            .unwrap()
                             .as_chat_history_card();
                         let _ = item.set_chat_id(saved_chat_ids[item_id]);
                         item.draw_all(cx, scope);
@@ -125,11 +124,7 @@ impl WidgetMatchEvent for ChatHistory {
 
             // Make sure text input is focused and other necessary setup happens.
             let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::ChatSelected,
-            );
+            cx.widget_action(widget_uid, &scope.path, ChatHistoryCardAction::ChatSelected);
 
             self.redraw(cx);
         }

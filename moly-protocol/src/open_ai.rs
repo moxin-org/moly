@@ -19,10 +19,13 @@ pub struct ChatRequestData {
     pub model: ModelID,
 
     pub frequency_penalty: Option<f32>,
+    #[serde(skip)]
     pub logprobs: Option<bool>,
+    #[serde(skip)]
     pub top_logprobs: Option<u32>,
     pub max_tokens: Option<u32>,
     pub presence_penalty: Option<f32>,
+    #[serde(skip)]
     pub seed: Option<u32>,
     pub stop: Option<Vec<String>>,
     pub stream: Option<bool>,
