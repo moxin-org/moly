@@ -869,7 +869,7 @@ impl ChatPanel {
                 let item;
                 let mut chat_line_item;
                 if chat_line_data.is_assistant() {
-                    item = list.item(cx, item_id, live_id!(ModelChatLine)).unwrap();
+                    item = list.item(cx, item_id, live_id!(ModelChatLine));
                     chat_line_item = item.as_chat_line();
 
                     let username = chat_line_data.username.as_ref().map_or("", String::as_str);
@@ -878,7 +878,7 @@ impl ChatPanel {
                     chat_line_item
                         .set_avatar_text(&get_initial_letter(username).unwrap().to_string());
                 } else {
-                    item = list.item(cx, item_id, live_id!(UserChatLine)).unwrap();
+                    item = list.item(cx, item_id, live_id!(UserChatLine));
                     chat_line_item = item.as_chat_line();
                     chat_line_item.set_regenerate_button_visible(true);
                 };
@@ -903,7 +903,7 @@ impl ChatPanel {
                 item.draw_all(cx, &mut Scope::empty());
             } else {
                 self.portal_list_end_reached = true;
-                let item = list.item(cx, item_id, live_id!(EndOfChat)).unwrap();
+                let item = list.item(cx, item_id, live_id!(EndOfChat));
                 item.draw_all(cx, &mut Scope::empty());
             }
         }

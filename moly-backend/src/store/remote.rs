@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex};
 use moly_protocol::data::Model;
 use moly_protocol::protocol::FileDownloadResponse;
 use std::time::Duration;
+use libra::internal::protocol::ProtocolClient;
+use reqwest::Url;
 use tokio::time::timeout;
 
 use crate::backend_impls::DownloadControlCommand;
@@ -231,15 +233,34 @@ impl ModelFileDownloader {
             }
         };
 
+        let lfs_url = Url::parse("https://git.gitmono.org")?;
+        let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_url(&lfs_url);
         let r = tokio::select! {
-            r = download_file(
-                &self.client,
+            // r = download_file(
+            //     &self.client,
+            //     file.file_size,
+            //     &url,
+            //     &local_path,
+            //     self.step,
+            //     report_fn,
+            // ) => r?,
+            r = lfs_client.download_object(
+                &file.sha256,
                 file.file_size,
-                &url,
                 &local_path,
-                self.step,
-                report_fn,
-            ) => r?,
+                Some((
+                    report_fn,
+                    self.step
+                ))
+            ) => {
+                match r {
+                    Ok(_) => DownloadResult::Completed(100.0),
+                    Err(e) => {
+                        log::error!("Failed to download object: {}", e);
+                        return Err(e.into());
+                    }
+                }
+            },
             r = listen_control_cmd => {
                 r
             }

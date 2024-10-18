@@ -28,13 +28,14 @@ fn run_mega_server() {
     thread::spawn(|| -> io::Result<()> {
         let config = include_str!("../.mega/config.toml"); // save config as String (soft-hard code)
         let config_path = project_dirs().config_dir().join(".mega/config.toml");
-        if !config_path.exists() {
+        if !config_path.exists() || fs::read_to_string(&config_path).unwrap() != config {
             fs::create_dir_all(config_path.parent().unwrap())?;
             let mut file = fs::File::create(&config_path)?;
             file.write_all(config.as_bytes())?;
+            println!("Config file created or overridden at: {:?}", config_path);
         }
 
-        let args = vec!["-c", config_path.to_str().unwrap(), "service", "multi", "http"];
+        let args = vec!["-c", config_path.to_str().unwrap(), "service", "multi", "http", "--bootstrap-node", "http://gitmono.org/relay"];
         println!("Starting Mega with args: {:?}", args);
         mega::cli::parse(Some(args)).expect("Failed to start Mega");
         Ok(())
