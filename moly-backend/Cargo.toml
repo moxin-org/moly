@@ -24,3 +24,5 @@ serde = "1.0.197"
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3.30"
 libra = { git = "https://github.com/web3infra-foundation/mega.git", branch = "main", package = "libra"}
+ring = "0.17.8"
+hex = "0.4.3"

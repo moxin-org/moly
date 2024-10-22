@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::fs::File;
+use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::Arc;
@@ -31,6 +32,14 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
         }
     }
     std::env::set_current_dir(&origin_dir)?;
+
+    {
+        // TODO test code, remove it
+        add_model_card(
+            app_data_dir.as_ref(),
+            Path::new("/home/bean/.local/share/moly/model_downloads/second-state/Qwen2.5-0.5B-Instruct-GGUF/Qwen2.5-0.5B-Instruct-Q2_K.gguf")
+        ).expect("Failed to add model card");
+    }
 
     if let Err(e) = r {
         log::error!("Failed to pull: {:?}", e);
@@ -83,6 +92,119 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
         indexs,
         caches: HashMap::new(),
     })
+}
+
+// TODO replace with libra::utils::lfs::xxx
+/// SHA256
+// `ring` crate is much faster than `sha2` crate ( > 10 times)
+fn calc_lfs_file_hash<P>(path: P) -> io::Result<String>
+where
+    P: AsRef<Path>,
+{
+    let path = path.as_ref();
+    let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
+    let file = File::open(path)?;
+    let mut reader = BufReader::new(file);
+    let mut buffer = [0; 65536];
+    loop {
+        let n = reader.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        hash.update(&buffer[..n]);
+    }
+    let file_hash = hex::encode(hash.finish().as_ref());
+    Ok(file_hash)
+}
+
+pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow::Result<()> {
+    let peer_id = "mega-user-xxx";
+    let base_name =  model_path.as_ref().file_stem().unwrap().to_str().unwrap();
+    let id = format!("{}/{}", peer_id, base_name); // TODO vs files-name
+    let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
+    let model_card_path = repo_dirs
+        .join(peer_id)
+        .join(format!("{}.json", base_name));
+
+    let mut model_card = if let Ok(model_card_str) = std::fs::read_to_string(model_card_path.clone()) {
+        serde_json::from_str(&model_card_str)?
+    } else {
+        ModelCard {
+            id: id.clone(), // TODO
+            name: base_name.to_string(),
+            released_at: Utc::now(),
+            files: vec![],
+            context_size: 0, // TODO
+            author: Author {
+                name: peer_id.to_string(),
+                url: "".to_string(),
+                description: "".to_string(),
+            },
+            like_count: 0,
+            download_count: 0,
+            metrics: None,
+            ..Default::default()
+        }
+    };
+
+    let is_model_exist = model_card.files.iter().any(|f| f.name == base_name);
+    if !is_model_exist {
+        let sha256 = calc_lfs_file_hash(model_path.as_ref())?;
+        let size = std::fs::metadata(model_path.as_ref())?.len();
+        model_card.files.push(RemoteFile {
+            name: base_name.to_string(), // TODO same with id?
+            size: size.to_string(),
+            quantization: "".to_string(), // TODO
+            tags: vec![],
+            sha256: Some(sha256.clone()),
+            download: DownloadUrls {
+                default: format!("p2p://{}/sha256/{}", peer_id, sha256),
+            },
+        });
+
+        if let Some(parent) = model_card_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        // save model card
+        let model_card_str = serde_json::to_string_pretty(&model_card)?;
+        let mut file = File::create(model_card_path)?;
+        file.write_all(model_card_str.as_bytes())?;
+
+        log::info!("Model card added: {:?}", id);
+    } else {
+        log::warn!("Model card already exists: {:?}", id);
+    }
+
+    let index_path = repo_dirs.join("index.json");
+    let mut index_list = if let Ok(index_str) = std::fs::read_to_string(&index_path) {
+        serde_json::from_str::<Vec<ModelIndex>>(&index_str)?
+    } else {
+        vec![]
+    };
+
+    let has_index = index_list.iter().any(|index| index.id == id);
+    if !has_index {
+        index_list.push(ModelIndex {
+            id: id.clone(),
+            name: model_card.name.clone(),
+            architecture: model_card.architecture.clone(),
+            summary: model_card.summary.clone(),
+            model_type: "instruct".to_string(), // TODO
+            featured: true, // TODO
+            like_count: 0,
+            download_count: 0,
+        });
+
+        // save index
+        let index_str = serde_json::to_string_pretty(&index_list)?;
+        let mut file = File::create(index_path)?;
+        file.write_all(index_str.as_bytes())?;
+
+        log::info!("Model card added to 'index.json': {:?}", id);
+    } else {
+        log::info!("Model card already exists in 'index.json': {:?}", id);
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -146,7 +268,7 @@ impl Into<moly_protocol::data::Author> for Author {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct ModelCard {
     pub id: String,
     #[serde(default)]
