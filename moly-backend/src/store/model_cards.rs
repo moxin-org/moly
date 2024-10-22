@@ -167,7 +167,7 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
         }
         // save model card
         let model_card_str = serde_json::to_string_pretty(&model_card)?;
-        let mut file = File::create(model_card_path)?;
+        let mut file = File::create(model_card_path.clone())?;
         file.write_all(model_card_str.as_bytes())?;
 
         log::debug!("Model card added: {:?}", id);
@@ -197,13 +197,25 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
 
         // save index
         let index_str = serde_json::to_string_pretty(&index_list)?;
-        let mut file = File::create(index_path)?;
+        let mut file = File::create(index_path.clone())?;
         file.write_all(index_str.as_bytes())?;
 
         log::debug!("Model card added to 'index.json': {:?}", id);
     } else {
         log::info!("Model card already exists in 'index.json': {:?}", id);
     }
+
+    // commit changes
+    let origin_dir = std::env::current_dir()?;
+    // CAUTION: set_current_dir will affect of the whole process
+    std::env::set_current_dir(&repo_dirs)?;
+
+    libra::exec(vec!["add", model_card_path.to_str().unwrap()])?;
+    libra::exec(vec!["add", index_path.to_str().unwrap()])?;
+    libra::exec(vec!["commit", "-m", &format!("Add model card: {}", id)])?;
+    libra::exec(vec!["push"])?;
+
+    std::env::set_current_dir(&origin_dir)?;
     Ok(())
 }
 
