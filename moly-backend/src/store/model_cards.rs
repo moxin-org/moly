@@ -118,7 +118,7 @@ where
 }
 
 pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow::Result<()> {
-    let peer_id = "mega-user-xxx";
+    let peer_id = &vault::get_peerid();
     let base_name =  model_path.as_ref().file_stem().unwrap().to_str().unwrap();
     let id = format!("{}/{}", peer_id, base_name); // TODO vs files-name
     let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
@@ -170,7 +170,7 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
         let mut file = File::create(model_card_path)?;
         file.write_all(model_card_str.as_bytes())?;
 
-        log::info!("Model card added: {:?}", id);
+        log::debug!("Model card added: {:?}", id);
     } else {
         log::warn!("Model card already exists: {:?}", id);
     }
@@ -200,7 +200,7 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
         let mut file = File::create(index_path)?;
         file.write_all(index_str.as_bytes())?;
 
-        log::info!("Model card added to 'index.json': {:?}", id);
+        log::debug!("Model card added to 'index.json': {:?}", id);
     } else {
         log::info!("Model card already exists in 'index.json': {:?}", id);
     }

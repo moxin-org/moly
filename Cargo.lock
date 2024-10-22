@@ -4552,6 +4552,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "uuid",
+ "vault",
  "wasmedge-sdk",
 ]
 
