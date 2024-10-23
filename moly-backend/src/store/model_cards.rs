@@ -212,7 +212,7 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
 
     libra::exec(vec!["add", model_card_path.to_str().unwrap()])?;
     libra::exec(vec!["add", index_path.to_str().unwrap()])?;
-    libra::exec(vec!["commit", "-m", &format!("Add model card: {}", id)])?;
+    libra::exec(vec!["commit", "-m", &format!("Add model card: {}", base_name)])?;
     libra::exec(vec!["push"])?;
 
     std::env::set_current_dir(&origin_dir)?;
