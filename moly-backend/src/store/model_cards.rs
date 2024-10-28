@@ -33,13 +33,13 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
     }
     std::env::set_current_dir(&origin_dir)?;
 
-    {
-        // TODO test code, remove it
-        add_model_card(
-            app_data_dir.as_ref(),
-            Path::new("/home/bean/.local/share/moly/model_downloads/second-state/Qwen2.5-0.5B-Instruct-GGUF/Qwen2.5-0.5B-Instruct-Q2_K.gguf")
-        ).expect("Failed to add model card");
-    }
+    // {
+    //     // TODO test code, remove it
+    //     add_model_card(
+    //         app_data_dir.as_ref(),
+    //         Path::new("/home/bean/.local/share/moly/model_downloads/second-state/Qwen2.5-0.5B-Instruct-GGUF/Qwen2.5-0.5B-Instruct-Q2_K.gguf")
+    //     ).expect("Failed to add model card");
+    // }
 
     if let Err(e) = r {
         log::error!("Failed to pull: {:?}", e);
@@ -189,8 +189,8 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
             name: model_card.name.clone(),
             architecture: model_card.architecture.clone(),
             summary: model_card.summary.clone(),
-            model_type: "instruct".to_string(), // TODO
-            featured: true, // TODO
+            model_type: "instruct".to_string(),
+            featured: true,
             like_count: 0,
             download_count: 0,
         });
