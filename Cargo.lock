@@ -4541,15 +4541,18 @@ dependencies = [
  "crossbeam",
  "env_logger 0.11.5",
  "futures-util",
+ "hex",
  "libra",
  "log",
  "moly-protocol",
  "reqwest 0.11.27",
+ "ring",
  "rusqlite",
  "serde",
  "serde_json",
  "tokio",
  "uuid",
+ "vault",
  "wasmedge-sdk",
 ]
 
