@@ -1,12 +1,16 @@
+use std::time::Instant;
+
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
+    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
+use moly_protocol::data::{File, FileID};
+
 use makepad_widgets::*;
 
 live_design! {
@@ -137,6 +141,18 @@ pub struct App {
 
     #[rust]
     store: Store,
+
+    #[rust]
+    timer: Timer,
+
+    #[rust]
+    download_retry_attempts: usize,
+
+    #[rust]
+    file_id: Option<FileID>,
+    
+    // #[rust]
+    // time_elapsed: Option<Instant>,
 }
 
 impl LiveRegister for App {
@@ -159,6 +175,17 @@ impl AppMain for App {
             self.store.process_event_signal();
             self.notify_downloaded_files(cx);
             self.ui.redraw(cx);
+        }
+
+        if self.timer.is_event(event).is_some() {
+            // print!("hhhhhhhh");
+            // log!("Timer is so slow it took {:?} seconds", self.time_elapsed.unwrap().elapsed().as_secs());
+            if let Some(file_id) = &self.file_id {
+                let (model, file) = self.store.get_model_and_file_download(&file_id);
+                self.store.downloads.download_file(model, file);
+                self.ui.redraw(cx);
+                println!("have been retryed")
+            }
         }
 
         let scope = &mut Scope::with_data(&mut self.store);
@@ -266,11 +293,41 @@ impl App {
                     popup.set_data(&file, DownloadResult::Success);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
-                    popup.set_data(&file, DownloadResult::Failure);
+                    // popup.set_data(&file, DownloadResult::Failure);
+                    self.file_id = Some((file.id).clone());
+                    self.start_retry_timeout(cx, popup, file);
                 }
             }
 
             self.ui.popup_notification(id!(popup_notification)).open(cx);
         }
+    }
+
+    fn start_retry_timeout(&mut self, cx: &mut Cx, mut popup: DownloadNotificationPopupRef, file: File) {
+        // log!("{}", self.download_retry_attempts);
+        match self.download_retry_attempts {
+            0 => {
+                self.timer = cx.start_timeout(0.05);
+                // self.time_elapsed = Some(Instant::now());
+                self.download_retry_attempts += 1;
+                log!("zhixing1");
+                popup.set_retry_data();
+            },
+            1 => {
+                self.timer = cx.start_timeout(0.05);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data();
+            },
+            2 => {
+                self.timer = cx.start_timeout(0.05);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data();
+            },
+            _ => {
+                popup.set_data(&file, DownloadResult::Failure);
+                self.download_retry_attempts = 0;
+            }
+        }
+        log!("{:?}",self.timer);
     }
 }
