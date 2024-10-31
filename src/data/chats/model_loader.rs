@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use makepad_widgets::SignalToUI;
+use makepad_widgets::Cx;
 use moly_protocol::{
     data::FileID,
     protocol::{Command, LoadModelOptions, LoadModelResponse, LoadedModelInfo},
@@ -11,6 +11,9 @@ use std::{
     },
     thread,
 };
+
+#[derive(Debug)]
+pub struct ModelLoaderAction;
 
 /// All posible states in which the loader can be.
 #[derive(Debug, Default, Clone)]
@@ -84,7 +87,7 @@ impl ModelLoader {
             Err(anyhow!("Internal communication error"))
         };
 
-        SignalToUI::set_ui_signal();
+        Cx::post_action(ModelLoaderAction);
         result
     }
 
