@@ -5,7 +5,7 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{DefaultNone, SignalToUI, ActionDefaultRef};
+use makepad_widgets::{Action, ActionDefaultRef, DefaultNone, SignalToUI};
 use moly_backend::Backend;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
@@ -262,9 +262,12 @@ impl Store {
         Ok(())
     }
 
+    pub fn handle_action(&mut self, action: &Action) {
+        self.chats.handle_action(action);
+    }
+
     pub fn process_event_signal(&mut self) {
         self.update_downloads();
-        self.update_chat_messages();
         self.update_search_results();
         self.update_load_model();
     }
@@ -281,13 +284,6 @@ impl Store {
                 self.search.set_models(vec![]);
             }
         }
-    }
-
-    fn update_chat_messages(&mut self) {
-        let Some(chat) = self.chats.get_current_chat() else {
-            return;
-        };
-        chat.borrow_mut().update_messages();
     }
 
     fn update_downloads(&mut self) {

@@ -4,7 +4,8 @@ use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
+    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult,
+    PopupAction,
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
@@ -189,6 +190,8 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
+            self.store.handle_action(action);
+
             match action.cast() {
                 StoreAction::Search(keywords) => {
                     self.store.search.load_search_results(keywords);
@@ -248,7 +251,9 @@ impl MatchEvent for App {
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
-                self.ui.popup_notification(id!(popup_notification)).close(cx);
+                self.ui
+                    .popup_notification(id!(popup_notification))
+                    .close(cx);
             }
         }
     }

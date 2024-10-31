@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Result};
-use makepad_widgets::SignalToUI;
+use makepad_widgets::Cx;
 use moly_backend::Backend;
 use moly_protocol::data::{File, FileID};
 use moly_protocol::open_ai::*;
 use moly_protocol::protocol::Command;
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::channel;
 use std::thread;
 
 use serde::{Deserialize, Serialize};
@@ -16,8 +16,14 @@ use super::model_loader::ModelLoader;
 
 pub type ChatID = u128;
 
-#[derive(Clone, Debug)]
-pub enum ChatTokenArrivalAction {
+#[derive(Debug)]
+pub struct ChatAction {
+    pub chat_id: ChatID,
+    kind: ChatActionKind,
+}
+
+#[derive(Debug)]
+enum ChatActionKind {
     AppendDelta(String),
     StreamingDone,
 }
@@ -87,8 +93,6 @@ pub struct Chat {
     pub id: ChatID,
     pub last_used_file_id: Option<FileID>,
     pub messages: Vec<ChatMessage>,
-    pub messages_update_sender: Sender<ChatTokenArrivalAction>,
-    pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
     pub is_streaming: bool,
     pub inferences_params: ChatInferenceParams,
     pub system_prompt: Option<String>,
@@ -102,8 +106,6 @@ pub struct Chat {
 
 impl Chat {
     pub fn new(chats_dir: PathBuf) -> Self {
-        let (tx, rx) = channel();
-
         // Get Unix timestamp in ms for id.
         let id = chrono::Utc::now().timestamp_millis() as u128;
 
@@ -111,8 +113,6 @@ impl Chat {
             id,
             title: String::from("New Chat"),
             messages: vec![],
-            messages_update_sender: tx,
-            messages_update_receiver: rx,
             last_used_file_id: None,
             is_streaming: false,
             title_state: TitleState::default(),
@@ -124,8 +124,10 @@ impl Chat {
     }
 
     pub fn load(path: PathBuf, chats_dir: PathBuf) -> Result<Self> {
-        let (tx, rx) = channel();
-
+        Cx::post_action(ChatAction {
+            chat_id: 0,
+            kind: ChatActionKind::StreamingDone,
+        });
         match read_from_file(path) {
             Ok(json) => {
                 let data: ChatData = serde_json::from_str(&json)?;
@@ -136,8 +138,6 @@ impl Chat {
                     title: data.title,
                     title_state: data.title_state,
                     is_streaming: false,
-                    messages_update_sender: tx,
-                    messages_update_receiver: rx,
                     chats_dir,
                     inferences_params: ChatInferenceParams::default(),
                     system_prompt: data.system_prompt,
@@ -214,7 +214,6 @@ impl Chat {
         mut model_loader: ModelLoader,
         backend: &Backend,
     ) {
-        let (tx, rx) = channel();
         let mut messages: Vec<_> = self
             .messages
             .iter()
@@ -250,6 +249,8 @@ impl Chat {
                 },
             );
         }
+
+        let (tx, rx) = channel();
 
         let ip = &self.inferences_params;
         let cmd = Command::Chat(
@@ -296,9 +297,9 @@ impl Chat {
 
         self.is_streaming = true;
 
-        let store_chat_tx = self.messages_update_sender.clone();
         let wanted_file = wanted_file.clone();
         let command_sender = backend.command_sender.clone();
+        let chat_id = self.id;
         thread::spawn(move || {
             if let Err(err) = model_loader.load(wanted_file.id, command_sender.clone(), None) {
                 eprintln!("Error loading model: {}", err);
@@ -313,26 +314,39 @@ impl Chat {
                         Ok(ChatResponse::ChatResponseChunk(data)) => {
                             let mut is_done = false;
 
-                            let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
-                                data.choices[0].delta.content.clone(),
-                            ));
+                            Cx::post_action(ChatAction {
+                                chat_id,
+                                kind: ChatActionKind::AppendDelta(
+                                    data.choices[0].delta.content.clone(),
+                                ),
+                            });
 
                             if let Some(_reason) = &data.choices[0].finish_reason {
                                 is_done = true;
-                                let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
+
+                                Cx::post_action(ChatAction {
+                                    chat_id,
+                                    kind: ChatActionKind::StreamingDone,
+                                });
                             }
 
-                            SignalToUI::set_ui_signal();
                             if is_done {
                                 break;
                             }
                         }
                         Ok(ChatResponse::ChatFinalResponseData(data)) => {
-                            let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
-                                data.choices[0].message.content.clone(),
-                            ));
-                            let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
-                            SignalToUI::set_ui_signal();
+                            Cx::post_action(ChatAction {
+                                chat_id,
+                                kind: ChatActionKind::AppendDelta(
+                                    data.choices[0].message.content.clone(),
+                                ),
+                            });
+
+                            Cx::post_action(ChatAction {
+                                chat_id,
+                                kind: ChatActionKind::StreamingDone,
+                            });
+
                             break;
                         }
                         Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
@@ -352,21 +366,6 @@ impl Chat {
         backend.command_sender.send(cmd).unwrap();
 
         makepad_widgets::log!("Cancel streaming");
-    }
-
-    pub fn update_messages(&mut self) {
-        for msg in self.messages_update_receiver.try_iter() {
-            match msg {
-                ChatTokenArrivalAction::AppendDelta(response) => {
-                    let last = self.messages.last_mut().unwrap();
-                    last.content.push_str(&response);
-                }
-                ChatTokenArrivalAction::StreamingDone => {
-                    self.is_streaming = false;
-                }
-            }
-            self.save();
-        }
     }
 
     pub fn delete_message(&mut self, message_id: usize) {
@@ -390,5 +389,18 @@ impl Chat {
 
     pub fn update_accessed_at(&mut self) {
         self.accessed_at = chrono::Utc::now();
+    }
+
+    pub fn handle_action(&mut self, action: &ChatAction) {
+        match &action.kind {
+            ChatActionKind::AppendDelta(response) => {
+                let last = self.messages.last_mut().unwrap();
+                last.content.push_str(&response);
+            }
+            ChatActionKind::StreamingDone => {
+                self.is_streaming = false;
+            }
+        }
+        self.save();
     }
 }

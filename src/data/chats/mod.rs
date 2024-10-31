@@ -2,7 +2,8 @@ pub mod chat;
 pub mod model_loader;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatID};
+use chat::{Chat, ChatAction, ChatID};
+use makepad_widgets::ActionTrait;
 use model_loader::ModelLoader;
 use moly_backend::Backend;
 use moly_protocol::data::*;
@@ -77,8 +78,11 @@ impl Chats {
         }
 
         self.override_port = override_port;
-        self.model_loader
-            .load_async(file.id.clone(), self.backend.command_sender.clone(), override_port);
+        self.model_loader.load_async(
+            file.id.clone(),
+            self.backend.command_sender.clone(),
+            override_port,
+        );
     }
 
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
@@ -189,6 +193,16 @@ impl Chats {
         if let Some(current_chat_id) = self.current_chat_id {
             if current_chat_id == chat_id {
                 self.current_chat_id = self.get_last_selected_chat_id();
+            }
+        }
+    }
+
+    pub fn handle_action(&mut self, action: &Box<dyn ActionTrait>) {
+        if let Some(action) = action.downcast_ref::<ChatAction>() {
+            if let Some(chat) = self.get_chat_by_id(action.chat_id) {
+                if chat.borrow().id == action.chat_id {
+                    chat.borrow_mut().handle_action(action);
+                }
             }
         }
     }
