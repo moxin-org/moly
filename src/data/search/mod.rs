@@ -1,6 +1,6 @@
 mod faked_models;
 
-use makepad_widgets::{Action, Cx, SignalToUI};
+use makepad_widgets::{Action, Cx};
 use moly_backend::Backend;
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
@@ -198,7 +198,6 @@ impl Search {
                         self.set_models(models.clone());
                     } else {
                         self.set_models(vec![]);
-                        // SignalToUI::set_ui_signal();
                         eprintln!("Client was not expecting to receive results");
                     }
                 }
@@ -208,9 +207,6 @@ impl Search {
                     eprintln!("Error fetching models from the server");
                 }
             }
-
-            // TODO: This is still needed for some reason.
-            SignalToUI::set_ui_signal();
         }
     }
 

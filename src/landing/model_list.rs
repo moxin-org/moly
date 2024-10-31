@@ -1,3 +1,4 @@
+use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use makepad_widgets::*;
@@ -76,10 +77,6 @@ impl Widget for ModelList {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        if let Event::Signal = event {
-            self.loading_delay = cx.start_timeout(0.2);
-        }
-
         if self.loading_delay.is_event(event).is_some() {
             self.update_loading_and_error_message(cx, scope);
         }
@@ -123,6 +120,10 @@ impl WidgetMatchEvent for ModelList {
         let portal_list = self.portal_list(id!(list));
 
         for action in actions.iter() {
+            if let Some(_) = action.downcast_ref::<SearchAction>() {
+                self.loading_delay = cx.start_timeout(0.2);
+            }
+
             match action.cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
                     self.view(id!(search_error)).set_visible(false);
