@@ -157,7 +157,6 @@ impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         // Process all possible store incoming events
         if let Event::Signal = event {
-            self.notify_downloaded_files(cx);
             self.ui.redraw(cx);
         }
 
@@ -190,6 +189,12 @@ impl MatchEvent for App {
 
         for action in actions.iter() {
             self.store.handle_action(action);
+
+            if let Some(_) =
+                action.downcast_ref::<crate::data::downloads::download::DownloadFileAction>()
+            {
+                self.notify_downloaded_files(cx);
+            }
 
             match action.cast() {
                 StoreAction::Search(keywords) => {
