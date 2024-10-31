@@ -1,11 +1,18 @@
-use makepad_widgets::SignalToUI;
+use makepad_widgets::{Cx, SignalToUI};
 use moly_backend::Backend;
 use moly_protocol::data::*;
 use moly_protocol::protocol::{Command, FileDownloadResponse};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::channel;
 use std::thread;
 
-pub enum DownloadFileAction {
+#[derive(Debug)]
+pub struct DownloadFileAction {
+    pub id: FileID,
+    kind: DownloadFileActionKind,
+}
+
+#[derive(Debug)]
+enum DownloadFileActionKind {
     Progress(f64),
     Error,
     StreamingDone,
@@ -22,19 +29,14 @@ pub enum DownloadState {
 #[derive(Debug)]
 pub struct Download {
     pub file: File,
-    pub sender: Sender<DownloadFileAction>,
-    pub receiver: Receiver<DownloadFileAction>,
     pub state: DownloadState,
     pub notification_pending: bool,
 }
 
 impl Download {
     pub fn new(file: File, progress: f64, backend: &Backend) -> Self {
-        let (tx, rx) = channel();
         let mut download = Self {
             file: file,
-            sender: tx,
-            receiver: rx,
             state: DownloadState::Initializing(progress),
             notification_pending: false,
         };
@@ -46,9 +48,9 @@ impl Download {
     pub fn start(&mut self, backend: &Backend) {
         let (tx, rx) = channel();
 
-        let store_download_tx = self.sender.clone();
         let cmd = Command::DownloadFile(self.file.id.clone(), tx);
         backend.command_sender.send(cmd).unwrap();
+        let file_id = self.file.id.clone();
 
         thread::spawn(move || loop {
             let mut is_done = false;
@@ -57,48 +59,52 @@ impl Download {
                     Ok(response) => match response {
                         FileDownloadResponse::Completed(_completed) => {
                             is_done = true;
-                            store_download_tx
-                                .send(DownloadFileAction::StreamingDone)
-                                .unwrap();
+                            Cx::post_action(DownloadFileAction {
+                                id: file_id.clone(),
+                                kind: DownloadFileActionKind::StreamingDone,
+                            });
                         }
-                        FileDownloadResponse::Progress(_file, value) => store_download_tx
-                            .send(DownloadFileAction::Progress(value as f64))
-                            .unwrap(),
+                        FileDownloadResponse::Progress(_file, value) => {
+                            Cx::post_action(DownloadFileAction {
+                                id: file_id.clone(),
+                                kind: DownloadFileActionKind::Progress(value as f64),
+                            })
+                        }
                     },
                     Err(err) => {
-                        store_download_tx
-                            .send(DownloadFileAction::Error)
-                            .unwrap();
+                        Cx::post_action(DownloadFileAction {
+                            id: file_id.clone(),
+                            kind: DownloadFileActionKind::Error,
+                        });
 
                         eprintln!("Error downloading file: {:?}", err)
-                    },
+                    }
                 }
             } else {
-                break
+                break;
             }
 
+            // TODO: Still needed, probably because of the root redraw.
             SignalToUI::set_ui_signal();
             if is_done {
-                break
+                break;
             }
         });
     }
 
-    pub fn process_download_progress(&mut self) {
-        for msg in self.receiver.try_iter() {
-            match msg {
-                DownloadFileAction::StreamingDone => {
-                    self.state = DownloadState::Completed;
-                    self.notification_pending = true;
-                }
-                DownloadFileAction::Progress(value) => {
-                    self.state = DownloadState::Downloading(value)
-                }
-                DownloadFileAction::Error => {
-                    let current_progress = self.get_progress();
-                    self.state = DownloadState::Errored(current_progress);
-                    self.notification_pending = true;
-                }
+    pub fn handle_action(&mut self, action: &DownloadFileAction) {
+        match action.kind {
+            DownloadFileActionKind::StreamingDone => {
+                self.state = DownloadState::Completed;
+                self.notification_pending = true;
+            }
+            DownloadFileActionKind::Progress(value) => {
+                self.state = DownloadState::Downloading(value)
+            }
+            DownloadFileActionKind::Error => {
+                let current_progress = self.get_progress();
+                self.state = DownloadState::Errored(current_progress);
+                self.notification_pending = true;
             }
         }
     }

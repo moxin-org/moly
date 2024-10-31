@@ -157,7 +157,6 @@ impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         // Process all possible store incoming events
         if let Event::Signal = event {
-            self.store.process_event_signal();
             self.notify_downloaded_files(cx);
             self.ui.redraw(cx);
         }

@@ -1,5 +1,6 @@
 use super::chats::chat::ChatID;
 use super::chats::model_loader::ModelLoaderAction;
+use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
 use super::preferences::Preferences;
 use super::search::SortCriteria;
@@ -266,14 +267,15 @@ impl Store {
     pub fn handle_action(&mut self, action: &Action) {
         self.chats.handle_action(action);
         self.search.handle_action(action);
+        self.downloads.handle_action(action);
 
         if let Some(_) = action.downcast_ref::<ModelLoaderAction>() {
             self.update_load_model();
         }
-    }
 
-    pub fn process_event_signal(&mut self) {
-        self.update_downloads();
+        if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
+            self.update_downloads();
+        }
     }
 
     fn update_downloads(&mut self) {
