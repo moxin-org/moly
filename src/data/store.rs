@@ -265,6 +265,7 @@ impl Store {
 
     pub fn handle_action(&mut self, action: &Action) {
         self.chats.handle_action(action);
+        self.search.handle_action(action);
 
         if let Some(_) = action.downcast_ref::<ModelLoaderAction>() {
             self.update_load_model();
@@ -273,21 +274,6 @@ impl Store {
 
     pub fn process_event_signal(&mut self) {
         self.update_downloads();
-        self.update_search_results();
-    }
-
-    fn update_search_results(&mut self) {
-        match self.search.process_results() {
-            Ok(Some(models)) => {
-                self.search.set_models(models);
-            }
-            Ok(None) => {
-                // No results arrived, do nothing
-            }
-            Err(_) => {
-                self.search.set_models(vec![]);
-            }
-        }
     }
 
     fn update_downloads(&mut self) {
