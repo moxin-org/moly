@@ -1,4 +1,4 @@
-use makepad_widgets::{Cx, SignalToUI};
+use makepad_widgets::Cx;
 use moly_backend::Backend;
 use moly_protocol::data::*;
 use moly_protocol::protocol::{Command, FileDownloadResponse};
@@ -84,8 +84,6 @@ impl Download {
                 break;
             }
 
-            // TODO: Still needed, probably because of the root redraw.
-            SignalToUI::set_ui_signal();
             if is_done {
                 break;
             }

@@ -7,7 +7,7 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{Action, ActionDefaultRef, DefaultNone, SignalToUI};
+use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use moly_backend::Backend;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
@@ -260,7 +260,6 @@ impl Store {
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
 
-        SignalToUI::set_ui_signal();
         Ok(())
     }
 

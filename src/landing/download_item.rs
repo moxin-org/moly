@@ -1,6 +1,9 @@
-use crate::shared::{
-    actions::DownloadAction,
-    utils::{format_model_downloaded_size, format_model_size},
+use crate::{
+    data::downloads::download::DownloadFileAction,
+    shared::{
+        actions::DownloadAction,
+        utils::{format_model_downloaded_size, format_model_size},
+    },
 };
 use makepad_widgets::*;
 use moly_protocol::data::{FileID, PendingDownload, PendingDownloadsStatus};
@@ -341,6 +344,14 @@ impl Widget for DownloadItem {
 
 impl WidgetMatchEvent for DownloadItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        for actions in actions {
+            if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
+                if self.file_id.as_ref() == Some(&action.id) {
+                    self.redraw(cx);
+                }
+            }
+        }
+
         for button_id in [id!(play_button), id!(retry_button)] {
             if self.button(button_id).clicked(&actions) {
                 let Some(file_id) = &self.file_id else { return };
