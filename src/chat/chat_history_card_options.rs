@@ -102,7 +102,7 @@ pub struct ChatHistoryCardOptions {
 impl Widget for ChatHistoryCardOptions {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
+        self.match_event(cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -124,34 +124,18 @@ impl ChatHistoryCardOptionsRef {
     }
 }
 
-impl WidgetMatchEvent for ChatHistoryCardOptions {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+impl MatchEvent for ChatHistoryCardOptions {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         if self.button(id!(delete_chat)).clicked(actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::MenuClosed(self.chat_id),
-            );
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::DeleteChatOptionSelected(self.chat_id),
-            );
+            cx.action(ChatHistoryCardAction::MenuClosed(self.chat_id));
+
+            cx.action(ChatHistoryCardAction::DeleteChatOptionSelected(self.chat_id));
         }
 
         if self.button(id!(edit_chat_name)).clicked(actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::MenuClosed(self.chat_id),
-            );
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::ActivateTitleEdition(self.chat_id),
-            );
+            cx.action(ChatHistoryCardAction::MenuClosed(self.chat_id));
+
+            cx.action(ChatHistoryCardAction::ActivateTitleEdition(self.chat_id));
         }
     }
 }
