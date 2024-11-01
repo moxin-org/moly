@@ -183,7 +183,7 @@ impl WidgetMatchEvent for LandingScreen {
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 StoreAction::Search(_keywords) => match self.search_bar_state {
                     SearchBarState::CollapsedWithoutFilters => {
                         self.search_bar_state = SearchBarState::CollapsedWithFilters;

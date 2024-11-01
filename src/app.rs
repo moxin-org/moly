@@ -189,7 +189,7 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 StoreAction::Search(keywords) => {
                     self.store.search.load_search_results(keywords);
                 }
