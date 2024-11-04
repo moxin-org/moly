@@ -9,7 +9,7 @@ use crate::{
         model_selector_list::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatMessage},
+        chats::chat::{Chat, ChatEntityAction, ChatMessage},
         store::Store,
     },
     shared::actions::ChatAction,
@@ -497,7 +497,7 @@ impl WidgetMatchEvent for ChatPanel {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         for action in actions {
-            if let Some(_) = action.downcast_ref::<crate::data::chats::chat::ChatAction>() {
+            if let Some(_) = action.downcast_ref::<ChatEntityAction>() {
                 match self.state {
                     State::ModelSelectedWithChat {
                         is_streaming: true,

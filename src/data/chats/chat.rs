@@ -17,13 +17,13 @@ use super::model_loader::ModelLoader;
 pub type ChatID = u128;
 
 #[derive(Debug)]
-pub struct ChatAction {
+pub struct ChatEntityAction {
     pub chat_id: ChatID,
-    kind: ChatActionKind,
+    kind: ChatEntityActionKind,
 }
 
 #[derive(Debug)]
-enum ChatActionKind {
+enum ChatEntityActionKind {
     AppendDelta(String),
     StreamingDone,
 }
@@ -124,9 +124,9 @@ impl Chat {
     }
 
     pub fn load(path: PathBuf, chats_dir: PathBuf) -> Result<Self> {
-        Cx::post_action(ChatAction {
+        Cx::post_action(ChatEntityAction {
             chat_id: 0,
-            kind: ChatActionKind::StreamingDone,
+            kind: ChatEntityActionKind::StreamingDone,
         });
         match read_from_file(path) {
             Ok(json) => {
@@ -314,9 +314,9 @@ impl Chat {
                         Ok(ChatResponse::ChatResponseChunk(data)) => {
                             let mut is_done = false;
 
-                            Cx::post_action(ChatAction {
+                            Cx::post_action(ChatEntityAction {
                                 chat_id,
-                                kind: ChatActionKind::AppendDelta(
+                                kind: ChatEntityActionKind::AppendDelta(
                                     data.choices[0].delta.content.clone(),
                                 ),
                             });
@@ -324,9 +324,9 @@ impl Chat {
                             if let Some(_reason) = &data.choices[0].finish_reason {
                                 is_done = true;
 
-                                Cx::post_action(ChatAction {
+                                Cx::post_action(ChatEntityAction {
                                     chat_id,
-                                    kind: ChatActionKind::StreamingDone,
+                                    kind: ChatEntityActionKind::StreamingDone,
                                 });
                             }
 
@@ -335,16 +335,16 @@ impl Chat {
                             }
                         }
                         Ok(ChatResponse::ChatFinalResponseData(data)) => {
-                            Cx::post_action(ChatAction {
+                            Cx::post_action(ChatEntityAction {
                                 chat_id,
-                                kind: ChatActionKind::AppendDelta(
+                                kind: ChatEntityActionKind::AppendDelta(
                                     data.choices[0].message.content.clone(),
                                 ),
                             });
 
-                            Cx::post_action(ChatAction {
+                            Cx::post_action(ChatEntityAction {
                                 chat_id,
-                                kind: ChatActionKind::StreamingDone,
+                                kind: ChatEntityActionKind::StreamingDone,
                             });
 
                             break;
@@ -391,13 +391,13 @@ impl Chat {
         self.accessed_at = chrono::Utc::now();
     }
 
-    pub fn handle_action(&mut self, action: &ChatAction) {
+    pub fn handle_action(&mut self, action: &ChatEntityAction) {
         match &action.kind {
-            ChatActionKind::AppendDelta(response) => {
+            ChatEntityActionKind::AppendDelta(response) => {
                 let last = self.messages.last_mut().unwrap();
                 last.content.push_str(&response);
             }
-            ChatActionKind::StreamingDone => {
+            ChatEntityActionKind::StreamingDone => {
                 self.is_streaming = false;
             }
         }

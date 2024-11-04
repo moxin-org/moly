@@ -1,4 +1,5 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
@@ -185,9 +186,7 @@ impl MatchEvent for App {
         for action in actions.iter() {
             self.store.handle_action(action);
 
-            if let Some(_) =
-                action.downcast_ref::<crate::data::downloads::download::DownloadFileAction>()
-            {
+            if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
                 self.notify_downloaded_files(cx);
             }
 
