@@ -232,7 +232,7 @@ impl Downloads {
 
     pub fn handle_action(&mut self, action: &Action) {
         if let Some(action) = action.downcast_ref::<DownloadFileAction>() {
-            if let Some(download) = self.current_downloads.get_mut(&action.id) {
+            if let Some(download) = self.current_downloads.get_mut(&action.file_id) {
                 download.handle_action(action);
             }
         }

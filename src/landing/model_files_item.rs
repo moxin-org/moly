@@ -322,7 +322,7 @@ impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for actions in actions {
             if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
-                if self.file_id.as_ref() == Some(&action.id) {
+                if self.file_id.as_ref() == Some(&action.file_id) {
                     self.redraw(cx);
                 }
             }

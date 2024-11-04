@@ -7,7 +7,7 @@ use std::thread;
 
 #[derive(Debug)]
 pub struct DownloadFileAction {
-    pub id: FileID,
+    pub file_id: FileID,
     kind: DownloadFileActionKind,
 }
 
@@ -60,20 +60,20 @@ impl Download {
                         FileDownloadResponse::Completed(_completed) => {
                             is_done = true;
                             Cx::post_action(DownloadFileAction {
-                                id: file_id.clone(),
+                                file_id: file_id.clone(),
                                 kind: DownloadFileActionKind::StreamingDone,
                             });
                         }
                         FileDownloadResponse::Progress(_file, value) => {
                             Cx::post_action(DownloadFileAction {
-                                id: file_id.clone(),
+                                file_id: file_id.clone(),
                                 kind: DownloadFileActionKind::Progress(value as f64),
                             })
                         }
                     },
                     Err(err) => {
                         Cx::post_action(DownloadFileAction {
-                            id: file_id.clone(),
+                            file_id: file_id.clone(),
                             kind: DownloadFileActionKind::Error,
                         });
 
