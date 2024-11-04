@@ -466,24 +466,6 @@ impl Widget for ChatPanel {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
         self.update_state(scope);
-
-        if let Event::Signal = event {
-            match self.state {
-                State::ModelSelectedWithChat {
-                    is_streaming: true,
-                    sticked_to_bottom,
-                    ..
-                } => {
-                    if sticked_to_bottom {
-                        self.scroll_messages_to_bottom(cx);
-                    }
-
-                    // Redraw because we expect to see new or updated chat entries
-                    self.redraw(cx);
-                }
-                _ => {}
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -513,6 +495,26 @@ impl Widget for ChatPanel {
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        for action in actions {
+            if let Some(_) = action.downcast_ref::<crate::data::chats::chat::ChatAction>() {
+                match self.state {
+                    State::ModelSelectedWithChat {
+                        is_streaming: true,
+                        sticked_to_bottom,
+                        ..
+                    } => {
+                        if sticked_to_bottom {
+                            self.scroll_messages_to_bottom(cx);
+                        }
+
+                        // Redraw because we expect to see new or updated chat entries
+                        self.redraw(cx);
+                    }
+                    _ => {}
+                }
+            }
+        }
 
         for action in actions
             .iter()
