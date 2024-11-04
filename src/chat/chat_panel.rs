@@ -9,7 +9,7 @@ use crate::{
         model_selector_list::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatEntityAction, ChatMessage},
+        chats::chat::{Chat, ChatEntityAction, ChatID, ChatMessage},
         store::Store,
     },
     shared::actions::ChatAction,
@@ -497,21 +497,23 @@ impl WidgetMatchEvent for ChatPanel {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         for action in actions {
-            if let Some(_) = action.downcast_ref::<ChatEntityAction>() {
-                match self.state {
-                    State::ModelSelectedWithChat {
-                        is_streaming: true,
-                        sticked_to_bottom,
-                        ..
-                    } => {
-                        if sticked_to_bottom {
-                            self.scroll_messages_to_bottom(cx);
-                        }
+            if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
+                if get_chat_id(store) == Some(action.chat_id) {
+                    match self.state {
+                        State::ModelSelectedWithChat {
+                            is_streaming: true,
+                            sticked_to_bottom,
+                            ..
+                        } => {
+                            if sticked_to_bottom {
+                                self.scroll_messages_to_bottom(cx);
+                            }
 
-                        // Redraw because we expect to see new or updated chat entries
-                        self.redraw(cx);
+                            // Redraw because we expect to see new or updated chat entries
+                            self.redraw(cx);
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }
@@ -933,4 +935,8 @@ fn get_model_initial_letter(store: &Store) -> Option<char> {
 
 fn get_chat_messages(store: &Store) -> Option<Ref<Vec<ChatMessage>>> {
     get_chat(store).map(|chat| Ref::map(chat.borrow(), |chat| &chat.messages))
+}
+
+fn get_chat_id(store: &Store) -> Option<ChatID> {
+    get_chat(store).map(|chat| chat.borrow().id)
 }
