@@ -275,7 +275,7 @@ pub struct ChatLine {
 impl Widget for ChatLine {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
+        self.match_event(cx, event);
 
         // Current Makepad's processing of the hover events is not enough
         // in our case because it collapes the hover state of the
@@ -298,11 +298,11 @@ impl Widget for ChatLine {
     }
 }
 
-impl WidgetMatchEvent for ChatLine {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+impl MatchEvent for ChatLine {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         match self.edition_state {
-            ChatLineState::Editable => self.handle_editable_actions(cx, actions, scope),
-            ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions, scope),
+            ChatLineState::Editable => self.handle_editable_actions(cx, actions),
+            ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions),
             ChatLineState::NotEditable => {}
         }
     }
@@ -335,14 +335,9 @@ impl ChatLine {
             .set_visible(show && !is_plain_text);
     }
 
-    pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         if self.button(id!(delete_button)).clicked(&actions) {
-            let widget_id = self.view.widget_uid();
-            cx.widget_action(
-                widget_id,
-                &scope.path,
-                ChatLineAction::Delete(self.message_id),
-            );
+            cx.action(ChatLineAction::Delete(self.message_id));
         }
 
         if self.button(id!(edit_button)).clicked(&actions) {
@@ -355,19 +350,14 @@ impl ChatLine {
         }
     }
 
-    pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         if self.button(id!(save)).clicked(&actions) {
             let updated_message = self.text_input(id!(input)).text();
 
             // Do not allow to have empty messages for now.
             // TODO We should disable Save button when the message is empty.
             if !updated_message.trim().is_empty() {
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, false),
-                );
+                cx.action(ChatLineAction::Edit(self.message_id, updated_message, false));
             }
 
             self.set_edit_mode(cx, false);
@@ -375,12 +365,7 @@ impl ChatLine {
 
         if let Some(val) = self.text_input(id!(input)).returned(actions) {
             if !val.trim().is_empty() {
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, val, false),
-                );
+                cx.action(ChatLineAction::Edit(self.message_id, val, false));
             }
 
             self.set_edit_mode(cx, false);
@@ -391,12 +376,7 @@ impl ChatLine {
 
             // TODO We should disable Save and Regenerate button when the message is empty.
             if !updated_message.trim().is_empty() {
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, true),
-                );
+                cx.action(ChatLineAction::Edit(self.message_id, updated_message, true));
             }
 
             self.set_edit_mode(cx, false);
