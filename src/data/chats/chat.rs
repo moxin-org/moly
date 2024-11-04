@@ -124,10 +124,6 @@ impl Chat {
     }
 
     pub fn load(path: PathBuf, chats_dir: PathBuf) -> Result<Self> {
-        Cx::post_action(ChatEntityAction {
-            chat_id: 0,
-            kind: ChatEntityActionKind::StreamingDone,
-        });
         match read_from_file(path) {
             Ok(json) => {
                 let data: ChatData = serde_json::from_str(&json)?;
