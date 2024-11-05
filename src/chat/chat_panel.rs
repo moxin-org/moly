@@ -512,7 +512,6 @@ impl Widget for ChatPanel {
 
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
         let store = scope.data.get_mut::<Store>().unwrap();
 
         for action in actions
@@ -605,7 +604,7 @@ impl WidgetMatchEvent for ChatPanel {
             .button(id!(no_downloaded_model.go_to_discover_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
+            cx.action(ChatPanelAction::NavigateToDiscover);
         }
     }
 }
