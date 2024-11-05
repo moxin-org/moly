@@ -517,7 +517,6 @@ impl WidgetMatchEvent for ChatPanel {
 
         for action in actions
             .iter()
-            .filter_map(|action| action.as_widget_action())
         {
             if let ChatHistoryCardAction::ChatSelected = action.cast() {
                 self.reset_scroll_messages(&store);
