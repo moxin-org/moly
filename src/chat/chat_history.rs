@@ -123,8 +123,7 @@ impl WidgetMatchEvent for ChatHistory {
             store.chats.create_empty_chat();
 
             // Make sure text input is focused and other necessary setup happens.
-            let widget_uid = self.widget_uid();
-            cx.widget_action(widget_uid, &scope.path, ChatHistoryCardAction::ChatSelected);
+            cx.action(ChatHistoryCardAction::ChatSelected);
 
             self.redraw(cx);
         }
