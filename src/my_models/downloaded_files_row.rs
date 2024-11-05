@@ -197,7 +197,7 @@ pub struct DownloadedFilesRow {
 impl Widget for DownloadedFilesRow {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
+        self.match_event(cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -249,13 +249,12 @@ impl Widget for DownloadedFilesRow {
     }
 }
 
-impl WidgetMatchEvent for DownloadedFilesRow {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+impl MatchEvent for DownloadedFilesRow {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
 
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
+                cx.action(ChatAction::Start(file_id.clone()));
             }
         }
 
