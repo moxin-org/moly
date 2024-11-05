@@ -1,9 +1,9 @@
+use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 use crate::shared::actions::ChatAction;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
 use makepad_widgets::*;
 use moly_protocol::data::{DownloadedFile, FileID};
-use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -197,7 +197,7 @@ pub struct DownloadedFilesRow {
 impl Widget for DownloadedFilesRow {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.match_event(cx, event);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -249,9 +249,8 @@ impl Widget for DownloadedFilesRow {
     }
 }
 
-impl MatchEvent for DownloadedFilesRow {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
-
+impl WidgetMatchEvent for DownloadedFilesRow {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
                 cx.action(ChatAction::Start(file_id.clone()));
