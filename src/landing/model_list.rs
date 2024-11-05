@@ -123,7 +123,7 @@ impl WidgetMatchEvent for ModelList {
         let portal_list = self.portal_list(id!(list));
 
         for action in actions.iter() {
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
                     self.view(id!(search_error)).set_visible(false);
                     self.view(id!(loading)).set_visible(true);
