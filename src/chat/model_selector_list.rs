@@ -112,18 +112,11 @@ pub struct ModelSelectorList {
 
 impl Widget for ModelSelectorList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
         for (id, item) in self.items.iter_mut() {
             let actions = cx.capture_actions(|cx| item.handle_event(cx, event, scope));
             if let Some(fd) = item.as_view().finger_down(&actions) {
                 if fd.tap_count == 1 {
-                    cx.widget_action(
-                        widget_uid,
-                        &scope.path,
-                        ModelSelectorAction::Selected(
-                            self.map_to_downloaded_files.get(id).unwrap().clone(),
-                        ),
-                    );
+                    cx.action(ModelSelectorAction::Selected(self.map_to_downloaded_files.get(id).unwrap().clone()));
                 }
             }
         }
