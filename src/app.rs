@@ -238,7 +238,7 @@ impl MatchEvent for App {
                 my_models_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let ChatPanelAction::NavigateToDiscover = action.as_widget_action().cast() {
+            if let ChatPanelAction::NavigateToDiscover = action.cast() {
                 let discover_radio_button = self.ui.radio_button(id!(discover_tab));
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
