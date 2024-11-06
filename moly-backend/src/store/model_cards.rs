@@ -137,6 +137,7 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
     // add model json
     let sha256 = libra::utils::lfs::calc_lfs_file_hash(model_path.as_ref())?;
     let size = std::fs::metadata(model_path.as_ref())?.len();
+    let p2p_uri = format!("p2p://{}/sha256/{}", peer_id, sha256);
     model_card.files.push(RemoteFile {
         name: base_name.to_string(), // TODO same with id?
         size: size.to_string(),
@@ -144,7 +145,7 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
         tags: vec![],
         sha256: Some(sha256.clone()),
         download: DownloadUrls {
-            default: format!("p2p://{}/sha256/{}", peer_id, sha256),
+            default: p2p_uri.clone(),
         },
     });
 
@@ -210,6 +211,18 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
         libra::exec(vec!["push"])?;
 
         std::env::set_current_dir(&origin_dir)?;
+    }
+
+    { // share to Relay
+        tokio::runtime::Runtime::new()?.block_on(
+            gemini::lfs::share_lfs(
+                MEGA_OPTIONS.bootstrap_nodes.to_string(),
+                sha256,
+                "sha256".to_string(),
+                size as i64,
+                p2p_uri
+            )
+        );
     }
     Ok(())
 }
