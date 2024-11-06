@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::File;
 use std::io::{self, Seek, Write};
 use std::path::Path;
@@ -233,8 +234,10 @@ impl ModelFileDownloader {
             }
         };
 
-        let lfs_url = Url::parse("https://git.gitmono.org")?;
-        let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_url(&lfs_url);
+        let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_bootstrap_node(
+            &env::var("ZTM_BOOTSTRAP_NODE")?,
+            env::var("ZTM_AGENT_PORT")?.parse::<u16>()?,
+        ).await;
         let r = tokio::select! {
             // r = download_file(
             //     &self.client,
@@ -244,9 +247,8 @@ impl ModelFileDownloader {
             //     self.step,
             //     report_fn,
             // ) => r?,
-            r = lfs_client.download_object(
+            r = lfs_client.download_object_p2p(
                 &file.sha256,
-                file.file_size,
                 &local_path,
                 Some((
                     report_fn,

@@ -72,7 +72,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e01ed3140b2f8d422c68afa1ed2e85d996ea619c988ac834d255db32138655cb"
 dependencies = [
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -210,7 +210,7 @@ dependencies = [
  "actix-router",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -287,6 +287,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
 dependencies = [
  "cfg-if 1.0.0",
+ "const-random",
  "getrandom",
  "once_cell",
  "version_check",
@@ -680,7 +681,7 @@ checksum = "3b43422f69d8ff38f95f1b2bb76517c91589a924d1559a0e935d7c8ce0274c11"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -741,7 +742,7 @@ checksum = "c7c24de15d275a1ecfd47a380fb4d5ec9bfe0933f309ed5e705b775596a3574d"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -758,7 +759,7 @@ checksum = "721cae7de5c34fbb2acd27e21e6d2cf7b886dce0c27388d46c4e6c47ea4318dd"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -976,7 +977,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6aeac2e1fe888769f34f05ac343bbef98b14d1ffb292ab69d4608b3abc86f2a2"
 dependencies = [
  "blowfish",
- "pbkdf2 0.12.2",
+ "pbkdf2",
  "sha2 0.10.8",
 ]
 
@@ -1028,7 +1029,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex",
- "syn 2.0.77",
+ "syn 2.0.87",
  "which",
 ]
 
@@ -1209,7 +1210,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
  "syn_derive",
 ]
 
@@ -1275,7 +1276,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1347,7 +1348,18 @@ dependencies = [
 [[package]]
 name = "callisto"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+dependencies = [
+ "chrono",
+ "sea-orm",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "callisto"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
 dependencies = [
  "chrono",
  "sea-orm",
@@ -1464,20 +1476,47 @@ dependencies = [
 [[package]]
 name = "ceres"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "anyhow",
  "async-trait",
  "axum",
  "bytes",
- "callisto",
+ "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "chrono",
  "clap",
- "common",
+ "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "futures",
  "hex",
- "jupiter",
- "mercury",
+ "jupiter 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "mercury 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "rand",
+ "ring",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
+name = "ceres"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "bytes",
+ "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "chrono",
+ "clap",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "futures",
+ "hex",
+ "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "mercury 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "rand",
  "ring",
  "sea-orm",
@@ -1600,7 +1639,7 @@ dependencies = [
  "heck 0.5.0",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1657,7 +1696,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "anyhow",
  "axum",
@@ -1665,8 +1704,28 @@ dependencies = [
  "config",
  "envsubst",
  "idgenerator",
+ "rand",
  "sea-orm",
  "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "common"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+dependencies = [
+ "anyhow",
+ "axum",
+ "clap",
+ "config",
+ "envsubst",
+ "idgenerator",
+ "rand",
+ "sea-orm",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -1677,7 +1736,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f76990911f2267d837d9d0ad060aa63aaad170af40904b29461734c339030d4d"
 dependencies = [
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1977,7 +2036,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edb49164822f3ee45b17acd4a208cfc1251410cf0cad9a833234c9890774dd9f"
 dependencies = [
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2023,7 +2082,7 @@ checksum = "f46882e17999c6cc590af592290432be3bce0428cb0d5f8b6715e4dc7b383eb3"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2056,7 +2115,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strsim",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2067,7 +2126,7 @@ checksum = "d336a2a514f6ccccaa3e09b02d41d35330c07ddf03a62165fcec10bb561c7806"
 dependencies = [
  "darling_core",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2135,9 +2194,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "delegate"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e018fccbeeb50ff26562ece792ed06659b9c2dae79ece77c4456bb10d9bf79b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
 name = "delta"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+dependencies = [
+ "diffs",
+ "flate2",
+ "sha1",
+ "thiserror",
+]
+
+[[package]]
+name = "delta"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
 dependencies = [
  "diffs",
  "flate2",
@@ -2187,7 +2268,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustc_version 0.4.1",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2396,7 +2477,7 @@ checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2417,7 +2498,7 @@ checksum = "de0d48a183585823424a4ce1aa132d174a6a81bd540895822eb4c8373a8e49e8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2650,6 +2731,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "flurry"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "037030493fadfabb7b5638c2d665c0d2d2e393d8fc7aff27926524cf98efd8c0"
+dependencies = [
+ "ahash 0.8.11",
+ "num_cpus",
+ "parking_lot",
+ "seize",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2792,7 +2885,7 @@ checksum = "87750cf4b7a4c0625b1529e4c543c2182106e4dedc60a2a6455e00d212c489ac"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2837,19 +2930,19 @@ dependencies = [
 [[package]]
 name = "gateway"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
 dependencies = [
  "axum",
  "axum-server",
- "callisto",
+ "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "chrono",
  "clap",
- "common",
- "gemini",
- "jupiter",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "gemini 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "lazy_static",
  "mono",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "taurus",
@@ -2857,30 +2950,53 @@ dependencies = [
  "tower 0.5.1",
  "tower-http",
  "tracing",
- "vault",
+ "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
 ]
 
 [[package]]
 name = "gemini"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "axum",
- "callisto",
- "ceres",
+ "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "ceres 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "chrono",
- "common",
+ "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "hex",
- "jupiter",
- "neptune",
- "reqwest 0.12.8",
+ "jupiter 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "neptune 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "reqwest 0.12.9",
  "ring",
  "secp256k1",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
- "vault",
+ "vault 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+]
+
+[[package]]
+name = "gemini"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+dependencies = [
+ "axum",
+ "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "ceres 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "chrono",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "hex",
+ "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "neptune 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "reqwest 0.12.9",
+ "ring",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
 ]
 
 [[package]]
@@ -3510,7 +3626,7 @@ checksum = "0122b7114117e64a63ac49f752a5ca4624d534c7b1c7de796ac196381cd2d947"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -3659,17 +3775,39 @@ dependencies = [
 [[package]]
 name = "jupiter"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "async-trait",
  "bytes",
- "callisto",
+ "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "chrono",
- "common",
+ "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "futures",
  "idgenerator",
- "mercury",
- "saturn",
+ "mercury 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "saturn 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "jupiter"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "chrono",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "futures",
+ "idgenerator",
+ "mercury 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "saturn 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "sea-orm",
  "serde",
  "serde_json",
@@ -3813,13 +3951,13 @@ dependencies = [
 [[package]]
 name = "libra"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "anyhow",
  "byte-unit",
  "byteorder",
  "bytes",
- "ceres",
+ "ceres 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "chrono",
  "clap",
  "color-backtrace",
@@ -3827,17 +3965,18 @@ dependencies = [
  "flate2",
  "futures",
  "futures-util",
+ "gemini 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "hex",
  "indicatif",
  "lazy_static",
  "lru-mem",
- "mercury",
+ "mercury 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "once_cell",
  "pager",
  "path_abs",
  "pathdiff",
  "regex",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "ring",
  "rpassword",
  "scopeguard",
@@ -3963,7 +4102,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex-syntax",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -4311,16 +4450,16 @@ checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 [[package]]
 name = "mega"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
 dependencies = [
  "anyhow",
- "ceres",
+ "ceres 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "clap",
- "common",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "config",
  "ctrlc",
  "gateway",
- "jupiter",
+ "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "mono",
  "rand",
  "serde",
@@ -4353,19 +4492,54 @@ dependencies = [
 [[package]]
 name = "mercury"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "axum",
  "bincode",
  "bstr",
  "byteorder",
  "bytes",
- "callisto",
+ "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "chrono",
  "colored",
- "common",
+ "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
  "dashmap 6.1.0",
- "delta",
+ "delta 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "flate2",
+ "futures-util",
+ "hex",
+ "lru-mem",
+ "memchr",
+ "mimalloc",
+ "num_cpus",
+ "rayon",
+ "serde",
+ "sha1",
+ "sha1_smol",
+ "thiserror",
+ "threadpool",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "mercury"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+dependencies = [
+ "axum",
+ "bincode",
+ "bstr",
+ "byteorder",
+ "bytes",
+ "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "chrono",
+ "colored",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "dashmap 6.1.0",
+ "delta 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "flate2",
  "futures-util",
  "hex",
@@ -4406,7 +4580,7 @@ checksum = "dcf09caffaac8068c346b6df2a7fc27a177fd20b39421a39ce0a211bde679a6c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -4500,6 +4674,7 @@ dependencies = [
  "crossbeam",
  "env_logger 0.11.5",
  "futures-util",
+ "gemini 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "hex",
  "libra",
  "log",
@@ -4511,7 +4686,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "uuid",
- "vault",
+ "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "wasmedge-sdk",
 ]
 
@@ -4544,7 +4719,7 @@ dependencies = [
 [[package]]
 name = "mono"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
 dependencies = [
  "anyhow",
  "async-session",
@@ -4555,24 +4730,24 @@ dependencies = [
  "axum-server",
  "base64 0.22.1",
  "bytes",
- "callisto",
+ "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "cedar-policy",
- "ceres",
+ "ceres 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "chrono",
  "clap",
- "common",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "ctrlc",
  "ed25519-dalek",
  "futures",
  "http 1.1.0",
- "jupiter",
+ "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "lazy_static",
  "oauth2",
  "regex",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "russh",
  "russh-keys",
- "saturn",
+ "saturn 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "serde",
  "serde_json",
  "shadow-rs",
@@ -4585,7 +4760,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "uuid",
- "vault",
+ "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
 ]
 
 [[package]]
@@ -4599,7 +4774,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -4613,7 +4788,7 @@ dependencies = [
  "napi-derive-backend-ohos",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -4657,12 +4832,27 @@ dependencies = [
 [[package]]
 name = "neptune"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "cmake",
  "libc",
  "num_cpus",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "neptune"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+dependencies = [
+ "cmake",
+ "libc",
+ "num_cpus",
+ "reqwest 0.12.9",
  "tokio",
  "tokio-test",
  "tracing",
@@ -4956,7 +5146,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5034,7 +5224,7 @@ dependencies = [
  "proc-macro2",
  "proc-macro2-diagnostics",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5082,6 +5272,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pageant"
+version = "0.0.1-beta.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c8ca7f786256e4d89f369656546b1f504cfd2d5ec796f0b99600919dd993723"
+dependencies = [
+ "bytes",
+ "delegate",
+ "futures",
+ "rand",
+ "thiserror",
+ "tokio",
+ "windows 0.58.0",
+]
+
+[[package]]
 name = "pager"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5121,17 +5326,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "password-hash"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7676374caaee8a325c9e7a2ae557f216c5563a171d6997b0ef8a65af35147700"
-dependencies = [
- "base64ct",
- "rand_core",
- "subtle",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5154,18 +5348,6 @@ name = "pathdiff"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d61c5ce1153ab5b689d0c074c4e7fc613e942dfb7dd9eea5ab202d2ad91fe361"
-
-[[package]]
-name = "pbkdf2"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83a0692ec44e4cf1ef28ca317f14f8f07da2d95ec3fa01f86e4467b725e60917"
-dependencies = [
- "digest 0.10.7",
- "hmac 0.12.1",
- "password-hash",
- "sha2 0.10.8",
-]
 
 [[package]]
 name = "pbkdf2"
@@ -5233,7 +5415,7 @@ dependencies = [
  "pest_meta",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5287,7 +5469,7 @@ dependencies = [
  "phf_shared 0.11.2",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5331,7 +5513,7 @@ checksum = "a4502d8515ca9f32f1fb543d987f63d95a14934883db45bdb48060b6b69257f8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5377,7 +5559,7 @@ dependencies = [
  "aes",
  "cbc",
  "der",
- "pbkdf2 0.12.2",
+ "pbkdf2",
  "scrypt",
  "sha2 0.10.8",
  "spki",
@@ -5534,7 +5716,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "479cf940fbbb3426c32c5d5176f62ad57549a0bb84773423ba8be9d089f5faba"
 dependencies = [
  "proc-macro2",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5597,7 +5779,7 @@ dependencies = [
  "proc-macro-error-attr2",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5617,7 +5799,7 @@ checksum = "af066a9c399a26e020ada66a034357a868728e72cd426f3adcd35f80d88d88c8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
  "version_check",
  "yansi",
 ]
@@ -5769,14 +5951,14 @@ checksum = "bcc303e793d3734489387d205e9b186fac9c6cfacedd98cbb2e8a5943595f3e6"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
 name = "regex"
-version = "1.11.0"
+version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38200e5ee88914975b69f657f0801b6f6dccafd44fd9326302a4aaeecfacb1d8"
+checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -5864,9 +6046,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.8"
+version = "0.12.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f713147fbe92361e52392c73b8c9e48c04c6625bce969ef54dc901e58e042a7b"
+checksum = "a77c62af46e79de0a562e1a9849205ffcb7fc1238876e9bd743357570e04046f"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -6123,9 +6305,9 @@ dependencies = [
 
 [[package]]
 name = "russh"
-version = "0.45.0"
+version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a229f2a03daea3f62cee897b40329ce548600cca615906d98d58b8db3029b19"
+checksum = "c536b90d8e2468d8dedc8de2369383c101325e23fffa3a30de713032862a11d4"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -6155,6 +6337,8 @@ dependencies = [
  "rand_core",
  "russh-cryptovec",
  "russh-keys",
+ "russh-sftp",
+ "russh-util",
  "sha1",
  "sha2 0.10.8",
  "ssh-encoding",
@@ -6176,9 +6360,9 @@ dependencies = [
 
 [[package]]
 name = "russh-keys"
-version = "0.45.0"
+version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89757474f7c9ee30121d8cc7fe293a954ba10b204a82ccf5850a5352a532ebc7"
+checksum = "6e3db166c8678c824627c2c46f619ed5ce4ae33f38a35403c62f6ab8f3985867"
 dependencies = [
  "aes",
  "async-trait",
@@ -6194,6 +6378,7 @@ dependencies = [
  "ed25519-dalek",
  "elliptic-curve",
  "futures",
+ "getrandom",
  "hmac 0.12.1",
  "home",
  "inout",
@@ -6203,7 +6388,8 @@ dependencies = [
  "p256",
  "p384",
  "p521",
- "pbkdf2 0.11.0",
+ "pageant",
+ "pbkdf2",
  "pkcs1",
  "pkcs5",
  "pkcs8",
@@ -6211,6 +6397,7 @@ dependencies = [
  "rand_core",
  "rsa",
  "russh-cryptovec",
+ "russh-util",
  "sec1",
  "serde",
  "sha1",
@@ -6223,6 +6410,36 @@ dependencies = [
  "tokio-stream",
  "typenum",
  "zeroize",
+]
+
+[[package]]
+name = "russh-sftp"
+version = "2.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a72c8afe2041c17435eecd85d0b7291841486fd3d1c4082e0b212e5437ca42"
+dependencies = [
+ "async-trait",
+ "bitflags 2.6.0",
+ "bytes",
+ "chrono",
+ "flurry",
+ "log",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "russh-util"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63aeb9d2b74f8f38befdc0c5172d5ffcf58f3d2ffcb423f3b6cdfe2c2d747b80"
+dependencies = [
+ "chrono",
+ "tokio",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -6474,10 +6691,25 @@ dependencies = [
 [[package]]
 name = "saturn"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
 dependencies = [
  "cedar-policy",
- "common",
+ "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "itertools 0.13.0",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "saturn"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+dependencies = [
+ "cedar-policy",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "itertools 0.13.0",
  "serde",
  "serde_json",
@@ -6513,7 +6745,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0516a385866c09368f0b5bcd1caff3366aace790fcd46e2bb032697bb172fd1f"
 dependencies = [
- "pbkdf2 0.12.2",
+ "pbkdf2",
  "salsa20",
  "sha2 0.10.8",
 ]
@@ -6544,14 +6776,14 @@ dependencies = [
  "proc-macro-error2",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
 name = "sea-orm"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c4872675cc5d5d399a2a202c60f3a393ec8d3f3307c36adb166517f348e4db5"
+checksum = "d5680a8b686985116607ef5f5af2b1f9e1cc2c228330e93101816a0baa279afa"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6577,15 +6809,15 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-macros"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85f714906b72e7265c0b2077d0ad8f235dabebda513c92f1326d5d40cef0dd01"
+checksum = "3a239e3bb1b566ad4ec2654d0d193d6ceddfd733487edc9c21a64d214c773910"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
  "quote",
  "sea-bae",
- "syn 2.0.77",
+ "syn 2.0.87",
  "unicode-ident",
 ]
 
@@ -6686,6 +6918,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "seize"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "689224d06523904ebcc9b482c6a3f4f7fb396096645c4cd10c0d2ff7371a34d3"
+
+[[package]]
 name = "semver"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6708,9 +6946,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.210"
+version = "1.0.214"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8e3592472072e6e22e0a54d5904d9febf8508f65fb8552499a1abc7d1078c3a"
+checksum = "f55c3193aca71c12ad7890f1785d2b73e1b9f63a0bbc353c08ef26fe03fc56b5"
 dependencies = [
  "serde_derive",
 ]
@@ -6736,13 +6974,13 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.210"
+version = "1.0.214"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "243902eda00fad750862fc144cea25caca5e20d615af0a81bee94ca738f1df1f"
+checksum = "de523f781f095e28fa605cdce0f8307e451cc0fd14e2eb4cd2e98a355b147766"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -6776,7 +7014,7 @@ checksum = "6c64451ba24fc7a6a2d60fc75dd9c83c90903b19028d4eff35e88fc1e86564e9"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -6827,7 +7065,7 @@ dependencies = [
  "darling",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -6905,9 +7143,9 @@ dependencies = [
 
 [[package]]
 name = "shadow-rs"
-version = "0.35.1"
+version = "0.35.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2311e39772c00391875f40e34d43efef247b23930143a70ca5fbec9505937420"
+checksum = "f1b2328fb3ec0d5302f95915e7e77cfc2ff943714d9970bc4b66e9eacf318687"
 dependencies = [
  "const_format",
  "git2",
@@ -7147,7 +7385,7 @@ dependencies = [
  "quote",
  "sqlx-core",
  "sqlx-macros-core",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -7170,7 +7408,7 @@ dependencies = [
  "sqlx-mysql",
  "sqlx-postgres",
  "sqlx-sqlite",
- "syn 2.0.77",
+ "syn 2.0.87",
  "tempfile",
  "tokio",
  "url",
@@ -7439,7 +7677,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -7471,9 +7709,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.77"
+version = "2.0.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f35bcdf61fd8e7be6caf75f429fdca8beb3ed76584befb503b1569faee373ed"
+checksum = "25aa4ce346d03a6dcd68dd8b4010bcb74e54e62c90c573f394c46eae99aba32d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7489,7 +7727,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -7575,15 +7813,15 @@ dependencies = [
 [[package]]
 name = "taurus"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
 dependencies = [
  "async-trait",
  "axum",
- "callisto",
+ "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "chrono",
- "common",
+ "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "crossbeam-channel",
- "jupiter",
+ "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
  "serde",
  "serde_json",
  "thiserror",
@@ -7650,7 +7888,7 @@ checksum = "ae71770322cbd277e69d762a16c444af02aa0575ac0d174f0b9562d3b37f8602"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -7781,7 +8019,7 @@ checksum = "693d596312e88961bc67d7f1f97af8a70227d9f90c31bba5806eec004978d752"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -7835,6 +8073,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -7993,7 +8232,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8289,7 +8528,23 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vault"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#e05d0c49d6a2e53d9e56d0bcee7a2bf743edc656"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+dependencies = [
+ "bs58",
+ "go-defer",
+ "hex",
+ "lazy_static",
+ "openssl",
+ "rusty_vault",
+ "secp256k1",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "vault"
+version = "0.1.0"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
 dependencies = [
  "bs58",
  "go-defer",
@@ -8382,7 +8637,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
  "wasm-bindgen-shared",
 ]
 
@@ -8416,7 +8671,7 @@ checksum = "afc340c74d9005395cf9dd098506f7f44e38f2b4a21c6aaacf9a105ea5e1e836"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -8457,7 +8712,7 @@ checksum = "dbe80d95a88e9ac87b6aaf7bc9acd1fdfcd92045db2bf41a2262f623e2406a92"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8650,6 +8905,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows"
+version = "0.58.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd04d41d93c4992d421894c18c8b43496aa748dd4c081bac0dc93eb0489272b6"
+dependencies = [
+ "windows-core 0.58.0",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
 name = "windows-core"
 version = "0.51.1"
 source = "git+https://github.com/makepad/makepad?branch=rik#24332cdf6cbd0926ca1a0df6a36841bf5c1c6ec4"
@@ -8682,9 +8947,22 @@ version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
 dependencies = [
- "windows-implement",
- "windows-interface",
+ "windows-implement 0.57.0",
+ "windows-interface 0.57.0",
  "windows-result 0.1.2",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows-core"
+version = "0.58.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ba6d44ec8c2591c134257ce647b7ea6b20335bf6379a27dac5f1641fcf59f99"
+dependencies = [
+ "windows-implement 0.58.0",
+ "windows-interface 0.58.0",
+ "windows-result 0.2.0",
+ "windows-strings",
  "windows-targets 0.52.6",
 ]
 
@@ -8696,7 +8974,18 @@ checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "windows-implement"
+version = "0.58.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bbd5b46c938e506ecbce286b6628a02171d56153ba733b6c741fc627ec9579b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8707,7 +8996,18 @@ checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "windows-interface"
+version = "0.58.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "053c4c462dc91d3b1504c6fe5a726dd15e216ba718e84a0e46a88fbe5ded3515"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -9082,7 +9382,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
  "zvariant_utils",
 ]
 
@@ -9115,7 +9415,7 @@ checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -9135,7 +9435,7 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -9189,7 +9489,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
  "zvariant_utils",
 ]
 
@@ -9201,5 +9501,5 @@ checksum = "c51bcff7cc3dbb5055396bcf774748c3dab426b4b8659046963523cee4808340"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.77",
+ "syn 2.0.87",
 ]

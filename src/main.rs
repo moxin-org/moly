@@ -22,9 +22,22 @@ fn main() {
     moly::app::app_main()
 }
 
+fn set_env_var(key: &str, value: &str) {
+    if env::var(key).is_err() {
+        env::set_var(key, value);
+    } else {
+        panic!("fatal: `{}` is already set!", key);
+    }
+}
+
 /// Start the Mega server in a separate thread.
 fn run_mega_server() {
-    env::set_var("MEGA_BASE_DIR", project_dirs().data_dir().join(".mega").to_str().unwrap());
+    set_env_var("MEGA_BASE_DIR", project_dirs().data_dir().join(".mega").to_str().unwrap());
+    const BOOTSTRAP_NODE: &str = "http://gitmono.org/relay";
+    const ZTM_AGENT_PORT: &str = "7777";
+    set_env_var("ZTM_BOOTSTRAP_NODE", BOOTSTRAP_NODE); // maybe not safe, but `moly-backend` can't access vars in `main.rs`
+    set_env_var("ZTM_AGENT_PORT", ZTM_AGENT_PORT);
+
     thread::spawn(|| -> io::Result<()> {
         let config = include_str!("../.mega/config.toml"); // save config as String (soft-hard code)
         let config_path = project_dirs().config_dir().join(".mega/config.toml");
@@ -35,7 +48,8 @@ fn run_mega_server() {
             println!("Config file created or overridden at: {:?}", config_path);
         }
 
-        let args = vec!["-c", config_path.to_str().unwrap(), "service", "multi", "http", "--bootstrap-node", "http://gitmono.org/relay"];
+        let args = vec!["-c", config_path.to_str().unwrap(), "service", "multi", "http",
+                        "--bootstrap-node", BOOTSTRAP_NODE, "--ztm-agent-port", ZTM_AGENT_PORT];
         println!("Starting Mega with args: {:?}", args);
         mega::cli::parse(Some(args)).expect("Failed to start Mega");
         Ok(())
