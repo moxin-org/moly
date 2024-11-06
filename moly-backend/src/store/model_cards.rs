@@ -6,6 +6,10 @@ use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::Arc;
+use libra::internal::protocol::lfs_client::LFSClient;
+use libra::internal::protocol::ProtocolClient;
+use reqwest::Url;
+use crate::MEGA_OPTIONS;
 
 pub static REPO_NAME: &'static str = "model-cards";
 
@@ -35,6 +39,7 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
 
     // {
     //     // TODO test code, remove it
+    //     std::thread::sleep(std::time::Duration::from_secs(5)); // wait mega to start
     //     add_model_card(
     //         app_data_dir.as_ref(),
     //         Path::new("/home/bean/.local/share/moly/model_downloads/second-state/Qwen2.5-0.5B-Instruct-GGUF/Qwen2.5-0.5B-Instruct-Q2_K.gguf")
@@ -125,32 +130,32 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
     };
 
     let is_model_exist = model_card.files.iter().any(|f| f.name == base_name);
-    if !is_model_exist {
-        let sha256 = libra::utils::lfs::calc_lfs_file_hash(model_path.as_ref())?;
-        let size = std::fs::metadata(model_path.as_ref())?.len();
-        model_card.files.push(RemoteFile {
-            name: base_name.to_string(), // TODO same with id?
-            size: size.to_string(),
-            quantization: "".to_string(), // TODO
-            tags: vec![],
-            sha256: Some(sha256.clone()),
-            download: DownloadUrls {
-                default: format!("p2p://{}/sha256/{}", peer_id, sha256),
-            },
-        });
-
-        if let Some(parent) = model_card_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        // save model card
-        let model_card_str = serde_json::to_string_pretty(&model_card)?;
-        let mut file = File::create(model_card_path.clone())?;
-        file.write_all(model_card_str.as_bytes())?;
-
-        log::debug!("Model card added: {:?}", id);
-    } else {
+    if is_model_exist {
         log::warn!("Model card already exists: {:?}", id);
+        return Ok(()); // return if duplicate
     }
+    // add model json
+    let sha256 = libra::utils::lfs::calc_lfs_file_hash(model_path.as_ref())?;
+    let size = std::fs::metadata(model_path.as_ref())?.len();
+    model_card.files.push(RemoteFile {
+        name: base_name.to_string(), // TODO same with id?
+        size: size.to_string(),
+        quantization: "".to_string(), // TODO
+        tags: vec![],
+        sha256: Some(sha256.clone()),
+        download: DownloadUrls {
+            default: format!("p2p://{}/sha256/{}", peer_id, sha256),
+        },
+    });
+
+    if let Some(parent) = model_card_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    // save model card
+    let model_card_str = serde_json::to_string_pretty(&model_card)?;
+    let mut file = File::create(model_card_path.clone())?;
+    file.write_all(model_card_str.as_bytes())?;
+    log::debug!("Model card added: {:?}", id);
 
     let index_path = repo_dirs.join("index.json");
     let mut index_list = if let Ok(index_str) = std::fs::read_to_string(&index_path) {
@@ -182,17 +187,30 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
         log::info!("Model card already exists in 'index.json': {:?}", id);
     }
 
-    // commit changes
-    let origin_dir = std::env::current_dir()?;
-    // CAUTION: set_current_dir will affect of the whole process
-    std::env::set_current_dir(&repo_dirs)?;
+    { // push to local mega server
+        let local_mega = format!("http://localhost:{}", MEGA_OPTIONS.http_port);
+        let client = LFSClient::from_url(&Url::parse(&local_mega)?);
+        tokio::runtime::Runtime::new()?.block_on(async { // TODO
+            return match client.push_object(&sha256, model_path.as_ref()).await {
+                Ok(_) => Ok(()),
+                Err(_) => Err(anyhow::anyhow!("Failed to push model to local mega server"))
+            };
+        })?;
+        log::info!("Model pushed to local mega server: {:?}", sha256);
+    }
 
-    libra::exec(vec!["add", model_card_path.to_str().unwrap()])?;
-    libra::exec(vec!["add", index_path.to_str().unwrap()])?;
-    libra::exec(vec!["commit", "-m", &format!("Add model card: {}", base_name)])?;
-    libra::exec(vec!["push"])?;
+    { // commit changes
+        let origin_dir = std::env::current_dir()?;
+        // CAUTION: set_current_dir will affect of the whole process
+        std::env::set_current_dir(&repo_dirs)?;
 
-    std::env::set_current_dir(&origin_dir)?;
+        libra::exec(vec!["add", model_card_path.to_str().unwrap()])?;
+        libra::exec(vec!["add", index_path.to_str().unwrap()])?;
+        libra::exec(vec!["commit", "-m", &format!("Add model card: {}", base_name)])?;
+        libra::exec(vec!["push"])?;
+
+        std::env::set_current_dir(&origin_dir)?;
+    }
     Ok(())
 }
 
