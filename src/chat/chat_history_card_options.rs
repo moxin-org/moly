@@ -1,6 +1,6 @@
+use super::chat_history_card::ChatHistoryCardAction;
 use crate::data::chats::chat::ChatID;
 use makepad_widgets::*;
-use super::chat_history_card::ChatHistoryCardAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -102,7 +102,7 @@ pub struct ChatHistoryCardOptions {
 impl Widget for ChatHistoryCardOptions {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.match_event(cx, event);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -119,17 +119,21 @@ impl ChatHistoryCardOptions {
 
 impl ChatHistoryCardOptionsRef {
     pub fn selected(&mut self, cx: &mut Cx, chat_id: ChatID) {
-        let Some(mut inner) = self.borrow_mut() else { return };
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
         inner.selected(cx, chat_id);
     }
 }
 
-impl MatchEvent for ChatHistoryCardOptions {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+impl WidgetMatchEvent for ChatHistoryCardOptions {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(delete_chat)).clicked(actions) {
             cx.action(ChatHistoryCardAction::MenuClosed(self.chat_id));
 
-            cx.action(ChatHistoryCardAction::DeleteChatOptionSelected(self.chat_id));
+            cx.action(ChatHistoryCardAction::DeleteChatOptionSelected(
+                self.chat_id,
+            ));
         }
 
         if self.button(id!(edit_chat_name)).clicked(actions) {
