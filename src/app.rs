@@ -202,7 +202,7 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ModelFileItemAction::Download(file_id) => {
                     let (model, file) = self.store.get_model_and_file_download(&file_id);
                     self.store.downloads.download_file(model, file);
