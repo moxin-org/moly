@@ -213,7 +213,7 @@ pub struct ModelFilesItem {
 impl Widget for ModelFilesItem {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
+        self.match_event(cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -318,19 +318,14 @@ impl Widget for ModelFilesItem {
     }
 }
 
-impl WidgetMatchEvent for ModelFilesItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+impl MatchEvent for ModelFilesItem {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         let Some(file_id) = self.file_id.clone() else {
             return;
         };
 
         if self.button(id!(download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ModelFileItemAction::Download(file_id.clone()),
-            );
+            cx.action(ModelFileItemAction::Download(file_id.clone()));
         }
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
@@ -341,27 +336,15 @@ impl WidgetMatchEvent for ModelFilesItem {
             .iter()
             .any(|id| self.button(*id).clicked(&actions))
         {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Play(file_id.clone()),
-            );
+            cx.action(DownloadAction::Play(file_id.clone()));
         }
 
         if self.button(id!(pause_download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Pause(file_id.clone()),
-            );
+            cx.action(DownloadAction::Pause(file_id.clone()));
         }
 
         if self.button(id!(cancel_download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Cancel(file_id.clone()),
-            );
+            cx.action(DownloadAction::Cancel(file_id.clone()));
         }
     }
 }
