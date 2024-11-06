@@ -1348,7 +1348,7 @@ dependencies = [
 [[package]]
 name = "callisto"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "chrono",
  "sea-orm",
@@ -1476,7 +1476,7 @@ dependencies = [
 [[package]]
 name = "ceres"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1696,7 +1696,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "anyhow",
  "axum",
@@ -2207,7 +2207,7 @@ dependencies = [
 [[package]]
 name = "delta"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "diffs",
  "flate2",
@@ -2956,7 +2956,7 @@ dependencies = [
 [[package]]
 name = "gemini"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "axum",
  "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
@@ -3775,7 +3775,7 @@ dependencies = [
 [[package]]
 name = "jupiter"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3951,7 +3951,7 @@ dependencies = [
 [[package]]
 name = "libra"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "anyhow",
  "byte-unit",
@@ -4492,7 +4492,7 @@ dependencies = [
 [[package]]
 name = "mercury"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "axum",
  "bincode",
@@ -4832,7 +4832,7 @@ dependencies = [
 [[package]]
 name = "neptune"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "cmake",
  "libc",
@@ -6691,7 +6691,7 @@ dependencies = [
 [[package]]
 name = "saturn"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "cedar-policy",
  "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
@@ -8528,7 +8528,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vault"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#955de098628918d9f3f4e13559af375f908afe46"
+source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
 dependencies = [
  "bs58",
  "go-defer",

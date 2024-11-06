@@ -13,6 +13,7 @@ use reqwest::Url;
 use tokio::time::timeout;
 
 use crate::backend_impls::DownloadControlCommand;
+use crate::MEGA_OPTIONS;
 
 async fn get_file_content_length(client: &reqwest::Client, url: &str) -> reqwest::Result<u64> {
     let response = client.head(url).send().await?;
@@ -235,8 +236,8 @@ impl ModelFileDownloader {
         };
 
         let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_bootstrap_node(
-            &env::var("ZTM_BOOTSTRAP_NODE")?,
-            env::var("ZTM_AGENT_PORT")?.parse::<u16>()?,
+            MEGA_OPTIONS.bootstrap_nodes,
+            MEGA_OPTIONS.ztm_agent_port,
         ).await;
         let r = tokio::select! {
             // r = download_file(

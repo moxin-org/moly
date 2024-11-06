@@ -94,29 +94,6 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
     })
 }
 
-// TODO replace with libra::utils::lfs::xxx
-/// SHA256
-// `ring` crate is much faster than `sha2` crate ( > 10 times)
-fn calc_lfs_file_hash<P>(path: P) -> io::Result<String>
-where
-    P: AsRef<Path>,
-{
-    let path = path.as_ref();
-    let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    let mut buffer = [0; 65536];
-    loop {
-        let n = reader.read(&mut buffer)?;
-        if n == 0 {
-            break;
-        }
-        hash.update(&buffer[..n]);
-    }
-    let file_hash = hex::encode(hash.finish().as_ref());
-    Ok(file_hash)
-}
-
 pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow::Result<()> {
     let peer_id = &vault::get_peerid();
     let base_name =  model_path.as_ref().file_stem().unwrap().to_str().unwrap();
@@ -149,7 +126,7 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
 
     let is_model_exist = model_card.files.iter().any(|f| f.name == base_name);
     if !is_model_exist {
-        let sha256 = calc_lfs_file_hash(model_path.as_ref())?;
+        let sha256 = libra::utils::lfs::calc_lfs_file_hash(model_path.as_ref())?;
         let size = std::fs::metadata(model_path.as_ref())?.len();
         model_card.files.push(RemoteFile {
             name: base_name.to_string(), // TODO same with id?
