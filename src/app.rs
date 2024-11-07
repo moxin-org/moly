@@ -233,7 +233,7 @@ impl MatchEvent for App {
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let PopupAction::NavigateToMyModels = action.as_widget_action().cast() {
+            if let PopupAction::NavigateToMyModels = action.cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
             }
