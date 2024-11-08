@@ -181,10 +181,9 @@ impl Widget for DeleteChatModal {
 
 impl WidgetMatchEvent for DeleteChatModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::CloseButtonClicked);
+            cx.action(DeleteChatModalAction::CloseButtonClicked);
         }
 
         if self
@@ -193,7 +192,7 @@ impl WidgetMatchEvent for DeleteChatModal {
         {
             let store = scope.data.get_mut::<Store>().unwrap();
             store.delete_chat(self.chat_id);
-            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::ChatDeleted);
+            cx.action(DeleteChatModalAction::ChatDeleted);
             cx.redraw_all();
         }
 
@@ -201,7 +200,7 @@ impl WidgetMatchEvent for DeleteChatModal {
             .button(id!(wrapper.body.actions.cancel_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::Cancelled);
+            cx.action(DeleteChatModalAction::Cancelled);
         }
     }
 }
