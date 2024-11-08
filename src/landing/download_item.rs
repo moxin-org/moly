@@ -215,7 +215,7 @@ pub struct DownloadItem {
 impl Widget for DownloadItem {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.match_event(cx, event);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -339,8 +339,8 @@ impl Widget for DownloadItem {
     }
 }
 
-impl MatchEvent for DownloadItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+impl WidgetMatchEvent for DownloadItem {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for button_id in [id!(play_button), id!(retry_button)] {
             if self.button(button_id).clicked(&actions) {
                 let Some(file_id) = &self.file_id else { return };
