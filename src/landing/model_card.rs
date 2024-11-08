@@ -415,7 +415,7 @@ impl WidgetMatchEvent for ModelCard {
         }
 
         for action in actions {
-            if let ModelCardViewAllModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+            if let ModelCardViewAllModalAction::CloseButtonClicked = action.cast() {
                 self.modal(id!(modal)).close(cx);
                 self.redraw(cx);
             }
@@ -457,10 +457,9 @@ impl Widget for ModelCardViewAllModal {
 
 impl WidgetMatchEvent for ModelCardViewAllModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, ModelCardViewAllModalAction::CloseButtonClicked);
+            cx.action(ModelCardViewAllModalAction::CloseButtonClicked);
         }
     }
 }
