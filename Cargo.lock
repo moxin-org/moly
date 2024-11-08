@@ -1348,18 +1348,7 @@ dependencies = [
 [[package]]
 name = "callisto"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
-dependencies = [
- "chrono",
- "sea-orm",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "callisto"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "chrono",
  "sea-orm",
@@ -1407,7 +1396,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "smol_str",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -1431,7 +1420,7 @@ dependencies = [
  "serde_with",
  "smol_str",
  "stacker",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -1469,54 +1458,27 @@ dependencies = [
  "serde_with",
  "smol_str",
  "stacker",
- "thiserror",
+ "thiserror 1.0.65",
  "unicode-security",
 ]
 
 [[package]]
 name = "ceres"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "anyhow",
  "async-trait",
  "axum",
  "bytes",
- "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "callisto",
  "chrono",
  "clap",
- "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "common",
  "futures",
  "hex",
- "jupiter 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
- "mercury 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
- "rand",
- "ring",
- "sea-orm",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tracing",
-]
-
-[[package]]
-name = "ceres"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "bytes",
- "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "chrono",
- "clap",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "futures",
- "hex",
- "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "mercury 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "jupiter",
+ "mercury",
  "rand",
  "ring",
  "sea-orm",
@@ -1696,7 +1658,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "anyhow",
  "axum",
@@ -1708,25 +1670,7 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "common"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
-dependencies = [
- "anyhow",
- "axum",
- "clap",
- "config",
- "envsubst",
- "idgenerator",
- "rand",
- "sea-orm",
- "serde",
- "serde_json",
- "thiserror",
+ "thiserror 2.0.0",
 ]
 
 [[package]]
@@ -2188,7 +2132,7 @@ dependencies = [
  "rs-snowflake",
  "rustc_version 0.2.3",
  "smol",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
  "tracing",
 ]
@@ -2207,23 +2151,12 @@ dependencies = [
 [[package]]
 name = "delta"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "diffs",
  "flate2",
  "sha1",
- "thiserror",
-]
-
-[[package]]
-name = "delta"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
-dependencies = [
- "diffs",
- "flate2",
- "sha1",
- "thiserror",
+ "thiserror 2.0.0",
 ]
 
 [[package]]
@@ -2543,7 +2476,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf2f29f6ee674d1229e5715dfc7e24f14395a20d66949e36032de68b31542643"
 dependencies = [
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -2930,16 +2863,16 @@ dependencies = [
 [[package]]
 name = "gateway"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "axum",
  "axum-server",
- "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "callisto",
  "chrono",
  "clap",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "gemini 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "common",
+ "gemini",
+ "jupiter",
  "lazy_static",
  "mono",
  "reqwest 0.12.9",
@@ -2950,22 +2883,22 @@ dependencies = [
  "tower 0.5.1",
  "tower-http",
  "tracing",
- "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "vault",
 ]
 
 [[package]]
 name = "gemini"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "axum",
- "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
- "ceres 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "callisto",
+ "ceres",
  "chrono",
- "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "common",
  "hex",
- "jupiter 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
- "neptune 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "jupiter",
+ "neptune",
  "reqwest 0.12.9",
  "ring",
  "secp256k1",
@@ -2973,30 +2906,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
- "vault 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
-]
-
-[[package]]
-name = "gemini"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
-dependencies = [
- "axum",
- "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "ceres 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "chrono",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "hex",
- "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "neptune 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "reqwest 0.12.9",
- "ring",
- "secp256k1",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "vault",
 ]
 
 [[package]]
@@ -3558,7 +3468,7 @@ dependencies = [
  "chrono",
  "once_cell",
  "parking_lot",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -3732,7 +3642,7 @@ dependencies = [
  "combine",
  "jni-sys",
  "log",
- "thiserror",
+ "thiserror 1.0.65",
  "walkdir",
  "windows-sys 0.45.0",
 ]
@@ -3775,39 +3685,17 @@ dependencies = [
 [[package]]
 name = "jupiter"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "async-trait",
  "bytes",
- "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "callisto",
  "chrono",
- "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "common",
  "futures",
  "idgenerator",
- "mercury 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
- "saturn 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
- "sea-orm",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "jupiter"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
-dependencies = [
- "async-trait",
- "bytes",
- "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "chrono",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "futures",
- "idgenerator",
- "mercury 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "saturn 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "mercury",
+ "saturn",
  "sea-orm",
  "serde",
  "serde_json",
@@ -3951,13 +3839,13 @@ dependencies = [
 [[package]]
 name = "libra"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "anyhow",
  "byte-unit",
  "byteorder",
  "bytes",
- "ceres 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "ceres",
  "chrono",
  "clap",
  "color-backtrace",
@@ -3965,12 +3853,12 @@ dependencies = [
  "flate2",
  "futures",
  "futures-util",
- "gemini 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "gemini",
  "hex",
  "indicatif",
  "lazy_static",
  "lru-mem",
- "mercury 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "mercury",
  "once_cell",
  "pager",
  "path_abs",
@@ -4450,16 +4338,16 @@ checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 [[package]]
 name = "mega"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "anyhow",
- "ceres 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "ceres",
  "clap",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "common",
  "config",
  "ctrlc",
  "gateway",
- "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "jupiter",
  "mono",
  "rand",
  "serde",
@@ -4467,7 +4355,7 @@ dependencies = [
  "shadow-rs",
  "smallvec",
  "taurus",
- "thiserror",
+ "thiserror 2.0.0",
  "tokio",
  "tracing",
  "tracing-appender",
@@ -4492,19 +4380,19 @@ dependencies = [
 [[package]]
 name = "mercury"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "axum",
  "bincode",
  "bstr",
  "byteorder",
  "bytes",
- "callisto 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "callisto",
  "chrono",
  "colored",
- "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "common",
  "dashmap 6.1.0",
- "delta 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "delta",
  "flate2",
  "futures-util",
  "hex",
@@ -4516,42 +4404,7 @@ dependencies = [
  "serde",
  "sha1",
  "sha1_smol",
- "thiserror",
- "threadpool",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "mercury"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
-dependencies = [
- "axum",
- "bincode",
- "bstr",
- "byteorder",
- "bytes",
- "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "chrono",
- "colored",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "dashmap 6.1.0",
- "delta 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "flate2",
- "futures-util",
- "hex",
- "lru-mem",
- "memchr",
- "mimalloc",
- "num_cpus",
- "rayon",
- "serde",
- "sha1",
- "sha1_smol",
- "thiserror",
+ "thiserror 2.0.0",
  "threadpool",
  "tokio",
  "tracing",
@@ -4568,7 +4421,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "miette-derive",
  "serde",
- "thiserror",
+ "thiserror 1.0.65",
  "unicode-width",
 ]
 
@@ -4674,7 +4527,7 @@ dependencies = [
  "crossbeam",
  "env_logger 0.11.5",
  "futures-util",
- "gemini 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "gemini",
  "hex",
  "libra",
  "log",
@@ -4686,7 +4539,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "uuid",
- "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "vault",
  "wasmedge-sdk",
 ]
 
@@ -4719,7 +4572,7 @@ dependencies = [
 [[package]]
 name = "mono"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "anyhow",
  "async-session",
@@ -4730,24 +4583,24 @@ dependencies = [
  "axum-server",
  "base64 0.22.1",
  "bytes",
- "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "callisto",
  "cedar-policy",
- "ceres 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "ceres",
  "chrono",
  "clap",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "common",
  "ctrlc",
  "ed25519-dalek",
  "futures",
  "http 1.1.0",
- "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "jupiter",
  "lazy_static",
  "oauth2",
  "regex",
  "reqwest 0.12.9",
  "russh",
  "russh-keys",
- "saturn 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "saturn",
  "serde",
  "serde_json",
  "shadow-rs",
@@ -4760,7 +4613,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "uuid",
- "vault 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "vault",
 ]
 
 [[package]]
@@ -4832,22 +4685,7 @@ dependencies = [
 [[package]]
 name = "neptune"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
-dependencies = [
- "cmake",
- "libc",
- "num_cpus",
- "reqwest 0.12.9",
- "tokio",
- "tokio-test",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "neptune"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "cmake",
  "libc",
@@ -5029,7 +4867,7 @@ dependencies = [
  "serde_json",
  "serde_path_to_error",
  "sha2 0.10.8",
- "thiserror",
+ "thiserror 1.0.65",
  "url",
 ]
 
@@ -5281,7 +5119,7 @@ dependencies = [
  "delegate",
  "futures",
  "rand",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
  "windows 0.58.0",
 ]
@@ -5391,7 +5229,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdbef9d1d47087a895abd220ed25eb4ad973a5e26f6a4367b038c25e28dfc2d9"
 dependencies = [
  "memchr",
- "thiserror",
+ "thiserror 1.0.65",
  "ucd-trie",
 ]
 
@@ -5931,7 +5769,7 @@ checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
  "getrandom",
  "libredox",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -6344,7 +6182,7 @@ dependencies = [
  "ssh-encoding",
  "ssh-key",
  "subtle",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
 ]
 
@@ -6405,7 +6243,7 @@ dependencies = [
  "spki",
  "ssh-encoding",
  "ssh-key",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
  "typenum",
@@ -6425,7 +6263,7 @@ dependencies = [
  "flurry",
  "log",
  "serde",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
  "tokio-util",
 ]
@@ -6658,7 +6496,7 @@ dependencies = [
  "strum 0.25.0",
  "strum_macros",
  "sysexits",
- "thiserror",
+ "thiserror 1.0.65",
  "ureq",
  "url",
  "zeroize",
@@ -6691,29 +6529,14 @@ dependencies = [
 [[package]]
 name = "saturn"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "cedar-policy",
- "common 0.1.0 (git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p)",
+ "common",
  "itertools 0.13.0",
  "serde",
  "serde_json",
- "thiserror",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "saturn"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
-dependencies = [
- "cedar-policy",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
- "itertools 0.13.0",
- "serde",
- "serde_json",
- "thiserror",
+ "thiserror 2.0.0",
  "tracing",
  "tracing-subscriber",
 ]
@@ -6800,7 +6623,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "strum 0.26.3",
- "thiserror",
+ "thiserror 1.0.65",
  "time",
  "tracing",
  "url",
@@ -7365,7 +7188,7 @@ dependencies = [
  "sha2 0.10.8",
  "smallvec",
  "sqlformat",
- "thiserror",
+ "thiserror 1.0.65",
  "time",
  "tokio",
  "tokio-stream",
@@ -7454,7 +7277,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror",
+ "thiserror 1.0.65",
  "time",
  "tracing",
  "uuid",
@@ -7498,7 +7321,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror",
+ "thiserror 1.0.65",
  "time",
  "tracing",
  "uuid",
@@ -7813,18 +7636,18 @@ dependencies = [
 [[package]]
 name = "taurus"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "async-trait",
  "axum",
- "callisto 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "callisto",
  "chrono",
- "common 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "common",
  "crossbeam-channel",
- "jupiter 0.1.0 (git+https://github.com/web3infra-foundation/mega.git?branch=main)",
+ "jupiter",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 2.0.0",
  "tokio",
  "tracing",
 ]
@@ -7877,7 +7700,16 @@ version = "1.0.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d11abd9594d9b38965ef50805c5e469ca9cc6f197f883f717e0269a3057b3d5"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.65",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15291287e9bff1bc6f9ff3409ed9af665bec7a5fc8ac079ea96be07bca0e2668"
+dependencies = [
+ "thiserror-impl 2.0.0",
 ]
 
 [[package]]
@@ -7885,6 +7717,17 @@ name = "thiserror-impl"
 version = "1.0.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae71770322cbd277e69d762a16c444af02aa0575ac0d174f0b9562d3b37f8602"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22efd00f33f93fa62848a7cab956c3d38c8d43095efda1decfc2b3a5dc0b8972"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8219,7 +8062,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3566e8ce28cc0a3fe42519fc80e6b4c943cc4c8cef275620eb8dac2d3d4e06cf"
 dependencies = [
  "crossbeam-channel",
- "thiserror",
+ "thiserror 1.0.65",
  "time",
  "tracing-subscriber",
 ]
@@ -8528,23 +8371,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vault"
 version = "0.1.0"
-source = "git+https://github.com/Hou-Xiaoxuan/mega.git?branch=lfs-p2p#db01e250a8f76cb053aab3b17e3aa0301d6ea281"
-dependencies = [
- "bs58",
- "go-defer",
- "hex",
- "lazy_static",
- "openssl",
- "rusty_vault",
- "secp256k1",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "vault"
-version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#fb69b0f5030a07786384f5b632ff0b449aaf170f"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
 dependencies = [
  "bs58",
  "go-defer",
@@ -8725,7 +8552,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "num-derive",
  "num-traits",
- "thiserror",
+ "thiserror 1.0.65",
  "wasmedge-macro",
  "wasmedge-sys",
  "wasmedge-types",
@@ -8753,7 +8580,7 @@ dependencies = [
  "setjmp",
  "sha256",
  "tar",
- "thiserror",
+ "thiserror 1.0.65",
  "wasmedge-macro",
  "wasmedge-types",
  "wat",
@@ -8765,7 +8592,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17315f552d26bcfe01fc185b874177592d30aab86a10ed898cc8a3f29815c9c4"
 dependencies = [
- "thiserror",
+ "thiserror 1.0.65",
  "wat",
 ]
 
@@ -8802,7 +8629,7 @@ dependencies = [
  "nom",
  "pori",
  "regex",
- "thiserror",
+ "thiserror 1.0.65",
  "walkdir",
 ]
 

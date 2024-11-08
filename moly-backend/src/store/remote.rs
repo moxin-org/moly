@@ -238,7 +238,7 @@ impl ModelFileDownloader {
         let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_bootstrap_node(
             MEGA_OPTIONS.bootstrap_nodes,
             MEGA_OPTIONS.ztm_agent_port,
-        ).await;
+        );
         let r = tokio::select! {
             // r = download_file(
             //     &self.client,
