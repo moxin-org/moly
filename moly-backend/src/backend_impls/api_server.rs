@@ -323,15 +323,21 @@ impl BackendModel for LLamaEdgeApiServer {
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
-            let resp = reqwest::ClientBuilder::new()
-                .no_proxy()
-                .build()
-                .unwrap()
-                .post(url)
-                .body(request_body)
-                .send()
-                .await
-                .map_err(|e| anyhow!(e));
+            let resp = tokio::select! {
+                res = reqwest::ClientBuilder::new()
+                            .no_proxy()
+                            .build()
+                            .unwrap()
+                            .post(url)
+                            .body(request_body)
+                            .send() => res.map_err(|e| anyhow!(e)),
+                _ = cancel.recv() => {
+                    let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                        StopReason::Stop,
+                    ))));
+                    return;
+                },
+            };
 
             match resp {
                 Ok(resp) => {
