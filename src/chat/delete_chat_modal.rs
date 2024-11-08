@@ -187,7 +187,7 @@ impl WidgetMatchEvent for DeleteChatModal {
         }
 
         if self
-            .button(id!(wrapper.body.actions.delete_button))
+            .button(id!(delete_button))
             .clicked(actions)
         {
             let store = scope.data.get_mut::<Store>().unwrap();
@@ -197,7 +197,7 @@ impl WidgetMatchEvent for DeleteChatModal {
         }
 
         if self
-            .button(id!(wrapper.body.actions.cancel_button))
+            .button(id!(cancel_button))
             .clicked(actions)
         {
             cx.action(DeleteChatModalAction::Cancelled);
