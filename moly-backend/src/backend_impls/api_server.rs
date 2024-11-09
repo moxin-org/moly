@@ -368,8 +368,15 @@ impl BackendModel for LLamaEdgeApiServer {
                             StopReason::Stop,
                         ))));
                     } else {
-                        let resp: Result<ChatResponseData, anyhow::Error> =
-                            resp.json().await.map_err(|e| anyhow!(e));
+                        let resp = tokio::select! {
+                            res = resp.json::<ChatResponseData>() => res.map_err(|e| anyhow!(e)),
+                            _ = cancel.recv() => {
+                                let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                                    StopReason::Stop,
+                                ))));
+                                return;
+                            },
+                        };
                         let _ = tx.send(resp.map(ChatResponse::ChatFinalResponseData));
                     }
                 }
