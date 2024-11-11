@@ -217,12 +217,13 @@ pub fn add_model_card<P: AsRef<Path>>(app_data_dir: P, model_path: P) -> anyhow:
         tokio::runtime::Runtime::new()?.block_on(
             gemini::lfs::share_lfs(
                 MEGA_OPTIONS.bootstrap_nodes.to_string(),
-                sha256,
+                sha256.clone(),
                 "sha256".to_string(),
                 size as i64,
                 p2p_uri
             )
         );
+        log::info!("Model shared to Relay: {:?}", sha256);
     }
     Ok(())
 }

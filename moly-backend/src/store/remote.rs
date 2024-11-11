@@ -215,7 +215,10 @@ impl ModelFileDownloader {
         mut file: super::download_files::DownloadedFile,
         report_fn: &mut (dyn FnMut(f64) -> anyhow::Result<()> + Send),
     ) -> anyhow::Result<Option<FileDownloadResponse>> {
-        let url = self.get_download_url(&file);
+        // let url = self.get_download_url(&file); // TODO need default download url to deal with p2p & hugging-face separately
+        let peer_id = file.model_id.split('/').next().unwrap();
+        let url = format!("p2p://{}/sha256/{}", peer_id, file.sha256);
+        // TODO for p2p, file.file_size is 0 (get by HEAD request); but never mind, we don't need it
 
         let local_path = Path::new(&file.download_dir)
             .join(&file.model_id)
@@ -235,6 +238,8 @@ impl ModelFileDownloader {
             }
         };
 
+        log::info!("Downloading url: {}", url);
+        log::info!("Downloading to path: {:?}", local_path);
         let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_bootstrap_node(
             MEGA_OPTIONS.bootstrap_nodes,
             MEGA_OPTIONS.ztm_agent_port,
@@ -249,7 +254,7 @@ impl ModelFileDownloader {
             //     report_fn,
             // ) => r?,
             r = lfs_client.download_object_p2p(
-                &file.sha256,
+                &url, // FIXME
                 &local_path,
                 Some((
                     report_fn,
