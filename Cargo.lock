@@ -1348,7 +1348,7 @@ dependencies = [
 [[package]]
 name = "callisto"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "chrono",
  "sea-orm",
@@ -1465,7 +1465,7 @@ dependencies = [
 [[package]]
 name = "ceres"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1658,7 +1658,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "anyhow",
  "axum",
@@ -2151,7 +2151,7 @@ dependencies = [
 [[package]]
 name = "delta"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "diffs",
  "flate2",
@@ -2863,7 +2863,7 @@ dependencies = [
 [[package]]
 name = "gateway"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "axum",
  "axum-server",
@@ -2889,7 +2889,7 @@ dependencies = [
 [[package]]
 name = "gemini"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "axum",
  "callisto",
@@ -3685,7 +3685,7 @@ dependencies = [
 [[package]]
 name = "jupiter"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3839,7 +3839,7 @@ dependencies = [
 [[package]]
 name = "libra"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "anyhow",
  "byte-unit",
@@ -4338,7 +4338,7 @@ checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 [[package]]
 name = "mega"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "anyhow",
  "ceres",
@@ -4380,7 +4380,7 @@ dependencies = [
 [[package]]
 name = "mercury"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "axum",
  "bincode",
@@ -4572,7 +4572,7 @@ dependencies = [
 [[package]]
 name = "mono"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "anyhow",
  "async-session",
@@ -4685,7 +4685,7 @@ dependencies = [
 [[package]]
 name = "neptune"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "cmake",
  "libc",
@@ -6529,7 +6529,7 @@ dependencies = [
 [[package]]
 name = "saturn"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "cedar-policy",
  "common",
@@ -7636,7 +7636,7 @@ dependencies = [
 [[package]]
 name = "taurus"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "async-trait",
  "axum",
@@ -8371,7 +8371,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vault"
 version = "0.1.0"
-source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#9fedcc41ea19c3f6c62fdf68fddb9ae2e22a4f0b"
+source = "git+https://github.com/web3infra-foundation/mega.git?branch=main#c64b9e938f80d8ceffb249dd5ca05cc792b1f60d"
 dependencies = [
  "bs58",
  "go-defer",

@@ -39,7 +39,7 @@ pub struct MegaOptions {
 }
 
 pub const MEGA_OPTIONS: MegaOptions = MegaOptions {
-    bootstrap_nodes: "http://gitmono.org/relay",
+    bootstrap_nodes: "http://81.70.201.47:8001",
     ztm_agent_port: 7777,
     http_port: 8000,
 };
