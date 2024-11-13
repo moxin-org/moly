@@ -346,7 +346,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
         for action in actions {
             if matches!(
-                action.as_widget_action().cast(),
+                action.cast(),
                 DeleteChatModalAction::Cancelled
                     | DeleteChatModalAction::CloseButtonClicked
                     | DeleteChatModalAction::ChatDeleted
