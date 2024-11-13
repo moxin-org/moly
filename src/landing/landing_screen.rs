@@ -147,7 +147,7 @@ impl Widget for LandingScreen {
 impl WidgetMatchEvent for LandingScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for action in actions.iter() {
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ModelListAction::ScrolledAtTop => {
                     if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
                         self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
