@@ -250,7 +250,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
         let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::CloseButtonClicked);
+            cx.action(DownloadNotificationPopupAction::CloseButtonClicked);
         }
 
         if self
@@ -259,19 +259,19 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
         {
             // TODO: Abstract the navigation actions on a single enum for the whole app.
             cx.widget_action(widget_uid, &scope.path, PopupAction::NavigateToMyModels);
-            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::ActionLinkClicked);
+            cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
 
         if self.link_label(id!(retry_link)).clicked(actions) {
             let Some(file_id) = &self.file_id else { return };
             cx.action(DownloadAction::Play(file_id.clone()));
-            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::ActionLinkClicked);
+            cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
 
         if self.link_label(id!(cancel_link)).clicked(actions) {
             let Some(file_id) = &self.file_id else { return };
             cx.action(DownloadAction::Cancel(file_id.clone()));
-            cx.widget_action(widget_uid, &scope.path, DownloadNotificationPopupAction::ActionLinkClicked);
+            cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
     }
 }

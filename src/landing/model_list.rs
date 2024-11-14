@@ -137,13 +137,12 @@ impl WidgetMatchEvent for ModelList {
         }
 
         if portal_list.scrolled(actions) {
-            let widget_uid = self.widget_uid();
             if portal_list.first_id() == 0
                 && portal_list.scroll_position() > SCROLLING_AT_TOP_THRESHOLD
             {
-                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledAtTop);
+                cx.action(ModelListAction::ScrolledAtTop);
             } else {
-                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledNotAtTop);
+                cx.action(ModelListAction::ScrolledNotAtTop);
             }
         }
     }

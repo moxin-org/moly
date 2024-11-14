@@ -14,7 +14,7 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::shared::resource_imports::*;
     import crate::chat::chat_line_loading::ChatLineLoading;
-    
+
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -275,7 +275,7 @@ pub struct ChatLine {
 impl Widget for ChatLine {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.match_event(cx, event);
+        self.widget_match_event(cx, event, scope);
 
         // Current Makepad's processing of the hover events is not enough
         // in our case because it collapes the hover state of the
@@ -298,8 +298,8 @@ impl Widget for ChatLine {
     }
 }
 
-impl MatchEvent for ChatLine {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+impl WidgetMatchEvent for ChatLine {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         match self.edition_state {
             ChatLineState::Editable => self.handle_editable_actions(cx, actions),
             ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions),
@@ -357,7 +357,11 @@ impl ChatLine {
             // Do not allow to have empty messages for now.
             // TODO We should disable Save button when the message is empty.
             if !updated_message.trim().is_empty() {
-                cx.action(ChatLineAction::Edit(self.message_id, updated_message, false));
+                cx.action(ChatLineAction::Edit(
+                    self.message_id,
+                    updated_message,
+                    false,
+                ));
             }
 
             self.set_edit_mode(cx, false);

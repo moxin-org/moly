@@ -244,7 +244,7 @@ impl MatchEvent for App {
             }
 
             if matches!(
-                action.as_widget_action().cast(),
+                action.cast(),
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
