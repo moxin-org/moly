@@ -258,7 +258,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
             .clicked(actions)
         {
             // TODO: Abstract the navigation actions on a single enum for the whole app.
-            cx.widget_action(widget_uid, &scope.path, PopupAction::NavigateToMyModels);
+            cx.action(PopupAction::NavigateToMyModels);
             cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
 
