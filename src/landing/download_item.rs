@@ -344,33 +344,18 @@ impl WidgetMatchEvent for DownloadItem {
         for button_id in [id!(play_button), id!(retry_button)] {
             if self.button(button_id).clicked(&actions) {
                 let Some(file_id) = &self.file_id else { return };
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    DownloadAction::Play(file_id.clone()),
-                )
+                cx.action(DownloadAction::Play(file_id.clone()));
             }
         }
 
         if self.button(id!(pause_button)).clicked(&actions) {
             let Some(file_id) = &self.file_id else { return };
-            let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Pause(file_id.clone()),
-            )
+            cx.action(DownloadAction::Pause(file_id.clone()));
         }
 
         if self.button(id!(cancel_button)).clicked(&actions) {
             let Some(file_id) = &self.file_id else { return };
-            let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Cancel(file_id.clone()),
-            )
+            cx.action(DownloadAction::Cancel(file_id.clone()));
         }
     }
 }

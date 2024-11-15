@@ -264,21 +264,13 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
 
         if self.link_label(id!(retry_link)).clicked(actions) {
             let Some(file_id) = &self.file_id else { return };
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Play(file_id.clone()),
-            );
+            cx.action(DownloadAction::Play(file_id.clone()));
             cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
 
         if self.link_label(id!(cancel_link)).clicked(actions) {
             let Some(file_id) = &self.file_id else { return };
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Cancel(file_id.clone()),
-            );
+            cx.action(DownloadAction::Cancel(file_id.clone()));
             cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
     }
