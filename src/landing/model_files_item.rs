@@ -213,7 +213,7 @@ pub struct ModelFilesItem {
 impl Widget for ModelFilesItem {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.match_event(cx, event);
+        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -318,8 +318,8 @@ impl Widget for ModelFilesItem {
     }
 }
 
-impl MatchEvent for ModelFilesItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+impl WidgetMatchEvent for ModelFilesItem {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let Some(file_id) = self.file_id.clone() else {
             return;
         };
