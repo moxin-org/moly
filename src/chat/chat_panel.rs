@@ -9,7 +9,7 @@ use crate::{
         model_selector_list::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatMessage},
+        chats::chat::{Chat, ChatEntityAction, ChatID, ChatMessage},
         store::Store,
     },
     shared::actions::ChatAction,
@@ -466,24 +466,6 @@ impl Widget for ChatPanel {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
         self.update_state(scope);
-
-        if let Event::Signal = event {
-            match self.state {
-                State::ModelSelectedWithChat {
-                    is_streaming: true,
-                    sticked_to_bottom,
-                    ..
-                } => {
-                    if sticked_to_bottom {
-                        self.scroll_messages_to_bottom(cx);
-                    }
-
-                    // Redraw because we expect to see new or updated chat entries
-                    self.redraw(cx);
-                }
-                _ => {}
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -513,6 +495,28 @@ impl Widget for ChatPanel {
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        for action in actions {
+            if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
+                if get_chat_id(store) == Some(action.chat_id) {
+                    match self.state {
+                        State::ModelSelectedWithChat {
+                            is_streaming: true,
+                            sticked_to_bottom,
+                            ..
+                        } => {
+                            if sticked_to_bottom {
+                                self.scroll_messages_to_bottom(cx);
+                            }
+
+                            // Redraw because we expect to see new or updated chat entries
+                            self.redraw(cx);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
 
         for action in actions
             .iter()
@@ -931,4 +935,8 @@ fn get_model_initial_letter(store: &Store) -> Option<char> {
 
 fn get_chat_messages(store: &Store) -> Option<Ref<Vec<ChatMessage>>> {
     get_chat(store).map(|chat| Ref::map(chat.borrow(), |chat| &chat.messages))
+}
+
+fn get_chat_id(store: &Store) -> Option<ChatID> {
+    get_chat(store).map(|chat| chat.borrow().id)
 }

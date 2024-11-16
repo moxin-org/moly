@@ -1,7 +1,10 @@
 use makepad_code_editor::code_view::CodeViewWidgetExt;
 use makepad_widgets::*;
 
-use crate::data::{chats::model_loader::ModelLoaderStatus, store::Store};
+use crate::data::{
+    chats::model_loader::{ModelLoaderStatus, ModelLoaderStatusChanged},
+    store::Store,
+};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -53,7 +56,7 @@ live_design! {
                     text: "Local inference options will appear once you have a model loaded."
                 }
             }
-            
+
 
             main = <View> {
                 width: Fill, height: Fill
@@ -192,20 +195,6 @@ impl Widget for SettingsScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
-
-        // Once the modals are reloaded, let's clear the override port
-        if let Event::Signal = event {
-            // TODO: Use cx.action to send a more specific message, otherwise it could be refreshing all the time
-            let store = scope.data.get_mut::<Store>().unwrap();
-            if store.chats.model_loader.is_loaded() {
-                self.override_port = None;
-            }
-            if store.chats.model_loader.is_failed() {
-                self.view(id!(load_error_label)).set_visible(true);
-            } else {
-                self.view(id!(load_error_label)).set_visible(false);
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -268,6 +257,21 @@ curl http://localhost:{}/v1/chat/completions \\
 impl WidgetMatchEvent for SettingsScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        for action in actions {
+            // Once the modals are reloaded, let's clear the override port
+            if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
+                if store.chats.model_loader.is_loaded() {
+                    self.override_port = None;
+                }
+                if store.chats.model_loader.is_failed() {
+                    self.view(id!(load_error_label)).set_visible(true);
+                } else {
+                    self.view(id!(load_error_label)).set_visible(false);
+                }
+            }
+        }
+
         let port_number_input = self.view.text_input(id!(port_number_input));
 
         if self.button(id!(edit_port_number)).clicked(actions) {

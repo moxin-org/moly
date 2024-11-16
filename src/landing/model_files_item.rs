@@ -3,7 +3,7 @@ use moly_protocol::data::{File, FileID, PendingDownloadsStatus};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::{
-    data::store::FileWithDownloadInfo,
+    data::{downloads::download::DownloadFileAction, store::FileWithDownloadInfo},
     shared::{
         actions::{ChatAction, DownloadAction},
         utils::format_model_size,
@@ -320,6 +320,14 @@ impl Widget for ModelFilesItem {
 
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        for actions in actions {
+            if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
+                if self.file_id.as_ref() == Some(&action.file_id) {
+                    self.redraw(cx);
+                }
+            }
+        }
+
         let Some(file_id) = self.file_id.clone() else {
             return;
         };

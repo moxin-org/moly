@@ -1,10 +1,12 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
+    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult,
+    PopupAction,
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
@@ -154,13 +156,6 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        // Process all possible store incoming events
-        if let Event::Signal = event {
-            self.store.process_event_signal();
-            self.notify_downloaded_files(cx);
-            self.ui.redraw(cx);
-        }
-
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
@@ -189,6 +184,12 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
+            self.store.handle_action(action);
+
+            if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
+                self.notify_downloaded_files(cx);
+            }
+
             match action.cast() {
                 StoreAction::Search(keywords) => {
                     self.store.search.load_search_results(keywords);
@@ -248,7 +249,9 @@ impl MatchEvent for App {
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
-                self.ui.popup_notification(id!(popup_notification)).close(cx);
+                self.ui
+                    .popup_notification(id!(popup_notification))
+                    .close(cx);
             }
         }
     }

@@ -1,3 +1,4 @@
+use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::model_list::ModelListAction;
 use crate::landing::search_bar::SearchBarWidgetExt;
@@ -147,6 +148,10 @@ impl Widget for LandingScreen {
 impl WidgetMatchEvent for LandingScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for action in actions.iter() {
+            if let Some(_) = action.downcast_ref::<SearchAction>() {
+                self.redraw(cx);
+            }
+
             match action.cast() {
                 ModelListAction::ScrolledAtTop => {
                     if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
