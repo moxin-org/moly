@@ -2,7 +2,7 @@ use makepad_code_editor::code_view::CodeViewWidgetExt;
 use makepad_widgets::*;
 
 use crate::data::{
-    chats::model_loader::{ModelLoaderAction, ModelLoaderStatus},
+    chats::model_loader::{ModelLoaderStatus, ModelLoaderStatusChanged},
     store::Store,
 };
 
@@ -260,7 +260,7 @@ impl WidgetMatchEvent for SettingsScreen {
 
         for action in actions {
             // Once the modals are reloaded, let's clear the override port
-            if let Some(_) = action.downcast_ref::<ModelLoaderAction>() {
+            if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
                 if store.chats.model_loader.is_loaded() {
                     self.override_port = None;
                 }

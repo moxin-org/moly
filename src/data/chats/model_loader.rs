@@ -12,8 +12,9 @@ use std::{
     thread,
 };
 
+/// Message emitted when the model loader status is updated.
 #[derive(Debug)]
-pub struct ModelLoaderAction;
+pub struct ModelLoaderStatusChanged;
 
 /// All posible states in which the loader can be.
 #[derive(Debug, Default, Clone)]
@@ -87,7 +88,6 @@ impl ModelLoader {
             Err(anyhow!("Internal communication error"))
         };
 
-        Cx::post_action(ModelLoaderAction);
         result
     }
 
@@ -107,6 +107,7 @@ impl ModelLoader {
 
     fn set_status(&mut self, status: ModelLoaderStatus) {
         self.0.lock().unwrap().status = status;
+        Cx::post_action(ModelLoaderStatusChanged);
     }
 
     fn set_file_id(&mut self, file_id: Option<FileID>) {
