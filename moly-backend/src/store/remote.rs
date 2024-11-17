@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use moly_protocol::data::Model;
 use moly_protocol::protocol::FileDownloadResponse;
 use std::time::Duration;
+use libra::internal::protocol::lfs_client::LFSClient;
 use libra::internal::protocol::ProtocolClient;
 use reqwest::Url;
 use tokio::time::timeout;
@@ -262,7 +263,26 @@ impl ModelFileDownloader {
                 ))
             ) => {
                 match r {
-                    Ok(_) => DownloadResult::Completed(100.0),
+                    Ok(_) => {
+                        // push to local mega
+                        let local_mega = format!("http://localhost:{}", MEGA_OPTIONS.http_port);
+                        let client = LFSClient::from_url(&Url::parse(&local_mega)?);
+                        if let Err(_) = client.push_object(&file.sha256, local_path.as_ref()).await {
+                            return Err(anyhow::anyhow!("Failed to push to local mega"));
+                        };
+                        log::info!("Pushed to local mega: {}", local_mega);
+                        // share to Relay
+                        let size = std::fs::metadata(&local_path)?.len();
+                        gemini::lfs::share_lfs(
+                            MEGA_OPTIONS.bootstrap_nodes.to_string(),
+                            file.sha256.clone(),
+                            "sha256".to_string(),
+                            size as i64,
+                            url
+                        ).await;
+                        log::info!("Shared to Relay: {}", MEGA_OPTIONS.bootstrap_nodes);
+                        DownloadResult::Completed(100.0)
+                    },
                     Err(e) => {
                         log::error!("Failed to download object: {}", e);
                         return Err(e.into());
