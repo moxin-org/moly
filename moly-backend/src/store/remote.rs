@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::File;
 use std::io::{self, Seek, Write};
 use std::path::Path;
@@ -7,11 +8,13 @@ use std::sync::{Arc, Mutex};
 use moly_protocol::data::Model;
 use moly_protocol::protocol::FileDownloadResponse;
 use std::time::Duration;
+use libra::internal::protocol::lfs_client::LFSClient;
 use libra::internal::protocol::ProtocolClient;
 use reqwest::Url;
 use tokio::time::timeout;
 
 use crate::backend_impls::DownloadControlCommand;
+use crate::MEGA_OPTIONS;
 
 async fn get_file_content_length(client: &reqwest::Client, url: &str) -> reqwest::Result<u64> {
     let response = client.head(url).send().await?;
@@ -213,7 +216,10 @@ impl ModelFileDownloader {
         mut file: super::download_files::DownloadedFile,
         report_fn: &mut (dyn FnMut(f64) -> anyhow::Result<()> + Send),
     ) -> anyhow::Result<Option<FileDownloadResponse>> {
-        let url = self.get_download_url(&file);
+        // let url = self.get_download_url(&file); // TODO need default download url to deal with p2p & hugging-face separately
+        let peer_id = file.model_id.split('/').next().unwrap();
+        let url = format!("p2p://{}/sha256/{}", peer_id, file.sha256);
+        // TODO for p2p, file.file_size is 0 (get by HEAD request); but never mind, we don't need it
 
         let local_path = Path::new(&file.download_dir)
             .join(&file.model_id)
@@ -233,8 +239,12 @@ impl ModelFileDownloader {
             }
         };
 
-        let lfs_url = Url::parse("https://git.gitmono.org")?;
-        let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_url(&lfs_url);
+        log::info!("Downloading url: {}", url);
+        log::info!("Downloading to path: {:?}", local_path);
+        let lfs_client = LFSClient::from_bootstrap_node(
+            MEGA_OPTIONS.bootstrap_nodes,
+            MEGA_OPTIONS.ztm_agent_port,
+        );
         let r = tokio::select! {
             // r = download_file(
             //     &self.client,
@@ -244,9 +254,8 @@ impl ModelFileDownloader {
             //     self.step,
             //     report_fn,
             // ) => r?,
-            r = lfs_client.download_object(
-                &file.sha256,
-                file.file_size,
+            r = lfs_client.download_object_p2p(
+                &url, // FIXME
                 &local_path,
                 Some((
                     report_fn,
@@ -254,7 +263,26 @@ impl ModelFileDownloader {
                 ))
             ) => {
                 match r {
-                    Ok(_) => DownloadResult::Completed(100.0),
+                    Ok(_) => {
+                        // push to local mega
+                        let local_mega = format!("http://localhost:{}", MEGA_OPTIONS.http_port);
+                        let client = LFSClient::from_url(&Url::parse(&local_mega)?);
+                        if let Err(_) = client.push_object(&file.sha256, local_path.as_ref()).await {
+                            return Err(anyhow::anyhow!("Failed to push to local mega"));
+                        };
+                        log::info!("Pushed to local mega: {}", local_mega);
+                        // share to Relay
+                        let size = std::fs::metadata(&local_path)?.len();
+                        gemini::lfs::share_lfs(
+                            MEGA_OPTIONS.bootstrap_nodes.to_string(),
+                            file.sha256.clone(),
+                            "sha256".to_string(),
+                            size as i64,
+                            url
+                        ).await;
+                        log::info!("Shared to Relay: {}", MEGA_OPTIONS.bootstrap_nodes);
+                        DownloadResult::Completed(100.0)
+                    },
                     Err(e) => {
                         log::error!("Failed to download object: {}", e);
                         return Err(e.into());

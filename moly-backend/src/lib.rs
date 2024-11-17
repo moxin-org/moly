@@ -30,3 +30,16 @@ impl Backend {
         Backend { command_sender }
     }
 }
+
+/// Options for the Mega backend.
+pub struct MegaOptions {
+    pub bootstrap_nodes: &'static str,
+    pub ztm_agent_port: u16,
+    pub http_port: u16,
+}
+
+pub const MEGA_OPTIONS: MegaOptions = MegaOptions {
+    bootstrap_nodes: "http://81.70.201.47:8001",
+    ztm_agent_port: 7777,
+    http_port: 8000,
+};

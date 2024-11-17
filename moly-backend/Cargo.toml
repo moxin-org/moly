@@ -19,11 +19,12 @@ serde_json = "1.0"
 crossbeam = "0.8"
 reqwest = { version = "0.11", features = ["blocking", "stream", "json"] }
 uuid = { version = "1.8.0", features = ["v4", "fast-rng"] }
-rusqlite = { version = "0.30.0", features = ["bundled"] }
+rusqlite = { version = "0.32.1", features = ["bundled"] }
 serde = "1.0.197"
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3.30"
-libra = { git = "https://github.com/web3infra-foundation/mega.git", branch = "main", package = "libra"}
+libra = { git = "https://github.com/Hou-Xiaoxuan/mega.git", branch = "libra-auth", package = "libra", features = ["p2p"]}
 vault = { git = "https://github.com/web3infra-foundation/mega.git", branch = "main", package = "vault"}
+gemini = { git = "https://github.com/web3infra-foundation/mega.git", branch = "main", package = "gemini"}
 ring = "0.17.8"
 hex = "0.4.3"
