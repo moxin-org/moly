@@ -241,7 +241,7 @@ impl ModelFileDownloader {
 
         log::info!("Downloading url: {}", url);
         log::info!("Downloading to path: {:?}", local_path);
-        let lfs_client = libra::internal::protocol::lfs_client::LFSClient::from_bootstrap_node(
+        let lfs_client = LFSClient::from_bootstrap_node(
             MEGA_OPTIONS.bootstrap_nodes,
             MEGA_OPTIONS.ztm_agent_port,
         );
