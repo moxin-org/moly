@@ -72,7 +72,7 @@ live_design! {
     }
 
     Progress = <View> {
-        width: 600,
+        width: Fill,
         height: Fit,
         spacing: 8,
 
@@ -197,9 +197,23 @@ live_design! {
             color: #fff,
         }
 
-        <Information> {}
-        <Progress> {}
-        <Actions> {}
+        <View> {
+            width: Fill,
+            height: Fit,
+            <Information> {}
+        }
+
+        <View> {
+            width: Fill,
+            height: Fit,
+            <Progress> {}
+        }
+
+        <View> {
+            width: Fill,
+            height: Fit,
+            <Actions> {}
+        }
     }
 }
 
