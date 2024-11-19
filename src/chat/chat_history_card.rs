@@ -375,7 +375,7 @@ impl Widget for ChatHistoryCard {
 
 impl WidgetMatchEvent for ChatHistoryCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+        // let widget_uid = self.widget_uid();
 
         match self.title_edition_state {
             TitleState::Editable => self.handle_title_editable_actions(cx, actions, scope),
@@ -406,7 +406,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
         if let Some(fe) = self.view(id!(content)).finger_down(actions) {
             if fe.tap_count == 1 {
-                cx.widget_action(widget_uid, &scope.path, ChatHistoryCardAction::ChatSelected);
+                cx.action(ChatHistoryCardAction::ChatSelected);
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(self.chat_id);
                 self.redraw(cx);
@@ -415,7 +415,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
         for action in actions {
             if matches!(
-                action.as_widget_action().cast(),
+                action.cast(),
                 DeleteChatModalAction::Cancelled
                     | DeleteChatModalAction::CloseButtonClicked
                     | DeleteChatModalAction::ChatDeleted
@@ -480,7 +480,7 @@ impl ChatHistoryCard {
         _scope: &mut Scope,
     ) {
         for action in actions {
-            match action.as_widget_action().cast::<ChatHistoryCardAction>() {
+            match action.cast() {
                 ChatHistoryCardAction::MenuClosed(chat_id) => {
                     if chat_id == self.chat_id {
                         self.button(id!(chat_options)).reset_hover(cx);

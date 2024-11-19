@@ -1,3 +1,4 @@
+use crate::data::search::SearchAction;
 use crate::chat::agent_button::AgentButtonWidgetRefExt;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
@@ -142,10 +143,6 @@ impl Widget for ModelList {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        if let Event::Signal = event {
-            self.loading_delay = cx.start_timeout(0.2);
-        }
-
         if self.loading_delay.is_event(event).is_some() {
             self.update_loading_and_error_message(cx, scope);
         }
@@ -255,7 +252,11 @@ impl WidgetMatchEvent for ModelList {
         let portal_list = self.portal_list(id!(list));
 
         for action in actions.iter() {
-            match action.as_widget_action().cast() {
+            if let Some(_) = action.downcast_ref::<SearchAction>() {
+                self.loading_delay = cx.start_timeout(0.2);
+            }
+
+            match action.cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
                     self.view(id!(search_error)).set_visible(false);
                     self.view(id!(loading)).set_visible(true);
@@ -269,13 +270,12 @@ impl WidgetMatchEvent for ModelList {
         }
 
         if portal_list.scrolled(actions) {
-            let widget_uid = self.widget_uid();
             if portal_list.first_id() == 0
                 && portal_list.scroll_position() > SCROLLING_AT_TOP_THRESHOLD
             {
-                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledAtTop);
+                cx.action(ModelListAction::ScrolledAtTop);
             } else {
-                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledNotAtTop);
+                cx.action(ModelListAction::ScrolledNotAtTop);
             }
         }
     }

@@ -7,7 +7,7 @@ use crate::{
         model_selector_item::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatEntity, ChatMessage},
+        chats::chat::{Chat, ChatEntity, ChatEntityAction, ChatID, ChatMessage},
         store::Store,
     },
     shared::actions::{ChatAction, ChatHandler},
@@ -348,6 +348,7 @@ live_design! {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, Default)]
 enum State {
     /// `Unknown` is simply the default state, meaning the state has not been loaded yet,
@@ -449,10 +450,29 @@ impl Widget for ChatPanel {
 
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
         let store = scope.data.get_mut::<Store>().unwrap();
 
         for action in actions {
+            if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
+                if get_chat_id(store) == Some(action.chat_id) {
+                    match self.state {
+                        State::ModelSelectedWithChat {
+                            receiving_response: true,
+                            sticked_to_bottom,
+                            ..
+                        } => {
+                            if sticked_to_bottom {
+                                self.scroll_messages_to_bottom(cx);
+                            }
+
+                            // Redraw because we expect to see new or updated chat entries
+                            self.redraw(cx);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             match action.cast() {
                 ModelSelectorAction::ModelSelected(downloaded_file) => {
                     store.load_model(&downloaded_file.file);
@@ -481,7 +501,6 @@ impl WidgetMatchEvent for ChatPanel {
 
         for action in actions
             .iter()
-            .filter_map(|action| action.as_widget_action())
         {
             if let ChatHistoryCardAction::ChatSelected = action.cast() {
                 self.reset_scroll_messages(&store);
@@ -558,7 +577,7 @@ impl WidgetMatchEvent for ChatPanel {
             .button(id!(no_downloaded_model.go_to_discover_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
+            cx.action(ChatPanelAction::NavigateToDiscover);
         }
     }
 }
@@ -717,7 +736,7 @@ impl ChatPanel {
     }
 
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
-        let mut list = self.portal_list(id!(chat));
+        let list = self.portal_list(id!(chat));
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
@@ -914,7 +933,6 @@ impl ChatPanel {
                     chat_line_item.set_regenerate_button_visible(true);
                 };
 
-                chat_line_item.set_message_text(cx, &chat_line_data.content);
                 chat_line_item.set_message_id(chat_line_data.id);
 
                 // Disable actions for the last chat line when model is streaming
@@ -926,8 +944,10 @@ impl ChatPanel {
                     }
                 ) && item_id == messages_count - 1
                 {
+                    chat_line_item.set_message_text(cx, &chat_line_data.content, true);
                     chat_line_item.set_actions_enabled(cx, false);
                 } else {
+                    chat_line_item.set_message_text(cx, &chat_line_data.content, false);
                     chat_line_item.set_actions_enabled(cx, true);
                 }
 
@@ -962,4 +982,8 @@ fn get_model_initial_letter(store: &Store) -> Option<char> {
 
 fn get_chat_messages(store: &Store) -> Option<Ref<Vec<ChatMessage>>> {
     get_chat(store).map(|chat| Ref::map(chat.borrow(), |chat| &chat.messages))
+}
+
+fn get_chat_id(store: &Store) -> Option<ChatID> {
+    get_chat(store).map(|chat| chat.borrow().id)
 }

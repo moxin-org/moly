@@ -1,5 +1,6 @@
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
+use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
@@ -156,13 +157,6 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        // Process all possible store incoming events
-        if let Event::Signal = event {
-            self.store.process_event_signal();
-            self.notify_downloaded_files(cx);
-            self.ui.redraw(cx);
-        }
-
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
@@ -195,7 +189,13 @@ impl MatchEvent for App {
                 let _ = robius_open::Uri::new(&url).open();
             }
 
-            match action.as_widget_action().cast() {
+            self.store.handle_action(action);
+
+            if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
+                self.notify_downloaded_files(cx);
+            }
+
+            match action.cast() {
                 StoreAction::Search(keywords) => {
                     self.store.search.load_search_results(keywords);
                 }
@@ -208,7 +208,7 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ModelFileItemAction::Download(file_id) => {
                     let (model, file) = self.store.get_model_and_file_download(&file_id);
                     self.store.downloads.download_file(model, file);
@@ -217,7 +217,7 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 DownloadAction::Play(file_id) => {
                     let (model, file) = self.store.get_model_and_file_download(&file_id);
                     self.store.downloads.download_file(model, file);
@@ -234,23 +234,23 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            if let ChatAction::Start(_) = action.as_widget_action().cast() {
+            if let ChatAction::Start(_) = action.cast() {
                 let chat_radio_button = self.ui.radio_button(id!(chat_tab));
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let PopupAction::NavigateToMyModels = action.as_widget_action().cast() {
+            if let PopupAction::NavigateToMyModels = action.cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let ChatPanelAction::NavigateToDiscover = action.as_widget_action().cast() {
+            if let ChatPanelAction::NavigateToDiscover = action.cast() {
                 let discover_radio_button = self.ui.radio_button(id!(discover_tab));
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
 
             if matches!(
-                action.as_widget_action().cast(),
+                action.cast(),
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {

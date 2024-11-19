@@ -2,7 +2,7 @@ use makepad_code_editor::code_view::CodeViewWidgetExt;
 use makepad_widgets::*;
 
 use crate::data::{
-    chats::model_loader::ModelLoaderStatus,
+    chats::model_loader::{ModelLoaderStatus, ModelLoaderStatusChanged},
     store::Store,
 };
 
@@ -298,6 +298,21 @@ curl http://localhost:{}/v1/chat/completions \\
 impl WidgetMatchEvent for SettingsScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        for action in actions {
+            // Once the modals are reloaded, let's clear the override port
+            if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
+                if store.chats.model_loader.is_loaded() {
+                    self.override_port = None;
+                }
+                if store.chats.model_loader.is_failed() {
+                    self.view(id!(load_error_label)).set_visible(true);
+                } else {
+                    self.view(id!(load_error_label)).set_visible(false);
+                }
+            }
+        }
+
         let port_number_input = self.view.text_input(id!(port_number_input));
 
         if self.button(id!(edit_port_number)).clicked(actions) {

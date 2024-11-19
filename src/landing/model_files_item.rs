@@ -3,7 +3,7 @@ use moly_protocol::data::{File, FileID, PendingDownloadsStatus};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::{
-    data::store::FileWithDownloadInfo,
+    data::{downloads::download::DownloadFileAction, store::FileWithDownloadInfo},
     shared::{
         actions::{ChatAction, ChatHandler, DownloadAction},
         utils::format_model_size,
@@ -320,52 +320,39 @@ impl Widget for ModelFilesItem {
 
 impl WidgetMatchEvent for ModelFilesItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+        for actions in actions {
+            if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
+                if self.file_id.as_ref() == Some(&action.file_id) {
+                    self.redraw(cx);
+                }
+            }
+        }
+
         let Some(file_id) = self.file_id.clone() else {
             return;
         };
 
         if self.button(id!(download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ModelFileItemAction::Download(file_id.clone()),
-            );
+            cx.action(ModelFileItemAction::Download(file_id.clone()));
         }
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatAction::Start(ChatHandler::Model(file_id.clone())),
-            );
+            cx.action(ChatAction::Start(ChatHandler::Model(file_id.clone())));
         }
 
         if [id!(resume_download_button), id!(retry_download_button)]
             .iter()
             .any(|id| self.button(*id).clicked(&actions))
         {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Play(file_id.clone()),
-            );
+            cx.action(DownloadAction::Play(file_id.clone()));
         }
 
         if self.button(id!(pause_download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Pause(file_id.clone()),
-            );
+            cx.action(DownloadAction::Pause(file_id.clone()));
         }
 
         if self.button(id!(cancel_download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Cancel(file_id.clone()),
-            );
+            cx.action(DownloadAction::Cancel(file_id.clone()));
         }
     }
 }

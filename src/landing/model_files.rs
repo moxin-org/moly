@@ -245,7 +245,7 @@ impl WidgetMatchEvent for ModelFiles {
         }
 
         for action in actions.iter() {
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
                     self.expand_without_animation(cx);
                     self.actual_height = None;

@@ -323,15 +323,24 @@ impl BackendModel for LLamaEdgeApiServer {
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
-            let resp = reqwest::ClientBuilder::new()
+            let request = reqwest::ClientBuilder::new()
                 .no_proxy()
                 .build()
                 .unwrap()
                 .post(url)
-                .body(request_body)
-                .send()
-                .await
-                .map_err(|e| anyhow!(e));
+                .body(request_body);
+
+            let resp = tokio::select! {
+                res = request.send() => Some(res.map_err(|e| anyhow!(e))),
+                _ = cancel.recv() => None,
+            };
+
+            let Some(resp) = resp else {
+                let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                    StopReason::Stop,
+                ))));
+                return;
+            };
 
             match resp {
                 Ok(resp) => {
@@ -362,8 +371,18 @@ impl BackendModel for LLamaEdgeApiServer {
                             StopReason::Stop,
                         ))));
                     } else {
-                        let resp: Result<ChatResponseData, anyhow::Error> =
-                            resp.json().await.map_err(|e| anyhow!(e));
+                        let resp = tokio::select! {
+                            res = resp.json::<ChatResponseData>() => Some(res.map_err(|e| anyhow!(e))),
+                            _ = cancel.recv() => None,
+                        };
+
+                        let Some(resp) = resp else {
+                            let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                                StopReason::Stop,
+                            ))));
+                            return;
+                        };
+
                         let _ = tx.send(resp.map(ChatResponse::ChatFinalResponseData));
                     }
                 }

@@ -251,16 +251,10 @@ impl Widget for DownloadedFilesRow {
 }
 
 impl WidgetMatchEvent for DownloadedFilesRow {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ChatAction::Start(ChatHandler::Model(file_id.clone())),
-                );
+                cx.action(ChatAction::Start(ChatHandler::Model(file_id.clone())));
             }
         }
 

@@ -1,6 +1,6 @@
+use super::chat_history_card::ChatHistoryCardAction;
 use crate::data::chats::chat::ChatID;
 use makepad_widgets::*;
-use super::chat_history_card::ChatHistoryCardAction;
 
 live_design! {
     import makepad_widgets::base::*;
@@ -119,39 +119,27 @@ impl ChatHistoryCardOptions {
 
 impl ChatHistoryCardOptionsRef {
     pub fn selected(&mut self, cx: &mut Cx, chat_id: ChatID) {
-        let Some(mut inner) = self.borrow_mut() else { return };
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
         inner.selected(cx, chat_id);
     }
 }
 
 impl WidgetMatchEvent for ChatHistoryCardOptions {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(delete_chat)).clicked(actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::MenuClosed(self.chat_id),
-            );
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::DeleteChatOptionSelected(self.chat_id),
-            );
+            cx.action(ChatHistoryCardAction::MenuClosed(self.chat_id));
+
+            cx.action(ChatHistoryCardAction::DeleteChatOptionSelected(
+                self.chat_id,
+            ));
         }
 
         if self.button(id!(edit_chat_name)).clicked(actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::MenuClosed(self.chat_id),
-            );
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatHistoryCardAction::ActivateTitleEdition(self.chat_id),
-            );
+            cx.action(ChatHistoryCardAction::MenuClosed(self.chat_id));
+
+            cx.action(ChatHistoryCardAction::ActivateTitleEdition(self.chat_id));
         }
     }
 }

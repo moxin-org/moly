@@ -173,6 +173,7 @@ impl Widget for DeleteModelModal {
 
 impl WidgetMatchEvent for DeleteModelModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(DeleteModelModalAction::ModalDismissed);
         }

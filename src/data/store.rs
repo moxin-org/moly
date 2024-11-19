@@ -1,11 +1,13 @@
 use super::chats::chat::{ChatEntity, ChatID};
+use super::chats::model_loader::ModelLoaderStatusChanged;
+use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
 use super::preferences::Preferences;
 use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{ActionDefaultRef, Cx, DefaultNone, SignalToUI};
+use makepad_widgets::{ActionDefaultRef, Cx, Action, DefaultNone};
 use moly_backend::Backend;
 use moly_mofa::{
     MofaAgent,
@@ -342,36 +344,21 @@ impl Store {
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
 
-        SignalToUI::set_ui_signal();
         Ok(())
     }
 
-    pub fn process_event_signal(&mut self) {
-        self.update_downloads();
-        self.update_chat_messages();
-        self.update_search_results();
-        self.update_load_model();
-    }
+    pub fn handle_action(&mut self, action: &Action) {
+        self.chats.handle_action(action);
+        self.search.handle_action(action);
+        self.downloads.handle_action(action);
 
-    fn update_search_results(&mut self) {
-        match self.search.process_results() {
-            Ok(Some(models)) => {
-                self.search.set_models(models);
-            }
-            Ok(None) => {
-                // No results arrived, do nothing
-            }
-            Err(_) => {
-                self.search.set_models(vec![]);
-            }
+        if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
+            self.update_load_model();
         }
-    }
 
-    fn update_chat_messages(&mut self) {
-        let Some(chat) = self.chats.get_current_chat() else {
-            return;
-        };
-        chat.borrow_mut().update_messages();
+        if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
+            self.update_downloads();
+        }
     }
 
     fn update_downloads(&mut self) {

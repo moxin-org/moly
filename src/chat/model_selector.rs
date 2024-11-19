@@ -368,7 +368,7 @@ impl WidgetMatchEvent for ModelSelector {
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ChatAction::Start(_) => {
                     self.hide_options(cx);
                 }
