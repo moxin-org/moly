@@ -36,7 +36,7 @@ live_design! {
     }
 
     Information = <View> {
-        width: 380,
+        width: Fill,
         height: Fit,
         flow: Right,
         spacing: 12,
@@ -146,7 +146,7 @@ live_design! {
 
     Actions = <View> {
         width: Fill,
-        height: 40,
+        height: Fit,
         flow: Right,
         spacing: 12,
 
@@ -197,23 +197,9 @@ live_design! {
             color: #fff,
         }
 
-        <View> {
-            width: Fill,
-            height: Fit,
-            <Information> {}
-        }
-
-        <View> {
-            width: Fill,
-            height: Fit,
-            <Progress> {}
-        }
-
-        <View> {
-            width: Fill,
-            height: Fit,
-            <Actions> {}
-        }
+        <Information> {}
+        <Progress> {}
+        <Actions> {}
     }
 }
 
