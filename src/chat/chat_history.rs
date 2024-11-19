@@ -176,17 +176,5 @@ impl WidgetMatchEvent for ChatHistory {
 
             self.redraw(cx);
         }
-
-        if self.button(id!(close_panel_button)).clicked(&actions) {
-            self.button(id!(close_panel_button)).set_visible(false);
-            self.button(id!(open_panel_button)).set_visible(true);
-            self.deref.set_open(cx, false);
-        }
-
-        if self.button(id!(open_panel_button)).clicked(&actions) {
-            self.button(id!(open_panel_button)).set_visible(false);
-            self.button(id!(close_panel_button)).set_visible(true);
-            self.deref.set_open(cx, true);
-        }
     }
 }

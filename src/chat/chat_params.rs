@@ -299,20 +299,6 @@ impl WidgetMatchEvent for ChatParams {
         self.handle_tooltip_actions(cx, actions);
 
         let store = scope.data.get_mut::<Store>().unwrap();
-        let close = self.button(id!(close_panel_button));
-        let open = self.button(id!(open_panel_button));
-
-        if close.clicked(&actions) {
-            close.set_visible(false);
-            open.set_visible(true);
-            self.set_open(cx, false);
-        }
-
-        if open.clicked(&actions) {
-            open.set_visible(false);
-            close.set_visible(true);
-            self.set_open(cx, true);
-        }
 
         if let Some(chat) = store.chats.get_current_chat() {
             let mut chat = chat.borrow_mut();
