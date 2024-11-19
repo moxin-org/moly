@@ -401,24 +401,6 @@ impl Widget for ChatPanel {
 
         let store = scope.data.get_mut::<Store>().unwrap();
         self.update_state(store);
-
-        if let Event::Signal = event {
-            match self.state {
-                State::ModelSelectedWithChat {
-                    receiving_response: true,
-                    sticked_to_bottom,
-                    ..
-                } => {
-                    if sticked_to_bottom {
-                        self.scroll_messages_to_bottom(cx);
-                    }
-
-                    // Redraw because we expect to see new or updated chat entries
-                    self.redraw(cx);
-                }
-                _ => {}
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -499,9 +481,7 @@ impl WidgetMatchEvent for ChatPanel {
             }
         }
 
-        for action in actions
-            .iter()
-        {
+        for action in actions.iter() {
             if let ChatHistoryCardAction::ChatSelected = action.cast() {
                 self.reset_scroll_messages(&store);
                 self.focus_on_prompt_input_pending = true;

@@ -214,20 +214,6 @@ impl Widget for SettingsScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
-
-        // Once the modals are reloaded, let's clear the override port
-        if let Event::Signal = event {
-            // TODO: Use cx.action to send a more specific message, otherwise it could be refreshing all the time
-            let store = scope.data.get_mut::<Store>().unwrap();
-            if store.chats.model_loader.is_loaded() {
-                self.override_port = None;
-            }
-            if store.chats.model_loader.is_failed() {
-                self.view(id!(load_info_label)).set_visible(true);
-            } else {
-                self.view(id!(load_info_label)).set_visible(false);
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
