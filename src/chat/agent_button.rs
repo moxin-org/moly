@@ -124,18 +124,14 @@ impl Widget for AgentButton {
 }
 
 impl WidgetMatchEvent for AgentButton {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let Some(agent) = self.agent else { return };
 
         if let Some(item) = actions.find_widget_action(self.view.widget_uid()) {
             if let ViewAction::FingerDown(fd) = item.cast() {
                 if fd.tap_count == 1 {
                     if self.create_new_chat {
-                        cx.widget_action(
-                            self.widget_uid(),
-                            &scope.path,
-                            ChatAction::Start(ChatHandler::Agent(agent)),
-                        );
+                        cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
                     }
 
                     if self.select_agent_on_prompt {
