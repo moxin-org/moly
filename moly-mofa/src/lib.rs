@@ -1,4 +1,6 @@
-use moly_protocol::open_ai::{ChatResponseData, ChoiceData, MessageData, Role, StopReason, UsageData};
+use moly_protocol::open_ai::{
+    ChatResponseData, ChoiceData, MessageData, Role, StopReason, UsageData,
+};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::sync::mpsc::{self, channel};
 use tokio::task::JoinHandle;
@@ -120,18 +122,18 @@ impl MofaBackend {
     }
 
     pub fn new() -> Self {
-        if should_be_fake() {
-            return Self::new_fake();
+        if should_be_real() {
+            let (command_sender, command_receiver) = channel();
+            let backend = Self { command_sender };
+
+            std::thread::spawn(move || {
+                Self::main_loop(command_receiver);
+            });
+
+            backend
+        } else {
+            Self::new_fake()
         }
-
-        let (command_sender, command_receiver) = channel();
-        let backend = Self { command_sender };
-
-        std::thread::spawn(move || {
-            Self::main_loop(command_receiver);
-        });
-
-        backend
     }
 
     pub fn main_loop(command_receiver: mpsc::Receiver<MofaAgentCommand>) {
@@ -154,7 +156,10 @@ impl MofaBackend {
                         }],
                     };
                     let client = reqwest::Client::new();
-                    let url = options.address.clone().unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
+                    let url = options
+                        .address
+                        .clone()
+                        .unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
                     current_request = Some(rt.spawn(async move {
                         let resp = client
                             .post(format!("{}/v1/chat/completions", url))
@@ -184,7 +189,10 @@ impl MofaBackend {
                     options.address = Some(address);
                 }
                 MofaAgentCommand::TestServer(tx) => {
-                    let url = options.address.clone().unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
+                    let url = options
+                        .address
+                        .clone()
+                        .unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
                     let resp = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
                         .no_proxy()
@@ -253,8 +261,8 @@ impl MofaBackend {
     }
 }
 
-pub fn should_be_fake() -> bool {
-    std::env::var("MAE_BACKEND").unwrap_or_default() == "fake"
+pub fn should_be_real() -> bool {
+    std::env::var("MOFA_BACKEND").unwrap_or_default() == "real"
 }
 
 #[derive(Clone, Debug)]
