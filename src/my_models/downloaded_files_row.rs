@@ -1,9 +1,9 @@
+use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 use crate::shared::actions::ChatAction;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
 use makepad_widgets::*;
 use moly_protocol::data::{DownloadedFile, FileID};
-use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 
 live_design! {
     import makepad_widgets::base::*;
@@ -84,7 +84,7 @@ live_design! {
     DownloadedFilesTag = <View> {
         width: 100
         align: {x: 0.0, y: 0.5}
-        file_size = <Label> {
+        label = <Label> {
             draw_text: {
                 text_style: <REGULAR_FONT>{font_size: 9}
                 color: #x0
@@ -237,12 +237,12 @@ impl Widget for DownloadedFilesRow {
 
         // File size tag
         let file_size = format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
-        self.label(id!(h_wrapper.file_size_tag.file_size))
+        self.label(id!(h_wrapper.file_size_tag.label))
             .set_text(&file_size);
 
         // Added date tag
         let formatted_date = downloaded_file.downloaded_at.format("%d/%m/%Y").to_string();
-        self.label(id!(h_wrapper.date_added_tag.date_added))
+        self.label(id!(h_wrapper.date_added_tag.label))
             .set_text(&formatted_date);
 
         self.view.draw_walk(cx, scope, walk)
@@ -250,12 +250,10 @@ impl Widget for DownloadedFilesRow {
 }
 
 impl WidgetMatchEvent for DownloadedFilesRow {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
+                cx.action(ChatAction::Start(file_id.clone()));
             }
         }
 

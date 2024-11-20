@@ -175,9 +175,8 @@ impl WidgetMatchEvent for Sorting {
                 3 => SortCriteria::LeastLikes,
                 4_usize.. => panic!(),
             };
-
-            let widget_uid = self.widget_uid();
-            cx.widget_action(widget_uid, &scope.path, StoreAction::Sort(criteria));
+            
+            cx.action(StoreAction::Sort(criteria));
         }
     }
 }

@@ -160,4 +160,3 @@ jobs:
           cd dist/
           $file=Get-ChildItem -Filter *.exe
           gh release upload ${{ github.event.inputs.release_tags }} $file.name --clobber
-

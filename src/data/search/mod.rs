@@ -1,12 +1,11 @@
 mod faked_models;
 
-use anyhow::{anyhow, Result};
-use makepad_widgets::SignalToUI;
+use makepad_widgets::{Action, Cx};
 use moly_backend::Backend;
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
 use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::channel;
 use std::thread;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -17,6 +16,8 @@ pub enum SortCriteria {
     MostLikes,
     LeastLikes,
 }
+
+#[derive(Debug)]
 pub enum SearchAction {
     Results(Vec<Model>),
     Error,
@@ -40,21 +41,16 @@ pub struct Search {
     pub models: Vec<Model>,
     pub sorted_by: SortCriteria,
     pub keyword: Option<String>,
-    pub sender: Sender<SearchAction>,
-    pub receiver: Receiver<SearchAction>,
     pub state: SearchState,
 }
 
 impl Search {
     pub fn new(backend: Rc<Backend>) -> Self {
-        let (tx, rx) = channel();
         let search = Self {
             backend,
             models: Vec::new(),
             sorted_by: SortCriteria::MostDownloads,
             keyword: None,
-            sender: tx,
-            receiver: rx,
             state: SearchState::Idle,
         };
         search
@@ -74,7 +70,6 @@ impl Search {
 
         let (tx, rx) = channel();
 
-        let store_search_tx = self.sender.clone();
         self.backend
             .as_ref()
             .command_sender
@@ -85,14 +80,13 @@ impl Search {
             if let Ok(response) = rx.recv() {
                 match response {
                     Ok(models) => {
-                        store_search_tx.send(SearchAction::Results(models)).unwrap();
+                        Cx::post_action(SearchAction::Results(models));
                     }
                     Err(err) => {
                         eprintln!("Error fetching models: {:?}", err);
-                        store_search_tx.send(SearchAction::Error).unwrap();
+                        Cx::post_action(SearchAction::Error);
                     }
                 }
-                SignalToUI::set_ui_signal();
             }
         });
     }
@@ -114,7 +108,6 @@ impl Search {
 
         let (tx, rx) = channel();
 
-        let store_search_tx = self.sender.clone();
         self.backend
             .as_ref()
             .command_sender
@@ -125,14 +118,13 @@ impl Search {
             if let Ok(response) = rx.recv() {
                 match response {
                     Ok(models) => {
-                        store_search_tx.send(SearchAction::Results(models)).unwrap();
+                        Cx::post_action(SearchAction::Results(models));
                     }
                     Err(err) => {
                         eprintln!("Error fetching models: {:?}", err);
-                        store_search_tx.send(SearchAction::Error).unwrap();
+                        Cx::post_action(SearchAction::Error);
                     }
                 }
-                SignalToUI::set_ui_signal();
             }
         });
     }
@@ -182,8 +174,8 @@ impl Search {
         self.sort_models(self.sorted_by);
     }
 
-    pub fn process_results(&mut self) -> Result<Option<Vec<Model>>> {
-        for msg in self.receiver.try_iter() {
+    pub fn handle_action(&mut self, action: &Action) {
+        if let Some(msg) = action.downcast_ref::<SearchAction>() {
             match msg {
                 SearchAction::Results(models) => {
                     let previous_state = self.state.to_owned();
@@ -203,18 +195,19 @@ impl Search {
                             }
                             None => {}
                         }
-                        return Ok(Some(models));
+                        self.set_models(models.clone());
                     } else {
-                        return Err(anyhow!("Client was not expecting to receive results"));
+                        self.set_models(vec![]);
+                        eprintln!("Client was not expecting to receive results");
                     }
                 }
                 SearchAction::Error => {
                     self.state = SearchState::Errored;
-                    return Err(anyhow!("Error fetching models from the server"));
+                    self.set_models(vec![]);
+                    eprintln!("Error fetching models from the server");
                 }
             }
         }
-        Ok(None)
     }
 
     pub fn is_pending(&self) -> bool {

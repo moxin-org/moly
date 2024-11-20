@@ -173,7 +173,6 @@ impl Widget for DeleteModelModal {
 
 impl WidgetMatchEvent for DeleteModelModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(DeleteModelModalAction::ModalDismissed);
@@ -184,11 +183,7 @@ impl WidgetMatchEvent for DeleteModelModal {
             .clicked(actions)
         {
             let store = scope.data.get_mut::<Store>().unwrap();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ChatPanelAction::UnloadIfActive(self.file_id.clone()),
-            );
+            cx.action(ChatPanelAction::UnloadIfActive(self.file_id.clone()));
             store
                 .delete_file(self.file_id.clone())
                 .expect("Failed to delete file");

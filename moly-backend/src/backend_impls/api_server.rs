@@ -181,14 +181,12 @@ impl BackendModel for LLamaEdgeApiServer {
         let (wasm_module, listen_addr) = if let Some(old_model) = &old_model {
             let listen_addr = load_model_options.override_server_address.clone().map_or(
                 old_model.listen_addr,
-                |addr| {
-                    match std::net::TcpListener::bind(&addr) {
-                        Ok(listener) => listener.local_addr().unwrap(),
-                        Err(_) => {
-                            eprintln!("Failed to start the model on address {}", addr);
-                            eprintln!("Using the previous one {}", old_model.listen_addr);
-                            old_model.listen_addr
-                        }
+                |addr| match std::net::TcpListener::bind(&addr) {
+                    Ok(listener) => listener.local_addr().unwrap(),
+                    Err(_) => {
+                        eprintln!("Failed to start the model on address {}", addr);
+                        eprintln!("Using the previous one {}", old_model.listen_addr);
+                        old_model.listen_addr
                     }
                 },
             );
@@ -205,10 +203,23 @@ impl BackendModel for LLamaEdgeApiServer {
             (old_model.wasm_module.clone(), listen_addr)
         } else {
             let addr = std::env::var("MOLY_API_SERVER_ADDR").unwrap_or("localhost:0".to_string());
-            let new_addr = std::net::TcpListener::bind(&addr)
-                .unwrap()
-                .local_addr()
-                .unwrap();
+
+            let listen_addr = load_model_options
+                .override_server_address
+                .clone()
+                .map(|addr| match std::net::TcpListener::bind(&addr) {
+                    Ok(listener) => Some(listener.local_addr().unwrap()),
+                    Err(_) => None,
+                })
+                .flatten();
+
+            let new_addr = match listen_addr {
+                Some(addr) => addr,
+                None => {
+                    let listener = std::net::TcpListener::bind(&addr).unwrap();
+                    listener.local_addr().unwrap()
+                }
+            };
 
             (Module::from_bytes(None, WASM).unwrap(), new_addr)
         };
@@ -312,15 +323,24 @@ impl BackendModel for LLamaEdgeApiServer {
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
-            let resp = reqwest::ClientBuilder::new()
+            let request = reqwest::ClientBuilder::new()
                 .no_proxy()
                 .build()
                 .unwrap()
                 .post(url)
-                .body(request_body)
-                .send()
-                .await
-                .map_err(|e| anyhow!(e));
+                .body(request_body);
+
+            let resp = tokio::select! {
+                res = request.send() => Some(res.map_err(|e| anyhow!(e))),
+                _ = cancel.recv() => None,
+            };
+
+            let Some(resp) = resp else {
+                let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                    StopReason::Stop,
+                ))));
+                return;
+            };
 
             match resp {
                 Ok(resp) => {
@@ -351,8 +371,18 @@ impl BackendModel for LLamaEdgeApiServer {
                             StopReason::Stop,
                         ))));
                     } else {
-                        let resp: Result<ChatResponseData, anyhow::Error> =
-                            resp.json().await.map_err(|e| anyhow!(e));
+                        let resp = tokio::select! {
+                            res = resp.json::<ChatResponseData>() => Some(res.map_err(|e| anyhow!(e))),
+                            _ = cancel.recv() => None,
+                        };
+
+                        let Some(resp) = resp else {
+                            let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                                StopReason::Stop,
+                            ))));
+                            return;
+                        };
+
                         let _ = tx.send(resp.map(ChatResponse::ChatFinalResponseData));
                     }
                 }

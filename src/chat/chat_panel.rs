@@ -9,7 +9,7 @@ use crate::{
         model_selector_list::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatMessage},
+        chats::chat::{Chat, ChatEntityAction, ChatID, ChatMessage},
         store::Store,
     },
     shared::actions::ChatAction,
@@ -34,7 +34,7 @@ live_design! {
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
     CircleButton = <MolyButton> {
-        padding: {right: 4},
+        padding: {right: 2},
         margin: {bottom: 2},
 
         draw_icon: {
@@ -205,7 +205,7 @@ live_design! {
             color: #fff
         }
 
-        padding: {top: 6, bottom: 6, left: 4, right: 10}
+        padding: {top: 6, bottom: 6, left: 6, right: 10}
 
         spacing: 4,
         align: {x: 0.0, y: 1.0},
@@ -466,24 +466,6 @@ impl Widget for ChatPanel {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
         self.update_state(scope);
-
-        if let Event::Signal = event {
-            match self.state {
-                State::ModelSelectedWithChat {
-                    is_streaming: true,
-                    sticked_to_bottom,
-                    ..
-                } => {
-                    if sticked_to_bottom {
-                        self.scroll_messages_to_bottom(cx);
-                    }
-
-                    // Redraw because we expect to see new or updated chat entries
-                    self.redraw(cx);
-                }
-                _ => {}
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -512,12 +494,32 @@ impl Widget for ChatPanel {
 
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        for action in actions {
+            if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
+                if get_chat_id(store) == Some(action.chat_id) {
+                    match self.state {
+                        State::ModelSelectedWithChat {
+                            is_streaming: true,
+                            sticked_to_bottom,
+                            ..
+                        } => {
+                            if sticked_to_bottom {
+                                self.scroll_messages_to_bottom(cx);
+                            }
+
+                            // Redraw because we expect to see new or updated chat entries
+                            self.redraw(cx);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
 
         for action in actions
             .iter()
-            .filter_map(|action| action.as_widget_action())
         {
             if let ChatHistoryCardAction::ChatSelected = action.cast() {
                 self.reset_scroll_messages(&store);
@@ -606,7 +608,7 @@ impl WidgetMatchEvent for ChatPanel {
             .button(id!(no_downloaded_model.go_to_discover_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, ChatPanelAction::NavigateToDiscover);
+            cx.action(ChatPanelAction::NavigateToDiscover);
         }
     }
 }
@@ -730,7 +732,7 @@ impl ChatPanel {
     }
 
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
-        let mut list = self.portal_list(id!(chat));
+        let list = self.portal_list(id!(chat));
         list.smooth_scroll_to_end(cx, 10, 80.0);
     }
 
@@ -883,7 +885,6 @@ impl ChatPanel {
                     chat_line_item.set_regenerate_button_visible(true);
                 };
 
-                chat_line_item.set_message_text(cx, &chat_line_data.content);
                 chat_line_item.set_message_id(chat_line_data.id);
 
                 // Disable actions for the last chat line when model is streaming
@@ -895,8 +896,10 @@ impl ChatPanel {
                     }
                 ) && item_id == messages_count - 1
                 {
+                    chat_line_item.set_message_text(cx, &chat_line_data.content, true);
                     chat_line_item.set_actions_enabled(cx, false);
                 } else {
+                    chat_line_item.set_message_text(cx, &chat_line_data.content, false);
                     chat_line_item.set_actions_enabled(cx, true);
                 }
 
@@ -933,4 +936,8 @@ fn get_model_initial_letter(store: &Store) -> Option<char> {
 
 fn get_chat_messages(store: &Store) -> Option<Ref<Vec<ChatMessage>>> {
     get_chat(store).map(|chat| Ref::map(chat.borrow(), |chat| &chat.messages))
+}
+
+fn get_chat_id(store: &Store) -> Option<ChatID> {
+    get_chat(store).map(|chat| chat.borrow().id)
 }

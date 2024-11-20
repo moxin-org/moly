@@ -1,7 +1,8 @@
 pub mod download;
 
 use anyhow::{Context, Result};
-use download::{Download, DownloadState};
+use download::{Download, DownloadFileAction, DownloadState};
+use makepad_widgets::Action;
 use moly_backend::Backend;
 use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus},
@@ -229,15 +230,21 @@ impl Downloads {
         })
     }
 
-    /// This function is invoked when the Makepad signal is received. It updates the
+    pub fn handle_action(&mut self, action: &Action) {
+        if let Some(action) = action.downcast_ref::<DownloadFileAction>() {
+            if let Some(download) = self.current_downloads.get_mut(&action.file_id) {
+                download.handle_action(action);
+            }
+        }
+    }
+
+    /// This function is invoked after handling a download file action. It updates the
     /// download progress and state of the downloads, based in the active downloads
     /// but also retrieving fresh data from the backend.
     pub fn refresh_downloads_data(&mut self) -> Vec<FileID> {
         let mut completed_download_ids = Vec::new();
 
         for (id, download) in &mut self.current_downloads {
-            download.process_download_progress();
-
             if let Some(pending) = self
                 .pending_downloads
                 .iter_mut()

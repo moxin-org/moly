@@ -2,7 +2,7 @@ use crate::{
     data::{chats::chat::ChatID, store::Store},
     shared::modal::ModalWidgetExt,
 };
-use chrono::{DateTime, Local, TimeZone};
+use chrono::{DateTime, Duration, Local, TimeZone};
 
 use makepad_widgets::*;
 
@@ -295,9 +295,10 @@ impl Widget for ChatHistoryCard {
         let datetime =
             DateTime::from_timestamp_millis(chat.borrow().id as i64).expect("Invalid timestamp");
         let local_datetime: DateTime<Local> = Local.from_utc_datetime(&datetime.naive_utc());
-        let formatted_date = local_datetime.format("%-I:%M %p, %-d/%m/%y").to_string();
+        if let Some(formatted_date) = relative_format(local_datetime) { 
+            date_label.set_text(&formatted_date);
+        }
 
-        date_label.set_text(&formatted_date);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -305,7 +306,7 @@ impl Widget for ChatHistoryCard {
 
 impl WidgetMatchEvent for ChatHistoryCard {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+        // let widget_uid = self.widget_uid();
 
         match self.title_edition_state {
             TitleState::Editable => self.handle_title_editable_actions(cx, actions, scope),
@@ -336,11 +337,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
         if let Some(fe) = self.view(id!(content)).finger_down(actions) {
             if fe.tap_count == 1 {
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    ChatHistoryCardAction::ChatSelected,
-                );
+                cx.action(ChatHistoryCardAction::ChatSelected);
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(self.chat_id);
                 self.redraw(cx);
@@ -349,7 +346,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
 
         for action in actions {
             if matches!(
-                action.as_widget_action().cast(),
+                action.cast(),
                 DeleteChatModalAction::Cancelled
                     | DeleteChatModalAction::CloseButtonClicked
                     | DeleteChatModalAction::ChatDeleted
@@ -403,7 +400,7 @@ impl ChatHistoryCard {
         _scope: &mut Scope,
     ) {
         for action in actions {
-            match action.as_widget_action().cast::<ChatHistoryCardAction>() {
+            match action.cast() {
                 ChatHistoryCardAction::MenuClosed(chat_id) => {
                     if chat_id == self.chat_id {
                         self.button(id!(chat_options)).reset_hover(cx);
@@ -498,4 +495,33 @@ pub enum ChatHistoryCardAction {
     ActivateTitleEdition(ChatID),
     MenuClosed(ChatID),
     DeleteChatOptionSelected(ChatID),
+}
+
+
+fn relative_format(datetime: DateTime<Local>) -> Option<String> {
+    
+    // Calculate the time difference between now and the given timestamp
+    let now = Local::now();
+    let duration = now - datetime;
+
+    // Handle different time ranges and format accordingly
+    if duration < Duration::seconds(60) {
+        Some("Now".to_string())
+    } else if duration < Duration::minutes(60) {
+        let minutes_text = if duration.num_minutes() == 1 { "min" } else { "mins" };
+        Some(format!("{} {} ago", duration.num_minutes(), minutes_text))
+    } else if duration < Duration::hours(24) && now.date_naive() == datetime.date_naive() {
+        Some(format!("{}", datetime.format("%H:%M"))) // "HH:MM" format for today
+    } else if duration < Duration::hours(48) {
+        if let Some(yesterday) = now.date_naive().succ_opt() {
+            if yesterday == datetime.date_naive() {
+                return Some(format!("Yesterday at {}", datetime.format("%H:%M")));
+            }
+        }
+        Some(format!("{}", datetime.format("%A"))) // Fallback to day of the week if not yesterday
+    } else if duration < Duration::weeks(1) {
+        Some(format!("{}", datetime.format("%A"))) // Day of the week (e.g., "Tuesday")
+    } else {
+        Some(format!("{}", datetime.format("%F"))) // "YYYY-MM-DD" format for older messages
+    }
 }

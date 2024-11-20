@@ -343,14 +343,14 @@ impl WidgetMatchEvent for ModelSelector {
         }
 
         for action in actions {
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ModelSelectorAction::Selected(_) => {
                     self.hide_options(cx);
                 }
                 _ => {}
             }
 
-            match action.as_widget_action().cast() {
+            match action.cast() {
                 ChatAction::Start(_) => {
                     self.hide_options(cx);
                 }

@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use makepad_widgets::SignalToUI;
+use makepad_widgets::Cx;
 use moly_protocol::{
     data::FileID,
     protocol::{Command, LoadModelOptions, LoadModelResponse, LoadedModelInfo},
@@ -11,6 +11,10 @@ use std::{
     },
     thread,
 };
+
+/// Message emitted when the model loader status is updated.
+#[derive(Debug)]
+pub struct ModelLoaderStatusChanged;
 
 /// All posible states in which the loader can be.
 #[derive(Debug, Default, Clone)]
@@ -84,7 +88,6 @@ impl ModelLoader {
             Err(anyhow!("Internal communication error"))
         };
 
-        SignalToUI::set_ui_signal();
         result
     }
 
@@ -104,6 +107,7 @@ impl ModelLoader {
 
     fn set_status(&mut self, status: ModelLoaderStatus) {
         self.0.lock().unwrap().status = status;
+        Cx::post_action(ModelLoaderStatusChanged);
     }
 
     fn set_file_id(&mut self, file_id: Option<FileID>) {
