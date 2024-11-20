@@ -175,8 +175,6 @@ live_design! {
                     prompt = <MolyTextInput> {
                         width: Fill,
                         height: Fit,
-
-                        empty_message: "Enter a message or @ an agent"
                         draw_bg: {
                             radius: 10.0
                             color: #fff
@@ -346,7 +344,7 @@ impl WidgetMatchEvent for PromptInput {
 
 impl PromptInput {
     fn on_prompt_changed(&mut self, cx: &mut Cx, current: String) {
-        if self.was_at_added() {
+        if self.was_at_added() && moly_mofa::should_be_visible() {
             self.show_agent_autocomplete(cx);
         } else {
             self.hide_agent_autocomplete();
@@ -484,7 +482,22 @@ impl PromptInput {
     }
 }
 
-impl LiveHook for PromptInput {}
+impl LiveHook for PromptInput {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        let empty_message = if moly_mofa::should_be_visible() {
+            "Enter a message or @ an agent"
+        } else {
+            "Enter a message"
+        };
+
+        self.text_input(id!(prompt)).apply_over(
+            cx,
+            live! {
+                empty_message: (empty_message),
+            },
+        );
+    }
+}
 
 impl PromptInputRef {
     pub fn reset_text(&mut self, set_key_focus: bool) {

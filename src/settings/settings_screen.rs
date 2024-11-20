@@ -177,15 +177,17 @@ live_design! {
                     }
                 }
 
-                <HorizontalFiller> {
-                    width: 2,
-                    show_bg: true
-                    draw_bg: {
-                        color: #c3c3c3
+                mofa_section = <View> {
+                    <HorizontalFiller> {
+                        width: 2,
+                        show_bg: true
+                        draw_bg: {
+                            color: #c3c3c3
+                        }
                     }
-                }
 
-                mofa_options = <MofaSettings> {}
+                    mofa_options = <MofaSettings> {}
+                }
             }
         }
     }
@@ -198,7 +200,7 @@ enum ServerPortState {
     Editable,
 }
 
-#[derive(Widget, LiveHook, Live)]
+#[derive(Widget, Live)]
 pub struct SettingsScreen {
     #[deref]
     view: View,
@@ -329,5 +331,13 @@ impl WidgetMatchEvent for SettingsScreen {
             self.server_port_state = ServerPortState::Editable;
             self.redraw(cx);
         }
+    }
+}
+
+impl LiveHook for SettingsScreen {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        self.view
+            .view(id!(mofa_section))
+            .set_visible(moly_mofa::should_be_visible());
     }
 }

@@ -261,6 +261,10 @@ impl MofaBackend {
     }
 }
 
+pub fn should_be_visible() -> bool {
+    std::env::var("MOFA_FRONTEND").unwrap_or_default() == "visible"
+}
+
 pub fn should_be_real() -> bool {
     std::env::var("MOFA_BACKEND").unwrap_or_default() == "real"
 }

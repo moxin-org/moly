@@ -1,5 +1,5 @@
-use crate::data::search::SearchAction;
 use crate::chat::agent_button::AgentButtonWidgetRefExt;
+use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use makepad_widgets::*;
@@ -164,13 +164,15 @@ impl Widget for ModelList {
         let mut items = Vec::new();
 
         if store.search.keyword.is_none() {
-            items.push(Item::Header("Featured Agents"));
-            items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
-                agents: chunk,
-                margin_bottom: 15.0,
-            }));
-            if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
-                *margin_bottom = 0.0;
+            if moly_mofa::should_be_visible() {
+                items.push(Item::Header("Featured Agents"));
+                items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
+                    agents: chunk,
+                    margin_bottom: 15.0,
+                }));
+                if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
+                    *margin_bottom = 0.0;
+                }
             }
             items.push(Item::Header("Models"));
         }
