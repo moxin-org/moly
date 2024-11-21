@@ -7,7 +7,7 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{ActionDefaultRef, Cx, Action, DefaultNone};
+use makepad_widgets::{ActionDefaultRef, Cx, Action, DefaultNone, error};
 use moly_backend::Backend;
 use moly_mofa::{
     MofaAgent,
@@ -105,7 +105,9 @@ impl Store {
 
         store.search.load_featured_models();
 
-        store.set_test_mofa_server();
+        if moly_mofa::should_be_real() && moly_mofa::should_be_visible() {
+            store.set_test_mofa_server();
+        }
         store
     }
 
@@ -228,7 +230,7 @@ impl Store {
                 Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
             }
             Err(e) => {
-                println!("Error receiving response from MoFa backend: {:?}", e);
+                error!("Error receiving response from MoFa backend: {:?}", e);
                 Cx::post_action(MoFaTestServerAction::Failure(None));
             }
         });
