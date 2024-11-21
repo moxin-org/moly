@@ -107,7 +107,7 @@ impl Default for MofaBackend {
     }
 }
 
-const DEFAULT_MOFA_ADDRESS: &str = "http://chat-150.moxin.io";
+const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
 
 impl MofaBackend {
     pub fn available_agents() -> Vec<MofaAgent> {
