@@ -178,6 +178,7 @@ live_design! {
                 }
 
                 mofa_section = <View> {
+                    spacing: 40
                     <HorizontalFiller> {
                         width: 2,
                         show_bg: true
