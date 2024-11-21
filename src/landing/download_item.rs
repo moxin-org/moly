@@ -39,7 +39,7 @@ live_design! {
     }
 
     Information = <View> {
-        width: 380,
+        width: Fill,
         height: Fit,
         flow: Right,
         spacing: 12,
@@ -75,7 +75,7 @@ live_design! {
     }
 
     Progress = <View> {
-        width: 600,
+        width: Fill,
         height: Fit,
         spacing: 8,
 
@@ -149,7 +149,7 @@ live_design! {
 
     Actions = <View> {
         width: Fill,
-        height: 40,
+        height: Fit,
         flow: Right,
         spacing: 12,
 
