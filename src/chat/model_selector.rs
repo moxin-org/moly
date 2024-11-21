@@ -1,5 +1,5 @@
 use crate::{
-    data::store::Store,
+    data::{chats::chat::ChatEntity, store::Store},
     shared::{
         actions::ChatAction,
         utils::{format_model_size, hex_rgb_color},
@@ -8,8 +8,9 @@ use crate::{
 use makepad_widgets::*;
 
 use super::{
-    model_selector_list::{ModelSelectorAction, ModelSelectorListWidgetExt},
-    model_selector_loading::ModelSelectorLoadingWidgetExt,
+    model_selector_item::ModelSelectorAction,
+    model_selector_list::ModelSelectorListWidgetExt,
+    model_selector_loading::ModelSelectorLoadingWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
 };
 
 live_design! {
@@ -19,6 +20,7 @@ live_design! {
     import crate::shared::styles::*;
 
     import crate::chat::model_info::ModelInfo;
+    import crate::chat::model_info::AgentInfo;
     import crate::chat::model_selector_list::ModelSelectorList;
     import crate::chat::model_selector_loading::ModelSelectorLoading;
 
@@ -73,7 +75,22 @@ live_design! {
                     }
                 }
 
-                selected = <ModelInfo> {
+                selected_model = <ModelInfo> {
+                    width: Fit,
+                    height: Fit,
+                    show_bg: false,
+                    visible: false,
+
+                    padding: 0,
+
+                    label = {
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 11},
+                        }
+                    }
+                }
+
+                selected_agent = <AgentInfo> {
                     width: Fit,
                     height: Fit,
                     show_bg: false,
@@ -94,7 +111,6 @@ live_design! {
                 height: Fit,
                 align: {x: 1.0, y: 0.5},
                 margin: {left: 10, right: 6},
-                visible: false,
 
                 icon = <RotatedImage> {
                     height: 14,
@@ -118,7 +134,7 @@ live_design! {
         draw_bg: {
             instance radius: 3.0,
             color: #fff,
-            border_color: #B6B6B6,
+            border_color: #D0D5DD,
             border_width: 1.0,
         }
 
@@ -194,14 +210,9 @@ impl Widget for ModelSelector {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        let store = scope.data.get::<Store>().unwrap();
-
         if let Hit::FingerDown(fd) =
             event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
         {
-            if !options_to_display(store) {
-                return;
-            };
             if fd.tap_count == 1 {
                 self.open = !self.open;
 
@@ -267,24 +278,11 @@ impl Widget for ModelSelector {
 
         self.update_loading_model_state(cx, store);
 
-        if !options_to_display(store) {
-            choose_label.set_text("No Available Models");
-            let color = vec3(0.596, 0.635, 0.702);
-            choose_label.apply_over(
-                cx,
-                live! {
-                    draw_text: {
-                        color: (color)
-                    }
-                },
-            );
-            self.view(id!(icon_drop)).apply_over(
-                cx,
-                live!{
-                    visible: false
-                });
-        } else if no_active_model(store) {
-            choose_label.set_text("Choose a Model");
+        if no_active_model(store) {
+            self.view(id!(choose)).set_visible(true);
+            self.view(id!(selected_agent)).set_visible(false);
+            self.view(id!(selected_model)).set_visible(false);
+            choose_label.set_text("Choose a Model or Agent");
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,
@@ -295,11 +293,6 @@ impl Widget for ModelSelector {
                 },
             );
 
-            self.view(id!(icon_drop)).apply_over(
-                cx,
-                live!{
-                    visible: true
-                });
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -311,11 +304,10 @@ impl Widget for ModelSelector {
 const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get::<Store>().unwrap();
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
 
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
-            if options_to_display(store) && fd.tap_count == 1 {
+            if fd.tap_count == 1 {
                 self.open = !self.open;
 
                 if self.open {
@@ -344,7 +336,7 @@ impl WidgetMatchEvent for ModelSelector {
 
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::Selected(_) => {
+                ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
                     self.hide_options(cx);
                 }
                 _ => {}
@@ -385,15 +377,37 @@ impl ModelSelector {
         let is_loading = store.chats.model_loader.is_loading();
         let loaded_file = store.chats.loaded_model.as_ref();
 
-        let file = store
+        let chat_entity = store
             .chats
             .get_current_chat()
-            .and_then(|c| c.borrow().last_used_file_id.clone())
-            .and_then(|file_id| store.downloads.get_file(&file_id).cloned())
-            .or_else(|| loaded_file.cloned());
+            .and_then(|c| c.borrow().associated_entity.clone());
+
+        if let Some(ChatEntity::Agent(agent)) = chat_entity {
+            self.view(id!(selected_model)).set_visible(false);
+            let selected_view = self.view(id!(selected_agent));
+            selected_view.set_visible(true);
+
+            selected_view.apply_over(
+                cx,
+                live! {
+                    label = { text: (agent.name()) }
+                },
+            );
+            selected_view
+                .chat_agent_avatar(id!(avatar))
+                .set_agent(&agent);
+
+            return;
+        } 
+
+        let file = match chat_entity {
+            Some(ChatEntity::ModelFile(file_id)) => store.downloads.get_file(&file_id).cloned(),
+            _ => loaded_file.cloned(),
+        };
 
         if let Some(file) = file {
-            let selected_view = self.view(id!(selected));
+            self.view(id!(selected_agent)).set_visible(false);
+            let selected_view = self.view(id!(selected_model));
             selected_view.set_visible(true);
 
             let text_color = if Some(&file.id) == loaded_file.map(|f| &f.id) {
@@ -440,41 +454,14 @@ impl ModelSelector {
             live!{
                 visible: true
             });
-
-        self.redraw(cx);
     }
-
-    fn deselect(&mut self, cx: &mut Cx) {
-        self.open = false;
-        self.view(id!(selected)).apply_over(
-            cx,
-            live! {
-                visible: false
-            },
-        );
-
-        self.view(id!(choose)).apply_over(
-            cx,
-            live! {
-                visible: true
-            },
-        );
-        self.redraw(cx);
-    }
-}
-
-impl ModelSelectorRef {
-    pub fn deselect(&mut self, cx: &mut Cx) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.deselect(cx);
-        }
-    }
-}
-
-fn options_to_display(store: &Store) -> bool {
-    !store.downloads.downloaded_files.is_empty()
 }
 
 fn no_active_model(store: &Store) -> bool {
-    store.get_loaded_downloaded_file().is_none() && store.get_loading_file().is_none()
+    let chat_entity = store
+            .chats
+            .get_current_chat()
+            .and_then(|c| c.borrow().associated_entity.clone());
+
+    chat_entity.is_none() && store.chats.loaded_model.is_none()
 }

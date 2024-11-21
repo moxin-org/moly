@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::{chat::chat_panel::ChatPanelAction, data::store::Store};
+use crate::{chat::model_selector_list::ModelSelectorListAction, data::store::Store};
 
 use super::downloaded_files_row::DownloadedFilesRowProps;
 
@@ -183,11 +183,12 @@ impl WidgetMatchEvent for DeleteModelModal {
             .clicked(actions)
         {
             let store = scope.data.get_mut::<Store>().unwrap();
-            cx.action(ChatPanelAction::UnloadIfActive(self.file_id.clone()));
             store
                 .delete_file(self.file_id.clone())
                 .expect("Failed to delete file");
+
             cx.action(DeleteModelModalAction::ModalDismissed);
+            cx.action(ModelSelectorListAction::AddedOrDeletedModel);
         }
 
         if self
