@@ -1,22 +1,23 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
-    import crate::shared::styles::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+    
+    use crate::shared::styles::*;
 
-    VerticalFiller = <View> {
+    pub VerticalFiller = <View> {
         width: Fill,
         height: 1,
     }
 
-    HorizontalFiller = <View> {
+    pub HorizontalFiller = <View> {
         width: 1,
         height: Fill,
     }
 
-    Line = <View> {
+    pub Line = <View> {
         width: Fill,
         height: 1,
         show_bg: true,
@@ -25,7 +26,7 @@ live_design! {
         }
     }
 
-    FadeView = <CachedView> {
+    pub FadeView = <CachedView> {
         draw_bg: {
             instance opacity: 1.0
 
@@ -36,7 +37,7 @@ live_design! {
         }
     }
 
-    AttributeTag = <RoundedView> {
+    pub AttributeTag = <RoundedView> {
         width: Fit,
         height: Fit,
         padding: {top: 6, bottom: 6, left: 10, right: 10}
@@ -55,14 +56,14 @@ live_design! {
         }
     }
 
-    SIDEBAR_FONT_COLOR = #344054
-    SIDEBAR_FONT_COLOR_HOVER = #344054
-    SIDEBAR_FONT_COLOR_SELECTED = #127487
+    pub SIDEBAR_FONT_COLOR = #344054
+    pub SIDEBAR_FONT_COLOR_HOVER = #344054
+    pub SIDEBAR_FONT_COLOR_SELECTED = #127487
 
-    SIDEBAR_BG_COLOR_HOVER = #E2F1F199
-    SIDEBAR_BG_COLOR_SELECTED = #E2F1F199
+    pub SIDEBAR_BG_COLOR_HOVER = #E2F1F199
+    pub SIDEBAR_BG_COLOR_SELECTED = #E2F1F199
 
-    SidebarMenuButton = <RadioButton> {
+    pub SidebarMenuButton = <RadioButton> {
         width: 80,
         height: 70,
         padding: 0, margin: 0,
@@ -150,7 +151,7 @@ live_design! {
 
     // Customized button widget, based on the RoundedView shaders with some modifications
     // which is a better fit with our application UI design
-    MolyButton = <Button> {
+    pub MolyButton = <Button> {
         draw_bg: {
             instance color: #0000
             instance color_hover: #fff
@@ -237,7 +238,7 @@ live_design! {
         reset_hover_on_click: true
     }
 
-    MolyRadioButtonTab = <RadioButtonTab> {
+    pub MolyRadioButtonTab = <RadioButtonTab> {
         padding: 10,
 
         draw_radio: {
@@ -302,7 +303,7 @@ live_design! {
 
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
-    MolyTextInput = <TextInput> {
+    pub MolyTextInput = <TextInput> {
         draw_text: {
             text_style:<REGULAR_FONT>{font_size: 12},
             fn get_color(self) -> vec4 {
@@ -380,7 +381,7 @@ live_design! {
         }
     }
 
-    MolySlider =  <Slider> {
+    pub MolySlider =  <Slider> {
         height: 40
         width: Fill
         draw_text: {
@@ -434,7 +435,7 @@ live_design! {
         }
     }
 
-    MolySwitch = <CheckBoxToggle> {
+    pub MolySwitch = <CheckBoxToggle> {
         // U+200e as text.
         // Nasty trick cause not setting `text` nor using a simple space works to
         // render the widget without label.
@@ -470,7 +471,7 @@ live_design! {
         }
     }
 
-    TogglePanelButton = <MolyButton> {
+    pub TogglePanelButton = <MolyButton> {
         width: Fit,
         height: Fit,
         icon_walk: {width: 20, height: 20},
@@ -481,7 +482,7 @@ live_design! {
         }
     }
 
-    MolyTogglePanel = <TogglePanel> {
+    pub MolyTogglePanel = <TogglePanel> {
         persistent_content = {
             default = {
                 open = <TogglePanelButton> {

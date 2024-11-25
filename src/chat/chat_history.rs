@@ -3,19 +3,18 @@ use crate::data::store::Store;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import makepad_draw::shader::std::*;
-
-    import crate::chat::shared::ChatAgentAvatar;
-    import crate::chat::chat_history_card::ChatHistoryCard;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::chat::shared::ChatAgentAvatar;
+    use crate::chat::chat_history_card::ChatHistoryCard;
 
     ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
 
-    ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
+    pub ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
         open_content = {
             <View> {
                 width: Fill,

@@ -4,14 +4,15 @@ use moly_protocol::data::{File, FileID};
 use crate::shared::actions::DownloadAction;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::resource_imports::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::landing::shared::*;
-    import makepad_draw::shader::std::*;
+    use crate::shared::styles::*;
+    use crate::shared::resource_imports::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::landing::shared::*;
+    use makepad_draw::shader::std::*;
 
     SUCCESS_ICON = dep("crate://self/resources/images/success_icon.png")
     FAILURE_ICON = dep("crate://self/resources/images/failure_icon.png")
@@ -180,7 +181,7 @@ live_design! {
         }
     }
 
-    DownloadNotificationPopup = {{DownloadNotificationPopup}} {
+    pub DownloadNotificationPopup = {{DownloadNotificationPopup}} {
         width: Fit
         height: Fit
 

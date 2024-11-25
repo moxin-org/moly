@@ -6,16 +6,16 @@ use crate::landing::sorting::SortingWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::VerticalFiller;
-    import crate::landing::search_bar::SearchBar;
-    import crate::landing::model_list::ModelList;
-    import crate::landing::sorting::Sorting;
-    import crate::landing::downloads::Downloads;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::VerticalFiller;
+    use crate::landing::search_bar::SearchBar;
+    use crate::landing::model_list::ModelList;
+    use crate::landing::sorting::Sorting;
+    use crate::landing::downloads::Downloads;
 
     Heading = <View> {
         width: Fill,
@@ -70,7 +70,7 @@ live_design! {
         }
     }
 
-    LandingScreen = {{LandingScreen}} {
+    pub LandingScreen = {{LandingScreen}} {
         width: Fill,
         height: Fill,
         flow: Overlay,

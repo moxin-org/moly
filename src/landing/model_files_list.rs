@@ -4,12 +4,12 @@ use makepad_widgets::*;
 use super::model_files_item::ModelFilesItemWidgetRefExt;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::widgets::*;
 
-    import crate::landing::model_files_item::ModelFilesItem;
+    use crate::landing::model_files_item::ModelFilesItem;
 
-    ModelFilesList = {{ModelFilesList}} {
+    pub ModelFilesList = {{ModelFilesList}} {
         width: Fill,
         height: Fit,
         flow: Down,

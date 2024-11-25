@@ -4,14 +4,14 @@ use crate::landing::search_loading::SearchLoadingWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::landing::model_card::ModelCard;
-    import crate::landing::search_loading::SearchLoading;
+    use crate::shared::styles::*;
+    use crate::landing::model_card::ModelCard;
+    use crate::landing::search_loading::SearchLoading;
 
-    ModelList = {{ModelList}} {
+    pub ModelList = {{ModelList}} {
         width: Fill,
         height: Fill,
 

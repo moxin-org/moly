@@ -1,13 +1,13 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-
-    import crate::shared::styles::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+    
+    use crate::shared::styles::*;
 
     ICON_TICK = dep("crate://self/resources/images/tick.png")
-
 
     ModelAttributeTag = <RoundedView> {
         width: Fit,
@@ -27,7 +27,7 @@ live_design! {
         }
     }
 
-    ModelInfo = <View> {
+    pub ModelInfo = <View> {
         width: Fill,
         height: Fit,
         padding: 16,

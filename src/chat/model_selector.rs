@@ -13,14 +13,14 @@ use super::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-
-    import crate::chat::model_info::ModelInfo;
-    import crate::chat::model_selector_list::ModelSelectorList;
-    import crate::chat::model_selector_loading::ModelSelectorLoading;
+    use crate::shared::styles::*;
+    use crate::chat::model_info::ModelInfo;
+    use crate::chat::model_selector_list::ModelSelectorList;
+    use crate::chat::model_selector_loading::ModelSelectorLoading;
 
     ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
 
@@ -134,7 +134,7 @@ live_design! {
         }
     }
 
-    ModelSelector = {{ModelSelector}} {
+    pub ModelSelector = {{ModelSelector}} {
         width: Fill,
         height: Fit,
 

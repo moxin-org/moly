@@ -4,14 +4,14 @@ use moly_protocol::data::DownloadedFile;
 use std::collections::HashMap;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
+    use crate::shared::styles::*;
+    use crate::chat::model_info::ModelInfo;
 
-    import crate::chat::model_info::ModelInfo;
-
-    ModelSelectorList = {{ModelSelectorList}} {
+    pub ModelSelectorList = {{ModelSelectorList}} {
         flow: Down,
         template: <ModelInfo> {
             // This is mandatory to listen for touch/click events

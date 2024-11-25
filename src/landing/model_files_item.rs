@@ -11,13 +11,13 @@ use crate::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::landing::model_files_tags::ModelFilesTags;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
@@ -27,7 +27,7 @@ live_design! {
     ICON_PLAY = dep("crate://self/resources/icons/play_download.svg")
     ICON_RETRY = dep("crate://self/resources/icons/retry_download.svg")
 
-    ModelFilesRow = <RoundedYView> {
+    pub ModelFilesRow = <RoundedYView> {
         width: Fill,
         height: Fit,
 
@@ -138,7 +138,7 @@ live_design! {
         }
     }
 
-    ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {
+    pub ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {
         show_bg: true,
         draw_bg: {
             color: #fff

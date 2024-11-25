@@ -7,18 +7,18 @@ use crate::data::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
-    import makepad_code_editor::code_view::CodeView;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+    use makepad_code_editor::code_view::CodeView;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
 
     BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
 
-    SettingsScreen = {{SettingsScreen}} {
+    pub SettingsScreen = {{SettingsScreen}} {
         width: Fill
         height: Fill
         flow: Overlay

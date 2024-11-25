@@ -5,15 +5,15 @@ use makepad_widgets::*;
 use makepad_markdown::parse_markdown;
 
 live_design! {
-    import makepad_code_editor::code_view::CodeView;
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import makepad_draw::shader::std::*;
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::resource_imports::*;
-    import crate::chat::chat_line_loading::ChatLineLoading;
+    use makepad_code_editor::code_view::CodeView;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::resource_imports::*;
+    use crate::chat::chat_line_loading::ChatLineLoading;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
@@ -197,7 +197,7 @@ live_design! {
         text: ""
     }
 
-    ChatLine = {{ChatLine}} {
+    pub ChatLine = {{ChatLine}} {
         padding: {top: 10, bottom: 3},
         width: Fill,
         height: Fit,
