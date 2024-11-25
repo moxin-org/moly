@@ -1,7 +1,11 @@
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
+use moly_protocol::data::{DownloadedFile, Model};
 
-use crate::shared::{actions::ChatAction, list::ListWidgetExt};
+use crate::{
+    data::store::Store,
+    shared::{actions::ChatAction, list::ListWidgetExt},
+};
 
 use super::{
     agent_button::AgentButtonWidgetRefExt, model_selector_item::ModelSelectorAction,
@@ -273,7 +277,7 @@ impl Widget for PromptInput {
                 };
 
                 if delta != 0 {
-                    self.on_agent_search_keyboard_move(cx, delta);
+                    self.on_agent_search_keyboard_move(cx, scope, delta);
                 }
             }
         }
@@ -283,7 +287,7 @@ impl Widget for PromptInput {
 }
 
 impl WidgetMatchEvent for PromptInput {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt = self.text_input(id!(prompt));
         let agent_search_input = self.text_input(id!(agent_search_input));
 
@@ -291,7 +295,7 @@ impl WidgetMatchEvent for PromptInput {
             if action.widget_uid == prompt.widget_uid() {
                 match action.cast::<TextInputAction>() {
                     TextInputAction::Change(current) => {
-                        self.on_prompt_changed(cx, current);
+                        self.on_prompt_changed(cx, scope, current);
                     }
                     TextInputAction::Escape => self.on_agent_deselected(),
                     _ => {}
@@ -301,7 +305,7 @@ impl WidgetMatchEvent for PromptInput {
             if action.widget_uid == agent_search_input.widget_uid() {
                 match action.cast::<TextInputAction>() {
                     TextInputAction::Change(current) => {
-                        self.on_agent_search_changed(cx, current.clone());
+                        self.on_agent_search_changed(cx, scope, current.clone());
                     }
                     TextInputAction::Return(current) => {
                         self.on_agent_search_submit(current);
@@ -343,9 +347,9 @@ impl WidgetMatchEvent for PromptInput {
 }
 
 impl PromptInput {
-    fn on_prompt_changed(&mut self, cx: &mut Cx, current: String) {
+    fn on_prompt_changed(&mut self, cx: &mut Cx, scope: &mut Scope, current: String) {
         if self.was_at_added() && moly_mofa::should_be_visible() {
-            self.show_agent_autocomplete(cx);
+            self.show_agent_autocomplete(cx, scope);
         } else {
             self.hide_agent_autocomplete();
         }
@@ -390,12 +394,12 @@ impl PromptInput {
         self.view(id!(selected_agent_bubble)).set_visible(false);
     }
 
-    fn on_agent_search_changed(&mut self, cx: &mut Cx, search: String) {
+    fn on_agent_search_changed(&mut self, cx: &mut Cx, scope: &mut Scope, search: String) {
         // disallow multiline input
         self.text_input(id!(agent_search_input))
             .set_text(&search.replace("\n", " "));
 
-        self.compute_agent_list(cx);
+        self.compute_agent_list(cx, scope);
     }
 
     fn on_agent_search_submit(&mut self, current: String) {
@@ -406,37 +410,73 @@ impl PromptInput {
         };
     }
 
-    fn compute_agent_list(&mut self, cx: &mut Cx) {
+    fn compute_agent_list(&mut self, cx: &mut Cx, scope: &mut Scope) {
         let search = self.text_input(id!(agent_search_input)).text();
-        let list = self.list(id!(agent_autocomplete.list));
+        let mut list = self.list(id!(agent_autocomplete.list));
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        enum Item<'a> {
+            Agent(&'a MofaAgent),
+            Model(&'a Model),
+        }
+
         let agents = MofaBackend::available_agents();
         let agents = filter_agents(agents.iter(), &search);
 
-        list.compute_from(agents.enumerate(), |(idx, agent)| {
-            let widget = WidgetRef::new_from_ptr(cx, self.agent_template);
+        let models = store.downloads.downloaded_files.iter().map(|f| &f.model);
+        let models = filter_models(models, &search);
 
-            let mut btn = widget.agent_button(id!(button));
-            btn.set_agent(agent, true);
+        let items: Vec<WidgetRef> = agents
+            .map(Item::Agent)
+            .chain(models.map(Item::Model))
+            .enumerate()
+            .map(|(idx, item)| {
+                let widget = WidgetRef::new_from_ptr(cx, self.agent_template);
+                let mut btn = widget.agent_button(id!(button));
 
-            if idx == self.agents_keyboard_focus_index {
-                widget.apply_over(
-                    cx,
-                    live! {
-                        draw_bg: {
-                            color: #EAECEFff,
-                        }
-                    },
-                );
-            }
+                match item {
+                    Item::Agent(agent) => {
+                        btn.set_agent(agent, true);
+                    }
+                    Item::Model(model) => {
+                        btn.set_agent(&MofaAgent::Reasoner, true);
+                        // btn.set_model(model, true);
+                        btn.apply_over(
+                            cx,
+                            live! {
+                                text_layout = {
+                                    caption = { text: (model.name) }
+                                    description = {
+                                        label = { text: "Model" }
+                                    }
+                                }
+                            },
+                        );
+                    }
+                }
 
-            widget
-        });
+                if idx == self.agents_keyboard_focus_index {
+                    widget.apply_over(
+                        cx,
+                        live! {
+                            draw_bg: {
+                                color: #EAECEFff,
+                            }
+                        },
+                    );
+                }
+
+                widget
+            })
+            .collect();
+
+        list.set_items(items);
     }
 
-    fn show_agent_autocomplete(&mut self, cx: &mut Cx) {
+    fn show_agent_autocomplete(&mut self, cx: &mut Cx, scope: &mut Scope) {
         self.view(id!(agent_autocomplete)).set_visible(true);
         self.agents_search_pending_focus = true;
-        self.compute_agent_list(cx);
+        self.compute_agent_list(cx, scope);
     }
 
     fn hide_agent_autocomplete(&mut self) {
@@ -445,7 +485,7 @@ impl PromptInput {
         self.agents_keyboard_focus_index = 0;
     }
 
-    fn on_agent_search_keyboard_move(&mut self, cx: &mut Cx, delta: i32) {
+    fn on_agent_search_keyboard_move(&mut self, cx: &mut Cx, scope: &mut Scope, delta: i32) {
         let items_len = self.list(id!(agent_autocomplete.list)).len();
 
         if items_len == 0 {
@@ -457,7 +497,7 @@ impl PromptInput {
             .saturating_add_signed(delta as isize)
             .clamp(0, items_len - 1);
 
-        self.compute_agent_list(cx);
+        self.compute_agent_list(cx, scope);
     }
 
     fn was_at_added(&mut self) -> bool {
@@ -529,6 +569,22 @@ fn filter_agents<'a, A: Iterator<Item = &'a MofaAgent>>(
         terms
             .iter()
             .all(|term| agent.name().to_ascii_lowercase().contains(term))
+    })
+}
+
+fn filter_models<'a, M: Iterator<Item = &'a Model>>(
+    models: M,
+    search: &str,
+) -> impl Iterator<Item = &'a Model> {
+    let terms = search
+        .split_whitespace()
+        .map(|s| s.to_ascii_lowercase())
+        .collect::<Vec<_>>();
+
+    models.filter(move |model| {
+        terms
+            .iter()
+            .all(|term| model.name.to_ascii_lowercase().contains(term))
     })
 }
 
