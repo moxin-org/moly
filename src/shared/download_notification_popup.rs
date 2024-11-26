@@ -12,7 +12,6 @@ live_design! {
     use crate::shared::resource_imports::*;
     use crate::shared::widgets::MolyButton;
     use crate::landing::shared::*;
-    use makepad_draw::shader::std::*;
 
     SUCCESS_ICON = dep("crate://self/resources/images/success_icon.png")
     FAILURE_ICON = dep("crate://self/resources/images/failure_icon.png")
