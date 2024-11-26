@@ -16,59 +16,6 @@ live_design! {
     use crate::landing::sorting::Sorting;
     use crate::landing::downloads::Downloads;
 
-    Heading = <View> {
-        width: Fill,
-        height: Fit,
-        spacing: 30,
-
-        align: {x: 0.5, y: 0.5},
-
-        heading_no_filters = <View> {
-            width: Fit,
-            height: 50,
-
-            align: {x: 0.5, y: 0.5},
-
-            <Label> {
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 16},
-                    color: #000
-                }
-                text: "Explore"
-            }
-        }
-
-        heading_with_filters = <View> {
-            width: Fit,
-            height: 50,
-
-            align: {x: 0.5, y: 0.5},
-
-            results = <Label> {
-                draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 16},
-                    color: #000
-                }
-                text: "12 Results"
-            }
-            keyword = <Label> {
-                draw_text:{
-                    text_style: <REGULAR_FONT>{font_size: 16},
-                    color: #000
-                }
-                text: " for \"Open Hermes\""
-            }
-        }
-
-        <VerticalFiller> {}
-
-        sorting = <Sorting> {
-            width: Fit,
-            height: Fit,
-            visible: false
-        }
-    }
-
     pub LandingScreen = {{LandingScreen}} {
         width: Fill,
         height: Fill,
