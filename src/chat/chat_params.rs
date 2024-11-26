@@ -33,8 +33,10 @@ live_design! {
         }
     }
 
-    pub ChatParams = {{ChatParams}} <MolyTogglePanel> { // fix
+    pub ChatParams = {{ChatParams}} <MolyTogglePanel> {
+        width: 110,
         open_content = {
+            draw_bg: {opacity: 0.0}
             <View> {
                 width: Fill
                 height: Fill
@@ -201,11 +203,13 @@ live_design! {
                     width: Fill
                 }
                 open = {
+                    visible: true,
                     draw_icon: {
                         svg_file: (ICON_OPEN_PANEL),
                     }
                 }
                 close = {
+                    visible: false,
                     draw_icon: {
                         svg_file: (ICON_CLOSE_PANEL),
                     }
@@ -214,6 +218,12 @@ live_design! {
         }
 
         tooltip = <Tooltip> {}
+
+        animator: {
+            panel = {
+                default: close,
+            }
+        }
     }
 }
 
@@ -289,20 +299,6 @@ impl WidgetMatchEvent for ChatParams {
         self.handle_tooltip_actions(cx, actions);
 
         let store = scope.data.get_mut::<Store>().unwrap();
-        let close = self.button(id!(close_panel_button));
-        let open = self.button(id!(open_panel_button));
-
-        if close.clicked(&actions) {
-            close.set_visible(false);
-            open.set_visible(true);
-            self.set_open(cx, false);
-        }
-
-        if open.clicked(&actions) {
-            open.set_visible(false);
-            close.set_visible(true);
-            self.set_open(cx, true);
-        }
 
         if let Some(chat) = store.chats.get_current_chat() {
             let mut chat = chat.borrow_mut();

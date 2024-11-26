@@ -1,9 +1,16 @@
 use makepad_widgets::{ActionDefaultRef, DefaultNone};
+use moly_mofa::MofaAgent;
 use moly_protocol::data::FileID;
+
+#[derive(Clone, Debug)]
+pub enum ChatHandler {
+    Model(FileID),
+    Agent(MofaAgent),
+}
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ChatAction {
-    Start(FileID),
+    Start(ChatHandler),
     None,
 }
 

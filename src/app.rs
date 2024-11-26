@@ -1,4 +1,5 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
@@ -10,6 +11,7 @@ use crate::shared::download_notification_popup::{
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
+use markdown::MarkdownAction;
 
 live_design! {
     use link::theme::*;
@@ -183,6 +185,10 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
+            if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
+                let _ = robius_open::Uri::new(&url).open();
+            }
+
             self.store.handle_action(action);
 
             if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
@@ -266,6 +272,7 @@ impl App {
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
                     popup.set_data(&file, DownloadResult::Success);
+                    cx.action(ModelSelectorListAction::AddedOrDeletedModel);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
                     popup.set_data(&file, DownloadResult::Failure);

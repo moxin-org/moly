@@ -1,7 +1,8 @@
 use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
-use crate::shared::actions::ChatAction;
+use crate::shared::actions::ChatHandler;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
+use crate::shared::{actions::ChatAction, utils::human_readable_name};
 use makepad_widgets::*;
 use moly_protocol::data::{DownloadedFile, FileID};
 
@@ -254,7 +255,7 @@ impl WidgetMatchEvent for DownloadedFilesRow {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.action(ChatAction::Start(file_id.clone()));
+                cx.action(ChatAction::Start(ChatHandler::Model(file_id.clone())));
             }
         }
 
@@ -285,29 +286,6 @@ impl DownloadedFilesRowRef {
         };
         inner.file_id = Some(file_id);
     }
-}
-
-/// Removes dashes, file extension, and capitalizes the first letter of each word.
-fn human_readable_name(name: &str) -> String {
-    let name = name
-        .to_lowercase()
-        .replace("-", " ")
-        .replace(".gguf", "")
-        .replace("chat", "");
-
-    let name = name
-        .split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first_char) => first_char.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(" ");
-
-    name
 }
 
 fn dash_if_empty(input: &str) -> &str {

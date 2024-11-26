@@ -2,7 +2,6 @@ use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::model_list::ModelListAction;
 use crate::landing::search_bar::SearchBarWidgetExt;
-use crate::landing::sorting::SortingWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
@@ -73,26 +72,43 @@ live_design! {
     pub LandingScreen = {{LandingScreen}} {
         width: Fill,
         height: Fill,
-        flow: Overlay,
+        flow: Down,
 
-        <View> {
+        search_bar = <SearchBar> {}
+
+        models = <View> {
             width: Fill,
             height: Fill,
             flow: Down,
+            spacing: 30,
+            margin: { left: 50, right: 50},
 
-            search_bar = <SearchBar> {}
-            models = <View> {
-                width: Fill,
-                height: Fill,
-                flow: Down,
-                spacing: 30,
-                margin: { left: 50, right: 50, top: 30 },
+            heading_with_filters = <View> {
+                width: Fit,
+                height: 50,
+                padding: {top: 30},
 
-                <Heading> {}
-                <ModelList> {}
+                align: {x: 0.5, y: 0.5},
+
+                results = <Label> {
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 16},
+                        color: #000
+                    }
+                    text: "12 Results"
+                }
+                keyword = <Label> {
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 16},
+                        color: #000
+                    }
+                    text: " for \"Open Hermes\""
+                }
             }
-            downloads = <Downloads> {}
+
+            <ModelList> {}
         }
+        downloads = <Downloads> {}
     }
 }
 
@@ -124,11 +140,8 @@ impl Widget for LandingScreen {
         let search = &scope.data.get::<Store>().unwrap().search;
         if search.is_pending() || search.was_error() {
             self.view(id!(heading_with_filters)).set_visible(false);
-            self.view(id!(heading_no_filters)).set_visible(false);
-            self.sorting(id!(sorting)).set_visible(cx, false);
         } else if let Some(keyword) = search.keyword.clone() {
             self.view(id!(heading_with_filters)).set_visible(true);
-            self.view(id!(heading_no_filters)).set_visible(false);
 
             let models = &search.models;
             let models_count = models.len();
@@ -138,7 +151,6 @@ impl Widget for LandingScreen {
                 .set_text(&format!(" for \"{}\"", keyword));
         } else {
             self.view(id!(heading_with_filters)).set_visible(false);
-            self.view(id!(heading_no_filters)).set_visible(true);
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -157,7 +169,6 @@ impl WidgetMatchEvent for LandingScreen {
                     if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
                         self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
                         self.search_bar(id!(search_bar)).expand(cx);
-                        self.sorting(id!(sorting)).set_visible(cx, false);
                         self.redraw(cx);
                     }
                 }
@@ -181,7 +192,6 @@ impl WidgetMatchEvent for LandingScreen {
                         let search = &scope.data.get::<Store>().unwrap().search;
                         self.search_bar(id!(search_bar))
                             .collapse(cx, search.sorted_by);
-                        self.sorting(id!(sorting)).set_visible(cx, false);
                         self.redraw(cx);
                     }
                 }
@@ -195,11 +205,6 @@ impl WidgetMatchEvent for LandingScreen {
                     }
                     SearchBarState::ExpandedWithoutFilters => {
                         self.search_bar_state = SearchBarState::ExpandedWithFilters;
-
-                        let search = &scope.data.get::<Store>().unwrap().search;
-                        let sorting_ref = self.sorting(id!(sorting));
-                        sorting_ref.set_visible(cx, true);
-                        sorting_ref.set_selected_item(search.sorted_by);
                     }
                     _ => {}
                 },
@@ -207,7 +212,6 @@ impl WidgetMatchEvent for LandingScreen {
                     SearchBarState::ExpandedWithFilters | SearchBarState::CollapsedWithFilters => {
                         self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
                         self.search_bar(id!(search_bar)).expand(cx);
-                        self.sorting(id!(sorting)).set_visible(cx, false);
                     }
                     _ => {}
                 },
