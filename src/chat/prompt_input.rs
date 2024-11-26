@@ -364,7 +364,7 @@ impl PromptInput {
             .set_text(&agent.name());
 
         let prompt = self.text_input(id!(prompt));
-        let prompt_cursor_pos = 0; //prompt.borrow().map_or(0, |p| p.get_cursor().head.index);
+        let prompt_cursor_pos = prompt.borrow().map_or(0, |p| p.get_cursor().head.index);
         if prompt_cursor_pos > 0 {
             let last_char_pos = prompt_cursor_pos - 1;
             let last_char = prompt.text().chars().nth(last_char_pos).unwrap_or_default();
@@ -470,7 +470,7 @@ impl PromptInput {
         }
 
         // not necessarily the cursor head, but works for this single character use case
-        let cursor_pos = 0; //prompt.borrow().map_or(0, |p| p.get_cursor().head.index);
+        let cursor_pos = prompt.borrow().map_or(0, |p| p.get_cursor().head.index);
 
         if cursor_pos == 0 {
             return false;
