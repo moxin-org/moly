@@ -7,7 +7,7 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{ActionDefaultRef, Cx, Action, DefaultNone, error};
+use makepad_widgets::{error, Action, ActionDefaultRef, Cx, DefaultNone};
 use moly_backend::Backend;
 use moly_mofa::{
     MofaAgent,

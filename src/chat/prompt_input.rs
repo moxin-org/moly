@@ -1,9 +1,10 @@
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
-use moly_protocol::data::{DownloadedFile, Model};
+use moly_protocol::data::{File, FileID, Model};
 
 use crate::{
-    data::store::Store,
+    chat::model_button::ModelButtonWidgetRefExt,
+    data::{chats::chat::ChatEntity, store::Store},
     shared::{actions::ChatAction, list::ListWidgetExt},
 };
 
@@ -15,6 +16,7 @@ use super::{
 #[derive(Debug, DefaultNone, Clone)]
 pub enum PromptInputAction {
     AgentSelected(MofaAgent),
+    ModelFileSelected(FileID),
     None,
 }
 
@@ -27,6 +29,7 @@ live_design! {
     use crate::shared::widgets::*;
     use crate::shared::list::*;
     use crate::chat::agent_button::*;
+    use crate::chat::model_button::*;
     use crate::chat::shared::ChatAgentAvatar;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
@@ -64,6 +67,13 @@ live_design! {
             show_bg: true,
 
             button = <AgentButton> { select_agent_on_prompt: true }
+        }
+        model_template: <View> {
+            width: Fill,
+            height: Fit,
+            show_bg: true,
+
+            button = <ModelButton> {}
         }
 
         <View> {
@@ -224,6 +234,9 @@ pub struct PromptInput {
     #[live]
     agent_template: Option<LivePtr>,
 
+    #[live]
+    model_template: Option<LivePtr>,
+
     // see `was_at_added` function
     #[rust]
     prev_prompt: String,
@@ -238,7 +251,7 @@ pub struct PromptInput {
     prompt_pending_focus: bool,
 
     #[rust]
-    pub agent_selected: Option<MofaAgent>,
+    pub entity_selected: Option<ChatEntity>,
 }
 
 impl Widget for PromptInput {
@@ -308,7 +321,7 @@ impl WidgetMatchEvent for PromptInput {
                         self.on_agent_search_changed(cx, scope, current.clone());
                     }
                     TextInputAction::Return(current) => {
-                        self.on_agent_search_submit(current);
+                        self.on_agent_search_submit(scope, current);
                     }
                     TextInputAction::Escape => {
                         self.hide_agent_autocomplete();
@@ -332,7 +345,12 @@ impl WidgetMatchEvent for PromptInput {
 
         for action in actions {
             match action.cast() {
-                PromptInputAction::AgentSelected(agent) => self.on_agent_selected(&agent),
+                PromptInputAction::AgentSelected(agent) => {
+                    self.on_entity_selected(scope, &ChatEntity::Agent(agent))
+                }
+                PromptInputAction::ModelFileSelected(file_id) => {
+                    self.on_entity_selected(scope, &ChatEntity::ModelFile(file_id))
+                }
                 PromptInputAction::None => {}
             }
 
@@ -357,15 +375,29 @@ impl PromptInput {
         self.prev_prompt = current;
     }
 
-    fn on_agent_selected(&mut self, agent: &MofaAgent) {
-        self.agent_selected = Some(*agent);
+    fn on_entity_selected(&mut self, scope: &mut Scope, entity: &ChatEntity) {
+        let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
+        let agent_label = self.label(id!(selected_agent_label));
+
+        match entity {
+            ChatEntity::Agent(agent) => {
+                agent_label.set_text(&agent.name());
+                agent_avatar.set_agent(agent);
+            }
+            ChatEntity::ModelFile(file_id) => {
+                let store = scope.data.get_mut::<Store>().unwrap();
+                let file = store
+                    .downloads
+                    .get_file(file_id)
+                    .expect("selected file not found");
+                agent_label.set_text(&file.name);
+                agent_avatar.set_visible(false);
+            }
+        }
+
+        self.entity_selected = Some(entity.clone());
         self.hide_agent_autocomplete();
         self.view(id!(selected_agent_bubble)).set_visible(true);
-
-        self.chat_agent_avatar(id!(agent_avatar)).set_agent(agent);
-
-        self.label(id!(selected_agent_label))
-            .set_text(&agent.name());
 
         let prompt = self.text_input(id!(prompt));
         let prompt_cursor_pos = prompt.borrow().map_or(0, |p| p.get_cursor().head.index);
@@ -390,7 +422,7 @@ impl PromptInput {
     }
 
     fn on_agent_deselected(&mut self) {
-        self.agent_selected = None;
+        self.entity_selected = None;
         self.view(id!(selected_agent_bubble)).set_visible(false);
     }
 
@@ -402,11 +434,11 @@ impl PromptInput {
         self.compute_agent_list(cx, scope);
     }
 
-    fn on_agent_search_submit(&mut self, current: String) {
+    fn on_agent_search_submit(&mut self, scope: &mut Scope, current: String) {
         let agents = MofaBackend::available_agents();
         let agents = agents.iter();
         if let Some(agent) = filter_agents(agents, &current).nth(self.agents_keyboard_focus_index) {
-            self.on_agent_selected(agent);
+            self.on_entity_selected(scope, &ChatEntity::Agent(*agent));
         };
     }
 
@@ -417,41 +449,32 @@ impl PromptInput {
 
         enum Item<'a> {
             Agent(&'a MofaAgent),
-            Model(&'a Model),
+            Model(&'a File),
         }
 
         let agents = MofaBackend::available_agents();
         let agents = filter_agents(agents.iter(), &search);
 
-        let models = store.downloads.downloaded_files.iter().map(|f| &f.model);
-        let models = filter_models(models, &search);
+        let files = store.downloads.downloaded_files.iter().map(|f| &f.file);
+        let files = filter_files(files, &search);
 
         let items: Vec<WidgetRef> = agents
             .map(Item::Agent)
-            .chain(models.map(Item::Model))
+            .chain(files.map(Item::Model))
             .enumerate()
             .map(|(idx, item)| {
-                let widget = WidgetRef::new_from_ptr(cx, self.agent_template);
-                let mut btn = widget.agent_button(id!(button));
+                let widget: WidgetRef;
 
                 match item {
                     Item::Agent(agent) => {
+                        widget = WidgetRef::new_from_ptr(cx, self.agent_template);
+                        let mut btn = widget.agent_button(id!(button));
                         btn.set_agent(agent, true);
                     }
-                    Item::Model(model) => {
-                        btn.set_agent(&MofaAgent::Reasoner, true);
-                        // btn.set_model(model, true);
-                        btn.apply_over(
-                            cx,
-                            live! {
-                                text_layout = {
-                                    caption = { text: (model.name) }
-                                    description = {
-                                        label = { text: "Model" }
-                                    }
-                                }
-                            },
-                        );
+                    Item::Model(file) => {
+                        widget = WidgetRef::new_from_ptr(cx, self.model_template);
+                        let mut btn = widget.model_button(id!(button));
+                        btn.set_file(file);
                     }
                 }
 
@@ -572,19 +595,19 @@ fn filter_agents<'a, A: Iterator<Item = &'a MofaAgent>>(
     })
 }
 
-fn filter_models<'a, M: Iterator<Item = &'a Model>>(
-    models: M,
+fn filter_files<'a, M: Iterator<Item = &'a File>>(
+    files: M,
     search: &str,
-) -> impl Iterator<Item = &'a Model> {
+) -> impl Iterator<Item = &'a File> {
     let terms = search
         .split_whitespace()
         .map(|s| s.to_ascii_lowercase())
         .collect::<Vec<_>>();
 
-    models.filter(move |model| {
+    files.filter(move |file| {
         terms
             .iter()
-            .all(|term| model.name.to_ascii_lowercase().contains(term))
+            .all(|term| file.name.to_ascii_lowercase().contains(term))
     })
 }
 

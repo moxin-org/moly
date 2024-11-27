@@ -769,13 +769,28 @@ impl ChatPanel {
                 ..
             } | State::ModelSelectedWithEmptyChat { is_loading: false }
         ) {
-            if let Some(agent_selected) = self
+            if let Some(entity_selected) = &self
                 .prompt_input(id!(main_prompt_input))
                 .borrow()
                 .unwrap()
-                .agent_selected
+                .entity_selected
             {
-                store.send_agent_message(agent_selected, prompt.clone(), regenerate_from);
+                match entity_selected {
+                    ChatEntity::Agent(agent) => {
+                        store.send_agent_message(*agent, prompt.clone(), regenerate_from);
+                    }
+                    ChatEntity::ModelFile(file_id) => {
+                        // TODO: This logic seems fragile.
+                        let file = store.downloads.get_file(&file_id).expect("file not found");
+                        let chat = store.chats.get_current_chat().expect("no current chat");
+                        chat.borrow_mut().send_message_to_model(
+                            prompt,
+                            file,
+                            store.chats.model_loader.clone(),
+                            &store.backend,
+                        );
+                    }
+                }
             } else {
                 store.send_message_to_current_entity(prompt.clone(), regenerate_from);
             }
