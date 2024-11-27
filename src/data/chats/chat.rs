@@ -336,7 +336,6 @@ impl Chat {
         });
 
         self.state = ChatState::Receiving;
-        self.associated_entity = Some(ChatEntity::ModelFile(wanted_file.id.clone()));
 
         let wanted_file = wanted_file.clone();
         let command_sender = backend.command_sender.clone();

@@ -67,14 +67,14 @@ impl Chats {
     pub fn load_model(&mut self, file: &File, override_port: Option<u16>) {
         self.cancel_chat_streaming();
 
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            let new_file_id = Some(ChatEntity::ModelFile(file.id.clone()));
+        // if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
+        //     let new_file_id = Some(ChatEntity::ModelFile(file.id.clone()));
 
-            if chat.associated_entity != new_file_id {
-                chat.associated_entity = new_file_id;
-                chat.save();
-            }
-        }
+        //     if chat.associated_entity != new_file_id {
+        //         chat.associated_entity = new_file_id;
+        //         chat.save();
+        //     }
+        // }
 
         if self.model_loader.is_loading() {
             return;

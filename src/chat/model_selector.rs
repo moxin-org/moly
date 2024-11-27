@@ -8,8 +8,7 @@ use crate::{
 use makepad_widgets::*;
 
 use super::{
-    model_selector_item::ModelSelectorAction,
-    model_selector_list::ModelSelectorListWidgetExt,
+    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt,
     model_selector_loading::ModelSelectorLoadingWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
 };
 
@@ -292,7 +291,6 @@ impl Widget for ModelSelector {
                     }
                 },
             );
-
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -305,7 +303,6 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
             if fd.tap_count == 1 {
                 self.open = !self.open;
@@ -375,6 +372,12 @@ impl ModelSelector {
         self.view(id!(choose)).set_visible(false);
 
         let is_loading = store.chats.model_loader.is_loading();
+        let model_loader_file = store
+            .chats
+            .model_loader
+            .file_id()
+            .map(|id| store.downloads.get_file(&id))
+            .flatten();
         let loaded_file = store.chats.loaded_model.as_ref();
 
         let chat_entity = store
@@ -398,7 +401,7 @@ impl ModelSelector {
                 .set_agent(&agent);
 
             return;
-        } 
+        }
 
         let file = match chat_entity {
             Some(ChatEntity::ModelFile(file_id)) => store.downloads.get_file(&file_id).cloned(),
@@ -416,7 +419,7 @@ impl ModelSelector {
                 hex_rgb_color(0x667085)
             };
 
-            let caption = if is_loading {
+            let caption = if is_loading && Some(&file.id) == model_loader_file.map(|f| &f.id) {
                 format!("Loading {}", file.name.trim())
             } else {
                 file.name.trim().to_string()
@@ -451,17 +454,18 @@ impl ModelSelector {
 
         self.view(id!(icon_drop)).apply_over(
             cx,
-            live!{
+            live! {
                 visible: true
-            });
+            },
+        );
     }
 }
 
 fn no_active_model(store: &Store) -> bool {
     let chat_entity = store
-            .chats
-            .get_current_chat()
-            .and_then(|c| c.borrow().associated_entity.clone());
+        .chats
+        .get_current_chat()
+        .and_then(|c| c.borrow().associated_entity.clone());
 
     chat_entity.is_none() && store.chats.loaded_model.is_none()
 }

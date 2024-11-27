@@ -176,6 +176,7 @@ impl Store {
                 if let Some(message_id) = regenerate_from {
                     chat.remove_messages_from(message_id);
                 }
+                chat.associated_entity = Some(ChatEntity::ModelFile(file.id.clone()));
                 chat.send_message_to_model(
                     prompt,
                     file,
