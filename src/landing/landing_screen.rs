@@ -5,16 +5,16 @@ use crate::landing::search_bar::SearchBarWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::landing::search_bar::SearchBar;
-    import crate::landing::model_list::ModelList;
-    import crate::landing::downloads::Downloads;
+    use crate::shared::styles::*;
+    use crate::landing::search_bar::SearchBar;
+    use crate::landing::model_list::ModelList;
+    use crate::landing::downloads::Downloads;
 
-    LandingScreen = {{LandingScreen}} {
+    pub LandingScreen = {{LandingScreen}} {
         width: Fill,
         height: Fill,
         flow: Down,

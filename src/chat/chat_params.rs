@@ -6,13 +6,13 @@ use crate::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::tooltip::*;
-    import makepad_draw::shader::std::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::tooltip::*;
 
     ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_right_panel.svg")
     ICON_OPEN_PANEL = dep("crate://self/resources/icons/open_right_panel.svg")
@@ -33,7 +33,7 @@ live_design! {
         }
     }
 
-    ChatParams = {{ChatParams}} <MolyTogglePanel> {
+    pub ChatParams = {{ChatParams}} <MolyTogglePanel> {
         width: 110,
         open_content = {
             draw_bg: {opacity: 0.0}

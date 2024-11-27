@@ -7,14 +7,15 @@ use makepad_widgets::*;
 use moly_protocol::data::{DownloadedFile, FileID};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::modal::*;
-    import crate::my_models::model_info_modal::ModelInfoModal;
-    import crate::my_models::delete_model_modal::DeleteModelModal;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::modal::*;
+    use crate::my_models::model_info_modal::ModelInfoModal;
+    use crate::my_models::delete_model_modal::DeleteModelModal;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
@@ -132,7 +133,7 @@ live_design! {
     }
 
 
-    DownloadedFilesRow = {{DownloadedFilesRow}} {
+    pub DownloadedFilesRow = {{DownloadedFilesRow}} {
         // This is necesary because we have a Modal widget inside this widget
         flow: Overlay,
         width: Fill,

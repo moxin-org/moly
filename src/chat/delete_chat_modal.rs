@@ -3,15 +3,15 @@ use makepad_widgets::*;
 use crate::data::{chats::chat::ChatID, store::Store};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::shared::resource_imports::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::shared::resource_imports::*;
 
-    DeleteChatModal = {{DeleteChatModal}} {
+    pub DeleteChatModal = {{DeleteChatModal}} {
         width: Fit
         height: Fit
 

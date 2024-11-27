@@ -1,7 +1,9 @@
 use makepad_widgets::*;
 
 live_design!(
-    List = {{List}} {
+    use link::widgets::*;
+
+    pub List = {{List}} {
         flow: Down,
         width: Fill,
         height: Fill,

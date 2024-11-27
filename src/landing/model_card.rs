@@ -7,18 +7,17 @@ use makepad_widgets::*;
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import makepad_draw::shader::std::*;
-
-    import crate::shared::styles::*;
-    import crate::shared::resource_imports::*;
-    import crate::shared::widgets::*;
-    import crate::landing::shared::*;
-    import crate::landing::model_files::ModelFiles;
-    import crate::shared::external_link::*;
-    import crate::shared::modal::*;
+    use crate::shared::styles::*;
+    use crate::shared::resource_imports::*;
+    use crate::shared::widgets::*;
+    use crate::landing::shared::*;
+    use crate::landing::model_files::ModelFiles;
+    use crate::shared::external_link::*;
+    use crate::shared::modal::*;
 
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
@@ -217,7 +216,7 @@ live_design! {
     }
 
 
-    ModelCardViewAllModal = {{ModelCardViewAllModal}} {
+    pub ModelCardViewAllModal = {{ModelCardViewAllModal}} {
         width: Fit
         height: Fit
 
@@ -290,7 +289,7 @@ live_design! {
     }
 
 
-    ModelCard = {{ModelCard}} {
+    pub ModelCard = {{ModelCard}} {
         width: Fill,
         height: Fit,
 

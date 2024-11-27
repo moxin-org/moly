@@ -14,22 +14,22 @@ use makepad_widgets::*;
 use markdown::MarkdownAction;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::popup_notification::*;
-    import crate::shared::widgets::SidebarMenuButton;
-    import crate::shared::download_notification_popup::DownloadNotificationPopup;
-    import crate::shared::desktop_buttons::MolyDesktopButton;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::popup_notification::*;
+    use crate::shared::widgets::SidebarMenuButton;
+    use crate::shared::download_notification_popup::DownloadNotificationPopup;
+    use crate::shared::desktop_buttons::MolyDesktopButton;
 
-    import crate::landing::landing_screen::LandingScreen;
-    import crate::landing::model_card::ModelCardViewAllModal;
-    import crate::chat::chat_screen::ChatScreen;
-    import crate::my_models::my_models_screen::MyModelsScreen;
-    import crate::settings::settings_screen::SettingsScreen;
+    use crate::landing::landing_screen::LandingScreen;
+    use crate::landing::model_card::ModelCardViewAllModal;
+    use crate::chat::chat_screen::ChatScreen;
+    use crate::my_models::my_models_screen::MyModelsScreen;
+    use crate::settings::settings_screen::SettingsScreen;
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")

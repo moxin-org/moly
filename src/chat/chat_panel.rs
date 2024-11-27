@@ -19,18 +19,17 @@ use super::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import makepad_draw::shader::std::*;
-
-    import crate::chat::model_selector::ModelSelector;
-    import crate::chat::chat_line::ChatLine;
-    import crate::chat::shared::ChatModelAvatar;
-    import crate::chat::shared::ChatAgentAvatar;
-    import crate::chat::prompt_input::PromptInput;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::chat::model_selector::ModelSelector;
+    use crate::chat::chat_line::ChatLine;
+    use crate::chat::shared::ChatAgentAvatar;
+    use crate::chat::shared::ChatModelAvatar;
+    use crate::chat::prompt_input::PromptInput;
 
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
 
@@ -181,7 +180,7 @@ live_design! {
         }
     }
 
-    ChatPanel = {{ChatPanel}} {
+    pub ChatPanel = {{ChatPanel}} {
         flow: Overlay
         width: Fill
         height: Fill
@@ -717,7 +716,7 @@ impl ChatPanel {
 
     fn scroll_messages_to_bottom(&mut self, cx: &mut Cx) {
         let list = self.portal_list(id!(chat));
-        list.smooth_scroll_to_end(cx, 10, 80.0);
+        list.smooth_scroll_to_end(cx, 10., Some(80));
     }
 
     fn reset_scroll_messages(&mut self, store: &Store) {

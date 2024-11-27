@@ -3,15 +3,16 @@ use makepad_widgets::*;
 use crate::data::store::{MoFaTestServerAction, Store};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
 
-    MofaSettings = {{MofaSettings}} {
+    pub MofaSettings = {{MofaSettings}} {
         width: Fill, height: Fit
         flow: Down
         spacing: 20

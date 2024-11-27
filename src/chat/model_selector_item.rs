@@ -5,10 +5,11 @@ use moly_protocol::data::DownloadedFile;
 use super::shared::ChatAgentAvatarWidgetExt;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    ModelSelectorItem = {{ModelSelectorItem}} {
+    pub ModelSelectorItem = {{ModelSelectorItem}} {
         width: Fill,
         height: Fit,
 

@@ -2,12 +2,13 @@ use makepad_widgets::*;
 use moly_mofa::MofaAgent;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
+    use crate::shared::styles::*;
 
-    ChatModelAvatar = <RoundedView> {
+    pub ChatModelAvatar = <RoundedView> {
         width: 24,
         height: 24,
 
@@ -30,7 +31,7 @@ live_design! {
         }
     }
 
-    ChatAgentAvatar = {{ChatAgentAvatar}} {
+    pub ChatAgentAvatar = {{ChatAgentAvatar}} {
         reasoner_agent_icon: dep("crate://self/resources/images/reasoner_agent_icon.png")
         research_scholar_icon: dep("crate://self/resources/images/research_scholar_agent_icon.png")
         search_assistant_icon: dep("crate://self/resources/images/search_assistant_agent_icon.png")

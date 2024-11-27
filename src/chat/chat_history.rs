@@ -6,16 +6,16 @@ use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import makepad_draw::shader::std::*;
-
-    import crate::chat::shared::ChatModelAvatar;
-    import crate::chat::chat_history_card::ChatHistoryCard;
-    import crate::chat::agent_button::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::chat::shared::ChatAgentAvatar;
+    use crate::chat::chat_history_card::ChatHistoryCard;
+    use crate::chat::shared::ChatModelAvatar;
+    use crate::chat::agent_button::*;
 
     ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
 
@@ -27,7 +27,7 @@ live_design! {
         }
     }
 
-    ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
+    pub ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
         open_content = {
             <View> {
                 width: Fill,

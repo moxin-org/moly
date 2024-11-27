@@ -12,16 +12,17 @@ use super::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::modal::*;
-    import crate::chat::shared::ChatModelAvatar;
-    import crate::chat::shared::ChatAgentAvatar;
-    import crate::chat::chat_history_card_options::ChatHistoryCardOptions;
-    import crate::chat::delete_chat_modal::DeleteChatModal;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::modal::*;
+    use crate::chat::shared::ChatAgentAvatar;
+    use crate::chat::shared::ChatModelAvatar;
+    use crate::chat::chat_history_card_options::ChatHistoryCardOptions;
+    use crate::chat::delete_chat_modal::DeleteChatModal;
 
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -73,7 +74,7 @@ live_design! {
         text: "Cancel"
     }
 
-    ChatHistoryCard = {{ChatHistoryCard}} {
+    pub ChatHistoryCard = {{ChatHistoryCard}} {
         flow: Overlay,
         width: Fill,
         height: 52,

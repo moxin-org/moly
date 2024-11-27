@@ -15,15 +15,15 @@ pub enum PromptInputAction {
 }
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::list::*;
-    import crate::chat::agent_button::*;
-    import crate::chat::shared::ChatAgentAvatar;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::list::*;
+    use crate::chat::agent_button::*;
+    use crate::chat::shared::ChatAgentAvatar;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
     ICON_STOP = dep("crate://self/resources/icons/stop.svg")
@@ -51,7 +51,7 @@ live_design! {
         }
     }
 
-    PromptInput = {{PromptInput}} {
+    pub PromptInput = {{PromptInput}} {
         flow: Overlay,
         height: Fit,
         agent_template: <View> {

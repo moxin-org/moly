@@ -1,15 +1,15 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::external_link::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::external_link::*;
 
-
-    ModelLink = <View> {
+    pub ModelLink = <View> {
         width: Fit,
         height: Fit,
         flow: Down,
@@ -41,7 +41,7 @@ live_design! {
         }
     }
 
-    ModelAttributeTag = <RoundedView> {
+    pub ModelAttributeTag = <RoundedView> {
         width: Fit,
         height: Fit,
         padding: {top: 6, bottom: 6, left: 10, right: 10}
@@ -66,7 +66,7 @@ live_design! {
         }
     }
 
-    ModelAttributes = <View> {
+    pub ModelAttributes = <View> {
         width: Fit,
         height: Fit,
         spacing: 8,

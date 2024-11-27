@@ -7,13 +7,13 @@ use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::Model;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::landing::model_card::ModelCard;
-    import crate::landing::search_loading::SearchLoading;
-    import crate::chat::agent_button::AgentButton;
+    use crate::shared::styles::*;
+    use crate::landing::model_card::ModelCard;
+    use crate::landing::search_loading::SearchLoading;
+    use crate::chat::agent_button::AgentButton;
 
     AgentCard = <RoundedView> {
         width: Fill,
@@ -60,7 +60,7 @@ live_design! {
         }
     }
 
-    ModelList = {{ModelList}} {
+    pub ModelList = {{ModelList}} {
         width: Fill,
         height: Fill,
 

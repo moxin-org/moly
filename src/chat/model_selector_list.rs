@@ -10,16 +10,17 @@ use std::collections::HashMap;
 use super::model_selector_item::ModelSelectorItemWidgetRefExt;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::chat::model_info::ModelInfo;
-    import crate::chat::model_info::AgentInfo;
-    import crate::chat::model_selector_item::ModelSelectorItem;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::chat::model_info::ModelInfo;
+    use crate::chat::model_info::AgentInfo;
+    use crate::chat::model_selector_item::ModelSelectorItem;
 
-    ModelSelectorList = {{ModelSelectorList}} {
+    pub ModelSelectorList = {{ModelSelectorList}} {
         flow: Down,
         model_template: <ModelSelectorItem> { content = <ModelInfo> {} }
         agent_template: <ModelSelectorItem> { content = <AgentInfo> {} }

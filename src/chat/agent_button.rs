@@ -6,13 +6,15 @@ use crate::shared::actions::{ChatAction, ChatHandler};
 use super::{prompt_input::PromptInputAction, shared::ChatAgentAvatarWidgetExt};
 
 live_design!(
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::chat::shared::ChatAgentAvatar;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    AgentButton = {{AgentButton}} <RoundedView> {
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::chat::shared::ChatAgentAvatar;
+
+    pub AgentButton = {{AgentButton}} <RoundedView> {
         flow: Right,
         width: Fill,
         visible: false,

@@ -1,15 +1,16 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::chat::chat_panel::ChatPanel;
-    import crate::chat::chat_history::ChatHistory;
-    import crate::chat::chat_params::ChatParams;
+    use crate::shared::styles::*;
+    use crate::chat::chat_panel::ChatPanel;
+    use crate::chat::chat_history::ChatHistory;
+    use crate::chat::chat_params::ChatParams;
 
-    ChatScreen = {{ChatScreen}} {
+    pub ChatScreen = {{ChatScreen}} {
         width: Fill,
         height: Fill,
         spacing: 10,

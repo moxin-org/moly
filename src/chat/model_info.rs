@@ -1,11 +1,12 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-
-    import crate::shared::styles::*;
-    import crate::chat::shared::ChatAgentAvatar;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+    
+    use crate::shared::styles::*;
+    use crate::chat::shared::ChatAgentAvatar;
 
     ICON_TICK = dep("crate://self/resources/images/tick.png")
 
@@ -27,11 +28,10 @@ live_design! {
         }
     }
 
-    ModelInfo = <View> {
+    pub ModelInfo = <View> {
+        width: Fill, height: Fit
         padding: 16,
         spacing: 10,
-        width: Fill,
-        height: Fit,
         align: {x: 0.0, y: 0.5},
 
         cursor: Hand,
@@ -79,7 +79,7 @@ live_design! {
         }
     }
 
-    AgentInfo = <View> {
+    pub AgentInfo = <View> {
         width: Fill,
         height: Fit,
         padding: 16,

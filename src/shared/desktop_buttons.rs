@@ -1,13 +1,13 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
     // Overrides the dark theme colors of the desktop buttons.
     // This is a temporaty fix until theme system allows for more flexible color overrides.
-    MolyDesktopButton = <DesktopButton> {
+    pub MolyDesktopButton = <DesktopButton> {
         draw_bg: {
             instance stroke_color: #5
             instance button_color: #f
