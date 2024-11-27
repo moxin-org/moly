@@ -10,10 +10,8 @@ live_design! {
     use link::widgets::*;
 
     use crate::shared::styles::*;
-    use crate::shared::widgets::VerticalFiller;
     use crate::landing::search_bar::SearchBar;
     use crate::landing::model_list::ModelList;
-    use crate::landing::sorting::Sorting;
     use crate::landing::downloads::Downloads;
 
     pub LandingScreen = {{LandingScreen}} {

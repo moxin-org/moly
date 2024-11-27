@@ -6,7 +6,6 @@ live_design! {
     use link::widgets::*;
     
     use crate::shared::styles::*;
-    use crate::shared::styles::*;
     use crate::chat::shared::ChatAgentAvatar;
 
     ICON_TICK = dep("crate://self/resources/images/tick.png")
@@ -30,12 +29,9 @@ live_design! {
     }
 
     pub ModelInfo = <View> {
-        width: Fill,
-        height: Fit,
+        width: Fill, height: Fit
         padding: 16,
         spacing: 10,
-        width: Fill,
-        height: Fit,
         align: {x: 0.0, y: 0.5},
 
         cursor: Hand,

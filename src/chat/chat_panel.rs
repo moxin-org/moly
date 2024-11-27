@@ -32,8 +32,6 @@ live_design! {
     use crate::chat::prompt_input::PromptInput;
 
     ICON_JUMP_TO_BOTTOM = dep("crate://self/resources/icons/jump_to_bottom.svg")
-    ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
-    ICON_STOP = dep("crate://self/resources/icons/stop.svg")
 
     CircleButton = <MolyButton> {
         padding: {right: 2},
