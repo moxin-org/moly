@@ -7,7 +7,7 @@ use crate::{
         model_selector_item::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatEntityId, ChatEntityAction, ChatID, ChatMessage},
+        chats::chat::{Chat, ChatEntityAction, ChatEntityId, ChatID, ChatMessage},
         store::Store,
     },
     shared::actions::{ChatAction, ChatHandler},
@@ -777,18 +777,10 @@ impl ChatPanel {
             {
                 match entity_selected {
                     ChatEntityId::Agent(agent) => {
-                        store.send_agent_message(*agent, prompt.clone(), regenerate_from);
+                        store.send_agent_message(*agent, prompt, regenerate_from);
                     }
                     ChatEntityId::ModelFile(file_id) => {
-                        // TODO: This logic seems fragile.
-                        let file = store.downloads.get_file(&file_id).expect("file not found");
-                        let chat = store.chats.get_current_chat().expect("no current chat");
-                        chat.borrow_mut().send_message_to_model(
-                            prompt,
-                            file,
-                            store.chats.model_loader.clone(),
-                            &store.backend,
-                        );
+                        store.send_model_message(file_id, prompt, regenerate_from);
                     }
                 }
             } else {

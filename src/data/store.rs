@@ -149,41 +149,42 @@ impl Store {
         prompt: String,
         regenerate_from: Option<usize>,
     ) {
-        let entity = self
+        let entity_id = self
             .chats
             .get_current_chat()
             .and_then(|c| c.borrow().associated_entity.clone());
 
-        match entity {
-            Some(ChatEntityId::Agent(agent)) => {
+        let Some(entity_id) = entity_id else {
+            return;
+        };
+
+        match entity_id {
+            ChatEntityId::Agent(agent) => {
                 self.send_agent_message(agent, prompt, regenerate_from);
             }
-            _ => {
-                self.send_chat_message(prompt, regenerate_from);
+            ChatEntityId::ModelFile(file_id) => {
+                self.send_model_message(&file_id, prompt, regenerate_from);
             }
         }
     }
 
-    pub fn send_chat_message(&mut self, prompt: String, regenerate_from: Option<usize>) {
+    pub fn send_model_message(
+        &mut self,
+        file_id: &FileID,
+        prompt: String,
+        regenerate_from: Option<usize>,
+    ) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            let wanted_file = self
-                .chats
-                .get_chat_file_id(&mut chat)
-                .map(|file_id| self.downloads.get_file(&file_id))
-                .flatten();
-
-            if let Some(file) = wanted_file {
+            if let Some(file) = self.downloads.get_file(file_id) {
                 if let Some(message_id) = regenerate_from {
                     chat.remove_messages_from(message_id);
                 }
-                chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
                 chat.send_message_to_model(
                     prompt,
                     file,
                     self.chats.model_loader.clone(),
                     &self.backend,
                 );
-                chat.save();
             }
         }
     }
