@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat::{ChatEntity, ChatID}, store::Store},
+    data::{chats::chat::{ChatEntityId, ChatID}, store::Store},
     shared::{modal::ModalWidgetExt, utils::human_readable_name},
 };
 
@@ -358,7 +358,7 @@ impl Widget for ChatHistoryCard {
             .to_string();
 
         match chat.borrow().associated_entity {
-            Some(ChatEntity::Agent(agent)) => {
+            Some(ChatEntityId::Agent(agent)) => {
                 self.view(id!(avatar_section.model)).set_visible(false);
                 self.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
                 self.chat_agent_avatar(id!(avatar_section.agent)).set_agent(&agent);

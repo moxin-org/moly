@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat::ChatEntity, store::Store},
+    data::{chats::chat::ChatEntityId, store::Store},
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
@@ -134,8 +134,8 @@ impl ModelSelectorList {
             let size_visible = !size.trim().is_empty();
 
             let current_file_id = match chat_entity {
-                Some(ChatEntity::ModelFile(ref file_id)) => Some(file_id.clone()),
-                Some(ChatEntity::Agent(_)) => None,
+                Some(ChatEntityId::ModelFile(ref file_id)) => Some(file_id.clone()),
+                Some(ChatEntityId::Agent(_)) => None,
                 _ => store.chats.loaded_model.as_ref().map(|m| m.id.clone()),
             };
             let icon_tick_visible = current_file_id.as_ref()
@@ -183,7 +183,7 @@ impl ModelSelectorList {
 
                 let agent_name = &agents[i].name();
                 let current_agent_name = match chat_entity {
-                    Some(ChatEntity::Agent(agent)) => Some(agent.name()),
+                    Some(ChatEntityId::Agent(agent)) => Some(agent.name()),
                     _ => None,
                 };
                 let icon_tick_visible = current_agent_name.as_ref() == Some(agent_name);

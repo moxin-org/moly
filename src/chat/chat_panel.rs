@@ -7,7 +7,7 @@ use crate::{
         model_selector_item::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatEntity, ChatEntityAction, ChatID, ChatMessage},
+        chats::chat::{Chat, ChatEntityId, ChatEntityAction, ChatID, ChatMessage},
         store::Store,
     },
     shared::actions::{ChatAction, ChatHandler},
@@ -460,7 +460,7 @@ impl WidgetMatchEvent for ChatPanel {
 
                     if let Some(chat) = store.chats.get_current_chat() {
                         chat.borrow_mut().associated_entity =
-                            Some(ChatEntity::ModelFile(downloaded_file.file.id.clone()));
+                            Some(ChatEntityId::ModelFile(downloaded_file.file.id.clone()));
                         chat.borrow().save();
                     }
 
@@ -469,7 +469,7 @@ impl WidgetMatchEvent for ChatPanel {
                 }
                 ModelSelectorAction::AgentSelected(agent) => {
                     if let Some(chat) = store.chats.get_current_chat() {
-                        chat.borrow_mut().associated_entity = Some(ChatEntity::Agent(agent));
+                        chat.borrow_mut().associated_entity = Some(ChatEntityId::Agent(agent));
                         chat.borrow().save();
                     }
 
@@ -776,10 +776,10 @@ impl ChatPanel {
                 .entity_selected
             {
                 match entity_selected {
-                    ChatEntity::Agent(agent) => {
+                    ChatEntityId::Agent(agent) => {
                         store.send_agent_message(*agent, prompt.clone(), regenerate_from);
                     }
-                    ChatEntity::ModelFile(file_id) => {
+                    ChatEntityId::ModelFile(file_id) => {
                         // TODO: This logic seems fragile.
                         let file = store.downloads.get_file(&file_id).expect("file not found");
                         let chat = store.chats.get_current_chat().expect("no current chat");
@@ -813,7 +813,7 @@ impl ChatPanel {
 
                 let chat_entity = &get_chat(store).unwrap().borrow().associated_entity;
                 match chat_entity {
-                    Some(ChatEntity::Agent(agent)) => {
+                    Some(ChatEntityId::Agent(agent)) => {
                         let empty_view = self.view(id!(empty_conversation));
                         empty_view
                             .view(id!(avatar_section.model))
@@ -911,10 +911,10 @@ impl ChatPanel {
                     chat_line_item.set_regenerate_button_visible(false);
 
                     match chat_line_data.entity {
-                        Some(ChatEntity::Agent(agent)) => {
+                        Some(ChatEntityId::Agent(agent)) => {
                             chat_line_item.set_model_avatar(&agent);
                         }
-                        Some(ChatEntity::ModelFile(_)) => {
+                        Some(ChatEntityId::ModelFile(_)) => {
                             chat_line_item.set_model_avatar_text(
                                 &get_model_initial_letter(store).unwrap().to_string(),
                             );

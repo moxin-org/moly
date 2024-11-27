@@ -4,7 +4,10 @@ use moly_protocol::data::{File, FileID, Model};
 
 use crate::{
     chat::model_button::ModelButtonWidgetRefExt,
-    data::{chats::chat::ChatEntity, store::Store},
+    data::{
+        chats::chat::{ChatEntityId, ChatEntityRef},
+        store::Store,
+    },
     shared::{actions::ChatAction, list::ListWidgetExt},
 };
 
@@ -251,7 +254,7 @@ pub struct PromptInput {
     prompt_pending_focus: bool,
 
     #[rust]
-    pub entity_selected: Option<ChatEntity>,
+    pub entity_selected: Option<ChatEntityId>,
 }
 
 impl Widget for PromptInput {
@@ -346,10 +349,10 @@ impl WidgetMatchEvent for PromptInput {
         for action in actions {
             match action.cast() {
                 PromptInputAction::AgentSelected(agent) => {
-                    self.on_entity_selected(scope, &ChatEntity::Agent(agent))
+                    self.on_entity_selected(scope, &ChatEntityId::Agent(agent))
                 }
                 PromptInputAction::ModelFileSelected(file_id) => {
-                    self.on_entity_selected(scope, &ChatEntity::ModelFile(file_id))
+                    self.on_entity_selected(scope, &ChatEntityId::ModelFile(file_id))
                 }
                 PromptInputAction::None => {}
             }
@@ -375,16 +378,16 @@ impl PromptInput {
         self.prev_prompt = current;
     }
 
-    fn on_entity_selected(&mut self, scope: &mut Scope, entity: &ChatEntity) {
+    fn on_entity_selected(&mut self, scope: &mut Scope, entity: &ChatEntityId) {
         let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
         let agent_label = self.label(id!(selected_agent_label));
 
         match entity {
-            ChatEntity::Agent(agent) => {
+            ChatEntityId::Agent(agent) => {
                 agent_label.set_text(&agent.name());
                 agent_avatar.set_agent(agent);
             }
-            ChatEntity::ModelFile(file_id) => {
+            ChatEntityId::ModelFile(file_id) => {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 let file = store
                     .downloads
@@ -437,8 +440,22 @@ impl PromptInput {
     fn on_agent_search_submit(&mut self, scope: &mut Scope, current: String) {
         let agents = MofaBackend::available_agents();
         let agents = agents.iter();
-        if let Some(agent) = filter_agents(agents, &current).nth(self.agents_keyboard_focus_index) {
-            self.on_entity_selected(scope, &ChatEntity::Agent(*agent));
+        let model_files = scope
+            .data
+            .get::<Store>()
+            .unwrap()
+            .downloads
+            .downloaded_files
+            .iter()
+            .map(|f| &f.file);
+
+        let entities = ChatEntityRef::chain_from(agents, model_files);
+        let selected_entity_id = filter_entities(entities, &current)
+            .nth(self.agents_keyboard_focus_index)
+            .map(|e| e.id());
+
+        if let Some(entity_id) = selected_entity_id {
+            self.on_entity_selected(scope, &entity_id);
         };
     }
 
@@ -447,31 +464,24 @@ impl PromptInput {
         let mut list = self.list(id!(agent_autocomplete.list));
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        enum Item<'a> {
-            Agent(&'a MofaAgent),
-            Model(&'a File),
-        }
-
         let agents = MofaBackend::available_agents();
-        let agents = filter_agents(agents.iter(), &search);
+        let model_files = store.downloads.downloaded_files.iter().map(|f| &f.file);
 
-        let files = store.downloads.downloaded_files.iter().map(|f| &f.file);
-        let files = filter_files(files, &search);
+        let entities = ChatEntityRef::chain_from(agents.iter(), model_files);
+        let entities = filter_entities(entities, &search);
 
-        let items: Vec<WidgetRef> = agents
-            .map(Item::Agent)
-            .chain(files.map(Item::Model))
+        let items: Vec<WidgetRef> = entities
             .enumerate()
             .map(|(idx, item)| {
                 let widget: WidgetRef;
 
                 match item {
-                    Item::Agent(agent) => {
+                    ChatEntityRef::Agent(agent) => {
                         widget = WidgetRef::new_from_ptr(cx, self.agent_template);
                         let mut btn = widget.agent_button(id!(button));
                         btn.set_agent(agent, true);
                     }
-                    Item::Model(file) => {
+                    ChatEntityRef::ModelFile(file) => {
                         widget = WidgetRef::new_from_ptr(cx, self.model_template);
                         let mut btn = widget.model_button(id!(button));
                         btn.set_file(file);
@@ -579,35 +589,19 @@ impl PromptInputRef {
     }
 }
 
-fn filter_agents<'a, A: Iterator<Item = &'a MofaAgent>>(
-    agents: A,
+fn filter_entities<'a, M: Iterator<Item = ChatEntityRef<'a>>>(
+    entities: M,
     search: &str,
-) -> impl Iterator<Item = &'a MofaAgent> {
+) -> impl Iterator<Item = ChatEntityRef<'a>> {
     let terms = search
         .split_whitespace()
         .map(|s| s.to_ascii_lowercase())
         .collect::<Vec<_>>();
 
-    agents.filter(move |agent| {
+    entities.filter(move |entity| {
         terms
             .iter()
-            .all(|term| agent.name().to_ascii_lowercase().contains(term))
-    })
-}
-
-fn filter_files<'a, M: Iterator<Item = &'a File>>(
-    files: M,
-    search: &str,
-) -> impl Iterator<Item = &'a File> {
-    let terms = search
-        .split_whitespace()
-        .map(|s| s.to_ascii_lowercase())
-        .collect::<Vec<_>>();
-
-    files.filter(move |file| {
-        terms
-            .iter()
-            .all(|term| file.name.to_ascii_lowercase().contains(term))
+            .all(|term| entity.name().to_ascii_lowercase().contains(term))
     })
 }
 

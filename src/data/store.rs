@@ -1,4 +1,4 @@
-use super::chats::chat::{ChatEntity, ChatID};
+use super::chats::chat::{ChatEntityId, ChatID};
 use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
@@ -155,7 +155,7 @@ impl Store {
             .and_then(|c| c.borrow().associated_entity.clone());
 
         match entity {
-            Some(ChatEntity::Agent(agent)) => {
+            Some(ChatEntityId::Agent(agent)) => {
                 self.send_agent_message(agent, prompt, regenerate_from);
             }
             _ => {
@@ -176,7 +176,7 @@ impl Store {
                 if let Some(message_id) = regenerate_from {
                     chat.remove_messages_from(message_id);
                 }
-                chat.associated_entity = Some(ChatEntity::ModelFile(file.id.clone()));
+                chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
                 chat.send_message_to_model(
                     prompt,
                     file,
@@ -269,13 +269,13 @@ impl Store {
         };
 
         match chat.borrow().associated_entity {
-            Some(ChatEntity::ModelFile(ref file_id)) => self
+            Some(ChatEntityId::ModelFile(ref file_id)) => self
                 .downloads
                 .downloaded_files
                 .iter()
                 .find(|df| df.file.id == *file_id)
                 .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntity::Agent(agent)) => Some(agent.name()),
+            Some(ChatEntityId::Agent(agent)) => Some(agent.name()),
             None => {
                 // Fallback to loaded model if exists
                 self.chats.loaded_model.as_ref().map(|m| m.name.clone())

@@ -31,10 +31,89 @@ enum ChatEntityActionKind {
     MofaAgentCancelled,
 }
 
+/// Identifies either a model file or an agent.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ChatEntity {
+pub enum ChatEntityId {
     ModelFile(FileID),
+    /// Since agents are currently fixed enum values, the agent itself is the identifier.
     Agent(MofaAgent),
+}
+
+/// Owned model file or agent.
+pub enum ChatEntity {
+    ModelFile(File),
+    Agent(MofaAgent),
+}
+
+impl ChatEntity {
+    pub fn id(&self) -> ChatEntityId {
+        match self {
+            ChatEntity::ModelFile(file) => ChatEntityId::ModelFile(file.id.clone()),
+            ChatEntity::Agent(agent) => ChatEntityId::Agent(*agent),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            // TODO: This clone is clearly avoidable, but agent name returns string.
+            ChatEntity::ModelFile(file) => file.name.clone(),
+            ChatEntity::Agent(agent) => agent.name(),
+        }
+    }
+
+    pub fn as_ref(&self) -> ChatEntityRef {
+        match self {
+            ChatEntity::ModelFile(file) => ChatEntityRef::ModelFile(file),
+            ChatEntity::Agent(agent) => ChatEntityRef::Agent(agent),
+        }
+    }
+}
+
+/// Wrapper around a reference to a model file or an agent.
+///
+/// Attempt to unify both during iterations.
+#[derive(Debug, Clone, Serialize, Copy)]
+pub enum ChatEntityRef<'a> {
+    Agent(&'a MofaAgent),
+    ModelFile(&'a File),
+}
+
+impl<'a> From<&'a File> for ChatEntityRef<'a> {
+    fn from(file: &'a File) -> Self {
+        ChatEntityRef::ModelFile(file)
+    }
+}
+
+impl<'a> From<&'a MofaAgent> for ChatEntityRef<'a> {
+    fn from(agent: &'a MofaAgent) -> Self {
+        ChatEntityRef::Agent(agent)
+    }
+}
+
+impl<'a> ChatEntityRef<'a> {
+    /// Chain model files and agents into a unified iterator.
+    pub fn chain_from(
+        agents: impl Iterator<Item = &'a MofaAgent> + 'a,
+        model_files: impl Iterator<Item = &'a File> + 'a,
+    ) -> impl Iterator<Item = Self> + 'a {
+        agents
+            .map(ChatEntityRef::from)
+            .chain(model_files.map(ChatEntityRef::from))
+    }
+
+    pub fn id(&self) -> ChatEntityId {
+        match self {
+            ChatEntityRef::ModelFile(file) => ChatEntityId::ModelFile(file.id.clone()),
+            ChatEntityRef::Agent(agent) => ChatEntityId::Agent(**agent),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            ChatEntityRef::ModelFile(file) => file.name.clone(),
+            ChatEntityRef::Agent(agent) => agent.name(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -42,7 +121,7 @@ pub struct ChatMessage {
     pub id: usize,
     pub role: Role,
     pub username: Option<String>,
-    pub entity: Option<ChatEntity>,
+    pub entity: Option<ChatEntityId>,
     pub content: String,
 }
 
@@ -71,7 +150,7 @@ pub enum ChatState {
 #[derive(Serialize, Deserialize)]
 struct ChatData {
     id: ChatID,
-    associated_entity: Option<ChatEntity>,
+    associated_entity: Option<ChatEntityId>,
     system_prompt: Option<String>,
     messages: Vec<ChatMessage>,
     title: String,
@@ -117,7 +196,7 @@ pub struct Chat {
     /// This is the model or agent that is currently "active" on the chat
     /// For models it is the most recent model used or loaded in the context of this chat session.
     /// For agents it is the agent that originated the chat.
-    pub associated_entity: Option<ChatEntity>,
+    pub associated_entity: Option<ChatEntityId>,
 
     pub messages: Vec<ChatMessage>,
     pub is_streaming: bool,
@@ -161,7 +240,7 @@ impl Chat {
                 // Until this field is removed, we need to keep this logic.
                 let chat_entity = data.associated_entity.or_else(|| {
                     data.last_used_file_id
-                        .map(|file_id| ChatEntity::ModelFile(file_id))
+                        .map(|file_id| ChatEntityId::ModelFile(file_id))
                 });
 
                 let chat = Chat {
@@ -331,7 +410,7 @@ impl Chat {
             id: next_id + 1,
             role: Role::Assistant,
             username: Some(wanted_file.name.clone()),
-            entity: Some(ChatEntity::ModelFile(wanted_file.id.clone())),
+            entity: Some(ChatEntityId::ModelFile(wanted_file.id.clone())),
             content: "".to_string(),
         });
 
@@ -427,7 +506,7 @@ impl Chat {
             id: next_id + 1,
             role: Role::Assistant,
             username: Some(agent.name()),
-            entity: Some(ChatEntity::Agent(agent.clone())),
+            entity: Some(ChatEntityId::Agent(agent.clone())),
             content: "".to_string(),
         });
 
