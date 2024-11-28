@@ -182,7 +182,7 @@ impl ModelSelectorList {
                 });
 
                 let agent_name = &agents[i].name();
-                let current_agent_name = match chat_entity {
+                let current_agent_name = match &chat_entity {
                     Some(ChatEntityId::Agent(agent)) => Some(agent.name()),
                     _ => None,
                 };

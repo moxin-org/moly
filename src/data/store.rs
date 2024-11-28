@@ -276,7 +276,7 @@ impl Store {
                 .iter()
                 .find(|df| df.file.id == *file_id)
                 .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntityId::Agent(agent)) => Some(agent.name()),
+            Some(ChatEntityId::Agent(agent)) => Some(agent.name().to_string()),
             None => {
                 // Fallback to loaded model if exists
                 self.chats.loaded_model.as_ref().map(|m| m.name.clone())

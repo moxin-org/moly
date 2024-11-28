@@ -78,9 +78,9 @@ impl<'a> ChatEntityRef<'a> {
         }
     }
 
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &str {
         match self {
-            ChatEntityRef::ModelFile(file) => file.name.clone(),
+            ChatEntityRef::ModelFile(file) => &file.name,
             ChatEntityRef::Agent(agent) => agent.name(),
         }
     }
@@ -475,7 +475,7 @@ impl Chat {
         self.messages.push(ChatMessage {
             id: next_id + 1,
             role: Role::Assistant,
-            username: Some(agent.name()),
+            username: Some(agent.name().to_string()),
             entity: Some(ChatEntityId::Agent(agent.clone())),
             content: "".to_string(),
         });
