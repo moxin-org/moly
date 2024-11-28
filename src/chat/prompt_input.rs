@@ -69,7 +69,7 @@ live_design! {
             height: Fit,
             show_bg: true,
 
-            button = <AgentButton> { select_agent_on_prompt: true }
+            button = <AgentButton> {}
         }
         model_template: <View> {
             width: Fill,
@@ -306,6 +306,20 @@ impl WidgetMatchEvent for PromptInput {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt = self.text_input(id!(prompt));
         let agent_search_input = self.text_input(id!(agent_search_input));
+
+        let clicked_agent_button = self
+            .list(id!(agent_autocomplete.list))
+            .borrow()
+            .and_then(|l| {
+                l.items()
+                    .map(|i| i.agent_button(id!(button)))
+                    .find(|ab| ab.clicked(actions))
+            });
+
+        if let Some(agent_button) = clicked_agent_button {
+            let agent = agent_button.get_agent().unwrap();
+            self.on_entity_selected(scope, &ChatEntityId::Agent(agent));
+        }
 
         for action in actions.iter().filter_map(|a| a.as_widget_action()) {
             if action.widget_uid == prompt.widget_uid() {

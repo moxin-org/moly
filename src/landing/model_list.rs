@@ -2,6 +2,7 @@ use crate::chat::agent_button::AgentButtonWidgetRefExt;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
+use crate::shared::actions::{ChatAction, ChatHandler};
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::Model;
@@ -29,7 +30,6 @@ live_design! {
             padding: {left: 15, right: 15},
             spacing: 15,
             align: {x: 0, y: 0.35},
-            create_new_chat: true,
 
             draw_bg: {
                 radius: 5,
@@ -250,8 +250,19 @@ pub enum ModelListAction {
 const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
 
 impl WidgetMatchEvent for ModelList {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let portal_list = self.portal_list(id!(list));
+
+        portal_list
+            .items_with_actions(actions)
+            .iter()
+            .for_each(|(_, item)| {
+                let agent_button = item.agent_button(id!(button));
+                if agent_button.clicked(actions) {
+                    let agent = agent_button.get_agent().unwrap();
+                    cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
+                }
+            });
 
         for action in actions.iter() {
             if let Some(_) = action.downcast_ref::<SearchAction>() {

@@ -1,9 +1,7 @@
 use makepad_widgets::*;
 use moly_mofa::MofaAgent;
 
-use crate::shared::actions::{ChatAction, ChatHandler};
-
-use super::{prompt_input::PromptInputAction, shared::ChatAgentAvatarWidgetExt};
+use super::shared::ChatAgentAvatarWidgetExt;
 
 live_design!(
     use link::theme::*;
@@ -106,18 +104,11 @@ pub struct AgentButton {
 
     #[rust]
     agent: Option<MofaAgent>,
-
-    #[live(false)]
-    create_new_chat: bool,
-
-    #[live(false)]
-    select_agent_on_prompt: bool,
 }
 
 impl Widget for AgentButton {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -125,27 +116,21 @@ impl Widget for AgentButton {
     }
 }
 
-impl WidgetMatchEvent for AgentButton {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        let Some(agent) = self.agent else { return };
-
+impl AgentButton {
+    pub fn clicked(&self, actions: &Actions) -> bool {
         if let Some(item) = actions.find_widget_action(self.view.widget_uid()) {
             if let ViewAction::FingerDown(fd) = item.cast() {
-                if fd.tap_count == 1 {
-                    if self.create_new_chat {
-                        cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
-                    }
-
-                    if self.select_agent_on_prompt {
-                        cx.action(PromptInputAction::AgentSelected(agent));
-                    }
-                }
+                return fd.tap_count == 1;
             }
         }
-    }
-}
 
-impl AgentButton {
+        false
+    }
+
+    pub fn get_agent(&self) -> Option<MofaAgent> {
+        self.agent
+    }
+
     pub fn set_agent(&mut self, agent: &MofaAgent, show_description: bool) {
         self.visible = true;
         self.label(id!(caption)).set_text(&agent.name());
@@ -165,6 +150,22 @@ impl AgentButtonRef {
     pub fn set_agent(&mut self, agent: &MofaAgent, show_description: bool) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_agent(agent, show_description);
+        }
+    }
+
+    pub fn get_agent(&self) -> Option<MofaAgent> {
+        if let Some(inner) = self.borrow() {
+            inner.get_agent()
+        } else {
+            None
+        }
+    }
+
+    pub fn clicked(&self, actions: &Actions) -> bool {
+        if let Some(inner) = self.borrow() {
+            inner.clicked(actions)
+        } else {
+            false
         }
     }
 }

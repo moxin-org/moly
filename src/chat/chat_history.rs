@@ -2,6 +2,7 @@ use super::agent_button::AgentButtonWidgetRefExt;
 use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
 use crate::data::chats::chat::ChatID;
 use crate::data::store::Store;
+use crate::shared::actions::{ChatAction, ChatHandler};
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 
@@ -47,7 +48,7 @@ live_design! {
                     list = <PortalList> {
                         drag_scrolling: false,
                         AgentHeading = <HeadingLabel> { text: "AGENTS" }
-                        Agent = <AgentButton> { create_new_chat: true }
+                        Agent = <AgentButton> {}
                         ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
                         ChatHistoryCard = <ChatHistoryCard> {
                             padding: {top: 4}
@@ -169,6 +170,16 @@ impl Widget for ChatHistory {
 impl WidgetMatchEvent for ChatHistory {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        self.portal_list(id!(list))
+            .items_with_actions(actions)
+            .iter()
+            .map(|(_, item)| item.as_agent_button())
+            .filter(|ab| ab.clicked(actions))
+            .for_each(|ab| {
+                let agent = ab.get_agent().unwrap();
+                cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
+            });
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
             store.chats.create_empty_chat();
