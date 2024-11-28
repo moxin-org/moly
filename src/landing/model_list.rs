@@ -1,4 +1,5 @@
-use crate::chat::agent_button::AgentButtonWidgetRefExt;
+use crate::chat::entity_button::EntityButtonWidgetRefExt;
+use crate::data::chats::chat::{ChatEntityId, ChatEntityRef};
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
@@ -14,7 +15,7 @@ live_design! {
     use crate::shared::styles::*;
     use crate::landing::model_card::ModelCard;
     use crate::landing::search_loading::SearchLoading;
-    use crate::chat::agent_button::AgentButton;
+    use crate::chat::entity_button::*;
 
     AgentCard = <RoundedView> {
         width: Fill,
@@ -24,7 +25,7 @@ live_design! {
             radius: 5,
             color: #F9FAFB,
         }
-        button = <AgentButton> {
+        button = <EntityButton> {
             width: Fill,
             height: Fill,
             padding: {left: 15, right: 15},
@@ -215,7 +216,9 @@ impl Widget for ModelList {
                                                     show_bg: true,
                                                 },
                                             );
-                                            cell.agent_button(id!(button)).set_agent(agent, true);
+                                            let mut button = cell.entity_button(id!(button));
+                                            button.set_entity(ChatEntityRef::from(agent));
+                                            button.set_description_visible(true);
                                         }
                                     });
 
@@ -253,16 +256,18 @@ impl WidgetMatchEvent for ModelList {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let portal_list = self.portal_list(id!(list));
 
-        portal_list
+        let clicked_entity_button = portal_list
             .items_with_actions(actions)
             .iter()
-            .for_each(|(_, item)| {
-                let agent_button = item.agent_button(id!(button));
-                if agent_button.clicked(actions) {
-                    let agent = agent_button.get_agent().unwrap();
-                    cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
-                }
-            });
+            .map(|(_, item)| item.entity_button(id!(button)))
+            .find(|button| button.clicked(actions));
+
+        if let Some(clicked_entity_button) = clicked_entity_button {
+            let ChatEntityId::Agent(agent) = *clicked_entity_button.get_entity_id().unwrap() else {
+                panic!("not an agent");
+            };
+            cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
+        }
 
         for action in actions.iter() {
             if let Some(_) = action.downcast_ref::<SearchAction>() {

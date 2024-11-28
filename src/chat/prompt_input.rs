@@ -1,9 +1,7 @@
 use makepad_widgets::*;
-use moly_mofa::{MofaAgent, MofaBackend};
-use moly_protocol::data::{File, FileID, Model};
+use moly_mofa::MofaBackend;
 
 use crate::{
-    chat::model_button::ModelButtonWidgetRefExt,
     data::{
         chats::chat::{ChatEntityId, ChatEntityRef},
         store::Store,
@@ -12,16 +10,9 @@ use crate::{
 };
 
 use super::{
-    agent_button::AgentButtonWidgetRefExt, model_selector_item::ModelSelectorAction,
+    entity_button::EntityButtonWidgetRefExt, model_selector_item::ModelSelectorAction,
     shared::ChatAgentAvatarWidgetExt,
 };
-
-#[derive(Debug, DefaultNone, Clone)]
-pub enum PromptInputAction {
-    AgentSelected(MofaAgent),
-    ModelFileSelected(FileID),
-    None,
-}
 
 live_design! {
     use link::theme::*;
@@ -31,8 +22,7 @@ live_design! {
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
     use crate::shared::list::*;
-    use crate::chat::agent_button::*;
-    use crate::chat::model_button::*;
+    use crate::chat::entity_button::*;
     use crate::chat::shared::ChatAgentAvatar;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
@@ -64,19 +54,12 @@ live_design! {
     pub PromptInput = {{PromptInput}} {
         flow: Overlay,
         height: Fit,
-        agent_template: <View> {
+        entity_template: <View> {
             width: Fill,
             height: Fit,
             show_bg: true,
 
-            button = <AgentButton> {}
-        }
-        model_template: <View> {
-            width: Fill,
-            height: Fit,
-            show_bg: true,
-
-            button = <ModelButton> {}
+            button = <EntityButton> {}
         }
 
         <View> {
@@ -235,10 +218,7 @@ pub struct PromptInput {
     deref: View,
 
     #[live]
-    agent_template: Option<LivePtr>,
-
-    #[live]
-    model_template: Option<LivePtr>,
+    entity_template: Option<LivePtr>,
 
     // see `was_at_added` function
     #[rust]
@@ -307,18 +287,18 @@ impl WidgetMatchEvent for PromptInput {
         let prompt = self.text_input(id!(prompt));
         let agent_search_input = self.text_input(id!(agent_search_input));
 
-        let clicked_agent_button = self
-            .list(id!(agent_autocomplete.list))
-            .borrow()
-            .and_then(|l| {
-                l.items()
-                    .map(|i| i.agent_button(id!(button)))
-                    .find(|ab| ab.clicked(actions))
-            });
+        let clicked_entity_button =
+            self.list(id!(agent_autocomplete.list))
+                .borrow()
+                .and_then(|l| {
+                    l.items()
+                        .map(|i| i.entity_button(id!(button)))
+                        .find(|ab| ab.clicked(actions))
+                });
 
-        if let Some(agent_button) = clicked_agent_button {
-            let agent = agent_button.get_agent().unwrap();
-            self.on_entity_selected(scope, &ChatEntityId::Agent(agent));
+        if let Some(agent_button) = clicked_entity_button {
+            let agent = agent_button.get_entity_id().unwrap();
+            self.on_entity_selected(scope, &*agent);
         }
 
         for action in actions.iter().filter_map(|a| a.as_widget_action()) {
@@ -361,16 +341,6 @@ impl WidgetMatchEvent for PromptInput {
         }
 
         for action in actions {
-            match action.cast() {
-                PromptInputAction::AgentSelected(agent) => {
-                    self.on_entity_selected(scope, &ChatEntityId::Agent(agent))
-                }
-                PromptInputAction::ModelFileSelected(file_id) => {
-                    self.on_entity_selected(scope, &ChatEntityId::ModelFile(file_id))
-                }
-                PromptInputAction::None => {}
-            }
-
             match action.cast() {
                 ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
                     self.on_agent_deselected()
@@ -487,20 +457,10 @@ impl PromptInput {
         let items: Vec<WidgetRef> = entities
             .enumerate()
             .map(|(idx, item)| {
-                let widget: WidgetRef;
-
-                match item {
-                    ChatEntityRef::Agent(agent) => {
-                        widget = WidgetRef::new_from_ptr(cx, self.agent_template);
-                        let mut btn = widget.agent_button(id!(button));
-                        btn.set_agent(agent, true);
-                    }
-                    ChatEntityRef::ModelFile(file) => {
-                        widget = WidgetRef::new_from_ptr(cx, self.model_template);
-                        let mut btn = widget.model_button(id!(button));
-                        btn.set_file(file);
-                    }
-                }
+                let widget = WidgetRef::new_from_ptr(cx, self.entity_template);
+                let mut button = widget.entity_button(id!(button));
+                button.set_entity(item);
+                button.set_description_visible(true);
 
                 if idx == self.agents_keyboard_focus_index {
                     widget.apply_over(

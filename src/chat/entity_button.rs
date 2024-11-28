@@ -1,7 +1,8 @@
-use makepad_widgets::*;
-use moly_mofa::MofaAgent;
-
 use super::shared::ChatAgentAvatarWidgetExt;
+use crate::data::chats::chat::{ChatEntityId, ChatEntityRef};
+use makepad_widgets::*;
+
+use std::cell::Ref;
 
 live_design!(
     use link::theme::*;
@@ -12,7 +13,7 @@ live_design!(
     use crate::shared::widgets::*;
     use crate::chat::shared::ChatAgentAvatar;
 
-    pub AgentButton = {{AgentButton}} <RoundedView> {
+    pub EntityButton = {{EntityButton}} <RoundedView> {
         flow: Right,
         width: Fill,
         visible: false,
@@ -98,15 +99,15 @@ live_design!(
 );
 
 #[derive(Live, Widget, LiveHook)]
-pub struct AgentButton {
+pub struct EntityButton {
     #[deref]
     view: View,
 
     #[rust]
-    agent: Option<MofaAgent>,
+    entity: Option<ChatEntityId>,
 }
 
-impl Widget for AgentButton {
+impl Widget for EntityButton {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
     }
@@ -116,7 +117,7 @@ impl Widget for AgentButton {
     }
 }
 
-impl AgentButton {
+impl EntityButton {
     pub fn clicked(&self, actions: &Actions) -> bool {
         if let Some(item) = actions.find_widget_action(self.view.widget_uid()) {
             if let ViewAction::FingerDown(fd) = item.cast() {
@@ -127,35 +128,56 @@ impl AgentButton {
         false
     }
 
-    pub fn get_agent(&self) -> Option<MofaAgent> {
-        self.agent
+    pub fn get_entity_id(&self) -> Option<&ChatEntityId> {
+        self.entity.as_ref()
     }
 
-    pub fn set_agent(&mut self, agent: &MofaAgent, show_description: bool) {
+    pub fn set_entity(&mut self, entity: ChatEntityRef) {
         self.visible = true;
-        self.label(id!(caption)).set_text(&agent.name());
-        self.chat_agent_avatar(id!(agent_avatar)).set_agent(agent);
 
-        self.view(id!(description)).set_visible(show_description);
-        if show_description {
-            self.view(id!(description.label))
-                .set_text(&agent.short_description());
+        let name_label = self.label(id!(caption));
+        let description_label = self.label(id!(description.label));
+        let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
+
+        name_label.set_text(&entity.name());
+
+        if let ChatEntityRef::Agent(agent) = entity {
+            avatar.set_visible(true);
+            avatar.set_agent(agent);
+            description_label.set_text(&agent.short_description());
+        } else {
+            avatar.set_visible(false);
+            description_label.set_text("");
         }
 
-        self.agent = Some(*agent);
+        self.entity = Some(entity.id());
+    }
+
+    pub fn set_description_visible(&mut self, visible: bool) {
+        self.view(id!(description)).set_visible(visible);
     }
 }
 
-impl AgentButtonRef {
-    pub fn set_agent(&mut self, agent: &MofaAgent, show_description: bool) {
+impl EntityButtonRef {
+    pub fn set_description_visible(&mut self, visible: bool) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_agent(agent, show_description);
+            inner.set_description_visible(visible);
         }
     }
 
-    pub fn get_agent(&self) -> Option<MofaAgent> {
+    pub fn set_entity(&mut self, entity: ChatEntityRef) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_entity(entity);
+        }
+    }
+
+    pub fn get_entity_id(&self) -> Option<Ref<ChatEntityId>> {
         if let Some(inner) = self.borrow() {
-            inner.get_agent()
+            if inner.entity.is_none() {
+                return None;
+            }
+
+            Some(Ref::map(inner, |inner| inner.entity.as_ref().unwrap()))
         } else {
             None
         }
