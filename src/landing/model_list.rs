@@ -1,5 +1,5 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
-use crate::data::chats::chat::{ChatEntityId, ChatEntityRef};
+use crate::data::chats::chat::ChatEntityRef;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
@@ -262,11 +262,9 @@ impl WidgetMatchEvent for ModelList {
             .map(|(_, item)| item.entity_button(id!(button)))
             .find(|button| button.clicked(actions));
 
-        if let Some(clicked_entity_button) = clicked_entity_button {
-            let ChatEntityId::Agent(agent) = *clicked_entity_button.get_entity_id().unwrap() else {
-                panic!("not an agent");
-            };
-            cx.action(ChatAction::Start(ChatEntityId::Agent(agent)));
+        if let Some(entity_button) = clicked_entity_button {
+            let entity = entity_button.get_entity_id().unwrap().clone();
+            cx.action(ChatAction::Start(entity));
         }
 
         for action in actions.iter() {
