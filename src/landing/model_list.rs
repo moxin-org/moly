@@ -3,7 +3,7 @@ use crate::data::chats::chat::{ChatEntityId, ChatEntityRef};
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
-use crate::shared::actions::{ChatAction, ChatHandler};
+use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::Model;
@@ -266,7 +266,7 @@ impl WidgetMatchEvent for ModelList {
             let ChatEntityId::Agent(agent) = *clicked_entity_button.get_entity_id().unwrap() else {
                 panic!("not an agent");
             };
-            cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
+            cx.action(ChatAction::Start(ChatEntityId::Agent(agent)));
         }
 
         for action in actions.iter() {

@@ -10,7 +10,7 @@ use crate::{
         chats::chat::{Chat, ChatEntityAction, ChatEntityId, ChatID, ChatMessage},
         store::Store,
     },
-    shared::actions::{ChatAction, ChatHandler},
+    shared::actions::ChatAction,
 };
 
 use super::{
@@ -493,13 +493,13 @@ impl WidgetMatchEvent for ChatPanel {
 
             match action.cast() {
                 ChatAction::Start(handler) => match handler {
-                    ChatHandler::Model(file_id) => {
+                    ChatEntityId::ModelFile(file_id) => {
                         if let Some(file) = store.downloads.get_file(&file_id) {
                             store.chats.create_empty_chat_and_load_file(file);
                             self.focus_on_prompt_input_pending = true;
                         }
                     }
-                    ChatHandler::Agent(agent) => {
+                    ChatEntityId::Agent(agent) => {
                         store.chats.create_empty_chat_with_agent(agent);
                         self.focus_on_prompt_input_pending = true;
                     }

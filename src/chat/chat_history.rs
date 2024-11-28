@@ -2,7 +2,7 @@ use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefEx
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::{ChatEntityId, ChatEntityRef, ChatID};
 use crate::data::store::Store;
-use crate::shared::actions::{ChatAction, ChatHandler};
+use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 
@@ -183,7 +183,7 @@ impl WidgetMatchEvent for ChatHistory {
             let ChatEntityId::Agent(agent) = *entity_button.get_entity_id().unwrap() else {
                 panic!("not an agent");
             };
-            cx.action(ChatAction::Start(ChatHandler::Agent(agent)));
+            cx.action(ChatAction::Start(ChatEntityId::Agent(agent)));
         }
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
