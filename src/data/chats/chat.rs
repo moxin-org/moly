@@ -39,36 +39,6 @@ pub enum ChatEntityId {
     Agent(MofaAgent),
 }
 
-/// Owned model file or agent.
-pub enum ChatEntity {
-    ModelFile(File),
-    Agent(MofaAgent),
-}
-
-impl ChatEntity {
-    pub fn id(&self) -> ChatEntityId {
-        match self {
-            ChatEntity::ModelFile(file) => ChatEntityId::ModelFile(file.id.clone()),
-            ChatEntity::Agent(agent) => ChatEntityId::Agent(*agent),
-        }
-    }
-
-    pub fn name(&self) -> String {
-        match self {
-            // TODO: This clone is clearly avoidable, but agent name returns string.
-            ChatEntity::ModelFile(file) => file.name.clone(),
-            ChatEntity::Agent(agent) => agent.name(),
-        }
-    }
-
-    pub fn as_ref(&self) -> ChatEntityRef {
-        match self {
-            ChatEntity::ModelFile(file) => ChatEntityRef::ModelFile(file),
-            ChatEntity::Agent(agent) => ChatEntityRef::Agent(agent),
-        }
-    }
-}
-
 /// Wrapper around a reference to a model file or an agent.
 ///
 /// Attempt to unify both during iterations.
