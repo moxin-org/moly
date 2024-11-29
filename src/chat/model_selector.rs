@@ -360,7 +360,20 @@ impl ModelSelector {
     }
 
     fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-        if store.chats.model_loader.is_loading() {
+        let is_associated_model_loading = store
+            .chats
+            .get_current_chat()
+            .and_then(|c| match &c.borrow().associated_entity {
+                Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
+                _ => None,
+            })
+            .map(|file_id| {
+                let model_loader = &store.chats.model_loader;
+                model_loader.file_id() == Some(file_id) && model_loader.is_loading()
+            })
+            .unwrap_or(false);
+
+        if is_associated_model_loading {
             self.model_selector_loading(id!(loading))
                 .show_and_animate(cx);
         } else {
