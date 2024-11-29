@@ -2,7 +2,7 @@ pub mod chat;
 pub mod model_loader;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatEntityAction, ChatEntity, ChatID};
+use chat::{Chat, ChatEntity, ChatEntityAction, ChatID};
 use makepad_widgets::ActionTrait;
 use model_loader::ModelLoader;
 use moly_backend::Backend;
@@ -171,9 +171,7 @@ impl Chats {
     /// one but references a no longer existing (deleted) file.
     pub fn get_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
         match &chat.associated_entity {
-            Some(ChatEntity::ModelFile(file_id)) => {
-                Some(file_id.clone())
-            }
+            Some(ChatEntity::ModelFile(file_id)) => Some(file_id.clone()),
             _ => {
                 let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
                 Some(file_id)
@@ -182,12 +180,15 @@ impl Chats {
     }
 
     pub fn create_empty_chat(&mut self) {
-        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
+        let mut new_chat = Chat::new(self.chats_dir.clone());
+        new_chat.associated_entity = self
+            .loaded_model
+            .as_ref()
+            .map(|m| ChatEntity::ModelFile(m.id.clone()));
 
-        new_chat.borrow().save();
-
-        self.current_chat_id = Some(new_chat.borrow().id);
-        self.saved_chats.push(new_chat);
+        new_chat.save();
+        self.current_chat_id = Some(new_chat.id);
+        self.saved_chats.push(RefCell::new(new_chat));
     }
 
     pub fn create_empty_chat_with_agent(&mut self, agent: MofaAgent) {
