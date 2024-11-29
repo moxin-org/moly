@@ -1,8 +1,10 @@
 use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
-use crate::chat::entity_button::EntityButtonWidgetRefExt;
-use crate::data::chats::chat::{ChatEntityRef, ChatID};
+use crate::data::chats::chat::ChatID;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
+use crate::{
+    chat::entity_button::EntityButtonWidgetRefExt, data::chats::chat_entity::ChatEntityRef,
+};
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 

@@ -1,5 +1,5 @@
 use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
-use crate::data::chats::chat::ChatEntityId;
+use crate::data::chats::chat_entity::ChatEntityId;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
 use crate::shared::{actions::ChatAction, utils::human_readable_name};

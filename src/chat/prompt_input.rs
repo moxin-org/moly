@@ -3,7 +3,7 @@ use moly_mofa::MofaBackend;
 
 use crate::{
     data::{
-        chats::chat::{ChatEntityId, ChatEntityRef},
+        chats::chat_entity::{ChatEntityId, ChatEntityRef},
         store::Store,
     },
     shared::{actions::ChatAction, list::ListWidgetExt},

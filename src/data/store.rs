@@ -1,4 +1,5 @@
-use super::chats::chat::{ChatEntityId, ChatID};
+use super::chats::chat::ChatID;
+use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;

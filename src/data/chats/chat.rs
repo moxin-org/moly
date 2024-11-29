@@ -13,6 +13,7 @@ use std::thread;
 
 use crate::data::filesystem::{read_from_file, write_to_file};
 
+use super::chat_entity::ChatEntityId;
 use super::model_loader::ModelLoader;
 
 pub type ChatID = u128;
@@ -29,51 +30,6 @@ enum ChatEntityActionKind {
     ModelStreamingDone,
     MofaAgentResult(String, MofaAgent),
     MofaAgentCancelled,
-}
-
-/// Identifies either a model file or an agent.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ChatEntityId {
-    ModelFile(FileID),
-    /// Since agents are currently fixed enum values, the agent itself is the identifier.
-    Agent(MofaAgent),
-}
-
-/// Wrapper around a reference to a model file or an agent.
-///
-/// Attempt to unify both during iterations.
-#[derive(Debug, Clone, Serialize, Copy)]
-pub enum ChatEntityRef<'a> {
-    Agent(&'a MofaAgent),
-    ModelFile(&'a File),
-}
-
-impl<'a> From<&'a File> for ChatEntityRef<'a> {
-    fn from(file: &'a File) -> Self {
-        ChatEntityRef::ModelFile(file)
-    }
-}
-
-impl<'a> From<&'a MofaAgent> for ChatEntityRef<'a> {
-    fn from(agent: &'a MofaAgent) -> Self {
-        ChatEntityRef::Agent(agent)
-    }
-}
-
-impl<'a> ChatEntityRef<'a> {
-    pub fn id(&self) -> ChatEntityId {
-        match self {
-            ChatEntityRef::ModelFile(file) => ChatEntityId::ModelFile(file.id.clone()),
-            ChatEntityRef::Agent(agent) => ChatEntityId::Agent(**agent),
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        match self {
-            ChatEntityRef::ModelFile(file) => &file.name,
-            ChatEntityRef::Agent(agent) => agent.name(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

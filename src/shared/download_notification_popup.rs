@@ -246,9 +246,7 @@ impl Widget for DownloadNotificationPopup {
 }
 
 impl WidgetMatchEvent for DownloadNotificationPopup {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(DownloadNotificationPopupAction::CloseButtonClicked);
         }

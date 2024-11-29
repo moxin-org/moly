@@ -1,5 +1,5 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
-use crate::data::chats::chat::ChatEntityRef;
+use crate::data::chats::chat_entity::ChatEntityRef;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;

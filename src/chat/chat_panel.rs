@@ -7,7 +7,10 @@ use crate::{
         model_selector_item::ModelSelectorAction,
     },
     data::{
-        chats::chat::{Chat, ChatEntityAction, ChatEntityId, ChatID, ChatMessage},
+        chats::{
+            chat::{Chat, ChatEntityAction, ChatID, ChatMessage},
+            chat_entity::ChatEntityId,
+        },
         store::Store,
     },
     shared::actions::ChatAction,
@@ -809,7 +812,7 @@ impl ChatPanel {
 
                         empty_view
                             .chat_agent_avatar(id!(avatar_section.agent))
-                            .set_agent(agent);
+                            .set_agent(&agent);
                     }
                     _ => {
                         let empty_view = self.view(id!(empty_conversation));

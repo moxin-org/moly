@@ -1,8 +1,10 @@
 pub mod chat;
+pub mod chat_entity;
 pub mod model_loader;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatEntityAction, ChatEntityId, ChatID};
+use chat::{Chat, ChatEntityAction, ChatID};
+use chat_entity::ChatEntityId;
 use makepad_widgets::ActionTrait;
 use model_loader::ModelLoader;
 use moly_backend::Backend;

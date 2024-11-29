@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat::ChatEntityId, store::Store},
+    data::{chats::chat_entity::ChatEntityId, store::Store},
     shared::{
         actions::ChatAction,
         utils::{format_model_size, hex_rgb_color},

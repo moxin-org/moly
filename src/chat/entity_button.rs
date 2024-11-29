@@ -1,5 +1,6 @@
+use crate::data::chats::chat_entity::{ChatEntityId, ChatEntityRef};
+
 use super::shared::ChatAgentAvatarWidgetExt;
-use crate::data::chats::chat::{ChatEntityId, ChatEntityRef};
 use makepad_widgets::*;
 
 use std::cell::Ref;
