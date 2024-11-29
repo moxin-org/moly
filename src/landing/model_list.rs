@@ -217,7 +217,7 @@ impl Widget for ModelList {
                                                 },
                                             );
                                             let mut button = cell.entity_button(id!(button));
-                                            button.set_entity(ChatEntityRef::from(agent));
+                                            button.set_entity(ChatEntityRef::Agent(agent));
                                             button.set_description_visible(true);
                                         }
                                     });

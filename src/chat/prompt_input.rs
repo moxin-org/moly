@@ -446,8 +446,8 @@ impl PromptInput {
 
         let entities = agents
             .iter()
-            .map(ChatEntityRef::from)
-            .chain(model_files.map(ChatEntityRef::from))
+            .map(ChatEntityRef::Agent)
+            .chain(model_files.map(ChatEntityRef::ModelFile))
             .filter(move |entity| {
                 terms
                     .iter()

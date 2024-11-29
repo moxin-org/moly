@@ -151,7 +151,7 @@ impl Widget for ChatHistory {
                         Item::AgentButton(agent) => {
                             let item = list.item(cx, item_id, live_id!(Agent));
                             item.as_entity_button()
-                                .set_entity(ChatEntityRef::from(*agent));
+                                .set_entity(ChatEntityRef::Agent(*agent));
                             item.draw_all(cx, scope);
                         }
                         Item::ChatButton(chat_id) => {
