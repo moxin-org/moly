@@ -2,6 +2,7 @@ use crate::data::chats::chat_entity::{ChatEntityId, ChatEntityRef};
 
 use super::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::*;
+use moly_mofa::MofaAgent;
 
 use std::cell::Ref;
 
@@ -133,6 +134,10 @@ impl EntityButton {
         self.entity.as_ref()
     }
 
+    pub fn set_agent(&mut self, agent: &MofaAgent) {
+        self.set_entity(ChatEntityRef::Agent(agent));
+    }
+
     pub fn set_entity(&mut self, entity: ChatEntityRef) {
         self.visible = true;
 
@@ -163,6 +168,12 @@ impl EntityButtonRef {
     pub fn set_description_visible(&mut self, visible: bool) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_description_visible(visible);
+        }
+    }
+
+    pub fn set_agent(&mut self, agent: &MofaAgent) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_agent(agent);
         }
     }
 

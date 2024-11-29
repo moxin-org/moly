@@ -1,5 +1,4 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
-use crate::data::chats::chat_entity::ChatEntityRef;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
@@ -217,7 +216,7 @@ impl Widget for ModelList {
                                                 },
                                             );
                                             let mut button = cell.entity_button(id!(button));
-                                            button.set_entity(ChatEntityRef::Agent(agent));
+                                            button.set_agent(agent);
                                             button.set_description_visible(true);
                                         }
                                     });

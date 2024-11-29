@@ -1,10 +1,8 @@
 use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
+use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
-use crate::{
-    chat::entity_button::EntityButtonWidgetRefExt, data::chats::chat_entity::ChatEntityRef,
-};
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 
@@ -150,8 +148,7 @@ impl Widget for ChatHistory {
                         }
                         Item::AgentButton(agent) => {
                             let item = list.item(cx, item_id, live_id!(Agent));
-                            item.as_entity_button()
-                                .set_entity(ChatEntityRef::Agent(*agent));
+                            item.as_entity_button().set_agent(agent);
                             item.draw_all(cx, scope);
                         }
                         Item::ChatButton(chat_id) => {
