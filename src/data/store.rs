@@ -154,48 +154,14 @@ impl Store {
             .get_current_chat()
             .and_then(|c| c.borrow().associated_entity.clone());
 
-        let Some(entity_id) = entity_id else {
-            return;
-        };
-
-        match entity_id {
-            ChatEntityId::Agent(agent) => {
-                self.send_agent_message(agent, prompt, regenerate_from);
-            }
-            ChatEntityId::ModelFile(file_id) => {
-                self.send_model_message(&file_id, prompt, regenerate_from);
-            }
+        if let Some(entity_id) = entity_id {
+            self.send_entity_message(&entity_id, prompt, regenerate_from);
         }
     }
 
-    pub fn send_model_message(
+    pub fn send_entity_message(
         &mut self,
-        file_id: &FileID,
-        prompt: String,
-        regenerate_from: Option<usize>,
-    ) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            if let Some(file) = self.downloads.get_file(file_id) {
-                if let Some(message_id) = regenerate_from {
-                    chat.remove_messages_from(message_id);
-                }
-                chat.send_message_to_model(
-                    prompt,
-                    file,
-                    self.chats.model_loader.clone(),
-                    &self.backend,
-                );
-            }
-        }
-    }
-
-    pub fn agents_list(&self) -> Vec<MofaAgent> {
-        MofaBackend::available_agents()
-    }
-
-    pub fn send_agent_message(
-        &self,
-        agent: MofaAgent,
+        entity_id: &ChatEntityId,
         prompt: String,
         regenerate_from: Option<usize>,
     ) {
@@ -203,8 +169,27 @@ impl Store {
             if let Some(message_id) = regenerate_from {
                 chat.remove_messages_from(message_id);
             }
-            chat.send_message_to_agent(agent, prompt, &self.mofa_backend);
+
+            match entity_id {
+                ChatEntityId::Agent(agent) => {
+                    chat.send_message_to_agent(*agent, prompt, &self.mofa_backend);
+                }
+                ChatEntityId::ModelFile(file_id) => {
+                    if let Some(file) = self.downloads.get_file(&file_id) {
+                        chat.send_message_to_model(
+                            prompt,
+                            file,
+                            self.chats.model_loader.clone(),
+                            &self.backend,
+                        );
+                    }
+                }
+            }
         }
+    }
+
+    pub fn agents_list(&self) -> Vec<MofaAgent> {
+        MofaBackend::available_agents()
     }
 
     pub fn set_mofa_server_address(&mut self, address: String) {

@@ -263,8 +263,8 @@ impl WidgetMatchEvent for ModelList {
             .find(|button| button.clicked(actions));
 
         if let Some(entity_button) = clicked_entity_button {
-            let entity = entity_button.get_entity_id().unwrap().clone();
-            cx.action(ChatAction::Start(entity));
+            let entity_id = entity_button.get_entity_id().unwrap().clone();
+            cx.action(ChatAction::Start(entity_id));
         }
 
         for action in actions.iter() {

@@ -65,7 +65,7 @@ live_design! {
         <View> {
             flow: Down,
             height: Fit,
-            agent_autocomplete = <View> {
+            autocomplete = <View> {
                 height: Fit,
                 visible: false,
                 align: {x: 0.5, y: 1.0},
@@ -82,7 +82,7 @@ live_design! {
                         radius: 5.0
                     }
 
-                    agent_search_input = <MolyTextInput> {
+                    search_input = <MolyTextInput> {
                         width: Fill,
                         height: Fit,
                         margin: {bottom: 4},
@@ -117,7 +117,7 @@ live_design! {
                     border_width: 1.0,
                 }
 
-                selected_agent_bubble = <RoundedView> {
+                selected_bubble = <RoundedView> {
                     visible: false,
                     flow: Right,
                     width: Fit,
@@ -144,14 +144,14 @@ live_design! {
                             color: #475467
                         }
                     }
-                    selected_agent_label = <Label> {
+                    selected_label = <Label> {
                         margin: {right: 4},
                         draw_text: {
                             text_style: <BOLD_FONT>{font_size: 8},
                             color: #000
                         }
                     }
-                    agent_deselect_button = <MolyButton> {
+                    deselect_button = <MolyButton> {
                         width: 8,
                         height: 8,
                         padding: 0,
@@ -225,10 +225,10 @@ pub struct PromptInput {
     prev_prompt: String,
 
     #[rust]
-    agents_keyboard_focus_index: usize,
+    keyboard_focus_index: usize,
 
     #[rust]
-    agents_search_pending_focus: bool,
+    search_pending_focus: bool,
 
     #[rust]
     prompt_pending_focus: bool,
@@ -241,12 +241,12 @@ impl Widget for PromptInput {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         while !self.deref.draw_walk(cx, scope, walk).is_done() {}
 
-        if self.agents_search_pending_focus {
-            self.agents_search_pending_focus = false;
+        if self.search_pending_focus {
+            self.search_pending_focus = false;
 
-            let agent_search_input = self.text_input(id!(agent_search_input));
-            set_cursor_to_end(&agent_search_input);
-            agent_search_input.set_key_focus(cx);
+            let search_input = self.text_input(id!(search_input));
+            set_cursor_to_end(&search_input);
+            search_input.set_key_focus(cx);
         }
 
         if self.prompt_pending_focus {
@@ -264,7 +264,7 @@ impl Widget for PromptInput {
         self.deref.handle_event(cx, event, scope);
 
         // since we are hiding this on blur, checking visibility is enough to know if it is focused
-        if self.view(id!(agent_autocomplete)).visible() {
+        if self.view(id!(autocomplete)).visible() {
             if let Event::KeyDown(key_event) = event {
                 let delta = match key_event.key_code {
                     KeyCode::ArrowDown => 1,
@@ -273,7 +273,7 @@ impl Widget for PromptInput {
                 };
 
                 if delta != 0 {
-                    self.on_agent_search_keyboard_move(cx, scope, delta);
+                    self.on_search_keyboard_move(cx, scope, delta);
                 }
             }
         }
@@ -285,20 +285,17 @@ impl Widget for PromptInput {
 impl WidgetMatchEvent for PromptInput {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt = self.text_input(id!(prompt));
-        let agent_search_input = self.text_input(id!(agent_search_input));
+        let search_input = self.text_input(id!(search_input));
 
-        let clicked_entity_button =
-            self.list(id!(agent_autocomplete.list))
-                .borrow()
-                .and_then(|l| {
-                    l.items()
-                        .map(|i| i.entity_button(id!(button)))
-                        .find(|ab| ab.clicked(actions))
-                });
+        let clicked_entity_button = self.list(id!(autocomplete.list)).borrow().and_then(|l| {
+            l.items()
+                .map(|i| i.entity_button(id!(button)))
+                .find(|ab| ab.clicked(actions))
+        });
 
-        if let Some(agent_button) = clicked_entity_button {
-            let agent = agent_button.get_entity_id().unwrap();
-            self.on_entity_selected(scope, &*agent);
+        if let Some(entity_button) = clicked_entity_button {
+            let entity = entity_button.get_entity_id().unwrap();
+            self.on_entity_selected(scope, &*entity);
         }
 
         for action in actions.iter().filter_map(|a| a.as_widget_action()) {
@@ -307,43 +304,43 @@ impl WidgetMatchEvent for PromptInput {
                     TextInputAction::Change(current) => {
                         self.on_prompt_changed(cx, scope, current);
                     }
-                    TextInputAction::Escape => self.on_agent_deselected(),
+                    TextInputAction::Escape => self.on_deselected(),
                     _ => {}
                 }
             }
 
-            if action.widget_uid == agent_search_input.widget_uid() {
+            if action.widget_uid == search_input.widget_uid() {
                 match action.cast::<TextInputAction>() {
                     TextInputAction::Change(current) => {
-                        self.on_agent_search_changed(cx, scope, current.clone());
+                        self.on_search_changed(cx, scope, current.clone());
                     }
                     TextInputAction::Return(current) => {
-                        self.on_agent_search_submit(scope, current);
+                        self.on_search_submit(scope, current);
                     }
                     TextInputAction::Escape => {
-                        self.hide_agent_autocomplete();
+                        self.hide_autocomplete();
                         self.prompt_pending_focus = true;
                     }
                     TextInputAction::KeyFocusLost => {
-                        self.hide_agent_autocomplete();
+                        self.hide_autocomplete();
                     }
                     _ => {}
                 }
             }
 
             if let ChatAction::Start(_) = action.cast() {
-                self.on_agent_deselected();
+                self.on_deselected();
             }
         }
 
-        if self.button(id!(agent_deselect_button)).clicked(actions) {
-            self.on_agent_deselected();
+        if self.button(id!(deselect_button)).clicked(actions) {
+            self.on_deselected();
         }
 
         for action in actions {
             match action.cast() {
                 ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
-                    self.on_agent_deselected()
+                    self.on_deselected()
                 }
                 _ => (),
             }
@@ -354,9 +351,9 @@ impl WidgetMatchEvent for PromptInput {
 impl PromptInput {
     fn on_prompt_changed(&mut self, cx: &mut Cx, scope: &mut Scope, current: String) {
         if self.was_at_added() && moly_mofa::should_be_visible() {
-            self.show_agent_autocomplete(cx, scope);
+            self.show_autocomplete(cx, scope);
         } else {
-            self.hide_agent_autocomplete();
+            self.hide_autocomplete();
         }
 
         self.prev_prompt = current;
@@ -364,11 +361,11 @@ impl PromptInput {
 
     fn on_entity_selected(&mut self, scope: &mut Scope, entity: &ChatEntityId) {
         let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
-        let agent_label = self.label(id!(selected_agent_label));
+        let label = self.label(id!(selected_label));
 
         match entity {
             ChatEntityId::Agent(agent) => {
-                agent_label.set_text(&agent.name());
+                label.set_text(&agent.name());
                 agent_avatar.set_agent(agent);
             }
             ChatEntityId::ModelFile(file_id) => {
@@ -377,14 +374,14 @@ impl PromptInput {
                     .downloads
                     .get_file(file_id)
                     .expect("selected file not found");
-                agent_label.set_text(&file.name);
+                label.set_text(&file.name);
                 agent_avatar.set_visible(false);
             }
         }
 
         self.entity_selected = Some(entity.clone());
-        self.hide_agent_autocomplete();
-        self.view(id!(selected_agent_bubble)).set_visible(true);
+        self.hide_autocomplete();
+        self.view(id!(selected_bubble)).set_visible(true);
 
         let prompt = self.text_input(id!(prompt));
         let prompt_cursor_pos = prompt.borrow().map_or(0, |p| p.get_cursor().head.index);
@@ -408,20 +405,20 @@ impl PromptInput {
         self.prompt_pending_focus = true;
     }
 
-    fn on_agent_deselected(&mut self) {
+    fn on_deselected(&mut self) {
         self.entity_selected = None;
-        self.view(id!(selected_agent_bubble)).set_visible(false);
+        self.view(id!(selected_bubble)).set_visible(false);
     }
 
-    fn on_agent_search_changed(&mut self, cx: &mut Cx, scope: &mut Scope, search: String) {
+    fn on_search_changed(&mut self, cx: &mut Cx, scope: &mut Scope, search: String) {
         // disallow multiline input
-        self.text_input(id!(agent_search_input))
+        self.text_input(id!(search_input))
             .set_text(&search.replace("\n", " "));
 
-        self.compute_agent_list(cx, scope);
+        self.compute_list(cx, scope);
     }
 
-    fn on_agent_search_submit(&mut self, scope: &mut Scope, current: String) {
+    fn on_search_submit(&mut self, scope: &mut Scope, current: String) {
         let agents = MofaBackend::available_agents();
         let agents = agents.iter();
         let model_files = scope
@@ -435,7 +432,7 @@ impl PromptInput {
 
         let entities = ChatEntityRef::chain_from(agents, model_files);
         let selected_entity_id = filter_entities(entities, &current)
-            .nth(self.agents_keyboard_focus_index)
+            .nth(self.keyboard_focus_index)
             .map(|e| e.id());
 
         if let Some(entity_id) = selected_entity_id {
@@ -443,9 +440,9 @@ impl PromptInput {
         };
     }
 
-    fn compute_agent_list(&mut self, cx: &mut Cx, scope: &mut Scope) {
-        let search = self.text_input(id!(agent_search_input)).text();
-        let mut list = self.list(id!(agent_autocomplete.list));
+    fn compute_list(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        let search = self.text_input(id!(search_input)).text();
+        let mut list = self.list(id!(autocomplete.list));
         let store = scope.data.get_mut::<Store>().unwrap();
 
         let agents = MofaBackend::available_agents();
@@ -462,7 +459,7 @@ impl PromptInput {
                 button.set_entity(item);
                 button.set_description_visible(true);
 
-                if idx == self.agents_keyboard_focus_index {
+                if idx == self.keyboard_focus_index {
                     widget.apply_over(
                         cx,
                         live! {
@@ -480,31 +477,31 @@ impl PromptInput {
         list.set_items(items);
     }
 
-    fn show_agent_autocomplete(&mut self, cx: &mut Cx, scope: &mut Scope) {
-        self.view(id!(agent_autocomplete)).set_visible(true);
-        self.agents_search_pending_focus = true;
-        self.compute_agent_list(cx, scope);
+    fn show_autocomplete(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        self.view(id!(autocomplete)).set_visible(true);
+        self.search_pending_focus = true;
+        self.compute_list(cx, scope);
     }
 
-    fn hide_agent_autocomplete(&mut self) {
-        self.view(id!(agent_autocomplete)).set_visible(false);
-        self.text_input(id!(agent_search_input)).set_text("");
-        self.agents_keyboard_focus_index = 0;
+    fn hide_autocomplete(&mut self) {
+        self.view(id!(autocomplete)).set_visible(false);
+        self.text_input(id!(search_input)).set_text("");
+        self.keyboard_focus_index = 0;
     }
 
-    fn on_agent_search_keyboard_move(&mut self, cx: &mut Cx, scope: &mut Scope, delta: i32) {
-        let items_len = self.list(id!(agent_autocomplete.list)).len();
+    fn on_search_keyboard_move(&mut self, cx: &mut Cx, scope: &mut Scope, delta: i32) {
+        let items_len = self.list(id!(autocomplete.list)).len();
 
         if items_len == 0 {
             return;
         }
 
-        self.agents_keyboard_focus_index = self
-            .agents_keyboard_focus_index
+        self.keyboard_focus_index = self
+            .keyboard_focus_index
             .saturating_add_signed(delta as isize)
             .clamp(0, items_len - 1);
 
-        self.compute_agent_list(cx, scope);
+        self.compute_list(cx, scope);
     }
 
     fn was_at_added(&mut self) -> bool {
@@ -532,7 +529,7 @@ impl PromptInput {
 impl LiveHook for PromptInput {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
         let empty_message = if moly_mofa::should_be_visible() {
-            "Enter a message or @ an agent"
+            "Enter a message or @ an entity"
         } else {
             "Enter a message"
         };
@@ -556,7 +553,7 @@ impl PromptInputRef {
         prompt_input.set_text("");
         prompt_input.set_cursor(0, 0);
 
-        inner.hide_agent_autocomplete();
+        inner.hide_autocomplete();
         inner.prev_prompt.clear();
 
         inner.prompt_pending_focus = set_key_focus;

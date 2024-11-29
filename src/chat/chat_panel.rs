@@ -775,16 +775,9 @@ impl ChatPanel {
                 .unwrap()
                 .entity_selected
             {
-                match entity_selected {
-                    ChatEntityId::Agent(agent) => {
-                        store.send_agent_message(*agent, prompt, regenerate_from);
-                    }
-                    ChatEntityId::ModelFile(file_id) => {
-                        store.send_model_message(file_id, prompt, regenerate_from);
-                    }
-                }
+                store.send_entity_message(entity_selected, prompt, regenerate_from);
             } else {
-                store.send_message_to_current_entity(prompt.clone(), regenerate_from);
+                store.send_message_to_current_entity(prompt, regenerate_from);
             }
 
             self.prompt_input(id!(main_prompt_input)).reset_text(false);

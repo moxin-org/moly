@@ -372,12 +372,6 @@ impl ModelSelector {
         self.view(id!(choose)).set_visible(false);
 
         let is_loading = store.chats.model_loader.is_loading();
-        let model_loader_file = store
-            .chats
-            .model_loader
-            .file_id()
-            .map(|id| store.downloads.get_file(&id))
-            .flatten();
         let loaded_file = store.chats.loaded_model.as_ref();
 
         let chat_entity = store
@@ -408,6 +402,9 @@ impl ModelSelector {
             _ => loaded_file.cloned(),
         };
 
+        let is_file_in_loader =
+            store.chats.model_loader.file_id().as_ref() == file.as_ref().map(|f| &f.id);
+
         if let Some(file) = file {
             self.view(id!(selected_agent)).set_visible(false);
             let selected_view = self.view(id!(selected_model));
@@ -419,7 +416,7 @@ impl ModelSelector {
                 hex_rgb_color(0x667085)
             };
 
-            let caption = if is_loading && Some(&file.id) == model_loader_file.map(|f| &f.id) {
+            let caption = if is_loading && is_file_in_loader {
                 format!("Loading {}", file.name.trim())
             } else {
                 file.name.trim().to_string()
