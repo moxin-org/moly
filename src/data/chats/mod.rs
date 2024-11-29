@@ -177,7 +177,7 @@ impl Chats {
         new_chat.associated_entity = self
             .loaded_model
             .as_ref()
-            .map(|m| ChatEntity::ModelFile(m.id.clone()));
+            .map(|m| ChatEntityId::ModelFile(m.id.clone()));
 
         new_chat.save();
         self.current_chat_id = Some(new_chat.id);
