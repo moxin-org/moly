@@ -430,7 +430,9 @@ impl PromptInput {
             .iter()
             .map(|f| &f.file);
 
-        let entities = ChatEntityRef::chain_from(agents, model_files);
+        let entities = agents
+            .map(ChatEntityRef::from)
+            .chain(model_files.map(ChatEntityRef::from));
         let selected_entity_id = filter_entities(entities, &current)
             .nth(self.keyboard_focus_index)
             .map(|e| e.id());
@@ -448,7 +450,10 @@ impl PromptInput {
         let agents = MofaBackend::available_agents();
         let model_files = store.downloads.downloaded_files.iter().map(|f| &f.file);
 
-        let entities = ChatEntityRef::chain_from(agents.iter(), model_files);
+        let entities = agents
+            .iter()
+            .map(ChatEntityRef::from)
+            .chain(model_files.map(ChatEntityRef::from));
         let entities = filter_entities(entities, &search);
 
         let items: Vec<WidgetRef> = entities

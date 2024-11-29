@@ -61,16 +61,6 @@ impl<'a> From<&'a MofaAgent> for ChatEntityRef<'a> {
 }
 
 impl<'a> ChatEntityRef<'a> {
-    /// Chain model files and agents into a unified iterator.
-    pub fn chain_from(
-        agents: impl Iterator<Item = &'a MofaAgent> + 'a,
-        model_files: impl Iterator<Item = &'a File> + 'a,
-    ) -> impl Iterator<Item = Self> + 'a {
-        agents
-            .map(ChatEntityRef::from)
-            .chain(model_files.map(ChatEntityRef::from))
-    }
-
     pub fn id(&self) -> ChatEntityId {
         match self {
             ChatEntityRef::ModelFile(file) => ChatEntityId::ModelFile(file.id.clone()),
