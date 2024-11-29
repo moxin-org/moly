@@ -314,8 +314,8 @@ impl WidgetMatchEvent for PromptInput {
                     TextInputAction::Change(current) => {
                         self.on_search_changed(cx, scope, current.clone());
                     }
-                    TextInputAction::Return(current) => {
-                        self.on_search_submit(scope, current);
+                    TextInputAction::Return(_) => {
+                        self.on_search_submit(scope);
                     }
                     TextInputAction::Escape => {
                         self.hide_autocomplete();
@@ -418,28 +418,17 @@ impl PromptInput {
         self.compute_list(cx, scope);
     }
 
-    fn on_search_submit(&mut self, scope: &mut Scope, current: String) {
-        let agents = MofaBackend::available_agents();
-        let agents = agents.iter();
-        let model_files = scope
-            .data
-            .get::<Store>()
-            .unwrap()
-            .downloads
-            .downloaded_files
-            .iter()
-            .map(|f| &f.file);
+    fn on_search_submit(&mut self, scope: &mut Scope) {
+        if let Some(list) = self.list(id!(autocomplete.list)).borrow() {
+            let item = list
+                .items()
+                .nth(self.keyboard_focus_index)
+                .expect("item is out of range");
 
-        let entities = agents
-            .map(ChatEntityRef::from)
-            .chain(model_files.map(ChatEntityRef::from));
-        let selected_entity_id = filter_entities(entities, &current)
-            .nth(self.keyboard_focus_index)
-            .map(|e| e.id());
-
-        if let Some(entity_id) = selected_entity_id {
-            self.on_entity_selected(scope, &entity_id);
-        };
+            let button = item.entity_button(id!(button));
+            let entity = button.get_entity_id().unwrap();
+            self.on_entity_selected(scope, &entity);
+        }
     }
 
     fn compute_list(&mut self, cx: &mut Cx, scope: &mut Scope) {
@@ -450,11 +439,20 @@ impl PromptInput {
         let agents = MofaBackend::available_agents();
         let model_files = store.downloads.downloaded_files.iter().map(|f| &f.file);
 
+        let terms = search
+            .split_whitespace()
+            .map(|s| s.to_ascii_lowercase())
+            .collect::<Vec<_>>();
+
         let entities = agents
             .iter()
             .map(ChatEntityRef::from)
-            .chain(model_files.map(ChatEntityRef::from));
-        let entities = filter_entities(entities, &search);
+            .chain(model_files.map(ChatEntityRef::from))
+            .filter(move |entity| {
+                terms
+                    .iter()
+                    .all(|term| entity.name().to_ascii_lowercase().contains(term))
+            });
 
         let items: Vec<WidgetRef> = entities
             .enumerate()
@@ -563,22 +561,6 @@ impl PromptInputRef {
 
         inner.prompt_pending_focus = set_key_focus;
     }
-}
-
-fn filter_entities<'a, M: Iterator<Item = ChatEntityRef<'a>>>(
-    entities: M,
-    search: &str,
-) -> impl Iterator<Item = ChatEntityRef<'a>> {
-    let terms = search
-        .split_whitespace()
-        .map(|s| s.to_ascii_lowercase())
-        .collect::<Vec<_>>();
-
-    entities.filter(move |entity| {
-        terms
-            .iter()
-            .all(|term| entity.name().to_ascii_lowercase().contains(term))
-    })
 }
 
 fn set_cursor_to_end(text_input: &TextInputRef) {
