@@ -394,15 +394,25 @@ pub struct ChatPanel {
 
     #[rust(false)]
     focus_on_prompt_input_pending: bool,
+
+    #[rust]
+    current_chat_id: Option<ChatID>,
 }
 
 impl Widget for ChatPanel {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        if store.chats.get_current_chat_id() != self.current_chat_id {
+            self.current_chat_id = store.chats.get_current_chat_id();
+            self.reset_scroll_messages(store);
+            self.redraw(cx);
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        let store = scope.data.get_mut::<Store>().unwrap();
-        self.update_state(store);
+        self.update_state(scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -565,7 +575,9 @@ impl WidgetMatchEvent for ChatPanel {
 }
 
 impl ChatPanel {
-    fn update_state(&mut self, store: &mut Store) {
+    fn update_state(&mut self, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
         let chat_entity = store
             .chats
             .get_current_chat()
@@ -762,7 +774,7 @@ impl ChatPanel {
         }
 
         // Let's confirm we're in an appropriate state to send a message
-        self.update_state(store);
+        // self.update_state(store);
         if matches!(
             self.state,
             State::ModelSelectedWithChat {
