@@ -61,6 +61,13 @@ live_design! {
 
             button = <EntityButton> {}
         }
+        section_label_template: <Label> {
+            padding: {top: 4., bottom: 4.}
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 10.0},
+                color: #98A2B3
+            }
+        }
 
         <View> {
             flow: Down,
@@ -86,7 +93,7 @@ live_design! {
                         width: Fill,
                         height: Fit,
                         margin: {bottom: 4},
-                        empty_message: "Search for an agent",
+                        empty_message: "Search for a model or agent",
                         draw_bg: {
                             radius: 5.0,
                             color: #fff
@@ -97,7 +104,10 @@ live_design! {
                         }
                     }
 
-                    list = <List> { height: Fit }
+                    list = <List> {
+                        padding: {left: 4.}
+                        height: Fit 
+                    }
                 }
             }
 
@@ -220,11 +230,16 @@ pub struct PromptInput {
     #[live]
     entity_template: Option<LivePtr>,
 
+    #[live]
+    section_label_template: Option<LivePtr>,
+
     // see `was_at_added` function
     #[rust]
     prev_prompt: String,
 
-    #[rust]
+    /// The index of the currently focused item in the autocomplete list.
+    /// Starts at 1 to account for the section labels
+    #[rust(1usize)]
     keyboard_focus_index: usize,
 
     #[rust]
@@ -431,51 +446,70 @@ impl PromptInput {
         }
     }
 
+    /// Computes the autocomplete list based on the search terms
     fn compute_list(&mut self, cx: &mut Cx, scope: &mut Scope) {
         let search = self.text_input(id!(search_input)).text();
         let mut list = self.list(id!(autocomplete.list));
         let store = scope.data.get_mut::<Store>().unwrap();
-
-        let agents = MofaBackend::available_agents();
-        let model_files = store.downloads.downloaded_files.iter().map(|f| &f.file);
 
         let terms = search
             .split_whitespace()
             .map(|s| s.to_ascii_lowercase())
             .collect::<Vec<_>>();
 
-        let entities = agents
+        let available_agents = MofaBackend::available_agents();
+        let agents: Vec<_> = available_agents
             .iter()
-            .map(ChatEntityRef::Agent)
-            .chain(model_files.map(ChatEntityRef::ModelFile))
-            .filter(move |entity| {
+            .map(|agent| ChatEntityRef::Agent(agent))
+            .filter(|entity| {
                 terms
                     .iter()
                     .all(|term| entity.name().to_ascii_lowercase().contains(term))
-            });
-
-        let items: Vec<WidgetRef> = entities
-            .enumerate()
-            .map(|(idx, item)| {
-                let widget = WidgetRef::new_from_ptr(cx, self.entity_template);
-                let mut button = widget.entity_button(id!(button));
-                button.set_entity(item);
-                button.set_description_visible(true);
-
-                if idx == self.keyboard_focus_index {
-                    widget.apply_over(
-                        cx,
-                        live! {
-                            draw_bg: {
-                                color: #EAECEFff,
-                            }
-                        },
-                    );
-                }
-
-                widget
             })
             .collect();
+
+        let agents_len = agents.len();
+
+        let model_files: Vec<_> = store.downloads.downloaded_files
+            .iter()
+            .map(|f| ChatEntityRef::ModelFile(&f.file))
+            .filter(|entity| {
+                terms
+                    .iter()
+                    .all(|term| entity.name().to_ascii_lowercase().contains(term))
+            })
+            .collect();
+
+        // Build items vector with section labels
+        let mut items = Vec::new();
+        
+        // Add agents section if there are any matching agents
+        if !agents.is_empty() {
+            let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
+            label.set_text_and_redraw(cx, "Agents");
+            items.push(label);
+
+            // Add agent items
+            items.extend(agents.into_iter().enumerate().map(|(idx, item)| {
+                // account for the agents header
+                let effective_idx = idx + 1;
+                create_entity_button(cx, self.entity_template, item, effective_idx == self.keyboard_focus_index)
+            }));
+        }
+
+        // Add models section if there are any matching models
+        if !model_files.is_empty() {
+            let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
+            label.set_text_and_redraw(cx, "Models");
+            items.push(label);
+
+            // Add model items
+            items.extend(model_files.into_iter().enumerate().map(|(idx, item)| {
+                // account for the section headers
+                let effective_idx = if agents_len > 0 { idx + agents_len + 2 } else { idx + 1 };
+                create_entity_button(cx, self.entity_template, item, effective_idx == self.keyboard_focus_index)
+            }));
+        }
 
         list.set_items(items);
     }
@@ -492,19 +526,31 @@ impl PromptInput {
         self.keyboard_focus_index = 0;
     }
 
+    /// Moves the keyboard focus within the autocomplete list
     fn on_search_keyboard_move(&mut self, cx: &mut Cx, scope: &mut Scope, delta: i32) {
-        let items_len = self.list(id!(autocomplete.list)).len();
+        let list = self.list(id!(autocomplete.list));
+        let items_vec: Vec<_> = list.borrow()
+            .map(|l| l.items().cloned().collect())
+            .expect("The autocomplete list was not found");
 
-        if items_len == 0 {
+        if list.len() == 0 {
             return;
         }
 
-        self.keyboard_focus_index = self
-            .keyboard_focus_index
-            .saturating_add_signed(delta as isize)
-            .clamp(0, items_len - 1);
+        // Move the focus within the list skipping over section headers
+        let mut new_index = self.keyboard_focus_index;
+        new_index = new_index.saturating_add_signed(delta as isize).clamp(0, list.len() - 1);
+        if let Some(item) = items_vec.get(new_index) {
+            // The widget is a label (section header), move into the next item
+            if item.as_label().borrow().is_some() {
+                new_index = new_index.saturating_add_signed(delta as isize).clamp(0, list.len() - 1);
+            }
+        }
 
-        self.compute_list(cx, scope);
+        if new_index != self.keyboard_focus_index {
+            self.keyboard_focus_index = new_index;
+            self.compute_list(cx, scope);
+        }
     }
 
     fn was_at_added(&mut self) -> bool {
@@ -532,9 +578,9 @@ impl PromptInput {
 impl LiveHook for PromptInput {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
         let empty_message = if moly_mofa::should_be_visible() {
-            "Enter a message or @ an entity"
+            "Start typing or tag @model or @agent"
         } else {
-            "Enter a message"
+            "Start typing"
         };
 
         self.text_input(id!(prompt)).apply_over(
@@ -566,4 +612,29 @@ impl PromptInputRef {
 fn set_cursor_to_end(text_input: &TextInputRef) {
     let len = text_input.text().chars().count();
     text_input.set_cursor(len, len);
+}
+
+fn create_entity_button(
+    cx: &mut Cx, 
+    template: Option<LivePtr>, 
+    item: ChatEntityRef, 
+    is_focused: bool
+) -> WidgetRef {
+    let widget = WidgetRef::new_from_ptr(cx, template);
+    let mut button = widget.entity_button(id!(button));
+    button.set_entity(item);
+    button.set_description_visible(true);
+
+    if is_focused {
+        widget.apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: #EAECEF88,
+                }
+            },
+        );
+    }
+
+    widget
 }
