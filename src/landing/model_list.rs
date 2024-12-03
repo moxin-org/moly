@@ -1,7 +1,8 @@
-use crate::chat::agent_button::AgentButtonWidgetRefExt;
+use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
+use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::Model;
@@ -13,7 +14,7 @@ live_design! {
     use crate::shared::styles::*;
     use crate::landing::model_card::ModelCard;
     use crate::landing::search_loading::SearchLoading;
-    use crate::chat::agent_button::AgentButton;
+    use crate::chat::entity_button::*;
 
     AgentCard = <RoundedView> {
         width: Fill,
@@ -23,13 +24,12 @@ live_design! {
             radius: 5,
             color: #F9FAFB,
         }
-        button = <AgentButton> {
+        button = <EntityButton> {
             width: Fill,
             height: Fill,
             padding: {left: 15, right: 15},
             spacing: 15,
             align: {x: 0, y: 0.35},
-            create_new_chat: true,
 
             draw_bg: {
                 radius: 5,
@@ -215,7 +215,9 @@ impl Widget for ModelList {
                                                     show_bg: true,
                                                 },
                                             );
-                                            cell.agent_button(id!(button)).set_agent(agent, true);
+                                            let mut button = cell.entity_button(id!(button));
+                                            button.set_agent(agent);
+                                            button.set_description_visible(true);
                                         }
                                     });
 
@@ -250,8 +252,19 @@ pub enum ModelListAction {
 const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
 
 impl WidgetMatchEvent for ModelList {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let portal_list = self.portal_list(id!(list));
+
+        let clicked_entity_button = portal_list
+            .items_with_actions(actions)
+            .iter()
+            .map(|(_, item)| item.entity_button(id!(button)))
+            .find(|button| button.clicked(actions));
+
+        if let Some(entity_button) = clicked_entity_button {
+            let entity_id = entity_button.get_entity_id().unwrap().clone();
+            cx.action(ChatAction::Start(entity_id));
+        }
 
         for action in actions.iter() {
             if let Some(_) = action.downcast_ref::<SearchAction>() {

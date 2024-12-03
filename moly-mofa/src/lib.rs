@@ -59,23 +59,21 @@ pub enum MofaAgent {
 }
 
 impl MofaAgent {
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &str {
         match self {
-            MofaAgent::Example => "Example Agent".to_string(),
-            MofaAgent::Reasoner => "Reasoner Agent".to_string(),
-            MofaAgent::SearchAssistant => "Search Assistant".to_string(),
-            MofaAgent::ResearchScholar => "Research Scholar".to_string(),
+            MofaAgent::Example => "Example Agent",
+            MofaAgent::Reasoner => "Reasoner Agent",
+            MofaAgent::SearchAssistant => "Search Assistant",
+            MofaAgent::ResearchScholar => "Research Scholar",
         }
     }
 
-    pub fn short_description(&self) -> String {
+    pub fn short_description(&self) -> &str {
         match self {
-            MofaAgent::Example => "This is an example agent implemented by MoFa".to_string(),
-            MofaAgent::Reasoner => "Helps to find good questions about any topic".to_string(),
-            MofaAgent::SearchAssistant => {
-                "Your assistant to find information on the web".to_string()
-            }
-            MofaAgent::ResearchScholar => "Expert in academic research".to_string(),
+            MofaAgent::Example => "This is an example agent implemented by MoFa",
+            MofaAgent::Reasoner => "Helps to find good questions about any topic",
+            MofaAgent::SearchAssistant => "Your assistant to find information on the web",
+            MofaAgent::ResearchScholar => "Expert in academic research",
         }
     }
 }

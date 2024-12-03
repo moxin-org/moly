@@ -1,8 +1,10 @@
 pub mod chat;
+pub mod chat_entity;
 pub mod model_loader;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatEntity, ChatEntityAction, ChatID};
+use chat::{Chat, ChatEntityAction, ChatID};
+use chat_entity::ChatEntityId;
 use makepad_widgets::ActionTrait;
 use model_loader::ModelLoader;
 use moly_backend::Backend;
@@ -67,15 +69,6 @@ impl Chats {
     pub fn load_model(&mut self, file: &File, override_port: Option<u16>) {
         self.cancel_chat_streaming();
 
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            let new_file_id = Some(ChatEntity::ModelFile(file.id.clone()));
-
-            if chat.associated_entity != new_file_id {
-                chat.associated_entity = new_file_id;
-                chat.save();
-            }
-        }
-
         if self.model_loader.is_loading() {
             return;
         }
@@ -119,10 +112,10 @@ impl Chats {
         if let Some(chat) = self.get_current_chat() {
             let mut chat = chat.borrow_mut();
             match chat.associated_entity {
-                Some(ChatEntity::ModelFile(_)) => {
+                Some(ChatEntityId::ModelFile(_)) => {
                     chat.cancel_streaming(self.backend.as_ref());
                 }
-                Some(ChatEntity::Agent(_)) => {
+                Some(ChatEntityId::Agent(_)) => {
                     chat.cancel_agent_interaction(self.mae_backend.as_ref());
                 }
                 _ => {}
@@ -157,7 +150,7 @@ impl Chats {
     pub fn remove_file_from_associated_entity(&mut self, file_id: &FileID) {
         for chat in &self.saved_chats {
             let mut chat = chat.borrow_mut();
-            if let Some(ChatEntity::ModelFile(chat_file_id)) = &chat.associated_entity {
+            if let Some(ChatEntityId::ModelFile(chat_file_id)) = &chat.associated_entity {
                 if chat_file_id == file_id {
                     chat.associated_entity = None;
                     chat.save();
@@ -171,7 +164,7 @@ impl Chats {
     /// one but references a no longer existing (deleted) file.
     pub fn get_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
         match &chat.associated_entity {
-            Some(ChatEntity::ModelFile(file_id)) => Some(file_id.clone()),
+            Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
             _ => {
                 let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
                 Some(file_id)
@@ -184,7 +177,7 @@ impl Chats {
         new_chat.associated_entity = self
             .loaded_model
             .as_ref()
-            .map(|m| ChatEntity::ModelFile(m.id.clone()));
+            .map(|m| ChatEntityId::ModelFile(m.id.clone()));
 
         new_chat.save();
         self.current_chat_id = Some(new_chat.id);
@@ -194,14 +187,14 @@ impl Chats {
     pub fn create_empty_chat_with_agent(&mut self, agent: MofaAgent) {
         self.create_empty_chat();
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntity::Agent(agent));
+            chat.associated_entity = Some(ChatEntityId::Agent(agent));
             chat.save();
         }
     }
 
     pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
         let mut new_chat = Chat::new(self.chats_dir.clone());
-        new_chat.associated_entity = Some(ChatEntity::ModelFile(file.id.clone()));
+        new_chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
         new_chat.save();
 
         self.current_chat_id = Some(new_chat.id);

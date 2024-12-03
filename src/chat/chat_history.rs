@@ -1,7 +1,8 @@
-use super::agent_button::AgentButtonWidgetRefExt;
 use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
+use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
 use crate::data::store::Store;
+use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
 use moly_mofa::{MofaAgent, MofaBackend};
 
@@ -15,7 +16,7 @@ live_design! {
     use crate::chat::shared::ChatAgentAvatar;
     use crate::chat::chat_history_card::ChatHistoryCard;
     use crate::chat::shared::ChatModelAvatar;
-    use crate::chat::agent_button::*;
+    use crate::chat::entity_button::*;
 
     ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
 
@@ -47,7 +48,7 @@ live_design! {
                     list = <PortalList> {
                         drag_scrolling: false,
                         AgentHeading = <HeadingLabel> { text: "AGENTS" }
-                        Agent = <AgentButton> { create_new_chat: true }
+                        Agent = <EntityButton> {}
                         ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
                         ChatHistoryCard = <ChatHistoryCard> {
                             padding: {top: 4}
@@ -147,7 +148,7 @@ impl Widget for ChatHistory {
                         }
                         Item::AgentButton(agent) => {
                             let item = list.item(cx, item_id, live_id!(Agent));
-                            item.as_agent_button().set_agent(agent, false);
+                            item.as_entity_button().set_agent(agent);
                             item.draw_all(cx, scope);
                         }
                         Item::ChatButton(chat_id) => {
@@ -169,6 +170,18 @@ impl Widget for ChatHistory {
 impl WidgetMatchEvent for ChatHistory {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        let clicked_entity_button = self
+            .portal_list(id!(list))
+            .items_with_actions(actions)
+            .iter()
+            .map(|(_, item)| item.as_entity_button())
+            .find(|eb| eb.clicked(actions));
+
+        if let Some(entity_button) = clicked_entity_button {
+            let entity_id = entity_button.get_entity_id().unwrap().clone();
+            cx.action(ChatAction::Start(entity_id));
+        }
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
             store.chats.create_empty_chat();

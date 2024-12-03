@@ -13,6 +13,7 @@ use std::thread;
 
 use crate::data::filesystem::{read_from_file, write_to_file};
 
+use super::chat_entity::ChatEntityId;
 use super::model_loader::ModelLoader;
 
 pub type ChatID = u128;
@@ -31,18 +32,12 @@ enum ChatEntityActionKind {
     MofaAgentCancelled,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ChatEntity {
-    ModelFile(FileID),
-    Agent(MofaAgent),
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatMessage {
     pub id: usize,
     pub role: Role,
     pub username: Option<String>,
-    pub entity: Option<ChatEntity>,
+    pub entity: Option<ChatEntityId>,
     pub content: String,
 }
 
@@ -71,7 +66,7 @@ pub enum ChatState {
 #[derive(Serialize, Deserialize)]
 struct ChatData {
     id: ChatID,
-    associated_entity: Option<ChatEntity>,
+    associated_entity: Option<ChatEntityId>,
     system_prompt: Option<String>,
     messages: Vec<ChatMessage>,
     title: String,
@@ -117,7 +112,7 @@ pub struct Chat {
     /// This is the model or agent that is currently "active" on the chat
     /// For models it is the most recent model used or loaded in the context of this chat session.
     /// For agents it is the agent that originated the chat.
-    pub associated_entity: Option<ChatEntity>,
+    pub associated_entity: Option<ChatEntityId>,
 
     pub messages: Vec<ChatMessage>,
     pub is_streaming: bool,
@@ -161,7 +156,7 @@ impl Chat {
                 // Until this field is removed, we need to keep this logic.
                 let chat_entity = data.associated_entity.or_else(|| {
                     data.last_used_file_id
-                        .map(|file_id| ChatEntity::ModelFile(file_id))
+                        .map(|file_id| ChatEntityId::ModelFile(file_id))
                 });
 
                 let chat = Chat {
@@ -331,12 +326,11 @@ impl Chat {
             id: next_id + 1,
             role: Role::Assistant,
             username: Some(wanted_file.name.clone()),
-            entity: Some(ChatEntity::ModelFile(wanted_file.id.clone())),
+            entity: Some(ChatEntityId::ModelFile(wanted_file.id.clone())),
             content: "".to_string(),
         });
 
         self.state = ChatState::Receiving;
-        self.associated_entity = Some(ChatEntity::ModelFile(wanted_file.id.clone()));
 
         let wanted_file = wanted_file.clone();
         let command_sender = backend.command_sender.clone();
@@ -427,8 +421,8 @@ impl Chat {
         self.messages.push(ChatMessage {
             id: next_id + 1,
             role: Role::Assistant,
-            username: Some(agent.name()),
-            entity: Some(ChatEntity::Agent(agent.clone())),
+            username: Some(agent.name().to_string()),
+            entity: Some(ChatEntityId::Agent(agent.clone())),
             content: "".to_string(),
         });
 

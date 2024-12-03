@@ -1,4 +1,5 @@
-use super::chats::chat::{ChatEntity, ChatID};
+use super::chats::chat::ChatID;
+use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
@@ -7,7 +8,7 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{ActionDefaultRef, Cx, Action, DefaultNone, error};
+use makepad_widgets::{error, Action, ActionDefaultRef, Cx, DefaultNone};
 use moly_backend::Backend;
 use moly_mofa::{
     MofaAgent,
@@ -149,51 +150,19 @@ impl Store {
         prompt: String,
         regenerate_from: Option<usize>,
     ) {
-        let entity = self
+        let entity_id = self
             .chats
             .get_current_chat()
             .and_then(|c| c.borrow().associated_entity.clone());
 
-        match entity {
-            Some(ChatEntity::Agent(agent)) => {
-                self.send_agent_message(agent, prompt, regenerate_from);
-            }
-            _ => {
-                self.send_chat_message(prompt, regenerate_from);
-            }
+        if let Some(entity_id) = entity_id {
+            self.send_entity_message(&entity_id, prompt, regenerate_from);
         }
     }
 
-    pub fn send_chat_message(&mut self, prompt: String, regenerate_from: Option<usize>) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            let wanted_file = self
-                .chats
-                .get_chat_file_id(&mut chat)
-                .map(|file_id| self.downloads.get_file(&file_id))
-                .flatten();
-
-            if let Some(file) = wanted_file {
-                if let Some(message_id) = regenerate_from {
-                    chat.remove_messages_from(message_id);
-                }
-                chat.send_message_to_model(
-                    prompt,
-                    file,
-                    self.chats.model_loader.clone(),
-                    &self.backend,
-                );
-                chat.save();
-            }
-        }
-    }
-
-    pub fn agents_list(&self) -> Vec<MofaAgent> {
-        MofaBackend::available_agents()
-    }
-
-    pub fn send_agent_message(
-        &self,
-        agent: MofaAgent,
+    pub fn send_entity_message(
+        &mut self,
+        entity_id: &ChatEntityId,
         prompt: String,
         regenerate_from: Option<usize>,
     ) {
@@ -201,8 +170,27 @@ impl Store {
             if let Some(message_id) = regenerate_from {
                 chat.remove_messages_from(message_id);
             }
-            chat.send_message_to_agent(agent, prompt, &self.mofa_backend);
+
+            match entity_id {
+                ChatEntityId::Agent(agent) => {
+                    chat.send_message_to_agent(*agent, prompt, &self.mofa_backend);
+                }
+                ChatEntityId::ModelFile(file_id) => {
+                    if let Some(file) = self.downloads.get_file(&file_id) {
+                        chat.send_message_to_model(
+                            prompt,
+                            file,
+                            self.chats.model_loader.clone(),
+                            &self.backend,
+                        );
+                    }
+                }
+            }
         }
+    }
+
+    pub fn agents_list(&self) -> Vec<MofaAgent> {
+        MofaBackend::available_agents()
     }
 
     pub fn set_mofa_server_address(&mut self, address: String) {
@@ -268,13 +256,13 @@ impl Store {
         };
 
         match chat.borrow().associated_entity {
-            Some(ChatEntity::ModelFile(ref file_id)) => self
+            Some(ChatEntityId::ModelFile(ref file_id)) => self
                 .downloads
                 .downloaded_files
                 .iter()
                 .find(|df| df.file.id == *file_id)
                 .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntity::Agent(agent)) => Some(agent.name()),
+            Some(ChatEntityId::Agent(agent)) => Some(agent.name().to_string()),
             None => {
                 // Fallback to loaded model if exists
                 self.chats.loaded_model.as_ref().map(|m| m.name.clone())

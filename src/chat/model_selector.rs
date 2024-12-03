@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat::ChatEntity, store::Store},
+    data::{chats::chat_entity::ChatEntityId, store::Store},
     shared::{
         actions::ChatAction,
         utils::{format_model_size, hex_rgb_color},
@@ -8,8 +8,7 @@ use crate::{
 use makepad_widgets::*;
 
 use super::{
-    model_selector_item::ModelSelectorAction,
-    model_selector_list::ModelSelectorListWidgetExt,
+    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt,
     model_selector_loading::ModelSelectorLoadingWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
 };
 
@@ -292,7 +291,6 @@ impl Widget for ModelSelector {
                     }
                 },
             );
-
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -305,7 +303,6 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-
         if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
             if fd.tap_count == 1 {
                 self.open = !self.open;
@@ -363,7 +360,20 @@ impl ModelSelector {
     }
 
     fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-        if store.chats.model_loader.is_loading() {
+        let is_associated_model_loading = store
+            .chats
+            .get_current_chat()
+            .and_then(|c| match &c.borrow().associated_entity {
+                Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
+                _ => None,
+            })
+            .map(|file_id| {
+                let model_loader = &store.chats.model_loader;
+                model_loader.file_id() == Some(file_id) && model_loader.is_loading()
+            })
+            .unwrap_or(false);
+
+        if is_associated_model_loading {
             self.model_selector_loading(id!(loading))
                 .show_and_animate(cx);
         } else {
@@ -382,7 +392,7 @@ impl ModelSelector {
             .get_current_chat()
             .and_then(|c| c.borrow().associated_entity.clone());
 
-        if let Some(ChatEntity::Agent(agent)) = chat_entity {
+        if let Some(ChatEntityId::Agent(agent)) = chat_entity {
             self.view(id!(selected_model)).set_visible(false);
             let selected_view = self.view(id!(selected_agent));
             selected_view.set_visible(true);
@@ -398,12 +408,15 @@ impl ModelSelector {
                 .set_agent(&agent);
 
             return;
-        } 
+        }
 
         let file = match chat_entity {
-            Some(ChatEntity::ModelFile(file_id)) => store.downloads.get_file(&file_id).cloned(),
+            Some(ChatEntityId::ModelFile(file_id)) => store.downloads.get_file(&file_id).cloned(),
             _ => loaded_file.cloned(),
         };
+
+        let is_file_in_loader =
+            store.chats.model_loader.file_id().as_ref() == file.as_ref().map(|f| &f.id);
 
         if let Some(file) = file {
             self.view(id!(selected_agent)).set_visible(false);
@@ -416,7 +429,7 @@ impl ModelSelector {
                 hex_rgb_color(0x667085)
             };
 
-            let caption = if is_loading {
+            let caption = if is_loading && is_file_in_loader {
                 format!("Loading {}", file.name.trim())
             } else {
                 file.name.trim().to_string()
@@ -451,17 +464,18 @@ impl ModelSelector {
 
         self.view(id!(icon_drop)).apply_over(
             cx,
-            live!{
+            live! {
                 visible: true
-            });
+            },
+        );
     }
 }
 
 fn no_active_model(store: &Store) -> bool {
     let chat_entity = store
-            .chats
-            .get_current_chat()
-            .and_then(|c| c.borrow().associated_entity.clone());
+        .chats
+        .get_current_chat()
+        .and_then(|c| c.borrow().associated_entity.clone());
 
     chat_entity.is_none() && store.chats.loaded_model.is_none()
 }

@@ -1,15 +1,18 @@
 use crate::{
-    data::{chats::chat::{ChatEntity, ChatID}, store::Store},
+    data::{
+        chats::{chat::ChatID, chat_entity::ChatEntityId},
+        store::Store,
+    },
     shared::{modal::ModalWidgetExt, utils::human_readable_name},
 };
 
 use makepad_widgets::*;
 
-use super::{delete_chat_modal::DeleteChatModalWidgetExt, shared::ChatAgentAvatarWidgetExt};
 use super::{
     chat_history_card_options::ChatHistoryCardOptionsWidgetExt,
     delete_chat_modal::DeleteChatModalAction,
 };
+use super::{delete_chat_modal::DeleteChatModalWidgetExt, shared::ChatAgentAvatarWidgetExt};
 
 live_design! {
     use link::theme::*;
@@ -358,14 +361,17 @@ impl Widget for ChatHistoryCard {
             .to_string();
 
         match chat.borrow().associated_entity {
-            Some(ChatEntity::Agent(agent)) => {
+            Some(ChatEntityId::Agent(agent)) => {
                 self.view(id!(avatar_section.model)).set_visible(false);
-                self.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
-                self.chat_agent_avatar(id!(avatar_section.agent)).set_agent(&agent);
+                self.chat_agent_avatar(id!(avatar_section.agent))
+                    .set_visible(true);
+                self.chat_agent_avatar(id!(avatar_section.agent))
+                    .set_agent(&agent);
             }
             _ => {
                 self.view(id!(avatar_section.model)).set_visible(true);
-                self.chat_agent_avatar(id!(avatar_section.agent)).set_visible(false);
+                self.chat_agent_avatar(id!(avatar_section.agent))
+                    .set_visible(false);
                 self.view.label(id!(avatar_label)).set_text(&initial_letter);
             }
         }

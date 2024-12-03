@@ -1,18 +1,18 @@
 use makepad_widgets::*;
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::MofaBackend;
 
-use crate::shared::{actions::ChatAction, list::ListWidgetExt};
-
-use super::{
-    agent_button::AgentButtonWidgetRefExt, model_selector_item::ModelSelectorAction,
-    shared::ChatAgentAvatarWidgetExt,
+use crate::{
+    data::{
+        chats::chat_entity::{ChatEntityId, ChatEntityRef},
+        store::Store,
+    },
+    shared::{actions::ChatAction, list::ListWidgetExt},
 };
 
-#[derive(Debug, DefaultNone, Clone)]
-pub enum PromptInputAction {
-    AgentSelected(MofaAgent),
-    None,
-}
+use super::{
+    entity_button::EntityButtonWidgetRefExt, model_selector_item::ModelSelectorAction,
+    shared::ChatAgentAvatarWidgetExt,
+};
 
 live_design! {
     use link::theme::*;
@@ -22,7 +22,7 @@ live_design! {
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
     use crate::shared::list::*;
-    use crate::chat::agent_button::*;
+    use crate::chat::entity_button::*;
     use crate::chat::shared::ChatAgentAvatar;
 
     ICON_PROMPT = dep("crate://self/resources/icons/prompt.svg")
@@ -54,18 +54,25 @@ live_design! {
     pub PromptInput = {{PromptInput}} {
         flow: Overlay,
         height: Fit,
-        agent_template: <View> {
+        entity_template: <View> {
             width: Fill,
             height: Fit,
             show_bg: true,
 
-            button = <AgentButton> { select_agent_on_prompt: true }
+            button = <EntityButton> {}
+        }
+        section_label_template: <Label> {
+            padding: {top: 4., bottom: 4.}
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 10.0},
+                color: #98A2B3
+            }
         }
 
         <View> {
             flow: Down,
             height: Fit,
-            agent_autocomplete = <View> {
+            autocomplete = <View> {
                 height: Fit,
                 visible: false,
                 align: {x: 0.5, y: 1.0},
@@ -82,11 +89,11 @@ live_design! {
                         radius: 5.0
                     }
 
-                    agent_search_input = <MolyTextInput> {
+                    search_input = <MolyTextInput> {
                         width: Fill,
                         height: Fit,
                         margin: {bottom: 4},
-                        empty_message: "Search for an agent",
+                        empty_message: "Search for a model or agent",
                         draw_bg: {
                             radius: 5.0,
                             color: #fff
@@ -97,7 +104,10 @@ live_design! {
                         }
                     }
 
-                    list = <List> { height: Fit }
+                    list = <List> {
+                        padding: {left: 4.}
+                        height: Fit 
+                    }
                 }
             }
 
@@ -117,7 +127,7 @@ live_design! {
                     border_width: 1.0,
                 }
 
-                selected_agent_bubble = <RoundedView> {
+                selected_bubble = <RoundedView> {
                     visible: false,
                     flow: Right,
                     width: Fit,
@@ -144,14 +154,14 @@ live_design! {
                             color: #475467
                         }
                     }
-                    selected_agent_label = <Label> {
+                    selected_label = <Label> {
                         margin: {right: 4},
                         draw_text: {
                             text_style: <BOLD_FONT>{font_size: 8},
                             color: #000
                         }
                     }
-                    agent_deselect_button = <MolyButton> {
+                    deselect_button = <MolyButton> {
                         width: 8,
                         height: 8,
                         padding: 0,
@@ -218,35 +228,40 @@ pub struct PromptInput {
     deref: View,
 
     #[live]
-    agent_template: Option<LivePtr>,
+    entity_template: Option<LivePtr>,
+
+    #[live]
+    section_label_template: Option<LivePtr>,
 
     // see `was_at_added` function
     #[rust]
     prev_prompt: String,
 
-    #[rust]
-    agents_keyboard_focus_index: usize,
+    /// The index of the currently focused item in the autocomplete list.
+    /// Starts at 1 to account for the section labels
+    #[rust(1usize)]
+    keyboard_focus_index: usize,
 
     #[rust]
-    agents_search_pending_focus: bool,
+    search_pending_focus: bool,
 
     #[rust]
     prompt_pending_focus: bool,
 
     #[rust]
-    pub agent_selected: Option<MofaAgent>,
+    pub entity_selected: Option<ChatEntityId>,
 }
 
 impl Widget for PromptInput {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         while !self.deref.draw_walk(cx, scope, walk).is_done() {}
 
-        if self.agents_search_pending_focus {
-            self.agents_search_pending_focus = false;
+        if self.search_pending_focus {
+            self.search_pending_focus = false;
 
-            let agent_search_input = self.text_input(id!(agent_search_input));
-            set_cursor_to_end(&agent_search_input);
-            agent_search_input.set_key_focus(cx);
+            let search_input = self.text_input(id!(search_input));
+            set_cursor_to_end(&search_input);
+            search_input.set_key_focus(cx);
         }
 
         if self.prompt_pending_focus {
@@ -264,7 +279,7 @@ impl Widget for PromptInput {
         self.deref.handle_event(cx, event, scope);
 
         // since we are hiding this on blur, checking visibility is enough to know if it is focused
-        if self.view(id!(agent_autocomplete)).visible() {
+        if self.view(id!(autocomplete)).visible() {
             if let Event::KeyDown(key_event) = event {
                 let delta = match key_event.key_code {
                     KeyCode::ArrowDown => 1,
@@ -273,7 +288,7 @@ impl Widget for PromptInput {
                 };
 
                 if delta != 0 {
-                    self.on_agent_search_keyboard_move(cx, delta);
+                    self.on_search_keyboard_move(cx, scope, delta);
                 }
             }
         }
@@ -283,58 +298,64 @@ impl Widget for PromptInput {
 }
 
 impl WidgetMatchEvent for PromptInput {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let prompt = self.text_input(id!(prompt));
-        let agent_search_input = self.text_input(id!(agent_search_input));
+        let search_input = self.text_input(id!(search_input));
+
+        let clicked_entity_button = self.list(id!(autocomplete.list)).borrow().and_then(|l| {
+            l.items()
+                .map(|i| i.entity_button(id!(button)))
+                .find(|ab| ab.clicked(actions))
+        });
+
+        if let Some(entity_button) = clicked_entity_button {
+            let entity = entity_button.get_entity_id().unwrap();
+            self.on_entity_selected(scope, &*entity);
+        }
 
         for action in actions.iter().filter_map(|a| a.as_widget_action()) {
             if action.widget_uid == prompt.widget_uid() {
                 match action.cast::<TextInputAction>() {
                     TextInputAction::Change(current) => {
-                        self.on_prompt_changed(cx, current);
+                        self.on_prompt_changed(cx, scope, current);
                     }
-                    TextInputAction::Escape => self.on_agent_deselected(),
+                    TextInputAction::Escape => self.on_deselected(),
                     _ => {}
                 }
             }
 
-            if action.widget_uid == agent_search_input.widget_uid() {
+            if action.widget_uid == search_input.widget_uid() {
                 match action.cast::<TextInputAction>() {
                     TextInputAction::Change(current) => {
-                        self.on_agent_search_changed(cx, current.clone());
+                        self.on_search_changed(cx, scope, current.clone());
                     }
-                    TextInputAction::Return(current) => {
-                        self.on_agent_search_submit(current);
+                    TextInputAction::Return(_) => {
+                        self.on_search_submit(scope);
                     }
                     TextInputAction::Escape => {
-                        self.hide_agent_autocomplete();
+                        self.hide_autocomplete();
                         self.prompt_pending_focus = true;
                     }
                     TextInputAction::KeyFocusLost => {
-                        self.hide_agent_autocomplete();
+                        self.hide_autocomplete();
                     }
                     _ => {}
                 }
             }
 
             if let ChatAction::Start(_) = action.cast() {
-                self.on_agent_deselected();
+                self.on_deselected();
             }
         }
 
-        if self.button(id!(agent_deselect_button)).clicked(actions) {
-            self.on_agent_deselected();
+        if self.button(id!(deselect_button)).clicked(actions) {
+            self.on_deselected();
         }
 
         for action in actions {
             match action.cast() {
-                PromptInputAction::AgentSelected(agent) => self.on_agent_selected(&agent),
-                PromptInputAction::None => {}
-            }
-
-            match action.cast() {
                 ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
-                    self.on_agent_deselected()
+                    self.on_deselected()
                 }
                 _ => (),
             }
@@ -343,25 +364,39 @@ impl WidgetMatchEvent for PromptInput {
 }
 
 impl PromptInput {
-    fn on_prompt_changed(&mut self, cx: &mut Cx, current: String) {
+    fn on_prompt_changed(&mut self, cx: &mut Cx, scope: &mut Scope, current: String) {
         if self.was_at_added() && moly_mofa::should_be_visible() {
-            self.show_agent_autocomplete(cx);
+            self.show_autocomplete(cx, scope);
         } else {
-            self.hide_agent_autocomplete();
+            self.hide_autocomplete();
         }
 
         self.prev_prompt = current;
     }
 
-    fn on_agent_selected(&mut self, agent: &MofaAgent) {
-        self.agent_selected = Some(*agent);
-        self.hide_agent_autocomplete();
-        self.view(id!(selected_agent_bubble)).set_visible(true);
+    fn on_entity_selected(&mut self, scope: &mut Scope, entity: &ChatEntityId) {
+        let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
+        let label = self.label(id!(selected_label));
 
-        self.chat_agent_avatar(id!(agent_avatar)).set_agent(agent);
+        match entity {
+            ChatEntityId::Agent(agent) => {
+                label.set_text(&agent.name());
+                agent_avatar.set_agent(agent);
+            }
+            ChatEntityId::ModelFile(file_id) => {
+                let store = scope.data.get_mut::<Store>().unwrap();
+                let file = store
+                    .downloads
+                    .get_file(file_id)
+                    .expect("selected file not found");
+                label.set_text(&file.name);
+                agent_avatar.set_visible(false);
+            }
+        }
 
-        self.label(id!(selected_agent_label))
-            .set_text(&agent.name());
+        self.entity_selected = Some(entity.clone());
+        self.hide_autocomplete();
+        self.view(id!(selected_bubble)).set_visible(true);
 
         let prompt = self.text_input(id!(prompt));
         let prompt_cursor_pos = prompt.borrow().map_or(0, |p| p.get_cursor().head.index);
@@ -385,79 +420,137 @@ impl PromptInput {
         self.prompt_pending_focus = true;
     }
 
-    fn on_agent_deselected(&mut self) {
-        self.agent_selected = None;
-        self.view(id!(selected_agent_bubble)).set_visible(false);
+    fn on_deselected(&mut self) {
+        self.entity_selected = None;
+        self.view(id!(selected_bubble)).set_visible(false);
     }
 
-    fn on_agent_search_changed(&mut self, cx: &mut Cx, search: String) {
+    fn on_search_changed(&mut self, cx: &mut Cx, scope: &mut Scope, search: String) {
         // disallow multiline input
-        self.text_input(id!(agent_search_input))
+        self.text_input(id!(search_input))
             .set_text(&search.replace("\n", " "));
 
-        self.compute_agent_list(cx);
+        self.compute_list(cx, scope);
     }
 
-    fn on_agent_search_submit(&mut self, current: String) {
-        let agents = MofaBackend::available_agents();
-        let agents = agents.iter();
-        if let Some(agent) = filter_agents(agents, &current).nth(self.agents_keyboard_focus_index) {
-            self.on_agent_selected(agent);
-        };
+    fn on_search_submit(&mut self, scope: &mut Scope) {
+        if let Some(list) = self.list(id!(autocomplete.list)).borrow() {
+            let item = list
+                .items()
+                .nth(self.keyboard_focus_index)
+                .expect("item is out of range");
+
+            let button = item.entity_button(id!(button));
+            let entity = button.get_entity_id().unwrap();
+            self.on_entity_selected(scope, &entity);
+        }
     }
 
-    fn compute_agent_list(&mut self, cx: &mut Cx) {
-        let search = self.text_input(id!(agent_search_input)).text();
-        let list = self.list(id!(agent_autocomplete.list));
-        let agents = MofaBackend::available_agents();
-        let agents = filter_agents(agents.iter(), &search);
+    /// Computes the autocomplete list based on the search terms
+    fn compute_list(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        let search = self.text_input(id!(search_input)).text();
+        let mut list = self.list(id!(autocomplete.list));
+        let store = scope.data.get_mut::<Store>().unwrap();
 
-        list.compute_from(agents.enumerate(), |(idx, agent)| {
-            let widget = WidgetRef::new_from_ptr(cx, self.agent_template);
+        let terms = search
+            .split_whitespace()
+            .map(|s| s.to_ascii_lowercase())
+            .collect::<Vec<_>>();
 
-            let mut btn = widget.agent_button(id!(button));
-            btn.set_agent(agent, true);
+        let available_agents = MofaBackend::available_agents();
+        let agents: Vec<_> = available_agents
+            .iter()
+            .map(|agent| ChatEntityRef::Agent(agent))
+            .filter(|entity| {
+                terms
+                    .iter()
+                    .all(|term| entity.name().to_ascii_lowercase().contains(term))
+            })
+            .collect();
 
-            if idx == self.agents_keyboard_focus_index {
-                widget.apply_over(
-                    cx,
-                    live! {
-                        draw_bg: {
-                            color: #EAECEFff,
-                        }
-                    },
-                );
-            }
+        let agents_len = agents.len();
 
-            widget
-        });
+        let model_files: Vec<_> = store.downloads.downloaded_files
+            .iter()
+            .map(|f| ChatEntityRef::ModelFile(&f.file))
+            .filter(|entity| {
+                terms
+                    .iter()
+                    .all(|term| entity.name().to_ascii_lowercase().contains(term))
+            })
+            .collect();
+
+        // Build items vector with section labels
+        let mut items = Vec::new();
+        
+        // Add agents section if there are any matching agents
+        if !agents.is_empty() {
+            let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
+            label.set_text_and_redraw(cx, "Agents");
+            items.push(label);
+
+            // Add agent items
+            items.extend(agents.into_iter().enumerate().map(|(idx, item)| {
+                // account for the agents header
+                let effective_idx = idx + 1;
+                create_entity_button(cx, self.entity_template, item, effective_idx == self.keyboard_focus_index)
+            }));
+        }
+
+        // Add models section if there are any matching models
+        if !model_files.is_empty() {
+            let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
+            label.set_text_and_redraw(cx, "Models");
+            items.push(label);
+
+            // Add model items
+            items.extend(model_files.into_iter().enumerate().map(|(idx, item)| {
+                // account for the section headers
+                let effective_idx = if agents_len > 0 { idx + agents_len + 2 } else { idx + 1 };
+                create_entity_button(cx, self.entity_template, item, effective_idx == self.keyboard_focus_index)
+            }));
+        }
+
+        list.set_items(items);
     }
 
-    fn show_agent_autocomplete(&mut self, cx: &mut Cx) {
-        self.view(id!(agent_autocomplete)).set_visible(true);
-        self.agents_search_pending_focus = true;
-        self.compute_agent_list(cx);
+    fn show_autocomplete(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        self.view(id!(autocomplete)).set_visible(true);
+        self.search_pending_focus = true;
+        self.compute_list(cx, scope);
     }
 
-    fn hide_agent_autocomplete(&mut self) {
-        self.view(id!(agent_autocomplete)).set_visible(false);
-        self.text_input(id!(agent_search_input)).set_text("");
-        self.agents_keyboard_focus_index = 0;
+    fn hide_autocomplete(&mut self) {
+        self.view(id!(autocomplete)).set_visible(false);
+        self.text_input(id!(search_input)).set_text("");
+        self.keyboard_focus_index = 0;
     }
 
-    fn on_agent_search_keyboard_move(&mut self, cx: &mut Cx, delta: i32) {
-        let items_len = self.list(id!(agent_autocomplete.list)).len();
+    /// Moves the keyboard focus within the autocomplete list
+    fn on_search_keyboard_move(&mut self, cx: &mut Cx, scope: &mut Scope, delta: i32) {
+        let list = self.list(id!(autocomplete.list));
+        let items_vec: Vec<_> = list.borrow()
+            .map(|l| l.items().cloned().collect())
+            .expect("The autocomplete list was not found");
 
-        if items_len == 0 {
+        if list.len() == 0 {
             return;
         }
 
-        self.agents_keyboard_focus_index = self
-            .agents_keyboard_focus_index
-            .saturating_add_signed(delta as isize)
-            .clamp(0, items_len - 1);
+        // Move the focus within the list skipping over section headers
+        let mut new_index = self.keyboard_focus_index;
+        new_index = new_index.saturating_add_signed(delta as isize).clamp(0, list.len() - 1);
+        if let Some(item) = items_vec.get(new_index) {
+            // The widget is a label (section header), move into the next item
+            if item.as_label().borrow().is_some() {
+                new_index = new_index.saturating_add_signed(delta as isize).clamp(0, list.len() - 1);
+            }
+        }
 
-        self.compute_agent_list(cx);
+        if new_index != self.keyboard_focus_index {
+            self.keyboard_focus_index = new_index;
+            self.compute_list(cx, scope);
+        }
     }
 
     fn was_at_added(&mut self) -> bool {
@@ -485,9 +578,9 @@ impl PromptInput {
 impl LiveHook for PromptInput {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
         let empty_message = if moly_mofa::should_be_visible() {
-            "Enter a message or @ an agent"
+            "Start typing or tag @model or @agent"
         } else {
-            "Enter a message"
+            "Start typing"
         };
 
         self.text_input(id!(prompt)).apply_over(
@@ -509,30 +602,39 @@ impl PromptInputRef {
         prompt_input.set_text("");
         prompt_input.set_cursor(0, 0);
 
-        inner.hide_agent_autocomplete();
+        inner.hide_autocomplete();
         inner.prev_prompt.clear();
 
         inner.prompt_pending_focus = set_key_focus;
     }
 }
 
-fn filter_agents<'a, A: Iterator<Item = &'a MofaAgent>>(
-    agents: A,
-    search: &str,
-) -> impl Iterator<Item = &'a MofaAgent> {
-    let terms = search
-        .split_whitespace()
-        .map(|s| s.to_ascii_lowercase())
-        .collect::<Vec<_>>();
-
-    agents.filter(move |agent| {
-        terms
-            .iter()
-            .all(|term| agent.name().to_ascii_lowercase().contains(term))
-    })
-}
-
 fn set_cursor_to_end(text_input: &TextInputRef) {
     let len = text_input.text().chars().count();
     text_input.set_cursor(len, len);
+}
+
+fn create_entity_button(
+    cx: &mut Cx, 
+    template: Option<LivePtr>, 
+    item: ChatEntityRef, 
+    is_focused: bool
+) -> WidgetRef {
+    let widget = WidgetRef::new_from_ptr(cx, template);
+    let mut button = widget.entity_button(id!(button));
+    button.set_entity(item);
+    button.set_description_visible(true);
+
+    if is_focused {
+        widget.apply_over(
+            cx,
+            live! {
+                draw_bg: {
+                    color: #EAECEF88,
+                }
+            },
+        );
+    }
+
+    widget
 }
