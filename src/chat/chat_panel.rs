@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    chat_history_card::ChatHistoryCardAction, model_selector_list::ModelSelectorListAction,
-    prompt_input::PromptInputWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
+    model_selector_list::ModelSelectorListAction, prompt_input::PromptInputWidgetExt,
+    shared::ChatAgentAvatarWidgetRefExt,
 };
 
 live_design! {
