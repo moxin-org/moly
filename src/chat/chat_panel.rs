@@ -521,7 +521,7 @@ impl WidgetMatchEvent for ChatPanel {
                 }
                 ChatLineAction::Edit(id, updated, regenerate) => {
                     if regenerate {
-                        self.send_message(cx, store, updated, Some(id));
+                        self.send_message(cx, scope, updated, Some(id));
                         return;
                     } else {
                         store.edit_chat_message(id, updated);
@@ -745,20 +745,18 @@ impl ChatPanel {
             .button(id!(main_prompt_input.prompt_send_button))
             .clicked(&actions)
         {
-            let store = scope.data.get_mut::<Store>().unwrap();
-            self.send_message(cx, store, prompt_input.text(), None);
+            self.send_message(cx, scope, prompt_input.text(), None);
         }
 
         if let Some(prompt) = prompt_input.returned(actions) {
-            let store = scope.data.get_mut::<Store>().unwrap();
-            self.send_message(cx, store, prompt, None);
+            self.send_message(cx, scope, prompt, None);
         }
     }
 
     fn send_message(
         &mut self,
         cx: &mut Cx,
-        store: &mut Store,
+        scope: &mut Scope,
         prompt: String,
         regenerate_from: Option<usize>,
     ) {
@@ -768,7 +766,7 @@ impl ChatPanel {
         }
 
         // Let's confirm we're in an appropriate state to send a message
-        // self.update_state(store);
+        self.update_state(scope);
         if matches!(
             self.state,
             State::ModelSelectedWithChat {
@@ -778,6 +776,8 @@ impl ChatPanel {
                 ..
             } | State::ModelSelectedWithEmptyChat { is_loading: false }
         ) {
+            let store = scope.data.get_mut::<Store>().unwrap();
+
             if let Some(entity_selected) = &self
                 .prompt_input(id!(main_prompt_input))
                 .borrow()
