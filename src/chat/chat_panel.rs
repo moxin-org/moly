@@ -494,12 +494,6 @@ impl WidgetMatchEvent for ChatPanel {
         }
 
         for action in actions.iter() {
-            if let ChatHistoryCardAction::ChatSelected = action.cast() {
-                self.reset_scroll_messages(&store);
-                self.focus_on_prompt_input_pending = true;
-                self.redraw(cx);
-            }
-
             if let ModelSelectorListAction::AddedOrDeletedModel = action.cast() {
                 self.redraw(cx);
             }
