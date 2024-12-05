@@ -1,4 +1,4 @@
-use super::chat_history_card::{ChatHistoryCardAction, ChatHistoryCardWidgetRefExt};
+use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
 use crate::data::store::Store;
@@ -185,10 +185,6 @@ impl WidgetMatchEvent for ChatHistory {
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
             store.chats.create_empty_chat();
-
-            // Make sure text input is focused and other necessary setup happens.
-            cx.action(ChatHistoryCardAction::ChatSelected);
-
             self.redraw(cx);
         }
     }
