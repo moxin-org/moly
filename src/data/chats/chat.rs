@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, channel};
 use std::thread;
 
-use crate::data::filesystem::{read_from_file, write_to_file};
+use crate::data::filesystem::{buffered_write_to_file, read_from_file};
 
 use super::chat_entity::ChatEntityId;
 use super::model_loader::ModelLoader;
@@ -178,6 +178,10 @@ impl Chat {
         }
     }
 
+    /// Write the file to disk.
+    ///
+    /// Calling this many times in a row is not a problem as writes are buffered
+    /// for a short time.
     pub fn save(&self) {
         let data = ChatData {
             id: self.id,
@@ -193,7 +197,7 @@ impl Chat {
         };
         let json = serde_json::to_string(&data).unwrap();
         let path = self.chats_dir.join(self.file_name());
-        write_to_file(path, &json).unwrap();
+        buffered_write_to_file(path, json);
     }
 
     pub fn remove_saved_file(&self) {

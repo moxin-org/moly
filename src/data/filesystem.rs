@@ -1,9 +1,15 @@
 use directories::ProjectDirs;
 use std::{
-    fs::{self,File},
+    cell::LazyCell,
+    collections::HashMap,
+    fs::{self, File},
     io::{Read, Write},
     path::PathBuf,
-    sync::OnceLock,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        LazyLock, Mutex, OnceLock,
+    },
+    time::Duration,
 };
 
 pub const APP_QUALIFIER: &str = "com";
@@ -79,4 +85,38 @@ pub fn write_to_file(path: PathBuf, json: &str) -> Result<(), std::io::Error> {
     // Write the JSON data to the file
     file.write_all(json.as_bytes())?;
     Ok(())
+}
+
+static BUFFERED_WRITER: LazyLock<Sender<(PathBuf, String)>> = LazyLock::new(|| {
+    let (tx, rx) = channel();
+    std::thread::spawn(move || {
+        let mut pending: HashMap<PathBuf, String> = HashMap::new();
+        loop {
+            let (path, content) = rx.recv().unwrap();
+            pending.insert(path, content);
+            std::thread::sleep(Duration::from_secs(1));
+
+            for (path, content) in rx.try_iter() {
+                pending.insert(path, content);
+            }
+
+            for (path, content) in pending.iter() {
+                write_to_file(path.clone(), &content).unwrap();
+            }
+
+            pending.clear();
+        }
+    });
+
+    tx
+});
+
+/// Write the content to the file at the given path with a small delay.
+///
+/// This small delay gives the chance to buffer multiple writes to the same file
+/// preserving only the last one.
+///
+/// Note: Could be done better with async code.
+pub fn buffered_write_to_file(path: PathBuf, content: String) -> () {
+    BUFFERED_WRITER.send((path, content)).unwrap();
 }
