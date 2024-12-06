@@ -210,7 +210,6 @@ impl Chats {
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
         if self.current_chat_id == Some(chat_id) {
-            self.cancel_chat_streaming();
             self.set_current_chat(self.get_last_selected_chat_id());
         }
 
