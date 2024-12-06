@@ -364,7 +364,7 @@ impl Store {
 
     fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
-            self.chats.set_current_chat(chat_id);
+            self.chats.set_current_chat(Some(chat_id));
         } else {
             self.chats.create_empty_chat();
         }
