@@ -1,13 +1,12 @@
 use directories::ProjectDirs;
 use std::{
-    cell::LazyCell,
     collections::HashMap,
     fs::{self, File},
     io::{Read, Write},
     path::PathBuf,
     sync::{
-        mpsc::{channel, Receiver, Sender},
-        LazyLock, Mutex, OnceLock,
+        mpsc::{channel, Sender},
+        LazyLock, OnceLock,
     },
     time::Duration,
 };
