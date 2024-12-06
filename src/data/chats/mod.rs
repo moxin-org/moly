@@ -209,16 +209,19 @@ impl Chats {
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
-        if let Some(chat) = self.saved_chats.iter().find(|c| c.borrow().id == chat_id) {
-            chat.borrow().remove_saved_file();
-        };
-        self.saved_chats.retain(|c| c.borrow().id != chat_id);
-
-        if let Some(current_chat_id) = self.current_chat_id {
-            if current_chat_id == chat_id {
-                self.set_current_chat(self.get_last_selected_chat_id());
-            }
+        if self.current_chat_id == Some(chat_id) {
+            self.cancel_chat_streaming();
+            self.set_current_chat(self.get_last_selected_chat_id());
         }
+
+        let pos = self
+            .saved_chats
+            .iter()
+            .position(|c| c.borrow().id == chat_id)
+            .expect("non-existing chat");
+
+        let chat = self.saved_chats.remove(pos);
+        chat.borrow().remove_saved_file();
     }
 
     pub fn handle_action(&mut self, action: &Box<dyn ActionTrait>) {
