@@ -8,7 +8,7 @@ use chat_entity::ChatEntityId;
 use makepad_widgets::ActionTrait;
 use model_loader::ModelLoader;
 use moly_backend::Backend;
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::MofaAgent;
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
 use std::fs;
@@ -19,7 +19,6 @@ use super::filesystem::setup_chats_folder;
 
 pub struct Chats {
     pub backend: Rc<Backend>,
-    pub mae_backend: Rc<MofaBackend>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub loaded_model: Option<File>,
@@ -32,10 +31,9 @@ pub struct Chats {
 }
 
 impl Chats {
-    pub fn new(backend: Rc<Backend>, mae_backend: Rc<MofaBackend>) -> Self {
+    pub fn new(backend: Rc<Backend>) -> Self {
         Self {
             backend,
-            mae_backend,
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
@@ -109,18 +107,23 @@ impl Chats {
     }
 
     pub fn cancel_chat_streaming(&mut self) {
-        if let Some(chat) = self.get_current_chat() {
-            let mut chat = chat.borrow_mut();
-            match chat.associated_entity {
-                Some(ChatEntityId::ModelFile(_)) => {
-                    chat.cancel_streaming(self.backend.as_ref());
-                }
-                Some(ChatEntityId::Agent(_)) => {
-                    chat.cancel_agent_interaction(self.mae_backend.as_ref());
-                }
-                _ => {}
-            }
-        }
+        // TODO(Julian): Implement this
+        // if let Some(chat) = self.get_current_chat() {
+        //     let mut chat = chat.borrow_mut();
+        //     match chat.associated_entity {
+        //         Some(ChatEntityId::ModelFile(_)) => {
+        //             chat.cancel_streaming(self.backend.as_ref());
+        //         }
+        //         Some(ChatEntityId::Agent(agent_id)) => {
+        //             // here based on the agent_id, we need to find the right mofa client, and
+        //             // cancel the interaction with the agent
+        //             let mofa_client = 
+
+        //             // chat.cancel_agent_interaction(self.mae_backend.as_ref());
+        //         }
+        //         _ => {}
+        //     }
+        // }
     }
 
     pub fn delete_chat_message(&mut self, message_id: usize) {
@@ -184,10 +187,10 @@ impl Chats {
         self.saved_chats.push(RefCell::new(new_chat));
     }
 
-    pub fn create_empty_chat_with_agent(&mut self, agent: MofaAgent) {
+    pub fn create_empty_chat_with_agent(&mut self, agent: &MofaAgent) {
         self.create_empty_chat();
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntityId::Agent(agent));
+            chat.associated_entity = Some(ChatEntityId::Agent(agent.id.clone()));
             chat.save();
         }
     }

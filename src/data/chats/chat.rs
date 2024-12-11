@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use makepad_widgets::Cx;
 use moly_backend::Backend;
 use moly_mofa::MofaAgentCommand::{self, SendTask};
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::{MofaAgent, MofaClient};
 use moly_protocol::data::{File, FileID};
 use moly_protocol::open_ai::*;
 use moly_protocol::protocol::Command;
@@ -400,13 +400,16 @@ impl Chat {
         &mut self,
         agent: MofaAgent,
         prompt: String,
-        mae_backend: &MofaBackend,
+        mofa_client: &MofaClient,
     ) {
+        // TODO(Julian): remove excessive cloning
         let (tx, rx) = mpsc::channel();
-        mae_backend
-            .command_sender
-            .send(SendTask(prompt.clone(), agent.clone(), tx.clone()))
-            .expect("failed to send message to agent");
+        // TODO(Julian): maybe rework this into exposing the command_sender in the MofaClient
+        // and using it directly here. This would match the behaviour when talking to a model.
+        mofa_client.send_message_to_agent(agent.clone(), prompt.clone(), tx);
+            // .command_sender
+            // .send(SendTask(prompt.clone(), agent.clone(), tx.clone()))
+            // .expect("failed to send message to agent");
 
         let next_id = self.messages.last().map(|m| m.id).unwrap_or(0) + 1;
 
@@ -421,21 +424,26 @@ impl Chat {
         self.messages.push(ChatMessage {
             id: next_id + 1,
             role: Role::Assistant,
-            username: Some(agent.name().to_string()),
-            entity: Some(ChatEntityId::Agent(agent.clone())),
+            username: Some(agent.name.clone()),
+            entity: Some(ChatEntityId::Agent(agent.id.clone())),
             content: "".to_string(),
         });
 
         self.state = ChatState::Receiving;
 
+        let agent = agent.clone();
         let chat_id = self.id;
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
                 Ok(moly_mofa::ChatResponse::ChatFinalResponseData(data)) => {
+                    // message.content returns something like: "{\"step_name\": \"keyword_results\", \"node_results\": \"Answer: This is a test question. How can I assist you further?\", \"dataflow_status\": true}"
+                    // we need to parse this and extract the node_results
+                    // println!("mofa agent response: {:?}", data.choices[0].message.content);
+                    let node_results = serde_json::from_str::<MofaAgentResponse>(&data.choices[0].message.content).unwrap();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
                         kind: ChatEntityActionKind::MofaAgentResult(
-                            data.choices[0].message.content.clone(),
+                            node_results.node_results,
                             agent.clone(),
                         ),
                     });
@@ -476,13 +484,13 @@ impl Chat {
         }
     }
 
-    pub fn cancel_agent_interaction(&mut self, mae_backend: &MofaBackend) {
+    pub fn cancel_agent_interaction(&mut self, mofa_client: &MofaClient) {
         if matches!(self.state, ChatState::Idle | ChatState::Cancelled(_)) {
             return;
         }
 
-        let cmd = MofaAgentCommand::CancelTask;
-        mae_backend.command_sender.send(cmd).unwrap();
+        // let cmd = MofaAgentCommand::CancelTask;
+        mofa_client.cancel_task();
 
         self.state = ChatState::Cancelled(true);
         let message = self.messages.last_mut().unwrap();
@@ -543,4 +551,11 @@ impl Chat {
         }
         self.save();
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct MofaAgentResponse {
+    step_name: String,
+    node_results: String,
+    dataflow_status: bool,
 }
