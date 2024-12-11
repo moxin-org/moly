@@ -2,7 +2,7 @@ use moly_protocol::open_ai::{
     ChatResponseData, ChoiceData, MessageData, Role, StopReason, UsageData,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use std::sync::mpsc::{self, channel};
+use std::sync::{mpsc::{self, channel}, Arc};
 use tokio::task::JoinHandle;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,37 +50,42 @@ pub struct MofaResponseSearchAssistant {
     pub result: MofaResponseSearchAssistantResult,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-pub enum MofaAgent {
-    Example,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
+pub struct AgentId(pub String);
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum AgentType {
     Reasoner,
     SearchAssistant,
     ResearchScholar,
+    MakepadExpert,
 }
 
-impl MofaAgent {
-    pub fn name(&self) -> &str {
-        match self {
-            MofaAgent::Example => "Example Agent",
-            MofaAgent::Reasoner => "Reasoner Agent",
-            MofaAgent::SearchAssistant => "Search Assistant",
-            MofaAgent::ResearchScholar => "Research Scholar",
-        }
-    }
+/// The unique identifier for the server
+#[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub struct MofaServerId(pub String);  // Unique identifier for the server
 
-    pub fn short_description(&self) -> &str {
-        match self {
-            MofaAgent::Example => "This is an example agent implemented by MoFa",
-            MofaAgent::Reasoner => "Helps to find good questions about any topic",
-            MofaAgent::SearchAssistant => "Your assistant to find information on the web",
-            MofaAgent::ResearchScholar => "Expert in academic research",
-        }
-    }
+/// A MoFa agent.
+/// Represents a single agent on a server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MofaAgent {
+    pub id: AgentId,
+    pub name: String,
+    pub description: String,
+    pub agent_type: AgentType,
+    pub server_id: MofaServerId,
 }
 
-#[derive(Default)]
-pub struct MofaOptions {
-    pub address: Option<String>,
+impl Default for MofaAgent {
+    fn default() -> Self {
+        MofaAgent {
+            id: AgentId("default".to_string()),
+            name: "Inaccesible Agent".to_string(),
+            description: "Default".to_string(),
+            agent_type: AgentType::Reasoner,
+            server_id: MofaServerId("default".to_string()),
+        }
+    }
 }
 
 pub enum TestServerResponse {
@@ -91,81 +96,110 @@ pub enum TestServerResponse {
 pub enum MofaAgentCommand {
     SendTask(String, MofaAgent, mpsc::Sender<ChatResponse>),
     CancelTask,
-    UpdateServerAddress(String),
     TestServer(mpsc::Sender<TestServerResponse>),
 }
 
-pub struct MofaBackend {
-    pub command_sender: mpsc::Sender<MofaAgentCommand>,
+#[derive(Clone, Debug)]
+pub struct MofaClient {
+    inner: Arc<MofaClientInner>,
 }
 
-impl Default for MofaBackend {
-    fn default() -> Self {
-        Self::new()
-    }
+#[derive(Debug)]
+struct MofaClientInner {
+    command_sender: mpsc::Sender<MofaAgentCommand>,
+    address: String,
+    is_local: bool,
 }
 
-const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
+pub enum BackendType {
+    Local,
+    Remote,
+}
 
-impl MofaBackend {
-    pub fn available_agents() -> Vec<MofaAgent> {
+impl MofaClient {
+    pub fn get_available_agents(&self) -> Vec<MofaAgent> {
+        // TODO(Julian): remove this and request the list from the server
         vec![
-            MofaAgent::Example,
-            // Keeping only one agent for now. We will revisit this later when MoFa is more stable.
-
-            // MofaAgent::Reasoner,
-            // MofaAgent::SearchAssistant,
-            // MofaAgent::ResearchScholar,
+            MofaAgent {
+                id: AgentId("reasoner".to_string()),
+                name: "Reasoner".to_string(),
+                description: "An agent that will help you find good questions about any topic".to_string(),
+                agent_type: AgentType::Reasoner,
+                server_id: MofaServerId(self.inner.address.clone()),
+            },
         ]
     }
 
-    pub fn new() -> Self {
+    pub fn cancel_task(&self) {
+        self.inner.command_sender.send(MofaAgentCommand::CancelTask).unwrap();
+    }
+
+    pub fn test_connection(&self, tx: mpsc::Sender<TestServerResponse>) {
+        self.inner.command_sender.send(MofaAgentCommand::TestServer(tx)).unwrap();
+    }
+
+    pub fn send_message_to_agent(&self, agent: MofaAgent, prompt: String, tx: mpsc::Sender<ChatResponse>) {
+        self.inner.command_sender.send(MofaAgentCommand::SendTask(prompt, agent, tx)).unwrap();
+    }
+
+    pub fn new(address: String) -> Self {
         if should_be_real() {
             let (command_sender, command_receiver) = channel();
-            let backend = Self { command_sender };
-
-            std::thread::spawn(move || {
-                Self::main_loop(command_receiver);
+            let is_local = address.starts_with("http://localhost");
+            
+            let inner = Arc::new(MofaClientInner {
+                command_sender,
+                address: address.into(),
+                is_local,
             });
 
-            backend
+            let inner_clone = inner.clone();
+            std::thread::spawn(move || {
+                Self::main_loop(command_receiver, inner_clone);
+            });
+
+            Self { inner }
         } else {
             Self::new_fake()
         }
     }
 
-    pub fn main_loop(command_receiver: mpsc::Receiver<MofaAgentCommand>) {
+    fn main_loop(command_receiver: mpsc::Receiver<MofaAgentCommand>, inner: Arc<MofaClientInner>) {
         println!("MoFa backend started");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
-        let mut options = MofaOptions::default();
 
         loop {
             match command_receiver.recv().unwrap() {
-                MofaAgentCommand::SendTask(task, _agent, tx) => {
+                MofaAgentCommand::SendTask(task, agent, tx) => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
+                    let model = match agent.agent_type {
+                        AgentType::MakepadExpert => "makepad",
+                        _ => "reasoner",
+                    };
                     let data = ChatRequest {
-                        model: "example".to_string(),
+                        model: model.to_string(),
                         messages: vec![MessageData {
                             role: Role::User,
                             content: task,
                         }],
                     };
                     let client = reqwest::Client::new();
-                    let url = options
-                        .address
-                        .clone()
-                        .unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
+
+                    let inner = inner.clone();
                     current_request = Some(rt.spawn(async move {
                         let resp = client
-                            .post(format!("{}/v1/chat/completions", url))
+                            .post(format!("{}/v1/chat/completions", inner.address))
                             .json(&data)
                             .send()
                             .await
                             .expect("Failed to send request");
 
+                        // TODO(Julian): remove this
+                        // println!("mofa agent response: {:?}", resp.text().await.unwrap());  
                         let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
                         match resp {
                             Ok(resp) => {
@@ -183,14 +217,8 @@ impl MofaBackend {
                     }
                     continue;
                 }
-                MofaAgentCommand::UpdateServerAddress(address) => {
-                    options.address = Some(address);
-                }
                 MofaAgentCommand::TestServer(tx) => {
-                    let url = options
-                        .address
-                        .clone()
-                        .unwrap_or(DEFAULT_MOFA_ADDRESS.to_string());
+                    let url = inner.address.clone();
                     let resp = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
                         .no_proxy()
@@ -198,6 +226,7 @@ impl MofaBackend {
                         .unwrap()
                         .get(format!("{}/v1/models", url))
                         .send();
+
 
                     match resp {
                         Ok(r) => {
@@ -220,11 +249,15 @@ impl MofaBackend {
     // For testing purposes
     pub fn new_fake() -> Self {
         let (command_sender, command_receiver) = channel();
-        let backend = Self { command_sender };
+        
+        let inner = Arc::new(MofaClientInner {
+            command_sender,
+            address: "localhost:8000".to_string(),
+            is_local: true,
+        });
 
         std::thread::spawn(move || {
             loop {
-                // Receive command from frontend
                 match command_receiver.recv().unwrap() {
                     MofaAgentCommand::SendTask(_task, _agent, tx) => {
                         let data = ChatResponseData {
@@ -255,7 +288,7 @@ impl MofaBackend {
             }
         });
 
-        backend
+        Self { inner }
     }
 }
 
@@ -272,8 +305,6 @@ pub enum ChatResponse {
     // https://platform.openai.com/docs/api-reference/chat/object
     ChatFinalResponseData(ChatResponseData),
 }
-
-// ====
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ChatRequest {

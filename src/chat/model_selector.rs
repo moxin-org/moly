@@ -397,10 +397,15 @@ impl ModelSelector {
             let selected_view = self.view(id!(selected_agent));
             selected_view.set_visible(true);
 
+            let agent = store
+                .available_agents
+                .get(&agent)
+                .cloned()
+                .unwrap_or_default();
             selected_view.apply_over(
                 cx,
                 live! {
-                    label = { text: (agent.name()) }
+                    label = { text: (&agent.name) }
                 },
             );
             selected_view

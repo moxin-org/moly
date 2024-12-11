@@ -4,7 +4,7 @@ use crate::data::chats::chat::ChatID;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::MofaAgent;
 
 live_design! {
     use link::theme::*;
@@ -48,7 +48,9 @@ live_design! {
                     list = <PortalList> {
                         drag_scrolling: false,
                         AgentHeading = <HeadingLabel> { text: "AGENTS" }
-                        Agent = <EntityButton> {}
+                        Agent = <EntityButton> {
+                            server_url_visible: true,
+                        }
                         ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
                         ChatHistoryCard = <ChatHistoryCard> {
                             padding: {top: 4}
@@ -94,8 +96,8 @@ impl Widget for ChatHistory {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
-        let agents = MofaBackend::available_agents();
+        let store = scope.data.get_mut::<Store>().unwrap();
+        let agents = store.agents_list();
 
         enum Item<'a> {
             ChatsHeader,

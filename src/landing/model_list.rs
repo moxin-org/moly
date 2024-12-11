@@ -4,7 +4,7 @@ use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::MofaAgent;
 use moly_protocol::data::Model;
 
 live_design! {
@@ -30,6 +30,7 @@ live_design! {
             padding: {left: 15, right: 15},
             spacing: 15,
             align: {x: 0, y: 0.35},
+            server_url_visible: true,
 
             draw_bg: {
                 radius: 5,
@@ -149,8 +150,8 @@ impl Widget for ModelList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
-        let agents = MofaBackend::available_agents();
+        let store = scope.data.get_mut::<Store>().unwrap();
+        let agents = store.agents_list();
 
         enum Item<'a> {
             AgentRow {

@@ -12,6 +12,7 @@ use crate::shared::download_notification_popup::{
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
 use markdown::MarkdownAction;
+use moly_mofa::MofaServerId;
 
 live_design! {
     use link::theme::*;
@@ -247,6 +248,21 @@ impl MatchEvent for App {
             if let ChatPanelAction::NavigateToDiscover = action.cast() {
                 let discover_radio_button = self.ui.radio_button(id!(discover_tab));
                 discover_radio_button.select(cx, &mut Scope::empty());
+            }
+
+            // Handle MoFa server connection tests
+            match action.downcast_ref() {
+                Some(MoFaTestServerAction::Success(url)) => {
+                    self.store.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connected;
+                    self.ui.redraw(cx);
+                }
+                Some(MoFaTestServerAction::Failure(url)) => {
+                    if let Some(url) = url {
+                        self.store.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Disconnected;
+                        self.ui.redraw(cx);
+                    }
+                }
+                _ => {},
             }
 
             if matches!(
