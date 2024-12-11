@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    chat_history_card::ChatHistoryCardAction, model_selector_list::ModelSelectorListAction,
-    prompt_input::PromptInputWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
+    model_selector_list::ModelSelectorListAction, prompt_input::PromptInputWidgetExt,
+    shared::ChatAgentAvatarWidgetRefExt,
 };
 
 live_design! {
@@ -394,15 +394,25 @@ pub struct ChatPanel {
 
     #[rust(false)]
     focus_on_prompt_input_pending: bool,
+
+    #[rust]
+    current_chat_id: Option<ChatID>,
 }
 
 impl Widget for ChatPanel {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        if store.chats.get_current_chat_id() != self.current_chat_id {
+            self.current_chat_id = store.chats.get_current_chat_id();
+            self.reset_scroll_messages(store);
+            self.redraw(cx);
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        let store = scope.data.get_mut::<Store>().unwrap();
-        self.update_state(store);
+        self.update_state(scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -484,12 +494,6 @@ impl WidgetMatchEvent for ChatPanel {
         }
 
         for action in actions.iter() {
-            if let ChatHistoryCardAction::ChatSelected = action.cast() {
-                self.reset_scroll_messages(&store);
-                self.focus_on_prompt_input_pending = true;
-                self.redraw(cx);
-            }
-
             if let ModelSelectorListAction::AddedOrDeletedModel = action.cast() {
                 self.redraw(cx);
             }
@@ -522,7 +526,7 @@ impl WidgetMatchEvent for ChatPanel {
                 }
                 ChatLineAction::Edit(id, updated, regenerate) => {
                     if regenerate {
-                        self.send_message(cx, store, updated, Some(id));
+                        self.send_message(cx, scope, updated, Some(id));
                         return;
                     } else {
                         store.edit_chat_message(id, updated);
@@ -570,7 +574,9 @@ impl WidgetMatchEvent for ChatPanel {
 }
 
 impl ChatPanel {
-    fn update_state(&mut self, store: &mut Store) {
+    fn update_state(&mut self, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
         let chat_entity = store
             .chats
             .get_current_chat()
@@ -744,20 +750,18 @@ impl ChatPanel {
             .button(id!(main_prompt_input.prompt_send_button))
             .clicked(&actions)
         {
-            let store = scope.data.get_mut::<Store>().unwrap();
-            self.send_message(cx, store, prompt_input.text(), None);
+            self.send_message(cx, scope, prompt_input.text(), None);
         }
 
         if let Some(prompt) = prompt_input.returned(actions) {
-            let store = scope.data.get_mut::<Store>().unwrap();
-            self.send_message(cx, store, prompt, None);
+            self.send_message(cx, scope, prompt, None);
         }
     }
 
     fn send_message(
         &mut self,
         cx: &mut Cx,
-        store: &mut Store,
+        scope: &mut Scope,
         prompt: String,
         regenerate_from: Option<usize>,
     ) {
@@ -767,7 +771,7 @@ impl ChatPanel {
         }
 
         // Let's confirm we're in an appropriate state to send a message
-        self.update_state(store);
+        self.update_state(scope);
         if matches!(
             self.state,
             State::ModelSelectedWithChat {
@@ -777,6 +781,8 @@ impl ChatPanel {
                 ..
             } | State::ModelSelectedWithEmptyChat { is_loading: false }
         ) {
+            let store = scope.data.get_mut::<Store>().unwrap();
+
             if let Some(entity_selected) = &self
                 .prompt_input(id!(main_prompt_input))
                 .borrow()
