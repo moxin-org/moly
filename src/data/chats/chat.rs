@@ -398,7 +398,7 @@ impl Chat {
 
     pub fn send_message_to_agent(
         &mut self,
-        agent: MofaAgent,
+        agent: &MofaAgent,
         prompt: String,
         mofa_client: &MofaClient,
     ) {

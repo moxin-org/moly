@@ -190,23 +190,20 @@ impl Store {
         prompt: String,
         regenerate_from: Option<usize>,
     ) {
-        println!("send_entity_message: {:?}", entity_id);
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             if let Some(message_id) = regenerate_from {
                 chat.remove_messages_from(message_id);
             }
 
             match entity_id {
-                ChatEntityId::Agent(agent) => {
-                    let client = self.get_client_for_agent(agent);
-                    // TODO(Julian): handle unwrap
-                    let agent = self.available_agents.get(agent).cloned().unwrap_or_default();
-
-                    if let Some(client) = client {
-                        //TODO(Julian): remove excessive cloning
-                        chat.send_message_to_agent(agent.clone(), prompt, &client);
+                ChatEntityId::Agent(agent_id) => {
+                    if let (Some(client), Some(agent)) = (
+                        self.get_client_for_agent(agent_id),
+                        self.available_agents.get(agent_id)
+                    ) {
+                        chat.send_message_to_agent(agent, prompt, &client);
                     } else {
-                        println!("client not found: {:?}", agent.id);
+                        println!("client or agent not found: {:?}", agent_id);
                     }
                 }
                 ChatEntityId::ModelFile(file_id) => {

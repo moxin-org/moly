@@ -127,7 +127,7 @@ impl ModelSelectorItemRef {
         inner.entity = ModelSelectorEntity::Model(model);
     }
 
-    pub fn set_agent(&mut self, agent: MofaAgent) {
+    pub fn set_agent(&mut self, agent: &MofaAgent) {
         let Some(mut inner) = self.borrow_mut() else { return };
         // TODO(Julian): cloning
         inner.entity = ModelSelectorEntity::Agent(agent.clone());

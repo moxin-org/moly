@@ -166,7 +166,6 @@ impl MofaClient {
     }
 
     fn main_loop(command_receiver: mpsc::Receiver<MofaAgentCommand>, inner: Arc<MofaClientInner>) {
-        println!("MoFa backend started");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 

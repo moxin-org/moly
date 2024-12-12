@@ -174,22 +174,20 @@ impl ModelSelectorList {
 
         if moly_mofa::should_be_visible() {
             let agents = store.agents_list();
-            for i in 0..agents.len() {
+            for (i, agent) in agents.iter().enumerate() {
                 let item_id = LiveId((models_count + 1 + i) as u64).into();
                 let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
                     WidgetRef::new_from_ptr(cx, self.agent_template)
                 });
 
-                let agent_name = &agents[i].name;
+                let agent_name = &agent.name;
                 let current_agent_name = match &chat_entity {
-                    // TODO(Julian): cloning
-                    Some(ChatEntityId::Agent(agent)) => {
-                        let agent = store.available_agents.get(agent).cloned().unwrap_or_default();
-                        Some(agent.name)
+                    Some(ChatEntityId::Agent(agent_id)) => {
+                        store.available_agents.get(agent_id).map(|a| &a.name)
                     },
                     _ => None,
                 };
-                let icon_tick_visible = current_agent_name.as_ref() == Some(agent_name);
+                let icon_tick_visible = current_agent_name == Some(agent_name);
 
                 item_widget.apply_over(
                     cx,
@@ -200,9 +198,10 @@ impl ModelSelectorList {
                         }
                     },
                 );
+                
                 item_widget
                     .as_model_selector_item()
-                    .set_agent(agents[i].clone());
+                    .set_agent(agent);
 
                 let _ = item_widget.draw_all(cx, &mut Scope::empty());
                 total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
