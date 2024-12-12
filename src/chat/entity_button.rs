@@ -172,12 +172,11 @@ impl EntityButton {
             avatar.set_agent(agent);
             description_label.set_text(&agent.description);
             
-            // TODO(Julian): cleanup
-            // use the server url without the prefix
-            let formatted_server_url = format!("{}", agent.server_id.0);
-            let formatted_server_url = formatted_server_url.trim_start_matches("http://");
-            let formatted_server_url = formatted_server_url.trim_start_matches("https://");
-            server_url.set_text(&formatted_server_url);
+            let formatted_server_url = agent.server_id.0
+                .strip_prefix("https://")
+                .or_else(|| agent.server_id.0.strip_prefix("http://"))
+                .unwrap_or(&agent.server_id.0);
+            server_url.set_text(formatted_server_url);
         } else {
             avatar.set_visible(false);
             description_label.set_text("");

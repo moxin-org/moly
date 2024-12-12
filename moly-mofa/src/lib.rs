@@ -166,13 +166,9 @@ impl MofaClient {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
-                    // TODO(Julian): remove this
-                    let model = match agent.agent_type {
-                        AgentType::MakepadExpert => "makepad",
-                        _ => "reasoner",
-                    };
+
                     let data = ChatRequest {
-                        model: model.to_string(),
+                        model: agent.name,
                         messages: vec![MessageData {
                             role: Role::User,
                             content: task,
