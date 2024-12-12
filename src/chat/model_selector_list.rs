@@ -173,7 +173,7 @@ impl ModelSelectorList {
         }
 
         if moly_mofa::should_be_visible() {
-            let agents = store.chats.agents_list();
+            let agents = store.chats.get_agents_list();
             for (i, agent) in agents.iter().enumerate() {
                 let item_id = LiveId((models_count + 1 + i) as u64).into();
                 let item_widget = self.items.get_or_insert(cx, item_id, |cx| {

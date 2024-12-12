@@ -460,7 +460,7 @@ impl PromptInput {
             .map(|s| s.to_ascii_lowercase())
             .collect::<Vec<_>>();
 
-        let available_agents = store.chats.agents_list();
+        let available_agents = store.chats.get_agents_list();
         let agents: Vec<_> = available_agents
             .iter()
             .map(|agent| ChatEntityRef::Agent(&agent))

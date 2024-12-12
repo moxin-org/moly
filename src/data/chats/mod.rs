@@ -302,24 +302,11 @@ impl Chats {
             .map(|server| server.client.clone())
     }
 
-    pub fn agents_list(&mut self) -> Vec<MofaAgent> {
-        // TODO(Julian): remove cloning and server_id should be server_address, set from within the client
-        if self.available_agents.is_empty() {
-            println!("no agents fetched, fetching from servers");
-            for server in self.mofa_servers.values() {
-                let server_agents = server.client.get_available_agents();
-                println!("extending agents list with server {} agents: {}", server.address, server_agents.len());
-                // agents.extend(server_agents);
-                for mut agent in server_agents {
-                    let unique_agent_id = unique_agent_id(&agent.id, &server.address);
-                    agent.server_id = moly_mofa::MofaServerId(server.address.clone());
-                    agent.id = unique_agent_id.clone();
-                    self.available_agents.insert(unique_agent_id, agent);
-                }
-            }
-        }
-        // TODO(Julian): remove unnecessary cloning, rework this
-        self.available_agents.values().cloned().collect()
+    // Helper method for components that need a sorted vector of agents
+    pub fn get_agents_list(&self) -> Vec<MofaAgent> {
+        let mut agents: Vec<_> = self.available_agents.values().cloned().collect();
+        agents.sort_by(|a, b| a.name.cmp(&b.name));
+        agents
     }
 
         /// Tests the connection to a MoFa server by requesting /v1/models
