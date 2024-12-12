@@ -2,7 +2,7 @@ use moly_protocol::open_ai::{
     ChatResponseData, ChoiceData, MessageData, Role, StopReason, UsageData,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use std::sync::{mpsc::{self, channel}, Arc};
+use std::sync::mpsc::{self, channel};
 use tokio::task::JoinHandle;
 
 #[derive(Debug, Serialize, Deserialize)]

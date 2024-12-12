@@ -27,7 +27,7 @@ pub struct ChatEntityAction {
 enum ChatEntityActionKind {
     ModelAppendDelta(String),
     ModelStreamingDone,
-    MofaAgentResult(String, MofaAgent),
+    MofaAgentResult(String),
     MofaAgentCancelled,
 }
 
@@ -401,7 +401,6 @@ impl Chat {
         prompt: String,
         mofa_client: &MofaClient,
     ) {
-        // TODO(Julian): remove excessive cloning
         let (tx, rx) = mpsc::channel();
         mofa_client.send_message_to_agent(&agent, &prompt, tx);
 
@@ -425,20 +424,15 @@ impl Chat {
 
         self.state = ChatState::Receiving;
 
-        let agent = agent.clone();
         let chat_id = self.id;
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
                 Ok(moly_mofa::ChatResponse::ChatFinalResponseData(data)) => {
-                    // message.content returns something like: "{\"step_name\": \"keyword_results\", \"node_results\": \"Answer: This is a test question. How can I assist you further?\", \"dataflow_status\": true}"
-                    // we need to parse this and extract the node_results
-                    // println!("mofa agent response: {:?}", data.choices[0].message.content);
                     let node_results = serde_json::from_str::<MofaAgentResponse>(&data.choices[0].message.content).unwrap();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
                         kind: ChatEntityActionKind::MofaAgentResult(
-                            node_results.node_results,
-                            agent.clone(),
+                            node_results.node_results
                         ),
                     });
 
@@ -532,7 +526,7 @@ impl Chat {
                 self.is_streaming = false;
                 self.state = ChatState::Idle;
             }
-            ChatEntityActionKind::MofaAgentResult(response, _agent) => {
+            ChatEntityActionKind::MofaAgentResult(response) => {
                 let last = self.messages.last_mut().unwrap();
                 last.content = response.clone();
                 self.state = ChatState::Idle;
