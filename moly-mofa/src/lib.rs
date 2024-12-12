@@ -116,7 +116,7 @@ impl MofaClient {
     pub fn get_available_agents(&self) -> Vec<MofaAgent> {
         vec![
             MofaAgent {
-                id: AgentId("reasoner".to_string()),
+                id: unique_agent_id(&AgentId("Reasoner".to_string()), &self.address),
                 name: "Reasoner".to_string(),
                 description: "An agent that will help you find good questions about any topic".to_string(),
                 agent_type: AgentType::Reasoner,
@@ -294,4 +294,8 @@ pub enum ChatResponse {
 struct ChatRequest {
     model: String,
     messages: Vec<MessageData>,
+}
+
+fn unique_agent_id(agent_id: &AgentId, server_address: &str) -> AgentId {
+    AgentId(format!("{}-{}", agent_id.0, server_address))
 }

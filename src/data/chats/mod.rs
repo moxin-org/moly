@@ -283,7 +283,8 @@ impl Chats {
             connection_status: MofaServerConnectionStatus::Disconnected,
         });
 
-        // TODO(Julian): we might want to these in one step
+        // TODO: once MoFa servers properly support fetching agents, we can rework these 
+        // two steps into one.
         self.test_mofa_server_connection(&address);
         self.fetch_agents_from_server(&server_id);
         
@@ -291,14 +292,10 @@ impl Chats {
     }
 
     pub fn fetch_agents_from_server(&mut self, server_id: &MofaServerId) {
-        // TODO(Julian): remove cloning and server_id should be server_address, set from within the client
         let server = self.mofa_servers.get(server_id).unwrap();
         let agents = server.client.get_available_agents();
-        for mut agent in agents {
-            let unique_agent_id = unique_agent_id(&agent.id, &server.address);
-            agent.server_id = moly_mofa::MofaServerId(server.address.clone());
-            agent.id = unique_agent_id.clone();
-            self.available_agents.insert(unique_agent_id, agent);
+        for agent in agents {
+            self.available_agents.insert(agent.id.clone(), agent);
         }
     }
 
@@ -337,8 +334,4 @@ impl Chats {
             }
         });
     }
-}
-
-fn unique_agent_id(agent_id: &AgentId, server_address: &str) -> AgentId {
-    AgentId(format!("{}-{}", agent_id.0, server_address))
 }
