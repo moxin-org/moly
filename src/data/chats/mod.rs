@@ -27,6 +27,12 @@ pub struct ServerInfo {
     pub available_agent_ids: Vec<AgentId>,
 }
 
+impl ServerInfo {
+    pub fn is_local(&self) -> bool {
+        self.address.starts_with("http://localhost")
+    }
+}
+
 /// The connection status of the server
 #[derive(Debug, Clone, PartialEq)]
 pub enum MofaServerConnectionStatus {

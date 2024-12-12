@@ -265,12 +265,8 @@ impl Widget for MofaServers {
                             item.view(id!(separator)).set_visible(false);
                         }
 
-                        let server = &servers[item_id];
-                        let props = MofaServerItemProps {
-                            server_info: server.clone(),
-                            server_id: MofaServerId(server.address.clone()),
-                        };
-                        let mut item_scope = Scope::with_props(&props);
+                        let server = &servers[item_id].clone();
+                        let mut item_scope = Scope::with_props(server);
                         item.draw_all(cx, &mut item_scope);
                     }
                 }
@@ -286,7 +282,6 @@ impl WidgetMatchEvent for MofaServers {
 
         let add_server_input = self.view.text_input(id!(add_server_input));
         if let Some(address) = add_server_input.returned(actions) {
-            log!("returned address: {:?}", address);
 
             store.chats.register_mofa_server(address);
             add_server_input.set_text("");
@@ -294,13 +289,6 @@ impl WidgetMatchEvent for MofaServers {
             self.redraw(cx);
         }
     }
-}
-
-// TODO(Julian): replace this with ServerInfo, add server_id to it
-#[derive(Clone)]
-pub struct MofaServerItemProps {
-    pub server_info: ServerInfo,
-    pub server_id: MofaServerId,
 }
 
 #[derive(Widget, LiveHook, Live)]
@@ -319,18 +307,15 @@ impl Widget for MofaServerItem {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let props = scope.props.get::<MofaServerItemProps>().unwrap();
-        self.server_id = props.server_id.clone();
+        let server = scope.props.get::<ServerInfo>().unwrap();
+        self.server_id = MofaServerId(server.address.clone());
 
-        self.update_connection_status(&props.server_info.connection_status);
+        self.update_connection_status(&server.connection_status);
 
-        // Set the address label
         self.label(id!(address_editable.mofa_address_label))
-            .set_text(&props.server_info.address);
+            .set_text(&server.address);
 
-        // Set the tag label (could be customized based on server type)
-        // TODO(Julian): this should be a flag in server info
-        if props.server_info.address.starts_with("http://local") {
+        if server.is_local() {
             self.view.view(id!(icon_local)).set_visible(true);
             self.view.view(id!(icon_remote)).set_visible(false);
         } else {
