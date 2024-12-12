@@ -23,8 +23,6 @@ pub struct MofaServer {
     pub address: String,
     pub client: Rc<MofaClient>,
     pub connection_status: MofaServerConnectionStatus,
-    // TODO(Julian): remove this
-    pub available_agent_ids: Vec<AgentId>,
 }
 
 impl MofaServer {
@@ -279,7 +277,6 @@ impl Chats {
         self.mofa_servers.insert(server_id.clone(), MofaServer {
             address: address.clone(),
             client,
-            available_agent_ids: Vec::new(),
             connection_status: MofaServerConnectionStatus::Disconnected,
         });
 

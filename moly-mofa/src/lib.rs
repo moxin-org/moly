@@ -133,8 +133,8 @@ impl MofaClient {
         self.command_sender.send(MofaAgentCommand::TestServer(tx)).unwrap();
     }
 
-    pub fn send_message_to_agent(&self, agent: MofaAgent, prompt: String, tx: mpsc::Sender<ChatResponse>) {
-        self.command_sender.send(MofaAgentCommand::SendTask(prompt, agent, tx)).unwrap();
+    pub fn send_message_to_agent(&self, agent: &MofaAgent, prompt: &String, tx: mpsc::Sender<ChatResponse>) {
+        self.command_sender.send(MofaAgentCommand::SendTask(prompt.clone(), agent.clone(), tx)).unwrap();
     }
 
     pub fn new(address: String) -> Self {
@@ -166,6 +166,7 @@ impl MofaClient {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
+                    // TODO(Julian): remove this
                     let model = match agent.agent_type {
                         AgentType::MakepadExpert => "makepad",
                         _ => "reasoner",
@@ -188,8 +189,6 @@ impl MofaClient {
                             .await
                             .expect("Failed to send request");
 
-                        // TODO(Julian): remove this
-                        // println!("mofa agent response: {:?}", resp.text().await.unwrap());  
                         let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
                         match resp {
                             Ok(resp) => {

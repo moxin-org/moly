@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use makepad_widgets::Cx;
 use moly_backend::Backend;
-use moly_mofa::MofaAgentCommand::{self, SendTask};
 use moly_mofa::{MofaAgent, MofaClient};
 use moly_protocol::data::{File, FileID};
 use moly_protocol::open_ai::*;
@@ -404,12 +403,7 @@ impl Chat {
     ) {
         // TODO(Julian): remove excessive cloning
         let (tx, rx) = mpsc::channel();
-        // TODO(Julian): maybe rework this into exposing the command_sender in the MofaClient
-        // and using it directly here. This would match the behaviour when talking to a model.
-        mofa_client.send_message_to_agent(agent.clone(), prompt.clone(), tx);
-            // .command_sender
-            // .send(SendTask(prompt.clone(), agent.clone(), tx.clone()))
-            // .expect("failed to send message to agent");
+        mofa_client.send_message_to_agent(&agent, &prompt, tx);
 
         let next_id = self.messages.last().map(|m| m.id).unwrap_or(0) + 1;
 

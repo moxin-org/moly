@@ -21,6 +21,8 @@ live_design! {
     ICON_LOADER = dep("crate://self/resources/images/loader_icon.png")
     ICON_FAILURE = dep("crate://self/resources/images/refresh_error_icon.png")
 
+    // Not making this based on <Icon> because button does not support images
+    // (and these SVGs are too complex for Makepad's SVG support)
     ConnectionStatusIcon = <View> {
         visible: false
         cursor: Hand
@@ -34,7 +36,7 @@ live_design! {
                 fn get_color_scale_pan(self, scale: vec2, pan: vec2) -> vec4 {
                     let tex_color = sample2d(self.image, self.pos * scale + pan).xyzw;
                     // Use the alpha channel from the texture but replace RGB with our tint color
-                    // This assumes your icon is black/white with transparency
+                    // Assuming the icon is black/white with transparency
                     return vec4(
                         self.tint_color.rgb * tex_color.a,
                         tex_color.a
@@ -336,7 +338,6 @@ impl WidgetMatchEvent for MofaServerItem {
             self.redraw(cx);
         }
 
-        // TODO(Julian): this should be a button, and we should avoid cloning
         if let Some(_) = self
             .view(id!(connection_status_failure))
             .finger_down(actions)
