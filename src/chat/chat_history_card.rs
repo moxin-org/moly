@@ -363,7 +363,7 @@ impl Widget for ChatHistoryCard {
         match &chat.borrow().associated_entity {
             Some(ChatEntityId::Agent(agent_id)) => {
                 let agent = store
-                    .available_agents
+                    .chats.available_agents
                     .get(&agent_id)
                     .cloned()
                     .unwrap_or_default();

@@ -173,7 +173,7 @@ impl ModelSelectorList {
         }
 
         if moly_mofa::should_be_visible() {
-            let agents = store.agents_list();
+            let agents = store.chats.agents_list();
             for (i, agent) in agents.iter().enumerate() {
                 let item_id = LiveId((models_count + 1 + i) as u64).into();
                 let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
@@ -183,7 +183,7 @@ impl ModelSelectorList {
                 let agent_name = &agent.name;
                 let current_agent_name = match &chat_entity {
                     Some(ChatEntityId::Agent(agent_id)) => {
-                        store.available_agents.get(agent_id).map(|a| &a.name)
+                        store.chats.available_agents.get(agent_id).map(|a| &a.name)
                     },
                     _ => None,
                 };

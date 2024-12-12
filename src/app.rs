@@ -1,5 +1,6 @@
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
+use crate::data::chats::{MoFaTestServerAction, MofaServerConnectionStatus};
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
@@ -253,12 +254,12 @@ impl MatchEvent for App {
             // Handle MoFa server connection tests
             match action.downcast_ref() {
                 Some(MoFaTestServerAction::Success(url)) => {
-                    self.store.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connected;
+                    self.store.chats.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connected;
                     self.ui.redraw(cx);
                 }
                 Some(MoFaTestServerAction::Failure(url)) => {
                     if let Some(url) = url {
-                        self.store.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Disconnected;
+                        self.store.chats.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Disconnected;
                         self.ui.redraw(cx);
                     }
                 }

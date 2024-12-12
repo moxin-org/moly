@@ -151,7 +151,7 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let agents = store.agents_list();
+        let agents = store.chats.agents_list();
 
         enum Item<'a> {
             AgentRow {

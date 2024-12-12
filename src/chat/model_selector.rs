@@ -398,6 +398,7 @@ impl ModelSelector {
             selected_view.set_visible(true);
 
             let agent = store
+                .chats
                 .available_agents
                 .get(&agent)
                 .cloned()

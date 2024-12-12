@@ -1,7 +1,8 @@
 use makepad_widgets::*;
 use moly_mofa::MofaServerId;
 
-use crate::data::store::{MofaServerConnectionStatus, ServerInfo, Store};
+use crate::data::chats::{MofaServerConnectionStatus, ServerInfo};
+use crate::data::store::Store;
 
 live_design! {
     use link::theme::*;
@@ -247,7 +248,7 @@ impl Widget for MofaServers {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let mut servers: Vec<_> = store.mofa_servers.values().cloned().collect();
+        let mut servers: Vec<_> = store.chats.mofa_servers.values().cloned().collect();
         let entries_count = servers.len();
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
         servers.sort_by(|a, b| a.address.cmp(&b.address));
@@ -287,7 +288,7 @@ impl WidgetMatchEvent for MofaServers {
         if let Some(address) = add_server_input.returned(actions) {
             log!("returned address: {:?}", address);
 
-            store.register_mofa_server(address);
+            store.chats.register_mofa_server(address);
             add_server_input.set_text("");
 
             self.redraw(cx);
@@ -346,7 +347,7 @@ impl WidgetMatchEvent for MofaServerItem {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         if self.button(id!(remove_server)).clicked(actions) {
-            store.remove_mofa_server(&self.server_id.0);
+            store.chats.remove_mofa_server(&self.server_id.0);
             self.redraw(cx);
         }
 
@@ -355,7 +356,7 @@ impl WidgetMatchEvent for MofaServerItem {
             .view(id!(connection_status_failure))
             .finger_down(actions)
         {
-            store.test_mofa_server_connection(self.server_id.0.clone());
+            store.chats.test_mofa_server_connection(self.server_id.0.clone());
             self.update_connection_status(&MofaServerConnectionStatus::Connecting);
             self.redraw(cx);
         }

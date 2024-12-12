@@ -508,6 +508,7 @@ impl WidgetMatchEvent for ChatPanel {
                     }
                     ChatEntityId::Agent(agent_id) => {
                         let agent = store
+                            .chats
                             .available_agents
                             .get(&agent_id)
                             .cloned()
@@ -822,6 +823,7 @@ impl ChatPanel {
                             .set_visible(true);
 
                         let agent = store
+                            .chats
                             .available_agents
                             .get(&agent)
                             .cloned()
@@ -917,6 +919,7 @@ impl ChatPanel {
                     match &chat_line_data.entity {
                         Some(ChatEntityId::Agent(agent)) => {
                             let agent = store
+                                .chats
                                 .available_agents
                                 .get(&agent)
                                 .cloned()

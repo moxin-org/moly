@@ -5,17 +5,43 @@ pub mod model_loader;
 use anyhow::{Context, Result};
 use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
-use makepad_widgets::ActionTrait;
+use makepad_widgets::{error, ActionDefaultRef, ActionTrait, Cx, DefaultNone};
 use model_loader::ModelLoader;
 use moly_backend::Backend;
-use moly_mofa::MofaAgent;
+use moly_mofa::{AgentId, MofaAgent, MofaClient, MofaServerId, TestServerResponse};
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
+use std::collections::HashMap;
 use std::fs;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{self, channel};
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use super::filesystem::setup_chats_folder;
+
+#[derive(Clone, Debug)]
+pub struct ServerInfo {
+    pub address: String,
+    pub client: Rc<MofaClient>,
+    pub connection_status: MofaServerConnectionStatus,
+    // TODO(Julian): remove this
+    pub available_agent_ids: Vec<AgentId>,
+}
+
+/// The connection status of the server
+#[derive(Debug, Clone, PartialEq)]
+pub enum MofaServerConnectionStatus {
+    Connecting,
+    Connected,
+    Disconnected,
+    // Disconnecting,
+}
+
+#[derive(Debug, DefaultNone, Clone)]
+pub enum MoFaTestServerAction {
+    Success(String),
+    Failure(Option<String>),
+    None,
+}
 
 pub struct Chats {
     pub backend: Rc<Backend>,
@@ -23,6 +49,9 @@ pub struct Chats {
 
     pub loaded_model: Option<File>,
     pub model_loader: ModelLoader,
+
+    pub mofa_servers: HashMap<MofaServerId, ServerInfo>,
+    pub available_agents: HashMap<AgentId, MofaAgent>,
 
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
@@ -40,6 +69,8 @@ impl Chats {
             model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
             override_port: None,
+            mofa_servers: HashMap::new(),
+            available_agents: HashMap::new(),
         }
     }
 
@@ -107,23 +138,22 @@ impl Chats {
     }
 
     pub fn cancel_chat_streaming(&mut self) {
-        // TODO(Julian): Implement this
-        // if let Some(chat) = self.get_current_chat() {
-        //     let mut chat = chat.borrow_mut();
-        //     match chat.associated_entity {
-        //         Some(ChatEntityId::ModelFile(_)) => {
-        //             chat.cancel_streaming(self.backend.as_ref());
-        //         }
-        //         Some(ChatEntityId::Agent(agent_id)) => {
-        //             // here based on the agent_id, we need to find the right mofa client, and
-        //             // cancel the interaction with the agent
-        //             let mofa_client = 
-
-        //             // chat.cancel_agent_interaction(self.mae_backend.as_ref());
-        //         }
-        //         _ => {}
-        //     }
-        // }
+        if let Some(chat) = self.get_current_chat() {
+            let mut chat = chat.borrow_mut();
+            match &chat.associated_entity {
+                Some(ChatEntityId::ModelFile(_)) => {
+                    chat.cancel_streaming(self.backend.as_ref());
+                }
+                Some(ChatEntityId::Agent(agent_id)) => {
+                    if let Some(mofa_client) = self.get_client_for_agent(&agent_id) {
+                        chat.cancel_agent_interaction(&mofa_client);
+                    } else {
+                        error!("No mofa client found for agent: {}", agent_id.0);
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 
     pub fn delete_chat_message(&mut self, message_id: usize) {
@@ -228,4 +258,94 @@ impl Chats {
             }
         }
     }
+
+    // Agents
+
+    pub fn remove_mofa_server(&mut self, address: &str) {
+        self.mofa_servers.remove(&MofaServerId(address.to_string()));
+        self.available_agents.retain(|_, agent| agent.server_id.0 != address);
+    }
+
+    pub fn register_mofa_server(&mut self, address: String) -> MofaServerId {
+        let server_id = MofaServerId(address.clone());
+        let client = Rc::new(MofaClient::new(address.clone()));
+        
+        self.mofa_servers.insert(server_id.clone(), ServerInfo {
+            address: address.clone(),
+            client,
+            available_agent_ids: Vec::new(),
+            connection_status: MofaServerConnectionStatus::Disconnected,
+        });
+
+        // TODO(Julian): we might want to these in one step
+        self.test_mofa_server_connection(address);
+        self.fetch_agents_from_server(&server_id);
+        
+        server_id
+    }
+
+    pub fn fetch_agents_from_server(&mut self, server_id: &MofaServerId) {
+        // TODO(Julian): remove cloning and server_id should be server_address, set from within the client
+        let server = self.mofa_servers.get(server_id).unwrap();
+        let agents = server.client.get_available_agents();
+        for mut agent in agents {
+            let unique_agent_id = unique_agent_id(&agent.id, &server.address);
+            agent.server_id = moly_mofa::MofaServerId(server.address.clone());
+            agent.id = unique_agent_id.clone();
+            self.available_agents.insert(unique_agent_id, agent);
+        }
+    }
+
+    pub fn get_client_for_agent(&self, agent_id: &AgentId) -> Option<Rc<MofaClient>> {
+        self.available_agents.get(agent_id)
+            .and_then(|agent| self.mofa_servers.get(&agent.server_id))
+            .map(|server| server.client.clone())
+    }
+
+    pub fn agents_list(&mut self) -> Vec<MofaAgent> {
+        // TODO(Julian): remove cloning and server_id should be server_address, set from within the client
+        if self.available_agents.is_empty() {
+            println!("no agents fetched, fetching from servers");
+            for server in self.mofa_servers.values() {
+                let server_agents = server.client.get_available_agents();
+                println!("extending agents list with server {} agents: {}", server.address, server_agents.len());
+                // agents.extend(server_agents);
+                for mut agent in server_agents {
+                    let unique_agent_id = unique_agent_id(&agent.id, &server.address);
+                    agent.server_id = moly_mofa::MofaServerId(server.address.clone());
+                    agent.id = unique_agent_id.clone();
+                    self.available_agents.insert(unique_agent_id, agent);
+                }
+            }
+        }
+        // TODO(Julian): remove unnecessary cloning, rework this
+        self.available_agents.values().cloned().collect()
+    }
+
+        /// Tests the connection to a MoFa server by requesting /v1/models
+    /// The connection status is updated at the App level based on the actions dispatched
+    pub fn test_mofa_server_connection(&mut self, address: String) {
+        self.mofa_servers.get_mut(&MofaServerId(address.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connecting;
+        let (tx, rx) = mpsc::channel();
+        if let Some(server) = self.mofa_servers.get(&MofaServerId(address.to_string())) {
+            server.client.test_connection(tx.clone());
+        }
+
+        std::thread::spawn(move || match rx.recv() {
+            Ok(TestServerResponse::Success(server_address)) => {
+                Cx::post_action(MoFaTestServerAction::Success(server_address));
+            }
+            Ok(TestServerResponse::Failure(server_address)) => {
+                Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
+            }
+            Err(e) => {
+                error!("Error receiving response from MoFa backend: {:?}", e);
+                Cx::post_action(MoFaTestServerAction::Failure(None));
+            }
+        });
+    }
+}
+
+fn unique_agent_id(agent_id: &AgentId, server_address: &str) -> AgentId {
+    AgentId(format!("{}-{}", agent_id.0, server_address))
 }

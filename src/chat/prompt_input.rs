@@ -382,7 +382,7 @@ impl PromptInput {
 
         match entity {
             ChatEntityId::Agent(agent) => {
-                let agent = store.available_agents.get(agent).cloned().unwrap_or_default();
+                let agent = store.chats.available_agents.get(agent).cloned().unwrap_or_default();
                 label.set_text(&agent.name);
                 agent_avatar.set_agent(&agent);
             }
@@ -460,7 +460,7 @@ impl PromptInput {
             .map(|s| s.to_ascii_lowercase())
             .collect::<Vec<_>>();
 
-        let available_agents = store.agents_list();
+        let available_agents = store.chats.agents_list();
         let agents: Vec<_> = available_agents
             .iter()
             .map(|agent| ChatEntityRef::Agent(&agent))
