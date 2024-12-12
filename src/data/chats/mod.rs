@@ -284,7 +284,7 @@ impl Chats {
         });
 
         // TODO(Julian): we might want to these in one step
-        self.test_mofa_server_connection(address);
+        self.test_mofa_server_connection(&address);
         self.fetch_agents_from_server(&server_id);
         
         server_id
@@ -317,7 +317,7 @@ impl Chats {
 
         /// Tests the connection to a MoFa server by requesting /v1/models
     /// The connection status is updated at the App level based on the actions dispatched
-    pub fn test_mofa_server_connection(&mut self, address: String) {
+    pub fn test_mofa_server_connection(&mut self, address: &String) {
         self.mofa_servers.get_mut(&MofaServerId(address.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connecting;
         let (tx, rx) = mpsc::channel();
         if let Some(server) = self.mofa_servers.get(&MofaServerId(address.to_string())) {

@@ -341,7 +341,7 @@ impl WidgetMatchEvent for MofaServerItem {
             .view(id!(connection_status_failure))
             .finger_down(actions)
         {
-            store.chats.test_mofa_server_connection(self.server_id.0.clone());
+            store.chats.test_mofa_server_connection(&self.server_id.0);
             self.update_connection_status(&MofaServerConnectionStatus::Connecting);
             self.redraw(cx);
         }
