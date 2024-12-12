@@ -101,14 +101,8 @@ pub enum MofaAgentCommand {
 
 #[derive(Clone, Debug)]
 pub struct MofaClient {
-    inner: Arc<MofaClientInner>,
-}
-
-#[derive(Debug)]
-struct MofaClientInner {
     command_sender: mpsc::Sender<MofaAgentCommand>,
     address: String,
-    is_local: bool,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
@@ -118,54 +112,51 @@ pub enum BackendType {
 }
 
 impl MofaClient {
+    /// This is a fake implementation for testing purposes. MoFa servers do not support this yet.
     pub fn get_available_agents(&self) -> Vec<MofaAgent> {
-        // TODO(Julian): remove this and request the list from the server
         vec![
             MofaAgent {
                 id: AgentId("reasoner".to_string()),
                 name: "Reasoner".to_string(),
                 description: "An agent that will help you find good questions about any topic".to_string(),
                 agent_type: AgentType::Reasoner,
-                server_id: MofaServerId(self.inner.address.clone()),
+                server_id: MofaServerId(self.address.clone()),
             },
         ]
     }
 
     pub fn cancel_task(&self) {
-        self.inner.command_sender.send(MofaAgentCommand::CancelTask).unwrap();
+        self.command_sender.send(MofaAgentCommand::CancelTask).unwrap();
     }
 
     pub fn test_connection(&self, tx: mpsc::Sender<TestServerResponse>) {
-        self.inner.command_sender.send(MofaAgentCommand::TestServer(tx)).unwrap();
+        self.command_sender.send(MofaAgentCommand::TestServer(tx)).unwrap();
     }
 
     pub fn send_message_to_agent(&self, agent: MofaAgent, prompt: String, tx: mpsc::Sender<ChatResponse>) {
-        self.inner.command_sender.send(MofaAgentCommand::SendTask(prompt, agent, tx)).unwrap();
+        self.command_sender.send(MofaAgentCommand::SendTask(prompt, agent, tx)).unwrap();
     }
 
     pub fn new(address: String) -> Self {
         if should_be_real() {
             let (command_sender, command_receiver) = channel();
-            let is_local = address.starts_with("http://localhost");
-            
-            let inner = Arc::new(MofaClientInner {
-                command_sender,
-                address: address.into(),
-                is_local,
-            });
-
-            let inner_clone = inner.clone();
+            let address_clone = address.clone();
             std::thread::spawn(move || {
-                Self::main_loop(command_receiver, inner_clone);
+                Self::process_agent_commands(command_receiver, address_clone);
             });
 
-            Self { inner }
+            Self { command_sender, address }
         } else {
             Self::new_fake()
         }
     }
 
-    fn main_loop(command_receiver: mpsc::Receiver<MofaAgentCommand>, inner: Arc<MofaClientInner>) {
+    /// Handles the communication between the MofaClient and the MoFa server.
+    /// 
+    /// This function runs in a separate thread and processes commands received through the command channel.
+    /// 
+    /// The loop continues until the command channel is closed or an unrecoverable error occurs.
+    fn process_agent_commands(command_receiver: mpsc::Receiver<MofaAgentCommand>, address: String) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 
@@ -188,10 +179,10 @@ impl MofaClient {
                     };
                     let client = reqwest::Client::new();
 
-                    let inner = inner.clone();
+                    let address_clone = address.clone();
                     current_request = Some(rt.spawn(async move {
                         let resp = client
-                            .post(format!("{}/v1/chat/completions", inner.address))
+                            .post(format!("{}/v1/chat/completions", address_clone))
                             .json(&data)
                             .send()
                             .await
@@ -217,7 +208,7 @@ impl MofaClient {
                     continue;
                 }
                 MofaAgentCommand::TestServer(tx) => {
-                    let url = inner.address.clone();
+                    let url = address.clone();
                     let resp = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
                         .no_proxy()
@@ -249,12 +240,6 @@ impl MofaClient {
     pub fn new_fake() -> Self {
         let (command_sender, command_receiver) = channel();
         
-        let inner = Arc::new(MofaClientInner {
-            command_sender,
-            address: "localhost:8000".to_string(),
-            is_local: true,
-        });
-
         std::thread::spawn(move || {
             loop {
                 match command_receiver.recv().unwrap() {
@@ -287,7 +272,7 @@ impl MofaClient {
             }
         });
 
-        Self { inner }
+        Self { command_sender, address: "localhost:8000".to_string() }
     }
 }
 
