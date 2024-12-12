@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moly_mofa::MofaServerId;
 
-use crate::data::chats::{MofaServerConnectionStatus, ServerInfo};
+use crate::data::chats::{MofaServerConnectionStatus, MofaServer};
 use crate::data::store::Store;
 
 live_design! {
@@ -307,7 +307,7 @@ impl Widget for MofaServerItem {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let server = scope.props.get::<ServerInfo>().unwrap();
+        let server = scope.props.get::<MofaServer>().unwrap();
         self.server_id = MofaServerId(server.address.clone());
 
         self.update_connection_status(&server.connection_status);

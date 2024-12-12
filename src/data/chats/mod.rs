@@ -19,7 +19,7 @@ use std::{cell::RefCell, path::PathBuf, rc::Rc};
 use super::filesystem::setup_chats_folder;
 
 #[derive(Clone, Debug)]
-pub struct ServerInfo {
+pub struct MofaServer {
     pub address: String,
     pub client: Rc<MofaClient>,
     pub connection_status: MofaServerConnectionStatus,
@@ -27,7 +27,7 @@ pub struct ServerInfo {
     pub available_agent_ids: Vec<AgentId>,
 }
 
-impl ServerInfo {
+impl MofaServer {
     pub fn is_local(&self) -> bool {
         self.address.starts_with("http://localhost")
     }
@@ -56,7 +56,7 @@ pub struct Chats {
     pub loaded_model: Option<File>,
     pub model_loader: ModelLoader,
 
-    pub mofa_servers: HashMap<MofaServerId, ServerInfo>,
+    pub mofa_servers: HashMap<MofaServerId, MofaServer>,
     pub available_agents: HashMap<AgentId, MofaAgent>,
 
     current_chat_id: Option<ChatID>,
@@ -276,7 +276,7 @@ impl Chats {
         let server_id = MofaServerId(address.clone());
         let client = Rc::new(MofaClient::new(address.clone()));
         
-        self.mofa_servers.insert(server_id.clone(), ServerInfo {
+        self.mofa_servers.insert(server_id.clone(), MofaServer {
             address: address.clone(),
             client,
             available_agent_ids: Vec::new(),
