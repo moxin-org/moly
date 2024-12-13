@@ -8,7 +8,7 @@ use chat_entity::ChatEntityId;
 use makepad_widgets::{error, ActionDefaultRef, ActionTrait, Cx, DefaultNone};
 use model_loader::ModelLoader;
 use moly_backend::Backend;
-use moly_mofa::{AgentId, MofaAgent, MofaClient, MofaServerId, TestServerResponse};
+use moly_mofa::{AgentId, MofaAgent, MofaClient, MofaServerId, MofaServerResponse};
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
 use std::collections::HashMap;
@@ -41,7 +41,7 @@ pub enum MofaServerConnectionStatus {
 
 #[derive(Debug, DefaultNone, Clone)]
 pub enum MoFaTestServerAction {
-    Success(String),
+    Success(String, Vec<MofaAgent>),
     Failure(Option<String>),
     None,
 }
@@ -273,23 +273,11 @@ impl Chats {
         self.mofa_servers.insert(server_id.clone(), MofaServer {
             address: address.clone(),
             client,
-            connection_status: MofaServerConnectionStatus::Disconnected,
+            connection_status: MofaServerConnectionStatus::Connecting,
         });
 
-        // TODO: once MoFa servers properly support fetching agents, we can rework these 
-        // two steps into one.
-        self.test_mofa_server_connection(&address);
-        self.fetch_agents_from_server(&server_id);
-        
+        self.test_mofa_server_and_fetch_agents(&address);
         server_id
-    }
-
-    pub fn fetch_agents_from_server(&mut self, server_id: &MofaServerId) {
-        let server = self.mofa_servers.get(server_id).unwrap();
-        let agents = server.client.get_available_agents();
-        for agent in agents {
-            self.available_agents.insert(agent.id.clone(), agent);
-        }
     }
 
     /// Removes a MoFa server from the list of available servers.
@@ -314,18 +302,25 @@ impl Chats {
 
     /// Tests the connection to a MoFa server by requesting /v1/models
     /// The connection status is updated at the App level based on the actions dispatched
-    pub fn test_mofa_server_connection(&mut self, address: &String) {
+    /// 
+    /// We perform fetching (and therefore testing) as follows:
+    /// 1. We create a channel used to communicate with a background thread that will do the http request
+    /// 2. We start that background thread and instruct it to fetch the agents from the server
+    /// 3. The thread sends a message back to the channel created here with the server response
+    /// 4. We forward that result back to the UI thread using Cx::post_action
+    /// 5. The action is handled at the App level, which tells the store to update the connection status and agent list
+    pub fn test_mofa_server_and_fetch_agents(&mut self, address: &String) {
         self.mofa_servers.get_mut(&MofaServerId(address.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connecting;
         let (tx, rx) = mpsc::channel();
         if let Some(server) = self.mofa_servers.get(&MofaServerId(address.to_string())) {
-            server.client.test_connection(tx.clone());
+            server.client.fetch_agents(tx.clone());
         }
 
         std::thread::spawn(move || match rx.recv() {
-            Ok(TestServerResponse::Success(server_address)) => {
-                Cx::post_action(MoFaTestServerAction::Success(server_address));
+            Ok(MofaServerResponse::Connected(server_address, agents)) => {
+                Cx::post_action(MoFaTestServerAction::Success(server_address, agents));
             }
-            Ok(TestServerResponse::Failure(server_address)) => {
+            Ok(MofaServerResponse::Unavailable(server_address)) => {
                 Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
             }
             Err(e) => {
@@ -333,5 +328,24 @@ impl Chats {
                 Cx::post_action(MoFaTestServerAction::Failure(None));
             }
         });
+    }
+
+    pub fn handle_server_connection_result(&mut self, result: MofaServerResponse) {
+        match result {
+            MofaServerResponse::Connected(address, agents) => {
+                if let Some(server) = self.mofa_servers.get_mut(&MofaServerId(address.clone())) {
+                    server.connection_status = MofaServerConnectionStatus::Connected;
+
+                    for agent in agents {
+                        self.available_agents.insert(agent.id.clone(), agent);
+                    }
+                }
+            }
+            MofaServerResponse::Unavailable(address) => {
+                if let Some(server) = self.mofa_servers.get_mut(&MofaServerId(address)) {
+                    server.connection_status = MofaServerConnectionStatus::Disconnected;
+                }
+            }
+        }
     }
 }

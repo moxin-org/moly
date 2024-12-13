@@ -87,15 +87,15 @@ impl Default for MofaAgent {
     }
 }
 
-pub enum TestServerResponse {
-    Success(String),
-    Failure(String),
+pub enum MofaServerResponse {
+    Connected(String, Vec<MofaAgent>),
+    Unavailable(String),
 }
 
 pub enum MofaAgentCommand {
     SendTask(String, MofaAgent, mpsc::Sender<ChatResponse>),
     CancelTask,
-    TestServer(mpsc::Sender<TestServerResponse>),
+    FetchAgentsFromServer(mpsc::Sender<MofaServerResponse>),
 }
 
 #[derive(Clone, Debug)]
@@ -111,25 +111,12 @@ pub enum BackendType {
 }
 
 impl MofaClient {
-    /// This is a fake implementation for testing purposes. MoFa servers do not support this yet.
-    pub fn get_available_agents(&self) -> Vec<MofaAgent> {
-        vec![
-            MofaAgent {
-                id: unique_agent_id(&AgentId("Reasoner".to_string()), &self.address),
-                name: "Reasoner".to_string(),
-                description: "An agent that will help you find good questions about any topic".to_string(),
-                agent_type: AgentType::Reasoner,
-                server_id: MofaServerId(self.address.clone()),
-            },
-        ]
-    }
-
     pub fn cancel_task(&self) {
         self.command_sender.send(MofaAgentCommand::CancelTask).unwrap();
     }
 
-    pub fn test_connection(&self, tx: mpsc::Sender<TestServerResponse>) {
-        self.command_sender.send(MofaAgentCommand::TestServer(tx)).unwrap();
+    pub fn fetch_agents(&self, tx: mpsc::Sender<MofaServerResponse>) {
+        self.command_sender.send(MofaAgentCommand::FetchAgentsFromServer(tx)).unwrap();
     }
 
     pub fn send_message_to_agent(&self, agent: &MofaAgent, prompt: &String, tx: mpsc::Sender<ChatResponse>) {
@@ -201,7 +188,7 @@ impl MofaClient {
                     }
                     continue;
                 }
-                MofaAgentCommand::TestServer(tx) => {
+                MofaAgentCommand::FetchAgentsFromServer(tx) => {
                     let url = address.clone();
                     let resp = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
@@ -211,20 +198,23 @@ impl MofaClient {
                         .get(format!("{}/v1/models", url))
                         .send();
 
-
                     match resp {
-                        Ok(r) => {
-                            if r.status().is_success() {
-                                tx.send(TestServerResponse::Success(url)).unwrap();
-                            } else {
-                                tx.send(TestServerResponse::Failure(url)).unwrap();
-                            }
+                        Ok(r) if r.status().is_success() => {
+                            let agents = vec![
+                                MofaAgent {
+                                    id: unique_agent_id(&AgentId("Reasoner".to_string()), &url),
+                                    name: "Reasoner".to_string(),
+                                    description: "An agent that will help you find good questions about any topic".to_string(),
+                                    agent_type: AgentType::Reasoner,
+                                    server_id: MofaServerId(url.clone()),
+                                },
+                            ];
+                            tx.send(MofaServerResponse::Connected(url, agents)).unwrap();
                         }
-                        Err(e) => {
-                            tx.send(TestServerResponse::Failure(url)).unwrap();
-                            eprintln!("{e}");
+                        _ => {
+                            tx.send(MofaServerResponse::Unavailable(url)).unwrap();
                         }
-                    };
+                    }
                 }
             }
         }

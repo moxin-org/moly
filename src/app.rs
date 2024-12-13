@@ -251,20 +251,9 @@ impl MatchEvent for App {
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
 
-            // Handle MoFa server connection tests
-            match action.downcast_ref() {
-                Some(MoFaTestServerAction::Success(url)) => {
-                    self.store.chats.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connected;
-                    self.ui.redraw(cx);
-                }
-                Some(MoFaTestServerAction::Failure(url)) => {
-                    if let Some(url) = url {
-                        self.store.chats.mofa_servers.get_mut(&MofaServerId(url.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Disconnected;
-                        self.ui.redraw(cx);
-                    }
-                }
-                _ => {},
-            }
+            self.store.handle_mofa_test_server_action(action.cast());
+            // redraw the UI to reflect the connection status
+            self.ui.redraw(cx);
 
             if matches!(
                 action.cast(),

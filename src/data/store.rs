@@ -1,6 +1,7 @@
 use super::chats::chat::ChatID;
 use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
+use super::chats::MoFaTestServerAction;
 use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
 use super::preferences::Preferences;
@@ -11,6 +12,7 @@ use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use moly_backend::Backend;
 
+use moly_mofa::MofaServerResponse;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
 
@@ -354,5 +356,23 @@ impl Store {
         // For now, we just create a new empty chat because we don't fully
         // support having no chat selected
         self.init_current_chat();
+    }
+
+    pub fn handle_mofa_test_server_action(&mut self, action: MoFaTestServerAction) {
+        match action {
+            MoFaTestServerAction::Success(address, agents) => {
+                self.chats.handle_server_connection_result(
+                    MofaServerResponse::Connected(address, agents)
+                );
+            }
+            MoFaTestServerAction::Failure(address) => {
+                if let Some(addr) = address {
+                    self.chats.handle_server_connection_result(
+                        MofaServerResponse::Unavailable(addr)
+                    );
+                }
+            }
+            _ => (),
+        }
     }
 }
