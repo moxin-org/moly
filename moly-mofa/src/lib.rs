@@ -61,12 +61,9 @@ pub enum AgentType {
     MakepadExpert,
 }
 
-/// The unique identifier for the server
 #[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct MofaServerId(pub String);  // Unique identifier for the server
+pub struct MofaServerId(pub String);
 
-/// A MoFa agent.
-/// Represents a single agent on a server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MofaAgent {
     pub id: AgentId,
@@ -77,6 +74,8 @@ pub struct MofaAgent {
 }
 
 impl Default for MofaAgent {
+    /// Returns a dummy agent whenever the corresponding Agent cannot be found
+    /// (due to the server not being available, the server no longer providing the agent, etc.).
     fn default() -> Self {
         MofaAgent {
             id: AgentId("default".to_string()),

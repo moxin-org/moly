@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moly_mofa::MofaServerId;
 
-use crate::data::chats::{MofaServerConnectionStatus, MofaServer};
+use crate::data::chats::{MofaServer, MofaServerConnectionStatus};
 use crate::data::store::Store;
 
 live_design! {
@@ -138,8 +138,6 @@ live_design! {
                         border_width: 1,
                         radius: 3
                     }
-
-                    margin: {bottom: 4}
 
                     icon_walk: {width: 14, height: 14}
                     draw_icon: {
@@ -284,7 +282,6 @@ impl WidgetMatchEvent for MofaServers {
 
         let add_server_input = self.view.text_input(id!(add_server_input));
         if let Some(address) = add_server_input.returned(actions) {
-
             store.chats.register_mofa_server(address);
             add_server_input.set_text("");
 

@@ -17,7 +17,6 @@ pub enum ChatEntityId {
 /// Can be used to chain iterators of both types or simply to take either as a parameter.
 #[derive(Debug, Clone, Serialize, Copy)]
 pub enum ChatEntityRef<'a> {
-    // Agent(&'a AgentId),
     Agent(&'a MofaAgent),
     ModelFile(&'a File),
 }

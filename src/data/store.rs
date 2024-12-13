@@ -75,9 +75,6 @@ impl Store {
             DEFAULT_MAX_DOWNLOAD_THREADS,
         ));
 
-        // let mut mofa_clients = HashMap::new();
-        // mofa_clients.insert(DEFAULT_MOFA_ADDRESS.to_string(), Rc::new(MofaClient::new(DEFAULT_MOFA_ADDRESS.to_string())));
-
         let mut store = Self {
             backend: backend.clone(),
 

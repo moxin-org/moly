@@ -37,7 +37,6 @@ pub enum MofaServerConnectionStatus {
     Connecting,
     Connected,
     Disconnected,
-    // Disconnecting,
 }
 
 #[derive(Debug, DefaultNone, Clone)]
@@ -265,11 +264,8 @@ impl Chats {
 
     // Agents
 
-    pub fn remove_mofa_server(&mut self, address: &str) {
-        self.mofa_servers.remove(&MofaServerId(address.to_string()));
-        self.available_agents.retain(|_, agent| agent.server_id.0 != address);
-    }
-
+    /// Registers a new MoFa server by creating a new client, automatically testing the connection
+    /// and fetching the available agents.
     pub fn register_mofa_server(&mut self, address: String) -> MofaServerId {
         let server_id = MofaServerId(address.clone());
         let client = Rc::new(MofaClient::new(address.clone()));
@@ -296,20 +292,27 @@ impl Chats {
         }
     }
 
+    /// Removes a MoFa server from the list of available servers.
+    pub fn remove_mofa_server(&mut self, address: &str) {
+        self.mofa_servers.remove(&MofaServerId(address.to_string()));
+        self.available_agents.retain(|_, agent| agent.server_id.0 != address);
+    }
+
+    /// Retrieves the corresponding MofaClient for an agent
     pub fn get_client_for_agent(&self, agent_id: &AgentId) -> Option<Rc<MofaClient>> {
         self.available_agents.get(agent_id)
             .and_then(|agent| self.mofa_servers.get(&agent.server_id))
             .map(|server| server.client.clone())
     }
 
-    // Helper method for components that need a sorted vector of agents
+    /// Helper method for components that need a sorted vector of agents
     pub fn get_agents_list(&self) -> Vec<MofaAgent> {
         let mut agents: Vec<_> = self.available_agents.values().cloned().collect();
         agents.sort_by(|a, b| a.name.cmp(&b.name));
         agents
     }
 
-        /// Tests the connection to a MoFa server by requesting /v1/models
+    /// Tests the connection to a MoFa server by requesting /v1/models
     /// The connection status is updated at the App level based on the actions dispatched
     pub fn test_mofa_server_connection(&mut self, address: &String) {
         self.mofa_servers.get_mut(&MofaServerId(address.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connecting;

@@ -477,7 +477,6 @@ impl Chat {
             return;
         }
 
-        // let cmd = MofaAgentCommand::CancelTask;
         mofa_client.cancel_task();
 
         self.state = ChatState::Cancelled(true);
