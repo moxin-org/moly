@@ -1,6 +1,7 @@
 use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
+use crate::data::chats::AgentsAvailability;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
@@ -24,7 +25,16 @@ live_design! {
         margin: {left: 4, bottom: 4},
         draw_text:{
             text_style: <BOLD_FONT>{font_size: 10},
-            color: #667085
+            color: #3
+        }
+    }
+
+    NoAgentsWarning = <Label> {
+        margin: {left: 4, bottom: 4},
+        width: Fill
+        draw_text:{
+            text_style: {font_size: 8.5},
+            color: #3
         }
     }
 
@@ -48,6 +58,7 @@ live_design! {
                     list = <PortalList> {
                         drag_scrolling: false,
                         AgentHeading = <HeadingLabel> { text: "AGENTS" }
+                        NoAgentsWarning = <NoAgentsWarning> {}
                         Agent = <EntityButton> {
                             server_url_visible: true,
                         }
@@ -102,6 +113,7 @@ impl Widget for ChatHistory {
         enum Item<'a> {
             ChatsHeader,
             AgentsHeader,
+            NoAgentsWarning(&'a str),
             AgentButton(&'a MofaAgent),
             ChatButton(&'a ChatID),
         }
@@ -110,9 +122,15 @@ impl Widget for ChatHistory {
 
         if moly_mofa::should_be_visible() {
             items.push(Item::AgentsHeader);
-
-            for agent in &agents {
-                items.push(Item::AgentButton(agent));
+            match store.chats.are_agents_available() {
+                AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning("Not connected to any MoFa servers.")),
+                AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning("Could not connect to some servers.\nCheck your MoFa settings.")),
+                AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning("No agents found in the connected servers.")),
+                AgentsAvailability::Available => {
+                    for agent in &agents {
+                        items.push(Item::AgentButton(agent));
+                    }
+                }
             }
         }
 
@@ -146,6 +164,11 @@ impl Widget for ChatHistory {
                         }
                         Item::AgentsHeader => {
                             let item = list.item(cx, item_id, live_id!(AgentHeading));
+                            item.draw_all(cx, scope);
+                        }
+                        Item::NoAgentsWarning(text) => {
+                            let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
+                            item.set_text(text);
                             item.draw_all(cx, scope);
                         }
                         Item::AgentButton(agent) => {

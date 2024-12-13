@@ -348,4 +348,26 @@ impl Chats {
             }
         }
     }
+
+    pub fn are_agents_available(&self) -> AgentsAvailability {
+        if self.mofa_servers.is_empty() {
+            AgentsAvailability::NoServers
+        } else if self.available_agents.is_empty() {
+            // Check the reason for the lack of agents, is it disconnected servers or servers with no agents?
+            if self.mofa_servers.iter().all(|(_id, s)| s.connection_status == MofaServerConnectionStatus::Connected) {
+                AgentsAvailability::NoAgents
+            } else {
+                AgentsAvailability::ServersNotConnected
+            }
+        } else {
+            AgentsAvailability::Available
+        }
+    }
+}
+
+pub enum AgentsAvailability {
+    Available,
+    NoAgents,
+    NoServers,
+    ServersNotConnected,
 }

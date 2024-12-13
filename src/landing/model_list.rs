@@ -1,4 +1,5 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
+use crate::data::chats::AgentsAvailability;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
@@ -88,8 +89,15 @@ live_design! {
                     second = <AgentCard> {}
                     third = <AgentCard> {}
                 }
+                NoAgentsWarning = <Label> {
+                    draw_text:{
+                        wrap: Word
+                        text_style: {font_size: 10},
+                        color: #3
+                    }
+                }
                 Header = <Label> {
-                    margin: {bottom: 20, top: 35}
+                    margin: {bottom: 10, top: 35}
                     draw_text:{
                         text_style: <BOLD_FONT>{font_size: 16},
                         color: #000
@@ -158,6 +166,7 @@ impl Widget for ModelList {
                 agents: &'a [MofaAgent],
                 margin_bottom: f32,
             },
+            NoAgentsWarning(&'a str),
             Header(&'static str),
             Model(&'a Model),
         }
@@ -167,12 +176,20 @@ impl Widget for ModelList {
         if store.search.keyword.is_none() {
             if moly_mofa::should_be_visible() {
                 items.push(Item::Header("Featured Agents"));
-                items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
-                    agents: chunk,
-                    margin_bottom: 15.0,
-                }));
-                if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
-                    *margin_bottom = 0.0;
+                let agents_availability = store.chats.are_agents_available();
+                match agents_availability {
+                    AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning("Not connected to any MoFa servers.")),
+                    AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning("Could not connect to some servers. Check your MoFa settings.")),
+                    AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning("No agents found in the connected servers.")),
+                    AgentsAvailability::Available => {
+                        items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
+                            agents: chunk,
+                            margin_bottom: 8.0,
+                        }));
+                        if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
+                            *margin_bottom = 0.0;
+                        }
+                    }    
                 }
             }
             items.push(Item::Header("Models"));
@@ -223,6 +240,11 @@ impl Widget for ModelList {
                                     });
 
                                 row.draw_all(cx, &mut Scope::empty());
+                            }
+                            Item::NoAgentsWarning(text) => {
+                                let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
+                                item.set_text(text);
+                                item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::Model(model) => {
                                 let item = list.item(cx, item_id, live_id!(Model));
