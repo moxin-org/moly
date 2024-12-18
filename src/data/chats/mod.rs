@@ -1,11 +1,14 @@
 pub mod chat;
+pub mod chat_entity;
 pub mod model_loader;
 
 use anyhow::{Context, Result};
 use chat::{Chat, ChatEntityAction, ChatID};
+use chat_entity::ChatEntityId;
 use makepad_widgets::ActionTrait;
 use model_loader::ModelLoader;
 use moly_backend::Backend;
+use moly_mofa::{MofaAgent, MofaBackend};
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
 use std::fs;
@@ -16,6 +19,7 @@ use super::filesystem::setup_chats_folder;
 
 pub struct Chats {
     pub backend: Rc<Backend>,
+    pub mae_backend: Rc<MofaBackend>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub loaded_model: Option<File>,
@@ -28,9 +32,10 @@ pub struct Chats {
 }
 
 impl Chats {
-    pub fn new(backend: Rc<Backend>) -> Self {
+    pub fn new(backend: Rc<Backend>, mae_backend: Rc<MofaBackend>) -> Self {
         Self {
             backend,
+            mae_backend,
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
@@ -63,15 +68,6 @@ impl Chats {
 
     pub fn load_model(&mut self, file: &File, override_port: Option<u16>) {
         self.cancel_chat_streaming();
-
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            let new_file_id = Some(file.id.clone());
-
-            if chat.last_used_file_id != new_file_id {
-                chat.last_used_file_id = new_file_id;
-                chat.save();
-            }
-        }
 
         if self.model_loader.is_loading() {
             return;
@@ -114,12 +110,15 @@ impl Chats {
 
     pub fn cancel_chat_streaming(&mut self) {
         if let Some(chat) = self.get_current_chat() {
-            chat.borrow_mut().cancel_streaming(self.backend.as_ref());
-            let mut chat = self.get_current_chat().unwrap().borrow_mut();
-            if let Some(message) = chat.messages.last_mut() {
-                if message.content.trim().is_empty() {
-                    chat.messages.pop();
+            let mut chat = chat.borrow_mut();
+            match chat.associated_entity {
+                Some(ChatEntityId::ModelFile(_)) => {
+                    chat.cancel_streaming(self.backend.as_ref());
                 }
+                Some(ChatEntityId::Agent(_)) => {
+                    chat.cancel_agent_interaction(self.mae_backend.as_ref());
+                }
+                _ => {}
             }
         }
     }
@@ -148,34 +147,54 @@ impl Chats {
         Ok(())
     }
 
+    pub fn remove_file_from_associated_entity(&mut self, file_id: &FileID) {
+        for chat in &self.saved_chats {
+            let mut chat = chat.borrow_mut();
+            if let Some(ChatEntityId::ModelFile(chat_file_id)) = &chat.associated_entity {
+                if chat_file_id == file_id {
+                    chat.associated_entity = None;
+                    chat.save();
+                }
+            }
+        }
+    }
+
     /// Get the file id to use with this chat, or the loaded file id as a fallback.
     /// The fallback is used if the chat does not have a file id set, or, if it has
     /// one but references a no longer existing (deleted) file.
-    ///
-    /// If the fallback is used, the chat is updated with this, and persisted.
-    pub fn get_or_init_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
-        if let Some(file_id) = chat.last_used_file_id.clone() {
-            Some(file_id)
-        } else {
-            let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
-            chat.last_used_file_id = Some(file_id.clone());
-            chat.save();
-            Some(file_id)
+    pub fn get_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
+        match &chat.associated_entity {
+            Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
+            _ => {
+                let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
+                Some(file_id)
+            }
         }
     }
 
     pub fn create_empty_chat(&mut self) {
-        let new_chat = RefCell::new(Chat::new(self.chats_dir.clone()));
+        let mut new_chat = Chat::new(self.chats_dir.clone());
+        new_chat.associated_entity = self
+            .loaded_model
+            .as_ref()
+            .map(|m| ChatEntityId::ModelFile(m.id.clone()));
 
-        new_chat.borrow().save();
+        new_chat.save();
+        self.current_chat_id = Some(new_chat.id);
+        self.saved_chats.push(RefCell::new(new_chat));
+    }
 
-        self.current_chat_id = Some(new_chat.borrow().id);
-        self.saved_chats.push(new_chat);
+    pub fn create_empty_chat_with_agent(&mut self, agent: MofaAgent) {
+        self.create_empty_chat();
+        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
+            chat.associated_entity = Some(ChatEntityId::Agent(agent));
+            chat.save();
+        }
     }
 
     pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
         let mut new_chat = Chat::new(self.chats_dir.clone());
-        new_chat.last_used_file_id = Some(file.id.clone());
+        new_chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
         new_chat.save();
 
         self.current_chat_id = Some(new_chat.id);

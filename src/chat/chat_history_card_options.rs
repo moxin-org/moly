@@ -3,18 +3,17 @@ use crate::data::chats::chat::ChatID;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import makepad_draw::shader::std::*;
-    import makepad_draw::shader::draw_color::DrawColor;
-    import crate::shared::widgets::*;
-    import crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::styles::*;
 
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
 
-    ChatHistoryCardOptions = {{ChatHistoryCardOptions}} {
+    pub ChatHistoryCardOptions = {{ChatHistoryCardOptions}} {
         width: Fit
         height: Fit
         flow: Overlay

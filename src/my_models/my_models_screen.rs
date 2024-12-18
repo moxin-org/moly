@@ -6,14 +6,13 @@ use std::path::PathBuf;
 use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-
-    import crate::my_models::downloaded_files_table::DownloadedFilesTable;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::my_models::downloaded_files_table::DownloadedFilesTable;
 
     BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT_FOLDER = dep("crate://self/resources/icons/edit_folder.svg")
@@ -111,7 +110,7 @@ live_design! {
         }
     }
 
-    MyModelsScreen = {{MyModelsScreen}} {
+    pub MyModelsScreen = {{MyModelsScreen}} {
         width: Fill
         height: Fill
         flow: Overlay

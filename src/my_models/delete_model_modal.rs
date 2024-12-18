@@ -1,19 +1,19 @@
 use makepad_widgets::*;
 
-use crate::{chat::chat_panel::ChatPanelAction, data::store::Store};
+use crate::{chat::model_selector_list::ModelSelectorListAction, data::store::Store};
 
 use super::downloaded_files_row::DownloadedFilesRowProps;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::shared::resource_imports::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::shared::resource_imports::*;
 
-    DeleteModelModal = {{DeleteModelModal}} {
+    pub DeleteModelModal = {{DeleteModelModal}} {
         width: Fit
         height: Fit
 
@@ -183,11 +183,12 @@ impl WidgetMatchEvent for DeleteModelModal {
             .clicked(actions)
         {
             let store = scope.data.get_mut::<Store>().unwrap();
-            cx.action(ChatPanelAction::UnloadIfActive(self.file_id.clone()));
             store
                 .delete_file(self.file_id.clone())
                 .expect("Failed to delete file");
+
             cx.action(DeleteModelModalAction::ModalDismissed);
+            cx.action(ModelSelectorListAction::AddedOrDeletedModel);
         }
 
         if self

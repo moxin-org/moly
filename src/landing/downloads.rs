@@ -3,14 +3,14 @@ use makepad_widgets::*;
 use moly_protocol::data::PendingDownloadsStatus;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
 
-    import crate::landing::download_item::DownloadItem;
+    use crate::landing::download_item::DownloadItem;
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
 
@@ -81,7 +81,7 @@ live_design! {
         }
     }
 
-    Downloads = {{Downloads}} {
+    pub Downloads = {{Downloads}} {
         width: Fill,
         height: Fit,
         flow: Down,

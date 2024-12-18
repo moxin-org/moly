@@ -1,19 +1,23 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
+use crate::chat::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
+use moly_mofa::MofaAgent;
 
 live_design! {
-    import makepad_code_editor::code_view::CodeView;
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import makepad_draw::shader::std::*;
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::resource_imports::*;
-    import crate::chat::chat_line_loading::ChatLineLoading;
+    use makepad_code_editor::code_view::CodeView;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::resource_imports::*;
+    use crate::chat::chat_line_loading::ChatLineLoading;
+    use crate::chat::shared::ChatModelAvatar;
+    use crate::chat::shared::ChatAgentAvatar;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
@@ -60,7 +64,7 @@ live_design! {
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
-        code_block = <View> {
+        code_block = <View> {   
             width:Fill,
             height:Fit,
             code_view = <CodeView>{
@@ -77,6 +81,15 @@ live_design! {
         list_item_walk:{margin:0, height:Fit, width:Fill}
         code_layout: { padding: {top: 10.0, bottom: 10.0}}
         quote_layout: { padding: {top: 10.0, bottom: 10.0}}
+
+        link = {
+            padding: { top: 1, bottom: 0 },
+            draw_text: {
+                color: #00f,
+                color_pressed: #f00,
+                color_hover: #0f0,
+            }
+        }
     }
 
     EditTextInput = <MolyTextInput> {
@@ -197,7 +210,7 @@ live_design! {
         text: ""
     }
 
-    ChatLine = {{ChatLine}} {
+    pub ChatLine = {{ChatLine}} {
         padding: {top: 10, bottom: 3},
         width: Fill,
         height: Fit,
@@ -206,6 +219,9 @@ live_design! {
             width: Fit,
             height: Fit,
             margin: {left: 20, right: 12},
+
+            model = <ChatModelAvatar> {}
+            agent = <ChatAgentAvatar> { visible: false }
         }
 
         main_section = <View> {
@@ -400,11 +416,22 @@ impl ChatLineRef {
         inner.label(id!(sender_name)).set_text(text);
     }
 
-    pub fn set_avatar_text(&mut self, text: &str) {
+    pub fn set_model_avatar_text(&mut self, text: &str) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
+        inner.view(id!(avatar_section.model)).set_visible(true);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(false);
         inner.label(id!(avatar_label)).set_text(text);
+    }
+
+    pub fn set_model_avatar(&mut self, agent: &MofaAgent) {
+        let Some(inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.view(id!(avatar_section.model)).set_visible(false);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(agent);
     }
 
     pub fn set_message_text(&mut self, cx: &mut Cx, text: &str, is_streaming: bool) {

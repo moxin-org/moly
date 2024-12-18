@@ -9,11 +9,12 @@ use makepad_widgets::*;
 use moly_protocol::data::{FileID, PendingDownload, PendingDownloadsStatus};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
 
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
@@ -39,7 +40,7 @@ live_design! {
     }
 
     Information = <View> {
-        width: 380,
+        width: Fill,
         height: Fit,
         flow: Right,
         spacing: 12,
@@ -75,7 +76,7 @@ live_design! {
     }
 
     Progress = <View> {
-        width: 600,
+        width: Fill,
         height: Fit,
         spacing: 8,
 
@@ -149,7 +150,7 @@ live_design! {
 
     Actions = <View> {
         width: Fill,
-        height: 40,
+        height: Fit,
         flow: Right,
         spacing: 12,
 
@@ -183,7 +184,7 @@ live_design! {
         }
     }
 
-    DownloadItem = {{DownloadItem}}<RoundedView> {
+    pub DownloadItem = {{DownloadItem}}<RoundedView> {
         width: Fill,
         height: Fit,
 

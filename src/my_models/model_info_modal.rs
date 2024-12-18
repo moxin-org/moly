@@ -4,13 +4,13 @@ use makepad_widgets::*;
 use super::downloaded_files_row::DownloadedFilesRowProps;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::shared::resource_imports::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::shared::resource_imports::*;
 
     MolyHtml = <Html> {
         font_color: #000,
@@ -22,7 +22,7 @@ live_design! {
         code_layout: { padding: 15, }
     }
 
-    ModelInfoModal = {{ModelInfoModal}} {
+    pub ModelInfoModal = {{ModelInfoModal}} {
         width: Fit
         height: Fit
 

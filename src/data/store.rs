@@ -1,4 +1,5 @@
 use super::chats::chat::ChatID;
+use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
@@ -7,10 +8,16 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
+use makepad_widgets::{error, Action, ActionDefaultRef, Cx, DefaultNone};
 use moly_backend::Backend;
+use moly_mofa::{
+    MofaAgent,
+    MofaAgentCommand::{TestServer, UpdateServerAddress},
+    MofaBackend, TestServerResponse,
+};
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
+use std::sync::mpsc;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 
@@ -19,6 +26,13 @@ pub enum StoreAction {
     Search(String),
     ResetSearch,
     Sort(SortCriteria),
+    None,
+}
+
+#[derive(Debug, DefaultNone, Clone)]
+pub enum MoFaTestServerAction {
+    Success(String),
+    Failure(Option<String>),
     None,
 }
 
@@ -47,6 +61,8 @@ pub struct Store {
     /// communicate with the backend thread.
     pub backend: Rc<Backend>,
 
+    pub mofa_backend: Rc<MofaBackend>,
+
     pub search: Search,
     pub downloads: Downloads,
     pub chats: Chats,
@@ -70,11 +86,15 @@ impl Store {
             DEFAULT_MAX_DOWNLOAD_THREADS,
         ));
 
+        let mofa_backend = Rc::new(MofaBackend::new());
+
         let mut store = Self {
             backend: backend.clone(),
+            mofa_backend: mofa_backend.clone(),
+
             search: Search::new(backend.clone()),
             downloads: Downloads::new(backend.clone()),
-            chats: Chats::new(backend),
+            chats: Chats::new(backend, mofa_backend),
             preferences,
         };
 
@@ -85,6 +105,10 @@ impl Store {
         store.init_current_chat();
 
         store.search.load_featured_models();
+
+        if moly_mofa::should_be_real() && moly_mofa::should_be_visible() {
+            store.set_test_mofa_server();
+        }
         store
     }
 
@@ -121,53 +145,88 @@ impl Store {
         }
     }
 
-    pub fn send_chat_message(&mut self, prompt: String) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            let wanted_file = self
-                .chats
-                .get_or_init_chat_file_id(&mut chat)
-                .map(|file_id| self.downloads.get_file(&file_id))
-                .flatten();
+    pub fn send_message_to_current_entity(
+        &mut self,
+        prompt: String,
+        regenerate_from: Option<usize>,
+    ) {
+        let entity_id = self
+            .chats
+            .get_current_chat()
+            .and_then(|c| c.borrow().associated_entity.clone());
 
-            if let Some(file) = wanted_file {
-                chat.send_message_to_model(
-                    prompt,
-                    file,
-                    self.chats.model_loader.clone(),
-                    &self.backend,
-                );
-                chat.save();
+        if let Some(entity_id) = entity_id {
+            self.send_entity_message(&entity_id, prompt, regenerate_from);
+        }
+    }
+
+    pub fn send_entity_message(
+        &mut self,
+        entity_id: &ChatEntityId,
+        prompt: String,
+        regenerate_from: Option<usize>,
+    ) {
+        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
+            if let Some(message_id) = regenerate_from {
+                chat.remove_messages_from(message_id);
+            }
+
+            match entity_id {
+                ChatEntityId::Agent(agent) => {
+                    chat.send_message_to_agent(*agent, prompt, &self.mofa_backend);
+                }
+                ChatEntityId::ModelFile(file_id) => {
+                    if let Some(file) = self.downloads.get_file(&file_id) {
+                        chat.send_message_to_model(
+                            prompt,
+                            file,
+                            self.chats.model_loader.clone(),
+                            &self.backend,
+                        );
+                    }
+                }
             }
         }
+    }
+
+    pub fn agents_list(&self) -> Vec<MofaAgent> {
+        MofaBackend::available_agents()
+    }
+
+    pub fn set_mofa_server_address(&mut self, address: String) {
+        let address = address.trim_end_matches('/').to_string();
+        self.mofa_backend
+            .command_sender
+            .send(UpdateServerAddress(address))
+            .expect("failed to update MoFa server address");
+
+        self.set_test_mofa_server();
+    }
+
+    pub fn set_test_mofa_server(&mut self) {
+        let (tx, rx) = mpsc::channel();
+        self.mofa_backend
+            .command_sender
+            .send(TestServer(tx.clone()))
+            .expect("failed to update MoFa server address");
+
+        std::thread::spawn(move || match rx.recv() {
+            Ok(TestServerResponse::Success(server_address)) => {
+                Cx::post_action(MoFaTestServerAction::Success(server_address));
+            }
+            Ok(TestServerResponse::Failure(server_address)) => {
+                Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
+            }
+            Err(e) => {
+                error!("Error receiving response from MoFa backend: {:?}", e);
+                Cx::post_action(MoFaTestServerAction::Failure(None));
+            }
+        });
     }
 
     pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             chat.edit_message(message_id, updated_message);
-            chat.save();
-        }
-    }
-
-    // Enhancement: Would be ideal to just have a `regenerate_from` function` to be
-    // used after `edit_chat_message` and keep concerns separated.
-    pub fn edit_chat_message_regenerating(&mut self, message_id: usize, updated_message: String) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            let wanted_file = self
-                .chats
-                .get_or_init_chat_file_id(&mut chat)
-                .map(|file_id| self.downloads.get_file(&file_id))
-                .flatten();
-
-            if let Some(file) = wanted_file {
-                chat.remove_messages_from(message_id);
-                chat.send_message_to_model(
-                    updated_message,
-                    file,
-                    self.chats.model_loader.clone(),
-                    &self.backend,
-                );
-                chat.save();
-            }
         }
     }
 
@@ -191,19 +250,24 @@ impl Store {
         }
     }
 
-    pub fn get_last_used_file_initial_letter(&self, chat_id: ChatID) -> Option<char> {
+    pub fn get_chat_entity_name(&self, chat_id: ChatID) -> Option<String> {
         let Some(chat) = self.chats.get_chat_by_id(chat_id) else {
             return None;
         };
-        let Some(ref file_id) = chat.borrow().last_used_file_id else {
-            return None;
-        };
 
-        self.downloads
-            .downloaded_files
-            .iter()
-            .find(|df| df.file.id == *file_id)
-            .map(|df| df.file.name.chars().next())?
+        match chat.borrow().associated_entity {
+            Some(ChatEntityId::ModelFile(ref file_id)) => self
+                .downloads
+                .downloaded_files
+                .iter()
+                .find(|df| df.file.id == *file_id)
+                .map(|df| Some(df.file.name.clone()))?,
+            Some(ChatEntityId::Agent(agent)) => Some(agent.name().to_string()),
+            None => {
+                // Fallback to loaded model if exists
+                self.chats.loaded_model.as_ref().map(|m| m.name.clone())
+            }
+        }
     }
 
     /// This function combines the search results information for a given model
@@ -256,6 +320,16 @@ impl Store {
     }
 
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
+        if self
+            .chats
+            .loaded_model
+            .as_ref()
+            .map_or(false, |file| file.id == file_id)
+        {
+            self.chats.eject_model().expect("Failed to eject model");
+        }
+
+        self.chats.remove_file_from_associated_entity(&file_id);
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);

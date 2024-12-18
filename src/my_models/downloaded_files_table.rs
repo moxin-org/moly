@@ -9,13 +9,13 @@ use super::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-
-    import crate::my_models::downloaded_files_row::DownloadedFilesRow
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::my_models::downloaded_files_row::DownloadedFilesRow
 
     RowHeaderLabel = <View> {
         width: 100
@@ -48,7 +48,7 @@ live_design! {
         <RowHeaderLabel> { width: 250, label = {text: ""} }
     }
 
-    DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedView> {
+    pub DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedView> {
         width: Fill,
         height: Fill,
         align: {x: 0.5, y: 0.5}

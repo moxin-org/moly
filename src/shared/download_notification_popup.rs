@@ -4,14 +4,14 @@ use moly_protocol::data::{File, FileID};
 use crate::shared::actions::DownloadAction;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::resource_imports::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::landing::shared::*;
-    import makepad_draw::shader::std::*;
+    use crate::shared::styles::*;
+    use crate::shared::resource_imports::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::landing::shared::*;
 
     SUCCESS_ICON = dep("crate://self/resources/images/success_icon.png")
     FAILURE_ICON = dep("crate://self/resources/images/failure_icon.png")
@@ -180,7 +180,7 @@ live_design! {
         }
     }
 
-    DownloadNotificationPopup = {{DownloadNotificationPopup}} {
+    pub DownloadNotificationPopup = {{DownloadNotificationPopup}} {
         width: Fit
         height: Fit
 
@@ -246,9 +246,7 @@ impl Widget for DownloadNotificationPopup {
 }
 
 impl WidgetMatchEvent for DownloadNotificationPopup {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(DownloadNotificationPopupAction::CloseButtonClicked);
         }

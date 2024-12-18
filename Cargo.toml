@@ -6,6 +6,7 @@ members = [
     "moly-protocol",
     "moly-backend",
     "moly-fake-backend",
+    "moly-mofa"
 ]
 exclude = ["packaging/before-packaging-command"]
 
@@ -27,6 +28,7 @@ path = "src/main.rs"
 moly-protocol = { path = "moly-protocol" }
 moly-backend = { path = "moly-backend" }
 moly-fake-backend = { path = "moly-fake-backend" }
+moly-mofa = { path = "moly-mofa"}
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }

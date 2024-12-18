@@ -4,23 +4,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
-on: 
+on:
   workflow_dispatch:
     inputs:
       build_ubuntu:
-        description: 'Build Ubuntu'
+        description: "Build Ubuntu"
         required: false
-        default: 'true'
+        default: "true"
       build_macos:
-        description: 'Build MacOS'
+        description: "Build MacOS"
         required: false
-        default: 'true'
+        default: "true"
       build_windows:
-        description: 'Build Windows'
+        description: "Build Windows"
         required: false
-        default: 'true'
+        default: "true"
       release_tags:
-        description: 'Release Page Tags'
+        description: "Release Page Tags"
         required: true
 
 jobs:
@@ -103,7 +103,7 @@ jobs:
         run: |
           cargo packager --release --verbose
           ls dist/
-      
+
       - name: Upload Dist
         env:
           GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}

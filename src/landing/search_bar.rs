@@ -4,19 +4,18 @@ use crate::landing::sorting::SortingWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import makepad_draw::shader::std::*;
-
-    import crate::landing::sorting::Sorting;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::landing::sorting::Sorting;
 
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_CLOSE = dep("crate://self/resources/icons/close.svg")
 
-    SearchBar = {{SearchBar}} {
+    pub SearchBar = {{SearchBar}} {
         width: Fill,
         height: 200,
 
