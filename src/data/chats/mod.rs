@@ -25,6 +25,7 @@ pub struct Chats {
     pub loaded_model: Option<File>,
     pub model_loader: ModelLoader,
 
+    /// Set it thru `set_current_chat` method to trigger side effects.
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
 
@@ -99,13 +100,15 @@ impl Chats {
         self.saved_chats.iter().find(|c| c.borrow().id == chat_id)
     }
 
-    pub fn set_current_chat(&mut self, chat_id: ChatID) {
+    pub fn set_current_chat(&mut self, chat_id: Option<ChatID>) {
         self.cancel_chat_streaming();
-        self.current_chat_id = Some(chat_id);
+        self.current_chat_id = chat_id;
 
-        let mut chat = self.get_current_chat().unwrap().borrow_mut();
-        chat.update_accessed_at();
-        chat.save();
+        if let Some(chat) = self.get_current_chat() {
+            let mut chat = chat.borrow_mut();
+            chat.update_accessed_at();
+            chat.save();
+        }
     }
 
     pub fn cancel_chat_streaming(&mut self) {
@@ -174,14 +177,15 @@ impl Chats {
 
     pub fn create_empty_chat(&mut self) {
         let mut new_chat = Chat::new(self.chats_dir.clone());
+        let id = new_chat.id;
         new_chat.associated_entity = self
             .loaded_model
             .as_ref()
             .map(|m| ChatEntityId::ModelFile(m.id.clone()));
 
         new_chat.save();
-        self.current_chat_id = Some(new_chat.id);
         self.saved_chats.push(RefCell::new(new_chat));
+        self.set_current_chat(Some(id));
     }
 
     pub fn create_empty_chat_with_agent(&mut self, agent: MofaAgent) {
@@ -194,26 +198,29 @@ impl Chats {
 
     pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
         let mut new_chat = Chat::new(self.chats_dir.clone());
+        let id = new_chat.id;
         new_chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
         new_chat.save();
 
-        self.current_chat_id = Some(new_chat.id);
         self.saved_chats.push(RefCell::new(new_chat));
+        self.set_current_chat(Some(id));
 
         self.load_model(file, None);
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
-        if let Some(chat) = self.saved_chats.iter().find(|c| c.borrow().id == chat_id) {
-            chat.borrow().remove_saved_file();
-        };
-        self.saved_chats.retain(|c| c.borrow().id != chat_id);
-
-        if let Some(current_chat_id) = self.current_chat_id {
-            if current_chat_id == chat_id {
-                self.current_chat_id = self.get_last_selected_chat_id();
-            }
+        if self.current_chat_id == Some(chat_id) {
+            self.set_current_chat(self.get_last_selected_chat_id());
         }
+
+        let pos = self
+            .saved_chats
+            .iter()
+            .position(|c| c.borrow().id == chat_id)
+            .expect("non-existing chat");
+
+        let chat = self.saved_chats.remove(pos);
+        chat.borrow().remove_saved_file();
     }
 
     pub fn handle_action(&mut self, action: &Box<dyn ActionTrait>) {
