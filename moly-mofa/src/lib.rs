@@ -162,14 +162,12 @@ impl MofaClient {
                     };
                     let client = reqwest::Client::new();
 
-                    let address_clone = address.clone();
+                    let req = client
+                        .post(format!("{}/v1/chat/completions", &address))
+                        .json(&data);
+
                     current_request = Some(rt.spawn(async move {
-                        let resp = client
-                            .post(format!("{}/v1/chat/completions", address_clone))
-                            .json(&data)
-                            .send()
-                            .await
-                            .expect("Failed to send request");
+                        let resp = req.send().await.expect("Failed to send request");
 
                         let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
                         match resp {
