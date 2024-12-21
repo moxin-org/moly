@@ -150,9 +150,6 @@ pub struct App {
 
     #[rust]
     file_id: Option<FileID>,
-    
-    // #[rust]
-    // time_elapsed: Option<Instant>,
 }
 
 impl LiveRegister for App {
@@ -177,14 +174,12 @@ impl AppMain for App {
             self.ui.redraw(cx);
         }
 
+        // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
-            // print!("hhhhhhhh");
-            // log!("Timer is so slow it took {:?} seconds", self.time_elapsed.unwrap().elapsed().as_secs());
             if let Some(file_id) = &self.file_id {
                 let (model, file) = self.store.get_model_and_file_download(&file_id);
                 self.store.downloads.download_file(model, file);
                 self.ui.redraw(cx);
-                println!("have been retryed")
             }
         }
 
@@ -293,7 +288,6 @@ impl App {
                     popup.set_data(&file, DownloadResult::Success);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
-                    // popup.set_data(&file, DownloadResult::Failure);
                     self.file_id = Some((file.id).clone());
                     self.start_retry_timeout(cx, popup, file);
                 }
@@ -304,22 +298,19 @@ impl App {
     }
 
     fn start_retry_timeout(&mut self, cx: &mut Cx, mut popup: DownloadNotificationPopupRef, file: File) {
-        // log!("{}", self.download_retry_attempts);
         match self.download_retry_attempts {
             0 => {
-                self.timer = cx.start_timeout(0.05);
-                // self.time_elapsed = Some(Instant::now());
+                self.timer = cx.start_timeout(15.0);
                 self.download_retry_attempts += 1;
-                log!("zhixing1");
                 popup.set_retry_data();
             },
             1 => {
-                self.timer = cx.start_timeout(0.05);
+                self.timer = cx.start_timeout(30.0);
                 self.download_retry_attempts += 1;
                 popup.set_retry_data();
             },
             2 => {
-                self.timer = cx.start_timeout(0.05);
+                self.timer = cx.start_timeout(60.0);
                 self.download_retry_attempts += 1;
                 popup.set_retry_data();
             },
@@ -328,6 +319,5 @@ impl App {
                 self.download_retry_attempts = 0;
             }
         }
-        log!("{:?}",self.timer);
     }
 }
