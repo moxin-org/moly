@@ -23,7 +23,7 @@ live_design! {
 
     // Not making this based on <Icon> because button does not support images
     // (and these SVGs are too complex for Makepad's SVG support)
-    ConnectionStatusIcon = <View> {
+    ConnectionStatusButton = <View> {
         visible: false
         cursor: Hand
         width: Fit, height: Fit
@@ -56,7 +56,6 @@ live_design! {
 
         separator = <View> {
             margin: {left: 20, right: 20, top: 0, bottom: 10}
-            width: Fill,
             height: 1,
             show_bg: true,
             draw_bg: {
@@ -102,7 +101,7 @@ live_design! {
 
                 <VerticalFiller> {}
 
-                connection_status_success = <ConnectionStatusIcon> {
+                connection_status_success = <ConnectionStatusButton> {
                     icon = {
                         source: (ICON_SUCCESS)
                         draw_bg: {
@@ -111,7 +110,7 @@ live_design! {
                     }
                 }
 
-                connection_status_failure = <ConnectionStatusIcon> {
+                connection_status_failure = <ConnectionStatusButton> {
                     icon = {
                         source: (ICON_FAILURE)
                         draw_bg: {
@@ -120,7 +119,7 @@ live_design! {
                     }
                 }
 
-                connection_status_loading = <ConnectionStatusIcon> {
+                connection_status_loading = <ConnectionStatusButton> {
                     visible: true
                     icon = {
                         source: (ICON_LOADER)
