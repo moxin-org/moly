@@ -154,7 +154,7 @@ impl EntityButton {
     }
 
     pub fn set_agent(&mut self, agent: &MofaAgent) {
-        self.set_entity(ChatEntityRef::Agent(&agent));
+        self.set_entity(ChatEntityRef::Agent(agent));
     }
 
     pub fn set_entity(&mut self, entity: ChatEntityRef) {

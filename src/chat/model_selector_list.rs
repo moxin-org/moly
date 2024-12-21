@@ -74,11 +74,11 @@ impl Widget for ModelSelectorList {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let mut store = scope.data.get_mut::<Store>().unwrap();
+        let store = scope.data.get::<Store>().unwrap();
         cx.begin_turtle(walk, self.layout);
 
         if self.visible {
-            self.draw_items(cx, &mut store);
+            self.draw_items(cx, &store);
         }
 
         cx.end_turtle_with_area(&mut self.area);
@@ -100,7 +100,7 @@ impl WidgetMatchEvent for ModelSelectorList {
 }
 
 impl ModelSelectorList {
-    fn draw_items(&mut self, cx: &mut Cx2d, store: &mut Store) {
+    fn draw_items(&mut self, cx: &mut Cx2d, store: &Store) {
         let mut models = store.downloads.downloaded_files.clone();
         models.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
 
@@ -201,7 +201,7 @@ impl ModelSelectorList {
                 
                 item_widget
                     .as_model_selector_item()
-                    .set_agent(agent);
+                    .set_agent(agent.clone());
 
                 let _ = item_widget.draw_all(cx, &mut Scope::empty());
                 total_height += item_widget.view(id!(content)).area().rect(cx).size.y;

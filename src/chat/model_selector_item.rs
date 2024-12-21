@@ -126,11 +126,12 @@ impl ModelSelectorItemRef {
         inner.entity = ModelSelectorEntity::Model(model);
     }
 
-    pub fn set_agent(&mut self, agent: &MofaAgent) {
-        let Some(mut inner) = self.borrow_mut() else { return };
-        inner.entity = ModelSelectorEntity::Agent(agent.clone());
-
+    pub fn set_agent(&mut self, agent: MofaAgent) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
         inner.chat_agent_avatar(id!(avatar)).set_agent(&agent);
+        inner.entity = ModelSelectorEntity::Agent(agent);
     }
 }
 

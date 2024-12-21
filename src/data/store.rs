@@ -167,7 +167,7 @@ impl Store {
                     ) {
                         chat.send_message_to_agent(agent, prompt, &client);
                     } else {
-                        println!("client or agent not found: {:?}", agent_id);
+                        eprintln!("client or agent not found: {:?}", agent_id);
                     }
                 }
                 ChatEntityId::ModelFile(file_id) => {
