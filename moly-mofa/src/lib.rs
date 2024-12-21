@@ -53,6 +53,12 @@ pub struct MofaResponseSearchAssistant {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub struct AgentId(pub String);
 
+impl AgentId {
+    pub fn new(agent_name: &str, server_address: &str) -> Self {
+        AgentId(format!("{}-{}", agent_name, server_address))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum AgentType {
     Reasoner,
@@ -200,7 +206,7 @@ impl MofaClient {
                         Ok(r) if r.status().is_success() => {
                             let agents = vec![
                                 MofaAgent {
-                                    id: unique_agent_id(&AgentId("Reasoner".to_string()), &url),
+                                    id: AgentId::new("Reasoner", &url),
                                     name: "Reasoner".to_string(),
                                     description: "An agent that will help you find good questions about any topic".to_string(),
                                     agent_type: AgentType::Reasoner,
@@ -276,8 +282,4 @@ pub enum ChatResponse {
 struct ChatRequest {
     model: String,
     messages: Vec<MessageData>,
-}
-
-fn unique_agent_id(agent_id: &AgentId, server_address: &str) -> AgentId {
-    AgentId(format!("{}-{}", agent_id.0, server_address))
 }
