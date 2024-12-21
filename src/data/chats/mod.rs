@@ -349,7 +349,7 @@ impl Chats {
         }
     }
 
-    pub fn are_agents_available(&self) -> AgentsAvailability {
+    pub fn agents_availability(&self) -> AgentsAvailability {
         if self.mofa_servers.is_empty() {
             AgentsAvailability::NoServers
         } else if self.available_agents.is_empty() {
@@ -370,4 +370,15 @@ pub enum AgentsAvailability {
     NoAgents,
     NoServers,
     ServersNotConnected,
+}
+
+impl AgentsAvailability {
+    pub fn to_human_readable(&self) -> &'static str {
+        match self {
+            AgentsAvailability::Available => "Agents available",
+            AgentsAvailability::NoAgents => "No agents found in the connected servers.",
+            AgentsAvailability::NoServers => "Not connected to any MoFa servers.",
+            AgentsAvailability::ServersNotConnected => "Could not connect to some servers. Check your MoFa settings.",
+        }
+    }
 }

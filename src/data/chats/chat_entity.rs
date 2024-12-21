@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ChatEntityId {
     ModelFile(FileID),
-    /// Since agents are currently fixed enum values, the agent itself is the identifier.
     Agent(AgentId),
 }
 

@@ -166,7 +166,7 @@ impl Widget for ModelList {
                 agents: &'a [MofaAgent],
                 margin_bottom: f32,
             },
-            NoAgentsWarning(&'a str),
+            NoAgentsWarning(&'static str),
             Header(&'static str),
             Model(&'a Model),
         }
@@ -176,11 +176,17 @@ impl Widget for ModelList {
         if store.search.keyword.is_none() {
             if moly_mofa::should_be_visible() {
                 items.push(Item::Header("Featured Agents"));
-                let agents_availability = store.chats.are_agents_available();
+                let agents_availability = store.chats.agents_availability();
                 match agents_availability {
-                    AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning("Not connected to any MoFa servers.")),
-                    AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning("Could not connect to some servers. Check your MoFa settings.")),
-                    AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning("No agents found in the connected servers.")),
+                    AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
                     AgentsAvailability::Available => {
                         items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
                             agents: chunk,
@@ -189,7 +195,7 @@ impl Widget for ModelList {
                         if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
                             *margin_bottom = 0.0;
                         }
-                    }    
+                    }
                 }
             }
             items.push(Item::Header("Models"));

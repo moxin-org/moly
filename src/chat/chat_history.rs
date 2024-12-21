@@ -122,10 +122,11 @@ impl Widget for ChatHistory {
 
         if moly_mofa::should_be_visible() {
             items.push(Item::AgentsHeader);
-            match store.chats.are_agents_available() {
-                AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning("Not connected to any MoFa servers.")),
-                AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning("Could not connect to some servers.\nCheck your MoFa settings.")),
-                AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning("No agents found in the connected servers.")),
+            let agents_availability = store.chats.agents_availability();
+            match agents_availability {
+                AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
+                AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
+                AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
                 AgentsAvailability::Available => {
                     for agent in &agents {
                         items.push(Item::AgentButton(agent));
