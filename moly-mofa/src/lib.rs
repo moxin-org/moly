@@ -2,7 +2,7 @@ use moly_protocol::open_ai::{
     ChatResponseData, ChoiceData, MessageData, Role, StopReason, UsageData,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use std::sync::mpsc::{self, channel};
+use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -93,14 +93,14 @@ pub enum MofaServerResponse {
 }
 
 pub enum MofaAgentCommand {
-    SendTask(String, MofaAgent, mpsc::Sender<ChatResponse>),
+    SendTask(String, MofaAgent, Sender<ChatResponse>),
     CancelTask,
-    FetchAgentsFromServer(mpsc::Sender<MofaServerResponse>),
+    FetchAgentsFromServer(Sender<MofaServerResponse>),
 }
 
 #[derive(Clone, Debug)]
 pub struct MofaClient {
-    command_sender: mpsc::Sender<MofaAgentCommand>,
+    command_sender: Sender<MofaAgentCommand>,
     address: String,
 }
 
@@ -115,11 +115,11 @@ impl MofaClient {
         self.command_sender.send(MofaAgentCommand::CancelTask).unwrap();
     }
 
-    pub fn fetch_agents(&self, tx: mpsc::Sender<MofaServerResponse>) {
+    pub fn fetch_agents(&self, tx: Sender<MofaServerResponse>) {
         self.command_sender.send(MofaAgentCommand::FetchAgentsFromServer(tx)).unwrap();
     }
 
-    pub fn send_message_to_agent(&self, agent: &MofaAgent, prompt: &String, tx: mpsc::Sender<ChatResponse>) {
+    pub fn send_message_to_agent(&self, agent: &MofaAgent, prompt: &String, tx: Sender<ChatResponse>) {
         self.command_sender.send(MofaAgentCommand::SendTask(prompt.clone(), agent.clone(), tx)).unwrap();
     }
 
