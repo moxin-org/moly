@@ -397,12 +397,7 @@ impl ModelSelector {
             let selected_view = self.view(id!(selected_agent));
             selected_view.set_visible(true);
 
-            let agent = store
-                .chats
-                .available_agents
-                .get(&agent)
-                .cloned()
-                .unwrap_or_default();
+            let agent = store.chats.get_agent_or_placeholder(&agent);
             selected_view.apply_over(
                 cx,
                 live! {

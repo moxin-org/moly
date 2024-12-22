@@ -79,16 +79,16 @@ pub struct MofaAgent {
     pub server_id: MofaServerId,
 }
 
-impl Default for MofaAgent {
+impl MofaAgent {
     /// Returns a dummy agent whenever the corresponding Agent cannot be found
     /// (due to the server not being available, the server no longer providing the agent, etc.).
-    fn default() -> Self {
+    pub fn unknown() -> Self {
         MofaAgent {
-            id: AgentId("default".to_string()),
+            id: AgentId("unknown".to_string()),
             name: "Inaccesible Agent".to_string(),
-            description: "Default".to_string(),
+            description: "This agent is not currently reachable, its information is not available".to_string(),
             agent_type: AgentType::Reasoner,
-            server_id: MofaServerId("default".to_string()),
+            server_id: MofaServerId("Unknown".to_string()),
         }
     }
 }

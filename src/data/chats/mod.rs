@@ -60,6 +60,10 @@ pub struct Chats {
     chats_dir: PathBuf,
 
     override_port: Option<u16>,
+
+    /// Placeholder agent used when an agent is not available
+    /// This is used to avoid recreating it on each call and make borrowing simpler.
+    unknown_agent: MofaAgent,
 }
 
 impl Chats {
@@ -74,6 +78,7 @@ impl Chats {
             override_port: None,
             mofa_servers: HashMap::new(),
             available_agents: HashMap::new(),
+            unknown_agent: MofaAgent::unknown(),
         }
     }
 
@@ -220,10 +225,10 @@ impl Chats {
         self.saved_chats.push(RefCell::new(new_chat));
     }
 
-    pub fn create_empty_chat_with_agent(&mut self, agent: &MofaAgent) {
+    pub fn create_empty_chat_with_agent(&mut self, agent_id: &AgentId) {
         self.create_empty_chat();
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntityId::Agent(agent.id.clone()));
+            chat.associated_entity = Some(ChatEntityId::Agent(agent_id.clone()));
             chat.save();
         }
     }
@@ -362,6 +367,18 @@ impl Chats {
         } else {
             AgentsAvailability::Available
         }
+    }
+
+    /// Returns a reference to an agent by ID, falling back to an unknown agent placeholder
+    /// if the agent is not found in the available agents list.
+    /// 
+    /// This is useful when dealing with historical chat references to agents that may
+    /// no longer be available (e.g., server disconnected or agent deleted).
+    /// 
+    /// In the future, we'll want a more sophisticated solution, by potentially storing 
+    /// agent information locally and updating it when a server is connected.
+    pub fn get_agent_or_placeholder(&self, agent_id: &AgentId) -> &MofaAgent {
+        self.available_agents.get(agent_id).unwrap_or(&self.unknown_agent)
     }
 }
 

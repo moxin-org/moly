@@ -381,10 +381,10 @@ impl PromptInput {
         let label = self.label(id!(selected_label));
 
         match entity {
-            ChatEntityId::Agent(agent) => {
-                let agent = store.chats.available_agents.get(agent).cloned().unwrap_or_default();
+            ChatEntityId::Agent(agent_id) => {
+                let agent = store.chats.get_agent_or_placeholder(agent_id);
                 label.set_text(&agent.name);
-                agent_avatar.set_agent(&agent);
+                agent_avatar.set_agent(agent);
             }
             ChatEntityId::ModelFile(file_id) => {
                 let store = scope.data.get_mut::<Store>().unwrap();
