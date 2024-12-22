@@ -152,8 +152,8 @@ impl MofaClient {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 
-        loop {
-            match command_receiver.recv().unwrap() {
+        while let Ok(command) = command_receiver.recv() {
+            match command {
                 MofaAgentCommand::SendTask(task, agent, tx) => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
@@ -221,6 +221,11 @@ impl MofaClient {
                     }
                 }
             }
+        }
+
+        // Clean up any pending request when the channel is closed
+        if let Some(handle) = current_request {
+            handle.abort();
         }
     }
 

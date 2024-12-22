@@ -303,15 +303,9 @@ impl Chats {
         agents
     }
 
-    /// Tests the connection to a MoFa server by requesting /v1/models
-    /// The connection status is updated at the App level based on the actions dispatched
-    /// 
-    /// We perform fetching (and therefore testing) as follows:
-    /// 1. We create a channel used to communicate with a background thread that will do the http request
-    /// 2. We start that background thread and instruct it to fetch the agents from the server
-    /// 3. The thread sends a message back to the channel created here with the server response
-    /// 4. We forward that result back to the UI thread using Cx::post_action
-    /// 5. The action is handled at the App level, which tells the store to update the connection status and agent list
+    /// Tests the connection to a MoFa server by requesting /v1/models.
+    ///
+    /// The connection status is updated at the App level based on the actions dispatched.
     pub fn test_mofa_server_and_fetch_agents(&mut self, address: &String) {
         self.mofa_servers.get_mut(&MofaServerId(address.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connecting;
         let (tx, rx) = mpsc::channel();
