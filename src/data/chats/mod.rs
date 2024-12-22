@@ -21,7 +21,7 @@ use super::filesystem::setup_chats_folder;
 #[derive(Clone, Debug)]
 pub struct MofaServer {
     pub address: String,
-    pub client: Rc<MofaClient>,
+    pub client: MofaClient,
     pub connection_status: MofaServerConnectionStatus,
 }
 
@@ -273,7 +273,7 @@ impl Chats {
     /// and fetching the available agents.
     pub fn register_mofa_server(&mut self, address: String) -> MofaServerId {
         let server_id = MofaServerId(address.clone());
-        let client = Rc::new(MofaClient::new(address.clone()));
+        let client = MofaClient::new(address.clone());
         
         self.mofa_servers.insert(server_id.clone(), MofaServer {
             address: address.clone(),
@@ -292,10 +292,10 @@ impl Chats {
     }
 
     /// Retrieves the corresponding MofaClient for an agent
-    pub fn get_client_for_agent(&self, agent_id: &AgentId) -> Option<Rc<MofaClient>> {
+    pub fn get_client_for_agent(&self, agent_id: &AgentId) -> Option<&MofaClient> {
         self.available_agents.get(agent_id)
             .and_then(|agent| self.mofa_servers.get(&agent.server_id))
-            .map(|server| server.client.clone())
+            .map(|server| &server.client)
     }
 
     /// Helper method for components that need a sorted vector of agents
