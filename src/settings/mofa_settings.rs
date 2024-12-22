@@ -1,5 +1,4 @@
 use makepad_widgets::*;
-use moly_mofa::MofaServerId;
 
 use crate::data::chats::{MofaServer, MofaServerConnectionStatus};
 use crate::data::store::Store;
@@ -250,7 +249,7 @@ impl Widget for MofaServers {
         let mut servers: Vec<_> = store.chats.mofa_servers.values().cloned().collect();
         let entries_count = servers.len();
         let last_item_id = if entries_count > 0 { entries_count } else { 0 };
-        servers.sort_by(|a, b| a.address.cmp(&b.address));
+        servers.sort_by(|a, b| a.client.address.cmp(&b.client.address));
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, last_item_id);
@@ -295,7 +294,7 @@ struct MofaServerItem {
     view: View,
 
     #[rust]
-    server_id: MofaServerId,
+    server_address: String,
 }
 
 impl Widget for MofaServerItem {
@@ -306,12 +305,12 @@ impl Widget for MofaServerItem {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let server = scope.props.get::<MofaServer>().unwrap();
-        self.server_id = MofaServerId(server.address.clone());
+        self.server_address = server.client.address.clone();
 
         self.update_connection_status(&server.connection_status);
 
         self.label(id!(address_editable.mofa_address_label))
-            .set_text(&server.address);
+            .set_text(&server.client.address);
 
         if server.is_local() {
             self.view.view(id!(icon_local)).set_visible(true);
@@ -330,7 +329,7 @@ impl WidgetMatchEvent for MofaServerItem {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         if self.button(id!(remove_server)).clicked(actions) {
-            store.chats.remove_mofa_server(&self.server_id.0);
+            store.chats.remove_mofa_server(&self.server_address);
             self.redraw(cx);
         }
 
@@ -338,7 +337,7 @@ impl WidgetMatchEvent for MofaServerItem {
             .view(id!(connection_status_failure))
             .finger_down(actions)
         {
-            store.chats.test_mofa_server_and_fetch_agents(&self.server_id.0);
+            store.chats.test_mofa_server_and_fetch_agents(&self.server_address);
             self.update_connection_status(&MofaServerConnectionStatus::Connecting);
             self.redraw(cx);
         }

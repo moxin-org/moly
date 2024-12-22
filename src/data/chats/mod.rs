@@ -20,14 +20,13 @@ use super::filesystem::setup_chats_folder;
 
 #[derive(Clone, Debug)]
 pub struct MofaServer {
-    pub address: String,
     pub client: MofaClient,
     pub connection_status: MofaServerConnectionStatus,
 }
 
 impl MofaServer {
     pub fn is_local(&self) -> bool {
-        self.address.starts_with("http://localhost")
+        self.client.address.starts_with("http://localhost")
     }
 }
 
@@ -276,7 +275,6 @@ impl Chats {
         let client = MofaClient::new(address.clone());
         
         self.mofa_servers.insert(server_id.clone(), MofaServer {
-            address: address.clone(),
             client,
             connection_status: MofaServerConnectionStatus::Connecting,
         });

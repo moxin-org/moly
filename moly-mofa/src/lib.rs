@@ -107,7 +107,7 @@ pub enum MofaAgentCommand {
 #[derive(Clone, Debug)]
 pub struct MofaClient {
     command_sender: Sender<MofaAgentCommand>,
-    address: String,
+    pub address: String,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
