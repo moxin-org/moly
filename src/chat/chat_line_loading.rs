@@ -92,6 +92,15 @@ live_design! {
             }
         }
     }
+
+    AnswerLoading = {{AnswerLoading}} {
+        width: 1,
+        height: 1,
+
+        flow: Down,
+        animator: {}
+    }
+    
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -166,4 +175,77 @@ impl ChatLineLoadingRef {
         };
         inner.timer = Timer::default();
     }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct AnswerLoading {
+    #[deref]
+    view: View,
+
+    #[rust]
+    couser: usize,
+
+    #[rust]
+    timer: Timer,
+}
+
+impl Widget for AnswerLoading {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if self.timer.is_event(event).is_some() {
+            self.couser = (self.couser + 1) % 6;
+            self.timer = cx.start_timeout(0.25);
+        }
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+impl AnswerLoading {
+}
+
+impl AnswerLoadingRef {
+    pub fn animate(&mut self, cx: &mut Cx) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        if inner.timer.is_empty() {
+            inner.timer = cx.start_timeout(0.25);
+        }
+    }
+
+    pub fn stop_animation(&mut self) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        if !inner.timer.is_empty() {
+            inner.timer = Timer::default();
+            inner.couser = 0;
+        }
+    }
+
+    pub fn update_animation(&mut self) -> String {
+        let Some(inner) = self.borrow_mut() else {
+            return "".to_string();
+        };
+        return match inner.couser {
+            0 => {
+                " .".to_string()
+            },
+            1 => {
+                " ..".to_string()
+            },
+            2 => {
+                " ...".to_string()
+            },
+            3 => {
+                " ....".to_string()
+            },
+            4 | 5 | _ => {
+                "".to_string()
+            }
+        }
+    }
+    
 }

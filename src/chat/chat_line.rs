@@ -1,4 +1,5 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
+use crate::chat::chat_line_loading::AnswerLoadingWidgetExt;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
@@ -14,6 +15,7 @@ live_design! {
     import crate::shared::widgets::*;
     import crate::shared::resource_imports::*;
     import crate::chat::chat_line_loading::ChatLineLoading;
+    import crate::chat::chat_line_loading::AnswerLoading;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
@@ -147,6 +149,13 @@ live_design! {
                 height: Fit,
                 loading = <ChatLineLoading> {}
             }
+
+            answer_loading = <View> {
+                width: 1,
+                height: 1,
+                loading = <AnswerLoading> {}
+            }
+
 
             markdown_message_container = <View> {
                 width: Fill,
@@ -415,16 +424,27 @@ impl ChatLineRef {
         match inner.edition_state {
             
             ChatLineState::Editable | ChatLineState::NotEditable => {
+
+                let mut answer_loading_widget = 
+                    inner.answer_loading(id!(answer_loading.loading));
+
                 if is_streaming && !text.is_empty() {
-                    let output = format!("{}{}", text, "●");
+                    answer_loading_widget.animate(cx);
+                    let output = format!(
+                        "{}  {}",
+                        text, answer_loading_widget.update_animation()
+                    );
+
                     inner.text_input(id!(input)).set_text(&output.trim());
                     inner.label(id!(plain_text_message)).set_text(&output.trim());
                     inner.markdown(id!(markdown_message)).set_text(&output.trim());
                 } else {
+                    answer_loading_widget.stop_animation();
                     inner.text_input(id!(input)).set_text(text.trim());
                     inner.label(id!(plain_text_message)).set_text(text.trim());
                     inner.markdown(id!(markdown_message)).set_text(text.trim());
                 }
+                
 
                 // We know only AI assistant messages could be empty, so it is never
                 // displayed in user's chat lines.
@@ -432,6 +452,7 @@ impl ChatLineRef {
                 inner.view(id!(loading_container)).set_visible(show_loading);
 
                 let mut loading_widget = inner.chat_line_loading(id!(loading_container.loading));
+
                 if show_loading {
                     loading_widget.animate(cx);
                 } else {
