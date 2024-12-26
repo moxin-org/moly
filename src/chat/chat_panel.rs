@@ -651,10 +651,11 @@ impl ChatPanel {
         mode: PromptInputMode,
         button: PromptInputButton,
     ) {
-        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
+        let prompt = self.command_text_input(id!(main_prompt_input.prompt));
+        let prompt_text_input = prompt.text_input_ref();
 
         let enabled = match mode {
-            PromptInputMode::Enabled => !prompt_input.text().is_empty(),
+            PromptInputMode::Enabled => !prompt_text_input.text().is_empty(),
             PromptInputMode::Disabled => false,
         };
 
@@ -665,7 +666,7 @@ impl ChatPanel {
             (vec3(0.816, 0.835, 0.867), 0.0)
         };
 
-        prompt_input.apply_over(
+        prompt_text_input.apply_over(
             cx,
             live! {
                 draw_text: { prompt_enabled: (prompt_enabled) }
@@ -736,8 +737,10 @@ impl ChatPanel {
     }
 
     fn handle_prompt_input_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let prompt_input = self.text_input(id!(main_prompt_input.prompt));
-        if let Some(_text) = prompt_input.changed(actions) {
+        let prompt = self.command_text_input(id!(main_prompt_input.prompt));
+        let prompt_text_input = prompt.text_input_ref();
+
+        if let Some(_text) = prompt_text_input.changed(actions) {
             self.redraw(cx);
         }
 
@@ -745,10 +748,10 @@ impl ChatPanel {
             .button(id!(main_prompt_input.prompt_send_button))
             .clicked(&actions)
         {
-            self.send_message(cx, scope, prompt_input.text(), None);
+            self.send_message(cx, scope, prompt_text_input.text(), None);
         }
 
-        if let Some(prompt) = prompt_input.returned(actions) {
+        if let Some(prompt) = prompt_text_input.returned(actions) {
             self.send_message(cx, scope, prompt, None);
         }
     }
