@@ -1,6 +1,6 @@
 //! Hopefully, provisional solution to unify model files and agents in the chat system.
 
-use moly_mofa::MofaAgent;
+use moly_mofa::{AgentId, MofaAgent};
 use moly_protocol::data::{File, FileID};
 use serde::{Deserialize, Serialize};
 
@@ -8,8 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ChatEntityId {
     ModelFile(FileID),
-    /// Since agents are currently fixed enum values, the agent itself is the identifier.
-    Agent(MofaAgent),
+    Agent(AgentId),
 }
 
 /// Reference to either a model file or an agent.
@@ -25,14 +24,14 @@ impl<'a> ChatEntityRef<'a> {
     pub fn id(&self) -> ChatEntityId {
         match self {
             ChatEntityRef::ModelFile(file) => ChatEntityId::ModelFile(file.id.clone()),
-            ChatEntityRef::Agent(agent) => ChatEntityId::Agent(**agent),
+            ChatEntityRef::Agent(agent) => ChatEntityId::Agent(agent.id.clone()),
         }
     }
 
     pub fn name(&self) -> &str {
         match self {
             ChatEntityRef::ModelFile(file) => &file.name,
-            ChatEntityRef::Agent(agent) => agent.name(),
+            ChatEntityRef::Agent(agent) => &agent.name,
         }
     }
 }

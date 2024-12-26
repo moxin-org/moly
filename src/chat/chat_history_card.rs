@@ -360,13 +360,15 @@ impl Widget for ChatHistoryCard {
             .to_uppercase()
             .to_string();
 
-        match chat.borrow().associated_entity {
-            Some(ChatEntityId::Agent(agent)) => {
+        match &chat.borrow().associated_entity {
+            Some(ChatEntityId::Agent(agent_id)) => {
+                let agent = store.chats.get_agent_or_placeholder(&agent_id);
+
                 self.view(id!(avatar_section.model)).set_visible(false);
                 self.chat_agent_avatar(id!(avatar_section.agent))
                     .set_visible(true);
                 self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_agent(&agent);
+                    .set_agent(agent);
             }
             _ => {
                 self.view(id!(avatar_section.model)).set_visible(true);

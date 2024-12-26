@@ -1,10 +1,11 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
+use crate::data::chats::AgentsAvailability;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::MofaAgent;
 use moly_protocol::data::Model;
 
 live_design! {
@@ -30,6 +31,7 @@ live_design! {
             padding: {left: 15, right: 15},
             spacing: 15,
             align: {x: 0, y: 0.35},
+            server_url_visible: true,
 
             draw_bg: {
                 radius: 5,
@@ -87,8 +89,15 @@ live_design! {
                     second = <AgentCard> {}
                     third = <AgentCard> {}
                 }
+                NoAgentsWarning = <Label> {
+                    draw_text:{
+                        wrap: Word
+                        text_style: {font_size: 10},
+                        color: #3
+                    }
+                }
                 Header = <Label> {
-                    margin: {bottom: 20, top: 35}
+                    margin: {bottom: 10, top: 35}
                     draw_text:{
                         text_style: <BOLD_FONT>{font_size: 16},
                         color: #000
@@ -150,13 +159,14 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let agents = MofaBackend::available_agents();
+        let agents = store.chats.get_agents_list();
 
         enum Item<'a> {
             AgentRow {
                 agents: &'a [MofaAgent],
                 margin_bottom: f32,
             },
+            NoAgentsWarning(&'static str),
             Header(&'static str),
             Model(&'a Model),
         }
@@ -166,12 +176,26 @@ impl Widget for ModelList {
         if store.search.keyword.is_none() {
             if moly_mofa::should_be_visible() {
                 items.push(Item::Header("Featured Agents"));
-                items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
-                    agents: chunk,
-                    margin_bottom: 15.0,
-                }));
-                if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
-                    *margin_bottom = 0.0;
+                let agents_availability = store.chats.agents_availability();
+                match agents_availability {
+                    AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::Available => {
+                        items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
+                            agents: chunk,
+                            margin_bottom: 8.0,
+                        }));
+                        if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
+                            *margin_bottom = 0.0;
+                        }
+                    }
                 }
             }
             items.push(Item::Header("Models"));
@@ -222,6 +246,11 @@ impl Widget for ModelList {
                                     });
 
                                 row.draw_all(cx, &mut Scope::empty());
+                            }
+                            Item::NoAgentsWarning(text) => {
+                                let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
+                                item.set_text(text);
+                                item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::Model(model) => {
                                 let item = list.item(cx, item_id, live_id!(Model));

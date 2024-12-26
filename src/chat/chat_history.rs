@@ -1,10 +1,11 @@
 use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
+use crate::data::chats::AgentsAvailability;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::MofaAgent;
 
 live_design! {
     use link::theme::*;
@@ -24,7 +25,16 @@ live_design! {
         margin: {left: 4, bottom: 4},
         draw_text:{
             text_style: <BOLD_FONT>{font_size: 10},
-            color: #667085
+            color: #3
+        }
+    }
+
+    NoAgentsWarning = <Label> {
+        margin: {left: 4, bottom: 4},
+        width: Fill
+        draw_text:{
+            text_style: {font_size: 8.5},
+            color: #3
         }
     }
 
@@ -48,7 +58,10 @@ live_design! {
                     list = <PortalList> {
                         drag_scrolling: false,
                         AgentHeading = <HeadingLabel> { text: "AGENTS" }
-                        Agent = <EntityButton> {}
+                        NoAgentsWarning = <NoAgentsWarning> {}
+                        Agent = <EntityButton> {
+                            server_url_visible: true,
+                        }
                         ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
                         ChatHistoryCard = <ChatHistoryCard> {
                             padding: {top: 4}
@@ -94,12 +107,13 @@ impl Widget for ChatHistory {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get::<Store>().unwrap();
-        let agents = MofaBackend::available_agents();
+        let store = scope.data.get_mut::<Store>().unwrap();
+        let agents = store.chats.get_agents_list();
 
         enum Item<'a> {
             ChatsHeader,
             AgentsHeader,
+            NoAgentsWarning(&'a str),
             AgentButton(&'a MofaAgent),
             ChatButton(&'a ChatID),
         }
@@ -108,9 +122,16 @@ impl Widget for ChatHistory {
 
         if moly_mofa::should_be_visible() {
             items.push(Item::AgentsHeader);
-
-            for agent in &agents {
-                items.push(Item::AgentButton(agent));
+            let agents_availability = store.chats.agents_availability();
+            match agents_availability {
+                AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
+                AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
+                AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
+                AgentsAvailability::Available => {
+                    for agent in &agents {
+                        items.push(Item::AgentButton(agent));
+                    }
+                }
             }
         }
 
@@ -144,6 +165,11 @@ impl Widget for ChatHistory {
                         }
                         Item::AgentsHeader => {
                             let item = list.item(cx, item_id, live_id!(AgentHeading));
+                            item.draw_all(cx, scope);
+                        }
+                        Item::NoAgentsWarning(text) => {
+                            let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
+                            item.set_text(text);
                             item.draw_all(cx, scope);
                         }
                         Item::AgentButton(agent) => {

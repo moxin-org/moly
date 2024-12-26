@@ -5,44 +5,80 @@ pub mod model_loader;
 use anyhow::{Context, Result};
 use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
-use makepad_widgets::ActionTrait;
+use makepad_widgets::{error, ActionDefaultRef, ActionTrait, Cx, DefaultNone};
 use model_loader::ModelLoader;
 use moly_backend::Backend;
-use moly_mofa::{MofaAgent, MofaBackend};
+use moly_mofa::{AgentId, MofaAgent, MofaClient, MofaServerId, MofaServerResponse};
 use moly_protocol::data::*;
 use moly_protocol::protocol::Command;
+use std::collections::HashMap;
 use std::fs;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{self, channel};
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use super::filesystem::setup_chats_folder;
 
+#[derive(Clone, Debug)]
+pub struct MofaServer {
+    pub client: MofaClient,
+    pub connection_status: MofaServerConnectionStatus,
+}
+
+impl MofaServer {
+    pub fn is_local(&self) -> bool {
+        self.client.address.starts_with("http://localhost")
+    }
+}
+
+/// The connection status of the server
+#[derive(Debug, Clone, PartialEq)]
+pub enum MofaServerConnectionStatus {
+    Connecting,
+    Connected,
+    Disconnected,
+}
+
+#[derive(Debug, DefaultNone, Clone)]
+pub enum MoFaTestServerAction {
+    Success(String, Vec<MofaAgent>),
+    Failure(Option<String>),
+    None,
+}
+
 pub struct Chats {
     pub backend: Rc<Backend>,
-    pub mae_backend: Rc<MofaBackend>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub loaded_model: Option<File>,
     pub model_loader: ModelLoader,
+
+    pub mofa_servers: HashMap<MofaServerId, MofaServer>,
+    pub available_agents: HashMap<AgentId, MofaAgent>,
 
     /// Set it thru `set_current_chat` method to trigger side effects.
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
 
     override_port: Option<u16>,
+
+    /// Placeholder agent used when an agent is not available
+    /// This is used to avoid recreating it on each call and make borrowing simpler.
+    unknown_agent: MofaAgent,
 }
 
 impl Chats {
-    pub fn new(backend: Rc<Backend>, mae_backend: Rc<MofaBackend>) -> Self {
+    pub fn new(backend: Rc<Backend>) -> Self {
         Self {
             backend,
-            mae_backend,
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
             model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
             override_port: None,
+            mofa_servers: HashMap::new(),
+            available_agents: HashMap::new(),
+            unknown_agent: MofaAgent::unknown(),
         }
     }
 
@@ -114,12 +150,16 @@ impl Chats {
     pub fn cancel_chat_streaming(&mut self) {
         if let Some(chat) = self.get_current_chat() {
             let mut chat = chat.borrow_mut();
-            match chat.associated_entity {
+            match &chat.associated_entity {
                 Some(ChatEntityId::ModelFile(_)) => {
                     chat.cancel_streaming(self.backend.as_ref());
                 }
-                Some(ChatEntityId::Agent(_)) => {
-                    chat.cancel_agent_interaction(self.mae_backend.as_ref());
+                Some(ChatEntityId::Agent(agent_id)) => {
+                    if let Some(mofa_client) = self.get_client_for_agent(&agent_id) {
+                        chat.cancel_agent_interaction(&mofa_client);
+                    } else {
+                        error!("No mofa client found for agent: {}", agent_id.0);
+                    }
                 }
                 _ => {}
             }
@@ -188,10 +228,10 @@ impl Chats {
         self.set_current_chat(Some(id));
     }
 
-    pub fn create_empty_chat_with_agent(&mut self, agent: MofaAgent) {
+    pub fn create_empty_chat_with_agent(&mut self, agent_id: &AgentId) {
         self.create_empty_chat();
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntityId::Agent(agent));
+            chat.associated_entity = Some(ChatEntityId::Agent(agent_id.clone()));
             chat.save();
         }
     }
@@ -230,6 +270,131 @@ impl Chats {
                     chat.borrow_mut().handle_action(action);
                 }
             }
+        }
+    }
+
+    // Agents
+
+    /// Registers a new MoFa server by creating a new client, automatically testing the connection
+    /// and fetching the available agents.
+    pub fn register_mofa_server(&mut self, address: String) -> MofaServerId {
+        let server_id = MofaServerId(address.clone());
+        let client = MofaClient::new(address.clone());
+        
+        self.mofa_servers.insert(server_id.clone(), MofaServer {
+            client,
+            connection_status: MofaServerConnectionStatus::Connecting,
+        });
+
+        self.test_mofa_server_and_fetch_agents(&address);
+        server_id
+    }
+
+    /// Removes a MoFa server from the list of available servers.
+    pub fn remove_mofa_server(&mut self, address: &str) {
+        self.mofa_servers.remove(&MofaServerId(address.to_string()));
+        self.available_agents.retain(|_, agent| agent.server_id.0 != address);
+    }
+
+    /// Retrieves the corresponding MofaClient for an agent
+    pub fn get_client_for_agent(&self, agent_id: &AgentId) -> Option<&MofaClient> {
+        self.available_agents.get(agent_id)
+            .and_then(|agent| self.mofa_servers.get(&agent.server_id))
+            .map(|server| &server.client)
+    }
+
+    /// Helper method for components that need a sorted vector of agents
+    pub fn get_agents_list(&self) -> Vec<MofaAgent> {
+        let mut agents: Vec<_> = self.available_agents.values().cloned().collect();
+        agents.sort_by(|a, b| a.name.cmp(&b.name));
+        agents
+    }
+
+    /// Tests the connection to a MoFa server by requesting /v1/models.
+    ///
+    /// The connection status is updated at the App level based on the actions dispatched.
+    pub fn test_mofa_server_and_fetch_agents(&mut self, address: &String) {
+        self.mofa_servers.get_mut(&MofaServerId(address.to_string())).unwrap().connection_status = MofaServerConnectionStatus::Connecting;
+        let (tx, rx) = mpsc::channel();
+        if let Some(server) = self.mofa_servers.get(&MofaServerId(address.to_string())) {
+            server.client.fetch_agents(tx.clone());
+        }
+
+        std::thread::spawn(move || match rx.recv() {
+            Ok(MofaServerResponse::Connected(server_address, agents)) => {
+                Cx::post_action(MoFaTestServerAction::Success(server_address, agents));
+            }
+            Ok(MofaServerResponse::Unavailable(server_address)) => {
+                Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
+            }
+            Err(e) => {
+                error!("Error receiving response from MoFa backend: {:?}", e);
+                Cx::post_action(MoFaTestServerAction::Failure(None));
+            }
+        });
+    }
+
+    pub fn handle_server_connection_result(&mut self, result: MofaServerResponse) {
+        match result {
+            MofaServerResponse::Connected(address, agents) => {
+                if let Some(server) = self.mofa_servers.get_mut(&MofaServerId(address.clone())) {
+                    server.connection_status = MofaServerConnectionStatus::Connected;
+
+                    for agent in agents {
+                        self.available_agents.insert(agent.id.clone(), agent);
+                    }
+                }
+            }
+            MofaServerResponse::Unavailable(address) => {
+                if let Some(server) = self.mofa_servers.get_mut(&MofaServerId(address)) {
+                    server.connection_status = MofaServerConnectionStatus::Disconnected;
+                }
+            }
+        }
+    }
+
+    pub fn agents_availability(&self) -> AgentsAvailability {
+        if self.mofa_servers.is_empty() {
+            AgentsAvailability::NoServers
+        } else if self.available_agents.is_empty() {
+            // Check the reason for the lack of agents, is it disconnected servers or servers with no agents?
+            if self.mofa_servers.iter().all(|(_id, s)| s.connection_status == MofaServerConnectionStatus::Connected) {
+                AgentsAvailability::NoAgents
+            } else {
+                AgentsAvailability::ServersNotConnected
+            }
+        } else {
+            AgentsAvailability::Available
+        }
+    }
+
+    /// Returns a reference to an agent by ID, falling back to an unknown agent placeholder
+    /// if the agent is not found in the available agents list.
+    /// 
+    /// This is useful when dealing with historical chat references to agents that may
+    /// no longer be available (e.g., server disconnected or agent deleted).
+    /// 
+    /// In the future, we'll want a more sophisticated solution, by potentially storing 
+    /// agent information locally and updating it when a server is connected.
+    pub fn get_agent_or_placeholder(&self, agent_id: &AgentId) -> &MofaAgent {
+        self.available_agents.get(agent_id).unwrap_or(&self.unknown_agent)
+    }
+}
+
+pub enum AgentsAvailability {
+    Available,
+    NoAgents,
+    NoServers,
+    ServersNotConnected,
+}
+
+impl AgentsAvailability {
+    pub fn to_human_readable(&self) -> &'static str {
+        match self {
+            AgentsAvailability::Available => "Agents available",
+            AgentsAvailability::NoAgents => "No agents found in the connected servers.",
+            AgentsAvailability::NoServers => "Not connected to any MoFa servers.",
+            AgentsAvailability::ServersNotConnected => "Could not connect to some servers. Check your MoFa settings.",
         }
     }
 }

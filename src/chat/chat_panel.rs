@@ -482,7 +482,7 @@ impl WidgetMatchEvent for ChatPanel {
                 }
                 ModelSelectorAction::AgentSelected(agent) => {
                     if let Some(chat) = store.chats.get_current_chat() {
-                        chat.borrow_mut().associated_entity = Some(ChatEntityId::Agent(agent));
+                        chat.borrow_mut().associated_entity = Some(ChatEntityId::Agent(agent.id));
                         chat.borrow().save();
                     }
 
@@ -506,8 +506,8 @@ impl WidgetMatchEvent for ChatPanel {
                             self.focus_on_prompt_input_pending = true;
                         }
                     }
-                    ChatEntityId::Agent(agent) => {
-                        store.chats.create_empty_chat_with_agent(agent);
+                    ChatEntityId::Agent(agent_id) => {
+                        store.chats.create_empty_chat_with_agent(&agent_id);
                         self.focus_on_prompt_input_pending = true;
                     }
                 },
@@ -816,9 +816,10 @@ impl ChatPanel {
                             .chat_agent_avatar(id!(avatar_section.agent))
                             .set_visible(true);
 
+                        let agent = store.chats.get_agent_or_placeholder(&agent);
                         empty_view
                             .chat_agent_avatar(id!(avatar_section.agent))
-                            .set_agent(&agent);
+                            .set_agent(agent);
                     }
                     _ => {
                         let empty_view = self.view(id!(empty_conversation));
@@ -904,9 +905,10 @@ impl ChatPanel {
                     chat_line_item.set_sender_name(&username);
                     chat_line_item.set_regenerate_button_visible(false);
 
-                    match chat_line_data.entity {
-                        Some(ChatEntityId::Agent(agent)) => {
-                            chat_line_item.set_model_avatar(&agent);
+                    match &chat_line_data.entity {
+                        Some(ChatEntityId::Agent(agent_id)) => {
+                            let agent = store.chats.get_agent_or_placeholder(&agent_id);
+                            chat_line_item.set_model_avatar(agent);
                         }
                         Some(ChatEntityId::ModelFile(_)) => {
                             chat_line_item.set_model_avatar_text(
