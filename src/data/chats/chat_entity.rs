@@ -36,3 +36,15 @@ impl<'a> ChatEntityRef<'a> {
         }
     }
 }
+
+impl<'a> From<&'a MofaAgent> for ChatEntityRef<'a> {
+    fn from(agent: &'a MofaAgent) -> Self {
+        ChatEntityRef::Agent(agent)
+    }
+}
+
+impl<'a> From<&'a File> for ChatEntityRef<'a> {
+    fn from(file: &'a File) -> Self {
+        ChatEntityRef::ModelFile(file)
+    }
+}

@@ -107,10 +107,18 @@ pub struct EntityButton {
 
     #[rust]
     entity: Option<ChatEntityId>,
+
+    /// Do not listen to events. Make this fully read-only.
+    #[live]
+    pub deaf: bool,
 }
 
 impl Widget for EntityButton {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if self.deaf {
+            return;
+        }
+
         self.view.handle_event(cx, event, scope);
     }
 
