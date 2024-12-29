@@ -23,6 +23,7 @@ live_design!(
         align: { x: 0.0, y: 0.5 },
         padding: { left: 9, top: 4, bottom: 4, right: 9 },
         spacing: 10,
+        server_url_visible: false,
 
         cursor: Hand
         show_bg: true,
@@ -44,6 +45,17 @@ live_design!(
                 draw_text: {
                     text_style: <BOLD_FONT>{font_size: 10},
                     color: #000;
+                }
+            }
+            server_url = <View> {
+                visible: false,
+                width: Fill,
+                height: Fit,
+                label = <Label> {
+                    draw_text: {
+                        text_style: <REGULAR_FONT>{font_size: 9, height_factor: 1.1},
+                        color: #667085,
+                    }
                 }
             }
             description = <View> {
@@ -105,6 +117,9 @@ pub struct EntityButton {
     #[deref]
     view: View,
 
+    #[live]
+    server_url_visible: bool,
+
     #[rust]
     entity: Option<ChatEntityId>,
 }
@@ -115,6 +130,10 @@ impl Widget for EntityButton {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if self.server_url_visible {
+            self.view(id!(server_url)).set_visible(true);
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -144,13 +163,20 @@ impl EntityButton {
         let name_label = self.label(id!(caption));
         let description_label = self.label(id!(description.label));
         let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
+        let server_url = self.label(id!(server_url.label));
 
         name_label.set_text(&entity.name());
 
         if let ChatEntityRef::Agent(agent) = entity {
             avatar.set_visible(true);
             avatar.set_agent(agent);
-            description_label.set_text(&agent.short_description());
+            description_label.set_text(&agent.description);
+            
+            let formatted_server_url = agent.server_id.0
+                .strip_prefix("https://")
+                .or_else(|| agent.server_id.0.strip_prefix("http://"))
+                .unwrap_or(&agent.server_id.0);
+            server_url.set_text(formatted_server_url);
         } else {
             avatar.set_visible(false);
             description_label.set_text("");

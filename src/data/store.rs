@@ -1,6 +1,7 @@
 use super::chats::chat::ChatID;
 use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
+use super::chats::MoFaTestServerAction;
 use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
 use super::preferences::Preferences;
@@ -8,31 +9,21 @@ use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use makepad_widgets::{error, Action, ActionDefaultRef, Cx, DefaultNone};
+use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use moly_backend::Backend;
-use moly_mofa::{
-    MofaAgent,
-    MofaAgentCommand::{TestServer, UpdateServerAddress},
-    MofaBackend, TestServerResponse,
-};
+
+use moly_mofa::MofaServerResponse;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 use std::rc::Rc;
-use std::sync::mpsc;
 
 pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
+const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum StoreAction {
     Search(String),
     ResetSearch,
     Sort(SortCriteria),
-    None,
-}
-
-#[derive(Debug, DefaultNone, Clone)]
-pub enum MoFaTestServerAction {
-    Success(String),
-    Failure(Option<String>),
     None,
 }
 
@@ -56,17 +47,17 @@ pub struct ModelWithDownloadInfo {
     pub download_count: u32,
     pub files: Vec<FileWithDownloadInfo>,
 }
+
 pub struct Store {
     /// This is the backend representation, including the sender and receiver ends of the channels to
     /// communicate with the backend thread.
     pub backend: Rc<Backend>,
 
-    pub mofa_backend: Rc<MofaBackend>,
 
     pub search: Search,
     pub downloads: Downloads,
     pub chats: Chats,
-    pub preferences: Preferences,
+    pub preferences: Preferences
 }
 
 impl Default for Store {
@@ -86,15 +77,12 @@ impl Store {
             DEFAULT_MAX_DOWNLOAD_THREADS,
         ));
 
-        let mofa_backend = Rc::new(MofaBackend::new());
-
         let mut store = Self {
             backend: backend.clone(),
-            mofa_backend: mofa_backend.clone(),
 
             search: Search::new(backend.clone()),
             downloads: Downloads::new(backend.clone()),
-            chats: Chats::new(backend, mofa_backend),
+            chats: Chats::new(backend),
             preferences,
         };
 
@@ -107,7 +95,7 @@ impl Store {
         store.search.load_featured_models();
 
         if moly_mofa::should_be_real() && moly_mofa::should_be_visible() {
-            store.set_test_mofa_server();
+            store.chats.register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
         }
         store
     }
@@ -172,8 +160,15 @@ impl Store {
             }
 
             match entity_id {
-                ChatEntityId::Agent(agent) => {
-                    chat.send_message_to_agent(*agent, prompt, &self.mofa_backend);
+                ChatEntityId::Agent(agent_id) => {
+                    if let (Some(client), Some(agent)) = (
+                        self.chats.get_client_for_agent(agent_id),
+                        self.chats.available_agents.get(agent_id)
+                    ) {
+                        chat.send_message_to_agent(agent, prompt, &client);
+                    } else {
+                        eprintln!("client or agent not found: {:?}", agent_id);
+                    }
                 }
                 ChatEntityId::ModelFile(file_id) => {
                     if let Some(file) = self.downloads.get_file(&file_id) {
@@ -187,41 +182,6 @@ impl Store {
                 }
             }
         }
-    }
-
-    pub fn agents_list(&self) -> Vec<MofaAgent> {
-        MofaBackend::available_agents()
-    }
-
-    pub fn set_mofa_server_address(&mut self, address: String) {
-        let address = address.trim_end_matches('/').to_string();
-        self.mofa_backend
-            .command_sender
-            .send(UpdateServerAddress(address))
-            .expect("failed to update MoFa server address");
-
-        self.set_test_mofa_server();
-    }
-
-    pub fn set_test_mofa_server(&mut self) {
-        let (tx, rx) = mpsc::channel();
-        self.mofa_backend
-            .command_sender
-            .send(TestServer(tx.clone()))
-            .expect("failed to update MoFa server address");
-
-        std::thread::spawn(move || match rx.recv() {
-            Ok(TestServerResponse::Success(server_address)) => {
-                Cx::post_action(MoFaTestServerAction::Success(server_address));
-            }
-            Ok(TestServerResponse::Failure(server_address)) => {
-                Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
-            }
-            Err(e) => {
-                error!("Error receiving response from MoFa backend: {:?}", e);
-                Cx::post_action(MoFaTestServerAction::Failure(None));
-            }
-        });
     }
 
     pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
@@ -255,14 +215,18 @@ impl Store {
             return None;
         };
 
-        match chat.borrow().associated_entity {
+        match &chat.borrow().associated_entity {
             Some(ChatEntityId::ModelFile(ref file_id)) => self
                 .downloads
                 .downloaded_files
                 .iter()
                 .find(|df| df.file.id == *file_id)
                 .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntityId::Agent(agent)) => Some(agent.name().to_string()),
+            Some(ChatEntityId::Agent(agent)) => {
+                self.chats.available_agents
+                    .get(&agent)
+                    .map(|a| a.name.clone())
+            }
             None => {
                 // Fallback to loaded model if exists
                 self.chats.loaded_model.as_ref().map(|m| m.name.clone())
@@ -364,7 +328,7 @@ impl Store {
 
     fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
-            self.chats.set_current_chat(chat_id);
+            self.chats.set_current_chat(Some(chat_id));
         } else {
             self.chats.create_empty_chat();
         }
@@ -392,5 +356,23 @@ impl Store {
         // For now, we just create a new empty chat because we don't fully
         // support having no chat selected
         self.init_current_chat();
+    }
+
+    pub fn handle_mofa_test_server_action(&mut self, action: MoFaTestServerAction) {
+        match action {
+            MoFaTestServerAction::Success(address, agents) => {
+                self.chats.handle_server_connection_result(
+                    MofaServerResponse::Connected(address, agents)
+                );
+            }
+            MoFaTestServerAction::Failure(address) => {
+                if let Some(addr) = address {
+                    self.chats.handle_server_connection_result(
+                        MofaServerResponse::Unavailable(addr)
+                    );
+                }
+            }
+            _ => (),
+        }
     }
 }

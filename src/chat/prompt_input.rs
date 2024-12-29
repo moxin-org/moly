@@ -1,5 +1,4 @@
 use makepad_widgets::*;
-use moly_mofa::MofaBackend;
 
 use crate::{
     data::{
@@ -59,7 +58,9 @@ live_design! {
             height: Fit,
             show_bg: true,
 
-            button = <EntityButton> {}
+            button = <EntityButton> {
+                server_url_visible: true,
+            }
         }
         section_label_template: <Label> {
             padding: {top: 4., bottom: 4.}
@@ -376,11 +377,13 @@ impl PromptInput {
 
     fn on_entity_selected(&mut self, scope: &mut Scope, entity: &ChatEntityId) {
         let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
+        let store = scope.data.get_mut::<Store>().unwrap();
         let label = self.label(id!(selected_label));
 
         match entity {
-            ChatEntityId::Agent(agent) => {
-                label.set_text(&agent.name());
+            ChatEntityId::Agent(agent_id) => {
+                let agent = store.chats.get_agent_or_placeholder(agent_id);
+                label.set_text(&agent.name);
                 agent_avatar.set_agent(agent);
             }
             ChatEntityId::ModelFile(file_id) => {
@@ -457,10 +460,10 @@ impl PromptInput {
             .map(|s| s.to_ascii_lowercase())
             .collect::<Vec<_>>();
 
-        let available_agents = MofaBackend::available_agents();
+        let available_agents = store.chats.get_agents_list();
         let agents: Vec<_> = available_agents
             .iter()
-            .map(|agent| ChatEntityRef::Agent(agent))
+            .map(|agent| ChatEntityRef::Agent(&agent))
             .filter(|entity| {
                 terms
                     .iter()

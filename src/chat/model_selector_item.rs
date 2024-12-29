@@ -111,7 +111,7 @@ impl WidgetMatchEvent for ModelSelectorItem {
                         cx.action(ModelSelectorAction::ModelSelected(df.clone()));
                     }
                     ModelSelectorEntity::Agent(agent) => {
-                        cx.action(ModelSelectorAction::AgentSelected(*agent));
+                        cx.action(ModelSelectorAction::AgentSelected(agent.clone()));
                     }
                     ModelSelectorEntity::None => {}
                 }
@@ -127,10 +127,11 @@ impl ModelSelectorItemRef {
     }
 
     pub fn set_agent(&mut self, agent: MofaAgent) {
-        let Some(mut inner) = self.borrow_mut() else { return };
-        inner.entity = ModelSelectorEntity::Agent(agent);
-
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
         inner.chat_agent_avatar(id!(avatar)).set_agent(&agent);
+        inner.entity = ModelSelectorEntity::Agent(agent);
     }
 }
 

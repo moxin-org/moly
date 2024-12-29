@@ -360,13 +360,15 @@ impl Widget for ChatHistoryCard {
             .to_uppercase()
             .to_string();
 
-        match chat.borrow().associated_entity {
-            Some(ChatEntityId::Agent(agent)) => {
+        match &chat.borrow().associated_entity {
+            Some(ChatEntityId::Agent(agent_id)) => {
+                let agent = store.chats.get_agent_or_placeholder(&agent_id);
+
                 self.view(id!(avatar_section.model)).set_visible(false);
                 self.chat_agent_avatar(id!(avatar_section.agent))
                     .set_visible(true);
                 self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_agent(&agent);
+                    .set_agent(agent);
             }
             _ => {
                 self.view(id!(avatar_section.model)).set_visible(true);
@@ -414,7 +416,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
         if let Some(fe) = self.view(id!(content)).finger_down(actions) {
             if fe.tap_count == 1 {
                 let store = scope.data.get_mut::<Store>().unwrap();
-                store.chats.set_current_chat(self.chat_id);
+                store.chats.set_current_chat(Some(self.chat_id));
                 self.redraw(cx);
             }
         }
