@@ -87,7 +87,8 @@ impl MofaAgent {
         MofaAgent {
             id: AgentId("unknown".to_string()),
             name: "Inaccesible Agent".to_string(),
-            description: "This agent is not currently reachable, its information is not available".to_string(),
+            description: "This agent is not currently reachable, its information is not available"
+                .to_string(),
             agent_type: AgentType::Reasoner,
             server_id: MofaServerId("Unknown".to_string()),
         }
@@ -126,28 +127,37 @@ pub enum BackendType {
 
 impl MofaClient {
     pub fn cancel_task(&self) {
-        self.command_sender.send(MofaAgentCommand::CancelTask).unwrap();
+        self.command_sender
+            .send(MofaAgentCommand::CancelTask)
+            .unwrap();
     }
 
     pub fn fetch_agents(&self, tx: Sender<MofaServerResponse>) {
-        self.command_sender.send(MofaAgentCommand::FetchAgentsFromServer(tx)).unwrap();
+        self.command_sender
+            .send(MofaAgentCommand::FetchAgentsFromServer(tx))
+            .unwrap();
     }
 
-    pub fn send_message_to_agent(&self, agent: &MofaAgent, prompt: &String, tx: Sender<ChatResponse>) {
-        self.command_sender.send(MofaAgentCommand::SendTask(prompt.clone(), agent.clone(), tx)).unwrap();
+    pub fn send_message_to_agent(
+        &self,
+        agent: &MofaAgent,
+        prompt: &String,
+        tx: Sender<ChatResponse>,
+    ) {
+        self.command_sender
+            .send(MofaAgentCommand::SendTask(
+                prompt.clone(),
+                agent.clone(),
+                tx,
+            ))
+            .unwrap();
     }
 
     pub fn new(address: String) -> Self {
         if should_be_real() {
-            let (command_sender, command_receiver) = channel();
-            let address_clone = address.clone();
-            std::thread::spawn(move || {
-                Self::process_agent_commands(command_receiver, address_clone);
-            });
-
-            Self { command_sender, address }
+            Self::new_real(address)
         } else {
-            Self::new_fake()
+            Self::new_fake(address)
         }
     }
 
@@ -300,21 +310,40 @@ impl MofaClient {
         }
     }
 
-    // For testing purposes
-    pub fn new_fake() -> Self {
+    fn new_real(address: String) -> Self {
         let (command_sender, command_receiver) = channel();
-
+        let address_clone = address.clone();
         std::thread::spawn(move || {
-            loop {
-                match command_receiver.recv().unwrap() {
+            Self::process_agent_commands(command_receiver, address_clone);
+        });
+
+        Self {
+            command_sender,
+            address,
+        }
+    }
+
+    fn new_fake(address: String) -> Self {
+        let (command_sender, command_receiver) = channel();
+        let address_clone = address.clone();
+        std::thread::spawn(move || {
+            while let Ok(command) = command_receiver.recv() {
+                match command {
                     MofaAgentCommand::SendTask(_task, _agent, tx) => {
+                        let content = r#"{
+                            "step_name": "fake",
+                            "node_results": "This is a fake response",
+                            "dataflow_status": true
+                        }"#
+                        .to_string();
+
                         let data = ChatResponseData {
                             id: "fake".to_string(),
                             choices: vec![ChoiceData {
                                 finish_reason: StopReason::Stop,
                                 index: 0,
                                 message: MessageData {
-                                    content: "This is a fake response".to_string(),
+                                    content,
                                     role: Role::System,
                                 },
                                 logprobs: None,
@@ -331,12 +360,28 @@ impl MofaClient {
                         };
                         let _ = tx.send(ChatResponse::ChatFinalResponseData(data));
                     }
-                    _ => (),
+                    MofaAgentCommand::FetchAgentsFromServer(tx) => {
+                        let agents = vec![MofaAgent {
+                            id: AgentId::new("Reasoner", &address_clone),
+                            name: "Reasoner".to_string(),
+                            description:
+                                "An agent that will help you find good questions about any topic"
+                                    .to_string(),
+                            agent_type: AgentType::Reasoner,
+                            server_id: MofaServerId(address_clone.clone()),
+                        }];
+                        tx.send(MofaServerResponse::Connected(address_clone.clone(), agents))
+                            .unwrap();
+                    }
+                    MofaAgentCommand::CancelTask => {}
                 }
             }
         });
 
-        Self { command_sender, address: "localhost:8000".to_string() }
+        Self {
+            command_sender,
+            address,
+        }
     }
 }
 

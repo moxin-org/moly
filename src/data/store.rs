@@ -52,11 +52,10 @@ pub struct Store {
     /// communicate with the backend thread.
     pub backend: Rc<Backend>,
 
-
     pub search: Search,
     pub downloads: Downloads,
     pub chats: Chats,
-    pub preferences: Preferences
+    pub preferences: Preferences,
 }
 
 impl Default for Store {
@@ -92,10 +91,10 @@ impl Store {
         store.init_current_chat();
 
         store.search.load_featured_models();
+        store
+            .chats
+            .register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
 
-        if moly_mofa::should_be_real() && moly_mofa::should_be_visible() {
-            store.chats.register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
-        }
         store
     }
 
@@ -162,7 +161,7 @@ impl Store {
                 ChatEntityId::Agent(agent_id) => {
                     if let (Some(client), Some(agent)) = (
                         self.chats.get_client_for_agent(agent_id),
-                        self.chats.available_agents.get(agent_id)
+                        self.chats.available_agents.get(agent_id),
                     ) {
                         chat.send_message_to_agent(agent, prompt, &client);
                     } else {
@@ -221,11 +220,11 @@ impl Store {
                 .iter()
                 .find(|df| df.file.id == *file_id)
                 .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntityId::Agent(agent)) => {
-                self.chats.available_agents
-                    .get(&agent)
-                    .map(|a| a.name.clone())
-            }
+            Some(ChatEntityId::Agent(agent)) => self
+                .chats
+                .available_agents
+                .get(&agent)
+                .map(|a| a.name.clone()),
             None => {
                 // Fallback to loaded model if exists
                 self.chats.loaded_model.as_ref().map(|m| m.name.clone())
@@ -360,15 +359,15 @@ impl Store {
     pub fn handle_mofa_test_server_action(&mut self, action: MoFaTestServerAction) {
         match action {
             MoFaTestServerAction::Success(address, agents) => {
-                self.chats.handle_server_connection_result(
-                    MofaServerResponse::Connected(address, agents)
-                );
+                self.chats
+                    .handle_server_connection_result(MofaServerResponse::Connected(
+                        address, agents,
+                    ));
             }
             MoFaTestServerAction::Failure(address) => {
                 if let Some(addr) = address {
-                    self.chats.handle_server_connection_result(
-                        MofaServerResponse::Unavailable(addr)
-                    );
+                    self.chats
+                        .handle_server_connection_result(MofaServerResponse::Unavailable(addr));
                 }
             }
             _ => (),
