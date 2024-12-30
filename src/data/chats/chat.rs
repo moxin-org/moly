@@ -428,11 +428,12 @@ impl Chat {
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
                 Ok(moly_mofa::ChatResponse::ChatFinalResponseData(data)) => {
-                    let node_results = serde_json::from_str::<MofaAgentResponse>(&data.choices[0].message.content).unwrap();
+                    // The original JSON data of node_results has been parsed and can be used directly.
+                    let node_results = data.choices[0].clone().message.content;
                     Cx::post_action(ChatEntityAction {
                         chat_id,
                         kind: ChatEntityActionKind::MofaAgentResult(
-                            node_results.node_results
+                            node_results
                         ),
                     });
 

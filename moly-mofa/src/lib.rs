@@ -4,6 +4,7 @@ use moly_protocol::open_ai::{
 use serde::{Deserialize, Deserializer, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
+use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MofaResponseReasoner {
@@ -104,6 +105,13 @@ pub enum MofaAgentCommand {
     FetchAgentsFromServer(Sender<MofaServerResponse>),
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct MofaContent {
+    step_name: String,
+    node_results: String,
+    dataflow_status: bool,
+}
+
 #[derive(Clone, Debug)]
 pub struct MofaClient {
     command_sender: Sender<MofaAgentCommand>,
@@ -144,9 +152,9 @@ impl MofaClient {
     }
 
     /// Handles the communication between the MofaClient and the MoFa server.
-    /// 
+    ///
     /// This function runs in a separate thread and processes commands received through the command channel.
-    /// 
+    ///
     /// The loop continues until the command channel is closed or an unrecoverable error occurs.
     fn process_agent_commands(command_receiver: mpsc::Receiver<MofaAgentCommand>, address: String) {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -166,23 +174,86 @@ impl MofaClient {
                             content: task,
                         }],
                     };
-                    let client = reqwest::Client::new();
+
+                    // If access to OpenAI or Claude is restricted in certain regions,  a VPN is typically used,
+                    // so communication with the local MoFA service here must bypass the proxy.
+                    let client = reqwest::Client::builder()
+                        .no_proxy()
+                        .build()
+                        .expect("Failed to build client");
 
                     let req = client
                         .post(format!("{}/v1/chat/completions", &address))
+                        .header("Content-Type", "application/json")
                         .json(&data);
 
                     current_request = Some(rt.spawn(async move {
-                        let resp = req.send().await.expect("Failed to send request");
+                        match req.send().await {
+                            Ok(response) => {
+                                if response.status().is_success() {
+                                    match response.text().await {
+                                        Ok(text) => {
+                                            match serde_json::from_str::<Value>(&text) {
+                                                Ok(value) => {
+                                                    if let Some(content) = value
+                                                        .get("choices")
+                                                        .and_then(|choices| choices.get(0))
+                                                        .and_then(|choice| choice.get("message"))
+                                                        .and_then(|message| message.get("content"))
+                                                        .and_then(|content| content.as_str())
+                                                    {
+                                                        // parsing inner json
+                                                        match serde_json::from_str::<MofaContent>(content) {
+                                                            Ok(mofa_content) => {
+                                                                let response_data = ChatResponseData {
+                                                                    id: value.get("id").and_then(|id| id.as_str()).unwrap_or("").to_string(),
+                                                                    choices: vec![ChoiceData {
+                                                                        finish_reason: StopReason::Stop,
+                                                                        index: 0,
+                                                                        message: MessageData {
+                                                                            content: mofa_content.node_results,
+                                                                            role: Role::Assistant,
+                                                                        },
+                                                                        logprobs: None,
+                                                                    }],
+                                                                    created: value.get("created")
+                                                                        .and_then(|c| c.as_i64())
+                                                                        .unwrap_or(0),
+                                                                    model: value.get("model").and_then(|m| m.as_str()).unwrap_or("").to_string(),
+                                                                    system_fingerprint: "".to_string(),
+                                                                    usage: UsageData {
+                                                                        completion_tokens: 0,
+                                                                        prompt_tokens: 0,
+                                                                        total_tokens: 0,
+                                                                    },
+                                                                    object: value.get("object").and_then(|o| o.as_str()).unwrap_or("").to_string(),
+                                                                };
 
-                        let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
-                        match resp {
-                            Ok(resp) => {
-                                let _ = tx.send(ChatResponse::ChatFinalResponseData(resp.clone()));
+                                                                let _ = tx.send(ChatResponse::ChatFinalResponseData(response_data));
+                                                            }
+                                                            Err(e) => {
+                                                                eprintln!("Failed to parse content JSON: {}", e);
+                                                                eprintln!("Content: {}", content);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    eprintln!("Failed to parse response JSON: {}", e);
+                                                    eprintln!("Response: {}", text);
+                                                }
+                                            }
+                                        }
+                                        Err(e) => eprintln!("Failed to get response text: {}", e),
+                                    }
+                                } else {
+                                    eprintln!("HTTP error: {}", response.status());
+                                    if let Ok(error_text) = response.text().await {
+                                        eprintln!("Error details: {}", error_text);
+                                    }
+                                }
                             }
-                            Err(e) => {
-                                eprintln!("{e}");
-                            }
+                            Err(e) => eprintln!("Request failed: {}", e),
                         }
                     }));
                 }
@@ -232,7 +303,7 @@ impl MofaClient {
     // For testing purposes
     pub fn new_fake() -> Self {
         let (command_sender, command_receiver) = channel();
-        
+
         std::thread::spawn(move || {
             loop {
                 match command_receiver.recv().unwrap() {
