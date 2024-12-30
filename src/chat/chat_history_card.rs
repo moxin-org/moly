@@ -350,7 +350,7 @@ impl Widget for ChatHistoryCard {
             chat.borrow_mut().get_title(),
             &caption.clone().unwrap_or_default(),
         );
-        self.update_title_visibility(cx);
+        self.update_title_visibility();
 
         let initial_letter = caption
             .unwrap_or("A".to_string())
@@ -451,7 +451,7 @@ impl ChatHistoryCard {
             .set_text(&human_readable_name(caption));
     }
 
-    fn update_title_visibility(&mut self, cx: &mut Cx) {
+    fn update_title_visibility(&mut self) {
         let on_edit = matches!(self.title_edition_state, TitleState::OnEdit);
         self.view(id!(edit_buttons)).set_visible(on_edit);
         self.view(id!(title_input_container)).set_visible(on_edit);
@@ -459,8 +459,6 @@ impl ChatHistoryCard {
 
         let editable = matches!(self.title_edition_state, TitleState::Editable);
         self.view(id!(title_label_container)).set_visible(editable);
-
-        self.redraw(cx);
     }
 
     fn transition_title_state(&mut self, cx: &mut Cx) {
@@ -469,7 +467,8 @@ impl ChatHistoryCard {
             TitleState::Editable => TitleState::OnEdit,
         };
 
-        self.update_title_visibility(cx);
+        self.update_title_visibility();
+        self.redraw(cx);
 
         match self.title_edition_state {
             TitleState::OnEdit => {
