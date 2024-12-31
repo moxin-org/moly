@@ -151,7 +151,7 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
     println!("  --> Done!");
 
     if host_os == "macos" {
-       download_wasmedge_macos("0.14.0")?;
+       download_wasmedge_macos("0.14.1")?;
     }
 
     Ok(())
