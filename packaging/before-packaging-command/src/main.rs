@@ -65,6 +65,7 @@ fn main() -> std::io::Result<()> {
     let mut is_before_packaging = false;
     let mut is_before_each_package = false;
     let mut host_os_opt: Option<String> = None;
+    let mut arch_opt: Option<String> = None;
 
     let mut args = std::env::args().peekable();
     while let Some(arg) = args.next() {
@@ -82,12 +83,21 @@ fn main() -> std::io::Result<()> {
                 .map(|s| s.to_string())
                 .or_else(|| args.peek().map(|s| s.to_string()));
         }
+        if arch_opt.is_none() && (arg.contains("arch"))
+        {
+            arch_opt = arg
+                .split("=")
+                .last()
+                .map(|s| s.to_string())
+                .or_else(|| args.peek().map(|s| s.to_string()));
+        }
     }
 
     let host_os = host_os_opt.as_deref().unwrap_or(std::env::consts::OS);
+    let arch = arch_opt.as_deref().unwrap_or(std::env::consts::ARCH);
 
     match (is_before_packaging, is_before_each_package) {
-        (true, false) => before_packaging(host_os),
+        (true, false) => before_packaging(host_os, arch),
         (false, true) => before_each_package(host_os),
         (true, true) => panic!("Cannot run both 'before-packaging' and 'before-each-package' commands at the same time."),
         (false, false) => panic!("Please specify either the 'before-packaging' or 'before-each-package' command."),
@@ -103,7 +113,7 @@ fn main() -> std::io::Result<()> {
 ///    The location of the `makepad-widgets` crate is determined using `cargo-metadata`.
 /// 3. Recursively copies the Moly-specific `./resources` directory to `./dist/resources/moly/`.
 /// 4. (If macOS) Downloads WasmEdge and sets up the plugins into the `./wasmedge/` directory.
-fn before_packaging(host_os: &str) -> std::io::Result<()> {
+fn before_packaging(host_os: &str, arch: &str) -> std::io::Result<()> {
     let cwd = std::env::current_dir()?;
     let dist_resources_dir = cwd.join("dist").join("resources");
     fs::create_dir_all(&dist_resources_dir)?;
@@ -151,7 +161,7 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
     println!("  --> Done!");
 
     if host_os == "macos" {
-       download_wasmedge_macos("0.14.0")?;
+       download_wasmedge_macos("0.14.0", arch)?;
     }
 
     Ok(())
@@ -167,19 +177,17 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
 ///    && mkdir -p ./wasmedge/WasmEdge-0.14.0-Darwin/plugin \
 ///    && curl -sf --location --progress-bar --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge/WasmEdge-0.14.0-Darwin/plugin; \
 /// ```
-fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
+fn download_wasmedge_macos(version: &str, arch: &str) -> std::io::Result<()> {
     // Command 1: Create the destination directory.
     let dest_dir = std::env::current_dir()?.join("wasmedge");
     fs::create_dir_all(&dest_dir)?;
-    let mut wasmedge_download_url = String::new();
-    let mut wasi_nn_download_url = String::new();
-    if std::env::consts::ARCH == "x86_64" {
-        wasmedge_download_url = format!("https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-{}-darwin_x86_64.tar.gz", version, version);
-        wasi_nn_download_url = format!("https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-plugin-wasi_nn-ggml-{}-darwin_x86_64.tar.gz", version, version);
+    let (wasmedge_download_url, wasi_nn_download_url) = if arch == "x86_64" {
+        (format!("https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-{}-darwin_x86_64.tar.gz", version, version),
+        format!("https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-plugin-wasi_nn-ggml-{}-darwin_x86_64.tar.gz", version, version))
     } else {
-        wasmedge_download_url = format!("https://github.com/WasmEdge/WasmEdge/releases/download/{version}/WasmEdge-{version}-darwin_arm64.tar.gz");
-        wasi_nn_download_url = format!("https://github.com/WasmEdge/WasmEdge/releases/download/{version}/WasmEdge-plugin-wasi_nn-ggml-{version}-darwin_arm64.tar.gz");
-    }
+        (format!("https://github.com/WasmEdge/WasmEdge/releases/download/{version}/WasmEdge-{version}-darwin_arm64.tar.gz"),
+        format!("https://github.com/WasmEdge/WasmEdge/releases/download/{version}/WasmEdge-plugin-wasi_nn-ggml-{version}-darwin_arm64.tar.gz"))
+    };
     // Command 2: Download and extract WasmEdge.
     {
         println!("Downloading wasmedge v{version} to: {}", dest_dir.display());
