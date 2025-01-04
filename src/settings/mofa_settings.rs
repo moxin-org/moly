@@ -2,6 +2,9 @@ use makepad_widgets::*;
 
 use crate::data::chats::{MofaServer, MofaServerConnectionStatus};
 use crate::data::store::Store;
+use crate::shared::modal::ModalWidgetExt;
+
+use super::delete_server_modal::DeleteServerModalAction;
 
 live_design! {
     use link::theme::*;
@@ -10,6 +13,8 @@ live_design! {
 
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
+    use crate::shared::modal::*;
+    use crate::settings::delete_server_modal::DeleteServerModal;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
@@ -26,6 +31,7 @@ live_design! {
         visible: false
         cursor: Hand
         width: Fit, height: Fit
+        
         icon = <Image> {
             width: 18, height: 18
             // Override the color of the icon
@@ -46,105 +52,118 @@ live_design! {
     }
 
     MofaServerItem = {{MofaServerItem}} {
-        width: Fill, height: 60
-        show_bg: true
-        draw_bg: {
-            color: #f
-        }
-        flow: Down
 
-        separator = <View> {
-            margin: {left: 20, right: 20, top: 0, bottom: 10}
-            height: 1,
-            show_bg: true,
-            draw_bg: {
-                color: #D9D9D9
-            }
-        }
+        flow: Overlay,
+        width: Fill,
+        height: Fit,
 
         <View> {
-            padding: {left: 30, right: 30, top: 0, bottom: 10}
-            align: {x: 0.0, y: 0.5}
-            spacing: 20
-            flow: Right
-
-            icon_remote = <View> {
-                width: Fit, height: Fit
-                visible: true
-                <Image> {
-                    source: (ICON_REMOTE)
-                    width: 18, height: 18
+            width: Fill, height: 60
+            show_bg: true
+            draw_bg: {
+                color: #f
+            }
+            flow: Down
+    
+            separator = <View> {
+                margin: {left: 20, right: 20, top: 0, bottom: 10}
+                height: 1,
+                show_bg: true,
+                draw_bg: {
+                    color: #D9D9D9
                 }
             }
-
-            icon_local = <View> {
-                width: Fit, height: Fit
-                visible: false
-                <Image> {
-                    source: (ICON_LOCAL)
-                    width: 18, height: 18
-                }
-            }
-
-            address_editable = <View> {
-                width: Fill, height: Fill
-                spacing: 10
+    
+            <View> {
+                padding: {left: 30, right: 30, top: 0, bottom: 10}
                 align: {x: 0.0, y: 0.5}
-
-                mofa_address_label = <Label> {
-                    draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 12}
-                        color: #000
-                    }
-                }
-
-                <VerticalFiller> {}
-
-                connection_status_success = <ConnectionStatusButton> {
-                    icon = {
-                        source: (ICON_SUCCESS)
-                        draw_bg: {
-                            tint_color: #099250
-                        }
-                    }
-                }
-
-                connection_status_failure = <ConnectionStatusButton> {
-                    icon = {
-                        source: (ICON_FAILURE)
-                        draw_bg: {
-                            tint_color: #B42318
-                        }
-                    }
-                }
-
-                connection_status_loading = <ConnectionStatusButton> {
+                spacing: 20
+                flow: Right
+    
+                icon_remote = <View> {
+                    width: Fit, height: Fit
                     visible: true
-                    icon = {
-                        source: (ICON_LOADER)
+                    <Image> {
+                        source: (ICON_REMOTE)
+                        width: 18, height: 18
+                    }
+                }
+    
+                icon_local = <View> {
+                    width: Fit, height: Fit
+                    visible: false
+                    <Image> {
+                        source: (ICON_LOCAL)
+                        width: 18, height: 18
+                    }
+                }
+    
+                address_editable = <View> {
+                    width: Fill, height: Fill
+                    spacing: 10
+                    align: {x: 0.0, y: 0.5}
+    
+                    mofa_address_label = <Label> {
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 12}
+                            color: #000
+                        }
+                    }
+    
+                    <VerticalFiller> {}
+    
+                    connection_status_success = <ConnectionStatusButton> {
+                        icon = {
+                            source: (ICON_SUCCESS)
+                            draw_bg: {
+                                tint_color: #099250
+                            }
+                        }
+                    }
+    
+                    connection_status_failure = <ConnectionStatusButton> {
+                        icon = {
+                            source: (ICON_FAILURE)
+                            draw_bg: {
+                                tint_color: #B42318
+                            }
+                        }
+                    }
+    
+                    connection_status_loading = <ConnectionStatusButton> {
+                        visible: true
+                        icon = {
+                            source: (ICON_LOADER)
+                            draw_bg: {
+                                tint_color: #FF8C00
+                            }
+                        }
+                    }
+    
+                    remove_server = <MolyButton> {
+                        width: Fit
+                        height: Fit
+    
                         draw_bg: {
-                            tint_color: #FF8C00
+                            border_width: 1,
+                            radius: 3
+                        }
+    
+                        icon_walk: {width: 14, height: 14}
+                        draw_icon: {
+                            svg_file: (ICON_DELETE),
+                            fn get_color(self) -> vec4 {
+                                return #B42318;
+                            }
                         }
                     }
                 }
+            }
+        }
 
-                remove_server = <MolyButton> {
-                    width: Fit
-                    height: Fit
-
-                    draw_bg: {
-                        border_width: 1,
-                        radius: 3
-                    }
-
-                    icon_walk: {width: 14, height: 14}
-                    draw_icon: {
-                        svg_file: (ICON_DELETE),
-                        fn get_color(self) -> vec4 {
-                            return #B42318;
-                        }
-                    }
-                }
+        delete_modal = <Modal> {
+            content: {
+                <DeleteServerModal> {}
             }
         }
     }
@@ -153,6 +172,7 @@ live_design! {
         width: Fill, height: Fill
         flow: Down
         spacing: 20
+        
         <RoundedView> {
             width: Fill
             height: Fit
@@ -169,6 +189,7 @@ live_design! {
                 empty_message: "Add a new server"
             }
         }
+
         <RoundedView> {
             width: Fill
             height: Fill
@@ -329,8 +350,7 @@ impl WidgetMatchEvent for MofaServerItem {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         if self.button(id!(remove_server)).clicked(actions) {
-            store.chats.remove_mofa_server(&self.server_address);
-            self.redraw(cx);
+            self.modal(id!(delete_modal)).open(cx);
         }
 
         if let Some(_) = self
@@ -340,6 +360,12 @@ impl WidgetMatchEvent for MofaServerItem {
             store.chats.test_mofa_server_and_fetch_agents(&self.server_address);
             self.update_connection_status(&MofaServerConnectionStatus::Connecting);
             self.redraw(cx);
+        }
+
+        for action in actions {
+            if let DeleteServerModalAction::ServerDismissed = action.cast(){
+                self.modal(id!(delete_modal)).close(cx);
+            }
         }
     }
 }

@@ -1,8 +1,8 @@
 use makepad_widgets::*;
 
-use crate::{chat::model_selector_list::ModelSelectorListAction, data::store::Store};
+use crate::data::store::Store;
+use crate::data::chats::MofaServer;
 
-use super::downloaded_files_row::DownloadedFilesRowProps;
 
 live_design! {
     use link::theme::*;
@@ -13,7 +13,7 @@ live_design! {
     use crate::shared::widgets::MolyButton;
     use crate::shared::resource_imports::*;
 
-    pub DeleteModelModal = {{DeleteModelModal}} {
+    pub DeleteServerModal = {{DeleteServerModal}} {
         width: Fit
         height: Fit
 
@@ -42,7 +42,7 @@ live_design! {
                     height: Fit,
 
                     model_name = <Label> {
-                        text: "Delete Model"
+                        text: "Delete Server",
                         draw_text: {
                             text_style: <BOLD_FONT>{font_size: 13},
                             color: #000
@@ -134,69 +134,60 @@ live_design! {
 }
 
 #[derive(Clone, Debug, DefaultNone)]
-pub enum DeleteModelModalAction {
+pub enum DeleteServerModalAction {
     None,
-    ModalDismissed,
+    ServerDismissed,
 }
+
 
 #[derive(Live, LiveHook, Widget)]
-pub struct DeleteModelModal {
+pub struct DeleteServerModal {
     #[deref]
     view: View,
-    
+
     #[rust]
-    file_id: String,
+    server_address: String,
 }
 
-impl Widget for DeleteModelModal {
+
+impl Widget for DeleteServerModal {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let props = scope.props.get::<DownloadedFilesRowProps>().unwrap();
-        let downloaded_file = &props.downloaded_file;
-
-        self.file_id = downloaded_file.file.id.clone();
+        let server = scope.props.get::<MofaServer>().unwrap();
+        self.server_address = server.client.address.clone();
 
         let prompt_text = format!(
-            "Are you sure you want to delete {}?\nThis action cannot be undone.",
-            downloaded_file.file.name
+            "Are you sure you want to delete the server at {}?",
+            self.server_address
         );
-        self.label(id!(wrapper.body.delete_prompt))
-            .set_text(&prompt_text);
+
+        self.label(id!(delete_prompt)).set_text(&prompt_text);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
+
     }
 }
 
-impl WidgetMatchEvent for DeleteModelModal {
+impl WidgetMatchEvent for DeleteServerModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.action(DeleteModelModalAction::ModalDismissed);
+            cx.action(DeleteServerModalAction::ServerDismissed);
         }
 
-        if self
-            .button(id!(wrapper.body.actions.delete_button))
-            .clicked(actions)
-        {
-            let store = scope.data.get_mut::<Store>().unwrap();
-            store
-                .delete_file(self.file_id.clone())
-                .expect("Failed to delete file");
-
-            cx.action(DeleteModelModalAction::ModalDismissed);
-            cx.action(ModelSelectorListAction::AddedOrDeletedModel);
+        if self.button(id!(delete_button)).clicked(actions) {
+            store.chats.remove_mofa_server(&self.server_address);
+            cx.action(DeleteServerModalAction::ServerDismissed);
         }
 
-        if self
-            .button(id!(wrapper.body.actions.cancel_button))
-            .clicked(actions)
-        {
-            cx.action(DeleteModelModalAction::ModalDismissed);
+        if self.button(id!(cancel_button)).clicked(actions) {
+            cx.action(DeleteServerModalAction::ServerDismissed);
         }
     }
 }
