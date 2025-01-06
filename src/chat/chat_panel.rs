@@ -693,7 +693,6 @@ impl ChatPanel {
                     },
                 );
                 stop_button.set_visible(false);
-                stop_button.redraw(cx);
             }
             PromptInputButton::EnabledStop => {
                 stop_button.set_visible(true);
