@@ -3,7 +3,7 @@ use crate::{
         chats::{chat::ChatID, chat_entity::ChatEntityId},
         store::Store,
     },
-    shared::{modal::ModalWidgetExt, utils::human_readable_name},
+    shared::{actions::ChatAction, modal::ModalWidgetExt, utils::human_readable_name},
 };
 
 use makepad_widgets::*;
@@ -429,6 +429,12 @@ impl WidgetMatchEvent for ChatHistoryCard {
                     | DeleteChatModalAction::ChatDeleted
             ) {
                 self.modal(id!(delete_chat_modal)).close(cx);
+            }
+
+            if let ChatAction::TitleUpdated(chat_id) = action.cast() {
+                if self.chat_id == chat_id {
+                    self.redraw(cx);
+                }
             }
         }
     }
