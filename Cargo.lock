@@ -1859,6 +1859,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "moly-widgets"
+version = "0.1.0"
+dependencies = [
+ "makepad-widgets",
+]
+
+[[package]]
 name = "napi-derive-backend-ohos"
 version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
