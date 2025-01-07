@@ -3,7 +3,7 @@ use crate::{
         chats::{chat::ChatID, chat_entity::ChatEntityId},
         store::Store,
     },
-    shared::{modal::ModalWidgetExt, utils::human_readable_name},
+    shared::{actions::ChatAction, modal::ModalWidgetExt, utils::human_readable_name},
 };
 
 use makepad_widgets::*;
@@ -350,7 +350,7 @@ impl Widget for ChatHistoryCard {
             chat.borrow_mut().get_title(),
             &caption.clone().unwrap_or_default(),
         );
-        self.update_title_visibility(cx);
+        self.update_title_visibility();
 
         let initial_letter = caption
             .unwrap_or("A".to_string())
@@ -430,6 +430,12 @@ impl WidgetMatchEvent for ChatHistoryCard {
             ) {
                 self.modal(id!(delete_chat_modal)).close(cx);
             }
+
+            if let ChatAction::TitleUpdated(chat_id) = action.cast() {
+                if self.chat_id == chat_id {
+                    self.redraw(cx);
+                }
+            }
         }
     }
 }
@@ -451,7 +457,7 @@ impl ChatHistoryCard {
             .set_text(&human_readable_name(caption));
     }
 
-    fn update_title_visibility(&mut self, cx: &mut Cx) {
+    fn update_title_visibility(&mut self) {
         let on_edit = matches!(self.title_edition_state, TitleState::OnEdit);
         self.view(id!(edit_buttons)).set_visible(on_edit);
         self.view(id!(title_input_container)).set_visible(on_edit);
@@ -459,8 +465,6 @@ impl ChatHistoryCard {
 
         let editable = matches!(self.title_edition_state, TitleState::Editable);
         self.view(id!(title_label_container)).set_visible(editable);
-
-        self.redraw(cx);
     }
 
     fn transition_title_state(&mut self, cx: &mut Cx) {
@@ -469,7 +473,8 @@ impl ChatHistoryCard {
             TitleState::Editable => TitleState::OnEdit,
         };
 
-        self.update_title_visibility(cx);
+        self.update_title_visibility();
+        self.redraw(cx);
 
         match self.title_edition_state {
             TitleState::OnEdit => {

@@ -693,7 +693,6 @@ impl ChatPanel {
                     },
                 );
                 stop_button.set_visible(false);
-                stop_button.redraw(cx);
             }
             PromptInputButton::EnabledStop => {
                 stop_button.set_visible(true);
@@ -770,34 +769,49 @@ impl ChatPanel {
 
         // Let's confirm we're in an appropriate state to send a message
         self.update_state(scope);
-        if matches!(
-            self.state,
+
+        match self.state {
             State::ModelSelectedWithChat {
                 receiving_response: false,
                 was_cancelled: false,
                 is_loading: false,
                 ..
-            } | State::ModelSelectedWithEmptyChat { is_loading: false }
-        ) {
-            let store = scope.data.get_mut::<Store>().unwrap();
-
-            if let Some(entity_selected) = &self
-                .prompt_input(id!(main_prompt_input))
-                .borrow()
-                .unwrap()
-                .entity_selected
-            {
-                store.send_entity_message(entity_selected, prompt, regenerate_from);
-            } else {
-                store.send_message_to_current_entity(prompt, regenerate_from);
+            } => {
+                self.send_message_aux(cx, scope, prompt, regenerate_from);
             }
-
-            self.prompt_input(id!(main_prompt_input)).reset_text(false);
-
-            // Scroll to the bottom when the message is sent
-            self.scroll_messages_to_bottom(cx);
-            self.redraw(cx);
+            State::ModelSelectedWithEmptyChat { is_loading: false } => {
+                self.send_message_aux(cx, scope, prompt, regenerate_from);
+                cx.action(ChatAction::TitleUpdated(self.current_chat_id.unwrap()));
+            }
+            _ => {}
         }
+    }
+
+    fn send_message_aux(
+        &mut self,
+        cx: &mut Cx,
+        scope: &mut Scope,
+        prompt: String,
+        regenerate_from: Option<usize>,
+    ) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        if let Some(entity_selected) = &self
+            .prompt_input(id!(main_prompt_input))
+            .borrow()
+            .unwrap()
+            .entity_selected
+        {
+            store.send_entity_message(entity_selected, prompt, regenerate_from);
+        } else {
+            store.send_message_to_current_entity(prompt, regenerate_from);
+        }
+
+        self.prompt_input(id!(main_prompt_input)).reset_text(false);
+
+        // Scroll to the bottom when the message is sent
+        self.scroll_messages_to_bottom(cx);
+        self.redraw(cx);
     }
 
     fn update_view(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
