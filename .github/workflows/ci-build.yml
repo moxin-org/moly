@@ -109,7 +109,7 @@ jobs:
           tree /F ${{ github.workspace }}\WasmEdge
 
       - name: Set up Windows 10 SDK
-        uses: GuillaumeFalourd/setup-windows10-sdk-action@v1.11
+        uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         with:
           sdk-version: 19041
 
