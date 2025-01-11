@@ -7,18 +7,17 @@ use makepad_widgets::*;
 use unicode_segmentation::UnicodeSegmentation;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import makepad_draw::shader::std::*;
-
-    import crate::shared::styles::*;
-    import crate::shared::resource_imports::*;
-    import crate::shared::widgets::*;
-    import crate::landing::shared::*;
-    import crate::landing::model_files::ModelFiles;
-    import crate::shared::external_link::*;
-    import crate::shared::modal::*;
+    use crate::shared::styles::*;
+    use crate::shared::resource_imports::*;
+    use crate::shared::widgets::*;
+    use crate::landing::shared::*;
+    use crate::landing::model_files::ModelFiles;
+    use crate::shared::external_link::*;
+    use crate::shared::modal::*;
 
     ICON_DOWNLOADS = dep("crate://self/resources/icons/downloads.svg")
     ICON_FAVORITE = dep("crate://self/resources/icons/favorite.svg")
@@ -217,7 +216,7 @@ live_design! {
     }
 
 
-    ModelCardViewAllModal = {{ModelCardViewAllModal}} {
+    pub ModelCardViewAllModal = {{ModelCardViewAllModal}} {
         width: Fit
         height: Fit
 
@@ -290,7 +289,7 @@ live_design! {
     }
 
 
-    ModelCard = {{ModelCard}} {
+    pub ModelCard = {{ModelCard}} {
         width: Fill,
         height: Fit,
 
@@ -415,7 +414,7 @@ impl WidgetMatchEvent for ModelCard {
         }
 
         for action in actions {
-            if let ModelCardViewAllModalAction::CloseButtonClicked = action.as_widget_action().cast() {
+            if let ModelCardViewAllModalAction::CloseButtonClicked = action.cast() {
                 self.modal(id!(modal)).close(cx);
                 self.redraw(cx);
             }
@@ -457,10 +456,9 @@ impl Widget for ModelCardViewAllModal {
 
 impl WidgetMatchEvent for ModelCardViewAllModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, ModelCardViewAllModalAction::CloseButtonClicked);
+            cx.action(ModelCardViewAllModalAction::CloseButtonClicked);
         }
     }
 }

@@ -1,11 +1,12 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::landing::model_card::ModelCard;
+    use crate::shared::styles::*;
+    use crate::landing::model_card::ModelCard;
 
     ANIMATION_SPEED = 0.33
 
@@ -23,7 +24,7 @@ live_design! {
         }    
     }
 
-    SearchLoading = {{SearchLoading}} {
+    pub SearchLoading = {{SearchLoading}} {
         width: Fill,
         height: Fill,
 

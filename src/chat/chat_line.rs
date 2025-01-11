@@ -1,20 +1,24 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
+use crate::chat::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
+use moly_mofa::MofaAgent;
 
 live_design! {
-    import makepad_code_editor::code_view::CodeView;
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import makepad_draw::shader::std::*;
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::resource_imports::*;
-    import crate::chat::chat_line_loading::ChatLineLoading;
-    
+    use makepad_code_editor::code_view::CodeView;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::resource_imports::*;
+    use crate::chat::chat_line_loading::ChatLineLoading;
+    use crate::chat::shared::ChatModelAvatar;
+    use crate::chat::shared::ChatAgentAvatar;
+
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
 
@@ -60,7 +64,7 @@ live_design! {
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
-        code_block = <View> {
+        code_block = <View> {   
             width:Fill,
             height:Fit,
             code_view = <CodeView>{
@@ -77,6 +81,15 @@ live_design! {
         list_item_walk:{margin:0, height:Fit, width:Fill}
         code_layout: { padding: {top: 10.0, bottom: 10.0}}
         quote_layout: { padding: {top: 10.0, bottom: 10.0}}
+
+        link = {
+            padding: { top: 1, bottom: 0 },
+            draw_text: {
+                color: #00f,
+                color_pressed: #f00,
+                color_hover: #0f0,
+            }
+        }
     }
 
     EditTextInput = <MolyTextInput> {
@@ -197,7 +210,7 @@ live_design! {
         text: ""
     }
 
-    ChatLine = {{ChatLine}} {
+    pub ChatLine = {{ChatLine}} {
         padding: {top: 10, bottom: 3},
         width: Fill,
         height: Fit,
@@ -206,6 +219,9 @@ live_design! {
             width: Fit,
             height: Fit,
             margin: {left: 20, right: 12},
+
+            model = <ChatModelAvatar> {}
+            agent = <ChatAgentAvatar> { visible: false }
         }
 
         main_section = <View> {
@@ -299,10 +315,10 @@ impl Widget for ChatLine {
 }
 
 impl WidgetMatchEvent for ChatLine {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         match self.edition_state {
-            ChatLineState::Editable => self.handle_editable_actions(cx, actions, scope),
-            ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions, scope),
+            ChatLineState::Editable => self.handle_editable_actions(cx, actions),
+            ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions),
             ChatLineState::NotEditable => {}
         }
     }
@@ -335,14 +351,9 @@ impl ChatLine {
             .set_visible(show && !is_plain_text);
     }
 
-    pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         if self.button(id!(delete_button)).clicked(&actions) {
-            let widget_id = self.view.widget_uid();
-            cx.widget_action(
-                widget_id,
-                &scope.path,
-                ChatLineAction::Delete(self.message_id),
-            );
+            cx.action(ChatLineAction::Delete(self.message_id));
         }
 
         if self.button(id!(edit_button)).clicked(&actions) {
@@ -355,19 +366,18 @@ impl ChatLine {
         }
     }
 
-    pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    pub fn handle_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         if self.button(id!(save)).clicked(&actions) {
             let updated_message = self.text_input(id!(input)).text();
 
             // Do not allow to have empty messages for now.
             // TODO We should disable Save button when the message is empty.
             if !updated_message.trim().is_empty() {
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, false),
-                );
+                cx.action(ChatLineAction::Edit(
+                    self.message_id,
+                    updated_message,
+                    false,
+                ));
             }
 
             self.set_edit_mode(cx, false);
@@ -375,12 +385,7 @@ impl ChatLine {
 
         if let Some(val) = self.text_input(id!(input)).returned(actions) {
             if !val.trim().is_empty() {
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, val, false),
-                );
+                cx.action(ChatLineAction::Edit(self.message_id, val, false));
             }
 
             self.set_edit_mode(cx, false);
@@ -391,12 +396,7 @@ impl ChatLine {
 
             // TODO We should disable Save and Regenerate button when the message is empty.
             if !updated_message.trim().is_empty() {
-                let widget_id = self.view.widget_uid();
-                cx.widget_action(
-                    widget_id,
-                    &scope.path,
-                    ChatLineAction::Edit(self.message_id, updated_message, true),
-                );
+                cx.action(ChatLineAction::Edit(self.message_id, updated_message, true));
             }
 
             self.set_edit_mode(cx, false);
@@ -416,23 +416,42 @@ impl ChatLineRef {
         inner.label(id!(sender_name)).set_text(text);
     }
 
-    pub fn set_avatar_text(&mut self, text: &str) {
+    pub fn set_model_avatar_text(&mut self, text: &str) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
+        inner.view(id!(avatar_section.model)).set_visible(true);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(false);
         inner.label(id!(avatar_label)).set_text(text);
     }
 
-    pub fn set_message_text(&mut self, cx: &mut Cx, text: &str) {
+    pub fn set_model_avatar(&mut self, agent: &MofaAgent) {
+        let Some(inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.view(id!(avatar_section.model)).set_visible(false);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(agent);
+    }
+
+    pub fn set_message_text(&mut self, cx: &mut Cx, text: &str, is_streaming: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
 
         match inner.edition_state {
+            
             ChatLineState::Editable | ChatLineState::NotEditable => {
-                inner.text_input(id!(input)).set_text(text.trim());
-                inner.label(id!(plain_text_message)).set_text(text.trim());
-                inner.markdown(id!(markdown_message)).set_text(text.trim());
+                if is_streaming && !text.is_empty() {
+                    let output = format!("{}{}", text, "●");
+                    inner.text_input(id!(input)).set_text(&output.trim());
+                    inner.label(id!(plain_text_message)).set_text(&output.trim());
+                    inner.markdown(id!(markdown_message)).set_text(&output.trim());
+                } else {
+                    inner.text_input(id!(input)).set_text(text.trim());
+                    inner.label(id!(plain_text_message)).set_text(text.trim());
+                    inner.markdown(id!(markdown_message)).set_text(text.trim());
+                }
 
                 // We know only AI assistant messages could be empty, so it is never
                 // displayed in user's chat lines.

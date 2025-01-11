@@ -138,6 +138,13 @@ pub fn run_wasm_by_downloaded_file(
     let mut wasi_nn = wasmedge_sdk::plugin::PluginManager::load_plugin_wasi_nn().unwrap();
     instances.insert(wasi_nn.name().unwrap(), &mut wasi_nn);
 
+    let mut wasi_logger = wasmedge_sdk::plugin::PluginManager::create_plugin_instance(
+        "wasi_logging",
+        "wasi:logging/logging",
+    )
+    .unwrap();
+    instances.insert(wasi_logger.name().unwrap(), &mut wasi_logger);
+
     let store = Store::new(None, instances).unwrap();
     let mut vm = Vm::new(store);
     vm.register_module(None, wasm_module.clone()).unwrap();
@@ -261,7 +268,7 @@ impl BackendModel for LLamaEdgeApiServer {
         });
 
         let mut test_server = false;
-        for _i in 0..5 {
+        for _i in 0..20 {
             let r = reqwest::blocking::ClientBuilder::new()
                 .timeout(Duration::from_secs(3))
                 .no_proxy()
@@ -275,7 +282,7 @@ impl BackendModel for LLamaEdgeApiServer {
                     break;
                 }
             }
-            let _ = std::thread::sleep(std::time::Duration::from_secs(1));
+            let _ = std::thread::sleep(std::time::Duration::from_secs(3));
         }
         if test_server {
             let _ = tx.send(Ok(moly_protocol::protocol::LoadModelResponse::Completed(
@@ -323,15 +330,24 @@ impl BackendModel for LLamaEdgeApiServer {
 
         async_rt.spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
-            let resp = reqwest::ClientBuilder::new()
+            let request = reqwest::ClientBuilder::new()
                 .no_proxy()
                 .build()
                 .unwrap()
                 .post(url)
-                .body(request_body)
-                .send()
-                .await
-                .map_err(|e| anyhow!(e));
+                .body(request_body);
+
+            let resp = tokio::select! {
+                res = request.send() => Some(res.map_err(|e| anyhow!(e))),
+                _ = cancel.recv() => None,
+            };
+
+            let Some(resp) = resp else {
+                let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                    StopReason::Stop,
+                ))));
+                return;
+            };
 
             match resp {
                 Ok(resp) => {
@@ -362,8 +378,18 @@ impl BackendModel for LLamaEdgeApiServer {
                             StopReason::Stop,
                         ))));
                     } else {
-                        let resp: Result<ChatResponseData, anyhow::Error> =
-                            resp.json().await.map_err(|e| anyhow!(e));
+                        let resp = tokio::select! {
+                            res = resp.json::<ChatResponseData>() => Some(res.map_err(|e| anyhow!(e))),
+                            _ = cancel.recv() => None,
+                        };
+
+                        let Some(resp) = resp else {
+                            let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                                StopReason::Stop,
+                            ))));
+                            return;
+                        };
+
                         let _ = tx.send(resp.map(ChatResponse::ChatFinalResponseData));
                     }
                 }
@@ -385,7 +411,7 @@ impl BackendModel for LLamaEdgeApiServer {
 
     fn stop(self, _async_rt: &tokio::runtime::Runtime) {
         let url = format!("http://localhost:{}/admin/exit", self.listen_addr.port());
-        let res = reqwest::blocking::ClientBuilder::new()
+        let _ = reqwest::blocking::ClientBuilder::new()
             .timeout(Duration::from_secs(2))
             .no_proxy()
             .build()

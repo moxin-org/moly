@@ -3,15 +3,15 @@ use makepad_widgets::*;
 use crate::data::{chats::chat::ChatID, store::Store};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::shared::resource_imports::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::shared::resource_imports::*;
 
-    DeleteChatModal = {{DeleteChatModal}} {
+    pub DeleteChatModal = {{DeleteChatModal}} {
         width: Fit
         height: Fit
 
@@ -181,27 +181,26 @@ impl Widget for DeleteChatModal {
 
 impl WidgetMatchEvent for DeleteChatModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
 
         if self.button(id!(close_button)).clicked(actions) {
-            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::CloseButtonClicked);
+            cx.action(DeleteChatModalAction::CloseButtonClicked);
         }
 
         if self
-            .button(id!(wrapper.body.actions.delete_button))
+            .button(id!(delete_button))
             .clicked(actions)
         {
             let store = scope.data.get_mut::<Store>().unwrap();
             store.delete_chat(self.chat_id);
-            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::ChatDeleted);
+            cx.action(DeleteChatModalAction::ChatDeleted);
             cx.redraw_all();
         }
 
         if self
-            .button(id!(wrapper.body.actions.cancel_button))
+            .button(id!(cancel_button))
             .clicked(actions)
         {
-            cx.widget_action(widget_uid, &scope.path, DeleteChatModalAction::Cancelled);
+            cx.action(DeleteChatModalAction::Cancelled);
         }
     }
 }

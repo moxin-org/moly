@@ -1,16 +1,20 @@
-use crate::shared::{
-    actions::DownloadAction,
-    utils::{format_model_downloaded_size, format_model_size},
+use crate::{
+    data::downloads::download::DownloadFileAction,
+    shared::{
+        actions::DownloadAction,
+        utils::{format_model_downloaded_size, format_model_size},
+    },
 };
 use makepad_widgets::*;
 use moly_protocol::data::{FileID, PendingDownload, PendingDownloadsStatus};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
 
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
@@ -36,7 +40,7 @@ live_design! {
     }
 
     Information = <View> {
-        width: 380,
+        width: Fill,
         height: Fit,
         flow: Right,
         spacing: 12,
@@ -72,7 +76,7 @@ live_design! {
     }
 
     Progress = <View> {
-        width: 600,
+        width: Fill,
         height: Fit,
         spacing: 8,
 
@@ -146,7 +150,7 @@ live_design! {
 
     Actions = <View> {
         width: Fill,
-        height: 40,
+        height: Fit,
         flow: Right,
         spacing: 12,
 
@@ -180,7 +184,7 @@ live_design! {
         }
     }
 
-    DownloadItem = {{DownloadItem}}<RoundedView> {
+    pub DownloadItem = {{DownloadItem}}<RoundedView> {
         width: Fill,
         height: Fit,
 
@@ -341,36 +345,29 @@ impl Widget for DownloadItem {
 
 impl WidgetMatchEvent for DownloadItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        for actions in actions {
+            if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
+                if self.file_id.as_ref() == Some(&action.file_id) {
+                    self.redraw(cx);
+                }
+            }
+        }
+
         for button_id in [id!(play_button), id!(retry_button)] {
             if self.button(button_id).clicked(&actions) {
                 let Some(file_id) = &self.file_id else { return };
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    DownloadAction::Play(file_id.clone()),
-                )
+                cx.action(DownloadAction::Play(file_id.clone()));
             }
         }
 
         if self.button(id!(pause_button)).clicked(&actions) {
             let Some(file_id) = &self.file_id else { return };
-            let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Pause(file_id.clone()),
-            )
+            cx.action(DownloadAction::Pause(file_id.clone()));
         }
 
         if self.button(id!(cancel_button)).clicked(&actions) {
             let Some(file_id) = &self.file_id else { return };
-            let widget_uid = self.widget_uid();
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Cancel(file_id.clone()),
-            )
+            cx.action(DownloadAction::Cancel(file_id.clone()));
         }
     }
 }

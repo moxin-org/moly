@@ -1,16 +1,68 @@
+use crate::chat::entity_button::EntityButtonWidgetRefExt;
+use crate::data::chats::AgentsAvailability;
+use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
+use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
+use moly_mofa::MofaAgent;
+use moly_protocol::data::Model;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::landing::model_card::ModelCard;
-    import crate::landing::search_loading::SearchLoading;
+    use crate::shared::styles::*;
+    use crate::landing::model_card::ModelCard;
+    use crate::landing::search_loading::SearchLoading;
+    use crate::chat::entity_button::*;
 
-    ModelList = {{ModelList}} {
+    AgentCard = <RoundedView> {
+        width: Fill,
+        height: 100,
+        show_bg: false,
+        draw_bg: {
+            radius: 5,
+            color: #F9FAFB,
+        }
+        button = <EntityButton> {
+            width: Fill,
+            height: Fill,
+            padding: {left: 15, right: 15},
+            spacing: 15,
+            align: {x: 0, y: 0.35},
+            server_url_visible: true,
+
+            draw_bg: {
+                radius: 5,
+            }
+            agent_avatar = {
+                image = {
+                    width: 64,
+                    height: 64,
+                }
+            }
+            text_layout = {
+                height: Fit,
+                flow: Down,
+                caption = {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 11},
+                    }
+                }
+                description = {
+                    label = {
+                        draw_text: {
+                            wrap: Word,
+                            color: #1D2939,
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub ModelList = {{ModelList}} {
         width: Fill,
         height: Fill,
 
@@ -27,6 +79,30 @@ live_design! {
                 // "capture" the events, so we don't want to handle them here.
                 capture_overload: false,
 
+                AgentRow = <View> {
+                    width: Fill,
+                    height: Fit,
+                    flow: Right,
+                    spacing: 15,
+
+                    first = <AgentCard> {}
+                    second = <AgentCard> {}
+                    third = <AgentCard> {}
+                }
+                NoAgentsWarning = <Label> {
+                    draw_text:{
+                        wrap: Word
+                        text_style: {font_size: 10},
+                        color: #3
+                    }
+                }
+                Header = <Label> {
+                    margin: {bottom: 10, top: 35}
+                    draw_text:{
+                        text_style: <BOLD_FONT>{font_size: 16},
+                        color: #000
+                    }
+                }
                 Model = <ModelCard> {
                     margin: {bottom: 30},
                 }
@@ -76,10 +152,6 @@ impl Widget for ModelList {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        if let Event::Signal = event {
-            self.loading_delay = cx.start_timeout(0.2);
-        }
-
         if self.loading_delay.is_event(event).is_some() {
             self.update_loading_and_error_message(cx, scope);
         }
@@ -87,19 +159,109 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let models = &store.search.models;
-        let models_count = models.len();
+        let agents = store.chats.get_agents_list();
+
+        enum Item<'a> {
+            AgentRow {
+                agents: &'a [MofaAgent],
+                margin_bottom: f32,
+            },
+            NoAgentsWarning(&'static str),
+            Header(&'static str),
+            Model(&'a Model),
+        }
+
+        let mut items = Vec::new();
+
+        if store.search.keyword.is_none() {
+            if moly_mofa::should_be_visible() {
+                items.push(Item::Header("Featured Agents"));
+                let agents_availability = store.chats.agents_availability();
+                match agents_availability {
+                    AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(
+                        agents_availability.to_human_readable(),
+                    )),
+                    AgentsAvailability::Available => {
+                        items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
+                            agents: chunk,
+                            margin_bottom: 8.0,
+                        }));
+                        if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
+                            *margin_bottom = 0.0;
+                        }
+                    }
+                }
+            }
+            items.push(Item::Header("Models"));
+        }
+
+        items.extend(store.search.models.iter().map(Item::Model));
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
             if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
-                list.set_item_range(cx, 0, models_count);
+                list.set_item_range(cx, 0, items.len());
                 while let Some(item_id) = list.next_visible_item(cx) {
-                    let item = list.item(cx, item_id, live_id!(Model));
+                    if item_id < items.len() {
+                        match items[item_id] {
+                            Item::Header(text) => {
+                                let item = list.item(cx, item_id, live_id!(Header));
+                                item.set_text(text);
+                                item.draw_all(cx, &mut Scope::empty());
+                            }
+                            Item::AgentRow {
+                                agents,
+                                margin_bottom,
+                            } => {
+                                let row = list.item(cx, item_id, live_id!(AgentRow));
 
-                    if item_id < models_count {
-                        let model = &models[item_id];
-                        let mut model_with_download_info = store.add_download_info_to_model(model);
-                        item.draw_all(cx, &mut Scope::with_data(&mut model_with_download_info));
+                                row.apply_over(
+                                    cx,
+                                    live! {
+                                        margin: {bottom: (margin_bottom)},
+                                    },
+                                );
+
+                                [id!(first), id!(second), id!(third)]
+                                    .iter()
+                                    .enumerate()
+                                    .for_each(|(i, id)| {
+                                        if let Some(agent) = agents.get(i) {
+                                            let cell = row.view(*id);
+                                            cell.apply_over(
+                                                cx,
+                                                live! {
+                                                    show_bg: true,
+                                                },
+                                            );
+                                            let mut button = cell.entity_button(id!(button));
+                                            button.set_agent(agent);
+                                            button.set_description_visible(true);
+                                        }
+                                    });
+
+                                row.draw_all(cx, &mut Scope::empty());
+                            }
+                            Item::NoAgentsWarning(text) => {
+                                let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
+                                item.set_text(text);
+                                item.draw_all(cx, &mut Scope::empty());
+                            }
+                            Item::Model(model) => {
+                                let item = list.item(cx, item_id, live_id!(Model));
+                                let mut model_with_download_info =
+                                    store.add_download_info_to_model(model);
+                                item.draw_all(
+                                    cx,
+                                    &mut Scope::with_data(&mut model_with_download_info),
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -119,11 +281,26 @@ pub enum ModelListAction {
 const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
 
 impl WidgetMatchEvent for ModelList {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let portal_list = self.portal_list(id!(list));
 
+        let clicked_entity_button = portal_list
+            .items_with_actions(actions)
+            .iter()
+            .map(|(_, item)| item.entity_button(id!(button)))
+            .find(|button| button.clicked(actions));
+
+        if let Some(entity_button) = clicked_entity_button {
+            let entity_id = entity_button.get_entity_id().unwrap().clone();
+            cx.action(ChatAction::Start(entity_id));
+        }
+
         for action in actions.iter() {
-            match action.as_widget_action().cast() {
+            if let Some(_) = action.downcast_ref::<SearchAction>() {
+                self.loading_delay = cx.start_timeout(0.2);
+            }
+
+            match action.cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
                     self.view(id!(search_error)).set_visible(false);
                     self.view(id!(loading)).set_visible(true);
@@ -137,13 +314,12 @@ impl WidgetMatchEvent for ModelList {
         }
 
         if portal_list.scrolled(actions) {
-            let widget_uid = self.widget_uid();
             if portal_list.first_id() == 0
                 && portal_list.scroll_position() > SCROLLING_AT_TOP_THRESHOLD
             {
-                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledAtTop);
+                cx.action(ModelListAction::ScrolledAtTop);
             } else {
-                cx.widget_action(widget_uid, &scope.path, ModelListAction::ScrolledNotAtTop);
+                cx.action(ModelListAction::ScrolledNotAtTop);
             }
         }
     }

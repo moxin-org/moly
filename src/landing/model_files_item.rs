@@ -3,7 +3,10 @@ use moly_protocol::data::{File, FileID, PendingDownloadsStatus};
 
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::{
-    data::store::FileWithDownloadInfo,
+    data::{
+        chats::chat_entity::ChatEntityId, downloads::download::DownloadFileAction,
+        store::FileWithDownloadInfo,
+    },
     shared::{
         actions::{ChatAction, DownloadAction},
         utils::format_model_size,
@@ -11,13 +14,13 @@ use crate::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::landing::model_files_tags::ModelFilesTags;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::landing::model_files_tags::ModelFilesTags;
 
     ICON_DOWNLOAD = dep("crate://self/resources/icons/download.svg")
     START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
@@ -27,7 +30,7 @@ live_design! {
     ICON_PLAY = dep("crate://self/resources/icons/play_download.svg")
     ICON_RETRY = dep("crate://self/resources/icons/retry_download.svg")
 
-    ModelFilesRow = <RoundedYView> {
+    pub ModelFilesRow = <RoundedYView> {
         width: Fill,
         height: Fit,
 
@@ -138,7 +141,7 @@ live_design! {
         }
     }
 
-    ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {
+    pub ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {
         show_bg: true,
         draw_bg: {
             color: #fff
@@ -319,49 +322,40 @@ impl Widget for ModelFilesItem {
 }
 
 impl WidgetMatchEvent for ModelFilesItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        for actions in actions {
+            if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
+                if self.file_id.as_ref() == Some(&action.file_id) {
+                    self.redraw(cx);
+                }
+            }
+        }
+
         let Some(file_id) = self.file_id.clone() else {
             return;
         };
 
         if self.button(id!(download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                ModelFileItemAction::Download(file_id.clone()),
-            );
+            cx.action(ModelFileItemAction::Download(file_id.clone()));
         }
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
-            cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
+            cx.action(ChatAction::Start(ChatEntityId::ModelFile(file_id.clone())));
         }
 
         if [id!(resume_download_button), id!(retry_download_button)]
             .iter()
             .any(|id| self.button(*id).clicked(&actions))
         {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Play(file_id.clone()),
-            );
+            cx.action(DownloadAction::Play(file_id.clone()));
         }
 
         if self.button(id!(pause_download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Pause(file_id.clone()),
-            );
+            cx.action(DownloadAction::Pause(file_id.clone()));
         }
 
         if self.button(id!(cancel_download_button)).clicked(&actions) {
-            cx.widget_action(
-                widget_uid,
-                &scope.path,
-                DownloadAction::Cancel(file_id.clone()),
-            );
+            cx.action(DownloadAction::Cancel(file_id.clone()));
         }
     }
 }

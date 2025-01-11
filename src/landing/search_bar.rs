@@ -4,19 +4,18 @@ use crate::landing::sorting::SortingWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import makepad_draw::shader::std::*;
-
-    import crate::landing::sorting::Sorting;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::landing::sorting::Sorting;
 
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_CLOSE = dep("crate://self/resources/icons/close.svg")
 
-    SearchBar = {{SearchBar}} {
+    pub SearchBar = {{SearchBar}} {
         width: Fill,
         height: 200,
 
@@ -170,15 +169,9 @@ impl Widget for SearchBar {
             const MIN_SEARCH_LENGTH: usize = 2;
 
             if keywords.len() > MIN_SEARCH_LENGTH {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    StoreAction::Search(keywords.to_string()),
-                );
+                cx.action(StoreAction::Search(keywords.to_string()));
             } else if keywords.len() == 0 {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
+                cx.action(StoreAction::ResetSearch);
             }
         }
     }
@@ -195,15 +188,9 @@ impl WidgetMatchEvent for SearchBar {
 
         if let Some(keywords) = input.returned(actions) {
             if keywords.len() > 0 {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(
-                    widget_uid,
-                    &scope.path,
-                    StoreAction::Search(keywords.to_string()),
-                );
+                cx.action(StoreAction::Search(keywords.to_string()));
             } else {
-                let widget_uid = self.widget_uid();
-                cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
+                cx.action(StoreAction::ResetSearch);
             }
         }
 
@@ -218,9 +205,7 @@ impl WidgetMatchEvent for SearchBar {
             clear_text_button.set_visible(false);
             input.set_key_focus(cx);
 
-            // Also trigger a search reset
-            let widget_uid = self.widget_uid();
-            cx.widget_action(widget_uid, &scope.path, StoreAction::ResetSearch);
+            cx.action(StoreAction::ResetSearch);
         }
     }
 }

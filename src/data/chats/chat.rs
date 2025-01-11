@@ -1,25 +1,34 @@
 use anyhow::{anyhow, Result};
-use makepad_widgets::SignalToUI;
+use makepad_widgets::Cx;
 use moly_backend::Backend;
+use moly_mofa::{MofaAgent, MofaClient};
 use moly_protocol::data::{File, FileID};
 use moly_protocol::open_ai::*;
 use moly_protocol::protocol::Command;
-use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread;
-
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::mpsc::{self, channel};
+use std::thread;
 
 use crate::data::filesystem::{read_from_file, write_to_file};
 
+use super::chat_entity::ChatEntityId;
 use super::model_loader::ModelLoader;
 
 pub type ChatID = u128;
 
-#[derive(Clone, Debug)]
-pub enum ChatTokenArrivalAction {
-    AppendDelta(String),
-    StreamingDone,
+#[derive(Debug)]
+pub struct ChatEntityAction {
+    pub chat_id: ChatID,
+    kind: ChatEntityActionKind,
+}
+
+#[derive(Debug)]
+enum ChatEntityActionKind {
+    ModelAppendDelta(String),
+    ModelStreamingDone,
+    MofaAgentResult(String),
+    MofaAgentCancelled,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -27,6 +36,7 @@ pub struct ChatMessage {
     pub id: usize,
     pub role: Role,
     pub username: Option<String>,
+    pub entity: Option<ChatEntityId>,
     pub content: String,
 }
 
@@ -43,10 +53,19 @@ enum TitleState {
     Updated,
 }
 
+#[derive(Debug, Default)]
+pub enum ChatState {
+    #[default]
+    Idle,
+    Receiving,
+    // The boolean indicates if the last message should be removed.
+    Cancelled(bool),
+}
+
 #[derive(Serialize, Deserialize)]
 struct ChatData {
     id: ChatID,
-    last_used_file_id: Option<FileID>,
+    associated_entity: Option<ChatEntityId>,
     system_prompt: Option<String>,
     messages: Vec<ChatMessage>,
     title: String,
@@ -54,6 +73,9 @@ struct ChatData {
     title_state: TitleState,
     #[serde(default)]
     accessed_at: chrono::DateTime<chrono::Utc>,
+
+    // Legacy field, it can be removed in the future.
+    last_used_file_id: Option<FileID>,
 }
 
 #[derive(Debug)]
@@ -85,11 +107,15 @@ impl Default for ChatInferenceParams {
 pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
-    pub last_used_file_id: Option<FileID>,
+
+    /// This is the model or agent that is currently "active" on the chat
+    /// For models it is the most recent model used or loaded in the context of this chat session.
+    /// For agents it is the agent that originated the chat.
+    pub associated_entity: Option<ChatEntityId>,
+
     pub messages: Vec<ChatMessage>,
-    pub messages_update_sender: Sender<ChatTokenArrivalAction>,
-    pub messages_update_receiver: Receiver<ChatTokenArrivalAction>,
     pub is_streaming: bool,
+    pub state: ChatState,
     pub inferences_params: ChatInferenceParams,
     pub system_prompt: Option<String>,
     pub accessed_at: chrono::DateTime<chrono::Utc>,
@@ -102,8 +128,6 @@ pub struct Chat {
 
 impl Chat {
     pub fn new(chats_dir: PathBuf) -> Self {
-        let (tx, rx) = channel();
-
         // Get Unix timestamp in ms for id.
         let id = chrono::Utc::now().timestamp_millis() as u128;
 
@@ -111,9 +135,8 @@ impl Chat {
             id,
             title: String::from("New Chat"),
             messages: vec![],
-            messages_update_sender: tx,
-            messages_update_receiver: rx,
-            last_used_file_id: None,
+            associated_entity: None,
+            state: ChatState::Idle,
             is_streaming: false,
             title_state: TitleState::default(),
             chats_dir,
@@ -124,20 +147,25 @@ impl Chat {
     }
 
     pub fn load(path: PathBuf, chats_dir: PathBuf) -> Result<Self> {
-        let (tx, rx) = channel();
-
         match read_from_file(path) {
             Ok(json) => {
                 let data: ChatData = serde_json::from_str(&json)?;
+
+                // Fallback to last_used_file_id if last_used_entity is None.
+                // Until this field is removed, we need to keep this logic.
+                let chat_entity = data.associated_entity.or_else(|| {
+                    data.last_used_file_id
+                        .map(|file_id| ChatEntityId::ModelFile(file_id))
+                });
+
                 let chat = Chat {
                     id: data.id,
-                    last_used_file_id: data.last_used_file_id,
+                    associated_entity: chat_entity,
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
+                    state: ChatState::Idle,
                     is_streaming: false,
-                    messages_update_sender: tx,
-                    messages_update_receiver: rx,
                     chats_dir,
                     inferences_params: ChatInferenceParams::default(),
                     system_prompt: data.system_prompt,
@@ -152,12 +180,15 @@ impl Chat {
     pub fn save(&self) {
         let data = ChatData {
             id: self.id,
-            last_used_file_id: self.last_used_file_id.clone(),
+            associated_entity: self.associated_entity.clone(),
             system_prompt: self.system_prompt.clone(),
             messages: self.messages.clone(),
             title: self.title.clone(),
             title_state: self.title_state,
             accessed_at: self.accessed_at,
+
+            // Legacy field, it can be removed in the future.
+            last_used_file_id: None,
         };
         let json = serde_json::to_string(&data).unwrap();
         let path = self.chats_dir.join(self.file_name());
@@ -207,6 +238,7 @@ impl Chat {
             }
         }
     }
+
     pub fn send_message_to_model(
         &mut self,
         prompt: String,
@@ -214,7 +246,6 @@ impl Chat {
         mut model_loader: ModelLoader,
         backend: &Backend,
     ) {
-        let (tx, rx) = channel();
         let mut messages: Vec<_> = self
             .messages
             .iter()
@@ -251,6 +282,8 @@ impl Chat {
             );
         }
 
+        let (tx, rx) = channel();
+
         let ip = &self.inferences_params;
         let cmd = Command::Chat(
             ChatRequestData {
@@ -284,6 +317,7 @@ impl Chat {
             id: next_id,
             role: Role::User,
             username: None,
+            entity: None,
             content: prompt.clone(),
         });
 
@@ -291,14 +325,15 @@ impl Chat {
             id: next_id + 1,
             role: Role::Assistant,
             username: Some(wanted_file.name.clone()),
+            entity: Some(ChatEntityId::ModelFile(wanted_file.id.clone())),
             content: "".to_string(),
         });
 
-        self.is_streaming = true;
+        self.state = ChatState::Receiving;
 
-        let store_chat_tx = self.messages_update_sender.clone();
         let wanted_file = wanted_file.clone();
         let command_sender = backend.command_sender.clone();
+        let chat_id = self.id;
         thread::spawn(move || {
             if let Err(err) = model_loader.load(wanted_file.id, command_sender.clone(), None) {
                 eprintln!("Error loading model: {}", err);
@@ -313,26 +348,39 @@ impl Chat {
                         Ok(ChatResponse::ChatResponseChunk(data)) => {
                             let mut is_done = false;
 
-                            let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
-                                data.choices[0].delta.content.clone(),
-                            ));
+                            Cx::post_action(ChatEntityAction {
+                                chat_id,
+                                kind: ChatEntityActionKind::ModelAppendDelta(
+                                    data.choices[0].delta.content.clone(),
+                                ),
+                            });
 
                             if let Some(_reason) = &data.choices[0].finish_reason {
                                 is_done = true;
-                                let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
+
+                                Cx::post_action(ChatEntityAction {
+                                    chat_id,
+                                    kind: ChatEntityActionKind::ModelStreamingDone,
+                                });
                             }
 
-                            SignalToUI::set_ui_signal();
                             if is_done {
                                 break;
                             }
                         }
                         Ok(ChatResponse::ChatFinalResponseData(data)) => {
-                            let _ = store_chat_tx.send(ChatTokenArrivalAction::AppendDelta(
-                                data.choices[0].message.content.clone(),
-                            ));
-                            let _ = store_chat_tx.send(ChatTokenArrivalAction::StreamingDone);
-                            SignalToUI::set_ui_signal();
+                            Cx::post_action(ChatEntityAction {
+                                chat_id,
+                                kind: ChatEntityActionKind::ModelAppendDelta(
+                                    data.choices[0].message.content.clone(),
+                                ),
+                            });
+
+                            Cx::post_action(ChatEntityAction {
+                                chat_id,
+                                kind: ChatEntityActionKind::ModelStreamingDone,
+                            });
+
                             break;
                         }
                         Err(err) => eprintln!("Error receiving response chunk: {:?}", err),
@@ -344,29 +392,96 @@ impl Chat {
         });
 
         self.update_title_based_on_first_message();
+        self.save();
+    }
+
+    pub fn send_message_to_agent(
+        &mut self,
+        agent: &MofaAgent,
+        prompt: String,
+        mofa_client: &MofaClient,
+    ) {
+        let (tx, rx) = mpsc::channel();
+        mofa_client.send_message_to_agent(&agent, &prompt, tx);
+
+        let next_id = self.messages.last().map(|m| m.id).unwrap_or(0) + 1;
+
+        self.messages.push(ChatMessage {
+            id: next_id,
+            role: Role::User,
+            username: None,
+            entity: None,
+            content: prompt,
+        });
+
+        self.messages.push(ChatMessage {
+            id: next_id + 1,
+            role: Role::Assistant,
+            username: Some(agent.name.clone()),
+            entity: Some(ChatEntityId::Agent(agent.id.clone())),
+            content: "".to_string(),
+        });
+
+        self.state = ChatState::Receiving;
+
+        let chat_id = self.id;
+        std::thread::spawn(move || '_loop: loop {
+            match rx.recv() {
+                Ok(moly_mofa::ChatResponse::ChatFinalResponseData(data)) => {
+                    let node_results = serde_json::from_str::<MofaAgentResponse>(&data.choices[0].message.content).unwrap();
+                    Cx::post_action(ChatEntityAction {
+                        chat_id,
+                        kind: ChatEntityActionKind::MofaAgentResult(
+                            node_results.node_results
+                        ),
+                    });
+
+                    break '_loop;
+                }
+                Err(e) => {
+                    println!("Error receiving response from agent: {:?}", e);
+                    Cx::post_action(ChatEntityAction {
+                        chat_id,
+                        kind: ChatEntityActionKind::MofaAgentCancelled,
+                    });
+
+                    break '_loop;
+                }
+            }
+        });
+
+        self.update_title_based_on_first_message();
+        self.save();
     }
 
     pub fn cancel_streaming(&mut self, backend: &Backend) {
+        if matches!(self.state, ChatState::Idle | ChatState::Cancelled(_)) {
+            return;
+        }
+
         let (tx, _rx) = channel();
         let cmd = Command::StopChatCompletion(tx);
         backend.command_sender.send(cmd).unwrap();
 
-        makepad_widgets::log!("Cancel streaming");
+        let message = self.messages.last_mut().unwrap();
+        if message.content.trim().is_empty() {
+            self.state = ChatState::Cancelled(true);
+            message.content = "Cancelling, please wait...".to_string();
+        } else {
+            self.state = ChatState::Cancelled(false);
+        }
     }
 
-    pub fn update_messages(&mut self) {
-        for msg in self.messages_update_receiver.try_iter() {
-            match msg {
-                ChatTokenArrivalAction::AppendDelta(response) => {
-                    let last = self.messages.last_mut().unwrap();
-                    last.content.push_str(&response);
-                }
-                ChatTokenArrivalAction::StreamingDone => {
-                    self.is_streaming = false;
-                }
-            }
-            self.save();
+    pub fn cancel_agent_interaction(&mut self, mofa_client: &MofaClient) {
+        if matches!(self.state, ChatState::Idle | ChatState::Cancelled(_)) {
+            return;
         }
+
+        mofa_client.cancel_task();
+
+        self.state = ChatState::Cancelled(true);
+        let message = self.messages.last_mut().unwrap();
+        message.content = "Cancelling, please wait...".to_string();
     }
 
     pub fn delete_message(&mut self, message_id: usize) {
@@ -391,4 +506,43 @@ impl Chat {
     pub fn update_accessed_at(&mut self) {
         self.accessed_at = chrono::Utc::now();
     }
+
+    pub fn is_receiving(&self) -> bool {
+        matches!(self.state, ChatState::Receiving)
+    }
+
+    pub fn was_cancelled(&self) -> bool {
+        matches!(self.state, ChatState::Cancelled(_))
+    }
+
+    pub fn handle_action(&mut self, action: &ChatEntityAction) {
+        match &action.kind {
+            ChatEntityActionKind::ModelAppendDelta(response) => {
+                let last = self.messages.last_mut().unwrap();
+                last.content.push_str(&response);
+            }
+            ChatEntityActionKind::ModelStreamingDone => {
+                self.is_streaming = false;
+                self.state = ChatState::Idle;
+            }
+            ChatEntityActionKind::MofaAgentResult(response) => {
+                let last = self.messages.last_mut().unwrap();
+                last.content = response.clone();
+                self.state = ChatState::Idle;
+            }
+            ChatEntityActionKind::MofaAgentCancelled => {
+                self.state = ChatState::Idle;
+                // Remove the last message sent by the user
+                self.messages.pop();
+            }
+        }
+        self.save();
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct MofaAgentResponse {
+    step_name: String,
+    node_results: String,
+    dataflow_status: bool,
 }

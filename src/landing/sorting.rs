@@ -2,11 +2,11 @@ use crate::data::{search::SortCriteria, store::StoreAction};
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
+    use crate::shared::styles::*;
 
     ModelsDropDown = <DropDown> {
         width: Fit
@@ -122,7 +122,7 @@ live_design! {
         }
     }
 
-    Sorting = {{Sorting}} {
+    pub Sorting = {{Sorting}} {
         width: Fit,
         height: Fit,
         align: {x: 0.5, y: 0.5},
@@ -175,9 +175,8 @@ impl WidgetMatchEvent for Sorting {
                 3 => SortCriteria::LeastLikes,
                 4_usize.. => panic!(),
             };
-
-            let widget_uid = self.widget_uid();
-            cx.widget_action(widget_uid, &scope.path, StoreAction::Sort(criteria));
+            
+            cx.action(StoreAction::Sort(criteria));
         }
     }
 }

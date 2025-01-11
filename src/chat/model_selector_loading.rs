@@ -1,13 +1,13 @@
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::landing::model_card::ModelCard;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::landing::model_card::ModelCard;
 
     ANIMATION_SPEED = 1.5;
 
@@ -45,7 +45,7 @@ live_design! {
         }
     }
 
-    ModelSelectorLoading = {{ModelSelectorLoading}} {
+    pub ModelSelectorLoading = {{ModelSelectorLoading}} {
         width: Fill,
         height: Fill,
         align: {x: 0, y: 1},

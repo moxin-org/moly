@@ -1,19 +1,21 @@
-use crate::shared::actions::ChatAction;
+use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
+use crate::data::chats::chat_entity::ChatEntityId;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
+use crate::shared::{actions::ChatAction, utils::human_readable_name};
 use makepad_widgets::*;
 use moly_protocol::data::{DownloadedFile, FileID};
-use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::modal::*;
-    import crate::my_models::model_info_modal::ModelInfoModal;
-    import crate::my_models::delete_model_modal::DeleteModelModal;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::modal::*;
+    use crate::my_models::model_info_modal::ModelInfoModal;
+    use crate::my_models::delete_model_modal::DeleteModelModal;
 
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
@@ -131,7 +133,7 @@ live_design! {
     }
 
 
-    DownloadedFilesRow = {{DownloadedFilesRow}} {
+    pub DownloadedFilesRow = {{DownloadedFilesRow}} {
         // This is necesary because we have a Modal widget inside this widget
         flow: Overlay,
         width: Fill,
@@ -250,12 +252,10 @@ impl Widget for DownloadedFilesRow {
 }
 
 impl WidgetMatchEvent for DownloadedFilesRow {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.widget_action(widget_uid, &scope.path, ChatAction::Start(file_id.clone()));
+                cx.action(ChatAction::Start(ChatEntityId::ModelFile(file_id.clone())));
             }
         }
 
@@ -286,29 +286,6 @@ impl DownloadedFilesRowRef {
         };
         inner.file_id = Some(file_id);
     }
-}
-
-/// Removes dashes, file extension, and capitalizes the first letter of each word.
-fn human_readable_name(name: &str) -> String {
-    let name = name
-        .to_lowercase()
-        .replace("-", " ")
-        .replace(".gguf", "")
-        .replace("chat", "");
-
-    let name = name
-        .split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first_char) => first_char.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(" ");
-
-    name
 }
 
 fn dash_if_empty(input: &str) -> &str {

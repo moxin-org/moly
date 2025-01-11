@@ -210,3 +210,24 @@ If you'd like to modify the .dmg background, here is the [Google Drawings file u
 [`.deb` (Debian dpkg)]: https://www.debian.org/doc/manuals/debian-faq/pkg-basics.en.html#package
 [AppImage]: https://appimage.org/
 [pacman]: https://pacman.archlinux.page/pacman.8.html
+
+# Mofa
+
+Currently, here in `dev` branch, Mofa is still in development. It's UI is hidden
+and its backend is faked by default. This can be changed by setting some
+provisional environment variables.
+
+To run Moly with Mofa UI enabled but still using the fake backend use:
+
+```sh
+MOFA_FRONTEND=visible cargo run
+```
+
+To also enable the backend use:
+
+```sh
+MOFA_FRONTEND=visible MOFA_BACKEND=real cargo run
+```
+
+> Note: Enabling the backend requires running Dora and configuring its URL in
+> Moly settings.
