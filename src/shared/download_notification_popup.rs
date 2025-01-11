@@ -228,6 +228,9 @@ pub struct DownloadNotificationPopup {
     file_id: Option<FileID>,
     #[rust]
     filename: String,
+
+    #[rust]
+    count: usize
 }
 
 impl Widget for DownloadNotificationPopup {
@@ -313,6 +316,35 @@ impl DownloadNotificationPopup {
             )),
         );
     }
+
+    pub fn show_retry_content(&mut self) {
+        self.view(id!(success_icon)).set_visible(false);
+        self.view(id!(failure_icon)).set_visible(true);
+
+        self.view(id!(success_actions)).set_visible(false);
+        self.view(id!(failure_actions)).set_visible(false);
+
+        self.label(id!(title))
+            .set_text("Retry");
+
+        match self.count {
+            0 => {
+                self.label(id!(summary)).set_text("Download interrupted. Will resume in 15 seconds.");
+                self.count += 1;
+            },
+            1 => {
+                self.label(id!(summary)).set_text("Download interrupted. Will resume in 30 seconds.");
+                self.count += 1;
+            },
+            2 => {
+                self.label(id!(summary)).set_text("Download interrupted. Will resume in 60 seconds.");
+                self.count += 1;
+            },
+            _ => {
+                self.count = 0;
+            }
+        }
+    }
 }
 
 impl DownloadNotificationPopupRef {
@@ -323,6 +355,12 @@ impl DownloadNotificationPopupRef {
             inner.download_result = download_result;
 
             inner.update_content();
+        }
+    }
+
+    pub fn set_retry_data(&mut self) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.show_retry_content();
         }
     }
 }

@@ -7,13 +7,13 @@ use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult,
-    PopupAction,
+    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use makepad_widgets::*;
 use markdown::MarkdownAction;
 use moly_mofa::MofaServerId;
+use moly_protocol::data::{File, FileID};
 
 live_design! {
     use link::theme::*;
@@ -142,6 +142,15 @@ pub struct App {
 
     #[rust]
     store: Store,
+
+    #[rust]
+    timer: Timer,
+
+    #[rust]
+    download_retry_attempts: usize,
+
+    #[rust]
+    file_id: Option<FileID>,
 }
 
 impl LiveRegister for App {
@@ -159,6 +168,16 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+
+        // It triggers when the timer expires.
+        if self.timer.is_event(event).is_some() {
+            if let Some(file_id) = &self.file_id {
+                let (model, file) = self.store.get_model_and_file_download(&file_id);
+                self.store.downloads.download_file(model, file);
+                self.ui.redraw(cx);
+            }
+        }
+
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
@@ -281,11 +300,36 @@ impl App {
                     cx.action(ModelSelectorListAction::AddedOrDeletedModel);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
-                    popup.set_data(&file, DownloadResult::Failure);
+                    self.file_id = Some((file.id).clone());
+                    self.start_retry_timeout(cx, popup, file);
                 }
             }
 
             self.ui.popup_notification(id!(popup_notification)).open(cx);
+        }
+    }
+
+    fn start_retry_timeout(&mut self, cx: &mut Cx, mut popup: DownloadNotificationPopupRef, file: File) {
+        match self.download_retry_attempts {
+            0 => {
+                self.timer = cx.start_timeout(15.0);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data();
+            },
+            1 => {
+                self.timer = cx.start_timeout(30.0);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data();
+            },
+            2 => {
+                self.timer = cx.start_timeout(60.0);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data();
+            },
+            _ => {
+                popup.set_data(&file, DownloadResult::Failure);
+                self.download_retry_attempts = 0;
+            }
         }
     }
 }
