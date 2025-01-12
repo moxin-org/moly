@@ -317,6 +317,8 @@ impl DownloadNotificationPopup {
     }
 
     pub fn show_retry_content(&mut self) {
+
+        let content = self.label(id!(summary));
         self.view(id!(success_icon)).set_visible(false);
         self.view(id!(failure_icon)).set_visible(true);
 
@@ -328,15 +330,15 @@ impl DownloadNotificationPopup {
 
         match self.count {
             0 => {
-                self.label(id!(summary)).set_text("retrying in 15 seconds.");
+                content.set_text("Download interrupted. Will resume in 15 seconds.");
                 self.count += 1;
             },
             1 => {
-                self.label(id!(summary)).set_text("retrying in 30 seconds.");
+                content.set_text("Download interrupted. Will resume in 30 seconds.");
                 self.count += 1;
             },
             2 => {
-                self.label(id!(summary)).set_text("retrying in 60 seconds.");
+                content.set_text("Download interrupted. Will resume in 60 seconds.");
                 self.count += 1;
             },
             _ => {

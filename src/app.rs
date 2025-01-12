@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::chats::{MoFaTestServerAction, MofaServerConnectionStatus};
@@ -171,6 +169,7 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        
         // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
             if let Some(file_id) = &self.file_id {
