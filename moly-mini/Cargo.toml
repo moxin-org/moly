@@ -1,8 +1,10 @@
 [package]
-name = "moly-widgets"
+name = "moly-mini"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+futures = "0.3.31"
 futures-core = "0.3.31"
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+moly-widgets = { path = "../moly-widgets" }

@@ -1,15 +1,19 @@
+use crate::protocol::*;
 use makepad_widgets::*;
-use moxin_mae::MaeAgent;
 
-use crate::chat::shared::ChatAgentAvatarWidgetRefExt;
+// use crate::chat::shared::ChatAgentAvatarWidgetRefExt;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import crate::shared::styles::*;
-    import crate::chat::chat_line_loading::ChatLineLoading;
-    import crate::chat::shared::ChatAgentAvatar;
-    import crate::battle::agent_markdown::AgentMarkdown;
+    // import makepad_widgets::base::*;
+    // import makepad_widgets::theme_desktop_dark::*;
+    // import crate::shared::styles::*;
+    // import crate::chat::chat_line_loading::ChatLineLoading;
+    // import crate::chat::shared::ChatAgentAvatar;
+    // import crate::battle::agent_markdown::AgentMarkdown;
+
+    use link::theme::*;
+    use link::widgets::*;
+
 
     Bubble = <RoundedView> {
         height: Fit,
@@ -29,7 +33,7 @@ live_design! {
             text = <Label> {
                 width: Fill,
                 draw_text: {
-                    text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+                    // text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
                     color: #fff
                 }
             }
@@ -43,27 +47,27 @@ live_design! {
             height: Fit,
             spacing: 8,
             align: {y: 0.5}
-            avatar = <ChatAgentAvatar> {}
+            // avatar = <ChatAgentAvatar> {}
             name = <Label> {
                 draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 10},
+                    // text_style: <BOLD_FONT>{font_size: 10},
                     color: #000
                 }
             }
         }
         bubble = <Bubble> {
             margin: {left: 16}
-            text = <AgentMarkdown> {}
+            // text = <AgentMarkdown> {}
         }
     }
 
     LoadingLine = <AgentLine> {
         bubble = {
-            text = <ChatLineLoading> {}
+            // text = <ChatLineLoading> {}
         }
     }
 
-    Messages = {{Messages}} {
+    pub Messages = {{Messages}} {
         flow: Down,
         width: Fill,
         height: Fill,
@@ -79,10 +83,9 @@ live_design! {
     }
 }
 
-pub enum Message {
-    User(String),
-    Agent(MaeAgent, String),
-    AgentWriting(MaeAgent),
+pub struct MessagesProps<'a> {
+    pub messages: &'a [Message],
+    pub bot_client: &'a dyn BotClient,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -91,7 +94,10 @@ pub struct Messages {
     view: View,
 
     #[rust]
-    messages: Vec<Message>,
+    pub messages: Vec<Message>,
+
+    #[rust]
+    pub bot_client: Option<Box<dyn BotClient>>,
 }
 
 impl Widget for Messages {
@@ -103,36 +109,45 @@ impl Widget for Messages {
         while let Some(widget) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = widget.as_portal_list().borrow_mut() {
                 list.set_item_range(cx, 0, self.messages.len());
+
                 while let Some(index) = list.next_visible_item(cx) {
                     if index >= self.messages.len() {
                         continue;
                     }
 
-                    match &self.messages[index] {
-                        Message::User(text) => {
-                            let item = list.item(cx, index, live_id!(UserLine)).unwrap();
-                            item.label(id!(text)).set_text(text);
-                            item.draw_all(cx, scope);
+                    let message = &self.messages[index];
+
+                    match message.from {
+                        EntityId::User => {
+                            let item = list.item(cx, index, live_id!(UserLine));
+                            item.label(id!(text)).set_text(&message.body);
+                            item.draw_all(cx, &mut Scope::empty());
                         }
-                        Message::Agent(agent, text) => {
-                            let item = list.item(cx, index, live_id!(AgentLine)).unwrap();
-                            item.chat_agent_avatar(id!(avatar)).set_agent(agent);
-                            item.label(id!(name)).set_text(&agent.name());
-                            // Workaround: Because I had to set `paragraph_spacing` to 0 in `AgentMarkdown`,
+                        EntityId::Bot(id) => {
+                            let bot = self
+                                .bot_client
+                                .as_ref()
+                                .expect("no bot client set")
+                                .get_bot(id);
+                            let name = bot.map(|b| b.name()).unwrap_or("Unknown bot");
+
+                            let item = list.item(cx, index, live_id!(AgentLine));
+                            // TODO: item.chat_agent_avatar(id!(avatar)).set_agent(agent);
+                            item.label(id!(name)).set_text(name);
+                            // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
                             // we need to add a "blank" line as a workaround.
                             //
                             // Warning: If you ever read the text from this widget and not
                             // from the list, you should remove the unicode character.
                             item.label(id!(text))
-                                .set_text(&text.replace("\n\n", "\n\n\u{00A0}\n\n"));
-                            item.draw_all(cx, scope);
-                        }
-                        Message::AgentWriting(agent) => {
-                            let item = list.item(cx, index, live_id!(LoadingLine)).unwrap();
-                            item.chat_agent_avatar(id!(avatar)).set_agent(agent);
-                            item.label(id!(name)).set_text(&agent.name());
-                            item.draw_all(cx, scope);
-                        }
+                                .set_text(&message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                            item.draw_all(cx, &mut Scope::empty());
+                        } // Message::AgentWriting(agent) => {
+                          //     let item = list.item(cx, index, live_id!(LoadingLine));
+                          //     item.chat_agent_avatar(id!(avatar)).set_agent(agent);
+                          //     item.label(id!(name)).set_text(&agent.name());
+                          //     item.draw_all(cx, scope);
+                          // }
                     }
                 }
             }
@@ -143,38 +158,16 @@ impl Widget for Messages {
 }
 
 impl Messages {
-    pub fn add_message(&mut self, message: Message) {
-        if let Some(Message::AgentWriting(_)) = self.messages.last() {
-            self.messages.pop();
-        }
-
-        self.messages.push(message);
-    }
-
     pub fn scroll_to_bottom(&self, cx: &mut Cx) {
         self.portal_list(id!(list))
-            .smooth_scroll_to_end(cx, 10, 80.0);
-    }
-
-    pub fn len(&self) -> usize {
-        self.messages.len()
+            .smooth_scroll_to_end(cx, 10., Some(80));
     }
 }
 
 impl MessagesRef {
-    pub fn add_message(&self, message: Message) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.add_message(message);
-        }
-    }
-
     pub fn scroll_to_bottom(&self, cx: &mut Cx) {
         if let Some(inner) = self.borrow() {
             inner.scroll_to_bottom(cx);
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.borrow().map(|inner| inner.len()).unwrap_or(0)
     }
 }
