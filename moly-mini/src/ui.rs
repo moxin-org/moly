@@ -11,13 +11,25 @@ live_design!(
 
     use moly_widgets::messages::Messages;
 
-    pub Ui = {{Ui}} {
+    pub Ui = {{Ui}} <Window> {
         align: {x: 0.5, y: 0.5}
-        show_bg: true,
-        draw_bg: {
-            color: #fff
+        pass: { clear_color: #fff }
+
+        caption_bar = {
+            caption_label = {
+                label = <Label> {
+                    text: "moly-mini"
+                    draw_text: {
+                        color: #000
+                    }
+                }
+            }
+
+            visible: true,
         }
+
         body = <View> {
+            padding: 12,
             messages = <Messages> {}
         }
     }
