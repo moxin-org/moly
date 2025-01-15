@@ -5,7 +5,7 @@ use std::future::Future;
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
-pub enum Avatar {
+pub enum Picture {
     // TODO: could be reduced to avoid allocation
     Grapheme(String),
     Image(String),
@@ -28,7 +28,7 @@ pub trait Bot {
     fn name(&self) -> &str;
 
     /// The avatar of this bot. Read `Avatar` documentation for more information.
-    fn avatar(&self) -> &Avatar;
+    fn avatar(&self) -> &Picture;
 }
 
 /// Indentifies any kind of bot, local or remote, model or agent, whatever.

@@ -1,4 +1,4 @@
-use crate::protocol::*;
+use crate::{avatar::AvatarWidgetRefExt, protocol::*};
 use makepad_widgets::*;
 
 // use crate::chat::shared::ChatAgentAvatarWidgetRefExt;
@@ -15,6 +15,7 @@ live_design! {
     use link::widgets::*;
 
     use crate::message_markdown::*;
+    use crate::avatar::*;
 
 
     Bubble = <RoundedView> {
@@ -49,7 +50,7 @@ live_design! {
             height: Fit,
             spacing: 8,
             align: {y: 0.5}
-            // avatar = <ChatAgentAvatar> {}
+            avatar = <Avatar> {}
             name = <Label> {
                 draw_text:{
                     // text_style: <BOLD_FONT>{font_size: 10},
@@ -131,7 +132,9 @@ impl Widget for Messages {
                                 .as_ref()
                                 .expect("no bot client set")
                                 .get_bot(id);
+
                             let name = bot.map(|b| b.name()).unwrap_or("Unknown bot");
+                            let avatar = bot.map(|b| b.avatar().clone());
 
                             let item = list.item(cx, index, live_id!(BotLine));
                             // TODO: item.chat_agent_avatar(id!(avatar)).set_agent(agent);
@@ -143,6 +146,8 @@ impl Widget for Messages {
                             // from the list, you should remove the unicode character.
                             item.label(id!(text))
                                 .set_text(&message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+
+                            item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                             item.draw_all(cx, &mut Scope::empty());
                         } // Message::AgentWriting(agent) => {
                           //     let item = list.item(cx, index, live_id!(LoadingLine));

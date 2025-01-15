@@ -55,7 +55,7 @@ impl LiveHook for Ui {
 
         messages.borrow_mut().unwrap().bot_client = Some(Box::new(DummyBotClient {
             bots: vec![DummyBot {
-                avatar: Avatar::Grapheme("🤖".to_string()),
+                avatar: Picture::Grapheme("D".to_string()),
             }],
         }));
     }
@@ -63,7 +63,7 @@ impl LiveHook for Ui {
 
 #[derive(Clone)]
 struct DummyBot {
-    avatar: Avatar,
+    avatar: Picture,
 }
 
 impl Bot for DummyBot {
@@ -75,7 +75,7 @@ impl Bot for DummyBot {
         "Dummy Bot"
     }
 
-    fn avatar(&self) -> &Avatar {
+    fn avatar(&self) -> &Picture {
         &self.avatar
     }
 }
