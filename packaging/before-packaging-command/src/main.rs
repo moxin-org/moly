@@ -171,13 +171,26 @@ fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
     // Command 1: Create the destination directory.
     let dest_dir = std::env::current_dir()?.join("wasmedge");
     fs::create_dir_all(&dest_dir)?;
-
+    #[cfg(target_arch = "x86_64")]
+    let suffix = "x86_64";
+    #[cfg(target_arch = "aarch64")]
+    let suffix = "arm64";
+    let (wasmedge_download_url, wasi_nn_download_url) = (
+    format!(
+        "https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-{}-darwin_{}.tar.gz",
+        version, version, suffix
+    ),
+    format!(
+        "https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-plugin-wasi_nn-ggml-{}-darwin_{}.tar.gz",
+        version, version, suffix
+    ),
+    );
     // Command 2: Download and extract WasmEdge.
     {
         println!("Downloading wasmedge v{version} to: {}", dest_dir.display());
         let curl_script_cmd = Command::new("curl")
             .arg("-sSfL")
-            .arg("https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-darwin_arm64.tar.gz")
+            .arg(wasmedge_download_url)
             .stdout(Stdio::piped())
             .spawn()?;
 
@@ -209,7 +222,7 @@ fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
         println!("Downloading wasmedge v{version} WASI-NN plugin to: {}", plugin_dest_dir.display());
         let curl_script_cmd = Command::new("curl")
             .arg("-sSfL")
-            .arg("https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-darwin_arm64.tar.gz")
+            .arg(wasi_nn_download_url)
             .stdout(Stdio::piped())
             .spawn()?;
 
