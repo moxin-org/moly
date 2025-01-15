@@ -46,10 +46,17 @@ impl LiveHook for Ui {
             Message {
                 from: EntityId::User,
                 body: "Hello, world!".to_string(),
+                is_writing: false,
             },
             Message {
                 from: EntityId::Bot(BotId::from("bot")),
                 body: "Hello, bot!".to_string(),
+                is_writing: false,
+            },
+            Message {
+                from: EntityId::Bot(BotId::from("bot")),
+                body: "".to_string(),
+                is_writing: true,
             },
         ];
 
