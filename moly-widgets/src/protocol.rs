@@ -80,6 +80,7 @@ pub struct Message {
 pub trait BotClient {
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
+    // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.
     fn send(&mut self, bot: BotId, message: &str) -> Box<dyn Future<Output = Result<String, ()>>>;
 
     /// Send a message to a bot expecting a streamed response.
