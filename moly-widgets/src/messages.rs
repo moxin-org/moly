@@ -14,6 +14,8 @@ live_design! {
     use link::theme::*;
     use link::widgets::*;
 
+    use crate::message_markdown::*;
+
 
     Bubble = <RoundedView> {
         height: Fit,
@@ -40,7 +42,7 @@ live_design! {
         }
     }
 
-    AgentLine = <View> {
+    BotLine = <View> {
         flow: Down,
         height: Fit,
         sender = <View> {
@@ -57,11 +59,11 @@ live_design! {
         }
         bubble = <Bubble> {
             margin: {left: 16}
-            // text = <AgentMarkdown> {}
+            text = <MessageMarkdown> {}
         }
     }
 
-    LoadingLine = <AgentLine> {
+    LoadingLine = <BotLine> {
         bubble = {
             // text = <ChatLineLoading> {}
         }
@@ -77,7 +79,7 @@ live_design! {
                 bar_size: 0.0,
             }
             UserLine = <UserLine> {}
-            AgentLine = <AgentLine> {}
+            BotLine = <BotLine> {}
             LoadingLine = <LoadingLine> {}
         }
     }
@@ -131,7 +133,7 @@ impl Widget for Messages {
                                 .get_bot(id);
                             let name = bot.map(|b| b.name()).unwrap_or("Unknown bot");
 
-                            let item = list.item(cx, index, live_id!(AgentLine));
+                            let item = list.item(cx, index, live_id!(BotLine));
                             // TODO: item.chat_agent_avatar(id!(avatar)).set_agent(agent);
                             item.label(id!(name)).set_text(name);
                             // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
