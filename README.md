@@ -41,7 +41,7 @@ git clone https://github.com/moxin-org/moly.git
 Install the required WasmEdge WASM runtime (or use [`moly-runner`](#tip-use-moly-runner-for-easy-setup)):
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
 
 source $HOME/.wasmedge/env
 ```
@@ -58,7 +58,7 @@ cargo run --release
 Install the required WasmEdge WASM runtime (or use [`moly-runner`](#tip-use-moly-runner-for-easy-setup)):
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
 
 source $HOME/.wasmedge/env
 ```
