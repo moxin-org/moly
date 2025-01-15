@@ -159,24 +159,24 @@ fn wasmedge_wasi_nn_plugin_url() -> (&'static str, &'static str) {
     // Currently, WasmEdge's b3499 release only provides a CUDA 12 build for Windows.
     if matches!(get_cuda_version(), Some(CudaVersion::V12)) {
         return (
-            "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.1-windows_x86_64.zip",
-            "WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.1-windows_x86_64",
+            "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64.zip",
+            "WasmEdge-plugin-wasi_nn-ggml-cuda-0.14.0-windows_x86_64",
         );
     }
 
     #[cfg(target_arch = "x86_64")]
     if is_x86_feature_detected!("avx512f") {
         return (
-            "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-0.14.1-windows_x86_64.zip",
-            "WasmEdge-plugin-wasi_nn-ggml-0.14.1-windows_x86_64",
+            "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64.zip",
+            "WasmEdge-plugin-wasi_nn-ggml-0.14.0-windows_x86_64",
         );
     }
 
     // Currently, the only other option is the no-AVX build, which still requires SSE4.2 or SSE4a.
     // When WasmEdge releases additional builds, we can add them here.
     (
-        "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.1-windows_x86_64.zip",
-        "WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.1-windows_x86_64",
+        "https://github.com/second-state/WASI-NN-GGML-PLUGIN-REGISTRY/releases/download/b3499/WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64.zip",
+        "WasmEdge-plugin-wasi_nn-ggml-noavx-0.14.0-windows_x86_64",
     )
 }
 
