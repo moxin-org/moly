@@ -61,6 +61,12 @@ pub struct Message {
     pub from: EntityId,
     /// Content of the message.
     pub body: String,
+    /// If this message is still being written.
+    ///
+    /// This means the message is still going to be modified.
+    ///
+    /// If `false`, it means the message will not change anymore.
+    pub is_writing: bool,
 }
 
 /// An interface to talk to bots.
@@ -84,6 +90,8 @@ pub trait BotClient {
     ) -> Box<dyn Stream<Item = Result<String, ()>>>;
 
     /// Interrupt the bot's current operation.
+    // TODO: There may be many chats with the same bot/model/agent so maybe this
+    // should be implemented by using cancellation tokens.
     fn stop(&mut self, bot: BotId);
 
     /// Bots available under this client.

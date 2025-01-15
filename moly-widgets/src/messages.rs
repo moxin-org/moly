@@ -1,4 +1,4 @@
-use crate::{avatar::AvatarWidgetRefExt, protocol::*};
+use crate::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt, protocol::*};
 use makepad_widgets::*;
 
 // use crate::chat::shared::ChatAgentAvatarWidgetRefExt;
@@ -15,6 +15,7 @@ live_design! {
     use link::widgets::*;
 
     use crate::message_markdown::*;
+    use crate::message_loading::*;
     use crate::avatar::*;
 
 
@@ -66,7 +67,7 @@ live_design! {
 
     LoadingLine = <BotLine> {
         bubble = {
-            // text = <ChatLineLoading> {}
+            text = <MessageLoading> {}
         }
     }
 
@@ -136,25 +137,36 @@ impl Widget for Messages {
                             let name = bot.map(|b| b.name()).unwrap_or("Unknown bot");
                             let avatar = bot.map(|b| b.avatar().clone());
 
-                            let item = list.item(cx, index, live_id!(BotLine));
-                            // TODO: item.chat_agent_avatar(id!(avatar)).set_agent(agent);
-                            item.label(id!(name)).set_text(name);
-                            // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
-                            // we need to add a "blank" line as a workaround.
-                            //
-                            // Warning: If you ever read the text from this widget and not
-                            // from the list, you should remove the unicode character.
-                            item.label(id!(text))
-                                .set_text(&message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                            let item = if message.is_writing && message.body.is_empty() {
+                                let item = list.item(cx, index, live_id!(LoadingLine));
+
+                                item.message_loading(id!(text)).animate(cx);
+
+                                item
+                            } else {
+                                let item = list.item(cx, index, live_id!(BotLine));
+                                // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
+                                // we need to add a "blank" line as a workaround.
+                                //
+                                // Warning: If you ever read the text from this widget and not
+                                // from the list, you should remove the unicode character.
+                                item.label(id!(text))
+                                    .set_text(&message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+
+                                item
+                            };
 
                             item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
+                            item.label(id!(name)).set_text(name);
                             item.draw_all(cx, &mut Scope::empty());
-                        } // Message::AgentWriting(agent) => {
-                          //     let item = list.item(cx, index, live_id!(LoadingLine));
-                          //     item.chat_agent_avatar(id!(avatar)).set_agent(agent);
-                          //     item.label(id!(name)).set_text(&agent.name());
-                          //     item.draw_all(cx, scope);
-                          // }
+
+                            // Message::AgentWriting(agent) => {
+                            //     let item = list.item(cx, index, live_id!(LoadingLine));
+                            //     item.chat_agent_avatar(id!(avatar)).set_agent(agent);
+                            //     item.label(id!(name)).set_text(&agent.name());
+                            //     item.draw_all(cx, scope);
+                            // }
+                        }
                     }
                 }
             }
