@@ -137,8 +137,8 @@ bins = ["/usr/bin/curl"]
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
 frameworks = [
-    "./wasmedge/WasmEdge-0.14.0-Darwin/lib/libwasmedge.0.dylib",
-    "./wasmedge/WasmEdge-0.14.0-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
+    "./wasmedge/WasmEdge-0.14.1-Darwin/lib/libwasmedge.0.dylib",
+    "./wasmedge/WasmEdge-0.14.1-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
 ]
 
 
