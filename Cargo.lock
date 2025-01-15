@@ -1901,6 +1901,7 @@ name = "moly-widgets"
 version = "0.1.0"
 dependencies = [
  "futures-core",
+ "makepad-code-editor",
  "makepad-widgets",
 ]
 

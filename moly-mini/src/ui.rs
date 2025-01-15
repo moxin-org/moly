@@ -13,6 +13,10 @@ live_design!(
 
     pub Ui = {{Ui}} {
         align: {x: 0.5, y: 0.5}
+        show_bg: true,
+        draw_bg: {
+            color: #fff
+        }
         body = <View> {
             messages = <Messages> {}
         }

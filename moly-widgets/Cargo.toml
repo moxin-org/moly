@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
 futures-core = "0.3.31"
