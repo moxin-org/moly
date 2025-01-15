@@ -138,7 +138,7 @@ jobs:
       - name: Set up Windows 10 SDK
         uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         with:
-          sdk-version: 19041
+          sdk-version: 20348
 
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
