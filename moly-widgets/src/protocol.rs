@@ -96,9 +96,13 @@ pub trait BotClient {
     fn stop(&mut self, bot: BotId);
 
     /// Bots available under this client.
+    // TODO: Should be a stream actually?
     fn bots(&self) -> Box<dyn Iterator<Item = &dyn Bot> + '_>;
 
     /// Get a bot by its id.
+    // TODO: What if you want to pull remote to get this? What if you don't have
+    // it inside the struct? Would make sense to return something owned and async?
+    // Would make sense for `Bot` to be a trait instead of just a data struct?
     fn get_bot(&self, id: BotId) -> Option<&dyn Bot>;
 
     /// Get a bot by its id mutably.

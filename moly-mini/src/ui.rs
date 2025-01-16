@@ -10,6 +10,7 @@ live_design!(
     use link::widgets::*;
 
     use moly_widgets::messages::Messages;
+    use moly_widgets::prompt_input::PromptInput;
 
     pub Ui = {{Ui}} <Window> {
         align: {x: 0.5, y: 0.5}
@@ -29,8 +30,10 @@ live_design!(
         }
 
         body = <View> {
+            flow: Down,
             padding: 12,
             messages = <Messages> {}
+            prompt = <PromptInput> {}
         }
     }
 );
