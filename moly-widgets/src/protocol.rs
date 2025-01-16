@@ -2,6 +2,7 @@
 use futures_core::Stream;
 use makepad_widgets::LiveValue;
 use std::future::Future;
+use std::sync::Arc;
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
@@ -93,20 +94,17 @@ pub trait BotClient {
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
     // should be implemented by using cancellation tokens.
-    fn stop(&mut self, bot: BotId);
+    // fn stop(&mut self, bot: BotId);
 
     /// Bots available under this client.
     // TODO: Should be a stream actually?
-    fn bots(&self) -> Box<dyn Iterator<Item = &dyn Bot> + '_>;
+    fn bots(&self) -> Box<dyn Stream<Item = Result<Arc<dyn Bot>, ()>>>;
 
     /// Get a bot by its id.
     // TODO: What if you want to pull remote to get this? What if you don't have
     // it inside the struct? Would make sense to return something owned and async?
     // Would make sense for `Bot` to be a trait instead of just a data struct?
-    fn get_bot(&self, id: BotId) -> Option<&dyn Bot>;
-
-    /// Get a bot by its id mutably.
-    fn get_bot_mut(&mut self, id: BotId) -> Option<&mut dyn Bot>;
+    fn get_bot(&self, id: BotId) -> Box<dyn Future<Output = Result<Arc<dyn Bot>, ()>>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
