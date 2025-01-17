@@ -89,7 +89,7 @@ live_design! {
 
 pub struct MessagesProps<'a> {
     pub messages: &'a [Message],
-    pub bot_client: &'a dyn BotClient,
+    pub bot_client: &'a dyn BotRepo,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -101,7 +101,7 @@ pub struct Messages {
     pub messages: Vec<Message>,
 
     #[rust]
-    pub bot_client: Option<Box<dyn BotClient>>,
+    pub bot_client: Option<Box<dyn BotRepo>>,
 }
 
 impl Widget for Messages {
@@ -134,8 +134,11 @@ impl Widget for Messages {
                                 .expect("no bot client set")
                                 .get_bot(id);
 
-                            let name = bot.map(|b| b.name()).unwrap_or("Unknown bot");
-                            let avatar = bot.map(|b| b.avatar().clone());
+                            let name = bot
+                                .as_ref()
+                                .map(|b| b.name.as_str())
+                                .unwrap_or("Unknown bot");
+                            let avatar = bot.as_ref().map(|b| b.avatar.clone());
 
                             let item = if message.is_writing && message.body.is_empty() {
                                 let item = list.item(cx, index, live_id!(LoadingLine));

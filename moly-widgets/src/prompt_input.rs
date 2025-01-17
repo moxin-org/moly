@@ -71,8 +71,12 @@ pub struct PromptInput {
 }
 
 impl Widget for PromptInput {
+    fn set_text(&mut self, v: &str) {
+        self.deref.set_text(v);
+    }
+
     fn text(&self) -> String {
-        self.text_input(id!(input)).text()
+        self.deref.text()
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {

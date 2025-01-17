@@ -3,6 +3,9 @@ use std::future::Future;
 use futures_core::Stream;
 use makepad_widgets::*;
 use moly_widgets::*;
+use prompt_input::PromptInputWidgetExt;
+
+use crate::clients::moly::MolyRepo;
 
 live_design!(
     use link::theme::*;
@@ -18,11 +21,21 @@ live_design!(
 
         caption_bar = {
             caption_label = {
-                label = <Label> {
-                    text: "moly-mini"
-                    draw_text: {
-                        color: #000
+                // remove the default label
+                label = <Label> {}
+                <View> {
+                    width: Fill,
+                    align: {x: 0.5, y: 0.5},
+                    <Label> {
+                        text: "moly-mini"
+                        draw_text: {
+                            color: #000
+                        }
                     }
+                }
+                port = <TextInput> {
+                    width: 100,
+                    empty_message: "Port..."
                 }
             }
 
@@ -42,11 +55,23 @@ live_design!(
 pub struct Ui {
     #[deref]
     deref: Window,
+
+    #[rust]
+    bot_client: MolyRepo,
 }
 
 impl Widget for Ui {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
+
+        let Event::Actions(actions) = event else {
+            return;
+        };
+
+        if self.prompt_input(id!(prompt)).submitted(actions) {
+            self.handle_submit();
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -57,6 +82,10 @@ impl Widget for Ui {
 impl LiveHook for Ui {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         let messages = self.messages(id!(messages));
+
+        messages.borrow_mut().unwrap().bot_client =
+            Some(Box::new(crate::clients::moly::MolyRepo::default()));
+
         messages.borrow_mut().unwrap().messages = vec![
             Message {
                 from: EntityId::User,
@@ -68,81 +97,48 @@ impl LiveHook for Ui {
                 body: "Hello, bot!".to_string(),
                 is_writing: false,
             },
-            Message {
-                from: EntityId::Bot(BotId::from("bot")),
-                body: "".to_string(),
-                is_writing: true,
-            },
         ];
-
-        messages.borrow_mut().unwrap().bot_client = Some(Box::new(DummyBotClient {
-            bots: vec![DummyBot {
-                avatar: Picture::Grapheme("D".to_string()),
-            }],
-        }));
     }
 }
 
-#[derive(Clone)]
-struct DummyBot {
-    avatar: Picture,
-}
+impl Ui {
+    fn handle_submit(&self) {
+        let rt = tokio::runtime::Handle::current();
+        let mut client = self.bot_client.clone();
+        let text = self.prompt_input(id!(prompt)).text();
+        let ui = self.ui_runner();
 
-impl Bot for DummyBot {
-    fn id(&self) -> BotId {
-        BotId::from("bot")
-    }
+        client.port = self.text_input(id!(port)).text().parse().unwrap_or(0);
 
-    fn name(&self) -> &str {
-        "Dummy Bot"
-    }
+        self.messages(id!(messages))
+            .borrow_mut()
+            .unwrap()
+            .messages
+            .push(Message {
+                from: EntityId::User,
+                body: text.clone(),
+                is_writing: false,
+            });
 
-    fn avatar(&self) -> &Picture {
-        &self.avatar
-    }
-}
+        rt.spawn(async move {
+            let result = client
+                .send(BotId::from("moly"), &text)
+                .await
+                .unwrap_or_else(|_| "An error occurred".to_string());
 
-#[derive(Clone)]
-struct DummyBotClient {
-    bots: Vec<DummyBot>,
-}
+            ui.defer_with_redraw(|me, _cx, _scope| {
+                me.messages(id!(messages))
+                    .borrow_mut()
+                    .unwrap()
+                    .messages
+                    .push(Message {
+                        from: EntityId::Bot(BotId::from("moly")),
+                        body: result,
+                        is_writing: false,
+                    });
 
-impl BotClient for DummyBotClient {
-    fn get_bot(&self, id: BotId) -> Option<&dyn Bot> {
-        self.bots
-            .iter()
-            .find(|bot| bot.id() == id)
-            .map(|bot| bot as &dyn Bot)
-    }
-
-    fn get_bot_mut(&mut self, id: BotId) -> Option<&mut dyn Bot> {
-        self.bots
-            .iter_mut()
-            .find(|bot| bot.id() == id)
-            .map(|bot| bot as &mut dyn Bot)
-    }
-
-    fn send(&mut self, bot: BotId, message: &str) -> Box<dyn Future<Output = Result<String, ()>>> {
-        Box::new(async move { Ok("Hello, world!".to_string()) })
-    }
-
-    fn send_stream(
-        &mut self,
-        bot: BotId,
-        message: &str,
-    ) -> Box<dyn Stream<Item = Result<String, ()>>> {
-        Box::new(futures::stream::iter(vec![Ok("Hello, world!".to_string())]))
-    }
-
-    fn stop(&mut self, bot: BotId) {
-        unimplemented!()
-    }
-
-    fn bots(&self) -> Box<dyn Iterator<Item = &dyn Bot> + '_> {
-        Box::new(self.bots.iter().map(|bot| bot as &dyn Bot))
-    }
-
-    fn clone_box(&self) -> Box<dyn BotClient> {
-        Box::new(self.clone())
+                me.prompt_input(id!(prompt)).set_text("");
+            });
+        });
     }
 }

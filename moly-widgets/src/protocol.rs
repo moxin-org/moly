@@ -1,8 +1,6 @@
 // This is the stream type re-exported by tokio, reqwest and futures.
-use futures_core::Stream;
+use futures_core::{future::BoxFuture, stream::BoxStream};
 use makepad_widgets::LiveValue;
-use std::future::Future;
-
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Picture {
@@ -20,15 +18,11 @@ pub enum EntityId {
     Bot(BotId),
 }
 
-pub trait Bot {
-    /// Identifier for this bot. Read `BotId` documentation for more information.
-    fn id(&self) -> BotId;
-
-    /// The human-readable name of this bot.
-    fn name(&self) -> &str;
-
-    /// The avatar of this bot. Read `Avatar` documentation for more information.
-    fn avatar(&self) -> &Picture;
+#[derive(Clone, PartialEq, Debug)]
+pub struct Bot {
+    pub id: BotId,
+    pub name: String,
+    pub avatar: Picture,
 }
 
 /// Indentifies any kind of bot, local or remote, model or agent, whatever.
@@ -77,37 +71,30 @@ pub struct Message {
 ///
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
-pub trait BotClient {
+pub trait BotRepo {
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
     // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.
-    fn send(&mut self, bot: BotId, message: &str) -> Box<dyn Future<Output = Result<String, ()>>>;
+    fn send(&mut self, bot: BotId, message: &str) -> BoxFuture<Result<String, ()>>;
 
     /// Send a message to a bot expecting a streamed response.
-    fn send_stream(
-        &mut self,
-        bot: BotId,
-        message: &str,
-    ) -> Box<dyn Stream<Item = Result<String, ()>>>;
+    fn send_stream(&mut self, bot: BotId, message: &str) -> BoxStream<Result<String, ()>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
     // should be implemented by using cancellation tokens.
-    fn stop(&mut self, bot: BotId);
+    // fn stop(&mut self, bot: BotId);
 
     /// Bots available under this client.
     // TODO: Should be a stream actually?
-    fn bots(&self) -> Box<dyn Iterator<Item = &dyn Bot> + '_>;
+    fn bots(&self) -> Box<dyn Iterator<Item = Bot>>;
 
     /// Get a bot by its id.
     // TODO: What if you want to pull remote to get this? What if you don't have
     // it inside the struct? Would make sense to return something owned and async?
     // Would make sense for `Bot` to be a trait instead of just a data struct?
-    fn get_bot(&self, id: BotId) -> Option<&dyn Bot>;
-
-    /// Get a bot by its id mutably.
-    fn get_bot_mut(&mut self, id: BotId) -> Option<&mut dyn Bot>;
+    fn get_bot(&self, id: BotId) -> Option<Bot>;
 
     /// Make a boxed dynamic clone of this client to pass around.
-    fn clone_box(&self) -> Box<dyn BotClient>;
+    fn clone_box(&self) -> Box<dyn BotRepo>;
 }
