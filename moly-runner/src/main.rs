@@ -434,10 +434,10 @@ fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std:
         r#"
         $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
         Invoke-WebRequest -Uri "{WASMEDGE_0_14_0_WINDOWS_URL}" -OutFile "$env:TEMP\WasmEdge-0.14.0-windows.zip"
-        Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath "{}"
+        Microsoft.PowerShell.Archive\Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath "{}"
 
         Invoke-WebRequest -Uri "{wasi_nn_plugin_url}" -OutFile "$env:TEMP\{wasi_nn_dir_name}.zip"
-        Expand-Archive -Force -Path "$env:TEMP\{wasi_nn_dir_name}.zip" -DestinationPath "$env:TEMP\{wasi_nn_dir_name}"
+        Microsoft.PowerShell.Archive\Expand-Archive -Force -Path "$env:TEMP\{wasi_nn_dir_name}.zip" -DestinationPath "$env:TEMP\{wasi_nn_dir_name}"
         Copy-Item -Recurse -Force -Path "$env:TEMP\{wasi_nn_dir_name}\{wasi_nn_dir_name}\lib\wasmedge" -Destination "{}"
         $ProgressPreference = 'Continue' ## restore default progress bars
         "#,
