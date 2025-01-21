@@ -163,9 +163,9 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
 /// This function effectively runs the following shell commands:
 /// ```sh
 ///    mkdir -p ./wasmedge \
-///    && curl -sfL --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge \
-///    && mkdir -p ./wasmedge/WasmEdge-0.14.0-Darwin/plugin \
-///    && curl -sf --location --progress-bar --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-plugin-wasi_nn-ggml-0.14.0-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge/WasmEdge-0.14.0-Darwin/plugin; \
+///    && curl -sfL --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-0.14.1-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge \
+///    && mkdir -p ./wasmedge/WasmEdge-0.14.1-Darwin/plugin \
+///    && curl -sf --location --progress-bar --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-plugin-wasi_nn-ggml-0.14.1-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge/WasmEdge-0.14.1-Darwin/plugin; \
 /// ```
 fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
     // Command 1: Create the destination directory.
@@ -214,7 +214,7 @@ fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
     }
 
     // Command 3: Create the plugin destination directory.
-    let plugin_dest_dir = dest_dir.join("WasmEdge-0.14.0-Darwin").join("plugin");
+    let plugin_dest_dir = dest_dir.join("WasmEdge-0.14.1-Darwin").join("plugin");
     fs::create_dir_all(&plugin_dest_dir)?;
     
     // Command 4: Download and extract the Wasi-NN plugin.

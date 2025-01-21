@@ -35,7 +35,7 @@ jobs:
 
       - name: Install WasmEdge
         run: |
-          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
           source $HOME/.wasmedge/env
       - name: Install dependencies
         run: |
@@ -69,7 +69,7 @@ jobs:
 
       - name: Install WasmEdge
         run: |
-          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
           source $HOME/.wasmedge/env
 
       - name: Install Rust-stable
@@ -92,7 +92,7 @@ jobs:
       matrix:
         rust: [1.79]
     env:
-      WASMEDGE_DIR: ${{ github.workspace }}\WasmEdge-0.14.0-Windows
+      WASMEDGE_DIR: ${{ github.workspace }}\WasmEdge-0.14.1-Windows
     steps:
       - name: Display ENV
         run: |
@@ -104,8 +104,8 @@ jobs:
       - name: Download WasmEdge
         run: |
           $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip" -OutFile "WasmEdge-0.14.0-windows.zip"
-          Expand-Archive -LiteralPath "WasmEdge-0.14.0-windows.zip" -DestinationPath ${{ github.workspace }}
+          Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-0.14.1-windows.zip" -OutFile "WasmEdge-0.14.1-windows.zip"
+          Expand-Archive -LiteralPath "WasmEdge-0.14.1-windows.zip" -DestinationPath ${{ github.workspace }}
           tree /F ${{ github.workspace }}\WasmEdge
 
       - name: Set up Windows 10 SDK
