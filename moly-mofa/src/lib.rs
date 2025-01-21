@@ -176,10 +176,14 @@ impl MofaClient {
                             content: task,
                         }],
                     };
-                    let client = reqwest::Client::new();
+                    let client = reqwest::Client::builder()
+                        .no_proxy()
+                        .build()
+                        .expect("Failed to build a reqwest client for a MoFa server");
 
                     let req = client
                         .post(format!("{}/v1/chat/completions", &address))
+                        .header("Content-Type", "application/json")
                         .json(&data);
 
                     current_request = Some(rt.spawn(async move {
