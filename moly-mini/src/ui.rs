@@ -1,11 +1,8 @@
-use std::future::Future;
-
-use futures_core::Stream;
 use makepad_widgets::*;
 use moly_widgets::*;
 use prompt_input::PromptInputWidgetExt;
 
-use crate::clients::moly::MolyRepo;
+use crate::{clients::moly::MolyRepo, utils::spawn};
 
 live_design!(
     use link::theme::*;
@@ -85,25 +82,11 @@ impl LiveHook for Ui {
 
         messages.borrow_mut().unwrap().bot_client =
             Some(Box::new(crate::clients::moly::MolyRepo::default()));
-
-        messages.borrow_mut().unwrap().messages = vec![
-            Message {
-                from: EntityId::User,
-                body: "Hello, world!".to_string(),
-                is_writing: false,
-            },
-            Message {
-                from: EntityId::Bot(BotId::from("bot")),
-                body: "Hello, bot!".to_string(),
-                is_writing: false,
-            },
-        ];
     }
 }
 
 impl Ui {
     fn handle_submit(&self) {
-        let rt = tokio::runtime::Handle::current();
         let mut client = self.bot_client.clone();
         let text = self.prompt_input(id!(prompt)).text();
         let ui = self.ui_runner();
@@ -120,7 +103,7 @@ impl Ui {
                 is_writing: false,
             });
 
-        rt.spawn(async move {
+        spawn(async move {
             let result = client
                 .send(BotId::from("moly"), &text)
                 .await

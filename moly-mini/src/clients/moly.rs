@@ -1,13 +1,9 @@
-use async_stream::stream;
-
-use futures::{
-    future::{BoxFuture, FutureExt},
-    stream::{BoxStream, StreamExt},
-    Stream,
-};
-use moly_widgets::protocol::*;
+use futures::{future::FutureExt, stream::StreamExt, SinkExt};
+use makepad_widgets::log;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+
+use crate::utils::spawn;
+use moly_widgets::protocol::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MolyMessage {
@@ -70,49 +66,81 @@ impl BotRepo for MolyRepo {
             "stream": true
         }));
 
-        let stream = stream! {
-            let response = request.send().await;
+        // The `async-stream` crate and macro internally use a channel to create the stream
+        // imperatively. Where `yield` is mapped to `sender.send().await` and `await for` is just
+        // a `while let` over `stream.next().await`.
+        //
+        // By doing this manually we win:
+        // - One less direct dependency.
+        // - Proper auto-completition, auto-formatting and LSP support.
+        let (mut sender, receiver) = futures::channel::mpsc::channel(0);
 
-            let Ok(response) = response else {
-                eprintln!("Error: {:?}", response);
-                yield Err(());
-                return;
-            };
-
-            for await value in response.bytes_stream() {
-                let chunk = value.map_err(|e| {
-                    eprintln!("Error: {}", e);
-                    ()
-                })?;
-
-                if chunk.starts_with(b"data: [DONE]") {
-                    yield Ok("".to_string());
+        spawn(async move {
+            let response = match request.send().await {
+                Ok(response) => response,
+                Err(error) => {
+                    log!("Error {:?}", error);
+                    sender.send(Err(())).await.unwrap();
                     return;
                 }
+            };
 
-                let completition: Value = serde_json::from_slice(&chunk[5..]).map_err(|e| {
-                    eprintln!("Error: {}", e);
-                    ()
-                })?;
+            let mut buffer = String::new();
+            let mut bytes = response.bytes_stream();
 
-                dbg!(&completition);
+            while let Some(chunk) = bytes.next().await {
+                let chunk = match chunk {
+                    Ok(chunk) => chunk,
+                    Err(error) => {
+                        log!("Error {:?}", error);
+                        sender.send(Err(())).await.unwrap();
+                        return;
+                    }
+                };
 
-                let completation: Completation = serde_json::from_value(completition).map_err(|e| {
-                    eprintln!("Error: {}", e);
-                    ()
-                })?;
+                buffer.push_str(&String::from_utf8_lossy(&chunk));
 
-                let message = completation
-                    .choices
-                    .iter()
-                    .map(|c| c.delta.content.clone())
-                    .collect::<String>();
+                const EVENT_TERMINATOR: &'static str = "\n\n";
 
-                yield Ok(message);
+                let Some((completed_messages, incomplete_message)) =
+                    buffer.rsplit_once(EVENT_TERMINATOR)
+                else {
+                    continue;
+                };
+
+                let messages = completed_messages
+                    .split(EVENT_TERMINATOR)
+                    .map(|m| m.trim_start().split("data:").nth(1).unwrap())
+                    .filter(|m| m.trim() != "[DONE]");
+
+                for m in messages {
+                    let completition: Completation = match serde_json::from_str(m) {
+                        Ok(completition) => completition,
+                        Err(error) => {
+                            log!("Error: {:?}", error);
+                            sender.send(Err(())).await.unwrap();
+                            return;
+                        }
+                    };
+
+                    let text = completition
+                        .choices
+                        .iter()
+                        .map(|c| c.delta.content.as_str())
+                        .collect::<String>();
+
+                    sender.send(Ok(text)).await.unwrap();
+                }
+
+                buffer = incomplete_message.to_string();
             }
-        };
+        });
 
-        stream.boxed()
+        #[cfg(not(target_arch = "wasm32"))]
+        return receiver.boxed();
+
+        #[cfg(target_arch = "wasm32")]
+        return receiver.boxed_local();
     }
 
     fn send(&mut self, bot: BotId, message: &str) -> BoxFuture<Result<String, ()>> {
@@ -129,6 +157,14 @@ impl BotRepo for MolyRepo {
             Ok(message)
         };
 
-        future.boxed()
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            future.boxed()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        future.boxed_local()
     }
 }
+
+// fn events_from_bytes(bytes: Byt)

@@ -1,6 +1,19 @@
 // This is the stream type re-exported by tokio, reqwest and futures.
-use futures_core::{future::BoxFuture, stream::BoxStream};
+use futures_core::{future, stream};
 use makepad_widgets::LiveValue;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type BoxFuture<'a, T> = future::BoxFuture<'a, T>;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type BoxStream<'a, T> = stream::BoxStream<'a, T>;
+
+#[cfg(target_arch = "wasm32")]
+pub type BoxFuture<'a, T> = future::LocalBoxFuture<'a, T>;
+
+#[cfg(target_arch = "wasm32")]
+pub type BoxStream<'a, T> = stream::LocalBoxStream<'a, T>;
+
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Picture {

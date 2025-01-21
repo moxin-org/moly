@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
-makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
+# TODO: Switch back asap because this as a lib forces this specific patched version.
+makepad-widgets = { git = "https://github.com/noxware/makepad", branch = "moly" }
+makepad-code-editor = { git = "https://github.com/noxware/makepad", branch = "moly" }
 futures-core = "0.3.31"
