@@ -169,12 +169,12 @@ impl Widget for ChatHistory {
                         }
                         Item::NoAgentsWarning(text) => {
                             let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                            item.set_text(text);
+                            item.set_text(cx,text);
                             item.draw_all(cx, scope);
                         }
                         Item::AgentButton(agent) => {
                             let item = list.item(cx, item_id, live_id!(Agent));
-                            item.as_entity_button().set_agent(agent);
+                            item.as_entity_button().set_agent(cx, agent);
                             item.draw_all(cx, scope);
                         }
                         Item::ChatButton(chat_id) => {

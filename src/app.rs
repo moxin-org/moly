@@ -297,7 +297,7 @@ impl App {
 
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
-                    popup.set_data(&file, DownloadResult::Success);
+                    popup.set_data(cx, &file, DownloadResult::Success);
                     cx.action(ModelSelectorListAction::AddedOrDeletedModel);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
@@ -315,20 +315,20 @@ impl App {
             0 => {
                 self.timer = cx.start_timeout(15.0);
                 self.download_retry_attempts += 1;
-                popup.set_retry_data();
+                popup.set_retry_data(cx);
             },
             1 => {
                 self.timer = cx.start_timeout(30.0);
                 self.download_retry_attempts += 1;
-                popup.set_retry_data();
+                popup.set_retry_data(cx);
             },
             2 => {
                 self.timer = cx.start_timeout(60.0);
                 self.download_retry_attempts += 1;
-                popup.set_retry_data();
+                popup.set_retry_data(cx);
             },
             _ => {
-                popup.set_data(&file, DownloadResult::Failure);
+                popup.set_data(cx, &file, DownloadResult::Failure);
                 self.download_retry_attempts = 0;
             }
         }

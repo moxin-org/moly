@@ -281,7 +281,7 @@ impl Widget for MofaServers {
 
                         // hide the separator for the first item
                         if item_id == 0 {
-                            item.view(id!(separator)).set_visible(false);
+                            item.view(id!(separator)).set_visible(cx, false);
                         }
 
                         let server = &servers[item_id].clone();
@@ -302,7 +302,7 @@ impl WidgetMatchEvent for MofaServers {
         let add_server_input = self.view.text_input(id!(add_server_input));
         if let Some(address) = add_server_input.returned(actions) {
             store.chats.register_mofa_server(address);
-            add_server_input.set_text("");
+            add_server_input.set_text(cx,"");
 
             self.redraw(cx);
         }
@@ -328,17 +328,17 @@ impl Widget for MofaServerItem {
         let server = scope.props.get::<MofaServer>().unwrap();
         self.server_address = server.client.address.clone();
 
-        self.update_connection_status(&server.connection_status);
+        self.update_connection_status(cx, &server.connection_status);
 
         self.label(id!(address_editable.mofa_address_label))
-            .set_text(&server.client.address);
+            .set_text(cx,&server.client.address);
 
         if server.is_local() {
-            self.view.view(id!(icon_local)).set_visible(true);
-            self.view.view(id!(icon_remote)).set_visible(false);
+            self.view.view(id!(icon_local)).set_visible(cx, true);
+            self.view.view(id!(icon_remote)).set_visible(cx, false);
         } else {
-            self.view.view(id!(icon_local)).set_visible(false);
-            self.view.view(id!(icon_remote)).set_visible(true);
+            self.view.view(id!(icon_local)).set_visible(cx, false);
+            self.view.view(id!(icon_remote)).set_visible(cx, true);
         };
 
         self.view.draw_walk(cx, scope, walk)
@@ -358,7 +358,7 @@ impl WidgetMatchEvent for MofaServerItem {
             .finger_down(actions)
         {
             store.chats.test_mofa_server_and_fetch_agents(&self.server_address);
-            self.update_connection_status(&MofaServerConnectionStatus::Connecting);
+            self.update_connection_status(cx, &MofaServerConnectionStatus::Connecting);
             self.redraw(cx);
         }
 
@@ -372,12 +372,12 @@ impl WidgetMatchEvent for MofaServerItem {
 
 impl MofaServerItem {
     /// Toggles the visibility of the connection status icons based on the connection status
-    fn update_connection_status(&mut self, connection_status: &MofaServerConnectionStatus) {
+    fn update_connection_status(&mut self, cx: &mut Cx, connection_status: &MofaServerConnectionStatus) {
         self.view(id!(connection_status_success))
-            .set_visible(*connection_status == MofaServerConnectionStatus::Connected);
+            .set_visible(cx, *connection_status == MofaServerConnectionStatus::Connected);
         self.view(id!(connection_status_failure))
-            .set_visible(*connection_status == MofaServerConnectionStatus::Disconnected);
+            .set_visible(cx, *connection_status == MofaServerConnectionStatus::Disconnected);
         self.view(id!(connection_status_loading))
-            .set_visible(*connection_status == MofaServerConnectionStatus::Connecting);
+            .set_visible(cx, *connection_status == MofaServerConnectionStatus::Connecting);
     }
 }

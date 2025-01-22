@@ -211,7 +211,7 @@ impl Widget for ModelList {
                         match items[item_id] {
                             Item::Header(text) => {
                                 let item = list.item(cx, item_id, live_id!(Header));
-                                item.set_text(text);
+                                item.set_text(cx,text);
                                 item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::AgentRow {
@@ -240,8 +240,8 @@ impl Widget for ModelList {
                                                 },
                                             );
                                             let mut button = cell.entity_button(id!(button));
-                                            button.set_agent(agent);
-                                            button.set_description_visible(true);
+                                            button.set_agent(cx, agent);
+                                            button.set_description_visible(cx, true);
                                         }
                                     });
 
@@ -249,7 +249,7 @@ impl Widget for ModelList {
                             }
                             Item::NoAgentsWarning(text) => {
                                 let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                                item.set_text(text);
+                                item.set_text(cx,text);
                                 item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::Model(model) => {
@@ -302,8 +302,8 @@ impl WidgetMatchEvent for ModelList {
 
             match action.cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
-                    self.view(id!(search_error)).set_visible(false);
-                    self.view(id!(loading)).set_visible(true);
+                    self.view(id!(search_error)).set_visible(cx, false);
+                    self.view(id!(loading)).set_visible(cx, true);
                     self.search_loading(id!(search_loading)).animate(cx);
                     portal_list.set_first_id_and_scroll(0, 0.0);
 
@@ -329,7 +329,7 @@ impl ModelList {
     fn update_loading_and_error_message(&mut self, cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get::<Store>().unwrap();
         let is_loading = store.search.is_pending();
-        self.view(id!(loading)).set_visible(is_loading);
+        self.view(id!(loading)).set_visible(cx, is_loading);
         if is_loading {
             self.search_loading(id!(search_loading)).animate(cx);
         } else {
@@ -337,6 +337,6 @@ impl ModelList {
         }
 
         let is_errored = store.search.was_error();
-        self.view(id!(search_error)).set_visible(is_errored);
+        self.view(id!(search_error)).set_visible(cx, is_errored);
     }
 }

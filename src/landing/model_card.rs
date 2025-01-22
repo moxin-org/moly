@@ -348,26 +348,26 @@ impl Widget for ModelCard {
         self.model_id = model.model_id.clone();
 
         let name = &model.name;
-        self.label(id!(model_name)).set_text(name);
+        self.label(id!(model_name)).set_text(cx,name);
 
         let download_count = &model.download_count;
         self.label(id!(model_download_count.attr_value))
-            .set_text(&format!("{}", download_count));
+            .set_text(cx,&format!("{}", download_count));
 
         let like_count = &model.like_count;
         self.label(id!(model_like_count.attr_value))
-            .set_text(&format!("{}", like_count));
+            .set_text(cx,&format!("{}", like_count));
 
         let size = &model.size;
-        self.label(id!(model_size_tag.attr_value)).set_text(size);
+        self.label(id!(model_size_tag.attr_value)).set_text(cx,size);
 
         let requires = &model.requires;
         self.label(id!(model_requires_tag.attr_value))
-            .set_text(requires);
+            .set_text(cx,requires);
 
         let architecture = &model.architecture;
         self.label(id!(model_architecture_tag.attr_value))
-            .set_text(architecture);
+            .set_text(cx,architecture);
 
         let summary = &model.summary;
         const MAX_SUMMARY_LENGTH: usize = 500;
@@ -380,14 +380,14 @@ impl Widget for ModelCard {
         } else {
             summary.to_string()
         };
-        self.label(id!(model_summary)).set_text(&trimmed_summary);
+        self.label(id!(model_summary)).set_text(cx,&trimmed_summary);
 
         let author_name = &model.author.name;
         let author_url = &model.author.url;
         let mut author_external_link = self.external_link(id!(author_link));
         author_external_link
             .link_label(id!(link))
-            .set_text(author_name);
+            .set_text(cx,author_name);
         author_external_link.set_url(author_url);
 
         let model_hugging_face_url = hugging_face_model_url(&model.model_id);
@@ -396,11 +396,11 @@ impl Widget for ModelCard {
 
         let author_description = &model.author.description;
         self.label(id!(author_description))
-            .set_text(author_description);
+            .set_text(cx,author_description);
 
         let released_at_str = formatted_model_release_date(&model);
         self.label(id!(model_released_at_tag.attr_value))
-            .set_text(&released_at_str);
+            .set_text(cx,&released_at_str);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -444,10 +444,10 @@ impl Widget for ModelCardViewAllModal {
         let model = &scope.data.get::<ModelWithDownloadInfo>().unwrap();
 
         let name = &model.name;
-        self.label(id!(view_all_model_name)).set_text(name);
+        self.label(id!(view_all_model_name)).set_text(cx,name);
 
         let summary = &model.summary;
-        self.label(id!(view_all_model_summary)).set_text(summary);
+        self.label(id!(view_all_model_summary)).set_text(cx,summary);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
