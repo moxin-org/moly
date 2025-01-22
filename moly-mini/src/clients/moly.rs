@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 use crate::utils::spawn;
 use moly_widgets::protocol::*;
 
+// Run Moly as `MOLY_API_SERVER_ADDR=localhost:8085 cargo run`
+const PORT: u16 = 8085;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MolyMessage {
     pub content: String,
@@ -34,7 +37,7 @@ impl Default for MolyRepo {
                 name: "Moly".to_string(),
                 avatar: Picture::Grapheme("M".to_string()),
             }],
-            port: 0,
+            port: PORT,
         }
     }
 }

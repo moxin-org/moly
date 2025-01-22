@@ -1,3 +1,4 @@
+use futures::StreamExt;
 use makepad_widgets::*;
 use moly_widgets::*;
 use prompt_input::PromptInputWidgetExt;
@@ -29,10 +30,6 @@ live_design!(
                             color: #000
                         }
                     }
-                }
-                port = <TextInput> {
-                    width: 100,
-                    empty_message: "Port..."
                 }
             }
 
@@ -67,7 +64,7 @@ impl Widget for Ui {
         };
 
         if self.prompt_input(id!(prompt)).submitted(actions) {
-            self.handle_submit();
+            self.handle_submit(cx);
         }
     }
 
@@ -86,12 +83,12 @@ impl LiveHook for Ui {
 }
 
 impl Ui {
-    fn handle_submit(&self) {
-        let mut client = self.bot_client.clone();
-        let text = self.prompt_input(id!(prompt)).text();
-        let ui = self.ui_runner();
+    fn handle_submit(&mut self, cx: &mut Cx) {
+        let prompt = self.prompt_input(id!(prompt));
+        let text = prompt.text();
+        prompt.borrow_mut().unwrap().reset(); // from command text input
 
-        client.port = self.text_input(id!(port)).text().parse().unwrap_or(0);
+        let bot_id = BotId::from("moly");
 
         self.messages(id!(messages))
             .borrow_mut()
@@ -103,24 +100,47 @@ impl Ui {
                 is_writing: false,
             });
 
+        self.messages(id!(messages))
+            .borrow_mut()
+            .unwrap()
+            .messages
+            .push(Message {
+                from: EntityId::Bot(bot_id),
+                body: String::new(),
+                is_writing: true,
+            });
+
+        self.redraw(cx);
+
+        let mut client = self.bot_client.clone();
+        let ui = self.ui_runner();
+
         spawn(async move {
-            let result = client
-                .send(BotId::from("moly"), &text)
-                .await
-                .unwrap_or_else(|_| "An error occurred".to_string());
+            let mut message_stream = client.send_stream(BotId::from("moly"), &text);
+
+            while let Some(delta) = message_stream.next().await {
+                let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());
+
+                ui.defer_with_redraw(move |me, _cx, _scope| {
+                    me.messages(id!(messages))
+                        .borrow_mut()
+                        .unwrap()
+                        .messages
+                        .last_mut()
+                        .expect("no message where to put delta")
+                        .body
+                        .push_str(&delta);
+                });
+            }
 
             ui.defer_with_redraw(|me, _cx, _scope| {
                 me.messages(id!(messages))
                     .borrow_mut()
                     .unwrap()
                     .messages
-                    .push(Message {
-                        from: EntityId::Bot(BotId::from("moly")),
-                        body: result,
-                        is_writing: false,
-                    });
-
-                me.prompt_input(id!(prompt)).set_text("");
+                    .last_mut()
+                    .expect("no message where to put delta")
+                    .is_writing = false;
             });
         });
     }
