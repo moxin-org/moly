@@ -101,7 +101,17 @@ impl BotRepo for MolyRepo {
                     }
                 };
 
-                buffer.push_str(&String::from_utf8_lossy(&chunk));
+                // TODO: Chunk may contain eventually valid utf8 bytes that would be discarded
+                // by "from string loosly".
+                //
+                // This is partially safe assuming everything before `\n\n` is valid utf8 as it will be
+                // splitted later.
+                //
+                // But this is not actually safe because it trusts the server on not sending utf8
+                // before a `\n\n`.
+                //
+                // So, let's change the buffer type later and extract valid utf8 strings from there later.
+                buffer.push_str(unsafe { &String::from_utf8_unchecked(chunk.to_vec()) });
 
                 const EVENT_TERMINATOR: &'static str = "\n\n";
 
