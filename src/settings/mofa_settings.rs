@@ -302,7 +302,7 @@ impl WidgetMatchEvent for MofaServers {
         let add_server_input = self.view.text_input(id!(add_server_input));
         if let Some(address) = add_server_input.returned(actions) {
             store.chats.register_mofa_server(address);
-            add_server_input.set_text(cx,"");
+            add_server_input.set_text(cx, "");
 
             self.redraw(cx);
         }
@@ -331,7 +331,7 @@ impl Widget for MofaServerItem {
         self.update_connection_status(cx, &server.connection_status);
 
         self.label(id!(address_editable.mofa_address_label))
-            .set_text(cx,&server.client.address);
+            .set_text(cx, &server.client.address);
 
         if server.is_local() {
             self.view.view(id!(icon_local)).set_visible(cx, true);

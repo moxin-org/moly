@@ -292,10 +292,10 @@ impl DownloadNotificationPopup {
         self.view(id!(failure_actions)).set_visible(cx, false);
 
         self.label(id!(title))
-            .set_text(cx,"Model Downloaded Successfully");
+            .set_text(cx, "Model Downloaded Successfully");
 
         self.label(id!(summary))
-            .set_text(cx,&(format!("{} successfuly downloaded.", &self.filename)));
+            .set_text(cx, &(format!("{} successfuly downloaded.", &self.filename)));
     }
 
     fn show_failure_content(&mut self, cx: &mut Cx) {
@@ -306,7 +306,7 @@ impl DownloadNotificationPopup {
         self.view(id!(failure_actions)).set_visible(cx, true);
 
         self.label(id!(title))
-            .set_text(cx,"Errors while downloading models");
+            .set_text(cx, "Errors while downloading models");
 
         self.label(id!(summary)).set_text(cx,
             &(format!(
@@ -326,19 +326,19 @@ impl DownloadNotificationPopup {
         self.view(id!(failure_actions)).set_visible(cx, false);
 
         self.label(id!(title))
-            .set_text(cx,"Retry");
+            .set_text(cx, "Retry");
 
         match self.count {
             0 => {
-                content.set_text(cx,"Download interrupted. Will resume in 15 seconds.");
+                content.set_text(cx, "Download interrupted. Will resume in 15 seconds.");
                 self.count += 1;
             },
             1 => {
-                content.set_text(cx,"Download interrupted. Will resume in 30 seconds.");
+                content.set_text(cx, "Download interrupted. Will resume in 30 seconds.");
                 self.count += 1;
             },
             2 => {
-                content.set_text(cx,"Download interrupted. Will resume in 60 seconds.");
+                content.set_text(cx, "Download interrupted. Will resume in 60 seconds.");
                 self.count += 1;
             },
             _ => {

@@ -195,11 +195,11 @@ impl Widget for MyModelsScreen {
 
         let summary = generate_models_summary(&downloaded_files);
         let models_summary_label = self.view.label(id!(header.models_summary));
-        models_summary_label.set_text(cx,&summary);
+        models_summary_label.set_text(cx, &summary);
 
         self.view
             .button(id!(show_in_files))
-            .set_text(cx,&file_manager_label());
+            .set_text(cx, &file_manager_label());
 
         self.view.draw_walk(cx, scope, walk)
     }

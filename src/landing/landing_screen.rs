@@ -91,9 +91,9 @@ impl Widget for LandingScreen {
             let models = &search.models;
             let models_count = models.len();
             self.label(id!(heading_with_filters.results))
-                .set_text(cx,&format!("{} Results", models_count));
+                .set_text(cx, &format!("{} Results", models_count));
             self.label(id!(heading_with_filters.keyword))
-                .set_text(cx,&format!(" for \"{}\"", keyword));
+                .set_text(cx, &format!(" for \"{}\"", keyword));
         } else {
             self.view(id!(heading_with_filters)).set_visible(cx, false);
         }

@@ -211,7 +211,7 @@ impl Widget for ModelList {
                         match items[item_id] {
                             Item::Header(text) => {
                                 let item = list.item(cx, item_id, live_id!(Header));
-                                item.set_text(cx,text);
+                                item.set_text(cx, text);
                                 item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::AgentRow {
@@ -249,7 +249,7 @@ impl Widget for ModelList {
                             }
                             Item::NoAgentsWarning(text) => {
                                 let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                                item.set_text(cx,text);
+                                item.set_text(cx, text);
                                 item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::Model(model) => {

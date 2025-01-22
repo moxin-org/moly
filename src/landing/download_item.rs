@@ -227,13 +227,13 @@ impl Widget for DownloadItem {
         self.file_id = Some(download.file.id.clone());
 
         self.label(id!(filename))
-            .set_text(cx,download.file.name.as_str());
+            .set_text(cx, download.file.name.as_str());
 
         self.label(id!(architecture_tag.caption))
-            .set_text(cx,download.model.architecture.as_str());
+            .set_text(cx, download.model.architecture.as_str());
 
         self.label(id!(params_size_tag.caption))
-            .set_text(cx,&&download.model.requires.as_str());
+            .set_text(cx, &&download.model.requires.as_str());
 
         let progress_bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
         let label = self.label(id!(progress));
@@ -241,7 +241,7 @@ impl Widget for DownloadItem {
             PendingDownloadsStatus::Initializing => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
 
-                label.set_text(cx,&format!("Downloading {:.1}%", download.progress));
+                label.set_text(cx, &format!("Downloading {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (downloading_color) }
@@ -264,7 +264,7 @@ impl Widget for DownloadItem {
             PendingDownloadsStatus::Downloading => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
 
-                label.set_text(cx,&format!("Downloading {:.1}%", download.progress));
+                label.set_text(cx, &format!("Downloading {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (downloading_color) }
@@ -287,7 +287,7 @@ impl Widget for DownloadItem {
             PendingDownloadsStatus::Paused => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
 
-                label.set_text(cx,&format!("Paused {:.1}%", download.progress));
+                label.set_text(cx, &format!("Paused {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (paused_color) }
@@ -310,7 +310,7 @@ impl Widget for DownloadItem {
             PendingDownloadsStatus::Error => {
                 let failed_color = vec3(0.7, 0.11, 0.09); // #B42318
 
-                label.set_text(cx,&format!("Error {:.1}%", download.progress));
+                label.set_text(cx, &format!("Error {:.1}%", download.progress));
                 label.apply_over(
                     cx,
                     live! { draw_text: { color: (failed_color) }
@@ -337,7 +337,7 @@ impl Widget for DownloadItem {
             .unwrap_or("-".to_string());
 
         self.label(id!(downloaded_size))
-            .set_text(cx,&format!("{} / {}", downloaded_size, total_size));
+            .set_text(cx, &format!("{} / {}", downloaded_size, total_size));
 
         self.view.draw_walk(cx, scope, walk)
     }

@@ -191,12 +191,12 @@ impl Widget for ModelInfoModal {
 
         // filename
         self.label(id!(title.filename))
-            .set_text(cx,&downloaded_file.file.name);
+            .set_text(cx, &downloaded_file.file.name);
 
         // file path
         if let Some(path) = &downloaded_file.file.downloaded_path {
             self.html(id!(file_dir.path))
-                .set_text(cx,&format!("<pre>{}</pre>", path));
+                .set_text(cx, &format!("<pre>{}</pre>", path));
         } else {
             self.view(id!(file_dir)).set_visible(cx, false);
         }
@@ -206,7 +206,7 @@ impl Widget for ModelInfoModal {
             .expect("Could not serialize model data into json");
         let metadata = format!("<pre>{}</pre>", self.stringified_model_data);
 
-        self.html(id!(wrapper.body.metadata)).set_text(cx,&metadata);
+        self.html(id!(wrapper.body.metadata)).set_text(cx, &metadata);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))

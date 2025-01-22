@@ -281,7 +281,7 @@ impl Widget for ModelSelector {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(selected_agent)).set_visible(cx, false);
             self.view(id!(selected_model)).set_visible(cx, false);
-            choose_label.set_text(cx,"Choose a Model or Agent");
+            choose_label.set_text(cx, "Choose a Model or Agent");
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,

@@ -250,9 +250,9 @@ impl Widget for SettingsScreen {
 
             self.view
                 .label(id!(port_number_label))
-                .set_text(cx,&format!("{}", port));
+                .set_text(cx, &format!("{}", port));
 
-            self.view.code_view(id!(code_snippet)).set_text(cx,&format!(
+            self.view.code_view(id!(code_snippet)).set_text(cx, &format!(
                 "# Load a model and run this example in your terminal
 # Choose between streaming and non-streaming mode by setting the \"stream\" field
 
@@ -308,7 +308,7 @@ impl WidgetMatchEvent for SettingsScreen {
 
             let port = self.label(id!(port_number_label)).text();
             port_number_input.set_key_focus(cx);
-            port_number_input.set_text(cx,&port);
+            port_number_input.set_text(cx, &port);
 
             self.redraw(cx);
         }

@@ -209,7 +209,7 @@ impl Widget for DownloadedFilesRow {
         // Name tag
         let name = human_readable_name(&downloaded_file.file.name);
         self.label(id!(h_wrapper.model_file.h_wrapper.name_tag.name))
-            .set_text(cx,&name);
+            .set_text(cx, &name);
 
         // Base model tag
         let base_model = dash_if_empty(&downloaded_file.model.architecture);
@@ -218,7 +218,7 @@ impl Widget for DownloadedFilesRow {
             .base_model_tag
             .base_model
             .attr_name))
-            .set_text(cx,&base_model);
+            .set_text(cx, &base_model);
 
         // Parameters tag
         let parameters = dash_if_empty(&downloaded_file.model.size);
@@ -227,7 +227,7 @@ impl Widget for DownloadedFilesRow {
             .parameters_tag
             .parameters
             .attr_name))
-            .set_text(cx,&parameters);
+            .set_text(cx, &parameters);
 
         // Version tag
         let filename = format!(
@@ -235,17 +235,17 @@ impl Widget for DownloadedFilesRow {
             downloaded_file.model.name, downloaded_file.file.name
         );
         self.label(id!(h_wrapper.model_file.model_version_tag.version))
-            .set_text(cx,&filename);
+            .set_text(cx, &filename);
 
         // File size tag
         let file_size = format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
         self.label(id!(h_wrapper.file_size_tag.label))
-            .set_text(cx,&file_size);
+            .set_text(cx, &file_size);
 
         // Added date tag
         let formatted_date = downloaded_file.downloaded_at.format("%d/%m/%Y").to_string();
         self.label(id!(h_wrapper.date_added_tag.label))
-            .set_text(cx,&formatted_date);
+            .set_text(cx, &formatted_date);
 
         self.view.draw_walk(cx, scope, walk)
     }

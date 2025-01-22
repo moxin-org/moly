@@ -275,10 +275,10 @@ impl Widget for ChatParams {
             max_tokens.set_value(cx, ip.max_tokens as f64);
             frequency_penalty.set_value(cx, ip.frequency_penalty as f64);
             presence_penalty.set_value(cx, ip.presence_penalty as f64);
-            stop.set_text(cx,&ip.stop);
+            stop.set_text(cx, &ip.stop);
 
             let system_prompt_value = chat.system_prompt.clone().unwrap_or_default();
-            system_prompt.set_text(cx,&system_prompt_value);
+            system_prompt.set_text(cx, &system_prompt_value);
 
             // Currently, `selected` and `set_selected` interact with the animator of
             // the widget to do what they do. To avoid some visual issues, we should not

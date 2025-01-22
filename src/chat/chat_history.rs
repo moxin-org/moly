@@ -169,7 +169,7 @@ impl Widget for ChatHistory {
                         }
                         Item::NoAgentsWarning(text) => {
                             let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                            item.set_text(cx,text);
+                            item.set_text(cx, text);
                             item.draw_all(cx, scope);
                         }
                         Item::AgentButton(agent) => {

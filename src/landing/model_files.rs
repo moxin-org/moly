@@ -208,10 +208,10 @@ impl Widget for ModelFiles {
         let featured_count = model.files.iter().filter(|f| f.file.featured).count();
 
         let show_all_button = self.radio_button(id!(tab_buttons.show_all_button));
-        show_all_button.set_text(cx,&format!("All Files ({})", files_count));
+        show_all_button.set_text(cx, &format!("All Files ({})", files_count));
 
         let show_all_button = self.radio_button(id!(tab_buttons.only_recommended_button));
-        show_all_button.set_text(cx,&format!("Only Recommended Files ({})", featured_count));
+        show_all_button.set_text(cx, &format!("Only Recommended Files ({})", featured_count));
 
         let _ = self.view.draw_walk(cx, scope, walk);
 

@@ -172,7 +172,7 @@ impl Widget for DeleteChatModal {
             chat_title
         );
         self.label(id!(wrapper.body.delete_prompt))
-            .set_text(cx,&prompt_text);
+            .set_text(cx, &prompt_text);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))

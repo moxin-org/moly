@@ -424,7 +424,7 @@ impl Widget for ChatPanel {
         if self.focus_on_prompt_input_pending {
             self.focus_on_prompt_input_pending = false;
 
-            self.prompt_input(id!(main_prompt_input)).reset_text(cx,true);
+            self.prompt_input(id!(main_prompt_input)).reset_text(cx, true);
         }
 
         let message_list_uid = self.portal_list(id!(chat)).widget_uid();
@@ -807,7 +807,7 @@ impl ChatPanel {
             store.send_message_to_current_entity(prompt, regenerate_from);
         }
 
-        self.prompt_input(id!(main_prompt_input)).reset_text(cx,false);
+        self.prompt_input(id!(main_prompt_input)).reset_text(cx, false);
 
         // Scroll to the bottom when the message is sent
         self.scroll_messages_to_bottom(cx);
@@ -847,7 +847,7 @@ impl ChatPanel {
 
                         empty_view
                             .label(id!(avatar_label))
-                            .set_text(cx,&get_model_initial_letter(store).unwrap_or('A').to_string());
+                            .set_text(cx, &get_model_initial_letter(store).unwrap_or('A').to_string());
                     }
                 }
             }
@@ -920,7 +920,7 @@ impl ChatPanel {
 
                     let username = chat_line_data.username.as_ref().map_or("", String::as_str);
                     chat_line_item.set_sender_name(cx, &username);
-                    chat_line_item.set_regenerate_button_visible(cx,false);
+                    chat_line_item.set_regenerate_button_visible(cx, false);
 
                     match &chat_line_data.entity {
                         Some(ChatEntityId::Agent(agent_id)) => {

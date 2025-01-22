@@ -450,12 +450,12 @@ impl ChatHistoryCard {
     }
 
     fn set_title_text(&mut self, cx: &mut Cx, text: &str, caption: &str) {
-        self.view.label(id!(title_label)).set_text(cx,text.trim());
+        self.view.label(id!(title_label)).set_text(cx, text.trim());
         if let TitleState::Editable = self.title_edition_state {
-            self.view.text_input(id!(title_input)).set_text(cx,text.trim());
+            self.view.text_input(id!(title_input)).set_text(cx, text.trim());
         }
         self.label(id!(model_or_agent_name_label))
-            .set_text(cx,&human_readable_name(caption));
+            .set_text(cx, &human_readable_name(caption));
     }
 
     fn update_title_visibility(&mut self, cx: &mut Cx) {

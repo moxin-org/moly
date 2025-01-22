@@ -413,7 +413,7 @@ impl ChatLineRef {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
-        inner.label(id!(sender_name)).set_text(cx,text);
+        inner.label(id!(sender_name)).set_text(cx, text);
     }
 
     pub fn set_model_avatar_text(&mut self, cx: &mut Cx, text: &str) {
@@ -422,7 +422,7 @@ impl ChatLineRef {
         };
         inner.view(id!(avatar_section.model)).set_visible(cx, true);
         inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(false);
-        inner.label(id!(avatar_label)).set_text(cx,text);
+        inner.label(id!(avatar_label)).set_text(cx, text);
     }
 
     pub fn set_model_avatar(&mut self, cx: &mut Cx, agent: &MofaAgent) {
@@ -444,13 +444,13 @@ impl ChatLineRef {
             ChatLineState::Editable | ChatLineState::NotEditable => {
                 if is_streaming && !text.is_empty() {
                     let output = format!("{}{}", text, "●");
-                    inner.text_input(id!(input)).set_text(cx,&output.trim());
-                    inner.label(id!(plain_text_message)).set_text(cx,&output.trim());
-                    inner.markdown(id!(markdown_message)).set_text(cx,&output.trim());
+                    inner.text_input(id!(input)).set_text(cx, &output.trim());
+                    inner.label(id!(plain_text_message)).set_text(cx, &output.trim());
+                    inner.markdown(id!(markdown_message)).set_text(cx, &output.trim());
                 } else {
-                    inner.text_input(id!(input)).set_text(cx,text.trim());
-                    inner.label(id!(plain_text_message)).set_text(cx,text.trim());
-                    inner.markdown(id!(markdown_message)).set_text(cx,text.trim());
+                    inner.text_input(id!(input)).set_text(cx, text.trim());
+                    inner.label(id!(plain_text_message)).set_text(cx, text.trim());
+                    inner.markdown(id!(markdown_message)).set_text(cx, text.trim());
                 }
 
                 // We know only AI assistant messages could be empty, so it is never

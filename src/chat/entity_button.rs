@@ -173,21 +173,21 @@ impl EntityButton {
         let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
         let server_url = self.label(id!(server_url.label));
 
-        name_label.set_text(cx,&entity.name());
+        name_label.set_text(cx, &entity.name());
 
         if let ChatEntityRef::Agent(agent) = entity {
             avatar.set_visible(true);
             avatar.set_agent(agent);
-            description_label.set_text(cx,&agent.description);
+            description_label.set_text(cx, &agent.description);
             
             let formatted_server_url = agent.server_id.0
                 .strip_prefix("https://")
                 .or_else(|| agent.server_id.0.strip_prefix("http://"))
                 .unwrap_or(&agent.server_id.0);
-            server_url.set_text(cx,formatted_server_url);
+            server_url.set_text(cx, formatted_server_url);
         } else {
             avatar.set_visible(false);
-            description_label.set_text(cx,"");
+            description_label.set_text(cx, "");
         }
 
         self.entity = Some(entity.id());

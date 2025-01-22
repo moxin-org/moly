@@ -250,7 +250,7 @@ impl WidgetMatchEvent for PromptInput {
             {
                 if idx == 0 {
                     let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
-                    label.set_text(cx,"Agents");
+                    label.set_text(cx, "Agents");
                     prompt.add_unselectable_item(label);
                 }
 
@@ -271,7 +271,7 @@ impl WidgetMatchEvent for PromptInput {
             {
                 if idx == 0 {
                     let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
-                    label.set_text(cx,"Models");
+                    label.set_text(cx, "Models");
                     prompt.add_unselectable_item(label);
                 }
 
@@ -318,7 +318,7 @@ impl PromptInput {
         match entity {
             ChatEntityId::Agent(agent_id) => {
                 let agent = store.chats.get_agent_or_placeholder(agent_id);
-                label.set_text(cx,&agent.name);
+                label.set_text(cx, &agent.name);
                 agent_avatar.set_agent(agent);
             }
             ChatEntityId::ModelFile(file_id) => {
@@ -327,7 +327,7 @@ impl PromptInput {
                     .downloads
                     .get_file(file_id)
                     .expect("selected file not found");
-                label.set_text(cx,&file.name);
+                label.set_text(cx, &file.name);
                 agent_avatar.set_visible(false);
             }
         }
