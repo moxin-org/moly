@@ -270,11 +270,11 @@ impl Widget for ChatParams {
 
             let system_prompt = self.text_input(id!(system_prompt));
 
-            temperature.set_value(cx, ip.temperature as f64);
-            top_p.set_value(cx, ip.top_p as f64);
-            max_tokens.set_value(cx, ip.max_tokens as f64);
-            frequency_penalty.set_value(cx, ip.frequency_penalty as f64);
-            presence_penalty.set_value(cx, ip.presence_penalty as f64);
+            temperature.set_value(cx, ip.temperature.into());
+            top_p.set_value(cx, ip.top_p.into());
+            max_tokens.set_value(cx, ip.max_tokens.into());
+            frequency_penalty.set_value(cx, ip.frequency_penalty.into());
+            presence_penalty.set_value(cx, ip.presence_penalty.into());
             stop.set_text(cx, &ip.stop);
 
             let system_prompt_value = chat.system_prompt.clone().unwrap_or_default();
