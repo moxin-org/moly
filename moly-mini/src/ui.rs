@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moly_widgets::*;
 
-use crate::clients::moly::MolyRepo;
+use moly_widgets::repos::moly::MolyRepo;
 
 live_design!(
     use link::theme::*;
