@@ -200,7 +200,7 @@ enum ServerPortState {
     Editable,
 }
 
-#[derive(Widget, Live)]
+#[derive(Widget, Live, LiveHook)]
 pub struct SettingsScreen {
     #[deref]
     view: View,
@@ -331,13 +331,5 @@ impl WidgetMatchEvent for SettingsScreen {
             self.server_port_state = ServerPortState::Editable;
             self.redraw(cx);
         }
-    }
-}
-
-impl LiveHook for SettingsScreen {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.view
-            .view(id!(mofa_section))
-            .set_visible(moly_mofa::should_be_visible());
     }
 }

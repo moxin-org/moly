@@ -174,27 +174,25 @@ impl Widget for ModelList {
         let mut items = Vec::new();
 
         if store.search.keyword.is_none() {
-            if moly_mofa::should_be_visible() {
-                items.push(Item::Header("Featured Agents"));
-                let agents_availability = store.chats.agents_availability();
-                match agents_availability {
-                    AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(
-                        agents_availability.to_human_readable(),
-                    )),
-                    AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
-                        agents_availability.to_human_readable(),
-                    )),
-                    AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(
-                        agents_availability.to_human_readable(),
-                    )),
-                    AgentsAvailability::Available => {
-                        items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
-                            agents: chunk,
-                            margin_bottom: 8.0,
-                        }));
-                        if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
-                            *margin_bottom = 0.0;
-                        }
+            items.push(Item::Header("Featured Agents"));
+            let agents_availability = store.chats.agents_availability();
+            match agents_availability {
+                AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(
+                    agents_availability.to_human_readable(),
+                )),
+                AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
+                    agents_availability.to_human_readable(),
+                )),
+                AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(
+                    agents_availability.to_human_readable(),
+                )),
+                AgentsAvailability::Available => {
+                    items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
+                        agents: chunk,
+                        margin_bottom: 8.0,
+                    }));
+                    if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
+                        *margin_bottom = 0.0;
                     }
                 }
             }

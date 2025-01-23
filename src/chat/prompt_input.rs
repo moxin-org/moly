@@ -344,22 +344,20 @@ impl PromptInput {
 
 impl LiveHook for PromptInput {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        if moly_mofa::should_be_visible() {
-            let prompt = self.command_text_input(id!(prompt));
-            prompt.apply_over(cx, live! { trigger: "@" });
-            prompt.text_input_ref().apply_over(
-                cx,
-                live! {
-                    empty_message: "Start typing or tag @model or @agent"
-                },
-            );
-        }
+        let prompt = self.command_text_input(id!(prompt));
+        prompt.apply_over(cx, live! { trigger: "@" });
+        prompt.text_input_ref().apply_over(
+            cx,
+            live! {
+                empty_message: "Start typing or tag @model or @agent"
+            },
+        );
     }
 }
 
 impl PromptInputRef {
     pub fn reset_text(&mut self, set_key_focus: bool) {
-        let mut prompt = self.command_text_input(id!(prompt));
+        let prompt = self.command_text_input(id!(prompt));
 
         if set_key_focus {
             prompt.request_text_input_focus();
