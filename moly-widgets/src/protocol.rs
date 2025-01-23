@@ -1,5 +1,5 @@
 // This is the stream type re-exported by tokio, reqwest and futures.
-use futures_core::{future, stream};
+use futures::{future, stream};
 use makepad_widgets::LiveValue;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -84,7 +84,7 @@ pub struct Message {
 ///
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
-pub trait BotRepo {
+pub trait BotRepo: Send {
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
     // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.

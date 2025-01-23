@@ -2,8 +2,7 @@ use futures::{future::FutureExt, stream::StreamExt, SinkExt};
 use makepad_widgets::log;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::spawn;
-use moly_widgets::protocol::*;
+use moly_widgets::{protocol::*, utils::asynchronous::spawn};
 
 // Run Moly as `MOLY_API_SERVER_ADDR=localhost:8085 cargo run`
 const PORT: u16 = 8085;

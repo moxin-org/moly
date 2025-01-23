@@ -2232,7 +2232,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "wasm-bindgen",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -2269,9 +2268,14 @@ dependencies = [
 name = "moly-widgets"
 version = "0.1.0"
 dependencies = [
- "futures-core",
+ "futures",
  "makepad-code-editor 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
  "makepad-widgets 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "reqwest 0.12.12",
+ "serde",
+ "serde_json",
+ "tokio",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
