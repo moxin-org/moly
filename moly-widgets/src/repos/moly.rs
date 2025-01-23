@@ -61,7 +61,7 @@ impl BotRepo for MolyRepo {
         .json(&serde_json::json!({
             "model": "moly",
             "messages": [
-                { "role": "system", "content": "Use positive language and offer helpful solutions to their problems." },
+                { "role": "system", "content": "You're a helpful assistant. You can speak English (default), Spanish and Chinese." },
                 { "role": "user", "content": message }
             ],
             "temperature": 0.7,

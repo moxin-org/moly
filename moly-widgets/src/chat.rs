@@ -122,6 +122,17 @@ impl Chat {
                     .last_mut()
                     .expect("no message where to put delta")
                     .is_writing = false;
+
+                log!(
+                    "{}",
+                    me.messages(id!(messages))
+                        .borrow_mut()
+                        .unwrap()
+                        .messages
+                        .last()
+                        .unwrap()
+                        .body
+                );
             });
         });
     }
