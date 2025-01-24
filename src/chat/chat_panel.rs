@@ -183,6 +183,86 @@ live_design! {
         }
     }
 
+    PromptExample = <View> {
+        width: Fit,
+        height: Fit,
+        flow: Right,
+        spacing: 10,
+
+        prompt1 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 1",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+
+        prompt2 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 2",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+
+        prompt3 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 3",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+
+        prompt4 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 4",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+    }
+
+
     pub ChatPanel = {{ChatPanel}} {
         flow: Overlay
         width: Fill
@@ -312,6 +392,8 @@ live_design! {
                     }
                     text: "How can I help you?"
                 }
+
+                prompt_example = <PromptExample> {}
             }
 
             main = <View> {
