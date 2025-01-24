@@ -1,14 +1,11 @@
 use makepad_widgets::*;
-use moly_widgets::*;
-
-use moly_widgets::repos::moly::MolyRepo;
 
 live_design!(
     use link::theme::*;
     use link::shaders::*;
     use link::widgets::*;
 
-    use moly_widgets::chat::Chat;
+    use moly_widgets::moly_chat::MolyChat;
 
     pub Ui = {{Ui}} <Window> {
         align: {x: 0.5, y: 0.5}
@@ -36,7 +33,7 @@ live_design!(
         body = <View> {
             flow: Down,
             padding: 12,
-            chat = <Chat> {}
+            chat = <MolyChat> { url: "http://localhost:8085/v1/chat/completions" }
         }
     }
 );
@@ -57,12 +54,4 @@ impl Widget for Ui {
     }
 }
 
-impl LiveHook for Ui {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        let chat = self.chat(id!(chat));
-        let mut chat = chat.borrow_mut().unwrap();
-
-        chat.bot_repo = Some(Box::new(MolyRepo::default()));
-        chat.bot_id = Some(BotId::from("moly"));
-    }
-}
+impl LiveHook for Ui {}

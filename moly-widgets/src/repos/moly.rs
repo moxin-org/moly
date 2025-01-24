@@ -25,18 +25,20 @@ pub struct Completation {
 #[derive(Clone, Debug)]
 pub struct MolyRepo {
     bots: Vec<Bot>,
-    pub port: u16,
+    url: String,
+    key: Option<String>,
 }
 
-impl Default for MolyRepo {
-    fn default() -> Self {
+impl MolyRepo {
+    pub fn new(url: String, key: Option<String>) -> Self {
         Self {
             bots: vec![Bot {
                 id: BotId::from("moly"),
                 name: "Moly".to_string(),
                 avatar: Picture::Grapheme("M".to_string()),
             }],
-            port: PORT,
+            url,
+            key,
         }
     }
 }
@@ -57,7 +59,7 @@ impl BotRepo for MolyRepo {
 
     fn send_stream(&mut self, _bot: BotId, message: &str) -> BoxStream<Result<String, ()>> {
         let request = reqwest::Client::new()
-        .post(format!("http://localhost:{}/v1/chat/completions", self.port))
+        .post(&self.url)
         .json(&serde_json::json!({
             "model": "moly",
             "messages": [
