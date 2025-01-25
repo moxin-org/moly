@@ -1,5 +1,6 @@
 use makepad_widgets::*;
-use std::cell::{Ref, RefCell, RefMut};
+use rand::seq::SliceRandom;
+use std::{cell::{Ref, RefCell, RefMut}, fs};
 
 use crate::{
     chat::{
@@ -500,6 +501,16 @@ impl Widget for ChatPanel {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.update_view(cx, scope);
 
+        // Read a file from JSON.
+        let file_content = fs::read_to_string("./resources/files/prompt_data.json").expect("Failed to read JSON file");
+
+        // Parse the JSON data and store it in a vector.
+        let items: Vec<String> = serde_json::from_str(&file_content).expect("Failed to parse JSON");
+
+        // Randomly select 4 items from the vector.
+        let mut rng = rand::thread_rng();
+        let selected_items: Vec<&String> = items.choose_multiple(&mut rng, 4).collect();
+
         // We need to make sure we're drawing this widget in order to focus on the prompt input
         // Otherwise, when navigating from another section this command would happen before the widget is drawn
         // (not having any effect).
@@ -507,6 +518,11 @@ impl Widget for ChatPanel {
             self.focus_on_prompt_input_pending = false;
 
             self.prompt_input(id!(main_prompt_input)).reset_text(true);
+            // it donesn't work, it cannot focus on the input when siwtching from another section
+            self.button(id!(prompt1)).set_text(selected_items[0]);
+            self.button(id!(prompt2)).set_text(selected_items[1]);
+            self.button(id!(prompt3)).set_text(selected_items[2]);
+            self.button(id!(prompt4)).set_text(selected_items[3]);
         }
 
         let message_list_uid = self.portal_list(id!(chat)).widget_uid();
