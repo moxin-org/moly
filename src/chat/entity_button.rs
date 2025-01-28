@@ -139,7 +139,7 @@ impl Widget for EntityButton {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         if self.server_url_visible {
-            self.view(id!(server_url)).set_visible(true);
+            self.view(id!(server_url)).set_visible(cx, true);
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -161,11 +161,11 @@ impl EntityButton {
         self.entity.as_ref()
     }
 
-    pub fn set_agent(&mut self, agent: &MofaAgent) {
-        self.set_entity(ChatEntityRef::Agent(agent));
+    pub fn set_agent(&mut self, cx: &mut Cx, agent: &MofaAgent) {
+        self.set_entity(cx, ChatEntityRef::Agent(agent));
     }
 
-    pub fn set_entity(&mut self, entity: ChatEntityRef) {
+    pub fn set_entity(&mut self, cx: &mut Cx, entity: ChatEntityRef) {
         self.visible = true;
 
         let name_label = self.label(id!(caption));
@@ -173,47 +173,47 @@ impl EntityButton {
         let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
         let server_url = self.label(id!(server_url.label));
 
-        name_label.set_text(&entity.name());
+        name_label.set_text(cx, &entity.name());
 
         if let ChatEntityRef::Agent(agent) = entity {
             avatar.set_visible(true);
             avatar.set_agent(agent);
-            description_label.set_text(&agent.description);
+            description_label.set_text(cx, &agent.description);
             
             let formatted_server_url = agent.server_id.0
                 .strip_prefix("https://")
                 .or_else(|| agent.server_id.0.strip_prefix("http://"))
                 .unwrap_or(&agent.server_id.0);
-            server_url.set_text(formatted_server_url);
+            server_url.set_text(cx, formatted_server_url);
         } else {
             avatar.set_visible(false);
-            description_label.set_text("");
+            description_label.set_text(cx, "");
         }
 
         self.entity = Some(entity.id());
     }
 
-    pub fn set_description_visible(&mut self, visible: bool) {
-        self.view(id!(description)).set_visible(visible);
+    pub fn set_description_visible(&mut self, cx: &mut Cx, visible: bool) {
+        self.view(id!(description)).set_visible(cx, visible);
     }
 }
 
 impl EntityButtonRef {
-    pub fn set_description_visible(&mut self, visible: bool) {
+    pub fn set_description_visible(&mut self, cx: &mut Cx, visible: bool) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_description_visible(visible);
+            inner.set_description_visible(cx, visible);
         }
     }
 
-    pub fn set_agent(&mut self, agent: &MofaAgent) {
+    pub fn set_agent(&mut self, cx: &mut Cx, agent: &MofaAgent) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_agent(agent);
+            inner.set_agent(cx, agent);
         }
     }
 
-    pub fn set_entity(&mut self, entity: ChatEntityRef) {
+    pub fn set_entity(&mut self, cx: &mut Cx, entity: ChatEntityRef) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_entity(entity);
+            inner.set_entity(cx, entity);
         }
     }
 

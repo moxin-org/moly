@@ -424,7 +424,7 @@ impl Widget for ChatPanel {
         if self.focus_on_prompt_input_pending {
             self.focus_on_prompt_input_pending = false;
 
-            self.prompt_input(id!(main_prompt_input)).reset_text(true);
+            self.prompt_input(id!(main_prompt_input)).reset_text(cx, true);
         }
 
         let message_list_uid = self.portal_list(id!(chat)).widget_uid();
@@ -682,8 +682,8 @@ impl ChatPanel {
         match button {
             PromptInputButton::Send => {
                 // The send button is enabled or not based on the prompt input
-                send_button.set_visible(true);
-                send_button.set_enabled(enabled);
+                send_button.set_visible(cx, true);
+                send_button.set_enabled(cx, enabled);
                 send_button.apply_over(
                     cx,
                     live! {
@@ -692,11 +692,11 @@ impl ChatPanel {
                         }
                     },
                 );
-                stop_button.set_visible(false);
+                stop_button.set_visible(cx, false);
             }
             PromptInputButton::EnabledStop => {
-                stop_button.set_visible(true);
-                stop_button.set_enabled(true);
+                stop_button.set_visible(cx, true);
+                stop_button.set_enabled(cx, true);
                 stop_button.apply_over(
                     cx,
                     live! {
@@ -705,11 +705,11 @@ impl ChatPanel {
                         }
                     },
                 );
-                send_button.set_visible(false);
+                send_button.set_visible(cx, false);
             }
             PromptInputButton::DisabledStop => {
-                stop_button.set_visible(true);
-                stop_button.set_enabled(false);
+                stop_button.set_visible(cx, true);
+                stop_button.set_enabled(cx, false);
                 stop_button.apply_over(
                     cx,
                     live! {
@@ -718,7 +718,7 @@ impl ChatPanel {
                         }
                     },
                 );
-                send_button.set_visible(false);
+                send_button.set_visible(cx, false);
             }
         }
     }
@@ -807,7 +807,7 @@ impl ChatPanel {
             store.send_message_to_current_entity(prompt, regenerate_from);
         }
 
-        self.prompt_input(id!(main_prompt_input)).reset_text(false);
+        self.prompt_input(id!(main_prompt_input)).reset_text(cx, false);
 
         // Scroll to the bottom when the message is sent
         self.scroll_messages_to_bottom(cx);
@@ -815,7 +815,7 @@ impl ChatPanel {
     }
 
     fn update_view(&mut self, cx: &mut Cx2d, scope: &mut Scope) {
-        self.update_visibilities();
+        self.update_visibilities(cx);
         self.update_prompt_input(cx);
 
         match self.state {
@@ -828,7 +828,7 @@ impl ChatPanel {
                         let empty_view = self.view(id!(empty_conversation));
                         empty_view
                             .view(id!(avatar_section.model))
-                            .set_visible(false);
+                            .set_visible(cx, false);
                         empty_view
                             .chat_agent_avatar(id!(avatar_section.agent))
                             .set_visible(true);
@@ -840,14 +840,14 @@ impl ChatPanel {
                     }
                     _ => {
                         let empty_view = self.view(id!(empty_conversation));
-                        empty_view.view(id!(avatar_section.model)).set_visible(true);
+                        empty_view.view(id!(avatar_section.model)).set_visible(cx, true);
                         empty_view
                             .chat_agent_avatar(id!(avatar_section.agent))
                             .set_visible(false);
 
                         empty_view
                             .label(id!(avatar_label))
-                            .set_text(&get_model_initial_letter(store).unwrap_or('A').to_string());
+                            .set_text(cx, &get_model_initial_letter(store).unwrap_or('A').to_string());
                     }
                 }
             }
@@ -855,7 +855,7 @@ impl ChatPanel {
         }
     }
 
-    fn update_visibilities(&mut self) {
+    fn update_visibilities(&mut self, cx: &mut Cx) {
         let empty_conversation = self.view(id!(empty_conversation));
         let jump_to_bottom = self.button(id!(jump_to_bottom));
         let main = self.view(id!(main));
@@ -864,38 +864,38 @@ impl ChatPanel {
 
         match self.state {
             // State::NoModelsAvailable => {
-            //     empty_conversation.set_visible(false);
-            //     jump_to_bottom.set_visible(false);
-            //     main.set_visible(false);
-            //     no_model.set_visible(false);
+            //     empty_conversation.set_visible(cx, false);
+            //     jump_to_bottom.set_visible(cx, false);
+            //     main.set_visible(cx, false);
+            //     no_model.set_visible(cx, false);
 
-            //     no_downloaded_model.set_visible(true);
+            //     no_downloaded_model.set_visible(cx, true);
             // }
             State::NoModelsAvailable | State::NoModelSelected => {
-                empty_conversation.set_visible(false);
-                jump_to_bottom.set_visible(false);
-                main.set_visible(false);
-                no_downloaded_model.set_visible(false);
+                empty_conversation.set_visible(cx, false);
+                jump_to_bottom.set_visible(cx, false);
+                main.set_visible(cx, false);
+                no_downloaded_model.set_visible(cx, false);
 
-                no_model.set_visible(true);
+                no_model.set_visible(cx, true);
             }
             State::ModelSelectedWithEmptyChat { .. } => {
-                jump_to_bottom.set_visible(false);
-                no_downloaded_model.set_visible(false);
-                no_model.set_visible(false);
+                jump_to_bottom.set_visible(cx, false);
+                no_downloaded_model.set_visible(cx, false);
+                no_model.set_visible(cx, false);
 
-                empty_conversation.set_visible(true);
-                main.set_visible(true);
+                empty_conversation.set_visible(cx, true);
+                main.set_visible(cx, true);
             }
             State::ModelSelectedWithChat {
                 sticked_to_bottom, ..
             } => {
-                empty_conversation.set_visible(false);
-                no_downloaded_model.set_visible(false);
-                no_model.set_visible(false);
+                empty_conversation.set_visible(cx, false);
+                no_downloaded_model.set_visible(cx, false);
+                no_model.set_visible(cx, false);
 
-                main.set_visible(true);
-                jump_to_bottom.set_visible(!sticked_to_bottom);
+                main.set_visible(cx, true);
+                jump_to_bottom.set_visible(cx, !sticked_to_bottom);
             }
             _ => {}
         }
@@ -919,16 +919,17 @@ impl ChatPanel {
                     chat_line_item = item.as_chat_line();
 
                     let username = chat_line_data.username.as_ref().map_or("", String::as_str);
-                    chat_line_item.set_sender_name(&username);
-                    chat_line_item.set_regenerate_button_visible(false);
+                    chat_line_item.set_sender_name(cx, &username);
+                    chat_line_item.set_regenerate_button_visible(cx, false);
 
                     match &chat_line_data.entity {
                         Some(ChatEntityId::Agent(agent_id)) => {
                             let agent = store.chats.get_agent_or_placeholder(&agent_id);
-                            chat_line_item.set_model_avatar(agent);
+                            chat_line_item.set_model_avatar(cx, agent);
                         }
                         Some(ChatEntityId::ModelFile(_)) => {
                             chat_line_item.set_model_avatar_text(
+                                cx,
                                 &get_model_initial_letter(store).unwrap().to_string(),
                             );
                         }
@@ -937,7 +938,7 @@ impl ChatPanel {
                 } else {
                     item = list.item(cx, item_id, live_id!(UserChatLine));
                     chat_line_item = item.as_chat_line();
-                    chat_line_item.set_regenerate_button_visible(true);
+                    chat_line_item.set_regenerate_button_visible(cx, true);
                 };
 
                 chat_line_item.set_message_id(chat_line_data.id);
