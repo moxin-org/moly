@@ -319,12 +319,8 @@ impl MofaClient {
     }
 }
 
-pub fn should_be_visible() -> bool {
-    std::env::var("MOFA_FRONTEND").unwrap_or_default() == "visible"
-}
-
 pub fn should_be_real() -> bool {
-    std::env::var("MOFA_BACKEND").unwrap_or_default() == "real"
+    std::env::var("MOFA_BACKEND").as_deref().unwrap_or("real") != "fake"
 }
 
 #[derive(Clone, Debug)]

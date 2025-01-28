@@ -166,46 +166,42 @@ impl ModelSelectorList {
             let separator_widget = self.items.get_or_insert(cx, separator_id, |cx| {
                 WidgetRef::new_from_ptr(cx, self.separator_template)
             });
-            if moly_mofa::should_be_visible() {
-                let _ = separator_widget.draw_all(cx, &mut Scope::empty());
-                total_height += separator_widget.as_view().area().rect(cx).size.y;
-            }
+            let _ = separator_widget.draw_all(cx, &mut Scope::empty());
+            total_height += separator_widget.as_view().area().rect(cx).size.y;
         }
 
-        if moly_mofa::should_be_visible() {
-            let agents = store.chats.get_agents_list();
-            for (i, agent) in agents.iter().enumerate() {
-                let item_id = LiveId((models_count + 1 + i) as u64).into();
-                let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
-                    WidgetRef::new_from_ptr(cx, self.agent_template)
-                });
+        let agents = store.chats.get_agents_list();
+        for (i, agent) in agents.iter().enumerate() {
+            let item_id = LiveId((models_count + 1 + i) as u64).into();
+            let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
+                WidgetRef::new_from_ptr(cx, self.agent_template)
+            });
 
-                let agent_name = &agent.name;
-                let current_agent_name = match &chat_entity {
-                    Some(ChatEntityId::Agent(agent_id)) => {
-                        store.chats.available_agents.get(agent_id).map(|a| &a.name)
-                    },
-                    _ => None,
-                };
-                let icon_tick_visible = current_agent_name == Some(agent_name);
+            let agent_name = &agent.name;
+            let current_agent_name = match &chat_entity {
+                Some(ChatEntityId::Agent(agent_id)) => {
+                    store.chats.available_agents.get(agent_id).map(|a| &a.name)
+                },
+                _ => None,
+            };
+            let icon_tick_visible = current_agent_name == Some(agent_name);
 
-                item_widget.apply_over(
-                    cx,
-                    live! {
-                        content = {
-                            label = { text: (agent_name) }
-                            icon_tick_tag = { visible: (icon_tick_visible) }
-                        }
-                    },
-                );
-                
-                item_widget
-                    .as_model_selector_item()
-                    .set_agent(agent.clone());
+            item_widget.apply_over(
+                cx,
+                live! {
+                    content = {
+                        label = { text: (agent_name) }
+                        icon_tick_tag = { visible: (icon_tick_visible) }
+                    }
+                },
+            );
+            
+            item_widget
+                .as_model_selector_item()
+                .set_agent(agent.clone());
 
-                let _ = item_widget.draw_all(cx, &mut Scope::empty());
-                total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
-            }
+            let _ = item_widget.draw_all(cx, &mut Scope::empty());
+            total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
         }
 
         self.total_height = Some(total_height);

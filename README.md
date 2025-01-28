@@ -211,23 +211,70 @@ If you'd like to modify the .dmg background, here is the [Google Drawings file u
 [AppImage]: https://appimage.org/
 [pacman]: https://pacman.archlinux.page/pacman.8.html
 
-# Mofa
+## Running Moly with MoFa
 
-Currently, here in `dev` branch, Mofa is still in development. It's UI is hidden
-and its backend is faked by default. This can be changed by setting some
-provisional environment variables.
+[MoFa](https://github.com/moxin-org/mofa) is a software framework for building AI agents. Moly supports connecting to MoFa servers to interact with AI agents in the same way it does with local LLMs.
 
-To run Moly with Mofa UI enabled but still using the fake backend use:
+To run Moly with a local MoFa server, you can follow these steps:
 
-```sh
-MOFA_FRONTEND=visible cargo run
+### 1. Install Dora
+
+https://github.com/dora-rs/dora?tab=readme-ov-file#installation
+
+### 2. Install MoFa
+
+Requires python ^3.10
+
+```bash
+git clone https://github.com/moxin-org/mofa.git
+```
+Install the required Python libraries, and mainly,
+the mofa library itself
+```bash
+cd python && pip install -r requirements.txt && pip install -e .
+pip install dora-rs
 ```
 
-To also enable the backend use:
+### 3. Run the Moly client (MoFa server for Moly)
 
-```sh
-MOFA_FRONTEND=visible MOFA_BACKEND=real cargo run
+Folder of the Dora node that implements the http server
+```bash
+# 
+cd examples/moly_client
+Run MoFa with
+```
+dora up
+dora build dataflow.yml
+dora start dataflow.yml
+```
+If there's any error when doing dora start, you can restart dora
+```bash
+dora destroy && dora up
 ```
 
-> Note: Enabling the backend requires running Dora and configuring its URL in
-> Moly settings.
+At this point the server should be up
+You can verify it with a request for chat completion:
+```bash
+curl http://localhost:8000/v1/chat/completions \
+-v -H "Content-Type: application/json" \
+-d '{
+"model": "moly-chat",
+"messages": [
+{ "role": "system", "content": "Use positive language and offer helpful solutions to their problems." },
+{ "role": "user", "content": "What is the currency used in Spain?" }
+],
+"temperature": 0.7,
+"stream": true
+}'
+```
+This should return a JSON response with the completion.
+
+## Connect Moly to MoFa
+
+Go to Settings and make sure there's MoFa server listed with the URL [`http://localhost:8000`](http://localhost:8000/) (should be there by default).
+
+> [!NOTE]
+> For development, if you want to avoid running the MoFa server, you can fake it by setting the `MOFA_BACKEND` environment variable to `fake` (default is `real`):
+> ```
+> MOFA_BACKEND=fake cargo run
+> ```
