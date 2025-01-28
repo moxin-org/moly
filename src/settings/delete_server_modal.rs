@@ -165,7 +165,7 @@ impl Widget for DeleteServerModal {
             self.server_address
         );
 
-        self.label(id!(delete_prompt)).set_text(&prompt_text);
+        self.label(id!(delete_prompt)).set_text(cx, &prompt_text);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))

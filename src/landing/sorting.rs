@@ -194,7 +194,7 @@ impl SortingRef {
         );
     }
 
-    pub fn set_selected_item(&self, criteria: SortCriteria) {
+    pub fn set_selected_item(&self, cx: &mut Cx, criteria: SortCriteria) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
@@ -204,6 +204,6 @@ impl SortingRef {
             SortCriteria::MostLikes => 2,
             SortCriteria::LeastLikes => 3,
         };
-        inner.drop_down(id!(options)).set_selected_item(criteria_id);
+        inner.drop_down(id!(options)).set_selected_item(cx, criteria_id);
     }
 }

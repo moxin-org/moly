@@ -195,14 +195,14 @@ impl WidgetMatchEvent for SearchBar {
         }
 
         if let Some(text) = input.changed(actions) {
-            clear_text_button.set_visible(!text.is_empty());
+            clear_text_button.set_visible(cx, !text.is_empty());
             cx.stop_timer(self.search_timer);
             self.search_timer = cx.start_timeout(self.search_debounce_time);
         }
 
         if self.button(id!(clear_text_button)).clicked(actions) {
-            input.set_text_and_redraw(cx, "");
-            clear_text_button.set_visible(false);
+            input.set_text(cx, "");
+            clear_text_button.set_visible(cx, false);
             input.set_key_focus(cx);
 
             cx.action(StoreAction::ResetSearch);
@@ -235,7 +235,7 @@ impl SearchBarRef {
 
         inner
             .sorting(id!(search_sorting))
-            .set_selected_item(selected_sort);
+            .set_selected_item(cx, selected_sort);
         inner.animator_play(cx, id!(search_bar.collapsed));
     }
 

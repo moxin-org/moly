@@ -223,12 +223,12 @@ impl Widget for SettingsScreen {
 
         match self.server_port_state {
             ServerPortState::OnEdit => {
-                self.view.view(id!(port_editable)).set_visible(false);
-                self.view.view(id!(port_on_edit)).set_visible(true);
+                self.view.view(id!(port_editable)).set_visible(cx, false);
+                self.view.view(id!(port_on_edit)).set_visible(cx, true);
             }
             ServerPortState::Editable => {
-                self.view.view(id!(port_editable)).set_visible(true);
-                self.view.view(id!(port_on_edit)).set_visible(false);
+                self.view.view(id!(port_editable)).set_visible(cx, true);
+                self.view.view(id!(port_on_edit)).set_visible(cx, false);
             }
         }
 
@@ -243,16 +243,16 @@ impl Widget for SettingsScreen {
         if let Some(port) = port {
             self.view
                 .view(id!(local_server_options.no_model))
-                .set_visible(false);
+                .set_visible(cx, false);
             self.view
                 .view(id!(local_server_options.main))
-                .set_visible(true);
+                .set_visible(cx, true);
 
             self.view
                 .label(id!(port_number_label))
-                .set_text(&format!("{}", port));
+                .set_text(cx, &format!("{}", port));
 
-            self.view.code_view(id!(code_snippet)).set_text(&format!(
+            self.view.code_view(id!(code_snippet)).set_text(cx, &format!(
                 "# Load a model and run this example in your terminal
 # Choose between streaming and non-streaming mode by setting the \"stream\" field
 
@@ -273,10 +273,10 @@ curl http://localhost:{}/v1/chat/completions \\
         } else {
             self.view
                 .view(id!(local_server_options.no_model))
-                .set_visible(true);
+                .set_visible(cx, true);
             self.view
                 .view(id!(local_server_options.main))
-                .set_visible(false);
+                .set_visible(cx, false);
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -294,9 +294,9 @@ impl WidgetMatchEvent for SettingsScreen {
                     self.override_port = None;
                 }
                 if store.chats.model_loader.is_failed() {
-                    self.view(id!(load_error_label)).set_visible(true);
+                    self.view(id!(load_error_label)).set_visible(cx, true);
                 } else {
-                    self.view(id!(load_error_label)).set_visible(false);
+                    self.view(id!(load_error_label)).set_visible(cx, false);
                 }
             }
         }
@@ -308,7 +308,7 @@ impl WidgetMatchEvent for SettingsScreen {
 
             let port = self.label(id!(port_number_label)).text();
             port_number_input.set_key_focus(cx);
-            port_number_input.set_text(&port);
+            port_number_input.set_text(cx, &port);
 
             self.redraw(cx);
         }

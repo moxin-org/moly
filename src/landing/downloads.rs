@@ -166,14 +166,14 @@ impl Widget for Downloads {
             })
             .count();
         self.label(id!(downloading_count))
-            .set_text(&format!("{} downloading", download_count));
+            .set_text(cx, &format!("{} downloading", download_count));
 
         let paused_count = pending_downloads
             .iter()
             .filter(|d| matches!(d.status, PendingDownloadsStatus::Paused))
             .count();
         self.label(id!(paused_count))
-            .set_text(&format!("{} paused", paused_count));
+            .set_text(cx, &format!("{} paused", paused_count));
 
         let failed_count = pending_downloads
             .iter()
@@ -182,9 +182,9 @@ impl Widget for Downloads {
 
         if failed_count > 0 {
             self.label(id!(failed_count))
-                .set_text(&format!("{} failed", failed_count));
+                .set_text(cx, &format!("{} failed", failed_count));
         } else {
-            self.label(id!(failed_count)).set_text("");
+            self.label(id!(failed_count)).set_text(cx, "");
         }
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {

@@ -270,15 +270,15 @@ impl Widget for ChatParams {
 
             let system_prompt = self.text_input(id!(system_prompt));
 
-            temperature.set_value(ip.temperature.into());
-            top_p.set_value(ip.top_p.into());
-            max_tokens.set_value(ip.max_tokens.into());
-            frequency_penalty.set_value(ip.frequency_penalty.into());
-            presence_penalty.set_value(ip.presence_penalty.into());
-            stop.set_text(&ip.stop);
+            temperature.set_value(cx, ip.temperature.into());
+            top_p.set_value(cx, ip.top_p.into());
+            max_tokens.set_value(cx, ip.max_tokens.into());
+            frequency_penalty.set_value(cx, ip.frequency_penalty.into());
+            presence_penalty.set_value(cx, ip.presence_penalty.into());
+            stop.set_text(cx, &ip.stop);
 
             let system_prompt_value = chat.system_prompt.clone().unwrap_or_default();
-            system_prompt.set_text(&system_prompt_value);
+            system_prompt.set_text(cx, &system_prompt_value);
 
             // Currently, `selected` and `set_selected` interact with the animator of
             // the widget to do what they do. To avoid some visual issues, we should not

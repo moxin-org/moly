@@ -302,7 +302,7 @@ impl Widget for ChatLine {
                 let hovered = self.view.area().rect(cx).contains(e.abs);
                 if self.hovered != hovered {
                     self.hovered = hovered;
-                    self.view(id!(actions_section.actions)).set_visible(hovered);
+                    self.view(id!(actions_section.actions)).set_visible(cx, hovered);
                     self.redraw(cx);
                 }
             }
@@ -332,23 +332,23 @@ impl ChatLine {
             ChatLineState::Editable
         };
 
-        self.view(id!(actions_section.actions)).set_visible(false);
-        self.view(id!(edit_buttons)).set_visible(enabled);
-        self.view(id!(input_container)).set_visible(enabled);
-        self.show_or_hide_message_label(!enabled);
+        self.view(id!(actions_section.actions)).set_visible(cx, false);
+        self.view(id!(edit_buttons)).set_visible(cx, enabled);
+        self.view(id!(input_container)).set_visible(cx, enabled);
+        self.show_or_hide_message_label(cx, !enabled);
 
         self.redraw(cx);
     }
 
-    pub fn show_or_hide_message_label(&mut self, show: bool) {
+    pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
         let text = self.text_input(id!(input)).text();
         let to_markdown = parse_markdown(&text);
         let is_plain_text = to_markdown.nodes.len() <= 3;
 
         self.view(id!(plain_text_message_container))
-            .set_visible(show && is_plain_text);
+            .set_visible(cx, show && is_plain_text);
         self.view(id!(markdown_message_container))
-            .set_visible(show && !is_plain_text);
+            .set_visible(cx, show && !is_plain_text);
     }
 
     pub fn handle_editable_actions(&mut self, cx: &mut Cx, actions: &Actions) {
@@ -409,27 +409,27 @@ impl ChatLine {
 }
 
 impl ChatLineRef {
-    pub fn set_sender_name(&mut self, text: &str) {
+    pub fn set_sender_name(&mut self, cx: &mut Cx, text: &str) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
-        inner.label(id!(sender_name)).set_text(text);
+        inner.label(id!(sender_name)).set_text(cx, text);
     }
 
-    pub fn set_model_avatar_text(&mut self, text: &str) {
+    pub fn set_model_avatar_text(&mut self, cx: &mut Cx, text: &str) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
-        inner.view(id!(avatar_section.model)).set_visible(true);
+        inner.view(id!(avatar_section.model)).set_visible(cx, true);
         inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(false);
-        inner.label(id!(avatar_label)).set_text(text);
+        inner.label(id!(avatar_label)).set_text(cx, text);
     }
 
-    pub fn set_model_avatar(&mut self, agent: &MofaAgent) {
+    pub fn set_model_avatar(&mut self, cx: &mut Cx, agent: &MofaAgent) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
-        inner.view(id!(avatar_section.model)).set_visible(false);
+        inner.view(id!(avatar_section.model)).set_visible(cx, false);
         inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
         inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(agent);
     }
@@ -444,19 +444,19 @@ impl ChatLineRef {
             ChatLineState::Editable | ChatLineState::NotEditable => {
                 if is_streaming && !text.is_empty() {
                     let output = format!("{}{}", text, "●");
-                    inner.text_input(id!(input)).set_text(&output.trim());
-                    inner.label(id!(plain_text_message)).set_text(&output.trim());
-                    inner.markdown(id!(markdown_message)).set_text(&output.trim());
+                    inner.text_input(id!(input)).set_text(cx, &output.trim());
+                    inner.label(id!(plain_text_message)).set_text(cx, &output.trim());
+                    inner.markdown(id!(markdown_message)).set_text(cx, &output.trim());
                 } else {
-                    inner.text_input(id!(input)).set_text(text.trim());
-                    inner.label(id!(plain_text_message)).set_text(text.trim());
-                    inner.markdown(id!(markdown_message)).set_text(text.trim());
+                    inner.text_input(id!(input)).set_text(cx, text.trim());
+                    inner.label(id!(plain_text_message)).set_text(cx, text.trim());
+                    inner.markdown(id!(markdown_message)).set_text(cx, text.trim());
                 }
 
                 // We know only AI assistant messages could be empty, so it is never
                 // displayed in user's chat lines.
                 let show_loading = text.trim().is_empty();
-                inner.view(id!(loading_container)).set_visible(show_loading);
+                inner.view(id!(loading_container)).set_visible(cx, show_loading);
 
                 let mut loading_widget = inner.chat_line_loading(id!(loading_container.loading));
                 if show_loading {
@@ -465,7 +465,7 @@ impl ChatLineRef {
                     loading_widget.stop_animation();
                 }
 
-                inner.show_or_hide_message_label(true);
+                inner.show_or_hide_message_label(cx, true);
             }
             ChatLineState::OnEdit => {}
         }
@@ -478,7 +478,7 @@ impl ChatLineRef {
         inner.message_id = message_id;
     }
 
-    pub fn set_actions_enabled(&mut self, _cx: &mut Cx, enabled: bool) {
+    pub fn set_actions_enabled(&mut self, cx: &mut Cx, enabled: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
@@ -489,14 +489,14 @@ impl ChatLineRef {
             }
         } else {
             inner.edition_state = ChatLineState::NotEditable;
-            inner.view(id!(actions_section.actions)).set_visible(false);
+            inner.view(id!(actions_section.actions)).set_visible(cx, false);
         }
     }
 
-    pub fn set_regenerate_button_visible(&mut self, visible: bool) {
+    pub fn set_regenerate_button_visible(&mut self, cx: &mut Cx, visible: bool) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
-        inner.button(id!(save_and_regenerate)).set_visible(visible);
+        inner.button(id!(save_and_regenerate)).set_visible(cx, visible);
     }
 }

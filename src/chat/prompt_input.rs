@@ -228,7 +228,7 @@ impl WidgetMatchEvent for PromptInput {
         if let Some(item) = prompt.item_selected(actions) {
             let entity_button = item.entity_button(id!(button));
             let entity = entity_button.get_entity_id().unwrap();
-            self.on_entity_selected(scope, &*entity);
+            self.on_entity_selected(cx, scope, &*entity);
         }
 
         if prompt.should_build_items(actions) {
@@ -250,14 +250,14 @@ impl WidgetMatchEvent for PromptInput {
             {
                 if idx == 0 {
                     let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
-                    label.set_text("Agents");
+                    label.set_text(cx, "Agents");
                     prompt.add_unselectable_item(label);
                 }
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
                 let mut entity_button = option.entity_button(id!(button));
-                entity_button.set_entity(agent.into());
-                entity_button.set_description_visible(true);
+                entity_button.set_entity(cx, agent.into());
+                entity_button.set_description_visible(cx, true);
                 prompt.add_item(option);
             }
 
@@ -271,30 +271,30 @@ impl WidgetMatchEvent for PromptInput {
             {
                 if idx == 0 {
                     let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
-                    label.set_text("Models");
+                    label.set_text(cx, "Models");
                     prompt.add_unselectable_item(label);
                 }
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
                 let mut entity_button = option.entity_button(id!(button));
-                entity_button.set_entity(file.into());
-                entity_button.set_description_visible(true);
+                entity_button.set_entity(cx, file.into());
+                entity_button.set_description_visible(cx, true);
                 prompt.add_item(option);
             }
         }
 
         if prompt.text_input_ref().escape(actions) {
-            self.on_deselected();
+            self.on_deselected(cx);
         }
 
         if self.button(id!(deselect_button)).clicked(actions) {
-            self.on_deselected();
+            self.on_deselected(cx);
         }
 
         for action in actions {
             match action.cast() {
                 ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
-                    self.on_deselected()
+                    self.on_deselected(cx);
                 }
                 _ => (),
             }
@@ -302,14 +302,14 @@ impl WidgetMatchEvent for PromptInput {
 
         for action in actions.iter().filter_map(|a| a.as_widget_action()) {
             if let ChatAction::Start(_) = action.cast() {
-                self.on_deselected();
+                self.on_deselected(cx);
             }
         }
     }
 }
 
 impl PromptInput {
-    fn on_entity_selected(&mut self, scope: &mut Scope, entity: &ChatEntityId) {
+    fn on_entity_selected(&mut self, cx: &mut Cx, scope: &mut Scope, entity: &ChatEntityId) {
         let store = scope.data.get::<Store>().unwrap();
 
         let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
@@ -318,7 +318,7 @@ impl PromptInput {
         match entity {
             ChatEntityId::Agent(agent_id) => {
                 let agent = store.chats.get_agent_or_placeholder(agent_id);
-                label.set_text(&agent.name);
+                label.set_text(cx, &agent.name);
                 agent_avatar.set_agent(agent);
             }
             ChatEntityId::ModelFile(file_id) => {
@@ -327,18 +327,18 @@ impl PromptInput {
                     .downloads
                     .get_file(file_id)
                     .expect("selected file not found");
-                label.set_text(&file.name);
+                label.set_text(cx, &file.name);
                 agent_avatar.set_visible(false);
             }
         }
 
         self.entity_selected = Some(entity.clone());
-        self.view(id!(selected_bubble)).set_visible(true);
+        self.view(id!(selected_bubble)).set_visible(cx, true);
     }
 
-    fn on_deselected(&mut self) {
+    fn on_deselected(&mut self, cx: &mut Cx) {
         self.entity_selected = None;
-        self.view(id!(selected_bubble)).set_visible(false);
+        self.view(id!(selected_bubble)).set_visible(cx, false);
     }
 }
 
@@ -356,13 +356,13 @@ impl LiveHook for PromptInput {
 }
 
 impl PromptInputRef {
-    pub fn reset_text(&mut self, set_key_focus: bool) {
-        let prompt = self.command_text_input(id!(prompt));
+    pub fn reset_text(&mut self, cx: &mut Cx, set_key_focus: bool) {
+        let mut prompt = self.command_text_input(id!(prompt));
 
         if set_key_focus {
             prompt.request_text_input_focus();
         }
 
-        prompt.reset();
+        prompt.reset(cx);
     }
 }

@@ -347,10 +347,11 @@ impl Widget for ChatHistoryCard {
 
         let caption = store.get_chat_entity_name(self.chat_id);
         self.set_title_text(
+            cx,
             chat.borrow_mut().get_title(),
             &caption.clone().unwrap_or_default(),
         );
-        self.update_title_visibility();
+        self.update_title_visibility(cx);
 
         let initial_letter = caption
             .unwrap_or("A".to_string())
@@ -364,17 +365,17 @@ impl Widget for ChatHistoryCard {
             Some(ChatEntityId::Agent(agent_id)) => {
                 let agent = store.chats.get_agent_or_placeholder(&agent_id);
 
-                self.view(id!(avatar_section.model)).set_visible(false);
+                self.view(id!(avatar_section.model)).set_visible(cx, false);
                 self.chat_agent_avatar(id!(avatar_section.agent))
                     .set_visible(true);
                 self.chat_agent_avatar(id!(avatar_section.agent))
                     .set_agent(agent);
             }
             _ => {
-                self.view(id!(avatar_section.model)).set_visible(true);
+                self.view(id!(avatar_section.model)).set_visible(cx, true);
                 self.chat_agent_avatar(id!(avatar_section.agent))
                     .set_visible(false);
-                self.view.label(id!(avatar_label)).set_text(&initial_letter);
+                self.view.label(id!(avatar_label)).set_text(cx, &initial_letter);
             }
         }
 
@@ -448,23 +449,23 @@ impl ChatHistoryCard {
         }
     }
 
-    fn set_title_text(&mut self, text: &str, caption: &str) {
-        self.view.label(id!(title_label)).set_text(text.trim());
+    fn set_title_text(&mut self, cx: &mut Cx, text: &str, caption: &str) {
+        self.view.label(id!(title_label)).set_text(cx, text.trim());
         if let TitleState::Editable = self.title_edition_state {
-            self.view.text_input(id!(title_input)).set_text(text.trim());
+            self.view.text_input(id!(title_input)).set_text(cx, text.trim());
         }
         self.label(id!(model_or_agent_name_label))
-            .set_text(&human_readable_name(caption));
+            .set_text(cx, &human_readable_name(caption));
     }
 
-    fn update_title_visibility(&mut self) {
+    fn update_title_visibility(&mut self, cx: &mut Cx) {
         let on_edit = matches!(self.title_edition_state, TitleState::OnEdit);
-        self.view(id!(edit_buttons)).set_visible(on_edit);
-        self.view(id!(title_input_container)).set_visible(on_edit);
-        self.button(id!(chat_options)).set_visible(!on_edit);
+        self.view(id!(edit_buttons)).set_visible(cx, on_edit);
+        self.view(id!(title_input_container)).set_visible(cx, on_edit);
+        self.button(id!(chat_options)).set_visible(cx, !on_edit);
 
         let editable = matches!(self.title_edition_state, TitleState::Editable);
-        self.view(id!(title_label_container)).set_visible(editable);
+        self.view(id!(title_label_container)).set_visible(cx, editable);
     }
 
     fn transition_title_state(&mut self, cx: &mut Cx) {
@@ -473,7 +474,7 @@ impl ChatHistoryCard {
             TitleState::Editable => TitleState::OnEdit,
         };
 
-        self.update_title_visibility();
+        self.update_title_visibility(cx);
         self.redraw(cx);
 
         match self.title_edition_state {
