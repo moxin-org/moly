@@ -75,17 +75,19 @@ live_design! {
                     color: #fff,
                     radius: 5.0
                 }
-                search_input = <MolyTextInput> {
-                    width: Fill,
-                    margin: {bottom: 4},
-                    empty_message: "Search for a model or agent",
-                    draw_bg: {
-                        radius: 5.0,
-                        color: #fff
-                    }
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 10},
-                        color: #475467
+                search_input_wrapper = {
+                    search_input = <MolyTextInput> {
+                        width: Fill,
+                        margin: {bottom: 4},
+                        empty_message: "Search for a model or agent",
+                        draw_bg: {
+                            radius: 5.0,
+                            color: #fff
+                        }
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 10},
+                            color: #475467
+                        }
                     }
                 }
             }
