@@ -122,6 +122,12 @@ impl Widget for Messages {
                     let message = &self.messages[index];
 
                     match message.from {
+                        EntityId::System => {
+                            // TODO: Can or should system messages be rendered?
+                        }
+                        EntityId::App => {
+                            // TODO: Display app messages. They may be errors.
+                        }
                         EntityId::User => {
                             let item = list.item(cx, index, live_id!(UserLine));
                             item.label(id!(text)).set_text(&message.body);
@@ -180,6 +186,7 @@ impl Widget for Messages {
 }
 
 impl Messages {
+    // TODO: Add the button to scroll inside of here.
     pub fn scroll_to_bottom(&self, cx: &mut Cx) {
         self.portal_list(id!(list))
             .smooth_scroll_to_end(cx, 10., Some(80));

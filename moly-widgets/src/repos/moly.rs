@@ -4,12 +4,38 @@ use serde::{Deserialize, Serialize};
 
 use crate::{protocol::*, utils::asynchronous::spawn};
 
-// Run Moly as `MOLY_API_SERVER_ADDR=localhost:8085 cargo run`
-const PORT: u16 = 8085;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MolyMessage {
     pub content: String,
+    pub role: Role,
+}
+
+impl TryFrom<Message> for MolyMessage {
+    type Error = ();
+
+    fn try_from(message: Message) -> Result<Self, Self::Error> {
+        let role = match message.from {
+            EntityId::User => Ok(Role::User),
+            EntityId::System => Ok(Role::System),
+            EntityId::Bot(_) => Ok(Role::Assistant),
+            EntityId::App => Err(()),
+        }?;
+
+        Ok(Self {
+            content: message.body,
+            role,
+        })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Role {
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "user")]
+    User,
+    #[serde(rename = "assistant")]
+    Assistant,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -57,18 +83,26 @@ impl BotRepo for MolyRepo {
         Box::new(self.clone())
     }
 
-    fn send_stream(&mut self, _bot: BotId, message: &str) -> BoxStream<Result<String, ()>> {
+    fn send_stream(&mut self, _bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>> {
+        let mut moly_messages: Vec<MolyMessage> = Vec::new();
+
+        if !messages.iter().any(|m| m.from == EntityId::System) {
+            moly_messages.push(MolyMessage {
+                content: "You're a helpful assistant. You can speak English (default), Spanish and Chinese.".to_string(),
+                role: Role::System,
+            });
+        }
+
+        moly_messages.extend(messages.iter().filter_map(|m| m.clone().try_into().ok()));
+
         let request = reqwest::Client::new()
-        .post(&self.url)
-        .json(&serde_json::json!({
-            "model": "moly",
-            "messages": [
-                { "role": "system", "content": "You're a helpful assistant. You can speak English (default), Spanish and Chinese." },
-                { "role": "user", "content": message }
-            ],
-            "temperature": 0.7,
-            "stream": true
-        }));
+            .post(&self.url)
+            .json(&serde_json::json!({
+                "model": "moly",
+                "messages": moly_messages,
+                "temperature": 0.7,
+                "stream": true
+            }));
 
         // The `async-stream` crate and macro internally use a channel to create the stream
         // imperatively. Where `yield` is mapped to `sender.send().await` and `await for` is just
@@ -157,8 +191,8 @@ impl BotRepo for MolyRepo {
         return receiver.boxed_local();
     }
 
-    fn send(&mut self, bot: BotId, message: &str) -> BoxFuture<Result<String, ()>> {
-        let stream = self.send_stream(bot, message);
+    fn send(&mut self, bot: BotId, messages: &[Message]) -> BoxFuture<Result<String, ()>> {
+        let stream = self.send_stream(bot, messages);
 
         let future = async move {
             let parts = stream.collect::<Vec<_>>().await;

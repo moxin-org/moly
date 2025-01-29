@@ -28,7 +28,9 @@ pub enum Picture {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum EntityId {
     User,
+    System,
     Bot(BotId),
+    App,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -63,6 +65,7 @@ impl From<&str> for BotId {
 }
 
 /// A message that is part of a conversation.
+#[derive(Clone, PartialEq, Debug)]
 pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
@@ -88,10 +91,10 @@ pub trait BotRepo: Send {
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
     // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.
-    fn send(&mut self, bot: BotId, message: &str) -> BoxFuture<Result<String, ()>>;
+    fn send(&mut self, bot: BotId, messages: &[Message]) -> BoxFuture<Result<String, ()>>;
 
     /// Send a message to a bot expecting a streamed response.
-    fn send_stream(&mut self, bot: BotId, message: &str) -> BoxStream<Result<String, ()>>;
+    fn send_stream(&mut self, bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this

@@ -53,9 +53,14 @@ impl Widget for Chat {
 
 impl Chat {
     fn handle_submit(&mut self, cx: &mut Cx) {
+        let messages = self.messages(id!(messages));
         let prompt = self.prompt_input(id!(prompt));
+
         let text = prompt.text();
         prompt.borrow_mut().unwrap().reset(); // from command text input
+
+        // TODO: Less aggresive error handling for users.
+        let bot_id = self.bot_id.expect("no bot selected");
 
         let mut client = self
             .bot_repo
@@ -63,41 +68,37 @@ impl Chat {
             .expect("no bot repo provided")
             .clone_box();
 
-        // ensure it has the proper repo just in time
-        self.messages(id!(messages))
-            .borrow_mut()
-            .unwrap()
-            .bot_client = Some(client.clone_box());
+        let context: Vec<Message> = {
+            let mut messages = messages.borrow_mut().unwrap();
 
-        // TODO: Less aggresive error handling for users.
-        let bot_id = self.bot_id.expect("no bot selected");
+            messages.bot_client = Some(client.clone_box());
 
-        self.messages(id!(messages))
-            .borrow_mut()
-            .unwrap()
-            .messages
-            .push(Message {
+            messages.messages.push(Message {
                 from: EntityId::User,
                 body: text.clone(),
                 is_writing: false,
             });
 
-        self.messages(id!(messages))
-            .borrow_mut()
-            .unwrap()
-            .messages
-            .push(Message {
+            messages.messages.push(Message {
                 from: EntityId::Bot(bot_id),
                 body: String::new(),
                 is_writing: true,
             });
+
+            messages
+                .messages
+                .iter()
+                .filter(|m| !m.is_writing && m.from != EntityId::App)
+                .cloned()
+                .collect()
+        };
 
         self.redraw(cx);
 
         let ui = self.ui_runner();
 
         spawn(async move {
-            let mut message_stream = client.send_stream(bot_id, &text);
+            let mut message_stream = client.send_stream(bot_id, &context);
 
             while let Some(delta) = message_stream.next().await {
                 let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());
