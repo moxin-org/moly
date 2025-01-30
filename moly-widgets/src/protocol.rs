@@ -90,11 +90,6 @@ pub struct Message {
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
 pub trait BotService: Send {
-    /// Send a message to a bot expecting a full response at once.
-    // TODO: messages may end up being a little bit more complex, using string while thinking.
-    // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.
-    fn send(&mut self, bot: BotId, messages: &[Message]) -> BoxFuture<Result<String, ()>>;
-
     /// Send a message to a bot expecting a streamed response.
     fn send_stream(&mut self, bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>>;
 
@@ -109,6 +104,32 @@ pub trait BotService: Send {
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotService>;
+
+    /// Send a message to a bot expecting a full response at once.
+    // TODO: messages may end up being a little bit more complex, using string while thinking.
+    // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.
+    fn send(&mut self, bot: BotId, messages: &[Message]) -> BoxFuture<Result<String, ()>> {
+        let stream = self.send_stream(bot, messages);
+
+        let future = async move {
+            let parts = stream.collect::<Vec<_>>().await;
+
+            if parts.contains(&Err(())) {
+                return Err(());
+            }
+
+            let message = parts.into_iter().filter_map(Result::ok).collect::<String>();
+            Ok(message)
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            future.boxed()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        future.boxed_local()
+    }
 }
 
 struct InnerBotRepo {

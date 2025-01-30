@@ -260,29 +260,6 @@ impl BotService for MolyService {
         #[cfg(target_arch = "wasm32")]
         return receiver.boxed_local();
     }
-
-    fn send(&mut self, bot: BotId, messages: &[Message]) -> BoxFuture<Result<String, ()>> {
-        let stream = self.send_stream(bot, messages);
-
-        let future = async move {
-            let parts = stream.collect::<Vec<_>>().await;
-
-            if parts.contains(&Err(())) {
-                return Err(());
-            }
-
-            let message = parts.into_iter().filter_map(Result::ok).collect::<String>();
-            Ok(message)
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            future.boxed()
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        future.boxed_local()
-    }
 }
 
 // fn events_from_bytes(bytes: Byt)
