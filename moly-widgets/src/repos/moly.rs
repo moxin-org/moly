@@ -61,6 +61,7 @@ pub struct Completation {
 
 #[derive(Clone, Debug, Default)]
 struct MolyServiceInner {
+    bots_cache: Vec<Bot>,
     url: String,
     key: Option<String>,
 }
@@ -94,9 +95,10 @@ impl MolyService {
 impl BotService for MolyService {
     fn bots(&self) -> BoxStream<Result<Bot, ()>> {
         let (mut sender, receiver) = futures::channel::mpsc::channel(0);
+        let inner = self.0.clone();
 
         let request =
-            reqwest::Client::new().get(format!("{}/v1/models", self.0.lock().unwrap().url));
+            reqwest::Client::new().get(format!("{}/v1/models", inner.lock().unwrap().url));
 
         spawn(async move {
             let response = match request.send().await {
@@ -126,6 +128,8 @@ impl BotService for MolyService {
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
                 })
                 .collect();
+
+            inner.lock().unwrap().bots_cache = bots.clone();
 
             for bot in bots {
                 sender.send(Ok(bot)).await.unwrap();
@@ -164,7 +168,7 @@ impl BotService for MolyService {
                 self.0.lock().unwrap().url
             ))
             .json(&serde_json::json!({
-                "model": "moly",
+                "model": self.0.lock().unwrap().bots_cache.first().unwrap().name,
                 "messages": moly_messages,
                 "temperature": 0.7,
                 "stream": true
