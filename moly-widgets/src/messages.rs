@@ -87,11 +87,6 @@ live_design! {
     }
 }
 
-pub struct MessagesProps<'a> {
-    pub messages: &'a [Message],
-    pub bot_client: &'a dyn BotRepo,
-}
-
 #[derive(Live, LiveHook, Widget)]
 pub struct Messages {
     #[deref]
@@ -101,7 +96,7 @@ pub struct Messages {
     pub messages: Vec<Message>,
 
     #[rust]
-    pub bot_client: Option<Box<dyn BotRepo>>,
+    pub bot_repo: Option<BotRepo>,
 }
 
 impl Widget for Messages {
@@ -135,7 +130,7 @@ impl Widget for Messages {
                         }
                         EntityId::Bot(id) => {
                             let bot = self
-                                .bot_client
+                                .bot_repo
                                 .as_ref()
                                 .expect("no bot client set")
                                 .get_bot(id);

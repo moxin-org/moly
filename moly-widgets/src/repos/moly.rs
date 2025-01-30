@@ -60,30 +60,29 @@ pub struct Completation {
 }
 
 #[derive(Clone, Debug, Default)]
-struct MolyRepoInner {
-    bots: Vec<Bot>,
+struct MolyServiceInner {
     url: String,
     key: Option<String>,
 }
 
 #[derive(Debug)]
-pub struct MolyRepo(Arc<Mutex<MolyRepoInner>>);
+pub struct MolyService(Arc<Mutex<MolyServiceInner>>);
 
-impl Clone for MolyRepo {
+impl Clone for MolyService {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl From<MolyRepoInner> for MolyRepo {
-    fn from(inner: MolyRepoInner) -> Self {
+impl From<MolyServiceInner> for MolyService {
+    fn from(inner: MolyServiceInner) -> Self {
         Self(Arc::new(Mutex::new(inner)))
     }
 }
 
-impl MolyRepo {
+impl MolyService {
     pub fn new(url: String, key: Option<String>) -> Self {
-        MolyRepoInner {
+        MolyServiceInner {
             url,
             key,
             ..Default::default()
@@ -92,17 +91,20 @@ impl MolyRepo {
     }
 }
 
-impl BotRepo for MolyRepo {
-    fn load(&mut self) -> BoxFuture<Result<(), ()>> {
+impl BotService for MolyService {
+    fn bots(&self) -> BoxStream<Result<Bot, ()>> {
+        let (mut sender, receiver) = futures::channel::mpsc::channel(0);
+
         let request =
             reqwest::Client::new().get(format!("{}/v1/models", self.0.lock().unwrap().url));
 
-        let future = async move {
+        spawn(async move {
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
                     log!("Error {:?}", error);
-                    return Err(());
+                    sender.send(Err(())).await.unwrap();
+                    return;
                 }
             };
 
@@ -110,7 +112,8 @@ impl BotRepo for MolyRepo {
                 Ok(models) => models,
                 Err(error) => {
                     log!("Error {:?}", error);
-                    return Err(());
+                    sender.send(Err(())).await.unwrap();
+                    return;
                 }
             };
 
@@ -124,36 +127,21 @@ impl BotRepo for MolyRepo {
                 })
                 .collect();
 
-            self.0.lock().unwrap().bots = bots;
-
-            return Ok(());
-        };
+            for bot in bots {
+                sender.send(Ok(bot)).await.unwrap();
+            }
+        });
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            future.boxed()
+            receiver.boxed()
         }
 
         #[cfg(target_arch = "wasm32")]
-        future.boxed_local()
+        receiver.boxed_local()
     }
 
-    fn get_bot(&self, id: BotId) -> Option<Bot> {
-        self.0
-            .lock()
-            .unwrap()
-            .bots
-            .iter()
-            .find(|bot| bot.id == id)
-            .cloned()
-    }
-
-    fn bots(&self) -> Box<dyn Iterator<Item = Bot>> {
-        // TODO: You know.
-        Box::new(self.0.lock().unwrap().bots.clone().into_iter())
-    }
-
-    fn clone_box(&self) -> Box<dyn BotRepo> {
+    fn clone_box(&self) -> Box<dyn BotService> {
         // ref should be shared but since hardcoded it should be ok
         Box::new(self.clone())
     }

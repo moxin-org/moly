@@ -1,4 +1,4 @@
-use crate::{protocol::*, repos::moly::MolyRepo, utils::asynchronous::spawn, Chat, ChatWidgetExt};
+use crate::{protocol::*, repos::moly::MolyService, utils::asynchronous::spawn, ChatWidgetExt};
 use makepad_widgets::*;
 
 live_design!(
@@ -36,16 +36,16 @@ impl Widget for MolyChat {
 impl LiveHook for MolyChat {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         // TODO: Ensure syncrhonization on updates.
-        let mut moly_repo = MolyRepo::new(self.url.clone(), self.key.clone());
-        self.chat(id!(chat)).borrow_mut().unwrap().bot_repo = Some(Box::new(moly_repo.clone()));
+        let mut repo: BotRepo = MolyService::new(self.url.clone(), self.key.clone()).into();
+        self.chat(id!(chat)).borrow_mut().unwrap().bot_repo = Some(repo.clone());
 
         let ui = self.ui_runner();
         spawn(async move {
-            moly_repo.load().await.expect("TODO: Handle loading better");
+            repo.load().await.expect("TODO: Handle loading better");
             ui.defer_with_redraw(move |me, _cx, _scope| {
                 let chat = me.chat(id!(chat));
                 let mut chat = chat.borrow_mut().unwrap();
-                chat.bot_id = Some(moly_repo.bots().next().unwrap().id);
+                chat.bot_id = Some(repo.bots().first().unwrap().id);
                 chat.visible = true;
             });
         });

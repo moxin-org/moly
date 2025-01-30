@@ -25,7 +25,7 @@ pub struct Chat {
     deref: View,
 
     #[rust]
-    pub bot_repo: Option<Box<dyn BotRepo>>,
+    pub bot_repo: Option<BotRepo>,
 
     // TODO: Can this be live?
     #[rust]
@@ -62,16 +62,16 @@ impl Chat {
         // TODO: Less aggresive error handling for users.
         let bot_id = self.bot_id.expect("no bot selected");
 
-        let mut client = self
+        let repo = self
             .bot_repo
             .as_ref()
             .expect("no bot repo provided")
-            .clone_box();
+            .clone();
 
         let context: Vec<Message> = {
             let mut messages = messages.borrow_mut().unwrap();
 
-            messages.bot_client = Some(client.clone_box());
+            messages.bot_repo = Some(repo.clone());
 
             messages.messages.push(Message {
                 from: EntityId::User,
@@ -98,7 +98,8 @@ impl Chat {
         let ui = self.ui_runner();
 
         spawn(async move {
-            let mut message_stream = client.send_stream(bot_id, &context);
+            let mut service = repo.service();
+            let mut message_stream = service.send_stream(bot_id, &context);
 
             while let Some(delta) = message_stream.next().await {
                 let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());

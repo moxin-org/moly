@@ -1,6 +1,8 @@
+use std::sync::{Arc, Mutex};
+
 // This is the stream type re-exported by tokio, reqwest and futures.
-use futures::{future, stream};
-use makepad_widgets::LiveValue;
+use futures::{future, stream, FutureExt, StreamExt};
+use makepad_widgets::{log, LiveValue};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub type BoxFuture<'a, T> = future::BoxFuture<'a, T>;
@@ -87,10 +89,7 @@ pub struct Message {
 ///
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
-pub trait BotRepo: Send {
-    /// Get ready and pull the available bots list.
-    fn load(&mut self) -> BoxFuture<Result<(), ()>>;
-
+pub trait BotService: Send {
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
     // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.
@@ -106,14 +105,72 @@ pub trait BotRepo: Send {
 
     /// Bots available under this client.
     // TODO: Should be a stream actually?
-    fn bots(&self) -> Box<dyn Iterator<Item = Bot>>;
-
-    /// Get a bot by its id.
-    // TODO: What if you want to pull remote to get this? What if you don't have
-    // it inside the struct? Would make sense to return something owned and async?
-    // Would make sense for `Bot` to be a trait instead of just a data struct?
-    fn get_bot(&self, id: BotId) -> Option<Bot>;
+    fn bots(&self) -> BoxStream<Result<Bot, ()>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
-    fn clone_box(&self) -> Box<dyn BotRepo>;
+    fn clone_box(&self) -> Box<dyn BotService>;
+}
+
+struct InnerBotRepo {
+    service: Box<dyn BotService>,
+    bots: Vec<Bot>,
+}
+
+pub struct BotRepo(Arc<Mutex<InnerBotRepo>>);
+
+impl Clone for BotRepo {
+    fn clone(&self) -> Self {
+        BotRepo(self.0.clone())
+    }
+}
+
+impl BotRepo {
+    pub fn load(&mut self) -> BoxFuture<Result<(), ()>> {
+        let future = async move {
+            let mut new_bots = Vec::new();
+            let service = self.service();
+            let mut bots_stream = service.bots();
+
+            while let Some(bot) = bots_stream.next().await {
+                match bot {
+                    Ok(bot) => new_bots.push(bot),
+                    Err(_) => {
+                        log!("Error loading bots");
+                        return Err(());
+                    }
+                }
+            }
+
+            self.0.lock().unwrap().bots = new_bots;
+            Ok(())
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            future.boxed()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        future.boxed_local()
+    }
+    pub fn service(&self) -> Box<dyn BotService> {
+        self.0.lock().unwrap().service.clone_box()
+    }
+
+    pub fn bots(&self) -> Vec<Bot> {
+        self.0.lock().unwrap().bots.clone()
+    }
+
+    pub fn get_bot(&self, id: BotId) -> Option<Bot> {
+        self.bots().into_iter().find(|bot| bot.id == id)
+    }
+}
+
+impl<T: BotService + 'static> From<T> for BotRepo {
+    fn from(service: T) -> Self {
+        BotRepo(Arc::new(Mutex::new(InnerBotRepo {
+            service: Box::new(service),
+            bots: Vec::new(),
+        })))
+    }
 }
