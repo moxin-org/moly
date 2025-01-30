@@ -13,6 +13,7 @@ pub mod styles;
 pub mod tooltip;
 pub mod utils;
 pub mod widgets;
+pub mod translator;
 
 pub fn live_design(cx: &mut Cx) {
     meta::live_design(cx);
@@ -25,5 +26,5 @@ pub fn live_design(cx: &mut Cx) {
     external_link::live_design(cx);
     download_notification_popup::live_design(cx);
     tooltip::live_design(cx);
-    desktop_buttons::live_design(cx);
+    desktop_buttons::live_design(cx); 
 }

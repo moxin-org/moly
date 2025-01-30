@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::chats::{MoFaTestServerAction, MofaServerConnectionStatus};
@@ -11,6 +13,7 @@ use crate::shared::download_notification_popup::{
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use moly_protocol::data::{File, FileID};
+use crate::shared::translator::Translator;
 
 use makepad_widgets::*;
 use markdown::MarkdownAction;
@@ -20,6 +23,7 @@ live_design! {
     use link::theme::*;
     use link::shaders::*;
     use link::widgets::*;
+    use link::translator::*;
 
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
@@ -82,26 +86,26 @@ live_design! {
 
                         discover_tab = <SidebarMenuButton> {
                             animator: {selected = {default: on}}
-                            text: "Discover",
+                            text: (SIDEBAR_TAB_DISCOVER),
                             draw_icon: {
                                 svg_file: (ICON_DISCOVER),
                             }
                         }
                         chat_tab = <SidebarMenuButton> {
-                            text: "Chat",
+                            text: (SIDEBAR_TAB_CHAT),
                             draw_icon: {
                                 svg_file: (ICON_CHAT),
                             }
                         }
                         my_models_tab = <SidebarMenuButton> {
-                            text: "My Models",
+                            text: (SIDEBAR_TAB_MY_MODELS),
                             draw_icon: {
                                 svg_file: (ICON_MY_MODELS),
                             }
                         }
                         <HorizontalFiller> {}
                         settings_tab = <SidebarMenuButton> {
-                            text: "Settings",
+                            text: (SIDEBAR_TAB_SETTINGS),
                             draw_icon: {
                                 svg_file: (ICON_SETTINGS),
                             }
@@ -159,17 +163,19 @@ impl LiveRegister for App {
         makepad_widgets::live_design(cx);
         makepad_code_editor::live_design(cx);
 
+        cx.link(live_id!(translator), live_id!(translator_zh));
+
         crate::shared::live_design(cx);
         crate::landing::live_design(cx);
         crate::chat::live_design(cx);
         crate::my_models::live_design(cx);
         crate::settings::live_design(cx);
+        crate::translations::live_design(cx);
     }
 }
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        
         // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
             if let Some(file_id) = &self.file_id {
@@ -179,6 +185,8 @@ impl AppMain for App {
             }
         }
       
+        self.init_translator(cx);
+        
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
@@ -205,7 +213,7 @@ impl MatchEvent for App {
                     application_pages.settings_frame,
                 ),
             );
-
+	
         for action in actions.iter() {
             if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
                 let _ = robius_open::Uri::new(&url).open();
@@ -332,5 +340,27 @@ impl App {
                 self.download_retry_attempts = 0;
             }
         }
+    }
+
+    fn init_translator(&mut self, cx: &mut Cx) {
+         let mut translator = Translator::new("en");
+         translator.set_translations(cx, &[
+             ("en", "src/translations/en.rs"),
+             ("zh", "src/translations/zh.rs"),
+             ("es", "src/translations/es.rs"),
+         ]).expect("Failed to load translations");
+
+         // let translation = translator.tr(cx, live_id!(MY_MODELS_TITLE));
+         // dbg!(translation);
+
+         // let _ = translator.set_language("es").unwrap();
+
+         // let translation = translator.tr(cx, live_id!(MY_MODELS_TITLE));
+         // dbg!(translation);
+
+         // let _ = translator.set_language("zh").unwrap();
+
+         // let translation = translator.tr(cx, live_id!(MY_MODELS_TITLE));
+         // dbg!(translation);
     }
 }
