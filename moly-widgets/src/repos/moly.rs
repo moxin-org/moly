@@ -1,8 +1,19 @@
 use futures::{future::FutureExt, stream::StreamExt, SinkExt};
 use makepad_widgets::log;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 
 use crate::{protocol::*, utils::asynchronous::spawn};
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Model {
+    id: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Models {
+    pub data: Vec<Model>,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MolyMessage {
@@ -48,34 +59,98 @@ pub struct Completation {
     pub choices: Vec<Choice>,
 }
 
-#[derive(Clone, Debug)]
-pub struct MolyRepo {
+#[derive(Clone, Debug, Default)]
+struct MolyRepoInner {
     bots: Vec<Bot>,
     url: String,
     key: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct MolyRepo(Arc<Mutex<MolyRepoInner>>);
+
+impl Clone for MolyRepo {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl From<MolyRepoInner> for MolyRepo {
+    fn from(inner: MolyRepoInner) -> Self {
+        Self(Arc::new(Mutex::new(inner)))
+    }
+}
+
 impl MolyRepo {
     pub fn new(url: String, key: Option<String>) -> Self {
-        Self {
-            bots: vec![Bot {
-                id: BotId::from("moly"),
-                name: "Moly".to_string(),
-                avatar: Picture::Grapheme("M".to_string()),
-            }],
+        MolyRepoInner {
             url,
             key,
+            ..Default::default()
         }
+        .into()
     }
 }
 
 impl BotRepo for MolyRepo {
+    fn load(&mut self) -> BoxFuture<Result<(), ()>> {
+        let request =
+            reqwest::Client::new().get(format!("{}/v1/models", self.0.lock().unwrap().url));
+
+        let future = async move {
+            let response = match request.send().await {
+                Ok(response) => response,
+                Err(error) => {
+                    log!("Error {:?}", error);
+                    return Err(());
+                }
+            };
+
+            let models: Models = match response.json().await {
+                Ok(models) => models,
+                Err(error) => {
+                    log!("Error {:?}", error);
+                    return Err(());
+                }
+            };
+
+            let bots: Vec<Bot> = models
+                .data
+                .iter()
+                .map(|m| Bot {
+                    id: BotId::from(m.id.as_str()),
+                    name: m.id.clone(),
+                    avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
+                })
+                .collect();
+
+            self.0.lock().unwrap().bots = bots;
+
+            return Ok(());
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            future.boxed()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        future.boxed_local()
+    }
+
     fn get_bot(&self, id: BotId) -> Option<Bot> {
-        self.bots.iter().find(|bot| bot.id == id).cloned()
+        self.0
+            .lock()
+            .unwrap()
+            .bots
+            .iter()
+            .find(|bot| bot.id == id)
+            .cloned()
     }
 
     fn bots(&self) -> Box<dyn Iterator<Item = Bot>> {
-        Box::new(self.bots.clone().into_iter())
+        // TODO: You know.
+        Box::new(self.0.lock().unwrap().bots.clone().into_iter())
     }
 
     fn clone_box(&self) -> Box<dyn BotRepo> {
@@ -96,7 +171,10 @@ impl BotRepo for MolyRepo {
         moly_messages.extend(messages.iter().filter_map(|m| m.clone().try_into().ok()));
 
         let request = reqwest::Client::new()
-            .post(&self.url)
+            .post(format!(
+                "{}/v1/chat/completions",
+                self.0.lock().unwrap().url
+            ))
             .json(&serde_json::json!({
                 "model": "moly",
                 "messages": moly_messages,

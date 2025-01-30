@@ -88,6 +88,9 @@ pub struct Message {
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
 pub trait BotRepo: Send {
+    /// Get ready and pull the available bots list.
+    fn load(&mut self) -> BoxFuture<Result<(), ()>>;
+
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
     // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.

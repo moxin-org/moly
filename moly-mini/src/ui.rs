@@ -33,7 +33,7 @@ live_design!(
         body = <View> {
             flow: Down,
             padding: 12,
-            chat = <MolyChat> { url: "http://localhost:8085/v1/chat/completions" }
+            <MolyChat> { url: "http://localhost:8085" }
         }
     }
 );
