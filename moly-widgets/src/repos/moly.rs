@@ -1,27 +1,45 @@
-use futures::{future::FutureExt, stream::StreamExt, SinkExt};
+use futures::{stream::StreamExt, SinkExt};
 use makepad_widgets::log;
+use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
 use crate::{protocol::*, utils::asynchronous::spawn};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+/// A model from the models endpoint.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Model {
     id: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+/// Response from the models endpoint.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Models {
     pub data: Vec<Model>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct MolyMessage {
+/// Message being received by the completions endpoint.
+///
+/// Although most OpenAI-compatible APIs return a `role` field, OpenAI itself does not.
+/// Also, OpenAI may return an empty object as `delta` while streaming, that's why
+/// content is optional.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct IncomingMessage {
+    #[serde(default)]
+    pub content: String,
+}
+
+/// A message being sent to the completions endpoint.
+#[derive(Clone, Debug, Serialize)]
+pub struct OutcomingMessage {
     pub content: String,
     pub role: Role,
 }
 
-impl TryFrom<Message> for MolyMessage {
+impl TryFrom<Message> for OutcomingMessage {
     type Error = ();
 
     fn try_from(message: Message) -> Result<Self, Self::Error> {
@@ -39,8 +57,12 @@ impl TryFrom<Message> for MolyMessage {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+/// Role of a message that is part of the conversation context.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Role {
+    /// OpenAI o1 models seems to expect `developer` instead of `system` according
+    /// to the documentation. But it also seems like `system` is converted to `developer`
+    /// internally.
     #[serde(rename = "system")]
     System,
     #[serde(rename = "user")]
@@ -49,12 +71,13 @@ pub enum Role {
     Assistant,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Choice {
-    pub delta: MolyMessage,
+    pub delta: IncomingMessage,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// Response from the completions endpoint.
+#[derive(Clone, Debug, Deserialize)]
 pub struct Completation {
     pub choices: Vec<Choice>,
 }
@@ -63,7 +86,7 @@ pub struct Completation {
 struct MolyServiceInner {
     bots_cache: Vec<Bot>,
     url: String,
-    key: Option<String>,
+    headers: HeaderMap,
 }
 
 #[derive(Debug)]
@@ -82,13 +105,28 @@ impl From<MolyServiceInner> for MolyService {
 }
 
 impl MolyService {
-    pub fn new(url: String, key: Option<String>) -> Self {
+    pub fn new(url: String) -> Self {
+        let mut headers = HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse().unwrap());
+
         MolyServiceInner {
             url,
-            key,
+            headers: HeaderMap::new(),
             ..Default::default()
         }
         .into()
+    }
+
+    pub fn set_header(&mut self, key: &str, value: &str) {
+        self.0
+            .lock()
+            .unwrap()
+            .headers
+            .insert(HeaderName::from_str(key).unwrap(), value.parse().unwrap());
+    }
+
+    pub fn set_key(&mut self, key: &str) {
+        self.set_header("Authorization", &format!("Bearer {}", key));
     }
 }
 
@@ -97,8 +135,9 @@ impl BotService for MolyService {
         let (mut sender, receiver) = futures::channel::mpsc::channel(0);
         let inner = self.0.clone();
 
-        let request =
-            reqwest::Client::new().get(format!("{}/v1/models", inner.lock().unwrap().url));
+        let request = reqwest::Client::new()
+            .get(format!("{}/v1/models", inner.lock().unwrap().url))
+            .headers(self.0.lock().unwrap().headers.clone());
 
         spawn(async move {
             let response = match request.send().await {
@@ -127,6 +166,7 @@ impl BotService for MolyService {
                     name: m.id.clone(),
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
                 })
+                // .filter(|b| b.name.contains("4o"))
                 .collect();
 
             inner.lock().unwrap().bots_cache = bots.clone();
@@ -150,25 +190,32 @@ impl BotService for MolyService {
         Box::new(self.clone())
     }
 
-    fn send_stream(&mut self, _bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>> {
-        let mut moly_messages: Vec<MolyMessage> = Vec::new();
+    fn send_stream(&mut self, bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>> {
+        let moly_messages: Vec<OutcomingMessage> = messages
+            .iter()
+            .filter_map(|m| m.clone().try_into().ok())
+            .collect();
 
-        if !messages.iter().any(|m| m.from == EntityId::System) {
-            moly_messages.push(MolyMessage {
-                content: "You're a helpful assistant. You can speak English (default), Spanish and Chinese.".to_string(),
-                role: Role::System,
-            });
-        }
-
-        moly_messages.extend(messages.iter().filter_map(|m| m.clone().try_into().ok()));
+        let (url, headers, model) = {
+            let inner = self.0.lock().unwrap();
+            (
+                inner.url.clone(),
+                inner.headers.clone(),
+                inner
+                    .bots_cache
+                    .iter()
+                    .find(|b| b.id == bot)
+                    .expect("unknown model")
+                    .name
+                    .clone(),
+            )
+        };
 
         let request = reqwest::Client::new()
-            .post(format!(
-                "{}/v1/chat/completions",
-                self.0.lock().unwrap().url
-            ))
+            .post(format!("{}/v1/chat/completions", url))
+            .headers(headers)
             .json(&serde_json::json!({
-                "model": self.0.lock().unwrap().bots_cache.first().unwrap().name,
+                "model": model,
                 "messages": moly_messages,
                 "temperature": 0.7,
                 "stream": true

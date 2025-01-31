@@ -36,7 +36,7 @@ impl Widget for MolyChat {
 impl LiveHook for MolyChat {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         // TODO: Ensure syncrhonization on updates.
-        let mut repo: BotRepo = MolyService::new(self.url.clone(), self.key.clone()).into();
+        let mut repo: BotRepo = MolyService::new(self.url.clone()).into();
         self.chat(id!(chat)).borrow_mut().unwrap().bot_repo = Some(repo.clone());
 
         let ui = self.ui_runner();
