@@ -116,7 +116,7 @@ impl Widget for Messages {
 
                     let message = &self.messages[index];
 
-                    match message.from {
+                    match &message.from {
                         EntityId::System => {
                             // TODO: Can or should system messages be rendered?
                         }

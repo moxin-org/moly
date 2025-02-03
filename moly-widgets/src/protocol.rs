@@ -27,7 +27,7 @@ pub enum Picture {
 }
 
 /// Indentify the entities that are recognized by this crate.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum EntityId {
     User,
     System,
@@ -43,26 +43,24 @@ pub struct Bot {
 }
 
 /// Indentifies any kind of bot, local or remote, model or agent, whatever.
-///
-/// String ids are hashed so they have a very low but still possible chance of collision.
-// TODO: Rethink if necessary.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct BotId(u64);
-
-impl From<u64> for BotId {
-    fn from(id: u64) -> Self {
-        BotId(id)
-    }
-}
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct BotId(Arc<str>);
 
 impl From<&str> for BotId {
     fn from(id: &str) -> Self {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        BotId(id.into())
+    }
+}
 
-        let mut hasher = DefaultHasher::new();
-        id.hash(&mut hasher);
-        BotId(hasher.finish())
+impl ToString for BotId {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+impl BotId {
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -99,15 +97,17 @@ pub trait BotService: Send {
     // fn stop(&mut self, bot: BotId);
 
     /// Bots available under this client.
-    // TODO: Should be a stream actually?
-    fn bots(&self) -> BoxStream<Result<Bot, ()>>;
+    // NOTE: Could be a stream, but may add complexity rarely needed.
+    // TODO: Support partial results with errors for an union multi client/service
+    // later.
+    fn bots(&self) -> BoxFuture<Result<Vec<Bot>, ()>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotService>;
 
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
-    // TOOD: Should support a way of passing, unknown, backend-specific, inference parameters.
+    // TODO: Should support a way of passing, unknown, backend-specific, inference parameters.
     fn send(&mut self, bot: BotId, messages: &[Message]) -> BoxFuture<Result<String, ()>> {
         let stream = self.send_stream(bot, messages);
 
@@ -132,6 +132,12 @@ pub trait BotService: Send {
     }
 }
 
+impl Clone for Box<dyn BotService> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
 struct InnerBotRepo {
     service: Box<dyn BotService>,
     bots: Vec<Bot>,
@@ -148,20 +154,7 @@ impl Clone for BotRepo {
 impl BotRepo {
     pub fn load(&mut self) -> BoxFuture<Result<(), ()>> {
         let future = async move {
-            let mut new_bots = Vec::new();
-            let service = self.service();
-            let mut bots_stream = service.bots();
-
-            while let Some(bot) = bots_stream.next().await {
-                match bot {
-                    Ok(bot) => new_bots.push(bot),
-                    Err(_) => {
-                        log!("Error loading bots");
-                        return Err(());
-                    }
-                }
-            }
-
+            let new_bots = self.service().bots().await?;
             self.0.lock().unwrap().bots = new_bots;
             Ok(())
         };
@@ -182,8 +175,8 @@ impl BotRepo {
         self.0.lock().unwrap().bots.clone()
     }
 
-    pub fn get_bot(&self, id: BotId) -> Option<Bot> {
-        self.bots().into_iter().find(|bot| bot.id == id)
+    pub fn get_bot(&self, id: &BotId) -> Option<Bot> {
+        self.bots().into_iter().find(|bot| bot.id == *id)
     }
 }
 

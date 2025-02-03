@@ -1,4 +1,4 @@
-use futures::{stream::StreamExt, SinkExt};
+use futures::{future::FutureExt, stream::StreamExt, SinkExt};
 use makepad_widgets::log;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
@@ -84,7 +84,6 @@ pub struct Completation {
 
 #[derive(Clone, Debug, Default)]
 struct MolyServiceInner {
-    bots_cache: Vec<Bot>,
     url: String,
     headers: HeaderMap,
 }
@@ -131,21 +130,19 @@ impl MolyService {
 }
 
 impl BotService for MolyService {
-    fn bots(&self) -> BoxStream<Result<Bot, ()>> {
-        let (mut sender, receiver) = futures::channel::mpsc::channel(0);
+    fn bots(&self) -> BoxFuture<Result<Vec<Bot>, ()>> {
         let inner = self.0.clone();
 
-        let request = reqwest::Client::new()
-            .get(format!("{}/v1/models", inner.lock().unwrap().url))
-            .headers(self.0.lock().unwrap().headers.clone());
+        let future = async move {
+            let request = reqwest::Client::new()
+                .get(format!("{}/v1/models", inner.lock().unwrap().url))
+                .headers(inner.lock().unwrap().headers.clone());
 
-        spawn(async move {
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
                     log!("Error {:?}", error);
-                    sender.send(Err(())).await.unwrap();
-                    return;
+                    return Err(());
                 }
             };
 
@@ -153,8 +150,7 @@ impl BotService for MolyService {
                 Ok(models) => models,
                 Err(error) => {
                     log!("Error {:?}", error);
-                    sender.send(Err(())).await.unwrap();
-                    return;
+                    return Err(());
                 }
             };
 
@@ -166,23 +162,18 @@ impl BotService for MolyService {
                     name: m.id.clone(),
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
                 })
-                // .filter(|b| b.name.contains("4o"))
                 .collect();
 
-            inner.lock().unwrap().bots_cache = bots.clone();
-
-            for bot in bots {
-                sender.send(Ok(bot)).await.unwrap();
-            }
-        });
+            Ok(bots)
+        };
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            receiver.boxed()
+            future.boxed()
         }
 
         #[cfg(target_arch = "wasm32")]
-        receiver.boxed_local()
+        future.boxed_local()
     }
 
     fn clone_box(&self) -> Box<dyn BotService> {
@@ -196,28 +187,19 @@ impl BotService for MolyService {
             .filter_map(|m| m.clone().try_into().ok())
             .collect();
 
-        let (url, headers, model) = {
+        let (url, headers) = {
             let inner = self.0.lock().unwrap();
-            (
-                inner.url.clone(),
-                inner.headers.clone(),
-                inner
-                    .bots_cache
-                    .iter()
-                    .find(|b| b.id == bot)
-                    .expect("unknown model")
-                    .name
-                    .clone(),
-            )
+            (inner.url.clone(), inner.headers.clone())
         };
 
         let request = reqwest::Client::new()
             .post(format!("{}/v1/chat/completions", url))
             .headers(headers)
             .json(&serde_json::json!({
-                "model": model,
+                "model": bot.as_str(),
                 "messages": moly_messages,
-                "temperature": 0.7,
+                // Note: o1 only supports 1.0, it will error if other value is used.
+                // "temperature": 0.7,
                 "stream": true
             }));
 

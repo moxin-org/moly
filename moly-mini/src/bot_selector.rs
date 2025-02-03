@@ -1,7 +1,6 @@
 use makepad_widgets::*;
 use moly_widgets::protocol::*;
 
-use crate::list::ListWidgetExt;
 use crate::meta::MetaWidgetRefExt;
 
 live_design! {
@@ -9,38 +8,13 @@ live_design! {
     use link::shaders::*;
     use link::widgets::*;
 
-    use crate::list::*;
     use crate::meta::*;
 
     COLLAPSED_HEIGHT = 45;
-    EXPANDED_HEIGHT = (COLLAPSED_HEIGHT * 3);
+    EXPANDED_HEIGHT = (COLLAPSED_HEIGHT * 4 + COLLAPSED_HEIGHT / 2);
 
     pub BotSelector = {{BotSelector}} {
         height: Fit,
-        bot_template: <View> {
-            flow: Overlay,
-            height: 45,
-            bot = <Meta> {}
-            <View> {
-                align: {x: 0.5, y: 0.5},
-                spacing: 10,
-                // avatar = <ChatbotAvatar> {}
-                text = <Label> {
-                    draw_text: {
-                        text_style: { font_size: 10 },
-                        color: #000,
-                    }
-                }
-            }
-            button = <Button> {
-                width: Fill,
-                height: Fill,
-                draw_bg: {
-                    // radius: 0.0,
-                    // border_width: 0.0,
-                }
-            }
-        },
         clip = <CachedRoundedView> {
             draw_bg: {
                 border_width: 1.0,
@@ -52,7 +26,37 @@ live_design! {
                 draw_bg: {
                     color: #F5F7FA,
                 },
-                list = <List> {}
+                list = <PortalList> {
+                    height: Fill,
+                    width: Fill,
+                    Bot = <View> {
+                        flow: Overlay,
+                        height: 45,
+                        bot = <Meta> {}
+                        <View> {
+                            align: {x: 0.5, y: 0.5},
+                            spacing: 10,
+                            // avatar = <ChatbotAvatar> {}
+                            text = <Label> {
+                                draw_text: {
+                                    text_style: { font_size: 10 },
+                                    color: #000,
+                                }
+                            }
+                        }
+                        button = <Button> {
+                            width: Fill,
+                            height: Fill,
+                            draw_bg: {
+                                // radius: 0.0,
+                                // border_width: 0.0,
+                            },
+                            draw_text: {
+                                color: #000,
+                            }
+                        }
+                    },
+                }
             }
 
         },
@@ -87,17 +91,11 @@ pub struct BotSelector {
     #[deref]
     view: View,
 
-    #[live]
-    bot_template: Option<LivePtr>,
-
     #[animator]
     animator: Animator,
 
     #[rust]
     bots: Vec<Bot>,
-
-    #[rust]
-    recompute: bool,
 }
 
 impl Widget for BotSelector {
@@ -108,33 +106,52 @@ impl Widget for BotSelector {
         if self.animator_handle_event(cx, event).must_redraw() {
             self.redraw(cx);
         }
-
-        if self.recompute {
-            self.recompute_list(cx);
-            self.recompute = false;
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view.draw_walk(cx, scope, walk)
+        while let Some(widget) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = widget.as_portal_list().borrow_mut() {
+                list.set_item_range(cx, 0, self.bots.len());
+
+                while let Some(index) = list.next_visible_item(cx) {
+                    if index >= self.bots.len() {
+                        continue;
+                    }
+
+                    let bot = &self.bots[index];
+
+                    let item = list.item(cx, index, live_id!(Bot));
+                    item.meta(id!(bot)).set_value(bot.clone());
+                    item.button(id!(button)).set_text(&bot.name);
+                    item.draw_all(cx, &mut Scope::empty());
+                }
+            }
+        }
+
+        DrawStep::done()
     }
 }
 
 impl WidgetMatchEvent for BotSelector {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        let clicked_bot = self
-            .list(id!(list))
-            .borrow()
-            .map(|list| {
-                list.items()
-                    .find(|item| item.button(id!(button)).clicked(actions))
-                    .map(|item| item.meta(id!(bot)).get_value::<Bot>().unwrap().clone())
-            })
-            .flatten();
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let clicked_bot_id = self
+            .portal_list(id!(list))
+            .items_with_actions(actions)
+            .iter()
+            .find_map(|(_idx, widget)| {
+                if widget.button(id!(button)).clicked(actions) {
+                    Some(widget.meta(id!(bot)).get_value::<Bot>().unwrap().id.clone())
+                } else {
+                    None
+                }
+            });
 
-        if let Some(bot) = clicked_bot {
-            self.set_bot(bot.id);
-            self.recompute_list(cx);
+        if let Some(bot_id) = clicked_bot_id {
+            if self.selected_bot_id().as_ref() != Some(&bot_id) {
+                self.set_bot(bot_id);
+                cx.widget_action(self.widget_uid(), &scope.path, InternalAction::BotSelected);
+            }
+
             self.toggle_layout_mode(cx);
             self.redraw(cx);
         }
@@ -151,19 +168,11 @@ impl BotSelector {
     }
 
     pub fn selected_bot_id(&self) -> Option<BotId> {
-        self.list(id!(list))
-            .borrow()
-            .map(|list| {
-                list.items()
-                    .next()
-                    .map(|item| item.meta(id!(bot)).get_value::<Bot>().unwrap().id)
-            })
-            .flatten()
+        self.bots.first().map(|b| b.id.clone())
     }
 
     pub fn set_bots(&mut self, bots: Vec<Bot>) {
         self.bots = bots;
-        self.recompute = true;
     }
 
     pub fn set_bot(&mut self, bot: BotId) {
@@ -176,7 +185,7 @@ impl BotSelector {
         let bot = self.bots.remove(index);
         self.bots.insert(0, bot);
 
-        self.recompute = true;
+        self.portal_list(id!(list)).set_first_id_and_scroll(0, 0.);
     }
 
     pub fn bot_selected(&self, actions: &Actions) -> bool {
@@ -184,18 +193,6 @@ impl BotSelector {
             .find_widget_action(self.widget_uid())
             .map(|a| a.cast::<InternalAction>() == InternalAction::BotSelected)
             .unwrap_or(false)
-    }
-
-    fn recompute_list(&self, cx: &mut Cx) {
-        let items = self.bots.iter().cloned().map(|b| {
-            let widget = WidgetRef::new_from_ptr(cx, self.bot_template);
-            widget.label(id!(text)).set_text(&b.name);
-            // widget.chat_bot_avatar(id!(avatar)).set_bot(&a);
-            widget.meta(id!(bot)).set_value(b);
-            widget
-        });
-
-        self.list(id!(list)).set_items(items.collect());
     }
 }
 

@@ -22,12 +22,6 @@ pub use chat::*;
 #[cfg(feature = "repos")]
 pub mod repos;
 
-#[cfg(feature = "repos")]
-pub mod moly_chat;
-
-#[cfg(feature = "repos")]
-pub use moly_chat::*;
-
 pub fn live_design(cx: &mut Cx) {
     makepad_code_editor::live_design(cx);
     message_markdown::live_design(cx);
@@ -36,5 +30,4 @@ pub fn live_design(cx: &mut Cx) {
     messages::live_design(cx);
     prompt_input::live_design(cx);
     chat::live_design(cx);
-    moly_chat::live_design(cx);
 }

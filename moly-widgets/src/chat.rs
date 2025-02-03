@@ -60,7 +60,7 @@ impl Chat {
         prompt.borrow_mut().unwrap().reset(); // from command text input
 
         // TODO: Less aggresive error handling for users.
-        let bot_id = self.bot_id.expect("no bot selected");
+        let bot_id = self.bot_id.clone().expect("no bot selected");
 
         let repo = self
             .bot_repo
@@ -80,7 +80,7 @@ impl Chat {
             });
 
             messages.messages.push(Message {
-                from: EntityId::Bot(bot_id),
+                from: EntityId::Bot(bot_id.clone()),
                 body: String::new(),
                 is_writing: true,
             });
