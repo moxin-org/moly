@@ -89,7 +89,11 @@ pub struct Message {
 /// on dynamic dispatch (with its limitations).
 pub trait BotClient: Send {
     /// Send a message to a bot expecting a streamed response.
-    fn send_stream(&mut self, bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>>;
+    fn send_stream(
+        &mut self,
+        bot: &BotId,
+        messages: &[Message],
+    ) -> BoxStream<'static, Result<String, ()>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -100,7 +104,7 @@ pub trait BotClient: Send {
     // NOTE: Could be a stream, but may add complexity rarely needed.
     // TODO: Support partial results with errors for an union multi client/service
     // later.
-    fn bots(&self) -> BoxFuture<Result<Vec<Bot>, ()>>;
+    fn bots(&self) -> BoxFuture<'static, Result<Vec<Bot>, ()>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
@@ -108,7 +112,11 @@ pub trait BotClient: Send {
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
     // TODO: Should support a way of passing, unknown, backend-specific, inference parameters.
-    fn send(&mut self, bot: BotId, messages: &[Message]) -> BoxFuture<Result<String, ()>> {
+    fn send(
+        &mut self,
+        bot: &BotId,
+        messages: &[Message],
+    ) -> BoxFuture<'static, Result<String, ()>> {
         let stream = self.send_stream(bot, messages);
 
         let future = async move {
@@ -186,5 +194,94 @@ impl<T: BotClient + 'static> From<T> for BotRepo {
             client: Box::new(client),
             bots: Vec::new(),
         })))
+    }
+}
+
+#[derive(Clone)]
+pub struct MultiBotClient {
+    clients_with_bots: Arc<Mutex<Vec<(Box<dyn BotClient>, Vec<Bot>)>>>,
+}
+
+impl MultiBotClient {
+    pub fn new() -> Self {
+        MultiBotClient {
+            clients_with_bots: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    pub fn add_client(&mut self, client: Box<dyn BotClient>) {
+        self.clients_with_bots
+            .lock()
+            .unwrap()
+            .push((client, Vec::new()));
+    }
+}
+
+impl BotClient for MultiBotClient {
+    fn send_stream(
+        &mut self,
+        bot: &BotId,
+        messages: &[Message],
+    ) -> BoxStream<'static, Result<String, ()>> {
+        let mut client = self
+            .clients_with_bots
+            .lock()
+            .unwrap()
+            .iter()
+            .find_map(|(client, bots)| {
+                if bots.iter().any(|b| b.id == *bot) {
+                    Some(client.clone())
+                } else {
+                    None
+                }
+            })
+            .expect("no client for bot");
+
+        client.send_stream(&bot, messages)
+    }
+
+    fn clone_box(&self) -> Box<dyn BotClient> {
+        Box::new(self.clone())
+    }
+
+    fn bots(&self) -> BoxFuture<'static, Result<Vec<Bot>, ()>> {
+        let clients_with_bots = self.clients_with_bots.clone();
+
+        let future = async move {
+            let clients = clients_with_bots
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(client, _)| client.clone())
+                .collect::<Vec<_>>();
+
+            let bot_futures = clients.iter().map(|client| client.bots());
+            let results = future::join_all(bot_futures).await;
+
+            let mut zipped_bots = Vec::new();
+            let mut flat_bots = Vec::new();
+
+            for result in results {
+                // TODO: Let's ignore any errored sub-client for now.
+                let client_bots = result.unwrap_or_default();
+                zipped_bots.push(client_bots.clone());
+                flat_bots.extend(client_bots);
+            }
+
+            *clients_with_bots.lock().unwrap() = clients
+                .into_iter()
+                .zip(zipped_bots.iter().cloned())
+                .collect();
+
+            Ok(flat_bots)
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            future.boxed()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        future.boxed_local()
     }
 }

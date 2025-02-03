@@ -130,7 +130,7 @@ impl MolyClient {
 }
 
 impl BotClient for MolyClient {
-    fn bots(&self) -> BoxFuture<Result<Vec<Bot>, ()>> {
+    fn bots(&self) -> BoxFuture<'static, Result<Vec<Bot>, ()>> {
         let inner = self.0.clone();
 
         let future = async move {
@@ -181,7 +181,11 @@ impl BotClient for MolyClient {
         Box::new(self.clone())
     }
 
-    fn send_stream(&mut self, bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>> {
+    fn send_stream(
+        &mut self,
+        bot: &BotId,
+        messages: &[Message],
+    ) -> BoxStream<'static, Result<String, ()>> {
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())

@@ -99,7 +99,7 @@ impl Chat {
 
         spawn(async move {
             let mut client = repo.client();
-            let mut message_stream = client.send_stream(bot_id, &context);
+            let mut message_stream = client.send_stream(&bot_id, &context);
 
             while let Some(delta) = message_stream.next().await {
                 let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());
