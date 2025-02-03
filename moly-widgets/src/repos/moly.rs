@@ -83,32 +83,32 @@ pub struct Completation {
 }
 
 #[derive(Clone, Debug, Default)]
-struct MolyServiceInner {
+struct MolyClientInner {
     url: String,
     headers: HeaderMap,
 }
 
 #[derive(Debug)]
-pub struct MolyService(Arc<Mutex<MolyServiceInner>>);
+pub struct MolyClient(Arc<Mutex<MolyClientInner>>);
 
-impl Clone for MolyService {
+impl Clone for MolyClient {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl From<MolyServiceInner> for MolyService {
-    fn from(inner: MolyServiceInner) -> Self {
+impl From<MolyClientInner> for MolyClient {
+    fn from(inner: MolyClientInner) -> Self {
         Self(Arc::new(Mutex::new(inner)))
     }
 }
 
-impl MolyService {
+impl MolyClient {
     pub fn new(url: String) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse().unwrap());
 
-        MolyServiceInner {
+        MolyClientInner {
             url,
             headers: HeaderMap::new(),
             ..Default::default()
@@ -129,7 +129,7 @@ impl MolyService {
     }
 }
 
-impl BotService for MolyService {
+impl BotClient for MolyClient {
     fn bots(&self) -> BoxFuture<Result<Vec<Bot>, ()>> {
         let inner = self.0.clone();
 
@@ -176,7 +176,7 @@ impl BotService for MolyService {
         future.boxed_local()
     }
 
-    fn clone_box(&self) -> Box<dyn BotService> {
+    fn clone_box(&self) -> Box<dyn BotClient> {
         // ref should be shared but since hardcoded it should be ok
         Box::new(self.clone())
     }

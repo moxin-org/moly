@@ -87,7 +87,7 @@ pub struct Message {
 ///
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
-pub trait BotService: Send {
+pub trait BotClient: Send {
     /// Send a message to a bot expecting a streamed response.
     fn send_stream(&mut self, bot: BotId, messages: &[Message]) -> BoxStream<Result<String, ()>>;
 
@@ -103,7 +103,7 @@ pub trait BotService: Send {
     fn bots(&self) -> BoxFuture<Result<Vec<Bot>, ()>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
-    fn clone_box(&self) -> Box<dyn BotService>;
+    fn clone_box(&self) -> Box<dyn BotClient>;
 
     /// Send a message to a bot expecting a full response at once.
     // TODO: messages may end up being a little bit more complex, using string while thinking.
@@ -132,14 +132,14 @@ pub trait BotService: Send {
     }
 }
 
-impl Clone for Box<dyn BotService> {
+impl Clone for Box<dyn BotClient> {
     fn clone(&self) -> Self {
         self.clone_box()
     }
 }
 
 struct InnerBotRepo {
-    service: Box<dyn BotService>,
+    client: Box<dyn BotClient>,
     bots: Vec<Bot>,
 }
 
@@ -154,7 +154,7 @@ impl Clone for BotRepo {
 impl BotRepo {
     pub fn load(&mut self) -> BoxFuture<Result<(), ()>> {
         let future = async move {
-            let new_bots = self.service().bots().await?;
+            let new_bots = self.client().bots().await?;
             self.0.lock().unwrap().bots = new_bots;
             Ok(())
         };
@@ -167,8 +167,8 @@ impl BotRepo {
         #[cfg(target_arch = "wasm32")]
         future.boxed_local()
     }
-    pub fn service(&self) -> Box<dyn BotService> {
-        self.0.lock().unwrap().service.clone_box()
+    pub fn client(&self) -> Box<dyn BotClient> {
+        self.0.lock().unwrap().client.clone_box()
     }
 
     pub fn bots(&self) -> Vec<Bot> {
@@ -180,10 +180,10 @@ impl BotRepo {
     }
 }
 
-impl<T: BotService + 'static> From<T> for BotRepo {
-    fn from(service: T) -> Self {
+impl<T: BotClient + 'static> From<T> for BotRepo {
+    fn from(client: T) -> Self {
         BotRepo(Arc::new(Mutex::new(InnerBotRepo {
-            service: Box::new(service),
+            client: Box::new(client),
             bots: Vec::new(),
         })))
     }

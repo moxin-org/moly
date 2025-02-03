@@ -65,11 +65,11 @@ impl Widget for Ui {
 
         if let Event::Startup = event {
             // TODO: Ensure syncrhonization on updates.
-            // let mut repo: BotRepo = MolyService::new("http://localhost:8085".into()).into();
-            // let mut repo: BotRepo = MolyService::new("http://localhost:11434".into()).into();
-            let mut service = MolyService::new("https://api.openai.com".into());
-            service.set_key(OPEN_AI_KEY);
-            let mut repo: BotRepo = service.into();
+            // let mut repo: BotRepo = MolyClient::new("http://localhost:8085".into()).into();
+            // let mut repo: BotRepo = MolyClient::new("http://localhost:11434".into()).into();
+            let mut client = MolyClient::new("https://api.openai.com".into());
+            client.set_key(OPEN_AI_KEY);
+            let mut repo: BotRepo = client.into();
 
             chat.borrow_mut().unwrap().bot_repo = Some(repo.clone());
 
