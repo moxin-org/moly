@@ -41,15 +41,15 @@ impl Widget for DemoChat {
         if let Event::Startup = event {
             // TODO: Ensure syncrhonization on updates.
             let client = {
+                let moly = MolyClient::new("http://localhost:8085".into());
+                let ollama = MolyClient::new("http://localhost:11434".into());
                 let mut openai = MolyClient::new("https://api.openai.com".into());
                 openai.set_key(OPEN_AI_KEY);
-                let ollama = MolyClient::new("http://localhost:11434".into());
-                let moly = MolyClient::new("http://localhost:8085".into());
 
                 let mut client = MultiBotClient::new();
-                client.add_client(Box::new(openai));
-                client.add_client(Box::new(ollama));
                 client.add_client(Box::new(moly));
+                client.add_client(Box::new(ollama));
+                client.add_client(Box::new(openai));
                 client
             };
 
