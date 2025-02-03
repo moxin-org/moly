@@ -5,6 +5,9 @@ use moly_widgets::{protocol::*, ChatWidgetExt};
 
 use crate::bot_selector::BotSelectorWidgetExt;
 
+// load from env var at compile time using macro
+const OPEN_AI_KEY: &str = env!("OPENAI_API_KEY");
+
 live_design!(
     use link::theme::*;
     use link::shaders::*;
@@ -62,8 +65,12 @@ impl Widget for Ui {
 
         if let Event::Startup = event {
             // TODO: Ensure syncrhonization on updates.
-            // let mut repo: BotRepo = MolyService::new("http://localhost:8085".into(), None).into();
-            let mut repo: BotRepo = MolyService::new("http://localhost:11434".into(), None).into();
+            // let mut repo: BotRepo = MolyService::new("http://localhost:8085".into()).into();
+            // let mut repo: BotRepo = MolyService::new("http://localhost:11434".into()).into();
+            let mut service = MolyService::new("https://api.openai.com".into());
+            service.set_key(OPEN_AI_KEY);
+            let mut repo: BotRepo = service.into();
+
             chat.borrow_mut().unwrap().bot_repo = Some(repo.clone());
 
             let ui = self.ui_runner();
@@ -71,9 +78,34 @@ impl Widget for Ui {
                 repo.load().await.expect("TODO: Handle loading better");
                 ui.defer_with_redraw(move |me, _cx, _scope| {
                     let chat = me.chat(id!(chat));
-                    chat.borrow_mut().unwrap().bot_id = Some(repo.bots().first().unwrap().id);
 
-                    me.bot_selector(id!(selector)).set_bots(repo.bots());
+                    let bots = repo
+                        .bots()
+                        .into_iter()
+                        .filter(|b| {
+                            // Try to forcefully exclude some bots that will not work
+                            // as open ai gives you a long list without telling you what
+                            // which works with which endpoint.
+                            let name = b.name.as_str();
+                            let excluded = [
+                                "-latest",
+                                "-embedding",
+                                "-audio",
+                                "-20",
+                                "-realtime",
+                                "davinci",
+                                "dall-e",
+                                "whisper",
+                                "babbage",
+                                "tts",
+                            ];
+
+                            !excluded.iter().any(|ex| name.contains(ex))
+                        })
+                        .collect::<Vec<_>>();
+
+                    chat.borrow_mut().unwrap().bot_id = Some(bots.first().unwrap().id.clone());
+                    me.bot_selector(id!(selector)).set_bots(bots);
 
                     chat.borrow_mut().unwrap().visible = true;
                 });
@@ -85,8 +117,8 @@ impl Widget for Ui {
         };
 
         if selector.bot_selected(actions) {
-            chat.borrow_mut().unwrap().bot_id =
-                Some(selector.selected_bot_id().expect("no bot selected"));
+            let id = selector.selected_bot_id().expect("no bot selected");
+            chat.borrow_mut().unwrap().bot_id = Some(id);
         }
     }
 
