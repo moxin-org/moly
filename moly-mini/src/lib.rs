@@ -1,6 +1,6 @@
 pub mod app;
 mod bot_selector;
-mod ui;
-
+mod demo_chat;
 mod list;
 mod meta;
+mod ui;

@@ -30,6 +30,7 @@ impl LiveRegister for App {
         crate::list::live_design(cx);
         crate::meta::live_design(cx);
         crate::bot_selector::live_design(cx);
+        crate::demo_chat::live_design(cx);
         crate::ui::live_design(cx);
     }
 }
