@@ -28,7 +28,7 @@ pub struct Author {
     pub description: String,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum CompatibilityGuess {
     #[default]
     PossiblySupported,
@@ -44,7 +44,7 @@ impl CompatibilityGuess {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct DownloadedFile {
     pub file: File,
     pub model: Model,
@@ -53,7 +53,7 @@ pub struct DownloadedFile {
     pub information: String,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum PendingDownloadsStatus {
     #[default]
     Initializing,
@@ -62,7 +62,7 @@ pub enum PendingDownloadsStatus {
     Error,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct PendingDownload {
     pub file: File,
     pub model: Model,

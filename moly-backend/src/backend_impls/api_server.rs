@@ -7,7 +7,7 @@ use moly_protocol::{
         ChatResponse, ChatResponseChunkData, ChatResponseData, ChunkChoiceData, MessageData, Role,
         StopReason,
     },
-    protocol::LoadModelOptions,
+    protocol::{LoadModelOptions, LoadModelResponse, LoadedModelInfo},
 };
 use wasmedge_sdk::{wasi::WasiModule, Module, Store, Vm};
 
@@ -28,7 +28,7 @@ pub struct LLamaEdgeApiServer {
     embedding: Option<(std::path::PathBuf, u64)>,
     running_controller: tokio::sync::broadcast::Sender<()>,
     #[allow(dead_code)]
-    model_thread: std::thread::JoinHandle<()>,
+    model_thread: tokio::task::JoinHandle<()>,
     failed: bool,
 }
 
@@ -174,14 +174,12 @@ fn stop_chunk(reason: StopReason) -> ChatResponseChunkData {
 }
 
 impl BackendModel for LLamaEdgeApiServer {
-    fn new_or_reload(
-        async_rt: &tokio::runtime::Runtime,
+    async fn new_or_reload(
         old_model: Option<Self>,
         file: crate::store::download_files::DownloadedFile,
         options: moly_protocol::protocol::LoadModelOptions,
-        tx: std::sync::mpsc::Sender<anyhow::Result<moly_protocol::protocol::LoadModelResponse>>,
         embedding: Option<(std::path::PathBuf, u64)>,
-    ) -> Self {
+    ) -> Result<(Self, LoadModelResponse), anyhow::Error> {
         let load_model_options = options.clone();
         let mut need_reload = true;
 
@@ -232,15 +230,12 @@ impl BackendModel for LLamaEdgeApiServer {
         };
 
         if !need_reload {
-            let _ = tx.send(Ok(moly_protocol::protocol::LoadModelResponse::Completed(
-                moly_protocol::protocol::LoadedModelInfo {
-                    file_id: file.id.to_string(),
-                    model_id: file.model_id,
-                    information: "".to_string(),
-                    listen_port: listen_addr.port(),
-                },
-            )));
-            return old_model.unwrap();
+            return Ok((old_model.unwrap(), LoadModelResponse::Completed(LoadedModelInfo {
+                file_id: file.id.to_string(),
+                model_id: file.model_id,
+                information: "".to_string(),
+                listen_port: listen_addr.port(),
+            })));
         }
 
         // Only stop the old model if it is not failed
@@ -248,7 +243,7 @@ impl BackendModel for LLamaEdgeApiServer {
         // external service running on the same port
         if let Some(old_model) = old_model {
             if !old_model.failed {
-                old_model.stop(async_rt);
+                old_model.stop().await;
             }
         }
 
@@ -263,59 +258,68 @@ impl BackendModel for LLamaEdgeApiServer {
 
         let embedding_ = embedding.clone();
 
-        let model_thread = std::thread::spawn(move || {
+        let model_thread = tokio::task::spawn_blocking(move || {
             run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options, embedding_)
         });
 
+        // TODO(Julian): this entire approach to testing the server is too hacky. 
+        // We need a better solution for this.
+
+        // Give the server a moment to start up
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        let client = reqwest::ClientBuilder::new()
+            .timeout(Duration::from_secs(3))
+            .no_proxy()
+            .build()
+            .unwrap();
+
+        // Try to connect to the server with exponential backoff
         let mut test_server = false;
-        for _i in 0..20 {
-            let r = reqwest::blocking::ClientBuilder::new()
-                .timeout(Duration::from_secs(3))
-                .no_proxy()
-                .build()
-                .unwrap()
-                .get(&url)
-                .send();
-            if let Ok(resp) = r {
-                if resp.status().is_success() {
+        for i in 0..6 {
+            let delay = Duration::from_millis(500 * 2_u64.pow(i));
+
+            match client.get(&url).send().await {
+                Ok(resp) if resp.status().is_success() => {
                     test_server = true;
                     break;
                 }
+                _ => {
+                    tokio::time::sleep(delay).await;
+                }
             }
-            let _ = std::thread::sleep(std::time::Duration::from_secs(3));
         }
+
         if test_server {
-            let _ = tx.send(Ok(moly_protocol::protocol::LoadModelResponse::Completed(
-                moly_protocol::protocol::LoadedModelInfo {
-                    file_id: file_.id.to_string(),
-                    model_id: file_.model_id,
-                    information: "".to_string(),
-                    listen_port,
-                },
-            )));
+            let running_controller = tokio::sync::broadcast::channel(1).0;
+
+            let new_model = Self {
+                id: file_id,
+                wasm_module,
+                embedding,
+                listen_addr,
+                running_controller,
+                model_thread,
+                load_model_options,
+                failed: false,
+            };
+
+            Ok((new_model, LoadModelResponse::Completed(LoadedModelInfo {
+                file_id: file_.id.to_string(),
+                model_id: file_.model_id,
+                information: "".to_string(),
+                listen_port: listen_addr.port(),
+            })))
         } else {
-            let _ = tx.send(Err(anyhow!("Failed to start the model")));
+
+            // Cleanup the spawned task if we failed to connect
+            model_thread.abort();
+            Err(anyhow!("Failed to start the model: Server did not respond after multiple attempts"))
         }
-
-        let running_controller = tokio::sync::broadcast::channel(1).0;
-
-        let new_model = Self {
-            id: file_id,
-            wasm_module,
-            embedding,
-            listen_addr,
-            running_controller,
-            model_thread,
-            load_model_options,
-            failed: !test_server,
-        };
-
-        new_model
     }
 
     fn chat(
         &self,
-        async_rt: &tokio::runtime::Runtime,
         mut data: moly_protocol::open_ai::ChatRequestData,
         tx: std::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
     ) -> bool {
@@ -328,7 +332,7 @@ impl BackendModel for LLamaEdgeApiServer {
 
         data.model = "moly-chat".to_string();
 
-        async_rt.spawn(async move {
+        tokio::spawn(async move {
             let request_body = serde_json::to_string(&data).unwrap();
             let request = reqwest::ClientBuilder::new()
                 .no_proxy()
@@ -405,20 +409,21 @@ impl BackendModel for LLamaEdgeApiServer {
         true
     }
 
-    fn stop_chat(&self, _async_rt: &tokio::runtime::Runtime) {
+    fn stop_chat(&self) {
         let _ = self.running_controller.send(());
     }
 
-    fn stop(self, _async_rt: &tokio::runtime::Runtime) {
+    async fn stop(self) {
         let url = format!("http://localhost:{}/admin/exit", self.listen_addr.port());
-        let _ = reqwest::blocking::ClientBuilder::new()
+        let _ = reqwest::ClientBuilder::new()
             .timeout(Duration::from_secs(2))
             .no_proxy()
             .build()
             .unwrap()
             .get(url)
-            .send();
+            .send()
+            .await;
 
-        let _ = self.model_thread.join();
+        self.model_thread.abort();
     }
 }

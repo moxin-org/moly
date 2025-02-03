@@ -226,24 +226,29 @@ pub struct IpResult {
     country_code: String,
 }
 
-fn get_model_cards_repo() -> (String, String) {
+async fn get_model_cards_repo() -> (String, String) {
     let repo_url = std::env::var("MODEL_CARDS_REPO");
     match repo_url {
         Ok(url) => (url, ModelCardManager::DEFAULT_COUNTRY_CODE.to_string()),
         Err(_) => {
-            match reqwest::blocking::get("http://ip-api.com/json")
-                .and_then(|r| r.json::<IpResult>())
-            {
-                Ok(ip_result) if ip_result.country_code.to_ascii_uppercase() == "CN" => (
-                    "https://gitcode.com/xun_csh/model-cards.git".to_string(),
-                    "CN".to_string(),
-                ),
-                Ok(ip_result) => (
-                    "https://github.com/moxin-org/model-cards.git".to_string(),
-                    ip_result.country_code.to_ascii_uppercase(),
-                ),
-                _ => (
-                    "https://github.com/moxin-org/model-cards.git".to_string(),
+            let client = reqwest::Client::new();
+            match client.get("http://ip-api.com/json").send().await {
+                Ok(response) => match response.json::<IpResult>().await {
+                    Ok(ip_result) if ip_result.country_code.to_ascii_uppercase() == "CN" => (
+                        "https://gitcode.com/xun_csh/model-cards".to_string(),
+                        "CN".to_string(),
+                    ),
+                    Ok(ip_result) => (
+                        "https://github.com/moxin-org/model-cards".to_string(),
+                        ip_result.country_code.to_ascii_uppercase(),
+                    ),
+                    _ => (
+                        "https://github.com/moxin-org/model-cards".to_string(),
+                        ModelCardManager::DEFAULT_COUNTRY_CODE.to_string(),
+                    ),
+                },
+                Err(_) => (
+                    "https://github.com/moxin-org/model-cards".to_string(),
                     ModelCardManager::DEFAULT_COUNTRY_CODE.to_string(),
                 ),
             }
@@ -253,8 +258,8 @@ fn get_model_cards_repo() -> (String, String) {
 
 pub static REPO_NAME: &'static str = "model-cards";
 
-pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<ModelCardManager> {
-    let (repo_url, country_code) = get_model_cards_repo();
+pub async fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<ModelCardManager> {
+    let (repo_url, country_code) = get_model_cards_repo().await;
     log::info!("Using model_cards repo: {}", repo_url);
     let repo_dirs = app_data_dir.as_ref().join(REPO_NAME);
 
@@ -273,16 +278,14 @@ pub fn sync_model_cards_repo<P: AsRef<Path>>(app_data_dir: P) -> anyhow::Result<
     }
 
     let index_url = format!("{}/releases/download/index_release/index.json", repo_url);
-
-    let index_list = if let Ok(remote_index) =
-        reqwest::blocking::get(index_url).and_then(|r| r.json::<Vec<ModelIndex>>())
-    {
-        remote_index
+    let index_list;
+    let result = reqwest::get(index_url).await;
+    if let Ok(response) = result {
+        index_list = response.json::<Vec<ModelIndex>>().await.unwrap();
     } else {
-        let index_list = std::fs::read_to_string(repo_dirs.join("index.json"))?;
-        let index_list: Vec<ModelIndex> = serde_json::from_str(&index_list)?;
-        index_list
-    };
+        let index_json = std::fs::read_to_string(repo_dirs.join("index.json"))?;
+        index_list = serde_json::from_str(&index_json)?;
+    }
 
     let mut indexs = HashMap::with_capacity(index_list.len());
     for index in index_list {

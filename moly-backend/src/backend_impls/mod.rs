@@ -1,7 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     sync::{
-        mpsc::{Receiver, Sender},
+        mpsc::Sender,
         Arc, Mutex,
     },
 };
@@ -23,386 +23,63 @@ use crate::store::{
 };
 
 mod api_server;
-mod chat_ui;
-
-#[derive(Clone, Debug)]
-enum ModelManagementCommand {
-    GetFeaturedModels(Sender<anyhow::Result<Vec<Model>>>),
-    SearchModels(String, Sender<anyhow::Result<Vec<Model>>>),
-    DownloadFile(FileID, Sender<anyhow::Result<FileDownloadResponse>>),
-    PauseDownload(FileID, Sender<anyhow::Result<()>>),
-    CancelDownload(FileID, Sender<anyhow::Result<()>>),
-    GetCurrentDownloads(Sender<anyhow::Result<Vec<PendingDownload>>>),
-    GetDownloadedFiles(Sender<anyhow::Result<Vec<DownloadedFile>>>),
-    DeleteFile(FileID, Sender<anyhow::Result<()>>),
-    ChangeModelsLocation(PathBuf),
-}
-
-#[derive(Clone, Debug)]
-enum ModelInteractionCommand {
-    LoadModel(
-        FileID,
-        LoadModelOptions,
-        Sender<anyhow::Result<LoadModelResponse>>,
-    ),
-    EjectModel(Sender<anyhow::Result<()>>),
-    Chat(ChatRequestData, Sender<anyhow::Result<ChatResponse>>),
-    StopChatCompletion(Sender<anyhow::Result<()>>),
-    // Command to start a local server to interact with chat models
-    StartLocalServer(
-        LocalServerConfig,
-        Sender<anyhow::Result<LocalServerResponse>>,
-    ),
-    // Command to stop the local server
-    StopLocalServer(Sender<anyhow::Result<()>>),
-}
-
-#[derive(Clone, Debug)]
-enum BuiltInCommand {
-    Model(ModelManagementCommand),
-    Interaction(ModelInteractionCommand),
-}
-
-impl From<Command> for BuiltInCommand {
-    fn from(value: Command) -> Self {
-        match value {
-            Command::GetFeaturedModels(tx) => {
-                Self::Model(ModelManagementCommand::GetFeaturedModels(tx))
-            }
-            Command::SearchModels(request, tx) => {
-                Self::Model(ModelManagementCommand::SearchModels(request, tx))
-            }
-            Command::DownloadFile(file_id, tx) => {
-                Self::Model(ModelManagementCommand::DownloadFile(file_id, tx))
-            }
-            Command::PauseDownload(file_id, tx) => {
-                Self::Model(ModelManagementCommand::PauseDownload(file_id, tx))
-            }
-            Command::CancelDownload(file_id, tx) => {
-                Self::Model(ModelManagementCommand::CancelDownload(file_id, tx))
-            }
-            Command::DeleteFile(file_id, tx) => {
-                Self::Model(ModelManagementCommand::DeleteFile(file_id, tx))
-            }
-            Command::GetCurrentDownloads(tx) => {
-                Self::Model(ModelManagementCommand::GetCurrentDownloads(tx))
-            }
-            Command::GetDownloadedFiles(tx) => {
-                Self::Model(ModelManagementCommand::GetDownloadedFiles(tx))
-            }
-            Command::LoadModel(file_id, options, tx) => {
-                Self::Interaction(ModelInteractionCommand::LoadModel(file_id, options, tx))
-            }
-            Command::EjectModel(tx) => Self::Interaction(ModelInteractionCommand::EjectModel(tx)),
-            Command::Chat(request, tx) => {
-                Self::Interaction(ModelInteractionCommand::Chat(request, tx))
-            }
-            Command::StopChatCompletion(tx) => {
-                Self::Interaction(ModelInteractionCommand::StopChatCompletion(tx))
-            }
-            Command::StartLocalServer(config, tx) => {
-                Self::Interaction(ModelInteractionCommand::StartLocalServer(config, tx))
-            }
-            Command::StopLocalServer(tx) => {
-                Self::Interaction(ModelInteractionCommand::StopLocalServer(tx))
-            }
-            Command::ChangeModelsDir(path) => {
-                Self::Model(ModelManagementCommand::ChangeModelsLocation(path))
-            }
-        }
-    }
-}
-
-#[test]
-fn test_chat() {
-    use moly_protocol::open_ai::*;
-
-    let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::<chat_ui::ChatBotModel>::build_command_sender(
-        format!("{home}/ai/models"),
-        format!("{home}/ai/models"),
-        3,
-    );
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::GetDownloadedFiles(tx);
-    bk.send(cmd).unwrap();
-    let files = rx.recv().unwrap();
-    assert!(files.is_ok());
-    let files = files.unwrap();
-    let file = files.first().unwrap();
-    println!("{} {}", &file.file.id, &file.model.name);
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::LoadModel(
-        file.file.id.clone(),
-        LoadModelOptions {
-            prompt_template: None,
-            gpu_layers: moly_protocol::protocol::GPULayers::Max,
-            use_mlock: false,
-            rope_freq_scale: 0.0,
-            rope_freq_base: 0.0,
-            context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
-            n_batch: Some(128),
-            n_ctx: Some(1024),
-            override_server_address: None,
-        },
-        tx,
-    );
-    bk.send(cmd).unwrap();
-    let r = rx.recv();
-    assert!(r.is_ok());
-    assert!(r.unwrap().is_ok());
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::Chat(
-        ChatRequestData {
-            messages: vec![Message {
-                content: "hello".to_string(),
-                role: Role::User,
-                name: None,
-            }],
-            model: "llama-2-7b-chat.Q5_K_M".to_string(),
-            frequency_penalty: None,
-            logprobs: None,
-            top_logprobs: None,
-            max_tokens: None,
-            presence_penalty: None,
-            seed: None,
-            stop: None,
-            stream: Some(false),
-            temperature: None,
-            top_p: None,
-            n: None,
-            logit_bias: None,
-        },
-        tx,
-    );
-    bk.send(cmd).unwrap();
-    if let Ok(Ok(ChatResponse::ChatFinalResponseData(data))) = rx.recv() {
-        println!("{:?}", data.choices[0].message);
-    }
-
-    let (tx, rx) = std::sync::mpsc::channel();
-
-    bk.send(Command::EjectModel(tx)).unwrap();
-    rx.recv().unwrap().unwrap();
-}
-
-#[test]
-fn test_chat_stop() {
-    use moly_protocol::open_ai::*;
-
-    let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::<chat_ui::ChatBotModel>::build_command_sender(
-        format!("{home}/ai/models"),
-        format!("{home}/ai/models"),
-        3,
-    );
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::GetDownloadedFiles(tx);
-    bk.send(cmd).unwrap();
-    let files = rx.recv().unwrap();
-    assert!(files.is_ok());
-    let files = files.unwrap();
-    let file = files.first().unwrap();
-    println!("{} {}", &file.file.id, &file.model.name);
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::LoadModel(
-        file.file.id.clone(),
-        LoadModelOptions {
-            prompt_template: None,
-            gpu_layers: moly_protocol::protocol::GPULayers::Max,
-            use_mlock: false,
-            n_batch: Some(128),
-            n_ctx: Some(1024),
-            rope_freq_scale: 0.0,
-            rope_freq_base: 0.0,
-            context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
-            override_server_address: None,
-        },
-        tx,
-    );
-    bk.send(cmd).unwrap();
-    let r = rx.recv();
-    assert!(r.is_ok());
-    assert!(r.unwrap().is_ok());
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::Chat(
-        ChatRequestData {
-            messages: vec![Message {
-                content: "hello".to_string(),
-                role: Role::User,
-                name: None,
-            }],
-            model: "llama-2-7b-chat.Q5_K_M".to_string(),
-            frequency_penalty: None,
-            logprobs: None,
-            top_logprobs: None,
-            max_tokens: None,
-            presence_penalty: None,
-            seed: None,
-            stop: None,
-            stream: Some(true),
-            temperature: None,
-            top_p: None,
-            n: None,
-            logit_bias: None,
-        },
-        tx,
-    );
-    bk.send(cmd).unwrap();
-
-    let mut i = 0;
-    while let Ok(Ok(ChatResponse::ChatResponseChunk(data))) = rx.recv() {
-        i += 1;
-        println!(
-            "{:?} {:?}",
-            data.choices[0].delta, data.choices[0].finish_reason
-        );
-        if i == 5 {
-            let (tx, rx) = std::sync::mpsc::channel();
-            let cmd = Command::StopChatCompletion(tx);
-            bk.send(cmd).unwrap();
-            rx.recv().unwrap().unwrap();
-        }
-        if matches!(data.choices[0].finish_reason, Some(StopReason::Stop)) {
-            break;
-        }
-    }
-
-    let (tx, rx) = std::sync::mpsc::channel();
-
-    bk.send(Command::EjectModel(tx)).unwrap();
-    rx.recv().unwrap().unwrap();
-}
-
-#[test]
-fn test_download_file() {
-    let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::<chat_ui::ChatBotModel>::build_command_sender(
-        format!("{home}/ai/models"),
-        format!("{home}/ai/models"),
-        3,
-    );
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::SearchModels("llama".to_string(), tx);
-    bk.send(cmd).unwrap();
-    let models = rx.recv().unwrap();
-    assert!(models.is_ok());
-    let models = models.unwrap();
-    println!("{models:?}");
-
-    let file = models[0].files[0].clone();
-    println!("download {file:?}");
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::DownloadFile(file.id, tx.clone());
-    bk.send(cmd).unwrap();
-
-    let file = models[0].files[1].clone();
-    println!("download {file:?}");
-
-    let cmd = Command::DownloadFile(file.id, tx);
-    bk.send(cmd).unwrap();
-
-    println!();
-
-    while let Ok(r) = rx.recv() {
-        match r {
-            Ok(FileDownloadResponse::Progress(file_id, progress)) => {
-                println!("{file_id} progress: {:.2}%", progress);
-            }
-            Ok(FileDownloadResponse::Completed(file)) => {
-                println!("Completed {file:?}");
-            }
-            Err(e) => {
-                eprintln!("{e}");
-                break;
-            }
-        }
-    }
-}
-
-#[test]
-fn test_get_download_file() {
-    let home = std::env::var("HOME").unwrap();
-    let bk = BackendImpl::<chat_ui::ChatBotModel>::build_command_sender(
-        format!("{home}/ai/models"),
-        format!("{home}/ai/models"),
-        3,
-    );
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    let cmd = Command::GetDownloadedFiles(tx);
-    let _ = bk.send(cmd);
-
-    let files = rx.recv().unwrap();
-
-    println!("{files:?}");
-}
+// Commenting out this implementation as it is not being used anywhere and requires 
+// a lot of reworking to be used with the http server.
+// mod chat_ui;
 
 #[derive(Debug, Clone)]
 pub enum DownloadControlCommand {
     Stop(FileID),
 }
 
-pub type ChatModelBackend = BackendImpl<chat_ui::ChatBotModel>;
+// TODO(Julian): Should we just remove ChatBotModel? is not being used anywhere
+// pub type ChatModelBackend = BackendImpl<chat_ui::ChatBotModel>;
 pub type LlamaEdgeApiServerBackend = BackendImpl<api_server::LLamaEdgeApiServer>;
 
 pub trait BackendModel: Sized {
-    fn new_or_reload(
-        async_rt: &tokio::runtime::Runtime,
+    /// Creates a new model or reloads an existing one.
+    async fn new_or_reload(
         old_model: Option<Self>,
         file: store::download_files::DownloadedFile,
         options: LoadModelOptions,
-        tx: Sender<anyhow::Result<LoadModelResponse>>,
         embedding: Option<(PathBuf, u64)>,
-    ) -> Self;
+    ) -> Result<(Self, LoadModelResponse), anyhow::Error>;
+    /// Starts a chat with the model.
     fn chat(
         &self,
-        async_rt: &tokio::runtime::Runtime,
         data: ChatRequestData,
         tx: Sender<anyhow::Result<ChatResponse>>,
     ) -> bool;
-    fn stop_chat(&self, async_rt: &tokio::runtime::Runtime);
-    fn stop(self, async_rt: &tokio::runtime::Runtime);
+    /// Stops the chat.
+    fn stop_chat(&self);
+    /// Stops the model, freeing its resources.
+    async fn stop(self);
 }
 
+/// The main backend implementation.
 pub struct BackendImpl<Model: BackendModel> {
-    sql_conn: Arc<Mutex<rusqlite::Connection>>,
+    /// The manager for the model cards.
     model_indexs: ModelCardManager,
-    #[allow(unused)]
+    /// The directory where the app data is stored.
     app_data_dir: PathBuf,
+    /// The directory where the models are stored.
     models_dir: PathBuf,
-    pub rx: Receiver<Command>,
+    /// The currently loaded model.
+    model: Option<Model>,
+    /// A channel for sending model download requests to the downloader thread.
     download_tx: tokio::sync::mpsc::UnboundedSender<(
         store::models::Model,
         store::download_files::DownloadedFile,
         model_cards::RemoteFile,
         Sender<anyhow::Result<FileDownloadResponse>>,
     )>,
-    model: Option<Model>,
-
-    #[allow(unused)]
-    async_rt: tokio::runtime::Runtime,
+    /// A channel for sending control commands to the downloader thread.
     control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
 }
 
 impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
-    /// # Arguments
-    /// * `app_data_dir` - The directory where application data should be stored.
-    /// * `models_dir` - The directory where models should be downloaded.
-    /// * `max_download_threads` - Maximum limit on simultaneous file downloads.
-    pub fn build_command_sender<A: AsRef<Path>, M: AsRef<Path>>(
-        app_data_dir: A,
-        models_dir: M,
-        max_download_threads: usize,
-    ) -> Sender<Command> {
+    /// Builds a backend instance by initializing the model indexes and the file downloader.
+    pub async fn build<A: AsRef<Path>, M: AsRef<Path>>(app_data_dir: A, models_dir: M, max_download_threads: usize) -> Self {
         let app_data_dir = app_data_dir.as_ref().to_path_buf();
 
         log::info!("build by app_data_dir: {:?}", app_data_dir);
@@ -415,7 +92,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
             )
         });
 
-        let model_indexs = store::model_cards::sync_model_cards_repo(&app_data_dir);
+        let model_indexs = store::model_cards::sync_model_cards_repo(&app_data_dir).await;
         let model_indexs = match model_indexs {
             Ok(model_indexs) => {
                 log::info!("sync model cards repo success");
@@ -427,7 +104,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
             }
         };
 
-        let sql_conn = rusqlite::Connection::open(app_data_dir.join("data.sqlite")).unwrap();
+        let sql_conn = open_sqlite_conn(&app_data_dir);
 
         // TODO Reorganize these bunch of functions, needs a little more of thought
         let _ = store::models::create_table_models(&sql_conn).unwrap();
@@ -435,12 +112,6 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
 
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        let async_rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
         let (control_tx, _control_rx) = tokio::sync::broadcast::channel(100);
         let (download_tx, download_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -448,274 +119,242 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
             let client = reqwest::Client::new();
             let downloader =
                 ModelFileDownloader::new(client, sql_conn.clone(), control_tx.clone(),model_indexs.country_code.clone(), 0.1);
-            async_rt.spawn(ModelFileDownloader::run_loop(
+
+            tokio::spawn(ModelFileDownloader::run_loop(
                 downloader,
                 max_download_threads.max(3),
                 download_rx,
             ));
         }
 
-        let mut backend = Self {
-            sql_conn,
-            model_indexs,
+        let backend = Self {
+            model_indexs: model_indexs,
             app_data_dir,
             models_dir: models_dir.as_ref().into(),
-            rx,
             download_tx,
             model: None,
-            async_rt,
             control_tx,
         };
 
-        std::thread::spawn(move || {
-            backend.run_loop();
-        });
-        tx
+        backend
     }
 
-    fn handle_command(&mut self, built_in_cmd: BuiltInCommand) {
-        match built_in_cmd {
-            BuiltInCommand::Model(file) => match file {
-                ModelManagementCommand::GetFeaturedModels(tx) => {
-                    let res = self.model_indexs.get_featured_model(100, 0);
-                    match res {
-                        Ok(indexs) => {
-                            let mut models = Vec::new();
-                            for index in indexs {
-                                if let Ok(card) = self.model_indexs.load_model_card(&index) {
-                                    models.push(card);
-                                }
-                            }
+    // WIP
+    pub fn _start_download(&mut self, file_id: String) {
+        // search model from remote
+        let mut _search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model, crate::store::download_files::DownloadedFile,crate::store::model_cards::RemoteFile)> {
+            let (model_id, file) = file_id
+                .split_once("#")
+                .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
 
-                            let sql_conn = self.sql_conn.lock().unwrap();
-                            let models = ModelCard::to_model(&models, &sql_conn)
-                                .map_err(|e| anyhow::anyhow!("get featured error: {e}"));
+            let index = self.model_indexs.get_index_by_id(model_id).ok_or(anyhow::anyhow!("No model found"))?.clone();
+            let remote_model = self.model_indexs.load_model_card(&index)?;
+        
 
-                            let _ = tx.send(models);
-                        }
-                        Err(e) => {
-                            let _ = tx.send(Err(anyhow::anyhow!("get featured models error: {e}")));
-                        }
-                    }
-                }
-                ModelManagementCommand::SearchModels(search_text, tx) => {
-                    let res = self.model_indexs.search(&search_text, 100, 0);
-                    match res {
-                        Ok(indexs) => {
-                            log::debug!("search models: {}", indexs.len());
-                            let sql_conn = self.sql_conn.lock().unwrap();
+            let remote_file = remote_model
+                .files
+                .into_iter()
+                .find(|f| f.name == file)
+                .ok_or_else(|| anyhow::anyhow!("file not found"))?;
 
-                            let mut models = Vec::new();
-                            for index in indexs {
-                                match self.model_indexs.load_model_card(&index) {
-                                    Ok(card) => {
-                                        models.push(card);
-                                    }
-                                    Err(e) => {
-                                        log::error!("load model card {} error: {e}", index.id);
-                                    }
-                                }
-                            }
+            let remote_file_ = remote_file.clone();
 
-                            let models = ModelCard::to_model(&models, &sql_conn)
-                                .map_err(|e| anyhow::anyhow!("search models error: {e}"));
+            let download_model = crate::store::models::Model {
+                id: Arc::new(remote_model.id),
+                name: remote_model.name,
+                summary: remote_model.summary,
+                size: remote_model.size,
+                requires: remote_model.requires,
+                architecture: remote_model.architecture,
+                released_at: remote_model.released_at,
+                prompt_template: remote_model.prompt_template.clone(),
+                reverse_prompt: remote_model.reverse_prompt.clone(),
+                author: Arc::new(crate::store::model_cards::Author {
+                    name: remote_model.author.name,
+                    url: remote_model.author.url,
+                    description: remote_model.author.description,
+                }),
+                like_count: remote_model.like_count,
+                download_count: remote_model.download_count,
+            };
 
-                            let _ = tx.send(models);
-                        }
-                        Err(e) => {
-                            let _ = tx.send(Err(anyhow::anyhow!("search models error: {e}")));
-                        }
-                    }
-                }
-                ModelManagementCommand::DownloadFile(file_id, tx) => {
-                    //search model from remote
-                    let mut search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model , crate::store::download_files::DownloadedFile,crate::store::model_cards::RemoteFile)> {
-                        let (model_id, file) = file_id
-                            .split_once("#")
-                            .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
+            let download_file = crate::store::download_files::DownloadedFile {
+                id: Arc::new(file_id.clone()),
+                model_id: model_id.to_string(),
+                name: file.to_string(),
+                size: remote_file.size,
+                quantization: remote_file.quantization,
+                prompt_template: remote_model.prompt_template,
+                reverse_prompt: remote_model.reverse_prompt,
+                context_size:remote_model.context_size,
+                downloaded: false,
+                file_size: 0,
+                download_dir: self.models_dir.to_string_lossy().to_string(),
+                downloaded_at: Utc::now(),
+                tags:remote_file.tags,
+                featured: false,
+                sha256: remote_file.sha256.unwrap_or_default(),
+            };
 
-                        let index = self.model_indexs.get_index_by_id(model_id).ok_or(anyhow::anyhow!("No model found"))?.clone();
-                        let remote_model = self.model_indexs.load_model_card(&index)?;
-                    
+            Ok((download_model,download_file,remote_file_))
+        };
 
-                        let remote_file = remote_model
-                            .files
-                            .into_iter()
-                            .find(|f| f.name == file)
-                            .ok_or_else(|| anyhow::anyhow!("file not found"))?;
-
-                        let remote_file_ = remote_file.clone();
-
-                        let download_model = crate::store::models::Model {
-                            id: Arc::new(remote_model.id),
-                            name: remote_model.name,
-                            summary: remote_model.summary,
-                            size: remote_model.size,
-                            requires: remote_model.requires,
-                            architecture: remote_model.architecture,
-                            released_at: remote_model.released_at,
-                            prompt_template: remote_model.prompt_template.clone(),
-                            reverse_prompt: remote_model.reverse_prompt.clone(),
-                            author: Arc::new(crate::store::model_cards::Author {
-                                name: remote_model.author.name,
-                                url: remote_model.author.url,
-                                description: remote_model.author.description,
-                            }),
-                            like_count: remote_model.like_count,
-                            download_count: remote_model.download_count,
-                        };
-
-                        let download_file = crate::store::download_files::DownloadedFile {
-                            id: Arc::new(file_id.clone()),
-                            model_id: model_id.to_string(),
-                            name: file.to_string(),
-                            size: remote_file.size,
-                            quantization: remote_file.quantization,
-                            prompt_template: remote_model.prompt_template,
-                            reverse_prompt: remote_model.reverse_prompt,
-                            context_size:remote_model.context_size,
-                            downloaded: false,
-                            file_size: 0,
-                            download_dir: self.models_dir.to_string_lossy().to_string(),
-                            downloaded_at: Utc::now(),
-                            tags:remote_file.tags,
-                            featured: false,
-                            sha256: remote_file.sha256.unwrap_or_default(),
-                        };
-
-                        Ok((download_model,download_file,remote_file_))
-                    };
-
-                    match search_model_from_remote() {
-                        Ok((model, file,remote_file)) => {
-                            let _ = self.download_tx.send((model, file,remote_file, tx));
-                        }
-                        Err(e) => {
-                            let _ = tx.send(Err(e));
-                        }
-                    }
-                }
-
-                ModelManagementCommand::PauseDownload(file_id, tx) => {
-                    let _ = self.control_tx.send(DownloadControlCommand::Stop(file_id));
-                    let _ = tx.send(Ok(()));
-                }
-
-                ModelManagementCommand::CancelDownload(file_id, tx) => {
-                    let file_id_ = file_id.clone();
-                    let _ = self.control_tx.send(DownloadControlCommand::Stop(file_id_));
-
-                    {
-                        let conn = self.sql_conn.lock().unwrap();
-                        let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
-                    }
-                    let _ = store::remove_downloaded_file(
-                        self.models_dir.to_string_lossy().to_string(),
-                        file_id,
-                    );
-
-                    let _ = tx.send(Ok(()));
-                }
-
-                ModelManagementCommand::DeleteFile(file_id, tx) => {
-                    {
-                        let conn = self.sql_conn.lock().unwrap();
-                        let _ = store::download_files::DownloadedFile::remove(&file_id, &conn);
-                    }
-
-                    let _ = store::remove_downloaded_file(
-                        self.models_dir.to_string_lossy().to_string(),
-                        file_id,
-                    );
-                    let _ = tx.send(Ok(()));
-                }
-
-                ModelManagementCommand::GetDownloadedFiles(tx) => {
-                    let downloads = {
-                        let conn = self.sql_conn.lock().unwrap();
-                        store::get_all_download_file(&conn)
-                            .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
-                    };
-
-                    let _ = tx.send(downloads);
-                }
-
-                ModelManagementCommand::GetCurrentDownloads(tx) => {
-                    let pending_downloads = {
-                        let conn = self.sql_conn.lock().unwrap();
-                        store::get_all_pending_downloads(&conn)
-                            .map_err(|e| anyhow::anyhow!("get pending download file error: {e}"))
-                    };
-                    let _ = tx.send(pending_downloads);
-                }
-
-                ModelManagementCommand::ChangeModelsLocation(path) => self.update_models_dir(path),
-            },
-            BuiltInCommand::Interaction(model_cmd) => match model_cmd {
-                ModelInteractionCommand::LoadModel(file_id, options, tx) => {
-                    let conn = self.sql_conn.lock().unwrap();
-                    let download_file =
-                        store::download_files::DownloadedFile::get_by_id(&conn, &file_id);
-
-                    match download_file {
-                        Ok(file) => {
-                            nn_preload_file(&file, self.model_indexs.embedding_model());
-                            let old_model = self.model.take();
-
-                            let model = Model::new_or_reload(
-                                &self.async_rt,
-                                old_model,
-                                file,
-                                options,
-                                tx,
-                                self.model_indexs.embedding_model(),
-                            );
-                            self.model = Some(model);
-                        }
-                        Err(e) => {
-                            let _ = tx.send(Err(anyhow::anyhow!("Load model error: {e}")));
-                        }
-                    }
-                }
-                ModelInteractionCommand::EjectModel(tx) => {
-                    if let Some(model) = self.model.take() {
-                        model.stop(&self.async_rt);
-                    }
-                    let _ = tx.send(Ok(()));
-                }
-                ModelInteractionCommand::Chat(data, tx) => {
-                    if let Some(model) = &self.model {
-                        model.chat(&self.async_rt, data, tx);
-                    } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Model not loaded")));
-                    }
-                }
-                ModelInteractionCommand::StopChatCompletion(tx) => {
-                    self.model
-                        .as_ref()
-                        .map(|model| model.stop_chat(&self.async_rt));
-                    let _ = tx.send(Ok(()));
-                }
-                ModelInteractionCommand::StartLocalServer(_, _) => todo!(),
-                ModelInteractionCommand::StopLocalServer(_) => todo!(),
-            },
-        }
+        // WIP. Keeping this is as a reference. 
+        // We'll likely implement SSE for the download progress, some rework must be done in the downloader to support this.
+        // match search_model_from_remote() {
+        //     Ok((model, file,remote_file)) => {
+        //         let _ = self.download_tx.send((model, file,remote_file, tx));
+        //     }
+        //     Err(e) => {
+        //         let _ = tx.send(Err(e));
+        //     }
+        // }
     }
 
-    pub fn update_models_dir<M: AsRef<Path>>(&mut self, models_dir: M) {
-        self.models_dir = models_dir.as_ref().to_path_buf();
+    pub fn get_downloaded_files(&self) -> Result<Vec<DownloadedFile>, anyhow::Error> {
+        store::get_all_download_file(&self.open_db_conn())
+            .map_err(|e| anyhow::anyhow!("get download file error: {e}"))
     }
 
-    fn run_loop(&mut self) {
-        loop {
-            if let Ok(cmd) = self.rx.recv() {
-                self.handle_command(cmd.into());
-            } else {
-                break;
+    pub fn delete_file(&self, file_id: String) -> Result<(), anyhow::Error> {
+        store::download_files::DownloadedFile::remove(&file_id, &self.open_db_conn())?;
+        store::remove_downloaded_file(
+            self.models_dir.to_string_lossy().to_string(),
+            file_id,
+        )
+    }
+
+    pub fn get_current_downloads(&self) -> Result<Vec<PendingDownload>, anyhow::Error> {
+        store::get_all_pending_downloads(&self.open_db_conn())
+            .map_err(|e| anyhow::anyhow!("get pending download file error: {e}"))
+    }
+
+    pub fn pause_download(&self, file_id: String) -> Result<(), anyhow::Error> {
+        let _ = self.control_tx.send(DownloadControlCommand::Stop(file_id));
+        Ok(())
+    }
+
+    pub fn cancel_download(&self, file_id: String) -> Result<(), anyhow::Error> {
+        self.control_tx.send(DownloadControlCommand::Stop(file_id.clone()))?;
+        store::download_files::DownloadedFile::remove(&file_id, &self.open_db_conn())?;
+        store::remove_downloaded_file(
+            self.models_dir.to_string_lossy().to_string(),
+            file_id,
+        )
+    }
+
+    pub async fn load_model(&mut self, file_id: String, options: LoadModelOptions) -> Result<LoadModelResponse, anyhow::Error> {
+        let download_file =
+            store::download_files::DownloadedFile::get_by_id(&self.open_db_conn(), &file_id);
+
+        match download_file {
+            Ok(file) => {
+                nn_preload_file(&file, self.model_indexs.embedding_model());
+                let old_model = self.model.take();
+
+                let result = Model::new_or_reload(
+                    old_model,
+                    file,
+                    options,
+                    self.model_indexs.embedding_model(),
+                ).await;
+
+                match result {
+                    Ok((model, response)) => {
+                        self.model = Some(model);
+                        return Ok(response);
+                    }
+                    Err(e) => {
+                        return Err(anyhow::anyhow!("Load model error: {e}"));
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("Load model error: {e}"));
             }
         }
+    }
 
-        log::debug!("BackendImpl stop");
+    pub async fn eject_model(&mut self) {
+        if let Some(model) = self.model.take() {
+            model.stop().await;
+        }
+    }
+
+    pub fn get_featured_models(&mut self) -> Result<Vec<moly_protocol::data::Model>, anyhow::Error> {
+        let res = self.model_indexs.get_featured_model(100, 0);
+        match res {
+            Ok(indexs) => {
+                let mut models = Vec::new();
+                for index in indexs {
+                    if let Ok(card) = self.model_indexs.load_model_card(&index) {
+                        models.push(card);
+                    }
+                }
+
+                let models = ModelCard::to_model(&models, &self.open_db_conn())
+                    .map_err(|e| anyhow::anyhow!("get featured error: {e}"))?;
+
+                Ok(models)
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("get featured models error: {e}"));
+            }
+        }
+    }
+
+    pub fn search_models(&mut self, search_text: String) -> Result<Vec<moly_protocol::data::Model>, anyhow::Error> {
+        let res = self.model_indexs.search(&search_text, 100, 0);
+        match res {
+            Ok(indexs) => {
+                log::debug!("search models: {}", indexs.len());
+
+                let mut models = Vec::new();
+                for index in indexs {
+                    match self.model_indexs.load_model_card(&index) {
+                        Ok(card) => {
+                            models.push(card);
+                        }
+                        Err(e) => {
+                            log::error!("load model card {} error: {e}", index.id);
+                        }
+                    }
+                }
+
+                let models = ModelCard::to_model(&models, &self.open_db_conn())
+                    .map_err(|e| anyhow::anyhow!("search models error: {e}"))?;
+
+                Ok(models)
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("search models error: {e}"));
+            }
+        }
+    }
+
+    // WIP. Keeping this for reference.
+    // pub fn update_models_dir<M: AsRef<Path>>(&mut self, models_dir: M) {
+    //     self.models_dir = models_dir.as_ref().to_path_buf();
+    // }
+
+    // WIP. Keeping these for reference.
+    // We'll rework the chat interface to use the OpenAI API format instead.
+    // pub fn chat(&self, data: ChatRequestData, tx: Sender<anyhow::Result<ChatResponse>>) -> Result<(), anyhow::Error> {
+    //     if let Some(model) = &self.model {
+    //         model.chat(data, tx);
+    //         Ok(())
+    //     } else {
+    //         Err(anyhow::anyhow!("Model not loaded"))
+    //     }
+    // }
+    // pub fn stop_chat(&self) {
+    //     self.model
+    //     .as_ref()
+    //     .map(|model| model.stop_chat());
+    // }
+
+    fn open_db_conn(&self) -> rusqlite::Connection {
+        open_sqlite_conn(&self.app_data_dir)
     }
 }
 
@@ -746,4 +385,8 @@ pub fn nn_preload_file(
     }
 
     wasmedge_sdk::plugin::PluginManager::nn_preload(preload_vec);
+}
+
+fn open_sqlite_conn(app_data_dir: &Path) -> rusqlite::Connection {
+    rusqlite::Connection::open(Path::new(app_data_dir).join("data.sqlite")).unwrap()
 }

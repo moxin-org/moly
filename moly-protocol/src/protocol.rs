@@ -1,6 +1,7 @@
 use crate::data::*;
 use crate::open_ai::*;
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
@@ -10,20 +11,20 @@ pub enum FileDownloadResponse {
     Completed(DownloadedFile),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ContextOverflowPolicy {
     StopAtLimit,
     TruncateMiddle,
     TruncatePastMessages,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum GPULayers {
     Specific(u32),
     Max,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoadModelOptions {
     pub override_server_address: Option<String>,
     pub prompt_template: Option<String>,
@@ -38,7 +39,13 @@ pub struct LoadModelOptions {
     pub context_overflow_policy: ContextOverflowPolicy,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LoadModelRequest {
+    pub file_id: FileID,
+    pub options: LoadModelOptions,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoadedModelInfo {
     pub file_id: FileID,
     pub model_id: ModelID,
@@ -51,13 +58,13 @@ pub struct LoadedModelInfo {
     pub information: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelResourcesInfo {
     pub ram_usage: f32,
     pub cpu_usage: f32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LoadModelResponse {
     Progress(FileID, f32),
     Completed(LoadedModelInfo),
