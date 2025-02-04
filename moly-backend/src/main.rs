@@ -1,11 +1,16 @@
 use axum::extract::Query;
+use axum::response::sse::{Event, Sse};
 use axum::routing::post;
 use axum::{extract::State, routing::delete};
 use backend_impls::{BackendImpl, LlamaEdgeApiServerBackend};
 use filesystem::{project_dirs, setup_model_downloads_folder};
+use futures_util::Stream;
 use moly_protocol::data::{DownloadedFile, Model, PendingDownload};
-use moly_protocol::protocol::{LoadModelRequest, LoadModelResponse};
+use moly_protocol::protocol::{
+    FileDownloadResponse, LoadModelRequest, LoadModelResponse, StartDownloadRequest,
+};
 use serde::Deserialize;
+use std::convert::Infallible;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -18,7 +23,7 @@ mod store;
 
 struct ApiState {
     // This RwLock is just a placeholder for now (and probably not a great one, as it turns out a lot of GET requests end up doing writes as well).
-    // This is a placeholder because we want to make the server less stateful in general, 
+    // This is a placeholder because we want to make the server less stateful in general,
     // and in any case we can more granularly introduce mutexes to substates as needed.
     backend: Arc<RwLock<LlamaEdgeApiServerBackend>>,
 }
@@ -71,6 +76,58 @@ async fn list_current_downloads(
         .get_current_downloads()
         .map(Json)
         .map_err(|e| internal_error(e))
+}
+
+/// Start or resume downloading a model file
+async fn start_download(
+    State(state): State<Arc<ApiState>>,
+    Json(request): Json<StartDownloadRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    state
+        .backend
+        .write()
+        .await
+        .start_download(request.file_id)
+        .await
+        .map(|_| StatusCode::ACCEPTED)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))
+}
+
+/// Stream download progress via Server-Sent Events (SSE)
+/// It returns 404 if the download is not in progress (regardless of it not existing, being paused, or completed).
+async fn download_progress(
+    State(state): State<Arc<ApiState>>,
+    AxumPath(id): AxumPath<String>,
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
+    // Fetch the corresponding progress channel
+    let mut rx = state
+        .backend
+        .write()
+        .await
+        .get_download_progress_channel(id)
+        .await
+        .map_err(|e| (StatusCode::NOT_FOUND, format!("Download not found: {}", e)))?;
+
+    // Stream the progress updates
+    let stream = async_stream::stream! {
+        while let Some(response) = rx.recv().await {
+            match response {
+                Ok(FileDownloadResponse::Progress(_, progress)) => {
+                    yield Ok(Event::default().event("progress").data(progress.to_string()));
+                }
+                Ok(FileDownloadResponse::Completed(_)) => {
+                    yield Ok(Event::default().event("complete").data("100"));
+                    break;
+                }
+                Err(_) => {
+                    yield Ok(Event::default().event("error").data("Download failed"));
+                    break;
+                }
+            }
+        }
+    };
+
+    Ok(Sse::new(stream))
 }
 
 /// Pause a download.
@@ -149,7 +206,9 @@ async fn get_featured_models(
 }
 
 /// Eject a model.
-async fn eject_model(State(state): State<Arc<ApiState>>) -> Result<StatusCode, (StatusCode, String)> {
+async fn eject_model(
+    State(state): State<Arc<ApiState>>,
+) -> Result<StatusCode, (StatusCode, String)> {
     state.backend.write().await.eject_model().await;
 
     Ok(StatusCode::NO_CONTENT)
@@ -159,9 +218,6 @@ async fn eject_model(State(state): State<Arc<ApiState>>) -> Result<StatusCode, (
 async fn main() {
     let app_data_dir = project_dirs().data_dir();
     let models_dir = setup_model_downloads_folder();
-
-    println!("app data dir: {}", app_data_dir.display());
-    println!("models dir: {}", models_dir.display());
 
     let state = Arc::new(ApiState::new(app_data_dir, models_dir).await);
 
@@ -177,9 +233,9 @@ async fn main() {
 }
 
 /// File management routes.
-/// 
+///
 /// Note that file IDs match the IDs in model routes. From that perspective files and models are the same.
-/// Models are conceptually a collection of files, but there is a lot of exisitng code (and UI langauge) that treats models as a single entity. 
+/// Models are conceptually a collection of files, but there is a lot of exisitng code (and UI langauge) that treats models as a single entity.
 /// For example, loading a model basically takes a file ID and loads the corresponding file.
 fn file_routes() -> Router<Arc<ApiState>> {
     Router::new()
@@ -191,8 +247,8 @@ fn file_routes() -> Router<Arc<ApiState>> {
 fn download_routes() -> Router<Arc<ApiState>> {
     Router::new()
         .route("/", get(list_current_downloads))
-        // .route("/", post(start_download))
-        // .route("/:id/progress", get(download_progress)) // Not yet decided, we might implement SSE (most likely for now) or WS for download progress.
+        .route("/", post(start_download))
+        .route("/{id}/progress", get(download_progress))
         .route("/{id}", post(pause_download))
         .route("/{id}", delete(cancel_download))
 }
@@ -200,14 +256,14 @@ fn download_routes() -> Router<Arc<ApiState>> {
 /// Model management routes.
 fn model_routes() -> Router<Arc<ApiState>> {
     Router::new()
-        // WIP. When we introduce the completions endpoint (a proxy to the LLamaEdge API server), we might want to provide an option to 
+        // WIP. When we introduce the completions endpoint (a proxy to the LLamaEdge API server), we might want to provide an option to
         // skip this /load step and do the loading automatically for the user, by having the user porivde the model ID in the request instead
         // of the current hardcoded "moly-chat" model. (this overall depends on how we want to handle the UI loading model animations, etc.)
         .route("/load", post(load_model))
         .route("/eject", post(eject_model))
         .route("/featured", get(get_featured_models))
         .route("/search", get(search_models))
-        // .route("/models_dir", post(update_models_dir)) // Not sure if we will support this, or how.
+    // .route("/models_dir", post(update_models_dir)) // Not sure if we will support this, or how.
 }
 
 /// Utility function for mapping errors into a `500 Internal Server Error`

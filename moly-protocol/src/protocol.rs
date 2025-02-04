@@ -5,6 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
+#[derive(Debug, Deserialize)]
+pub struct StartDownloadRequest {
+    pub file_id: FileID,
+}
+
 #[derive(Clone, Debug)]
 pub enum FileDownloadResponse {
     Progress(FileID, f32),

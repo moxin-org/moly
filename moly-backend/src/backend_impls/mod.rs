@@ -1,9 +1,8 @@
 use std::{
-    path::{Path, PathBuf},
-    sync::{
+    collections::HashMap, path::{Path, PathBuf}, sync::{
         mpsc::Sender,
         Arc, Mutex,
-    },
+    }
 };
 
 use chrono::Utc;
@@ -15,6 +14,7 @@ use moly_protocol::{
         LocalServerResponse,
     },
 };
+use tokio::sync::{mpsc::Receiver, RwLock};
 
 use crate::store::{
     self,
@@ -71,10 +71,12 @@ pub struct BackendImpl<Model: BackendModel> {
         store::models::Model,
         store::download_files::DownloadedFile,
         model_cards::RemoteFile,
-        Sender<anyhow::Result<FileDownloadResponse>>,
+        tokio::sync::mpsc::Sender<anyhow::Result<FileDownloadResponse>>,
     )>,
     /// A channel for sending control commands to the downloader thread.
     control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
+    /// A map of file IDs to their progress channels.
+    download_progress: Arc<RwLock<HashMap<String, Receiver<anyhow::Result<FileDownloadResponse>>>>>,
 }
 
 impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
@@ -134,32 +136,33 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
             download_tx,
             model: None,
             control_tx,
+            download_progress: Arc::new(RwLock::new(HashMap::new())),
         };
 
         backend
     }
 
-    // WIP
-    pub fn _start_download(&mut self, file_id: String) {
-        // search model from remote
-        let mut _search_model_from_remote = || -> anyhow::Result<( crate::store::models::Model, crate::store::download_files::DownloadedFile,crate::store::model_cards::RemoteFile)> {
-            let (model_id, file) = file_id
+    /// Starts downloading a model file and creates a progress channel for it.
+    pub async fn start_download(&mut self, file_id: String) -> Result<(), anyhow::Error> {
+        let (model, file, remote_file) = {
+            let (model_id, file_name) = file_id
                 .split_once("#")
                 .ok_or_else(|| anyhow::anyhow!("Illegal file_id"))?;
 
-            let index = self.model_indexs.get_index_by_id(model_id).ok_or(anyhow::anyhow!("No model found"))?.clone();
+            let index = self.model_indexs
+                .get_index_by_id(model_id)
+                .ok_or(anyhow::anyhow!("No model found"))?
+                .clone();
+            
             let remote_model = self.model_indexs.load_model_card(&index)?;
-        
-
+            
             let remote_file = remote_model
                 .files
                 .into_iter()
-                .find(|f| f.name == file)
+                .find(|f| f.name == file_name)
                 .ok_or_else(|| anyhow::anyhow!("file not found"))?;
 
-            let remote_file_ = remote_file.clone();
-
-            let download_model = crate::store::models::Model {
+            let download_model = store::models::Model {
                 id: Arc::new(remote_model.id),
                 name: remote_model.name,
                 summary: remote_model.summary,
@@ -169,7 +172,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                 released_at: remote_model.released_at,
                 prompt_template: remote_model.prompt_template.clone(),
                 reverse_prompt: remote_model.reverse_prompt.clone(),
-                author: Arc::new(crate::store::model_cards::Author {
+                author: Arc::new(store::model_cards::Author {
                     name: remote_model.author.name,
                     url: remote_model.author.url,
                     description: remote_model.author.description,
@@ -178,37 +181,52 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
                 download_count: remote_model.download_count,
             };
 
-            let download_file = crate::store::download_files::DownloadedFile {
+            let remote_file_clone = remote_file.clone();
+            let download_file = store::download_files::DownloadedFile {
                 id: Arc::new(file_id.clone()),
                 model_id: model_id.to_string(),
-                name: file.to_string(),
-                size: remote_file.size,
-                quantization: remote_file.quantization,
+                name: file_name.to_string(),
+                size: remote_file_clone.size,
+                quantization: remote_file_clone.quantization,
                 prompt_template: remote_model.prompt_template,
                 reverse_prompt: remote_model.reverse_prompt,
-                context_size:remote_model.context_size,
+                context_size: remote_model.context_size,
                 downloaded: false,
                 file_size: 0,
                 download_dir: self.models_dir.to_string_lossy().to_string(),
                 downloaded_at: Utc::now(),
-                tags:remote_file.tags,
+                tags: remote_file_clone.tags,
                 featured: false,
-                sha256: remote_file.sha256.unwrap_or_default(),
+                sha256: remote_file_clone.sha256.unwrap_or_default(),
             };
 
-            Ok((download_model,download_file,remote_file_))
+            (download_model, download_file, remote_file)
         };
 
-        // WIP. Keeping this is as a reference. 
-        // We'll likely implement SSE for the download progress, some rework must be done in the downloader to support this.
-        // match search_model_from_remote() {
-        //     Ok((model, file,remote_file)) => {
-        //         let _ = self.download_tx.send((model, file,remote_file, tx));
-        //     }
-        //     Err(e) => {
-        //         let _ = tx.send(Err(e));
-        //     }
-        // }
+        // Create a channel for progress updates that we'll handle with SSE later
+        let (progress_tx, progress_rx) = tokio::sync::mpsc::channel(100);
+        self.download_progress.write().await.insert(file_id.clone(), progress_rx);
+        
+        // Start the download
+        self.download_tx.send((
+            model,
+            file.clone(),
+            remote_file,
+            progress_tx
+        ))?;
+
+        Ok(())
+    }
+
+    /// Returns the progress channel for a given file ID.
+    pub async fn get_download_progress_channel(&mut self, file_id: String) 
+    -> anyhow::Result<Receiver<anyhow::Result<FileDownloadResponse>>> {
+        let rx = self.download_progress
+            .write()
+            .await
+            .remove(&file_id)
+            .ok_or_else(|| anyhow::anyhow!("No download in progress for this ID"))?;
+        Ok(rx)
     }
 
     pub fn get_downloaded_files(&self) -> Result<Vec<DownloadedFile>, anyhow::Error> {

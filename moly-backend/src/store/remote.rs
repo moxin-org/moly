@@ -148,12 +148,12 @@ impl ModelFileDownloader {
         self,
         file: super::download_files::DownloadedFile,
         remote_file: super::model_cards::RemoteFile,
-        tx: Sender<anyhow::Result<FileDownloadResponse>>,
+        tx: tokio::sync::mpsc::Sender<anyhow::Result<FileDownloadResponse>>,
     ) {
         let file_id = file.id.to_string();
 
         let mut send_progress = |progress| {
-            let r = tx.send(Ok(FileDownloadResponse::Progress(
+            let r = tx.try_send(Ok(FileDownloadResponse::Progress(
                 file_id.clone(),
                 progress as f32,
             )));
@@ -167,13 +167,13 @@ impl ModelFileDownloader {
 
         match r {
             Ok(Some(response)) => {
-                let _ = tx.send(Ok(response));
+                let _ = tx.try_send(Ok(response));
             }
             Ok(None) => {
                 // TODO Implement file removal when download is stopped, nothing to do when it is paused
             }
             Err(e) => {
-                let _ = tx.send(Err(e));
+                let _ = tx.try_send(Err(e));
             }
         }
     }
@@ -185,7 +185,7 @@ impl ModelFileDownloader {
             super::models::Model,
             super::download_files::DownloadedFile,
             super::model_cards::RemoteFile,
-            Sender<anyhow::Result<FileDownloadResponse>>,
+            tokio::sync::mpsc::Sender<anyhow::Result<FileDownloadResponse>>,
         )>,
     ) {
         let semaphore = Arc::new(tokio::sync::Semaphore::new(max_downloader));
