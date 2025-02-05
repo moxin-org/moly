@@ -1,5 +1,4 @@
 use async_stream::stream;
-use futures::{future::FutureExt, stream::StreamExt};
 use makepad_widgets::log;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
@@ -131,7 +130,7 @@ impl MolyClient {
 }
 
 impl BotClient for MolyClient {
-    fn bots(&self) -> BoxFuture<'static, Result<Vec<Bot>, ()>> {
+    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>> {
         let inner = self.0.clone();
 
         let future = async move {
@@ -168,13 +167,7 @@ impl BotClient for MolyClient {
             Ok(bots)
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            future.boxed()
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        future.boxed_local()
+        moly_future(future)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
@@ -186,7 +179,7 @@ impl BotClient for MolyClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> BoxStream<'static, Result<String, ()>> {
+    ) -> MolyStream<'static, Result<String, ()>> {
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())
@@ -279,11 +272,7 @@ impl BotClient for MolyClient {
             }
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
-        return stream.boxed();
-
-        #[cfg(target_arch = "wasm32")]
-        return stream.boxed_local();
+        moly_stream(stream)
     }
 }
 

@@ -1,20 +1,8 @@
+use futures::StreamExt;
+use makepad_widgets::LiveValue;
 use std::sync::{Arc, Mutex};
 
-// This is the stream type re-exported by tokio, reqwest and futures.
-use futures::{future, stream, FutureExt, StreamExt};
-use makepad_widgets::{log, LiveValue};
-
-#[cfg(not(target_arch = "wasm32"))]
-pub type BoxFuture<'a, T> = future::BoxFuture<'a, T>;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub type BoxStream<'a, T> = stream::BoxStream<'a, T>;
-
-#[cfg(target_arch = "wasm32")]
-pub type BoxFuture<'a, T> = future::LocalBoxFuture<'a, T>;
-
-#[cfg(target_arch = "wasm32")]
-pub type BoxStream<'a, T> = stream::LocalBoxStream<'a, T>;
+pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
@@ -93,7 +81,7 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> BoxStream<'static, Result<String, ()>>;
+    ) -> MolyStream<'static, Result<String, ()>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -104,7 +92,7 @@ pub trait BotClient: Send {
     // NOTE: Could be a stream, but may add complexity rarely needed.
     // TODO: Support partial results with errors for an union multi client/service
     // later.
-    fn bots(&self) -> BoxFuture<'static, Result<Vec<Bot>, ()>>;
+    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
@@ -116,7 +104,7 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> BoxFuture<'static, Result<String, ()>> {
+    ) -> MolyFuture<'static, Result<String, ()>> {
         let stream = self.send_stream(bot, messages);
 
         let future = async move {
@@ -130,13 +118,7 @@ pub trait BotClient: Send {
             Ok(message)
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            future.boxed()
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        future.boxed_local()
+        moly_future(future)
     }
 }
 
@@ -160,20 +142,14 @@ impl Clone for BotRepo {
 }
 
 impl BotRepo {
-    pub fn load(&mut self) -> BoxFuture<Result<(), ()>> {
+    pub fn load(&mut self) -> MolyFuture<Result<(), ()>> {
         let future = async move {
             let new_bots = self.client().bots().await?;
             self.0.lock().unwrap().bots = new_bots;
             Ok(())
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            future.boxed()
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        future.boxed_local()
+        moly_future(future)
     }
     pub fn client(&self) -> Box<dyn BotClient> {
         self.0.lock().unwrap().client.clone_box()
@@ -222,7 +198,7 @@ impl BotClient for MultiBotClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> BoxStream<'static, Result<String, ()>> {
+    ) -> MolyStream<'static, Result<String, ()>> {
         let mut client = self
             .clients_with_bots
             .lock()
@@ -244,7 +220,7 @@ impl BotClient for MultiBotClient {
         Box::new(self.clone())
     }
 
-    fn bots(&self) -> BoxFuture<'static, Result<Vec<Bot>, ()>> {
+    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>> {
         let clients_with_bots = self.clients_with_bots.clone();
 
         let future = async move {
@@ -256,7 +232,7 @@ impl BotClient for MultiBotClient {
                 .collect::<Vec<_>>();
 
             let bot_futures = clients.iter().map(|client| client.bots());
-            let results = future::join_all(bot_futures).await;
+            let results = futures::future::join_all(bot_futures).await;
 
             let mut zipped_bots = Vec::new();
             let mut flat_bots = Vec::new();
@@ -276,12 +252,6 @@ impl BotClient for MultiBotClient {
             Ok(flat_bots)
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            future.boxed()
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        future.boxed_local()
+        moly_future(future)
     }
 }
