@@ -1,11 +1,13 @@
 use axum::extract::Query;
 use axum::response::sse::{Event, Sse};
+use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{extract::State, routing::delete};
 use backend_impls::{BackendImpl, LlamaEdgeApiServerBackend};
 use filesystem::{project_dirs, setup_model_downloads_folder};
 use futures_util::Stream;
 use moly_protocol::data::{DownloadedFile, Model, PendingDownload};
+use moly_protocol::open_ai::{ChatRequestData, ChatResponse};
 use moly_protocol::protocol::{
     FileDownloadResponse, LoadModelRequest, LoadModelResponse, StartDownloadRequest,
 };
@@ -15,8 +17,10 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use api_errors::*;
 use axum::{extract::Path as AxumPath, http::StatusCode, routing::get, Json, Router};
 
+mod api_errors;
 mod backend_impls;
 mod filesystem;
 mod store;
@@ -41,48 +45,48 @@ impl ApiState {
 /// List all downloaded files.
 async fn list_downloaded_files(
     State(state): State<Arc<ApiState>>,
-) -> Result<Json<Vec<DownloadedFile>>, (StatusCode, String)> {
+) -> Result<Json<Vec<DownloadedFile>>, ApiErrorResponse> {
     state
         .backend
         .read()
         .await
         .get_downloaded_files()
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 /// Delete a file.
 async fn delete_file(
     State(state): State<Arc<ApiState>>,
     AxumPath(id): AxumPath<String>,
-) -> Result<Json<()>, (StatusCode, String)> {
+) -> Result<Json<()>, ApiErrorResponse> {
     state
         .backend
         .read()
         .await
         .delete_file(id)
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 /// List all current downloads.
 async fn list_current_downloads(
     State(state): State<Arc<ApiState>>,
-) -> Result<Json<Vec<PendingDownload>>, (StatusCode, String)> {
+) -> Result<Json<Vec<PendingDownload>>, ApiErrorResponse> {
     state
         .backend
         .read()
         .await
         .get_current_downloads()
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 /// Start or resume downloading a model file
 async fn start_download(
     State(state): State<Arc<ApiState>>,
     Json(request): Json<StartDownloadRequest>,
-) -> Result<StatusCode, (StatusCode, String)> {
+) -> Result<StatusCode, ApiErrorResponse> {
     state
         .backend
         .write()
@@ -90,7 +94,7 @@ async fn start_download(
         .start_download(request.file_id)
         .await
         .map(|_| StatusCode::ACCEPTED)
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))
+        .map_err(|e| api_error(StatusCode::BAD_REQUEST, &e.to_string(), Some("file_id")))
 }
 
 /// Stream download progress via Server-Sent Events (SSE)
@@ -98,7 +102,7 @@ async fn start_download(
 async fn download_progress(
     State(state): State<Arc<ApiState>>,
     AxumPath(id): AxumPath<String>,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, ApiErrorResponse> {
     // Fetch the corresponding progress channel
     let mut rx = state
         .backend
@@ -106,7 +110,7 @@ async fn download_progress(
         .await
         .get_download_progress_channel(id)
         .await
-        .map_err(|e| (StatusCode::NOT_FOUND, format!("Download not found: {}", e)))?;
+        .map_err(|e| api_error(StatusCode::NOT_FOUND, &format!("Download not found: {}", e), None))?;
 
     // Stream the progress updates
     let stream = async_stream::stream! {
@@ -134,35 +138,35 @@ async fn download_progress(
 async fn pause_download(
     State(state): State<Arc<ApiState>>,
     AxumPath(id): AxumPath<String>,
-) -> Result<Json<()>, (StatusCode, String)> {
+) -> Result<Json<()>, ApiErrorResponse> {
     state
         .backend
         .read()
         .await
         .pause_download(id)
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 /// Cancel a download.
 async fn cancel_download(
     State(state): State<Arc<ApiState>>,
     AxumPath(id): AxumPath<String>,
-) -> Result<Json<()>, (StatusCode, String)> {
+) -> Result<Json<()>, ApiErrorResponse> {
     state
         .backend
         .read()
         .await
         .cancel_download(id)
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 /// Load a model.
 async fn load_model(
     State(state): State<Arc<ApiState>>,
     Json(request): Json<LoadModelRequest>,
-) -> Result<Json<LoadModelResponse>, (StatusCode, String)> {
+) -> Result<Json<LoadModelResponse>, ApiErrorResponse> {
     state
         .backend
         .write()
@@ -170,7 +174,7 @@ async fn load_model(
         .load_model(request.file_id, request.options)
         .await
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 #[derive(Debug, Deserialize)]
@@ -182,36 +186,94 @@ pub struct SearchQuery {
 async fn search_models(
     State(state): State<Arc<ApiState>>,
     Query(query): Query<SearchQuery>,
-) -> Result<Json<Vec<Model>>, (StatusCode, String)> {
+) -> Result<Json<Vec<Model>>, ApiErrorResponse> {
     state
         .backend
         .write()
         .await
         .search_models(query.q)
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 /// Get featured models.
 async fn get_featured_models(
     State(state): State<Arc<ApiState>>,
-) -> Result<Json<Vec<Model>>, (StatusCode, String)> {
+) -> Result<Json<Vec<Model>>, ApiErrorResponse> {
     state
         .backend
         .write()
         .await
         .get_featured_models()
         .map(Json)
-        .map_err(|e| internal_error(e))
+        .map_err(internal_error)
 }
 
 /// Eject a model.
-async fn eject_model(
-    State(state): State<Arc<ApiState>>,
-) -> Result<StatusCode, (StatusCode, String)> {
+async fn eject_model(State(state): State<Arc<ApiState>>) -> Result<StatusCode, ApiErrorResponse> {
     state.backend.write().await.eject_model().await;
-
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Chat completions endpoint
+async fn chat_completions(
+    State(state): State<Arc<ApiState>>,
+    Json(request): Json<ChatRequestData>,
+) -> Result<Response, ApiErrorResponse> {
+    let is_stream = request.stream.unwrap_or(false);
+    let (tx, mut rx) = tokio::sync::mpsc::channel(32);
+
+    let result = state.backend.read().await.chat(request, tx);
+    if let Err(e) = result {
+        return Err(api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            e.to_string().as_str(),
+            None,
+        ));
+    }
+
+    if !is_stream {
+        match rx.recv().await {
+            Some(Ok(response)) => match response {
+                ChatResponse::ChatFinalResponseData(data) => Ok(Json(data).into_response()),
+                ChatResponse::ChatResponseChunk(_) => Err(api_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Unexpected streaming response in non-streaming mode",
+                    None,
+                )),
+            },
+            _ => Err(api_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Chat service disconnected",
+                None,
+            )),
+        }
+    } else {
+        let stream = async_stream::stream! {
+            while let Some(response) = rx.recv().await {
+                match response {
+                    Ok(ChatResponse::ChatResponseChunk(chunk)) => {
+                        let event = Event::default().data(serde_json::to_string(&chunk).unwrap());
+                        yield Ok::<_, std::convert::Infallible>(event);
+
+                        if chunk.choices[0].finish_reason.is_some() {
+                            yield Ok(Event::default().data("[DONE]"));
+                            break;
+                        }
+                    }
+                    Ok(ChatResponse::ChatFinalResponseData(_)) => {
+                        break;
+                    }
+                    Err(e) => {
+                        yield Ok(Event::default().data(format!("error: {}", e)));
+                        break;
+                    }
+                }
+            }
+        };
+
+        Ok(Sse::new(stream).into_response())
+    }
 }
 
 #[tokio::main]
@@ -256,18 +318,14 @@ fn download_routes() -> Router<Arc<ApiState>> {
 /// Model management routes.
 fn model_routes() -> Router<Arc<ApiState>> {
     Router::new()
-        // WIP. When we introduce the completions endpoint (a proxy to the LLamaEdge API server), we might want to provide an option to
-        // skip this /load step and do the loading automatically for the user, by having the user porivde the model ID in the request instead
-        // of the current hardcoded "moly-chat" model. (this overall depends on how we want to handle the UI loading model animations, etc.)
+        // TODO: We might want to provide an option to skip this /load step and do the loading automatically for the user,
+        // whenever the completions endpoint is used.
+        // We could have the API user porivde the model ID in the request instead of the current hardcoded "moly-chat" model.
+        // (This overall depends on how we want to handle the UI loading model animations, etc.)
         .route("/load", post(load_model))
         .route("/eject", post(eject_model))
         .route("/featured", get(get_featured_models))
         .route("/search", get(search_models))
+        .route("/v1/chat/completions", post(chat_completions))
     // .route("/models_dir", post(update_models_dir)) // Not sure if we will support this, or how.
-}
-
-/// Utility function for mapping errors into a `500 Internal Server Error`
-/// response.
-fn internal_error(err: anyhow::Error) -> (StatusCode, String) {
-    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }

@@ -1,20 +1,18 @@
 use std::{
     collections::HashMap, path::{Path, PathBuf}, sync::{
-        mpsc::Sender,
         Arc, Mutex,
     }
 };
 
 use chrono::Utc;
 use moly_protocol::{
-    data::{DownloadedFile, FileID, Model, PendingDownload},
+    data::{DownloadedFile, FileID, PendingDownload},
     open_ai::{ChatRequestData, ChatResponse},
     protocol::{
-        Command, FileDownloadResponse, LoadModelOptions, LoadModelResponse, LocalServerConfig,
-        LocalServerResponse,
+        FileDownloadResponse, LoadModelOptions, LoadModelResponse,
     },
 };
-use tokio::sync::{mpsc::Receiver, RwLock};
+use tokio::sync::{mpsc::{UnboundedSender, Sender, Receiver}, RwLock};
 
 use crate::store::{
     self,
@@ -48,10 +46,8 @@ pub trait BackendModel: Sized {
     fn chat(
         &self,
         data: ChatRequestData,
-        tx: Sender<anyhow::Result<ChatResponse>>,
+        tx: tokio::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
     ) -> bool;
-    /// Stops the chat.
-    fn stop_chat(&self);
     /// Stops the model, freeing its resources.
     async fn stop(self);
 }
@@ -67,11 +63,11 @@ pub struct BackendImpl<Model: BackendModel> {
     /// The currently loaded model.
     model: Option<Model>,
     /// A channel for sending model download requests to the downloader thread.
-    download_tx: tokio::sync::mpsc::UnboundedSender<(
+    download_tx: UnboundedSender<(
         store::models::Model,
         store::download_files::DownloadedFile,
         model_cards::RemoteFile,
-        tokio::sync::mpsc::Sender<anyhow::Result<FileDownloadResponse>>,
+        Sender<anyhow::Result<FileDownloadResponse>>,
     )>,
     /// A channel for sending control commands to the downloader thread.
     control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
@@ -355,21 +351,14 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
     //     self.models_dir = models_dir.as_ref().to_path_buf();
     // }
 
-    // WIP. Keeping these for reference.
-    // We'll rework the chat interface to use the OpenAI API format instead.
-    // pub fn chat(&self, data: ChatRequestData, tx: Sender<anyhow::Result<ChatResponse>>) -> Result<(), anyhow::Error> {
-    //     if let Some(model) = &self.model {
-    //         model.chat(data, tx);
-    //         Ok(())
-    //     } else {
-    //         Err(anyhow::anyhow!("Model not loaded"))
-    //     }
-    // }
-    // pub fn stop_chat(&self) {
-    //     self.model
-    //     .as_ref()
-    //     .map(|model| model.stop_chat());
-    // }
+    pub fn chat(&self, data: ChatRequestData, tx: tokio::sync::mpsc::Sender<anyhow::Result<ChatResponse>>) -> Result<(), anyhow::Error> {
+        if let Some(model) = &self.model {
+            model.chat(data, tx);
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Model not loaded"))
+        }
+    }
 
     fn open_db_conn(&self) -> rusqlite::Connection {
         open_sqlite_conn(&self.app_data_dir)

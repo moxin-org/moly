@@ -91,6 +91,32 @@ pub enum LocalServerResponse {
     Log(String),
 }
 
+#[derive(Serialize)]
+pub struct ApiError {
+    pub error: ApiErrorDetail,
+}
+
+#[derive(Serialize)]
+pub struct ApiErrorDetail {
+    message: String,
+    r#type: String,
+    param: Option<String>,
+    code: Option<String>,
+}
+
+impl ApiError {
+    pub fn new(message: &str, r#type: &str, param: Option<&str>, code: Option<&str>) -> Self {
+        Self {
+            error: ApiErrorDetail {
+                message: message.to_string(),
+                r#type: r#type.to_string(),
+                param: param.map(|p| p.to_string()),
+                code: code.map(|c| c.to_string()),
+            },
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Command {
     GetFeaturedModels(Sender<Result<Vec<Model>>>),

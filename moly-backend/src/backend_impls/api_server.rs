@@ -321,7 +321,7 @@ impl BackendModel for LLamaEdgeApiServer {
     fn chat(
         &self,
         mut data: moly_protocol::open_ai::ChatRequestData,
-        tx: std::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
+        tx: tokio::sync::mpsc::Sender<anyhow::Result<ChatResponse>>,
     ) -> bool {
         let is_stream = data.stream.unwrap_or(false);
         let url = format!(
@@ -349,7 +349,7 @@ impl BackendModel for LLamaEdgeApiServer {
             let Some(resp) = resp else {
                 let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
                     StopReason::Stop,
-                ))));
+                )))).await;
                 return;
             };
 
@@ -358,10 +358,7 @@ impl BackendModel for LLamaEdgeApiServer {
                     if is_stream {
                         let mut stream = resp.bytes_stream();
 
-                        while let Some(chunk) = tokio::select! {
-                            chunk = stream.next() => chunk,
-                            _ = cancel.recv() => None,
-                        } {
+                        while let Some(chunk) = stream.next().await {
                             match chunk {
                                 Ok(chunk) => {
                                     if chunk.starts_with(b"data: [DONE]") {
@@ -369,48 +366,26 @@ impl BackendModel for LLamaEdgeApiServer {
                                     }
                                     let resp: Result<ChatResponseChunkData, anyhow::Error> =
                                         serde_json::from_slice(&chunk[5..]).map_err(|e| anyhow!(e));
-                                    let _ = tx.send(resp.map(ChatResponse::ChatResponseChunk));
+                                    let _ = tx.send(resp.map(ChatResponse::ChatResponseChunk)).await;
                                 }
                                 Err(e) => {
-                                    let _ = tx.send(Err(anyhow!(e)));
+                                    let _ = tx.send(Err(anyhow!(e))).await;
                                     return;
                                 }
                             }
                         }
-
-                        let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
-                            StopReason::Stop,
-                        ))));
                     } else {
-                        let resp = tokio::select! {
-                            res = resp.json::<ChatResponseData>() => Some(res.map_err(|e| anyhow!(e))),
-                            _ = cancel.recv() => None,
-                        };
-
-                        let Some(resp) = resp else {
-                            let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
-                                StopReason::Stop,
-                            ))));
-                            return;
-                        };
-
-                        let _ = tx.send(resp.map(ChatResponse::ChatFinalResponseData));
+                        let resp = resp.json::<ChatResponseData>().await;
+                        let _ = tx.send(resp.map(ChatResponse::ChatFinalResponseData).map_err(|e| anyhow!(e))).await;
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(e));
-                    let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
-                        StopReason::Stop,
-                    ))));
+                    let _ = tx.send(Err(e)).await;
                 }
             }
         });
 
         true
-    }
-
-    fn stop_chat(&self) {
-        let _ = self.running_controller.send(());
     }
 
     async fn stop(self) {
