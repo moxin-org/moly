@@ -362,6 +362,9 @@ impl BackendModel for LLamaEdgeApiServer {
                             match chunk {
                                 Ok(chunk) => {
                                     if chunk.starts_with(b"data: [DONE]") {
+                                        let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(stop_chunk(
+                                            StopReason::Stop,
+                                        )))).await;
                                         break;
                                     }
                                     let resp: Result<ChatResponseChunkData, anyhow::Error> =

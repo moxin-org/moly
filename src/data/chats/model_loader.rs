@@ -12,6 +12,8 @@ use std::{
     thread,
 };
 
+use crate::data::moly_client::MolyClient;
+
 /// Message emitted when the model loader status is updated.
 #[derive(Debug)]
 pub struct ModelLoaderStatusChanged;
@@ -44,7 +46,7 @@ impl ModelLoader {
     pub fn load(
         &mut self,
         file_id: FileID,
-        command_sender: Sender<Command>,
+        moly_client: MolyClient,
         override_port: Option<u16>,
     ) -> Result<(), anyhow::Error> {
         match self.status() {
@@ -66,9 +68,22 @@ impl ModelLoader {
         self.set_status(ModelLoaderStatus::Loading);
         self.set_file_id(Some(file_id.clone()));
 
-        let response = dispatch_load_command(command_sender, file_id.clone(), override_port).recv();
+        let options = LoadModelOptions {
+            override_server_address: override_port.map(|port| format!("localhost:{}", port)),
+            prompt_template: None,
+            gpu_layers: moly_protocol::protocol::GPULayers::Max,
+            use_mlock: false,
+            rope_freq_scale: 0.0,
+            rope_freq_base: 0.0,
+            context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
+            n_batch: None,
+            n_ctx: None,
+        };
 
-        let result = if let Ok(response) = response {
+        let (tx, rx) = channel();
+        moly_client.load_model(file_id, options, tx);
+        
+        let result = if let Ok(response) = rx.recv() {
             match response {
                 Ok(LoadModelResponse::Completed(info)) => {
                     self.set_status(ModelLoaderStatus::Loaded(info));
@@ -94,12 +109,12 @@ impl ModelLoader {
     pub fn load_async(
         &mut self,
         file_id: FileID,
-        command_sender: Sender<Command>,
+        moly_client: MolyClient,
         override_port: Option<u16>,
     ) {
         let mut self_clone = self.clone();
         thread::spawn(move || {
-            if let Err(err) = self_clone.load(file_id, command_sender, override_port) {
+            if let Err(err) = self_clone.load(file_id, moly_client, override_port) {
                 eprintln!("Error loading model: {}", err);
             }
         });
@@ -151,31 +166,4 @@ impl ModelLoader {
 
         None
     }
-}
-
-fn dispatch_load_command(
-    command_sender: Sender<Command>,
-    file_id: String,
-    override_port: Option<u16>,
-) -> Receiver<Result<LoadModelResponse, anyhow::Error>> {
-    let (tx, rx) = channel();
-
-    let override_server_address = override_port.map(|port| format!("localhost:{}", port));
-    let cmd = Command::LoadModel(
-        file_id,
-        LoadModelOptions {
-            override_server_address,
-            prompt_template: None,
-            gpu_layers: moly_protocol::protocol::GPULayers::Max,
-            use_mlock: false,
-            rope_freq_scale: 0.0,
-            rope_freq_base: 0.0,
-            context_overflow_policy: moly_protocol::protocol::ContextOverflowPolicy::StopAtLimit,
-            n_batch: None,
-            n_ctx: None,
-        },
-        tx,
-    );
-    command_sender.send(cmd).unwrap();
-    rx
 }

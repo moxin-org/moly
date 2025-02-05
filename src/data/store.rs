@@ -4,13 +4,13 @@ use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::chats::MoFaTestServerAction;
 use super::downloads::download::DownloadFileAction;
 use super::filesystem::project_dirs;
+use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
-use moly_backend::Backend;
 
 use moly_mofa::MofaServerResponse;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
@@ -51,7 +51,8 @@ pub struct ModelWithDownloadInfo {
 pub struct Store {
     /// This is the backend representation, including the sender and receiver ends of the channels to
     /// communicate with the backend thread.
-    pub backend: Rc<Backend>,
+    // pub backend: Rc<Backend>,
+    pub moly_client: MolyClient,
 
     pub search: Search,
     pub downloads: Downloads,
@@ -68,20 +69,21 @@ impl Default for Store {
 impl Store {
     pub fn new() -> Self {
         let preferences = Preferences::load();
-        let app_data_dir = project_dirs().data_dir();
+        // let app_data_dir = project_dirs().data_dir();
 
-        let backend = Rc::new(Backend::new(
-            app_data_dir,
-            preferences.downloaded_files_dir.clone(),
-            DEFAULT_MAX_DOWNLOAD_THREADS,
-        ));
+        // let backend = Rc::new(Backend::new(
+        //     app_data_dir,
+        //     preferences.downloaded_files_dir.clone(),
+        //     DEFAULT_MAX_DOWNLOAD_THREADS,
+        // ));
+        let moly_client = MolyClient::new("http://localhost:3000".to_string());
+
 
         let mut store = Self {
-            backend: backend.clone(),
-
-            search: Search::new(backend.clone()),
-            downloads: Downloads::new(backend.clone()),
-            chats: Chats::new(backend),
+            moly_client: moly_client.clone(),
+            search: Search::new(moly_client.clone()),
+            downloads: Downloads::new(moly_client.clone()),
+            chats: Chats::new(moly_client.clone()),
             preferences,
         };
 
@@ -175,7 +177,7 @@ impl Store {
                             prompt,
                             file,
                             self.chats.model_loader.clone(),
-                            &self.backend,
+                            &self.moly_client,
                         );
                     }
                 }

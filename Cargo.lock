@@ -1954,6 +1954,7 @@ dependencies = [
  "moly-mofa",
  "moly-protocol",
  "rand",
+ "reqwest",
  "rfd",
  "robius-open",
  "robius-url-handler",

@@ -7,16 +7,15 @@ use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
 use makepad_widgets::{error, ActionDefaultRef, ActionTrait, Cx, DefaultNone};
 use model_loader::ModelLoader;
-use moly_backend::Backend;
 use moly_mofa::{AgentId, MofaAgent, MofaClient, MofaServerId, MofaServerResponse};
 use moly_protocol::data::*;
-use moly_protocol::protocol::Command;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::mpsc::{self, channel};
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, path::PathBuf};
 
 use super::filesystem::setup_chats_folder;
+use super::moly_client::MolyClient;
 
 #[derive(Clone, Debug)]
 pub struct MofaServer {
@@ -46,7 +45,7 @@ pub enum MoFaTestServerAction {
 }
 
 pub struct Chats {
-    pub backend: Rc<Backend>,
+    pub moly_client: MolyClient,
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub loaded_model: Option<File>,
@@ -67,9 +66,9 @@ pub struct Chats {
 }
 
 impl Chats {
-    pub fn new(backend: Rc<Backend>) -> Self {
+    pub fn new(moly_client: MolyClient) -> Self {
         Self {
-            backend,
+            moly_client,
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
@@ -113,7 +112,7 @@ impl Chats {
         self.override_port = override_port;
         self.model_loader.load_async(
             file.id.clone(),
-            self.backend.command_sender.clone(),
+            self.moly_client.clone(),
             override_port,
         );
     }
@@ -152,7 +151,7 @@ impl Chats {
             let mut chat = chat.borrow_mut();
             match &chat.associated_entity {
                 Some(ChatEntityId::ModelFile(_)) => {
-                    chat.cancel_streaming(self.backend.as_ref());
+                    chat.cancel_streaming();
                 }
                 Some(ChatEntityId::Agent(agent_id)) => {
                     if let Some(mofa_client) = self.get_client_for_agent(&agent_id) {
@@ -175,11 +174,7 @@ impl Chats {
 
     pub fn eject_model(&mut self) -> Result<()> {
         let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::EjectModel(tx))
-            .context("Failed to send eject model command")?;
+        self.moly_client.eject_model(tx);
 
         let _ = rx
             .recv()
