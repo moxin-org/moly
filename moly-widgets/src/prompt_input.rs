@@ -1,3 +1,5 @@
+use std::cell::{Ref, RefMut};
+
 use makepad_widgets::*;
 
 live_design! {
@@ -33,20 +35,26 @@ live_design! {
                         }
                     }
                 }
+                right = {
+                    submit = <Button> {
+                        text: "Send / Stop",
+                        draw_text: { color: #000 },
+                    }
+                }
             }
         }
     }
 }
 
-#[derive(Default)]
-enum Task {
+#[derive(Default, Copy, Clone, PartialEq)]
+pub enum Task {
     #[default]
-    Submit,
+    Send,
     Stop,
 }
 
-#[derive(Default)]
-enum Interactivity {
+#[derive(Default, Copy, Clone, PartialEq)]
+pub enum Interactivity {
     #[default]
     Enabled,
     Disabled,
@@ -64,10 +72,10 @@ pub struct PromptInput {
     stop_icon: LiveValue,
 
     #[rust]
-    task: Task,
+    pub task: Task,
 
     #[rust]
-    interactivity: Interactivity,
+    pub interactivity: Interactivity,
 }
 
 impl Widget for PromptInput {
@@ -93,24 +101,68 @@ impl Widget for PromptInput {
         //     },
         // );
 
+        let button = self.button(id!(submit));
+
+        match self.task {
+            Task::Send => {
+                button.set_text("Send");
+            }
+            Task::Stop => {
+                button.set_text("Stop");
+            }
+        }
+
+        match self.interactivity {
+            Interactivity::Enabled => {
+                button.set_enabled(true);
+            }
+            Interactivity::Disabled => {
+                button.set_enabled(false);
+            }
+        }
+
         self.deref.draw_walk(cx, scope, walk)
     }
 }
 
 impl PromptInput {
     pub fn submitted(&self, actions: &Actions) -> bool {
-        // let submit = self.button(id!(submit));
-        // let input = self.text_input(id!(input));
-        // submit.clicked(actions) || input.returned(actions).is_some()
+        let submit = self.button(id!(submit));
+        let input = self.text_input_ref();
+        submit.clicked(actions) || input.returned(actions).is_some()
+    }
 
-        self.text_input_ref().returned(actions).is_some()
+    pub fn has_send_task(&self) -> bool {
+        self.task == Task::Send
+    }
+
+    pub fn has_stop_task(&self) -> bool {
+        self.task == Task::Stop
+    }
+
+    pub fn enable(&mut self) {
+        self.interactivity = Interactivity::Enabled;
+    }
+
+    pub fn disable(&mut self) {
+        self.interactivity = Interactivity::Disabled;
+    }
+
+    pub fn set_send(&mut self) {
+        self.task = Task::Send;
+    }
+
+    pub fn set_stop(&mut self) {
+        self.task = Task::Stop;
     }
 }
 
 impl PromptInputRef {
-    pub fn submitted(&self, actions: &Actions) -> bool {
-        self.borrow()
-            .map(|inner| inner.submitted(actions))
-            .unwrap_or(false)
+    pub fn read(&self) -> Ref<PromptInput> {
+        self.borrow().unwrap()
+    }
+
+    pub fn write(&mut self) -> RefMut<PromptInput> {
+        self.borrow_mut().unwrap()
     }
 }

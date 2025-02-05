@@ -13,6 +13,7 @@ makepad-code-editor = { git = "https://github.com/noxware/makepad", branch = "mo
 reqwest = { version = "0.12.12", features = ["json", "stream"], optional = true }
 serde = { version = "1.0.217", features = ["derive"], optional = true }
 serde_json = { version = "1.0.135", optional = true }
+async-stream = "0.3.6"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.43.0", features = ["full"], optional = true }

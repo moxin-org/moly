@@ -1,4 +1,5 @@
-use futures::{future::FutureExt, stream::StreamExt, SinkExt};
+use async_stream::stream;
+use futures::{future::FutureExt, stream::StreamExt};
 use makepad_widgets::log;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{protocol::*, utils::asynchronous::spawn};
+use crate::protocol::*;
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -207,34 +208,25 @@ impl BotClient for MolyClient {
                 "stream": true
             }));
 
-        // The `async-stream` crate and macro internally use a channel to create the stream
-        // imperatively. Where `yield` is mapped to `sender.send().await` and `await for` is just
-        // a `while let` over `stream.next().await`.
-        //
-        // By doing this manually we win:
-        // - One less direct dependency.
-        // - Proper auto-completition, auto-formatting and LSP support.
-        let (mut sender, receiver) = futures::channel::mpsc::channel(0);
-
-        spawn(async move {
+        let stream = stream! {
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
                     log!("Error {:?}", error);
-                    sender.send(Err(())).await.unwrap();
+                    yield Err(());
                     return;
                 }
             };
 
             let mut buffer = String::new();
-            let mut bytes = response.bytes_stream();
+            let bytes = response.bytes_stream();
 
-            while let Some(chunk) = bytes.next().await {
+            for await chunk in bytes {
                 let chunk = match chunk {
                     Ok(chunk) => chunk,
                     Err(error) => {
                         log!("Error {:?}", error);
-                        sender.send(Err(())).await.unwrap();
+                        yield Err(());
                         return;
                     }
                 };
@@ -269,7 +261,7 @@ impl BotClient for MolyClient {
                         Ok(completition) => completition,
                         Err(error) => {
                             log!("Error: {:?}", error);
-                            sender.send(Err(())).await.unwrap();
+                            yield Err(());
                             return;
                         }
                     };
@@ -280,18 +272,18 @@ impl BotClient for MolyClient {
                         .map(|c| c.delta.content.as_str())
                         .collect::<String>();
 
-                    sender.send(Ok(text)).await.unwrap();
+                    yield Ok(text);
                 }
 
                 buffer = incomplete_message.to_string();
             }
-        });
+        };
 
         #[cfg(not(target_arch = "wasm32"))]
-        return receiver.boxed();
+        return stream.boxed();
 
         #[cfg(target_arch = "wasm32")]
-        return receiver.boxed_local();
+        return stream.boxed_local();
     }
 }
 

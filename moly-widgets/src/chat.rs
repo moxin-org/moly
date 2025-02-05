@@ -1,4 +1,4 @@
-use futures::StreamExt;
+use futures::{stream::AbortHandle, StreamExt};
 use makepad_widgets::*;
 use utils::asynchronous::spawn;
 
@@ -30,6 +30,9 @@ pub struct Chat {
     // TODO: Can this be live?
     #[rust]
     pub bot_id: Option<BotId>,
+
+    #[rust]
+    abort_handle: Option<AbortHandle>,
 }
 
 impl Widget for Chat {
@@ -41,7 +44,7 @@ impl Widget for Chat {
             return;
         };
 
-        if self.prompt_input(id!(prompt)).submitted(actions) {
+        if self.prompt_input_ref().read().submitted(actions) {
             self.handle_submit(cx);
         }
     }
@@ -52,9 +55,26 @@ impl Widget for Chat {
 }
 
 impl Chat {
+    pub fn prompt_input_ref(&self) -> PromptInputRef {
+        self.prompt_input(id!(prompt))
+    }
+
+    pub fn messages_ref(&self) -> MessagesRef {
+        self.messages(id!(messages))
+    }
+
     fn handle_submit(&mut self, cx: &mut Cx) {
-        let messages = self.messages(id!(messages));
-        let prompt = self.prompt_input(id!(prompt));
+        let prompt = self.prompt_input_ref();
+
+        if prompt.read().has_send_task() {
+            self.handle_send(cx);
+        } else if prompt.read().has_stop_task() {
+            self.handle_stop(cx);
+        }
+    }
+
+    fn handle_send(&mut self, cx: &mut Cx) {
+        let prompt = self.prompt_input_ref();
 
         let text = prompt.text();
         prompt.borrow_mut().unwrap().reset(); // from command text input
@@ -69,7 +89,8 @@ impl Chat {
             .clone();
 
         let context: Vec<Message> = {
-            let mut messages = messages.borrow_mut().unwrap();
+            let mut messages = self.messages_ref();
+            let mut messages = messages.write();
 
             messages.bot_repo = Some(repo.clone());
 
@@ -93,11 +114,11 @@ impl Chat {
                 .collect()
         };
 
+        self.prompt_input_ref().write().set_stop();
         self.redraw(cx);
 
         let ui = self.ui_runner();
-
-        spawn(async move {
+        let future = async move {
             let mut client = repo.client();
             let mut message_stream = client.send_stream(&bot_id, &context);
 
@@ -117,25 +138,29 @@ impl Chat {
             }
 
             ui.defer_with_redraw(|me, _cx, _scope| {
-                me.messages(id!(messages))
-                    .borrow_mut()
-                    .unwrap()
+                me.messages_ref()
+                    .write()
                     .messages
                     .last_mut()
                     .expect("no message where to put delta")
                     .is_writing = false;
+            });
+        };
 
-                log!(
-                    "{}",
-                    me.messages(id!(messages))
-                        .borrow_mut()
-                        .unwrap()
-                        .messages
-                        .last()
-                        .unwrap()
-                        .body
-                );
+        let (future, abort_handle) = futures::future::abortable(future);
+
+        self.abort_handle = Some(abort_handle);
+
+        spawn(async move {
+            future.await.unwrap_or_else(|_| log!("Aborted"));
+            ui.defer_with_redraw(|me, _cx, _scope| {
+                me.abort_handle = None;
+                me.prompt_input_ref().write().set_send();
             });
         });
+    }
+
+    fn handle_stop(&mut self, _cx: &mut Cx) {
+        self.abort_handle.take().map(|handle| handle.abort());
     }
 }
