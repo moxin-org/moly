@@ -220,7 +220,7 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         let rx = self.download_progress
             .write()
             .await
-            .remove(&file_id)
+            .remove(&file_id) // TODO:(Julian) we should only remove the channel once the download is complete
             .ok_or_else(|| anyhow::anyhow!("No download in progress for this ID"))?;
         Ok(rx)
     }

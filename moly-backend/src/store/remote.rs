@@ -46,7 +46,9 @@ async fn download_file<P: AsRef<Path>>(
 
     let file_length = file.metadata()?.len();
 
-    if file_length < content_length {
+    if file_length >= content_length {
+        Ok(DownloadResult::Completed(100.0))
+    } else {
         file.seek(io::SeekFrom::End(0))?;
 
         let range = format!("bytes={}-", file_length);
@@ -73,7 +75,9 @@ async fn download_file<P: AsRef<Path>>(
                     let progress = (downloaded as f64 / content_length as f64) * 100.0;
                     if progress > last_progress + step {
                         last_progress = progress;
-                        match report_fn(progress) {
+                        // Only report progress up to 99% until fully complete
+                        let progress_to_report = progress.min(99.0);
+                        match report_fn(progress_to_report) {
                             Ok(_) => {}
                             Err(_) => {}
                         }
@@ -91,8 +95,6 @@ async fn download_file<P: AsRef<Path>>(
         Ok(DownloadResult::Completed(
             (downloaded as f64 / content_length as f64) * 100.0,
         ))
-    } else {
-        Ok(DownloadResult::Completed(100.0))
     }
 }
 

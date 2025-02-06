@@ -48,63 +48,57 @@ impl Download {
 
     pub fn start(&mut self, moly_client: MolyClient) {
         let (tx, rx) = channel();
-
-        // let cmd = Command::DownloadFile(self.file.id.clone(), tx);
-        // backend.command_sender.send(cmd).unwrap();
         let file_id = self.file.id.clone();
+        let moly_client_clone = moly_client.clone();
+
+        thread::spawn(move || {
+            if let Ok(Ok(())) = rx.recv() {
+                // Download started successfully, now track progress
+                let (progress_tx, progress_rx) = channel();
+                moly_client_clone.track_download_progress(file_id.clone(), progress_tx);
+
+                loop {
+                    if let Ok(result) = progress_rx.recv() {
+                        match result {
+                            Ok(response) => match response {
+                                FileDownloadResponse::Completed(_completed) => {
+                                    Cx::post_action(DownloadFileAction {
+                                        file_id: file_id.clone(),
+                                        kind: DownloadFileActionKind::StreamingDone,
+                                    });
+                                    break;
+                                }
+                                FileDownloadResponse::Progress(_file, value) => {
+                                    Cx::post_action(DownloadFileAction {
+                                        file_id: file_id.clone(),
+                                        kind: DownloadFileActionKind::Progress(value as f64),
+                                    })
+                                }
+                            },
+                            Err(err) => {
+                                Cx::post_action(DownloadFileAction {
+                                    file_id: file_id.clone(),
+                                    kind: DownloadFileActionKind::Error,
+                                });
+                                eprintln!("Error downloading file: {:?}", err);
+                                break;
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                // Initial download request failed
+                Cx::post_action(DownloadFileAction {
+                    file_id: file_id.clone(),
+                    kind: DownloadFileActionKind::Error,
+                });
+            }
+        });
+
+        // Start the download
         moly_client.download_file(self.file.clone(), tx);
-
-        // TODO(Julian): rework progress tracking.
-        // If we get a 202 response, we need to poll the status of the download on the
-        // downloads/{file_id}/progress endpoint until it's done (moly_client.track_download_progress).
-
-        // thread::spawn(move || loop {
-        //     if let Ok(response) = rx.recv() {
-        //         if let Ok(()) = response {
-        //             moly_client.track_download_progress(file_id, tx);
-        //         } else {
-        //             // moly_client.cancel_download_file(file_id, tx);
-        //             // break;
-        //         }
-        //     }
-        // });
-                        
-        // thread::spawn(move || loop {
-        //     let mut is_done = false;
-        //     if let Ok(response) = rx.recv() {
-        //         match response {
-        //             Ok(response) => match response {
-        //                 FileDownloadResponse::Completed(_completed) => {
-        //                     is_done = true;
-        //                     Cx::post_action(DownloadFileAction {
-        //                         file_id: file_id.clone(),
-        //                         kind: DownloadFileActionKind::StreamingDone,
-        //                     });
-        //                 }
-        //                 FileDownloadResponse::Progress(_file, value) => {
-        //                     Cx::post_action(DownloadFileAction {
-        //                         file_id: file_id.clone(),
-        //                         kind: DownloadFileActionKind::Progress(value as f64),
-        //                     })
-        //                 }
-        //             },
-        //             Err(err) => {
-        //                 Cx::post_action(DownloadFileAction {
-        //                     file_id: file_id.clone(),
-        //                     kind: DownloadFileActionKind::Error,
-        //                 });
-
-        //                 eprintln!("Error downloading file: {:?}", err)
-        //             }
-        //         }
-        //     } else {
-        //         break;
-        //     }
-
-        //     if is_done {
-        //         break;
-        //     }
-        // });
     }
 
     pub fn handle_action(&mut self, action: &DownloadFileAction) {
