@@ -15,10 +15,12 @@ use serde::Deserialize;
 use std::convert::Infallible;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 
 use api_errors::*;
 use axum::{extract::Path as AxumPath, http::StatusCode, routing::get, Json, Router};
+use axum::http::Request;
 
 mod api_errors;
 mod backend_impls;
@@ -278,6 +280,7 @@ async fn chat_completions(
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     let app_data_dir = project_dirs().data_dir();
     let models_dir = setup_model_downloads_folder();
 
@@ -287,10 +290,17 @@ async fn main() {
         .nest("/files", file_routes())
         .nest("/downloads", download_routes())
         .nest("/models", model_routes())
+        .layer(tower_http::trace::TraceLayer::new_for_http()
+            .on_request(|request: &Request<_>, _: &_| {
+                log::debug!("--> {} {}", request.method(), request.uri());
+            })
+            .on_response(|response: &Response<_>, latency: Duration, _: &_| {
+                log::debug!("<-- {} ({:?})", response.status(), latency);
+            }))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    println!("Listening on {}", listener.local_addr().unwrap());
+    log::info!("🚀 server running on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
 }
 

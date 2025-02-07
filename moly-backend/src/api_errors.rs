@@ -29,5 +29,6 @@ pub fn api_error(status: StatusCode, message: &str, param: Option<&str>) -> ApiE
 /// Utility function for mapping errors into a `500 Internal Server Error`
 /// response.
 pub fn internal_error<E: std::fmt::Display>(err: E) -> ApiErrorResponse {
+    log::error!("Internal server error: {}", err);
     api_error(StatusCode::INTERNAL_SERVER_ERROR, &err.to_string(), None)
 }
