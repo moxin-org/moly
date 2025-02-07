@@ -1,3 +1,5 @@
+use std::sync::{Mutex, RwLock};
+
 use futures::{stream::AbortHandle, StreamExt};
 use makepad_widgets::*;
 use utils::asynchronous::spawn;
@@ -18,6 +20,28 @@ live_design!(
         prompt = <PromptInput> {}
     }
 );
+
+#[derive(Debug)]
+pub struct ChatAction {
+    hook: RwLock<ChatHook>,
+    // A widget action is more strict than an action as it needs to implement `ActionDefaultRef`,
+    // so this will keep things simple here inside.
+    widget_uid: WidgetUid,
+}
+
+#[derive(Debug)]
+pub struct ChatHook {
+    executed: bool,
+    task: ChatTask,
+}
+
+#[derive(Debug)]
+pub enum ChatTask {
+    Send(String),
+    Stop,
+    Copy(String),
+    Delete,
+}
 
 #[derive(Live, LiveHook, Widget)]
 pub struct Chat {
@@ -162,5 +186,56 @@ impl Chat {
 
     fn handle_stop(&mut self, _cx: &mut Cx) {
         self.abort_handle.take().map(|handle| handle.abort());
+    }
+
+    fn actions(&self, event: &Event, mut f: impl FnMut(&ChatAction)) {
+        let Event::Actions(actions) = event else {
+            return;
+        };
+
+        for action in actions {
+            if let Some(action) = action.downcast_ref::<ChatAction>() {
+                if action.widget_uid != self.widget_uid() {
+                    continue;
+                }
+
+                f(action);
+            }
+        }
+    }
+
+    pub fn tasks(&self, event: &Event, mut reader: impl FnMut(&ChatTask)) {
+        self.actions(event, |action| {
+            let hook = action.hook.read().expect("the task is being hooked");
+            let task = &hook.task;
+            reader(&task);
+        });
+    }
+
+    pub fn hook(&self, event: &Event, mut hook_fn: impl FnMut(&mut ChatHook)) {
+        self.actions(event, |action| {
+            // let's use `read` first to avoid panicking if this other more important problem occurs
+            if action
+                .hook
+                .read()
+                .expect("the task is being hooked")
+                .executed
+            {
+                panic!(
+                    "Hooking into a chat task that has already been executed. \
+                    Changes to the task would not have effect so this is invalid. \
+                    If you are trying to read the task without changing it, use `tasks` instead."
+                );
+            }
+
+            let mut hook = action.hook.write().expect("the task is being hooked");
+            hook_fn(&mut *hook);
+        });
+    }
+
+    fn handle_hooks(&mut self, cx: &mut Cx, event: &Event) {
+        self.actions(event, |action| {
+            todo!();
+        });
     }
 }
