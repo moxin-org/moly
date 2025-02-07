@@ -73,6 +73,9 @@ pub struct BackendImpl<Model: BackendModel> {
     control_tx: tokio::sync::broadcast::Sender<DownloadControlCommand>,
     /// A map of file IDs to their progress channels.
     download_progress: Arc<RwLock<HashMap<String, Receiver<anyhow::Result<FileDownloadResponse>>>>>,
+    /// A channel for receiving control commands from the downloader thread.
+    /// Kept to avoid auto-dropping of the channel when all receivers have been dropped.
+    _control_rx: tokio::sync::broadcast::Receiver<DownloadControlCommand>,
 }
 
 impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
@@ -110,13 +113,13 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
 
         let sql_conn = Arc::new(Mutex::new(sql_conn));
 
-        let (control_tx, _control_rx) = tokio::sync::broadcast::channel(100);
+        let (control_tx, control_rx) = tokio::sync::broadcast::channel(100);
         let (download_tx, download_rx) = tokio::sync::mpsc::unbounded_channel();
 
         {
             let client = reqwest::Client::new();
             let downloader =
-                ModelFileDownloader::new(client, sql_conn.clone(), control_tx.clone(),model_indexs.country_code.clone(), 0.1);
+                ModelFileDownloader::new(client, sql_conn.clone(), control_tx.clone(), model_indexs.country_code.clone(), 0.1);
 
             tokio::spawn(ModelFileDownloader::run_loop(
                 downloader,
@@ -126,13 +129,14 @@ impl<Model: BackendModel + Send + 'static> BackendImpl<Model> {
         }
 
         let backend = Self {
-            model_indexs: model_indexs,
+            model_indexs,
             app_data_dir,
             models_dir: models_dir.as_ref().into(),
             download_tx,
             model: None,
             control_tx,
             download_progress: Arc::new(RwLock::new(HashMap::new())),
+            _control_rx: control_rx,
         };
 
         backend
