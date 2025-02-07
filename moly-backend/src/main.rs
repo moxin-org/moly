@@ -1,27 +1,36 @@
-use axum::extract::Query;
+// Standard library
+use std::convert::Infallible;
+use std::path::Path;
+use std::sync::Arc;
+use std::time::Duration;
+
+// Axum and HTTP-related
+use axum::extract::{Path as AxumPath, Query, State};
+use axum::http::{Request, StatusCode};
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
-use axum::routing::post;
-use axum::{extract::State, routing::delete};
+use axum::routing::{delete, get, post};
+use axum::{Json, Router};
+
+// Async and streaming
+use futures_util::Stream;
+use tokio::sync::RwLock;
+
+// Internal crate imports
+use api_errors::*;
 use backend_impls::{BackendImpl, LlamaEdgeApiServerBackend};
 use filesystem::{project_dirs, setup_model_downloads_folder};
-use futures_util::Stream;
+
+// Protocol
 use moly_protocol::data::{DownloadedFile, Model, PendingDownload};
 use moly_protocol::open_ai::{ChatRequestData, ChatResponse};
 use moly_protocol::protocol::{
     FileDownloadResponse, LoadModelRequest, LoadModelResponse, StartDownloadRequest,
 };
+
 use serde::Deserialize;
-use std::convert::Infallible;
-use std::path::Path;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::RwLock;
 
-use api_errors::*;
-use axum::{extract::Path as AxumPath, http::StatusCode, routing::get, Json, Router};
-use axum::http::Request;
-
+// Module declarations
 mod api_errors;
 mod backend_impls;
 mod filesystem;
@@ -112,7 +121,13 @@ async fn download_progress(
         .await
         .get_download_progress_channel(id)
         .await
-        .map_err(|e| api_error(StatusCode::NOT_FOUND, &format!("Download not found: {}", e), None))?;
+        .map_err(|e| {
+            api_error(
+                StatusCode::NOT_FOUND,
+                &format!("Download not found: {}", e),
+                None,
+            )
+        })?;
 
     // Stream the progress updates
     let stream = async_stream::stream! {
@@ -290,13 +305,15 @@ async fn main() {
         .nest("/files", file_routes())
         .nest("/downloads", download_routes())
         .nest("/models", model_routes())
-        .layer(tower_http::trace::TraceLayer::new_for_http()
-            .on_request(|request: &Request<_>, _: &_| {
-                log::debug!("--> {} {}", request.method(), request.uri());
-            })
-            .on_response(|response: &Response<_>, latency: Duration, _: &_| {
-                log::debug!("<-- {} ({:?})", response.status(), latency);
-            }))
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .on_request(|request: &Request<_>, _: &_| {
+                    log::debug!("--> {} {}", request.method(), request.uri());
+                })
+                .on_response(|response: &Response<_>, latency: Duration, _: &_| {
+                    log::debug!("<-- {} ({:?})", response.status(), latency);
+                }),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

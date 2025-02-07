@@ -13,9 +13,7 @@ pub struct MolyClient {
     blocking_client: reqwest::blocking::Client,
 }
 
-
 // TODO(Julian):
-// - Handle all errors properly
 // - We might want to do some things async
 // - We likely want to avoid spawning threads for each request
 
@@ -63,7 +61,6 @@ impl MolyClient {
         let url = format!("{}/models/search?q={}", self.address, query);
         
         std::thread::spawn(move || {
-            // Using blocking for now to maintain similar behavior to current code
             let resp = reqwest::blocking::get(&url);
             match resp {
                 Ok(r) => {
