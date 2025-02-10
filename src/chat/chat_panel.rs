@@ -18,8 +18,7 @@ use crate::{
 };
 
 use super::{
-    model_selector_list::ModelSelectorListAction, prompt_input::PromptInputWidgetExt,
-    shared::ChatAgentAvatarWidgetRefExt,
+    model_selector_list::ModelSelectorListAction, prompt_input::PromptInputWidgetExt, shared::ChatAgentAvatarWidgetRefExt
 };
 
 live_design! {
@@ -483,6 +482,9 @@ pub struct ChatPanel {
 
     #[rust]
     prompt_example: String,
+    
+    #[rust(false)]
+    load_prompt: bool,
 }
 
 impl Widget for ChatPanel {
@@ -504,15 +506,24 @@ impl Widget for ChatPanel {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.update_view(cx, scope);
 
-        // Read a file from JSON.
-        let file_content = fs::read_to_string("./resources/files/prompt_data.json").expect("Failed to read JSON file");
+        // if self.load_prompt {
+        //     // Read a file from JSON.
+        //     let file_content = fs::read_to_string("./resources/files/prompt_data.json").expect("Failed to read JSON file");
 
-        // Parse the JSON data and store it in a vector.
-        let items: Vec<String> = serde_json::from_str(&file_content).expect("Failed to parse JSON");
+        //     // Parse the JSON data and store it in a vector.
+        //     let items: Vec<String> = serde_json::from_str(&file_content).expect("Failed to parse JSON");
 
-        // Randomly select 4 items from the vector.
-        let mut rng = rand::thread_rng();
-        let selected_items: Vec<&String> = items.choose_multiple(&mut rng, 4).collect();
+        //     // Randomly select 4 items from the vector.
+        //     let mut rng = rand::thread_rng();
+        //     let selected_items: Vec<&String> = items.choose_multiple(&mut rng, 4).collect();
+
+        //     self.button(id!(prompt1)).set_text(selected_items[0]);
+        //     self.button(id!(prompt2)).set_text(selected_items[1]);
+        //     self.button(id!(prompt3)).set_text(selected_items[2]);
+        //     self.button(id!(prompt4)).set_text(selected_items[3]);
+
+        //     self.load_prompt = false;
+        // }
 
         // We need to make sure we're drawing this widget in order to focus on the prompt input
         // Otherwise, when navigating from another section this command would happen before the widget is drawn
@@ -521,11 +532,6 @@ impl Widget for ChatPanel {
             self.focus_on_prompt_input_pending = false;
 
             self.prompt_input(id!(main_prompt_input)).reset_text(true);
-            // it donesn't work, it cannot focus on the input when siwtching from another section
-            self.button(id!(prompt1)).set_text(selected_items[0]);
-            self.button(id!(prompt2)).set_text(selected_items[1]);
-            self.button(id!(prompt3)).set_text(selected_items[2]);
-            self.button(id!(prompt4)).set_text(selected_items[3]);
         }
 
         let message_list_uid = self.portal_list(id!(chat)).widget_uid();
@@ -1012,6 +1018,7 @@ impl ChatPanel {
                 no_model.set_visible(false);
 
                 empty_conversation.set_visible(true);
+                log!("empty conversation visible");
                 main.set_visible(true);
             }
             State::ModelSelectedWithChat {
@@ -1093,6 +1100,14 @@ impl ChatPanel {
             }
         }
     }
+
+    fn show_prompt_example(&mut self, cx: &mut Cx) {
+        let prompt_items = get_prompts();
+        self.button(id!(prompt1)).set_text_and_redraw(cx, &prompt_items[0]);
+        self.button(id!(prompt2)).set_text_and_redraw(cx, &prompt_items[1]);
+        self.button(id!(prompt3)).set_text_and_redraw(cx, &prompt_items[2]);
+        self.button(id!(prompt4)).set_text_and_redraw(cx, &prompt_items[3]);
+    }
 }
 
 #[derive(Clone, DefaultNone, Debug)]
@@ -1121,3 +1136,17 @@ fn get_chat_messages(store: &Store) -> Option<Ref<Vec<ChatMessage>>> {
 fn get_chat_id(store: &Store) -> Option<ChatID> {
     get_chat(store).map(|chat| chat.borrow().id)
 }
+
+ fn get_prompts() -> Vec<String> {
+    // Read a file from JSON.
+    let file_content = fs::read_to_string("./resources/files/prompt_data.json").expect("Failed to read JSON file");
+
+    // Parse the JSON data and store it in a vector.
+    let items: Vec<String> = serde_json::from_str(&file_content).expect("Failed to parse JSON");
+
+    // Randomly select 4 items from the vector.
+    let mut rng = rand::thread_rng();
+    let selected_items: Vec<String> = items.choose_multiple(&mut rng, 4).cloned().collect();
+
+    selected_items
+ }
