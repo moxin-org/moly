@@ -3,7 +3,6 @@ use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::chats::MoFaTestServerAction;
 use super::downloads::download::DownloadFileAction;
-use super::filesystem::project_dirs;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::search::SortCriteria;
@@ -14,9 +13,7 @@ use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
 use moly_mofa::MofaServerResponse;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
-use std::rc::Rc;
 
-pub const DEFAULT_MAX_DOWNLOAD_THREADS: usize = 3;
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
 
 #[derive(Clone, DefaultNone, Debug)]
@@ -189,7 +186,7 @@ impl Store {
         }
     }
 
-    pub fn get_loading_file(&self) -> Option<&File> {
+    pub fn _get_loading_file(&self) -> Option<&File> {
         self.chats
             .model_loader
             .get_loading_file_id()
@@ -197,7 +194,7 @@ impl Store {
             .flatten()
     }
 
-    pub fn get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
+    pub fn _get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
         if let Some(file) = &self.chats.loaded_model {
             self.downloads
                 .downloaded_files

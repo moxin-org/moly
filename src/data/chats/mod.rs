@@ -200,6 +200,7 @@ impl Chats {
     /// Get the file id to use with this chat, or the loaded file id as a fallback.
     /// The fallback is used if the chat does not have a file id set, or, if it has
     /// one but references a no longer existing (deleted) file.
+    #[allow(dead_code)]
     pub fn get_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
         match &chat.associated_entity {
             Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),

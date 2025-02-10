@@ -157,6 +157,7 @@ impl EntityButton {
         false
     }
 
+    #[allow(dead_code)]
     pub fn get_entity_id(&self) -> Option<&ChatEntityId> {
         self.entity.as_ref()
     }

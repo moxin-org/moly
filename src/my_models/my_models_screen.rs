@@ -1,7 +1,5 @@
 use makepad_widgets::*;
 use moly_protocol::data::DownloadedFile;
-use moly_protocol::protocol::Command;
-use std::path::PathBuf;
 
 use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 

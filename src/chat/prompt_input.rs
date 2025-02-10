@@ -347,7 +347,7 @@ impl LiveHook for PromptInput {
         let prompt = self.command_text_input(id!(prompt));
         prompt.apply_over(cx, live! { trigger: "@" });
         prompt.text_input_ref().apply_over(
-            cx,
+        cx,
             live! {
                 empty_message: "Start typing or tag @model or @agent"
             },
@@ -357,7 +357,7 @@ impl LiveHook for PromptInput {
 
 impl PromptInputRef {
     pub fn reset_text(&mut self, cx: &mut Cx, set_key_focus: bool) {
-        let mut prompt = self.command_text_input(id!(prompt));
+        let prompt = self.command_text_input(id!(prompt));
 
         if set_key_focus {
             prompt.request_text_input_focus();

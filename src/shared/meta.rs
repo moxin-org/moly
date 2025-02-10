@@ -38,6 +38,7 @@ impl Widget for Meta {
     fn handle_event(&mut self, _cx: &mut Cx, _event: &Event, _scope: &mut Scope) {}
 }
 
+#[allow(dead_code)]
 impl Meta {
     /// Sets the value that this widget will store.
     ///
@@ -61,6 +62,7 @@ impl Meta {
     }
 }
 
+#[allow(dead_code)]
 impl MetaRef {
     /// Calls `get_value` on the inner widget.
     pub fn get_value<T: Any>(&self) -> Option<Ref<T>> {

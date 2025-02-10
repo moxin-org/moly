@@ -3,10 +3,8 @@ pub mod download;
 use anyhow::{Context, Result};
 use download::{Download, DownloadFileAction, DownloadState};
 use makepad_widgets::Action;
-use moly_protocol::{
-    data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus},
-};
-use std::{collections::HashMap, rc::Rc, sync::mpsc::channel};
+use moly_protocol::data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus};
+use std::{collections::HashMap, sync::mpsc::channel};
 
 use super::moly_client::MolyClient;
 

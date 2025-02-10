@@ -1,6 +1,6 @@
 use makepad_widgets::Cx;
 use moly_protocol::data::*;
-use moly_protocol::protocol::{Command, FileDownloadResponse};
+use moly_protocol::protocol::FileDownloadResponse;
 use std::sync::mpsc::channel;
 use std::thread;
 

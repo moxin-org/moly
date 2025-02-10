@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{self, Seek, Write};
 use std::path::Path;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use moly_protocol::data::Model;
@@ -25,8 +24,8 @@ async fn get_file_content_length(client: &reqwest::Client, url: &str) -> reqwest
 }
 
 pub enum DownloadResult {
-    Completed(f64),
-    Stopped(f64),
+    Completed,
+    Stopped
 }
 
 async fn download_file<P: AsRef<Path>>(
@@ -47,7 +46,7 @@ async fn download_file<P: AsRef<Path>>(
     let file_length = file.metadata()?.len();
 
     if file_length >= content_length {
-        Ok(DownloadResult::Completed(100.0))
+        Ok(DownloadResult::Completed)
     } else {
         file.seek(io::SeekFrom::End(0))?;
 
@@ -90,11 +89,7 @@ async fn download_file<P: AsRef<Path>>(
             }
         }
 
-        // TODO I don't know how to handle when it is complete but not 100%
-        // Maybe we should return Completed without any value?
-        Ok(DownloadResult::Completed(
-            (downloaded as f64 / content_length as f64) * 100.0,
-        ))
+        Ok(DownloadResult::Completed)
     }
 }
 
@@ -249,7 +244,7 @@ impl ModelFileDownloader {
                 let cmd = control_rx.recv().await;
                 if let Ok(DownloadControlCommand::Stop(file_id)) = cmd {
                     if file_id == file_id_ {
-                        return DownloadResult::Stopped(0.0);
+                        return DownloadResult::Stopped;
                     }
                 }
             }
@@ -270,7 +265,7 @@ impl ModelFileDownloader {
         };
 
         match r {
-            DownloadResult::Completed(_) => {
+            DownloadResult::Completed => {
                 {
                     let conn = self.sql_conn.lock().unwrap();
                     file.mark_downloads();
@@ -302,7 +297,7 @@ impl ModelFileDownloader {
                     },
                 )))
             }
-            DownloadResult::Stopped(_) => Ok(None),
+            DownloadResult::Stopped => Ok(None),
         }
     }
 }

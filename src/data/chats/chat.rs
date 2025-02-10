@@ -59,6 +59,7 @@ pub enum ChatState {
     Idle,
     Receiving,
     // The boolean indicates if the last message should be removed.
+    #[allow(dead_code)]
     Cancelled(bool),
 }
 
@@ -115,16 +116,14 @@ pub struct Chat {
 
     pub messages: Vec<ChatMessage>,
     pub is_streaming: bool,
-    pub state: ChatState,
     pub inferences_params: ChatInferenceParams,
     pub system_prompt: Option<String>,
     pub accessed_at: chrono::DateTime<chrono::Utc>,
 
     title: String,
     title_state: TitleState,
-
+    state: Arc<RwLock<ChatState>>,
     chats_dir: PathBuf,
-    shared_state: Arc<RwLock<ChatState>>,
 }
 
 impl Chat {
@@ -137,14 +136,13 @@ impl Chat {
             title: String::from("New Chat"),
             messages: vec![],
             associated_entity: None,
-            state: ChatState::Idle,
+            state: Arc::new(RwLock::new(ChatState::Idle)),
             is_streaming: false,
             title_state: TitleState::default(),
             chats_dir,
             inferences_params: ChatInferenceParams::default(),
             system_prompt: None,
             accessed_at: chrono::Utc::now(),
-            shared_state: Arc::new(RwLock::new(ChatState::Idle)),
         }
     }
 
@@ -166,13 +164,12 @@ impl Chat {
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
-                    state: ChatState::Idle,
+                    state: Arc::new(RwLock::new(ChatState::Idle)),
                     is_streaming: false,
                     chats_dir,
                     inferences_params: ChatInferenceParams::default(),
                     system_prompt: data.system_prompt,
                     accessed_at: data.accessed_at,
-                    shared_state: Arc::new(RwLock::new(ChatState::Idle)),
                 };
                 Ok(chat)
             }
@@ -329,12 +326,12 @@ impl Chat {
             content: "".to_string(),
         });
 
-        *self.shared_state.write().unwrap() = ChatState::Receiving;
+        *self.state.write().unwrap() = ChatState::Receiving;
 
         let wanted_file = wanted_file.clone();
         let chat_id = self.id;
         let moly_client = moly_client.clone();
-        let state_clone = self.shared_state.clone();
+        let state_clone = self.state.clone();
 
         thread::spawn(move || {
             if let Err(err) = model_loader.load(wanted_file.id.clone(), moly_client.clone(), None) {
@@ -358,7 +355,7 @@ impl Chat {
                     match response {
                         // Streaming response
                         Ok(ChatResponse::ChatResponseChunk(data)) => {
-                            if let Some(reason) = &data.choices[0].finish_reason {
+                            if let Some(_reason) = &data.choices[0].finish_reason {
                                 Cx::post_action(ChatEntityAction {
                                     chat_id,
                                     kind: ChatEntityActionKind::ModelStreamingDone,
@@ -428,7 +425,7 @@ impl Chat {
             content: "".to_string(),
         });
 
-        *self.shared_state.write().unwrap() = ChatState::Receiving;
+        *self.state.write().unwrap() = ChatState::Receiving;
 
         let chat_id = self.id;
         std::thread::spawn(move || '_loop: loop {
@@ -459,7 +456,7 @@ impl Chat {
     }
 
     pub fn cancel_streaming(&mut self) {
-        if matches!(*self.shared_state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
+        if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
             return;
         }
 
@@ -470,17 +467,17 @@ impl Chat {
             ChatState::Cancelled(false)
         };
         
-        *self.shared_state.write().unwrap() = new_state;
+        *self.state.write().unwrap() = new_state;
     }
 
     pub fn cancel_agent_interaction(&mut self, mofa_client: &MofaClient) {
-        if matches!(*self.shared_state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
+        if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
             return;
         }
 
         mofa_client.cancel_task();
 
-        *self.shared_state.write().unwrap() = ChatState::Cancelled(true);
+        *self.state.write().unwrap() = ChatState::Cancelled(true);
         let message = self.messages.last_mut().unwrap();
         message.content = "Cancelling, please wait...".to_string();
     }
@@ -509,11 +506,11 @@ impl Chat {
     }
 
     pub fn is_receiving(&self) -> bool {
-        matches!(*self.shared_state.read().unwrap(), ChatState::Receiving)
+        matches!(*self.state.read().unwrap(), ChatState::Receiving)
     }
 
     pub fn was_cancelled(&self) -> bool {
-        matches!(*self.shared_state.read().unwrap(), ChatState::Cancelled(_))
+        matches!(*self.state.read().unwrap(), ChatState::Cancelled(_))
     }
 
     pub fn handle_action(&mut self, action: &ChatEntityAction) {
@@ -524,15 +521,15 @@ impl Chat {
             }
             ChatEntityActionKind::ModelStreamingDone => {
                 self.is_streaming = false;
-                *self.shared_state.write().unwrap() = ChatState::Idle;
+                *self.state.write().unwrap() = ChatState::Idle;
             }
             ChatEntityActionKind::MofaAgentResult(response) => {
                 let last = self.messages.last_mut().unwrap();
                 last.content = response.clone();
-                *self.shared_state.write().unwrap() = ChatState::Idle;
+                *self.state.write().unwrap() = ChatState::Idle;
             }
             ChatEntityActionKind::MofaAgentCancelled => {
-                *self.shared_state.write().unwrap() = ChatState::Idle;
+                *self.state.write().unwrap() = ChatState::Idle;
                 // Remove the last message sent by the user
                 self.messages.pop();
             }

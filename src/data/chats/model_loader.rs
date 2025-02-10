@@ -2,11 +2,11 @@ use anyhow::anyhow;
 use makepad_widgets::Cx;
 use moly_protocol::{
     data::FileID,
-    protocol::{Command, LoadModelOptions, LoadModelResponse, LoadedModelInfo},
+    protocol::{LoadModelOptions, LoadModelResponse, LoadedModelInfo},
 };
 use std::{
     sync::{
-        mpsc::{channel, Receiver, Sender},
+        mpsc::channel,
         Arc, Mutex,
     },
     thread,
@@ -38,6 +38,7 @@ struct ModelLoaderInner {
 #[derive(Clone, Default)]
 pub struct ModelLoader(Arc<Mutex<ModelLoaderInner>>);
 
+#[allow(dead_code)]
 impl ModelLoader {
     pub fn new() -> Self {
         Self::default()

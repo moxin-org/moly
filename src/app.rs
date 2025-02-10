@@ -1,6 +1,5 @@
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
-use crate::data::chats::{MoFaTestServerAction, MofaServerConnectionStatus};
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
@@ -14,7 +13,6 @@ use moly_protocol::data::{File, FileID};
 
 use makepad_widgets::*;
 use markdown::MarkdownAction;
-use moly_mofa::MofaServerId;
 
 live_design! {
     use link::theme::*;
