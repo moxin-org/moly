@@ -69,15 +69,13 @@ impl Default for Store {
 impl Store {
     pub fn new() -> Self {
         let preferences = Preferences::load();
-        // let app_data_dir = project_dirs().data_dir();
-
-        // let backend = Rc::new(Backend::new(
-        //     app_data_dir,
-        //     preferences.downloaded_files_dir.clone(),
-        //     DEFAULT_MAX_DOWNLOAD_THREADS,
-        // ));
-        let moly_client = MolyClient::new("http://localhost:3000".to_string());
-
+        
+        let server_port = std::env::var("MOLY_SERVER_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(8765);
+            
+        let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
 
         let mut store = Self {
             moly_client: moly_client.clone(),

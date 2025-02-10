@@ -4,10 +4,7 @@ use std::{
     sync::OnceLock,
 };
 
-// Heads-up, this is temporarily (to make collaboration easier) replicating the filesystem code in the Moly app.
-// We need to make some decisions around filesystem management as we move forward. We'll revisit responsabilities,
-// and also we'll very soon need abstractions around storage access for mobile and web compatibility.
-
+// By default use the same organization directory as the Moly app. 
 pub const APP_QUALIFIER: &str = "com";
 pub const APP_ORGANIZATION: &str = "moxin-org";
 pub const APP_NAME: &str = "moly";
@@ -33,13 +30,4 @@ pub fn setup_model_downloads_folder() -> PathBuf {
         )
     });
     downloads_dir
-}
-
-pub const CHATS_DIR_NAME: &str = "chats";
-pub fn setup_chats_folder() -> PathBuf {
-    let chats_dir = project_dirs().data_dir().join(CHATS_DIR_NAME);
-
-    std::fs::create_dir_all(&chats_dir)
-        .unwrap_or_else(|_| panic!("Failed to create the chats directory at {:?}", chats_dir));
-    chats_dir
 }

@@ -262,7 +262,7 @@ impl BackendModel for LLamaEdgeApiServer {
             run_wasm_by_downloaded_file(listen_addr, wasm_module_, file, options, embedding_)
         });
 
-        // TODO(Julian): this entire approach to testing the server is too hacky. 
+        // TODO: this entire approach to testing the server is too hacky. 
         // We need a better solution for this.
 
         // Give the server a moment to start up

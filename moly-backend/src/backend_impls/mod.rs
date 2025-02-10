@@ -30,7 +30,7 @@ pub enum DownloadControlCommand {
     Stop(FileID),
 }
 
-// TODO(Julian): Should we just remove ChatBotModel? is not being used anywhere
+// TODO: Should we just remove ChatBotModel? is not being used anywhere
 // pub type ChatModelBackend = BackendImpl<chat_ui::ChatBotModel>;
 pub type LlamaEdgeApiServerBackend = BackendImpl<api_server::LLamaEdgeApiServer>;
 

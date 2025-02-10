@@ -1,10 +1,8 @@
-// Standard library
 use std::convert::Infallible;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-// Axum and HTTP-related
 use axum::extract::{Path as AxumPath, Query, State};
 use axum::http::{Request, StatusCode};
 use axum::response::sse::{Event, Sse};
@@ -12,16 +10,13 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 
-// Async and streaming
 use futures_util::Stream;
 use tokio::sync::RwLock;
 
-// Internal crate imports
 use api_errors::*;
 use backend_impls::{BackendImpl, LlamaEdgeApiServerBackend};
 use filesystem::{project_dirs, setup_model_downloads_folder};
 
-// Protocol
 use moly_protocol::data::{DownloadedFile, Model, PendingDownload};
 use moly_protocol::open_ai::{ChatRequestData, ChatResponse};
 use moly_protocol::protocol::{
@@ -30,7 +25,6 @@ use moly_protocol::protocol::{
 
 use serde::Deserialize;
 
-// Module declarations
 mod api_errors;
 mod backend_impls;
 mod filesystem;
@@ -316,7 +310,12 @@ async fn main() {
         )
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let port = std::env::var("MOLY_SERVER_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(8765);
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await.unwrap();
     log::info!("🚀 server running on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
 }

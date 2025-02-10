@@ -160,7 +160,9 @@ live_design! {
                 margin: {top: 10}
                 align: {x: 0.0, y: 0.5}
 
-                download_location = <DownloadLocationButton> {}
+                // Commented out for now as we don't have a way to change the download location yet
+                // and we don't know if we'll support it again.
+                // download_location = <DownloadLocationButton> {}
                 show_in_files = <ShowInFilesButton> {}
                 <View> { width: Fill, height: Fit }
                 search = <SearchBar> {}
@@ -235,7 +237,8 @@ impl WidgetMatchEvent for MyModelsScreen {
                 });
         }
 
-        // TODO(Julian): Add this back in or remove feature entirely.
+        // Commented out for now as we don't have a way to change the download location yet
+        // and we don't know if we'll support it again.
         // if self.button(id!(download_location)).clicked(actions) {
         //     let scope = &mut scope.data.get_mut::<Store>().unwrap();
         //     let models_dir = &scope.preferences.downloaded_files_dir;
