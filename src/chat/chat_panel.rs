@@ -482,7 +482,7 @@ pub struct ChatPanel {
 
     #[rust]
     prompt_example: String,
-    
+
     #[rust(false)]
     load_prompt: bool,
 }
@@ -1018,7 +1018,6 @@ impl ChatPanel {
                 no_model.set_visible(false);
 
                 empty_conversation.set_visible(true);
-                log!("empty conversation visible");
                 main.set_visible(true);
             }
             State::ModelSelectedWithChat {
