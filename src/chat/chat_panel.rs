@@ -480,6 +480,9 @@ pub struct ChatPanel {
 
     #[rust]
     current_chat_id: Option<ChatID>,
+
+    #[rust]
+    prompt_example: String,
 }
 
 impl Widget for ChatPanel {
@@ -543,6 +546,32 @@ impl Widget for ChatPanel {
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        let prompt1 = self.button(id!(prompt1));
+        let prompt2 = self.button(id!(prompt2));
+        let prompt3 = self.button(id!(prompt3));
+        let prompt4 = self.button(id!(prompt4));
+
+        if prompt1.clicked(actions) {
+            log!("prompt1 clicked");
+            self.prompt_example = prompt1.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
+
+        if prompt2.clicked(actions) {
+            self.prompt_example = prompt2.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
+
+        if prompt3.clicked(actions) {
+            self.prompt_example = prompt3.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
+
+        if prompt4.clicked(actions) {
+            self.prompt_example = prompt4.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
 
         for action in actions {
             if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
