@@ -110,6 +110,16 @@ live_design! {
     }
 }
 
+/// Glue to use with `action_data` also forwarded as an action.
+#[derive(Debug, PartialEq, Copy, Clone, DefaultNone)]
+// enum ActionData {
+pub enum MessagesAction {
+    Copy(usize),
+    Edit(usize),
+    Delete(usize),
+    None,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct Messages {
     #[deref]
@@ -134,6 +144,34 @@ impl Widget for Messages {
 
         if jump_to_bottom.clicked(actions) {
             self.scroll_to_bottom(cx);
+        }
+
+        let list_uid = self.portal_list(id!(list)).widget_uid();
+        for action in actions {
+            let Some(action) = action.as_widget_action() else {
+                continue;
+            };
+
+            let Some(group) = &action.group else {
+                continue;
+            };
+
+            if group.group_uid != list_uid {
+                continue;
+            }
+
+            let Some(data) = &action.data else {
+                continue;
+            };
+
+            let Some(data) = data.downcast_ref::<MessagesAction>() else {
+                continue;
+            };
+
+            if let ButtonAction::Clicked(_) = action.cast::<ButtonAction>() {
+                log!("{:?}", &data);
+                cx.widget_action(self.widget_uid(), &scope.path, *data);
+            }
         }
     }
 
@@ -172,6 +210,7 @@ impl Messages {
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
                     item.label(id!(text)).set_text(&message.body);
+                    connect_action_data(index, &item);
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
@@ -208,6 +247,7 @@ impl Messages {
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(name);
+                    connect_action_data(index, &item);
                     item.draw_all(cx, &mut Scope::empty());
                 }
             }
@@ -229,4 +269,16 @@ impl MessagesRef {
     pub fn write(&mut self) -> RefMut<Messages> {
         self.borrow_mut().unwrap()
     }
+}
+
+fn connect_action_data(idx: usize, widget: &WidgetRef) {
+    widget
+        .button(id!(copy))
+        .set_action_data(MessagesAction::Copy(idx));
+    widget
+        .button(id!(edit))
+        .set_action_data(MessagesAction::Edit(idx));
+    widget
+        .button(id!(delete))
+        .set_action_data(MessagesAction::Delete(idx));
 }

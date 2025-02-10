@@ -1,9 +1,9 @@
-use std::sync::{Mutex, RwLock};
-
 use futures::{stream::AbortHandle, StreamExt};
 use makepad_widgets::*;
+use std::sync::RwLock;
 use utils::asynchronous::spawn;
 
+use crate::utils::events::EventExt;
 use crate::*;
 
 live_design!(
@@ -32,15 +32,33 @@ pub struct ChatAction {
 #[derive(Debug)]
 pub struct ChatHook {
     executed: bool,
-    task: ChatTask,
+    task: Option<ChatTask>,
+}
+
+impl ChatHook {
+    pub fn abort(&mut self) {
+        self.task = None;
+    }
+
+    pub fn task(&self) -> &ChatTask {
+        self.task
+            .as_ref()
+            .expect("the task in this hook has been aborted")
+    }
+
+    pub fn task_mut(&mut self) -> &mut ChatTask {
+        self.task
+            .as_mut()
+            .expect("the task in this hook has been aborted")
+    }
 }
 
 #[derive(Debug)]
 pub enum ChatTask {
     Send(String),
     Stop,
-    Copy(String),
-    Delete,
+    CopyMessage(usize, String),
+    DeleteMessage(usize),
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -63,14 +81,9 @@ impl Widget for Chat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
-
-        let Event::Actions(actions) = event else {
-            return;
-        };
-
-        if self.prompt_input_ref().read().submitted(actions) {
-            self.handle_submit(cx);
-        }
+        self.handle_tasks(cx, event);
+        self.handle_messages(cx, event);
+        self.handle_prompt_input(cx, event);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -85,6 +98,32 @@ impl Chat {
 
     pub fn messages_ref(&self) -> MessagesRef {
         self.messages(id!(messages))
+    }
+
+    fn handle_prompt_input(&mut self, cx: &mut Cx, event: &Event) {
+        if self.prompt_input_ref().read().submitted(event.actions()) {
+            self.handle_submit(cx);
+        }
+    }
+
+    fn handle_messages(&mut self, cx: &mut Cx, event: &Event) {
+        for action in event.actions() {
+            let Some(action) = action.as_widget_action() else {
+                continue;
+            };
+
+            if action.widget_uid != self.messages_ref().widget_uid() {
+                continue;
+            }
+
+            match action.cast::<MessagesAction>() {
+                MessagesAction::Copy(idx) => {
+                    let text = self.messages_ref().read().messages[idx].body.clone();
+                    self.dispatch(cx, ChatTask::CopyMessage(idx, text));
+                }
+                _ => {}
+            }
+        }
     }
 
     fn handle_submit(&mut self, cx: &mut Cx) {
@@ -188,6 +227,18 @@ impl Chat {
         self.abort_handle.take().map(|handle| handle.abort());
     }
 
+    fn dispatch(&self, cx: &mut Cx, task: ChatTask) {
+        let action = ChatAction {
+            hook: RwLock::new(ChatHook {
+                executed: false,
+                task: Some(task),
+            }),
+            widget_uid: self.widget_uid(),
+        };
+
+        cx.action(action);
+    }
+
     fn actions(&self, event: &Event, mut f: impl FnMut(&ChatAction)) {
         let Event::Actions(actions) = event else {
             return;
@@ -207,25 +258,31 @@ impl Chat {
     pub fn tasks(&self, event: &Event, mut reader: impl FnMut(&ChatTask)) {
         self.actions(event, |action| {
             let hook = action.hook.read().expect("the task is being hooked");
-            let task = &hook.task;
+            let Some(task) = &hook.task else {
+                return;
+            };
             reader(&task);
         });
     }
 
     pub fn hook(&self, event: &Event, mut hook_fn: impl FnMut(&mut ChatHook)) {
         self.actions(event, |action| {
-            // let's use `read` first to avoid panicking if this other more important problem occurs
-            if action
-                .hook
-                .read()
-                .expect("the task is being hooked")
-                .executed
             {
-                panic!(
-                    "Hooking into a chat task that has already been executed. \
-                    Changes to the task would not have effect so this is invalid. \
-                    If you are trying to read the task without changing it, use `tasks` instead."
-                );
+                // let's use `read` first to avoid panicking before other checks
+                let hook = action.hook.read().expect("the task is being hooked");
+
+                if hook.task.is_none() {
+                    return;
+                }
+
+                if hook.executed {
+                    panic!(
+                        "Hooking into a chat task that has already been executed. \
+                        Changes to the task would not have effect so this is invalid. \
+                        If you are trying to read the task without changing it, use `tasks` instead. \
+                        If you are trying to change the task, you should do it before `Chat`'s `handle_event`."
+                    );
+                }
             }
 
             let mut hook = action.hook.write().expect("the task is being hooked");
@@ -233,9 +290,12 @@ impl Chat {
         });
     }
 
-    fn handle_hooks(&mut self, cx: &mut Cx, event: &Event) {
-        self.actions(event, |action| {
-            todo!();
+    fn handle_tasks(&mut self, cx: &mut Cx, event: &Event) {
+        self.tasks(event, |task| match task {
+            ChatTask::CopyMessage(_index, message) => {
+                cx.copy_to_clipboard(message);
+            }
+            _ => {}
         });
     }
 }

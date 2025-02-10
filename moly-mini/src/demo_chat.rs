@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moly_widgets::repos::moly::*;
 use moly_widgets::utils::asynchronous::spawn;
-use moly_widgets::{protocol::*, ChatWidgetExt};
+use moly_widgets::{protocol::*, ChatTask, ChatWidgetExt};
 
 use crate::bot_selector::BotSelectorWidgetExt;
 
@@ -33,6 +33,17 @@ pub struct DemoChat {
 impl Widget for DemoChat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.ui_runner().handle(cx, event, scope, self);
+
+        self.chat(id!(chat))
+            .borrow_mut()
+            .unwrap()
+            .hook(event, |hook| match hook.task_mut() {
+                ChatTask::CopyMessage(_index, text) => {
+                    *text = text.to_uppercase();
+                }
+                _ => (),
+            });
+
         self.deref.handle_event(cx, event, scope);
 
         let selector = self.bot_selector(id!(selector));
