@@ -74,6 +74,7 @@ live_design! {
         height: 350,
 
         list = <PortalList> {
+            scroll_bar: <MolyScrollBar> {},
             width: Fill,
             height: Fill,
 

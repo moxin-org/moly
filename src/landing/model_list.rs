@@ -13,6 +13,7 @@ live_design! {
     use link::widgets::*;
 
     use crate::shared::styles::*;
+    use crate::shared::widgets::*;
     use crate::landing::model_card::ModelCard;
     use crate::landing::search_loading::SearchLoading;
     use crate::chat::entity_button::*;
@@ -72,6 +73,7 @@ live_design! {
             width: Fill,
             height: Fill,
             list = <PortalList> {
+                scroll_bar: <MolyScrollBar> {},
                 width: Fill,
                 height: Fill,
 

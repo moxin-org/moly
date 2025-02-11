@@ -501,12 +501,11 @@ live_design! {
     }
 
     pub MolyScrollBar = <ScrollBar> {
-        bar_size: 20.0,
-        bar_side_margin: 30.0
+        bar_size: 5.0,
+        bar_side_margin: 3.0
         min_handle_size: 30.0
         axis: Vertical
         smoothing: 10.0
-        use_vertical_finger_scroll: false
 
         draw_bar: {
             instance pressed: 0.0
