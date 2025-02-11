@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-moly-protocol = { path = "../moly-protocol" }
+moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 chrono = "0.4"

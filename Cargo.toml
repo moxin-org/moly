@@ -3,8 +3,6 @@ resolver = "2"
 
 members = [
     "moly-runner",
-    "moly-protocol",
-    "moly-backend",
     "moly-fake-backend",
     "moly-mofa",
 ]
@@ -25,10 +23,9 @@ path = "src/main.rs"
 
 
 [dependencies]
-moly-protocol = { path = "moly-protocol" }
-moly-backend = { path = "moly-backend" }
 moly-fake-backend = { path = "moly-fake-backend" }
 moly-mofa = { path = "moly-mofa" }
+moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
