@@ -154,7 +154,7 @@ impl BotClient for MolyClient {
                 }
             };
 
-            let bots: Vec<Bot> = models
+            let mut bots: Vec<Bot> = models
                 .data
                 .iter()
                 .map(|m| Bot {
@@ -163,6 +163,8 @@ impl BotClient for MolyClient {
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
                 })
                 .collect();
+
+            bots.sort_by(|a, b| a.name.cmp(&b.name));
 
             Ok(bots)
         };
