@@ -37,7 +37,8 @@ impl Widget for DemoChat {
         self.chat(id!(chat))
             .borrow_mut()
             .unwrap()
-            .hook(event, |hook| match hook.task_mut() {
+            .hook(event)
+            .write(|hook| match hook.task_mut() {
                 ChatTask::CopyMessage(_index, text) => {
                     *text = text.to_uppercase();
                 }

@@ -5,14 +5,14 @@ static mut EMPTY: *const Vec<Action> = std::ptr::null();
 static INIT: Once = Once::new();
 
 pub trait EventExt {
-    fn actions(&self) -> &Actions;
-}
-
-impl EventExt for Event {
     /// Extract the actions from this events (if any).
     ///
     /// A workaround is used when the Makepad's Event is not an Actions variant
     /// to return a 'static immutable reference to a global empty vector.
+    fn actions(&self) -> &Actions;
+}
+
+impl EventExt for Event {
     fn actions(&self) -> &Actions {
         match self {
             Event::Actions(actions) => actions,

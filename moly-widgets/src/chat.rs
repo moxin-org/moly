@@ -21,14 +21,16 @@ live_design!(
     }
 );
 
+/// Private action that carries a [ChatHook] for a chat widget.
 #[derive(Debug)]
-pub struct ChatAction {
+struct ChatAction {
     hook: RwLock<ChatHook>,
     // A widget action is more strict than an action as it needs to implement `ActionDefaultRef`,
     // so this will keep things simple here inside.
     widget_uid: WidgetUid,
 }
 
+/// Encapsulates a [ChatTask] that can me modified before being executed by the chat widget.
 #[derive(Debug)]
 pub struct ChatHook {
     executed: bool,
@@ -53,12 +55,86 @@ impl ChatHook {
     }
 }
 
+/// A task that was or will be performed by the [Chat] widget depending on if you
+/// read it before the chat widget receives it back or not.
+///
+/// The payload in this task will be used to perform the task itself. If you have
+/// access to its wrapper [ChatHook], you can modify the task before it is executed.
+///
+/// See [Chat::tasks] and [Chat::hook] for more information.
 #[derive(Debug)]
 pub enum ChatTask {
     Send(String),
     Stop,
     CopyMessage(usize, String),
     DeleteMessage(usize),
+}
+
+/// An intermidiate type that can read [ChatTask] from an [Event].
+///
+/// Avoids retaining [Chat] self reference during closure execution.
+pub struct ChatTaskReader<'e> {
+    event: &'e Event,
+    widget_uid: WidgetUid,
+}
+
+impl<'e> ChatTaskReader<'e> {
+    /// Construct a new [ChatTaskReader]. Prefer using [Chat::tasks] instead.
+    fn new(widget_uid: WidgetUid, event: &'e Event) -> Self {
+        Self { widget_uid, event }
+    }
+
+    /// Read the tasks from the event.
+    pub fn read(&self, mut reader: impl FnMut(&ChatTask)) {
+        for action in chat_actions(self.widget_uid, self.event) {
+            let hook = action.hook.read().expect("the task is being hooked");
+            let Some(task) = &hook.task else {
+                return;
+            };
+            reader(&task);
+        }
+    }
+}
+
+/// An intermidiate type that can read/write [ChatHook] in an [Event].
+///
+/// Avoids retaining [Chat] self reference during closure execution.
+pub struct ChatHookWriter<'e> {
+    event: &'e Event,
+    widget_uid: WidgetUid,
+}
+
+impl<'e> ChatHookWriter<'e> {
+    /// Construct a new [ChatHookWriter]. Prefer using [Chat::hook] instead.
+    fn new(widget_uid: WidgetUid, event: &'e Event) -> Self {
+        Self { widget_uid, event }
+    }
+
+    /// Get write access to hooks in this event.
+    pub fn write(&self, mut hook_fn: impl FnMut(&mut ChatHook)) {
+        for action in chat_actions(self.widget_uid, self.event) {
+            {
+                // let's use `read` first to avoid panicking before other checks
+                let hook = action.hook.read().expect("the task is being hooked");
+
+                if hook.task.is_none() {
+                    return;
+                }
+
+                if hook.executed {
+                    panic!(
+                        "Hooking into a chat task that has already been executed. \
+                        Changes to the task would not have effect so this is invalid. \
+                        If you are trying to read the task without changing it, use `tasks` instead. \
+                        If you are trying to change the task, you should do it before `Chat`'s `handle_event`."
+                    );
+                }
+            }
+
+            let mut hook = action.hook.write().expect("the task is being hooked");
+            hook_fn(&mut *hook);
+        }
+    }
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -117,6 +193,9 @@ impl Chat {
             }
 
             match action.cast::<MessagesAction>() {
+                MessagesAction::Delete(idx) => {
+                    self.dispatch(cx, ChatTask::DeleteMessage(idx));
+                }
                 MessagesAction::Copy(idx) => {
                     let text = self.messages_ref().read().messages[idx].body.clone();
                     self.dispatch(cx, ChatTask::CopyMessage(idx, text));
@@ -130,13 +209,13 @@ impl Chat {
         let prompt = self.prompt_input_ref();
 
         if prompt.read().has_send_task() {
-            self.handle_send(cx);
+            self.perform_send(cx);
         } else if prompt.read().has_stop_task() {
-            self.handle_stop(cx);
+            self.dispatch(cx, ChatTask::Stop);
         }
     }
 
-    fn handle_send(&mut self, cx: &mut Cx) {
+    fn perform_send(&mut self, cx: &mut Cx) {
         let prompt = self.prompt_input_ref();
 
         let text = prompt.text();
@@ -223,7 +302,7 @@ impl Chat {
         });
     }
 
-    fn handle_stop(&mut self, _cx: &mut Cx) {
+    fn perform_stop(&mut self, _cx: &mut Cx) {
         self.abort_handle.take().map(|handle| handle.abort());
     }
 
@@ -239,63 +318,39 @@ impl Chat {
         cx.action(action);
     }
 
-    fn actions(&self, event: &Event, mut f: impl FnMut(&ChatAction)) {
-        let Event::Actions(actions) = event else {
-            return;
-        };
-
-        for action in actions {
-            if let Some(action) = action.downcast_ref::<ChatAction>() {
-                if action.widget_uid != self.widget_uid() {
-                    continue;
-                }
-
-                f(action);
-            }
-        }
+    pub fn tasks<'e>(&self, event: &'e Event) -> ChatTaskReader<'e> {
+        ChatTaskReader::new(self.widget_uid(), event)
     }
 
-    pub fn tasks(&self, event: &Event, mut reader: impl FnMut(&ChatTask)) {
-        self.actions(event, |action| {
-            let hook = action.hook.read().expect("the task is being hooked");
-            let Some(task) = &hook.task else {
-                return;
-            };
-            reader(&task);
-        });
-    }
-
-    pub fn hook(&self, event: &Event, mut hook_fn: impl FnMut(&mut ChatHook)) {
-        self.actions(event, |action| {
-            {
-                // let's use `read` first to avoid panicking before other checks
-                let hook = action.hook.read().expect("the task is being hooked");
-
-                if hook.task.is_none() {
-                    return;
-                }
-
-                if hook.executed {
-                    panic!(
-                        "Hooking into a chat task that has already been executed. \
-                        Changes to the task would not have effect so this is invalid. \
-                        If you are trying to read the task without changing it, use `tasks` instead. \
-                        If you are trying to change the task, you should do it before `Chat`'s `handle_event`."
-                    );
-                }
-            }
-
-            let mut hook = action.hook.write().expect("the task is being hooked");
-            hook_fn(&mut *hook);
-        });
+    pub fn hook<'e>(&self, event: &'e Event) -> ChatHookWriter<'e> {
+        ChatHookWriter::new(self.widget_uid(), event)
     }
 
     fn handle_tasks(&mut self, cx: &mut Cx, event: &Event) {
-        self.tasks(event, |task| match task {
+        self.tasks(event).read(|task| match task {
             ChatTask::CopyMessage(_index, message) => {
                 cx.copy_to_clipboard(message);
+            }
+            ChatTask::DeleteMessage(index) => {
+                let mut messages = self.messages_ref();
+                messages.write().messages.remove(*index);
+                self.redraw(cx);
+            }
+            ChatTask::Stop => {
+                self.perform_stop(cx);
             }
             _ => {}
         });
     }
+}
+
+fn chat_actions<'e>(
+    widget_uid: WidgetUid,
+    event: &'e Event,
+) -> impl Iterator<Item = &'e ChatAction> + 'e {
+    event
+        .actions()
+        .iter()
+        .filter_map(|a| a.downcast_ref::<ChatAction>())
+        .filter(move |a| a.widget_uid == widget_uid)
 }
