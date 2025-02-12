@@ -1552,7 +1552,6 @@ dependencies = [
  "lipsum",
  "makepad-code-editor",
  "makepad-widgets",
- "moly-fake-backend",
  "moly-mofa",
  "moly-protocol",
  "rand",
@@ -1564,14 +1563,6 @@ dependencies = [
  "serde_json",
  "unicode-segmentation",
  "url",
-]
-
-[[package]]
-name = "moly-fake-backend"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "moly-protocol",
 ]
 
 [[package]]

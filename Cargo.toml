@@ -3,7 +3,6 @@ resolver = "2"
 
 members = [
     "moly-runner",
-    "moly-fake-backend",
     "moly-mofa",
 ]
 exclude = ["packaging/before-packaging-command"]
@@ -23,7 +22,6 @@ path = "src/main.rs"
 
 
 [dependencies]
-moly-fake-backend = { path = "moly-fake-backend" }
 moly-mofa = { path = "moly-mofa" }
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 
