@@ -49,7 +49,7 @@ impl Preferences {
         self.save();
     }
 
-    pub fn set_downloaded_files_dir(&mut self, path: PathBuf) {
+    pub fn _set_downloaded_files_dir(&mut self, path: PathBuf) {
         self.downloaded_files_dir = path;
         self.save();
     }
