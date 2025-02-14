@@ -68,6 +68,7 @@ pub enum ChatTask {
     Stop,
     CopyMessage(usize, String),
     DeleteMessage(usize),
+    EditMessage(usize, String),
 }
 
 /// An intermidiate type that can read [ChatTask] from an [Event].
@@ -199,6 +200,17 @@ impl Chat {
                 MessagesAction::Copy(idx) => {
                     let text = self.messages_ref().read().messages[idx].body.clone();
                     self.dispatch(cx, ChatTask::CopyMessage(idx, text));
+                }
+                MessagesAction::EditSave(idx) => {
+                    let text = self
+                        .messages_ref()
+                        .read()
+                        .current_editor_text()
+                        .expect("no editor text");
+                    self.dispatch(cx, ChatTask::EditMessage(idx, text));
+                    self.messages_ref()
+                        .write()
+                        .set_message_editor_visibility(idx, false);
                 }
                 _ => {}
             }
@@ -332,12 +344,15 @@ impl Chat {
                 cx.copy_to_clipboard(message);
             }
             ChatTask::DeleteMessage(index) => {
-                let mut messages = self.messages_ref();
-                messages.write().messages.remove(*index);
+                self.messages_ref().write().messages.remove(*index);
                 self.redraw(cx);
             }
             ChatTask::Stop => {
                 self.perform_stop(cx);
+            }
+            ChatTask::EditMessage(index, message) => {
+                self.messages_ref().write().messages[*index].body = message.clone();
+                self.redraw(cx);
             }
             _ => {}
         });

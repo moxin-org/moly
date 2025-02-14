@@ -51,12 +51,29 @@ live_design! {
         delete = <Button> { text: "delete", draw_text: {color: #000} }
     }
 
+    EditActions = <View> {
+        height: Fit,
+        save = <Button> { text: "save", draw_text: {color: #000} }
+        save_and_regenerate = <Button> { text: "save and regenerate", draw_text: {color: #000} }
+        cancel = <Button> { text: "cancel", draw_text: {color: #000} }
+    }
+
+    Editor = <View> {
+        height: Fit,
+        input = <TextInput> {
+            draw_text: {
+                color: #000
+            }
+        }
+    }
+
     ChatLine = <View> {
         flow: Down,
         height: Fit,
         sender = <Sender> {}
         bubble = <Bubble> {}
         actions = <Actions> {}
+        edit_actions = <EditActions> { visible: false }
     }
 
     UserLine = <ChatLine> {
@@ -72,6 +89,7 @@ live_design! {
                     color: #fff
                 }
             }
+            editor = <Editor> { visible: false }
         }
     }
 
@@ -81,6 +99,7 @@ live_design! {
         bubble = <Bubble> {
             margin: {left: 16}
             text = <MessageMarkdown> {}
+            editor = <Editor> { visible: false }
         }
     }
 
@@ -110,13 +129,30 @@ live_design! {
     }
 }
 
-/// Glue to use with `action_data` also forwarded as an action.
+#[derive(Debug, PartialEq)]
+struct MessageActionData {
+    index: usize,
+    kind: MessageActionKind,
+}
+
+/// Glue to use as `action_data` for the messages list.
+#[derive(Debug, PartialEq)]
+enum MessageActionKind {
+    Copy,
+    Edit,
+    Delete,
+    EditRegenerate,
+    EditSave,
+    EditCancel,
+}
+
+/// Relevant actions that should be handled by a parent.
 #[derive(Debug, PartialEq, Copy, Clone, DefaultNone)]
-// enum ActionData {
 pub enum MessagesAction {
     Copy(usize),
-    Edit(usize),
     Delete(usize),
+    EditRegenerate(usize),
+    EditSave(usize),
     None,
 }
 
@@ -130,6 +166,9 @@ pub struct Messages {
 
     #[rust]
     pub bot_repo: Option<BotRepo>,
+
+    #[rust]
+    current_editor: Option<usize>,
 }
 
 impl Widget for Messages {
@@ -164,13 +203,30 @@ impl Widget for Messages {
                 continue;
             };
 
-            let Some(data) = data.downcast_ref::<MessagesAction>() else {
+            let Some(data) = data.downcast_ref::<MessageActionData>() else {
                 continue;
             };
 
             if let ButtonAction::Clicked(_) = action.cast::<ButtonAction>() {
                 log!("{:?}", &data);
-                cx.widget_action(self.widget_uid(), &scope.path, *data);
+                let action = match data.kind {
+                    MessageActionKind::Copy => MessagesAction::Copy(data.index),
+                    MessageActionKind::Delete => MessagesAction::Delete(data.index),
+                    MessageActionKind::EditRegenerate => MessagesAction::EditRegenerate(data.index),
+                    MessageActionKind::EditSave => MessagesAction::EditSave(data.index),
+                    MessageActionKind::Edit => {
+                        self.set_message_editor_visibility(data.index, true);
+                        self.redraw(cx);
+                        MessagesAction::None
+                    }
+                    MessageActionKind::EditCancel => {
+                        self.set_message_editor_visibility(data.index, false);
+                        self.redraw(cx);
+                        MessagesAction::None
+                    }
+                };
+
+                cx.widget_action(self.widget_uid(), &scope.path, action);
             }
         }
     }
@@ -211,6 +267,13 @@ impl Messages {
                     let item = list.item(cx, index, live_id!(UserLine));
                     item.label(id!(text)).set_text(&message.body);
                     connect_action_data(index, &item);
+
+                    // TODO: Dedup.
+                    let is_current_editor = self.current_editor == Some(index);
+                    item.view(id!(edit_actions)).set_visible(is_current_editor);
+                    item.view(id!(editor)).set_visible(is_current_editor);
+                    item.view(id!(actions)).set_visible(!is_current_editor);
+
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
@@ -245,6 +308,12 @@ impl Messages {
                         item
                     };
 
+                    // TODO: Dedup.
+                    let is_current_editor = self.current_editor == Some(index);
+                    item.view(id!(edit_actions)).set_visible(is_current_editor);
+                    item.view(id!(editor)).set_visible(is_current_editor);
+                    item.view(id!(actions)).set_visible(!is_current_editor);
+
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(name);
                     connect_action_data(index, &item);
@@ -259,6 +328,30 @@ impl Messages {
         self.portal_list(id!(list))
             .smooth_scroll_to_end(cx, 10., Some(80));
     }
+
+    /// Show or hide the editor for a message.
+    ///
+    /// Limitation: Only one editor can be shown at a time. If you try to show another editor,
+    /// the previous one will be hidden. If you try to hide an editor different from the one
+    /// currently shown, nothing will happen.
+    pub fn set_message_editor_visibility(&mut self, index: usize, visible: bool) {
+        if index >= self.messages.len() {
+            return;
+        }
+
+        if visible {
+            self.current_editor = Some(index);
+        } else if self.current_editor == Some(index) {
+            self.current_editor = None;
+        }
+    }
+
+    /// If currently editing a message, this will return the text in it's editor.
+    pub fn current_editor_text(&self) -> Option<String> {
+        self.current_editor
+            .and_then(|index| self.portal_list(id!(list)).get_item(index))
+            .map(|(_id, widget)| widget.text_input(id!(input)).text())
+    }
 }
 
 impl MessagesRef {
@@ -271,14 +364,19 @@ impl MessagesRef {
     }
 }
 
-fn connect_action_data(idx: usize, widget: &WidgetRef) {
-    widget
-        .button(id!(copy))
-        .set_action_data(MessagesAction::Copy(idx));
-    widget
-        .button(id!(edit))
-        .set_action_data(MessagesAction::Edit(idx));
-    widget
-        .button(id!(delete))
-        .set_action_data(MessagesAction::Delete(idx));
+fn connect_action_data(index: usize, widget: &WidgetRef) {
+    [
+        (id!(copy), MessageActionKind::Copy),
+        (id!(delete), MessageActionKind::Delete),
+        (id!(regenerate), MessageActionKind::EditRegenerate),
+        (id!(save), MessageActionKind::EditSave),
+        (id!(edit), MessageActionKind::Edit),
+        (id!(cancel), MessageActionKind::EditCancel),
+    ]
+    .into_iter()
+    .for_each(|(id, kind)| {
+        widget
+            .button(id)
+            .set_action_data(MessageActionData { index, kind });
+    });
 }
