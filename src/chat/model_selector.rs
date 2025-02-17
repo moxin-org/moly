@@ -303,34 +303,6 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
-            if fd.tap_count == 1 {
-                self.open = !self.open;
-
-                if self.open {
-                    let list = self.model_selector_list(id!(options.list_container.list));
-                    let height = list.get_height();
-                    if height > MAX_OPTIONS_HEIGHT {
-                        self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
-                    } else {
-                        self.options_list_height = Some(height);
-                    }
-
-                    self.view(id!(options)).apply_over(
-                        cx,
-                        live! {
-                            height: Fit,
-                        },
-                    );
-
-                    self.animator_play(cx, id!(open.show));
-                } else {
-                    self.hide_animation_timer = cx.start_timeout(0.3);
-                    self.animator_play(cx, id!(open.hide));
-                }
-            }
-        }
-
         for action in actions {
             match action.cast() {
                 ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
