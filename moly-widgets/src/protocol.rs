@@ -14,12 +14,23 @@ pub enum Picture {
     Dependency(LiveValue),
 }
 
-/// Indentify the entities that are recognized by this crate.
+/// Indentify the entities that are recognized by this crate, mainly in a chat.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum EntityId {
+    /// Represents the user operating this app.
     User,
+
+    /// Represents the `system`/`developer` expected by many LLMs in the chat
+    /// context to customize the chat experience and behavior.
     System,
+
+    /// Represents a bot, which is an automated assistant of any kind (model, agent, etc).
     Bot(BotId),
+
+    /// This app itself. Normally appears when app specific information must be displayed
+    /// (like inline errors).
+    ///
+    /// It's not supposed to be sent as part of a conversation to bots.
     App,
 }
 
@@ -141,7 +152,21 @@ impl Clone for BotRepo {
     }
 }
 
+impl PartialEq for BotRepo {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
 impl BotRepo {
+    /// Differenciates [BotRepo]s.
+    ///
+    /// Two [BotRepo]s are equal and share the same underlying data if they have
+    /// the same id.
+    pub fn id(&self) -> usize {
+        Arc::as_ptr(&self.0) as usize
+    }
+
     pub fn load(&mut self) -> MolyFuture<Result<(), ()>> {
         let future = async move {
             let new_bots = self.client().bots().await?;

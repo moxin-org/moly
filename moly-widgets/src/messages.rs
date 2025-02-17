@@ -127,6 +127,7 @@ live_design! {
             UserLine = <UserLine> {}
             BotLine = <BotLine> {}
             LoadingLine = <LoadingLine> {}
+            EndOfChat = <View> {height: 0.1}
         }
         <View> {
             align: {x: 1.0, y: 1.0},
@@ -255,6 +256,14 @@ impl Widget for Messages {
 
 impl Messages {
     fn draw_list(&mut self, cx: &mut Cx2d, list: PortalListRef) {
+        // Trick to simplify handling the end of the list.
+        self.messages.push(Message {
+            from: EntityId::App,
+            // End-of-chat
+            body: "EOC".into(),
+            is_writing: false,
+        });
+
         let mut list = list.borrow_mut().unwrap();
         list.set_item_range(cx, 0, self.messages.len());
 
@@ -271,6 +280,12 @@ impl Messages {
                 }
                 EntityId::App => {
                     // TODO: Display app messages. They may be errors.
+                    if message.body == "EOC" {
+                        let item = list.item(cx, index, live_id!(EndOfChat));
+                        item.draw_all(cx, &mut Scope::empty());
+                    } else {
+                        todo!();
+                    }
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
@@ -322,6 +337,12 @@ impl Messages {
                     item.draw_all(cx, &mut Scope::empty());
                 }
             }
+        }
+
+        // Let's remove the trick we inserted to detect the end of the list.
+        if let Some(message) = self.messages.pop() {
+            assert!(message.from == EntityId::App);
+            assert!(message.body == "EOC");
         }
     }
 

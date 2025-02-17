@@ -156,6 +156,11 @@ pub struct Chat {
 
 impl Widget for Chat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // Pass down the bot repo if not the same.
+        if self.bot_repo != self.messages_ref().read().bot_repo {
+            self.messages_ref().write().bot_repo = self.bot_repo.clone();
+        }
+
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
         self.handle_tasks(cx, event);

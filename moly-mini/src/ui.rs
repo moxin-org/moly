@@ -1,4 +1,7 @@
 use makepad_widgets::*;
+use moly_widgets::{BotId, ChatWidgetRefExt, EntityId, Message};
+
+use crate::demo_chat::DemoChatWidgetExt;
 
 live_design!(
     use link::theme::*;
@@ -31,8 +34,8 @@ live_design!(
         // }
 
         body = <View> {
-            <DemoChat> {}
-            <DemoChat> {}
+            chat_1 = <DemoChat> {}
+            chat_2 = <DemoChat> {}
         }
     }
 );
@@ -50,6 +53,35 @@ impl Widget for Ui {
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.deref.handle_event(cx, event, scope);
+
+        if let Event::Startup = event {
+            let bot_id = BotId::from("idk");
+
+            let messages = std::iter::repeat([
+                Message {
+                    is_writing: false,
+                    body: "Hello".to_string(),
+                    from: EntityId::User,
+                },
+                Message {
+                    is_writing: false,
+                    body: "World".to_string(),
+                    from: EntityId::Bot(bot_id),
+                },
+            ])
+            .take(50)
+            .flatten()
+            .collect();
+
+            self.demo_chat(id!(chat_2))
+                .chat(id!(chat))
+                .borrow()
+                .unwrap()
+                .messages_ref()
+                .borrow_mut()
+                .unwrap()
+                .messages = messages;
+        }
     }
 }
 
