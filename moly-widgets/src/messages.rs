@@ -266,13 +266,9 @@ impl Messages {
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
                     item.label(id!(text)).set_text(&message.body);
-                    connect_action_data(index, &item);
 
-                    // TODO: Dedup.
-                    let is_current_editor = self.current_editor == Some(index);
-                    item.view(id!(edit_actions)).set_visible(is_current_editor);
-                    item.view(id!(editor)).set_visible(is_current_editor);
-                    item.view(id!(actions)).set_visible(!is_current_editor);
+                    connect_action_data(index, &item);
+                    apply_actions_and_editor_visibility(cx, &item, index, self.current_editor);
 
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -308,15 +304,12 @@ impl Messages {
                         item
                     };
 
-                    // TODO: Dedup.
-                    let is_current_editor = self.current_editor == Some(index);
-                    item.view(id!(edit_actions)).set_visible(is_current_editor);
-                    item.view(id!(editor)).set_visible(is_current_editor);
-                    item.view(id!(actions)).set_visible(!is_current_editor);
-
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(name);
+
                     connect_action_data(index, &item);
+                    apply_actions_and_editor_visibility(cx, &item, index, self.current_editor);
+
                     item.draw_all(cx, &mut Scope::empty());
                 }
             }
@@ -379,4 +372,18 @@ fn connect_action_data(index: usize, widget: &WidgetRef) {
             .button(id)
             .set_action_data(MessageActionData { index, kind });
     });
+}
+
+fn apply_actions_and_editor_visibility(
+    _cx: &mut Cx,
+    widget: &WidgetRef,
+    index: usize,
+    current_editor: Option<usize>,
+) {
+    let is_current_editor = current_editor == Some(index);
+    widget
+        .view(id!(edit_actions))
+        .set_visible(is_current_editor);
+    widget.view(id!(editor)).set_visible(is_current_editor);
+    widget.view(id!(actions)).set_visible(!is_current_editor);
 }
