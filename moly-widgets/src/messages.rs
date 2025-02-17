@@ -256,6 +256,8 @@ impl Widget for Messages {
 
 impl Messages {
     fn draw_list(&mut self, cx: &mut Cx2d, list: PortalListRef) {
+        let mut list_end_reached = false;
+
         // Trick to simplify handling the end of the list.
         self.messages.push(Message {
             from: EntityId::App,
@@ -283,6 +285,7 @@ impl Messages {
                     if message.body == "EOC" {
                         let item = list.item(cx, index, live_id!(EndOfChat));
                         item.draw_all(cx, &mut Scope::empty());
+                        list_end_reached = true;
                     } else {
                         todo!();
                     }
@@ -344,6 +347,9 @@ impl Messages {
             assert!(message.from == EntityId::App);
             assert!(message.body == "EOC");
         }
+
+        self.button(id!(jump_to_bottom))
+            .set_visible(!list_end_reached);
     }
 
     // TODO: This is what we do in the main moly app but doesn't work for long chats.
