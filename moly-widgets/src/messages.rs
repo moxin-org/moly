@@ -82,11 +82,14 @@ live_design! {
         bubble = <Bubble> {
             margin: {left: 100}
             draw_bg: {color: #15859A}
-            text = <Label> {
-                width: Fill,
-                draw_text: {
-                    // text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
-                    color: #fff
+            text = <View> {
+                height: Fit
+                label = <Label> {
+                    width: Fill,
+                    draw_text: {
+                        // text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+                        color: #fff
+                    }
                 }
             }
             editor = <Editor> { visible: false }
@@ -98,14 +101,20 @@ live_design! {
         height: Fit,
         bubble = <Bubble> {
             margin: {left: 16}
-            text = <MessageMarkdown> {}
+            text = <View> {
+                height: Fit,
+                markdown = <MessageMarkdown> {}
+            }
             editor = <Editor> { visible: false }
         }
     }
 
     LoadingLine = <BotLine> {
         bubble = {
-            text = <MessageLoading> {}
+            text = <View> {
+                height: Fit,
+                loading = <MessageLoading> {}
+            }
         }
     }
 
@@ -265,7 +274,7 @@ impl Messages {
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
-                    item.label(id!(text)).set_text(&message.body);
+                    item.label(id!(text.label)).set_text(&message.body);
 
                     connect_action_data(index, &item);
                     apply_actions_and_editor_visibility(cx, &item, index, self.current_editor);
@@ -288,7 +297,7 @@ impl Messages {
                     let item = if message.is_writing && message.body.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
 
-                        item.message_loading(id!(text)).animate(cx);
+                        item.message_loading(id!(text.loading)).animate(cx);
 
                         item
                     } else {
@@ -298,7 +307,7 @@ impl Messages {
                         //
                         // Warning: If you ever read the text from this widget and not
                         // from the list, you should remove the unicode character.
-                        item.label(id!(text))
+                        item.label(id!(text.markdown))
                             .set_text(&message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
 
                         item
@@ -380,10 +389,15 @@ fn apply_actions_and_editor_visibility(
     index: usize,
     current_editor: Option<usize>,
 ) {
+    let editor = widget.view(id!(editor));
+    let actions = widget.view(id!(actions));
+    let edit_actions = widget.view(id!(edit_actions));
+    let text = widget.view(id!(text));
+
     let is_current_editor = current_editor == Some(index);
-    widget
-        .view(id!(edit_actions))
-        .set_visible(is_current_editor);
-    widget.view(id!(editor)).set_visible(is_current_editor);
-    widget.view(id!(actions)).set_visible(!is_current_editor);
+
+    edit_actions.set_visible(is_current_editor);
+    editor.set_visible(is_current_editor);
+    actions.set_visible(!is_current_editor);
+    text.set_visible(!is_current_editor);
 }
