@@ -174,12 +174,28 @@ impl Widget for Chat {
 }
 
 impl Chat {
+    /// Getter to the underlying [[PromptInputRef]] independent of its id.
     pub fn prompt_input_ref(&self) -> PromptInputRef {
         self.prompt_input(id!(prompt))
     }
 
+    /// Getter to the underlying [[MessagesRef]] independent of its id.
     pub fn messages_ref(&self) -> MessagesRef {
         self.messages(id!(messages))
+    }
+
+    /// Mutable access to the underlying [[Messages]].
+    pub fn with_messages_mut<R>(&mut self, f: impl FnOnce(&mut Messages) -> R) -> R {
+        let messages = self.messages_ref();
+        let mut messages = messages.borrow_mut().unwrap();
+        f(&mut *messages)
+    }
+
+    /// Immutable access to the underlying [[Messages]].
+    pub fn with_messages<R>(&self, f: impl FnOnce(&Messages) -> R) -> R {
+        let messages = self.messages_ref();
+        let messages = messages.borrow().unwrap();
+        f(&*messages)
     }
 
     fn handle_prompt_input(&mut self, cx: &mut Cx, event: &Event) {
@@ -247,10 +263,7 @@ impl Chat {
             .expect("no bot repo provided")
             .clone();
 
-        let context: Vec<Message> = {
-            let mut messages = self.messages_ref();
-            let mut messages = messages.write();
-
+        let context: Vec<Message> = self.with_messages_mut(|messages| {
             messages.bot_repo = Some(repo.clone());
 
             messages.messages.push(Message {
@@ -265,13 +278,15 @@ impl Chat {
                 is_writing: true,
             });
 
+            messages.scroll_to_bottom();
+
             messages
                 .messages
                 .iter()
                 .filter(|m| !m.is_writing && m.from != EntityId::App)
                 .cloned()
                 .collect()
-        };
+        });
 
         self.prompt_input_ref().write().set_stop();
         self.redraw(cx);
@@ -285,24 +300,29 @@ impl Chat {
                 let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());
 
                 ui.defer_with_redraw(move |me, _cx, _scope| {
-                    me.messages(id!(messages))
-                        .borrow_mut()
-                        .unwrap()
-                        .messages
-                        .last_mut()
-                        .expect("no message where to put delta")
-                        .body
-                        .push_str(&delta);
+                    me.with_messages_mut(|messages| {
+                        messages
+                            .messages
+                            .last_mut()
+                            .expect("no message where to put delta")
+                            .body
+                            .push_str(&delta);
+
+                        if messages.is_at_bottom() {
+                            messages.scroll_to_bottom();
+                        }
+                    });
                 });
             }
 
             ui.defer_with_redraw(|me, _cx, _scope| {
-                me.messages_ref()
-                    .write()
-                    .messages
-                    .last_mut()
-                    .expect("no message where to put delta")
-                    .is_writing = false;
+                me.with_messages_mut(|messages| {
+                    messages
+                        .messages
+                        .last_mut()
+                        .expect("no message where to put delta")
+                        .is_writing = false;
+                });
             });
         };
 

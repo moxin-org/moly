@@ -127,6 +127,10 @@ live_design! {
             UserLine = <UserLine> {}
             BotLine = <BotLine> {}
             LoadingLine = <LoadingLine> {}
+
+            // Acts as marker for:
+            // - Knowing if the end of the list has been reached.
+            // - To jump to bottom with proper precision.
             EndOfChat = <View> {height: 0.1}
         }
         <View> {
@@ -179,6 +183,9 @@ pub struct Messages {
 
     #[rust]
     current_editor: Option<usize>,
+
+    #[rust]
+    is_list_end_drawn: bool,
 }
 
 impl Widget for Messages {
@@ -192,7 +199,8 @@ impl Widget for Messages {
         let jump_to_bottom = self.button(id!(jump_to_bottom));
 
         if jump_to_bottom.clicked(actions) {
-            self.scroll_to_bottom(cx);
+            self.scroll_to_bottom();
+            self.redraw(cx);
         }
 
         let list_uid = self.portal_list(id!(list)).widget_uid();
@@ -256,9 +264,10 @@ impl Widget for Messages {
 
 impl Messages {
     fn draw_list(&mut self, cx: &mut Cx2d, list: PortalListRef) {
-        let mut list_end_reached = false;
+        self.is_list_end_drawn = false;
 
-        // Trick to simplify handling the end of the list.
+        // Trick to render one more item representing the end of the chat without
+        // risking a manual math bug. Removed immediately after rendering the items.
         self.messages.push(Message {
             from: EntityId::App,
             // End-of-chat
@@ -285,7 +294,7 @@ impl Messages {
                     if message.body == "EOC" {
                         let item = list.item(cx, index, live_id!(EndOfChat));
                         item.draw_all(cx, &mut Scope::empty());
-                        list_end_reached = true;
+                        self.is_list_end_drawn = true;
                     } else {
                         todo!();
                     }
@@ -342,20 +351,33 @@ impl Messages {
             }
         }
 
-        // Let's remove the trick we inserted to detect the end of the list.
         if let Some(message) = self.messages.pop() {
             assert!(message.from == EntityId::App);
             assert!(message.body == "EOC");
         }
 
+        // dbg!(list_end_reached);
+        // dbg!(list.is_at_end());
+
         self.button(id!(jump_to_bottom))
-            .set_visible(!list_end_reached);
+            .set_visible(!self.is_list_end_drawn);
     }
 
-    // TODO: This is what we do in the main moly app but doesn't work for long chats.
-    pub fn scroll_to_bottom(&self, cx: &mut Cx) {
-        self.portal_list(id!(list))
-            .smooth_scroll_to_end(cx, 10., Some(80));
+    /// Check if we're at the end of the messages list.
+    pub fn is_at_bottom(&self) -> bool {
+        self.is_list_end_drawn
+    }
+
+    /// Jump to the end of the list instantly.
+    pub fn scroll_to_bottom(&self) {
+        if self.messages.len() > 0 {
+            // This is not the last message, but the marker widget we added to
+            // the list. I'm being explicit with the redundant -1/+1.
+
+            let last_message_index = self.messages.len() - 1;
+            let end_of_chat_index = last_message_index + 1;
+            self.portal_list(id!(list)).set_first_id(end_of_chat_index);
+        }
     }
 
     /// Show or hide the editor for a message.
