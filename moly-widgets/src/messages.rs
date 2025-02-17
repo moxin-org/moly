@@ -301,7 +301,7 @@ impl Messages {
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
-                    item.label(id!(text.label)).set_text(&message.body);
+                    item.label(id!(text.label)).set_text(cx, &message.body);
 
                     connect_action_data(index, &item);
                     apply_actions_and_editor_visibility(cx, &item, index, self.current_editor);
@@ -335,13 +335,13 @@ impl Messages {
                         // Warning: If you ever read the text from this widget and not
                         // from the list, you should remove the unicode character.
                         item.label(id!(text.markdown))
-                            .set_text(&message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                            .set_text(cx, &message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
 
                         item
                     };
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
-                    item.label(id!(name)).set_text(name);
+                    item.label(id!(name)).set_text(cx, name);
 
                     connect_action_data(index, &item);
                     apply_actions_and_editor_visibility(cx, &item, index, self.current_editor);
@@ -360,7 +360,7 @@ impl Messages {
         // dbg!(list.is_at_end());
 
         self.button(id!(jump_to_bottom))
-            .set_visible(!self.is_list_end_drawn);
+            .set_visible(cx, !self.is_list_end_drawn);
     }
 
     /// Check if we're at the end of the messages list.
@@ -433,7 +433,7 @@ fn connect_action_data(index: usize, widget: &WidgetRef) {
 }
 
 fn apply_actions_and_editor_visibility(
-    _cx: &mut Cx,
+    cx: &mut Cx,
     widget: &WidgetRef,
     index: usize,
     current_editor: Option<usize>,
@@ -445,8 +445,8 @@ fn apply_actions_and_editor_visibility(
 
     let is_current_editor = current_editor == Some(index);
 
-    edit_actions.set_visible(is_current_editor);
-    editor.set_visible(is_current_editor);
-    actions.set_visible(!is_current_editor);
-    text.set_visible(!is_current_editor);
+    edit_actions.set_visible(cx, is_current_editor);
+    editor.set_visible(cx, is_current_editor);
+    actions.set_visible(cx, !is_current_editor);
+    text.set_visible(cx, !is_current_editor);
 }

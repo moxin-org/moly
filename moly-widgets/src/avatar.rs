@@ -49,8 +49,8 @@ impl Widget for Avatar {
         if let Some(avatar) = &self.avatar {
             match avatar {
                 Picture::Grapheme(grapheme) => {
-                    self.view(id!(grapheme)).set_visible(true);
-                    self.label(id!(label)).set_text(&grapheme);
+                    self.view(id!(grapheme)).set_visible(cx, true);
+                    self.label(id!(label)).set_text(cx, &grapheme);
                 }
                 _ => unimplemented!(),
             }

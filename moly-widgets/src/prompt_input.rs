@@ -79,8 +79,8 @@ pub struct PromptInput {
 }
 
 impl Widget for PromptInput {
-    fn set_text(&mut self, v: &str) {
-        self.deref.set_text(v);
+    fn set_text(&mut self, cx: &mut Cx, v: &str) {
+        self.deref.set_text(cx, v);
     }
 
     fn text(&self) -> String {
@@ -105,19 +105,19 @@ impl Widget for PromptInput {
 
         match self.task {
             Task::Send => {
-                button.set_text("Send");
+                button.set_text(cx, "Send");
             }
             Task::Stop => {
-                button.set_text("Stop");
+                button.set_text(cx, "Stop");
             }
         }
 
         match self.interactivity {
             Interactivity::Enabled => {
-                button.set_enabled(true);
+                button.set_enabled(cx, true);
             }
             Interactivity::Disabled => {
-                button.set_enabled(false);
+                button.set_enabled(cx, false);
             }
         }
 

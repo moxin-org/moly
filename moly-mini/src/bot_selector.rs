@@ -122,7 +122,7 @@ impl Widget for BotSelector {
 
                     let item = list.item(cx, index, live_id!(Bot));
                     item.meta(id!(bot)).set_value(bot.clone());
-                    item.button(id!(button)).set_text(&bot.name);
+                    item.button(id!(button)).set_text(cx, &bot.name);
                     item.draw_all(cx, &mut Scope::empty());
                 }
             }

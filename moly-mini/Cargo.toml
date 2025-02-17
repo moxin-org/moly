@@ -6,9 +6,7 @@ edition = "2021"
 [dependencies]
 futures = "0.3.31"
 futures-core = "0.3.31"
-# Patched from an old commit mainly to fix `wasm-bindgen` interop and
-# `Cx::post_action` on web.
-makepad-widgets = { git = "https://github.com/noxware/makepad", branch = "moly" }
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 moly-widgets = { path = "../moly-widgets", features = ["full"] }
 reqwest = { version = "0.12.12", features = ["json", "stream"] }
 serde = { version = "1.0.217", features = ["derive"] }

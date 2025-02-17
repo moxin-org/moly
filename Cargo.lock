@@ -1653,26 +1653,9 @@ dependencies = [
 [[package]]
 name = "makepad-code-editor"
 version = "0.6.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-widgets 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
-]
-
-[[package]]
-name = "makepad-code-editor"
-version = "0.6.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-widgets 0.6.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-derive-live"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-widgets",
 ]
 
 [[package]]
@@ -1680,16 +1663,8 @@ name = "makepad-derive-live"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-derive-wasm-bridge"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-live-id",
+ "makepad-micro-proc-macro",
 ]
 
 [[package]]
@@ -1697,16 +1672,7 @@ name = "makepad-derive-wasm-bridge"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-derive-widget"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-micro-proc-macro",
 ]
 
 [[package]]
@@ -1714,25 +1680,8 @@ name = "makepad-derive-widget"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-draw"
-version = "0.6.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "ab_glyph_rasterizer",
- "fxhash",
- "makepad-html 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-platform 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-rustybuzz 0.8.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-vector 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "sdfer",
- "unicode-bidi",
- "unicode-linebreak",
- "unicode-segmentation",
+ "makepad-live-id",
+ "makepad-micro-proc-macro",
 ]
 
 [[package]]
@@ -1742,10 +1691,10 @@ source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f3
 dependencies = [
  "ab_glyph_rasterizer",
  "fxhash",
- "makepad-html 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-platform 0.6.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-rustybuzz 0.8.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-vector 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-html",
+ "makepad-platform",
+ "makepad-rustybuzz",
+ "makepad-vector",
  "sdfer",
  "unicode-bidi",
  "unicode-linebreak",
@@ -1755,17 +1704,7 @@ dependencies = [
 [[package]]
 name = "makepad-futures"
 version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-
-[[package]]
-name = "makepad-futures"
-version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
-
-[[package]]
-name = "makepad-futures-legacy"
-version = "0.7.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
 
 [[package]]
 name = "makepad-futures-legacy"
@@ -1775,23 +1714,10 @@ source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f3
 [[package]]
 name = "makepad-html"
 version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
-]
-
-[[package]]
-name = "makepad-html"
-version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-live-id",
 ]
-
-[[package]]
-name = "makepad-http"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
 
 [[package]]
 name = "makepad-http"
@@ -1807,29 +1733,11 @@ checksum = "9775cbec5fa0647500c3e5de7c850280a88335d1d2d770e5aa2332b801ba7064"
 [[package]]
 name = "makepad-live-compiler"
 version = "0.5.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-derive-live 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-live-tokenizer 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-math 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
-]
-
-[[package]]
-name = "makepad-live-compiler"
-version = "0.5.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-derive-live 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-live-tokenizer 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-math 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-live-id"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-id-macros 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-derive-live",
+ "makepad-live-tokenizer",
+ "makepad-math",
 ]
 
 [[package]]
@@ -1837,15 +1745,7 @@ name = "makepad-live-id"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-id-macros 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-live-id-macros"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-live-id-macros",
 ]
 
 [[package]]
@@ -1853,17 +1753,7 @@ name = "makepad-live-id-macros"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-live-tokenizer"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-math 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-micro-serde 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-micro-proc-macro",
 ]
 
 [[package]]
@@ -1871,17 +1761,9 @@ name = "makepad-live-tokenizer"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-math 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-micro-serde 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-markdown"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-live-id",
+ "makepad-math",
+ "makepad-micro-serde",
 ]
 
 [[package]]
@@ -1889,13 +1771,8 @@ name = "makepad-markdown"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-live-id",
 ]
-
-[[package]]
-name = "makepad-math"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
 
 [[package]]
 name = "makepad-math"
@@ -1905,37 +1782,15 @@ source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f3
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-
-[[package]]
-name = "makepad-micro-proc-macro"
-version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
-
-[[package]]
-name = "makepad-micro-serde"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-micro-serde-derive 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
-]
 
 [[package]]
 name = "makepad-micro-serde"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-id 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-micro-serde-derive 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-micro-serde-derive"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-live-id",
+ "makepad-micro-serde-derive",
 ]
 
 [[package]]
@@ -1943,41 +1798,13 @@ name = "makepad-micro-serde-derive"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-micro-proc-macro 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-micro-proc-macro",
 ]
-
-[[package]]
-name = "makepad-objc-sys"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
 
 [[package]]
 name = "makepad-objc-sys"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
-
-[[package]]
-name = "makepad-platform"
-version = "0.6.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "hilog-sys",
- "makepad-android-state",
- "makepad-futures 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-futures-legacy 0.7.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-http 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-jni-sys",
- "makepad-objc-sys 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-shader-compiler 0.5.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-wasm-bridge 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "napi-derive-ohos",
- "napi-ohos",
- "ohos-sys",
- "smallvec",
- "windows 0.56.0",
- "windows-core 0.56.0",
- "windows-targets 0.48.5",
-]
 
 [[package]]
 name = "makepad-platform"
@@ -1987,13 +1814,13 @@ dependencies = [
  "bitflags 2.6.0",
  "hilog-sys",
  "makepad-android-state",
- "makepad-futures 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-futures-legacy 0.7.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-http 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-futures",
+ "makepad-futures-legacy",
+ "makepad-http",
  "makepad-jni-sys",
- "makepad-objc-sys 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-shader-compiler 0.5.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-wasm-bridge 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-objc-sys",
+ "makepad-shader-compiler",
+ "makepad-wasm-bridge",
  "napi-derive-ohos",
  "napi-ohos",
  "ohos-sys",
@@ -2006,27 +1833,12 @@ dependencies = [
 [[package]]
 name = "makepad-rustybuzz"
 version = "0.8.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "bitflags 1.3.2",
- "bytemuck",
- "smallvec",
- "ttf-parser 0.21.1 (git+https://github.com/noxware/makepad?branch=moly)",
- "unicode-bidi-mirroring",
- "unicode-ccc",
- "unicode-properties",
- "unicode-script",
-]
-
-[[package]]
-name = "makepad-rustybuzz"
-version = "0.8.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
  "bitflags 1.3.2",
  "bytemuck",
  "smallvec",
- "ttf-parser 0.21.1 (git+https://github.com/makepad/makepad?branch=rik)",
+ "ttf-parser",
  "unicode-bidi-mirroring",
  "unicode-ccc",
  "unicode-properties",
@@ -2036,26 +1848,9 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "0.5.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-live-compiler 0.5.0 (git+https://github.com/noxware/makepad?branch=moly)",
-]
-
-[[package]]
-name = "makepad-shader-compiler"
-version = "0.5.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-live-compiler 0.5.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-vector"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "resvg",
- "ttf-parser 0.21.1 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-live-compiler",
 ]
 
 [[package]]
@@ -2064,16 +1859,7 @@ version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
  "resvg",
- "ttf-parser 0.21.1 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-wasm-bridge"
-version = "0.4.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-derive-wasm-bridge 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-live-id 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "ttf-parser",
 ]
 
 [[package]]
@@ -2081,22 +1867,8 @@ name = "makepad-wasm-bridge"
 version = "0.4.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-derive-wasm-bridge 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-live-id 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
-]
-
-[[package]]
-name = "makepad-widgets"
-version = "0.6.0"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "makepad-derive-widget 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-draw 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-html 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-markdown 0.4.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-zune-png 0.4.10 (git+https://github.com/noxware/makepad?branch=moly)",
- "unicode-segmentation",
- "zune-jpeg",
+ "makepad-derive-wasm-bridge",
+ "makepad-live-id",
 ]
 
 [[package]]
@@ -2104,22 +1876,13 @@ name = "makepad-widgets"
 version = "0.6.0"
 source = "git+https://github.com/makepad/makepad?branch=rik#e5e5e5bbc3e13ab715f307fc11c053ea89f9c7f3"
 dependencies = [
- "makepad-derive-widget 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-draw 0.6.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-html 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-markdown 0.4.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-zune-png 0.4.10 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-derive-widget",
+ "makepad-draw",
+ "makepad-html",
+ "makepad-markdown",
+ "makepad-zune-png",
  "unicode-segmentation",
  "zune-jpeg",
-]
-
-[[package]]
-name = "makepad-zune-png"
-version = "0.4.10"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
-dependencies = [
- "zune-core",
- "zune-inflate",
 ]
 
 [[package]]
@@ -2197,8 +1960,8 @@ dependencies = [
  "chrono",
  "directories",
  "lipsum",
- "makepad-code-editor 0.6.0 (git+https://github.com/makepad/makepad?branch=rik)",
- "makepad-widgets 0.6.0 (git+https://github.com/makepad/makepad?branch=rik)",
+ "makepad-code-editor",
+ "makepad-widgets",
  "moly-backend",
  "moly-fake-backend",
  "moly-mofa",
@@ -2247,7 +2010,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "futures-core",
- "makepad-widgets 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-widgets",
  "moly-widgets",
  "reqwest 0.12.12",
  "serde",
@@ -2292,8 +2055,8 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "futures",
- "makepad-code-editor 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
- "makepad-widgets 0.6.0 (git+https://github.com/noxware/makepad?branch=moly)",
+ "makepad-code-editor",
+ "makepad-widgets",
  "reqwest 0.12.12",
  "serde",
  "serde_json",
@@ -3745,11 +3508,6 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "ttf-parser"
-version = "0.21.1"
-source = "git+https://github.com/noxware/makepad?branch=moly#9bc12ae3497cd353350f6834d3bcbb81f01c47ed"
 
 [[package]]
 name = "ttf-parser"

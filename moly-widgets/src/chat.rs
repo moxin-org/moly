@@ -252,7 +252,7 @@ impl Chat {
         let prompt = self.prompt_input_ref();
 
         let text = prompt.text();
-        prompt.borrow_mut().unwrap().reset(); // from command text input
+        prompt.borrow_mut().unwrap().reset(cx); // from command text input
 
         // TODO: Less aggresive error handling for users.
         let bot_id = self.bot_id.clone().expect("no bot selected");
