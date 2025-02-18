@@ -1,6 +1,11 @@
 use std::cell::{Ref, RefMut};
 
-use crate::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt, protocol::*};
+use crate::{
+    avatar::AvatarWidgetRefExt,
+    message_loading::MessageLoadingWidgetRefExt,
+    protocol::*,
+    utils::{events::EventExt, portal_list::ItemsRangeIter},
+};
 use makepad_widgets::*;
 
 // use crate::chat::shared::ChatAgentAvatarWidgetRefExt;
@@ -72,7 +77,7 @@ live_design! {
         height: Fit,
         sender = <Sender> {}
         bubble = <Bubble> {}
-        actions = <Actions> {}
+        actions = <Actions> { visible: false }
         edit_actions = <EditActions> { visible: false }
     }
 
@@ -143,20 +148,36 @@ live_design! {
     }
 }
 
+/// Glue to use as `action_data` for the messages list.
+///
+/// By attaching this to an action of an item in the portal list, we can know
+/// the origin-widget of the action, without needing to enumarate each item or
+/// checking specific sub-ids inside the items.
 #[derive(Debug, PartialEq)]
-struct MessageActionData {
+struct ActionData {
     index: usize,
-    kind: MessageActionKind,
+    kind: ActionDataKind,
 }
 
-/// Glue to use as `action_data` for the messages list.
+/// Identifies the origin-widget kind of the action.
 #[derive(Debug, PartialEq)]
-enum MessageActionKind {
+enum ActionDataKind {
+    /// The action came from the `Copy` button.
     Copy,
+
+    /// Came from the `Edit` button.
     Edit,
+
+    /// Came from the `Delete` button.
     Delete,
+
+    /// Came from the `Save & Regenerate` button.
     EditRegenerate,
+
+    /// Came from the `Save` button.
     EditSave,
+
+    /// Came from the `Cancel` button.
     EditCancel,
 }
 
@@ -186,25 +207,32 @@ pub struct Messages {
 
     #[rust]
     is_list_end_drawn: bool,
+
+    /// Keep track of the drawn items in the [[PortalList]] to be abale to retrive
+    /// the visible items anytime.
+    ///
+    /// The method [[PortalList::visible_items]] just returns a count/length.
+    #[rust]
+    visible_range: Option<(usize, usize)>,
+
+    #[rust]
+    hovered_index: Option<usize>,
 }
 
 impl Widget for Messages {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-
-        let Event::Actions(actions) = event else {
-            return;
-        };
+        self.handle_items(cx, event);
 
         let jump_to_bottom = self.button(id!(jump_to_bottom));
 
-        if jump_to_bottom.clicked(actions) {
+        if jump_to_bottom.clicked(event.actions()) {
             self.scroll_to_bottom();
             self.redraw(cx);
         }
 
         let list_uid = self.portal_list(id!(list)).widget_uid();
-        for action in actions {
+        for action in event.actions() {
             let Some(action) = action.as_widget_action() else {
                 continue;
             };
@@ -221,23 +249,23 @@ impl Widget for Messages {
                 continue;
             };
 
-            let Some(data) = data.downcast_ref::<MessageActionData>() else {
+            let Some(data) = data.downcast_ref::<ActionData>() else {
                 continue;
             };
 
             if let ButtonAction::Clicked(_) = action.cast::<ButtonAction>() {
                 log!("{:?}", &data);
                 let action = match data.kind {
-                    MessageActionKind::Copy => MessagesAction::Copy(data.index),
-                    MessageActionKind::Delete => MessagesAction::Delete(data.index),
-                    MessageActionKind::EditRegenerate => MessagesAction::EditRegenerate(data.index),
-                    MessageActionKind::EditSave => MessagesAction::EditSave(data.index),
-                    MessageActionKind::Edit => {
+                    ActionDataKind::Copy => MessagesAction::Copy(data.index),
+                    ActionDataKind::Delete => MessagesAction::Delete(data.index),
+                    ActionDataKind::EditRegenerate => MessagesAction::EditRegenerate(data.index),
+                    ActionDataKind::EditSave => MessagesAction::EditSave(data.index),
+                    ActionDataKind::Edit => {
                         self.set_message_editor_visibility(data.index, true);
                         self.redraw(cx);
                         MessagesAction::None
                     }
-                    MessageActionKind::EditCancel => {
+                    ActionDataKind::EditCancel => {
                         self.set_message_editor_visibility(data.index, false);
                         self.redraw(cx);
                         MessagesAction::None
@@ -265,6 +293,7 @@ impl Widget for Messages {
 impl Messages {
     fn draw_list(&mut self, cx: &mut Cx2d, list: PortalListRef) {
         self.is_list_end_drawn = false;
+        self.visible_range = None;
 
         // Trick to render one more item representing the end of the chat without
         // risking a manual math bug. Removed immediately after rendering the items.
@@ -281,6 +310,12 @@ impl Messages {
         while let Some(index) = list.next_visible_item(cx) {
             if index >= self.messages.len() {
                 continue;
+            }
+
+            if let Some((_start, end)) = &mut self.visible_range {
+                *end = (*end).max(index);
+            } else {
+                self.visible_range = Some((index, index));
             }
 
             let message = &self.messages[index];
@@ -304,7 +339,7 @@ impl Messages {
                     item.label(id!(text.label)).set_text(cx, &message.body);
 
                     connect_action_data(index, &item);
-                    apply_actions_and_editor_visibility(cx, &item, index, self.current_editor);
+                    self.apply_actions_and_editor_visibility(cx, &item, index);
 
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -344,7 +379,7 @@ impl Messages {
                     item.label(id!(name)).set_text(cx, name);
 
                     connect_action_data(index, &item);
-                    apply_actions_and_editor_visibility(cx, &item, index, self.current_editor);
+                    self.apply_actions_and_editor_visibility(cx, &item, index);
 
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -403,6 +438,47 @@ impl Messages {
             .and_then(|index| self.portal_list(id!(list)).get_item(index))
             .map(|(_id, widget)| widget.text_input(id!(input)).text())
     }
+
+    fn handle_items(&mut self, cx: &mut Cx, event: &Event) {
+        if let Event::MouseMove(event) = event {
+            if let Some(range) = self.visible_range {
+                let list = self.portal_list(id!(list));
+                let range = range.0..=range.1;
+
+                for (index, widget) in ItemsRangeIter::new(list, range) {
+                    // log!("{}", index);
+                    if widget.area().rect(cx).contains(event.abs) {
+                        self.hovered_index = Some(index);
+                    }
+                }
+            }
+
+            // TODO: Optimize later. The only reason to do the apply here
+            // instead of doing it in the draw flow is to get the rect of
+            // the widget, but maybe there is another way.
+            self.redraw(cx);
+        }
+    }
+
+    fn apply_actions_and_editor_visibility(
+        &mut self,
+        cx: &mut Cx,
+        widget: &WidgetRef,
+        index: usize,
+    ) {
+        let editor = widget.view(id!(editor));
+        let actions = widget.view(id!(actions));
+        let edit_actions = widget.view(id!(edit_actions));
+        let text = widget.view(id!(text));
+
+        let is_hovered = self.hovered_index == Some(index);
+        let is_current_editor = self.current_editor == Some(index);
+
+        edit_actions.set_visible(cx, is_current_editor);
+        editor.set_visible(cx, is_current_editor);
+        actions.set_visible(cx, !is_current_editor && is_hovered);
+        text.set_visible(cx, !is_current_editor);
+    }
 }
 
 impl MessagesRef {
@@ -417,36 +493,17 @@ impl MessagesRef {
 
 fn connect_action_data(index: usize, widget: &WidgetRef) {
     [
-        (id!(copy), MessageActionKind::Copy),
-        (id!(delete), MessageActionKind::Delete),
-        (id!(regenerate), MessageActionKind::EditRegenerate),
-        (id!(save), MessageActionKind::EditSave),
-        (id!(edit), MessageActionKind::Edit),
-        (id!(cancel), MessageActionKind::EditCancel),
+        (id!(copy), ActionDataKind::Copy),
+        (id!(delete), ActionDataKind::Delete),
+        (id!(regenerate), ActionDataKind::EditRegenerate),
+        (id!(save), ActionDataKind::EditSave),
+        (id!(edit), ActionDataKind::Edit),
+        (id!(cancel), ActionDataKind::EditCancel),
     ]
     .into_iter()
     .for_each(|(id, kind)| {
         widget
             .button(id)
-            .set_action_data(MessageActionData { index, kind });
+            .set_action_data(ActionData { index, kind });
     });
-}
-
-fn apply_actions_and_editor_visibility(
-    cx: &mut Cx,
-    widget: &WidgetRef,
-    index: usize,
-    current_editor: Option<usize>,
-) {
-    let editor = widget.view(id!(editor));
-    let actions = widget.view(id!(actions));
-    let edit_actions = widget.view(id!(edit_actions));
-    let text = widget.view(id!(text));
-
-    let is_current_editor = current_editor == Some(index);
-
-    edit_actions.set_visible(cx, is_current_editor);
-    editor.set_visible(cx, is_current_editor);
-    actions.set_visible(cx, !is_current_editor);
-    text.set_visible(cx, !is_current_editor);
 }
