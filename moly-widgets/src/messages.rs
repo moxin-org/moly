@@ -8,16 +8,7 @@ use crate::{
 };
 use makepad_widgets::*;
 
-// use crate::chat::shared::ChatAgentAvatarWidgetRefExt;
-
 live_design! {
-    // import makepad_widgets::base::*;
-    // import makepad_widgets::theme_desktop_dark::*;
-    // import crate::shared::styles::*;
-    // import crate::chat::chat_line_loading::ChatLineLoading;
-    // import crate::chat::shared::ChatAgentAvatar;
-    // import crate::battle::agent_markdown::AgentMarkdown;
-
     use link::theme::*;
     use link::widgets::*;
 
@@ -148,39 +139,6 @@ live_design! {
     }
 }
 
-/// Glue to use as `action_data` for the messages list.
-///
-/// By attaching this to an action of an item in the portal list, we can know
-/// the origin-widget of the action, without needing to enumarate each item or
-/// checking specific sub-ids inside the items.
-#[derive(Debug, PartialEq)]
-struct ActionData {
-    index: usize,
-    kind: ActionDataKind,
-}
-
-/// Identifies the origin-widget kind of the action.
-#[derive(Debug, PartialEq)]
-enum ActionDataKind {
-    /// The action came from the `Copy` button.
-    Copy,
-
-    /// Came from the `Edit` button.
-    Edit,
-
-    /// Came from the `Delete` button.
-    Delete,
-
-    /// Came from the `Save & Regenerate` button.
-    EditRegenerate,
-
-    /// Came from the `Save` button.
-    EditSave,
-
-    /// Came from the `Cancel` button.
-    EditCancel,
-}
-
 /// Relevant actions that should be handled by a parent.
 #[derive(Debug, PartialEq, Copy, Clone, DefaultNone)]
 pub enum MessagesAction {
@@ -222,58 +180,13 @@ pub struct Messages {
 impl Widget for Messages {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.handle_items(cx, event);
+        self.handle_list(cx, event, scope);
 
         let jump_to_bottom = self.button(id!(jump_to_bottom));
 
         if jump_to_bottom.clicked(event.actions()) {
             self.scroll_to_bottom();
             self.redraw(cx);
-        }
-
-        let list_uid = self.portal_list(id!(list)).widget_uid();
-        for action in event.actions() {
-            let Some(action) = action.as_widget_action() else {
-                continue;
-            };
-
-            let Some(group) = &action.group else {
-                continue;
-            };
-
-            if group.group_uid != list_uid {
-                continue;
-            }
-
-            let Some(data) = &action.data else {
-                continue;
-            };
-
-            let Some(data) = data.downcast_ref::<ActionData>() else {
-                continue;
-            };
-
-            if let ButtonAction::Clicked(_) = action.cast::<ButtonAction>() {
-                log!("{:?}", &data);
-                let action = match data.kind {
-                    ActionDataKind::Copy => MessagesAction::Copy(data.index),
-                    ActionDataKind::Delete => MessagesAction::Delete(data.index),
-                    ActionDataKind::EditRegenerate => MessagesAction::EditRegenerate(data.index),
-                    ActionDataKind::EditSave => MessagesAction::EditSave(data.index),
-                    ActionDataKind::Edit => {
-                        self.set_message_editor_visibility(data.index, true);
-                        self.redraw(cx);
-                        MessagesAction::None
-                    }
-                    ActionDataKind::EditCancel => {
-                        self.set_message_editor_visibility(data.index, false);
-                        self.redraw(cx);
-                        MessagesAction::None
-                    }
-                };
-
-                cx.widget_action(self.widget_uid(), &scope.path, action);
-            }
         }
     }
 
@@ -337,10 +250,7 @@ impl Messages {
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
                     item.label(id!(text.label)).set_text(cx, &message.body);
-
-                    connect_action_data(index, &item);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
-
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
@@ -378,7 +288,6 @@ impl Messages {
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);
 
-                    connect_action_data(index, &item);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
 
                     item.draw_all(cx, &mut Scope::empty());
@@ -439,24 +348,61 @@ impl Messages {
             .map(|(_id, widget)| widget.text_input(id!(input)).text())
     }
 
-    fn handle_items(&mut self, cx: &mut Cx, event: &Event) {
-        if let Event::MouseMove(event) = event {
-            if let Some(range) = self.visible_range {
-                let list = self.portal_list(id!(list));
-                let range = range.0..=range.1;
+    fn handle_list(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let Some(range) = self.visible_range else {
+            return;
+        };
 
-                for (index, widget) in ItemsRangeIter::new(list, range) {
-                    // log!("{}", index);
-                    if widget.area().rect(cx).contains(event.abs) {
-                        self.hovered_index = Some(index);
-                    }
+        let list = self.portal_list(id!(list));
+        let range = range.0..=range.1;
+
+        for (index, item) in ItemsRangeIter::new(list, range) {
+            if let Event::MouseMove(event) = event {
+                if item.area().rect(cx).contains(event.abs) {
+                    self.hovered_index = Some(index);
+                    item.redraw(cx);
                 }
             }
 
-            // TODO: Optimize later. The only reason to do the apply here
-            // instead of doing it in the draw flow is to get the rect of
-            // the widget, but maybe there is another way.
-            self.redraw(cx);
+            let actions = event.actions();
+
+            if item.button(id!(copy)).clicked(actions) {
+                cx.widget_action(self.widget_uid(), &scope.path, MessagesAction::Copy(index));
+            }
+
+            if item.button(id!(delete)).clicked(actions) {
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::Delete(index),
+                );
+            }
+
+            if item.button(id!(edit)).clicked(actions) {
+                self.set_message_editor_visibility(index, true);
+                self.redraw(cx);
+            }
+
+            if item.button(id!(cancel)).clicked(actions) {
+                self.set_message_editor_visibility(index, false);
+                self.redraw(cx);
+            }
+
+            if item.button(id!(save)).clicked(actions) {
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::EditSave(index),
+                );
+            }
+
+            if item.button(id!(regenerate)).clicked(actions) {
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::EditRegenerate(index),
+                );
+            }
         }
     }
 
@@ -489,21 +435,4 @@ impl MessagesRef {
     pub fn write(&mut self) -> RefMut<Messages> {
         self.borrow_mut().unwrap()
     }
-}
-
-fn connect_action_data(index: usize, widget: &WidgetRef) {
-    [
-        (id!(copy), ActionDataKind::Copy),
-        (id!(delete), ActionDataKind::Delete),
-        (id!(regenerate), ActionDataKind::EditRegenerate),
-        (id!(save), ActionDataKind::EditSave),
-        (id!(edit), ActionDataKind::Edit),
-        (id!(cancel), ActionDataKind::EditCancel),
-    ]
-    .into_iter()
-    .for_each(|(id, kind)| {
-        widget
-            .button(id)
-            .set_action_data(ActionData { index, kind });
-    });
 }
