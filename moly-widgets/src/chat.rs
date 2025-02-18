@@ -157,9 +157,11 @@ pub struct Chat {
 impl Widget for Chat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         // Pass down the bot repo if not the same.
-        if self.bot_repo != self.messages_ref().read().bot_repo {
-            self.messages_ref().write().bot_repo = self.bot_repo.clone();
-        }
+        self.messages_ref().write_with(|m| {
+            if m.bot_repo != self.bot_repo {
+                m.bot_repo = self.bot_repo.clone();
+            }
+        });
 
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
@@ -184,20 +186,6 @@ impl Chat {
         self.messages(id!(messages))
     }
 
-    /// Mutable access to the underlying [[Messages]].
-    pub fn with_messages_mut<R>(&mut self, f: impl FnOnce(&mut Messages) -> R) -> R {
-        let messages = self.messages_ref();
-        let mut messages = messages.borrow_mut().unwrap();
-        f(&mut *messages)
-    }
-
-    /// Immutable access to the underlying [[Messages]].
-    pub fn with_messages<R>(&self, f: impl FnOnce(&Messages) -> R) -> R {
-        let messages = self.messages_ref();
-        let messages = messages.borrow().unwrap();
-        f(&*messages)
-    }
-
     fn handle_prompt_input(&mut self, cx: &mut Cx, event: &Event) {
         if self.prompt_input_ref().read().submitted(event.actions()) {
             self.handle_submit(cx);
@@ -215,23 +203,21 @@ impl Chat {
             }
 
             match action.cast::<MessagesAction>() {
-                MessagesAction::Delete(idx) => {
-                    self.dispatch(cx, ChatTask::DeleteMessage(idx));
+                MessagesAction::Delete(index) => {
+                    self.dispatch(cx, ChatTask::DeleteMessage(index));
                 }
-                MessagesAction::Copy(idx) => {
-                    let text = self.messages_ref().read().messages[idx].body.clone();
-                    self.dispatch(cx, ChatTask::CopyMessage(idx, text));
+                MessagesAction::Copy(index) => {
+                    self.messages_ref().read_with(|m| {
+                        let text = m.messages[index].body.clone();
+                        self.dispatch(cx, ChatTask::CopyMessage(index, text));
+                    });
                 }
-                MessagesAction::EditSave(idx) => {
-                    let text = self
-                        .messages_ref()
-                        .read()
-                        .current_editor_text()
-                        .expect("no editor text");
-                    self.dispatch(cx, ChatTask::EditMessage(idx, text));
-                    self.messages_ref()
-                        .write()
-                        .set_message_editor_visibility(idx, false);
+                MessagesAction::EditSave(index) => {
+                    self.messages_ref().write_with(|m| {
+                        let text = m.current_editor_text().expect("no editor text");
+                        self.dispatch(cx, ChatTask::EditMessage(index, text));
+                        m.set_message_editor_visibility(index, false);
+                    });
                 }
                 _ => {}
             }
@@ -263,7 +249,7 @@ impl Chat {
             .expect("no bot repo provided")
             .clone();
 
-        let context: Vec<Message> = self.with_messages_mut(|messages| {
+        let context: Vec<Message> = self.messages_ref().write_with(|messages| {
             messages.bot_repo = Some(repo.clone());
 
             messages.messages.push(Message {
@@ -300,7 +286,7 @@ impl Chat {
                 let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());
 
                 ui.defer_with_redraw(move |me, _cx, _scope| {
-                    me.with_messages_mut(|messages| {
+                    me.messages_ref().write_with(|messages| {
                         messages
                             .messages
                             .last_mut()
@@ -316,7 +302,7 @@ impl Chat {
             }
 
             ui.defer_with_redraw(|me, _cx, _scope| {
-                me.with_messages_mut(|messages| {
+                me.messages_ref().write_with(|messages| {
                     messages
                         .messages
                         .last_mut()

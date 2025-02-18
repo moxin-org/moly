@@ -158,11 +158,31 @@ impl PromptInput {
 }
 
 impl PromptInputRef {
+    /// Immutable access to the underlying [[PromptInput]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn read(&self) -> Ref<PromptInput> {
         self.borrow().unwrap()
     }
 
+    /// Mutable access to the underlying [[PromptInput]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write(&mut self) -> RefMut<PromptInput> {
         self.borrow_mut().unwrap()
+    }
+
+    /// Immutable reader to the underlying [[PromptInput]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn read_with<R>(&self, f: impl FnOnce(&PromptInput) -> R) -> R {
+        f(&*self.read())
+    }
+
+    /// Mutable writer to the underlying [[PromptInput]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn write_with<R>(&mut self, f: impl FnOnce(&mut PromptInput) -> R) -> R {
+        f(&mut *self.write())
     }
 }

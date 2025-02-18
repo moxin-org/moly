@@ -428,11 +428,31 @@ impl Messages {
 }
 
 impl MessagesRef {
+    /// Immutable access to the underlying [[Messages]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn read(&self) -> Ref<Messages> {
         self.borrow().unwrap()
     }
 
+    /// Mutable access to the underlying [[Messages]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write(&mut self) -> RefMut<Messages> {
         self.borrow_mut().unwrap()
+    }
+
+    /// Immutable reader to the underlying [[Messages]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn read_with<R>(&self, f: impl FnOnce(&Messages) -> R) -> R {
+        f(&*self.read())
+    }
+
+    /// Mutable writer to the underlying [[Messages]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Messages) -> R) -> R {
+        f(&mut *self.write())
     }
 }
