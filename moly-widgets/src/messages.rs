@@ -312,11 +312,10 @@ impl Messages {
                         .expect("no bot client set")
                         .get_bot(id);
 
-                    let name = bot
+                    let (name, avatar) = bot
                         .as_ref()
-                        .map(|b| b.name.as_str())
-                        .unwrap_or("Unknown bot");
-                    let avatar = bot.as_ref().map(|b| b.avatar.clone());
+                        .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
+                        .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
 
                     let item = if message.is_writing && message.body.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
