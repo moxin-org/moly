@@ -5,8 +5,12 @@ use makepad_widgets::*;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::shaders::*;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
+        send_icon: dep("crate://self/assets/send.svg"),
+        stop_icon: dep("crate://self/assets/stop.svg"),
+
         persistent = {
             center = {
                 text_input = {
@@ -37,8 +41,32 @@ live_design! {
                 }
                 right = {
                     submit = <Button> {
-                        text: "Send / Stop",
-                        draw_text: { color: #000 },
+                        width: 28,
+                        height: 28,
+                        padding: {right: 2},
+                        margin: {bottom: 2},
+
+                        draw_icon: {
+                            color: #fff
+                        }
+
+                        draw_bg: {
+                            fn pixel(self) -> vec4 {
+                                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                                let center = self.rect_size * 0.5;
+                                let radius = min(self.rect_size.x, self.rect_size.y) * 0.5;
+
+                                sdf.circle(center.x, center.y, radius);
+                                sdf.fill_keep(#000);
+
+                                return sdf.result
+                            }
+                        }
+                        icon_walk: {
+                            width: 12,
+                            height: 12
+                            margin: {top: 0, left: -4},
+                        }
                     }
                 }
             }
@@ -92,23 +120,28 @@ impl Widget for PromptInput {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        // self.button(id!(submit)).apply_over(
-        //     cx,
-        //     live! {
-        //         draw_icon: {
-        //             svg_file: (self.send_icon),
-        //         }
-        //     },
-        // );
-
         let button = self.button(id!(submit));
 
         match self.task {
             Task::Send => {
-                button.set_text(cx, "Send");
+                button.apply_over(
+                    cx,
+                    live! {
+                        draw_icon: {
+                            svg_file: (self.send_icon),
+                        }
+                    },
+                );
             }
             Task::Stop => {
-                button.set_text(cx, "Stop");
+                button.apply_over(
+                    cx,
+                    live! {
+                        draw_icon: {
+                            svg_file: (self.stop_icon),
+                        }
+                    },
+                );
             }
         }
 

@@ -11,6 +11,7 @@ use makepad_widgets::*;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::shaders::*;
 
     use crate::message_markdown::*;
     use crate::message_loading::*;
@@ -40,11 +41,35 @@ live_design! {
         }
     }
 
+    ActionButton =  <Button> {
+        icon_walk: {width: 14, height: 14},
+        draw_icon: {
+            color: #BDBDBD,
+        }
+        draw_bg: {
+            fn pixel() -> vec4 {
+                return #0000
+            }
+        }
+    }
+
     Actions = <View> {
         height: Fit,
-        copy = <Button> { text: "copy", draw_text: {color: #000} }
-        edit = <Button> { text: "edit", draw_text: {color: #000} }
-        delete = <Button> { text: "delete", draw_text: {color: #000} }
+        copy = <ActionButton> {
+            draw_icon: {
+                svg_file: dep("crate://self/assets/copy.svg")
+            }
+        }
+        edit = <ActionButton> {
+            draw_icon: {
+                svg_file: dep("crate://self/assets/edit.svg")
+            }
+        }
+        delete = <ActionButton> {
+            draw_icon: {
+                svg_file: dep("crate://self/assets/delete.svg")
+            }
+        }
     }
 
     EditActions = <View> {
@@ -132,8 +157,28 @@ live_design! {
         <View> {
             align: {x: 1.0, y: 1.0},
             jump_to_bottom = <Button> {
-                text: "v"
-                draw_text: { color: #000 }
+                width: 34,
+                height: 34,
+                margin: 2,
+                padding: {bottom: 2},
+                icon_walk: {width: 12, height: 12}
+                draw_icon: {
+                    svg_file: dep("crate://self/assets/jump_to_bottom.svg")
+                    color: #1C1B1F,
+                }
+                draw_bg: {
+                    fn pixel(self) -> vec4 {
+                        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                        let center = self.rect_size * 0.5;
+                        let radius = min(self.rect_size.x, self.rect_size.y) * 0.5;
+
+                        sdf.circle(center.x, center.y, radius - 1.0);
+                        sdf.fill_keep(#fff);
+                        sdf.stroke(#EAECF0, 1.0);
+
+                        return sdf.result
+                    }
+                }
             }
         }
     }
