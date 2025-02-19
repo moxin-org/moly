@@ -248,6 +248,7 @@ impl BotClient for MolyClient {
 
                 let messages = completed_messages
                     .split(EVENT_TERMINATOR)
+                    .filter(|m| !m.starts_with(":"))
                     .map(|m| m.trim_start().split("data:").nth(1).unwrap())
                     .filter(|m| m.trim() != "[DONE]");
 
