@@ -34,7 +34,7 @@ live_design!(
         // }
 
         body = <View> {
-            chat_1 = <DemoChat> {}
+            // chat_1 = <DemoChat> {}
             chat_2 = <DemoChat> {}
         }
     }

@@ -20,6 +20,7 @@ live_design! {
     Sender = <View> {
         height: Fit,
         spacing: 8,
+        margin: {bottom: 14},
         align: {y: 0.5}
         avatar = <Avatar> {}
         name = <Label> {
@@ -34,7 +35,6 @@ live_design! {
     Bubble = <RoundedView> {
         height: Fit,
         padding: {left: 16, right: 18, top: 18, bottom: 14},
-        margin: {bottom: 16},
         show_bg: true,
         draw_bg: {
             radius: 12.0,
@@ -42,7 +42,10 @@ live_design! {
     }
 
     ActionButton =  <Button> {
+        width: 14
+        height: 14
         icon_walk: {width: 14, height: 14},
+        padding: 0,
         draw_icon: {
             color: #BDBDBD,
         }
@@ -54,7 +57,8 @@ live_design! {
     }
 
     Actions = <View> {
-        height: Fit,
+        align: {y: 0.5},
+        spacing: 6,
         copy = <ActionButton> {
             draw_icon: {
                 svg_file: dep("crate://self/assets/copy.svg")
@@ -73,7 +77,7 @@ live_design! {
     }
 
     EditActions = <View> {
-        height: Fit,
+        align: {y: 0.5},
         save = <Button> { text: "save", draw_text: {color: #000} }
         save_and_regenerate = <Button> { text: "save and regenerate", draw_text: {color: #000} }
         cancel = <Button> { text: "cancel", draw_text: {color: #000} }
@@ -82,6 +86,8 @@ live_design! {
     Editor = <View> {
         height: Fit,
         input = <TextInput> {
+            width: Fill,
+            empty_message: "\n",
             draw_text: {
                 color: #000
             }
@@ -93,8 +99,13 @@ live_design! {
         height: Fit,
         sender = <Sender> {}
         bubble = <Bubble> {}
-        actions = <Actions> { visible: false }
-        edit_actions = <EditActions> { visible: false }
+        actions_section = <View> {
+            width: Fill,
+            margin: {top: 8, bottom: 8},
+            height: 16,
+            actions = <Actions> { visible: false }
+            edit_actions = <EditActions> { visible: false }
+        }
     }
 
     UserLine = <ChatLine> {
@@ -115,18 +126,25 @@ live_design! {
             }
             editor = <Editor> { visible: false }
         }
+        actions_section = {
+            margin: {left: 100}
+        }
     }
 
     BotLine = <ChatLine> {
         flow: Down,
         height: Fit,
         bubble = <Bubble> {
-            margin: {left: 16}
+            padding: {left: 0, top: 0, bottom: 0},
+            margin: {left: 32}
             text = <View> {
                 height: Fit,
                 markdown = <MessageMarkdown> {}
             }
             editor = <Editor> { visible: false }
+        }
+        actions_section = {
+            margin: {left: 32}
         }
     }
 

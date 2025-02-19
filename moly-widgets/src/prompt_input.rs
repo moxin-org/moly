@@ -12,9 +12,16 @@ live_design! {
         stop_icon: dep("crate://self/assets/stop.svg"),
 
         persistent = {
+            padding: {top: 8, bottom: 6, left: 4, right: 10}
+            draw_bg: {
+                color: #fff,
+                radius: 10.0,
+                border_color: #D0D5DD,
+                border_width: 1.0,
+            }
             center = {
                 text_input = {
-                    empty_message: "Prompt...",
+                    empty_message: "Start typing",
                     draw_bg: {
                         fn pixel(self) -> vec4 {
                             return vec4(0.);
