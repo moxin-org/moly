@@ -34,16 +34,21 @@ impl Widget for DemoChat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.ui_runner().handle(cx, event, scope, self);
 
-        self.chat(id!(chat))
-            .borrow_mut()
-            .unwrap()
-            .hook(event)
-            .write(|hook| match hook.task_mut() {
-                ChatTask::CopyMessage(_index, text) => {
-                    *text = text.to_uppercase();
+        self.chat(id!(chat)).read_with(|chat| {
+            chat.hook(event).write(|hook| {
+                if let ChatTask::CopyMessage(index) = hook.task() {
+                    let index = *index;
+                    hook.abort();
+
+                    let text = chat.messages_ref().read_with(|messages| {
+                        let text = messages.messages[index].body.as_str();
+                        format!("You copied the following text from Moly (mini): {}", text)
+                    });
+
+                    cx.copy_to_clipboard(&text);
                 }
-                _ => (),
             });
+        });
 
         self.deref.handle_event(cx, event, scope);
 

@@ -1,5 +1,6 @@
 use futures::{stream::AbortHandle, StreamExt};
 use makepad_widgets::*;
+use std::cell::{Ref, RefMut};
 use std::sync::RwLock;
 use utils::asynchronous::spawn;
 
@@ -64,11 +65,35 @@ impl ChatHook {
 /// See [Chat::tasks] and [Chat::hook] for more information.
 #[derive(Debug)]
 pub enum ChatTask {
-    Send(String),
+    /// Sending the current chat for completition.
+    Send,
+
+    /// Stoping the current completition.
     Stop,
-    CopyMessage(usize, String),
+
+    /// Copying the message at the given index to the clipboard.
+    CopyMessage(usize),
+
+    /// Rewriting the message history.
+    SetMessages(Vec<Message>),
+
+    /// Inserting a new message at the given index.
+    InsertMessage(usize, EntityId, String),
+
+    /// Deleting the message at the given index.
     DeleteMessage(usize),
-    EditMessage(usize, String),
+
+    /// Editing the message at the given index with the given text.
+    UpdateMessage(usize, String),
+
+    /// A task that is not it's own but a sequence of other tasks.
+    ///
+    /// Ex: "Edit & Regenerate" button is actually deleting part of the chat history,
+    /// editing the message, and sending the chat history again.
+    ///
+    /// Ex: "Send" on its own only sends the current chat history. It's composed with
+    /// an insert to send a new message.
+    Compose(Vec<ChatTask>),
 }
 
 /// An intermidiate type that can read [ChatTask] from an [Event].
@@ -207,19 +232,32 @@ impl Chat {
                     self.dispatch(cx, ChatTask::DeleteMessage(index));
                 }
                 MessagesAction::Copy(index) => {
-                    self.messages_ref().read_with(|m| {
-                        let text = m.messages[index].body.clone();
-                        self.dispatch(cx, ChatTask::CopyMessage(index, text));
-                    });
+                    self.dispatch(cx, ChatTask::CopyMessage(index));
                 }
                 MessagesAction::EditSave(index) => {
-                    self.messages_ref().write_with(|m| {
+                    self.messages_ref().read_with(|m| {
                         let text = m.current_editor_text().expect("no editor text");
-                        self.dispatch(cx, ChatTask::EditMessage(index, text));
-                        m.set_message_editor_visibility(index, false);
+                        self.dispatch(cx, ChatTask::UpdateMessage(index, text));
                     });
                 }
-                _ => {}
+                MessagesAction::EditRegenerate(index) => {
+                    self.messages_ref().read_with(|m| {
+                        let mut messages = m.messages[0..=index].to_vec();
+
+                        let index = m.current_editor_index().expect("no editor index");
+                        let text = m.current_editor_text().expect("no editor text");
+
+                        messages[index].body = text;
+                        self.dispatch(
+                            cx,
+                            ChatTask::Compose(vec![
+                                ChatTask::SetMessages(messages),
+                                ChatTask::Send,
+                            ]),
+                        );
+                    });
+                }
+                MessagesAction::None => {}
             }
         }
     }
@@ -228,17 +266,28 @@ impl Chat {
         let prompt = self.prompt_input_ref();
 
         if prompt.read().has_send_task() {
-            self.perform_send(cx);
+            let next_index = self.messages_ref().read().messages.len();
+            let text = prompt.text();
+            let mut composition = Vec::new();
+
+            if !text.is_empty() {
+                composition.push(ChatTask::InsertMessage(
+                    next_index,
+                    EntityId::User,
+                    text.clone(),
+                ));
+            }
+
+            composition.push(ChatTask::Send);
+
+            self.dispatch(cx, ChatTask::Compose(composition));
         } else if prompt.read().has_stop_task() {
             self.dispatch(cx, ChatTask::Stop);
         }
     }
 
     fn perform_send(&mut self, cx: &mut Cx) {
-        let prompt = self.prompt_input_ref();
-
-        let text = prompt.text();
-        prompt.borrow_mut().unwrap().reset(cx); // from command text input
+        self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
 
         // TODO: Less aggresive error handling for users.
         let bot_id = self.bot_id.clone().expect("no bot selected");
@@ -251,12 +300,6 @@ impl Chat {
 
         let context: Vec<Message> = self.messages_ref().write_with(|messages| {
             messages.bot_repo = Some(repo.clone());
-
-            messages.messages.push(Message {
-                from: EntityId::User,
-                body: text.clone(),
-                is_writing: false,
-            });
 
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
@@ -350,23 +393,73 @@ impl Chat {
     }
 
     fn handle_tasks(&mut self, cx: &mut Cx, event: &Event) {
-        self.tasks(event).read(|task| match task {
-            ChatTask::CopyMessage(_index, message) => {
-                cx.copy_to_clipboard(message);
+        self.hook(event).write(|hook| {
+            hook.executed = true;
+            if let Some(task) = hook.task.as_mut() {
+                match task {
+                    ChatTask::Compose(tasks) => {
+                        for task in tasks {
+                            self.handle_primitive_task(cx, task);
+                        }
+                    }
+                    task => self.handle_primitive_task(cx, task),
+                }
+            }
+        });
+    }
+
+    fn handle_primitive_task(&mut self, cx: &mut Cx, task: &ChatTask) {
+        match task {
+            ChatTask::CopyMessage(index) => {
+                self.messages_ref().read_with(|m| {
+                    let text = m.messages[*index].body.as_str();
+                    cx.copy_to_clipboard(text);
+                });
             }
             ChatTask::DeleteMessage(index) => {
                 self.messages_ref().write().messages.remove(*index);
                 self.redraw(cx);
             }
+            ChatTask::InsertMessage(index, entity, text) => {
+                self.messages_ref().write().messages.insert(
+                    *index,
+                    Message {
+                        from: entity.clone(),
+                        body: text.clone(),
+                        is_writing: false,
+                    },
+                );
+                self.redraw(cx);
+            }
+            ChatTask::Send => {
+                self.perform_send(cx);
+            }
             ChatTask::Stop => {
                 self.perform_stop(cx);
             }
-            ChatTask::EditMessage(index, message) => {
-                self.messages_ref().write().messages[*index].body = message.clone();
+            ChatTask::UpdateMessage(index, text) => {
+                self.messages_ref().write_with(|m| {
+                    m.messages[*index].body = text.clone();
+                    m.set_message_editor_visibility(*index, false);
+                });
+
                 self.redraw(cx);
             }
-            _ => {}
-        });
+            ChatTask::SetMessages(messages) => {
+                self.messages_ref().write_with(|m| {
+                    m.messages = messages.clone();
+
+                    if let Some(index) = m.current_editor_index() {
+                        m.set_message_editor_visibility(index, false);
+                    }
+                });
+
+                self.redraw(cx);
+            }
+            ChatTask::Compose(_) => {
+                panic!("Developer error: Compose tasks should have been expanded before being handled.");
+            }
+        }
     }
 }
 
@@ -379,4 +472,34 @@ fn chat_actions<'e>(
         .iter()
         .filter_map(|a| a.downcast_ref::<ChatAction>())
         .filter(move |a| a.widget_uid == widget_uid)
+}
+
+impl ChatRef {
+    /// Immutable access to the underlying [[Chat]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn read(&self) -> Ref<Chat> {
+        self.borrow().unwrap()
+    }
+
+    /// Mutable access to the underlying [[Chat]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn write(&mut self) -> RefMut<Chat> {
+        self.borrow_mut().unwrap()
+    }
+
+    /// Immutable reader to the underlying [[Chat]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn read_with<R>(&self, f: impl FnOnce(&Chat) -> R) -> R {
+        f(&*self.read())
+    }
+
+    /// Mutable writer to the underlying [[Chat]].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Chat) -> R) -> R {
+        f(&mut *self.write())
+    }
 }

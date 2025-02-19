@@ -357,6 +357,11 @@ impl Messages {
             .map(|(_id, widget)| widget.text_input(id!(input)).text())
     }
 
+    /// If currently editing a message, this will return the index of the message.
+    pub fn current_editor_index(&self) -> Option<usize> {
+        self.current_editor.as_ref().map(|e| e.index)
+    }
+
     fn handle_list(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let Some(range) = self.visible_range else {
             return;
@@ -405,7 +410,7 @@ impl Messages {
                 );
             }
 
-            if item.button(id!(regenerate)).clicked(actions) {
+            if item.button(id!(save_and_regenerate)).clicked(actions) {
                 cx.widget_action(
                     self.widget_uid(),
                     &scope.path,
