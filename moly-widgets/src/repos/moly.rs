@@ -160,6 +160,7 @@ impl BotClient for MolyClient {
                 .map(|m| Bot {
                     id: BotId::from(m.id.as_str()),
                     name: m.id.clone(),
+                    // TODO: Handle this char as a grapheme.
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
                 })
                 .collect();
