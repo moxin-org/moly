@@ -86,7 +86,7 @@ pub enum ChatTask {
     /// Editing the message at the given index with the given text.
     UpdateMessage(usize, String),
 
-    /// A task that is not it's own but a sequence of other tasks.
+    /// A task that is not its own but a sequence of other tasks.
     ///
     /// Ex: "Edit & Regenerate" button is actually deleting part of the chat history,
     /// editing the message, and sending the chat history again.
@@ -364,6 +364,14 @@ impl Chat {
             ui.defer_with_redraw(|me, _cx, _scope| {
                 me.abort_handle = None;
                 me.prompt_input_ref().write().set_send();
+                me.messages_ref().write().messages.retain_mut(|m| {
+                    if m.is_writing {
+                        m.is_writing = false;
+                        !m.body.is_empty()
+                    } else {
+                        true
+                    }
+                });
             });
         });
     }
