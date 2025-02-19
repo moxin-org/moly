@@ -372,7 +372,10 @@ impl Chat {
         self.abort_handle.take().map(|handle| handle.abort());
     }
 
-    fn dispatch(&self, cx: &mut Cx, task: ChatTask) {
+    /// Dispatch a task to be executed by the [Chat] widget.
+    ///
+    /// You can still hook into the task before it's executed for real, see [Chat::hook].
+    pub fn dispatch(&self, cx: &mut Cx, task: ChatTask) {
         let action = ChatAction {
             hook: RwLock::new(ChatHook {
                 executed: false,
