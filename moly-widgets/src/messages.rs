@@ -149,6 +149,13 @@ pub enum MessagesAction {
     None,
 }
 
+#[derive(Debug)]
+/// Represents the current open editor for a message.
+struct Editor {
+    index: usize,
+    buffer: String,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct Messages {
     #[deref]
@@ -161,7 +168,7 @@ pub struct Messages {
     pub bot_repo: Option<BotRepo>,
 
     #[rust]
-    current_editor: Option<usize>,
+    current_editor: Option<Editor>,
 
     #[rust]
     is_list_end_drawn: bool,
@@ -335,8 +342,9 @@ impl Messages {
         }
 
         if visible {
-            self.current_editor = Some(index);
-        } else if self.current_editor == Some(index) {
+            let buffer = self.messages[index].body.clone();
+            self.current_editor = Some(Editor { index, buffer });
+        } else if self.current_editor.as_ref().map(|e| e.index) == Some(index) {
             self.current_editor = None;
         }
     }
@@ -344,7 +352,8 @@ impl Messages {
     /// If currently editing a message, this will return the text in it's editor.
     pub fn current_editor_text(&self) -> Option<String> {
         self.current_editor
-            .and_then(|index| self.portal_list(id!(list)).get_item(index))
+            .as_ref()
+            .and_then(|editor| self.portal_list(id!(list)).get_item(editor.index))
             .map(|(_id, widget)| widget.text_input(id!(input)).text())
     }
 
@@ -403,6 +412,10 @@ impl Messages {
                     MessagesAction::EditRegenerate(index),
                 );
             }
+
+            if let Some(change) = item.text_input(id!(input)).changed(actions) {
+                self.current_editor.as_mut().unwrap().buffer = change;
+            }
         }
     }
 
@@ -418,12 +431,18 @@ impl Messages {
         let text = widget.view(id!(text));
 
         let is_hovered = self.hovered_index == Some(index);
-        let is_current_editor = self.current_editor == Some(index);
+        let is_current_editor = self.current_editor.as_ref().map(|e| e.index) == Some(index);
 
         edit_actions.set_visible(cx, is_current_editor);
         editor.set_visible(cx, is_current_editor);
         actions.set_visible(cx, !is_current_editor && is_hovered);
         text.set_visible(cx, !is_current_editor);
+
+        if is_current_editor {
+            editor
+                .text_input(id!(input))
+                .set_text(cx, &self.current_editor.as_ref().unwrap().buffer);
+        }
     }
 }
 
