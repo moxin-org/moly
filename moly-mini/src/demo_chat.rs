@@ -115,6 +115,7 @@ impl Widget for DemoChat {
                             ];
 
                             let whitelist = [
+                                "deepseek-r1:1.5b",
                                 "deepseek-r1:8b",
                                 "llama3.1:8b",
                                 "llama3.2:latest",
