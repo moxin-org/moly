@@ -5,7 +5,7 @@ use moly_widgets::{protocol::*, ChatTask, ChatWidgetExt};
 
 use crate::bot_selector::BotSelectorWidgetExt;
 
-const OPEN_AI_KEY: &str = env!("OPENAI_API_KEY");
+const OPEN_AI_KEY: Option<&str> = option_env!("OPENAI_API_KEY");
 const OPENAI_API_URL: Option<&str> = option_env!("OPENAI_API_URL");
 
 live_design!(
@@ -71,7 +71,7 @@ impl Widget for DemoChat {
 
                 let openai_url = OPENAI_API_URL.unwrap_or("https://api.openai.com");
                 let mut openai = MolyClient::new(openai_url.into());
-                openai.set_key(OPEN_AI_KEY);
+                openai.set_key(OPEN_AI_KEY.unwrap_or(""));
 
                 let mut client = MultiBotClient::new();
                 client.add_client(Box::new(moly));
