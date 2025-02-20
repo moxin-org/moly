@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_widgets::repos::moly::*;
+use moly_widgets::clients::moly::*;
 use moly_widgets::utils::asynchronous::spawn;
 use moly_widgets::{protocol::*, ChatTask, ChatWidgetExt};
 

@@ -2,6 +2,7 @@ use makepad_widgets::Cx;
 
 mod avatar;
 
+pub mod clients;
 mod message_loading;
 mod message_markdown;
 pub mod messages;
@@ -18,9 +19,6 @@ pub mod chat;
 
 #[cfg(any(feature = "async-rt", feature = "async-web"))]
 pub use chat::*;
-
-#[cfg(feature = "repos")]
-pub mod repos;
 
 pub fn live_design(cx: &mut Cx) {
     makepad_code_editor::live_design(cx);
