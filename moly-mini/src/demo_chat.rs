@@ -104,7 +104,7 @@ impl Widget for DemoChat {
                                 "o3-mini-high",
                             ];
 
-                            let openai_routed_whitelist = [
+                            let openrouter_whitelist = [
                                 "openai/gpt-4o",
                                 "openai/gpt-4o-mini",
                                 "openai/o1",
@@ -112,13 +112,6 @@ impl Widget for DemoChat {
                                 "openai/o1-mini",
                                 "openai/o3-mini",
                                 "openai/o3-mini-high",
-                            ];
-
-                            let whitelist = [
-                                "deepseek-r1:1.5b",
-                                "deepseek-r1:8b",
-                                "llama3.1:8b",
-                                "llama3.2:latest",
                                 "perplexity/sonar",
                                 "perplexity/sonar-reasoning",
                                 "perplexity/r1-1776",
@@ -128,10 +121,23 @@ impl Widget for DemoChat {
                                 "deepseek/deepseek-r1",
                             ];
 
-                            whitelist
+                            let ollama_whitelist = [
+                                "deepseek-r1:1.5b",
+                                "deepseek-r1:8b",
+                                "llama3.1:8b",
+                                "llama3.2:latest",
+                            ];
+
+                            let siliconflow_whitelist = [
+                                "Pro/Qwen/Qwen2-1.5B-Instruct",
+                                "Pro/deepseek-ai/DeepSeek-R1",
+                            ];
+
+                            openai_whitelist
                                 .iter()
-                                .chain(openai_whitelist.iter())
-                                .chain(openai_routed_whitelist.iter())
+                                .chain(openrouter_whitelist.iter())
+                                .chain(ollama_whitelist.iter())
+                                .chain(siliconflow_whitelist.iter())
                                 .any(|s| *s == b.id.as_str())
                         })
                         .collect::<Vec<_>>();

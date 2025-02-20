@@ -8,6 +8,7 @@ use std::{
 };
 
 use crate::protocol::*;
+use crate::utils::serde::deserialize_null_default;
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -24,11 +25,16 @@ pub struct Models {
 /// Message being received by the completions endpoint.
 ///
 /// Although most OpenAI-compatible APIs return a `role` field, OpenAI itself does not.
+///
 /// Also, OpenAI may return an empty object as `delta` while streaming, that's why
 /// content is optional.
+///
+/// And SiliconFlow may set `content` to a `null` value, that's why the custom deserializer
+/// is needed.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct IncomingMessage {
     #[serde(default)]
+    #[serde(deserialize_with = "deserialize_null_default")]
     pub content: String,
 }
 
