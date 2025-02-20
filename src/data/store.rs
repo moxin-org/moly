@@ -1,10 +1,11 @@
 use super::chats::chat::ChatID;
 use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
-use super::chats::MoFaTestServerAction;
+use super::chats::{MoFaTestServerAction, OpenAiTestServerAction};
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
+use super::remote_servers::OpenAIServerResponse;
 use super::search::SortCriteria;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
@@ -176,6 +177,16 @@ impl Store {
                         );
                     }
                 }
+                ChatEntityId::RemoteModel(model_id) => {
+                    if let (Some(client), Some(model)) = (
+                        self.chats.get_client_for_remote_model(&model_id.0),
+                        self.chats.remote_models.get(&model_id.0),
+                    ) {
+                        chat.send_message_to_remote_model(prompt, model, &client);
+                    } else {
+                        eprintln!("client or model not found: {:?}", model_id);
+                    }
+                }
             }
         }
     }
@@ -223,6 +234,11 @@ impl Store {
                 .available_agents
                 .get(&agent)
                 .map(|a| a.name.clone()),
+            Some(ChatEntityId::RemoteModel(model_id)) => self
+                .chats
+                .remote_models
+                .get(&model_id.0)
+                .map(|m| m.name.clone()),
             None => {
                 // Fallback to loaded model if exists
                 self.chats.loaded_model.as_ref().map(|m| m.name.clone())
@@ -358,17 +374,31 @@ impl Store {
         match action {
             MoFaTestServerAction::Success(address, agents) => {
                 self.chats
-                    .handle_server_connection_result(MofaServerResponse::Connected(
+                    .handle_mofa_server_connection_result(MofaServerResponse::Connected(
                         address, agents,
                     ));
             }
             MoFaTestServerAction::Failure(address) => {
                 if let Some(addr) = address {
                     self.chats
-                        .handle_server_connection_result(MofaServerResponse::Unavailable(addr));
+                        .handle_mofa_server_connection_result(MofaServerResponse::Unavailable(addr));
                 }
             }
             _ => (),
+        }
+    }
+
+    pub fn handle_openai_test_server_action(&mut self, action: OpenAiTestServerAction) {
+        match action {
+            OpenAiTestServerAction::Success(address, models) => {
+                self.chats.handle_openai_server_connection_result(OpenAIServerResponse::Connected(address, models));
+            },
+            OpenAiTestServerAction::Failure(address) => {
+                if let Some(addr) = address {
+                    self.chats.handle_openai_server_connection_result(OpenAIServerResponse::Unavailable(addr));
+                }
+            },
+            OpenAiTestServerAction::None => (),
         }
     }
 }

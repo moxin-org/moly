@@ -10,6 +10,7 @@ use std::thread;
 use std::sync::{Arc, RwLock};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
+use crate::data::remote_servers::{self, OpenAIClient, RemoteModel};
 
 use super::chat_entity::ChatEntityId;
 use super::model_loader::ModelLoader;
@@ -455,6 +456,63 @@ impl Chat {
         self.save();
     }
 
+    pub fn send_message_to_remote_model(
+        &mut self,
+        prompt: String,
+        remote_model: &RemoteModel,
+        open_ai_client: &OpenAIClient,
+    ) {
+        let (tx, rx) = mpsc::channel();
+        open_ai_client.send_message_to_agent(&remote_model, &prompt, tx);
+
+        let next_id = self.messages.last().map(|m| m.id).unwrap_or(0) + 1;
+
+        self.messages.push(ChatMessage {
+            id: next_id,
+            role: Role::User,
+            username: None,
+            entity: None,
+            content: prompt,
+        });
+
+        self.messages.push(ChatMessage {
+            id: next_id + 1,
+            role: Role::Assistant,
+            username: Some(remote_model.name.clone()),
+            entity: Some(ChatEntityId::RemoteModel(remote_model.id.clone())),
+            content: "".to_string(),
+        });
+
+        *self.state.write().unwrap() = ChatState::Receiving;
+
+        let chat_id = self.id;
+        std::thread::spawn(move || '_loop: loop {
+            match rx.recv() {
+                Ok(remote_servers::ChatResponse::ChatFinalResponseData(data)) => {
+                    let content = data.choices[0].message.content.clone();
+                    Cx::post_action(ChatEntityAction {
+                        chat_id,
+                        kind: ChatEntityActionKind::MofaAgentResult(content),
+                    });
+
+                    break '_loop;
+                }
+                Err(e) => {
+                    println!("Error receiving response from agent: {:?}", e);
+                    Cx::post_action(ChatEntityAction {
+                        chat_id,
+                        kind: ChatEntityActionKind::MofaAgentCancelled,
+                    });
+
+                    break '_loop;
+                }
+            }
+        });
+
+        self.update_title_based_on_first_message();
+        self.save();
+    }
+
     pub fn cancel_streaming(&mut self) {
         if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
             return;
@@ -480,6 +538,14 @@ impl Chat {
         *self.state.write().unwrap() = ChatState::Cancelled(true);
         let message = self.messages.last_mut().unwrap();
         message.content = "Cancelling, please wait...".to_string();
+    }
+
+    pub fn cancel_remote_model_interaction(&mut self, open_ai_client: &OpenAIClient) {
+        if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
+            return;
+        }
+
+        open_ai_client.cancel_task();
     }
 
     pub fn delete_message(&mut self, message_id: usize) {

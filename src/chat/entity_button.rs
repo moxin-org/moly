@@ -169,12 +169,15 @@ impl EntityButton {
     pub fn set_entity(&mut self, cx: &mut Cx, entity: ChatEntityRef) {
         self.visible = true;
 
+
         let name_label = self.label(id!(caption));
         let description_label = self.label(id!(description.label));
         let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
         let server_url = self.label(id!(server_url.label));
-
-        name_label.set_text(cx, &entity.name());
+        
+        // Trim the '/models/' at the beginning of the name (happens with Gemini)
+        let name = entity.name().trim_start_matches("models/");
+        name_label.set_text(cx, &name);
 
         if let ChatEntityRef::Agent(agent) = entity {
             avatar.set_visible(true);

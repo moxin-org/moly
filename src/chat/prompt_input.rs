@@ -241,6 +241,29 @@ impl WidgetMatchEvent for PromptInput {
 
             prompt.clear_items();
 
+            // Add remote models
+            for (idx, remote_model) in store
+                .chats
+                .get_remote_models_list()
+                .iter()
+                .filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t)))
+                .enumerate()
+            {
+                if idx == 0 {
+                    let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
+                    label.set_text(cx, "Remote models");
+                    prompt.add_unselectable_item(label);
+                }
+
+                let option = WidgetRef::new_from_ptr(cx, self.entity_template);
+                let mut entity_button = option.entity_button(id!(button));
+                entity_button.set_entity(cx, remote_model.into());
+                entity_button.set_description_visible(cx, true);
+                prompt.add_item(option);
+            }
+            
+
+            // Add agents
             for (idx, agent) in store
                 .chats
                 .get_agents_list()
@@ -261,6 +284,7 @@ impl WidgetMatchEvent for PromptInput {
                 prompt.add_item(option);
             }
 
+            // Add local models
             for (idx, file) in store
                 .downloads
                 .downloaded_files
@@ -271,7 +295,7 @@ impl WidgetMatchEvent for PromptInput {
             {
                 if idx == 0 {
                     let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
-                    label.set_text(cx, "Models");
+                    label.set_text(cx, "Local models");
                     prompt.add_unselectable_item(label);
                 }
 
@@ -293,7 +317,7 @@ impl WidgetMatchEvent for PromptInput {
 
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
+                ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) | ModelSelectorAction::RemoteModelSelected(_) => {
                     self.on_deselected(cx);
                 }
                 _ => (),
@@ -328,6 +352,11 @@ impl PromptInput {
                     .get_file(file_id)
                     .expect("selected file not found");
                 label.set_text(cx, &file.name);
+                agent_avatar.set_visible(false);
+            }
+            ChatEntityId::RemoteModel(model_id) => {
+                let model = store.chats.get_remote_model_or_placeholder(model_id);
+                label.set_text(cx, &model.name);
                 agent_avatar.set_visible(false);
             }
         }

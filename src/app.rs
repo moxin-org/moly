@@ -270,6 +270,8 @@ impl MatchEvent for App {
             }
 
             self.store.handle_mofa_test_server_action(action.cast());
+
+            self.store.handle_openai_test_server_action(action.cast());
             // redraw the UI to reflect the connection status
             self.ui.redraw(cx);
 

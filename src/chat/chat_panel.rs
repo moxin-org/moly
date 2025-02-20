@@ -489,6 +489,15 @@ impl WidgetMatchEvent for ChatPanel {
                     self.focus_on_prompt_input_pending = true;
                     self.redraw(cx);
                 }
+                ModelSelectorAction::RemoteModelSelected(remote_model) => {
+                    if let Some(chat) = store.chats.get_current_chat() {
+                        chat.borrow_mut().associated_entity = Some(ChatEntityId::RemoteModel(remote_model.id.clone()));
+                        chat.borrow().save();
+                    }
+
+                    self.focus_on_prompt_input_pending = true;
+                    self.redraw(cx);
+                }
                 _ => {}
             }
         }
@@ -508,6 +517,10 @@ impl WidgetMatchEvent for ChatPanel {
                     }
                     ChatEntityId::Agent(agent_id) => {
                         store.chats.create_empty_chat_with_agent(&agent_id);
+                        self.focus_on_prompt_input_pending = true;
+                    },
+                    ChatEntityId::RemoteModel(model_id) => {
+                        store.chats.create_empty_chat_with_remote_model(&model_id);
                         self.focus_on_prompt_input_pending = true;
                     }
                 },

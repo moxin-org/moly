@@ -1561,6 +1561,7 @@ dependencies = [
  "robius-url-handler",
  "serde",
  "serde_json",
+ "tokio",
  "unicode-segmentation",
  "url",
 ]
