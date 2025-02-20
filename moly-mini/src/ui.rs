@@ -69,7 +69,7 @@ impl Widget for Ui {
                     from: EntityId::Bot(bot_id),
                 },
             ])
-            .take(50)
+            .take(5)
             .flatten()
             .collect();
 

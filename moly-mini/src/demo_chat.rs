@@ -6,6 +6,7 @@ use moly_widgets::{protocol::*, ChatTask, ChatWidgetExt};
 use crate::bot_selector::BotSelectorWidgetExt;
 
 const OPEN_AI_KEY: &str = env!("OPENAI_API_KEY");
+const OPENAI_API_URL: Option<&str> = option_env!("OPENAI_API_URL");
 
 live_design!(
     use link::theme::*;
@@ -35,17 +36,24 @@ impl Widget for DemoChat {
         self.ui_runner().handle(cx, event, scope, self);
 
         self.chat(id!(chat)).read_with(|chat| {
-            chat.hook(event).write(|hook| {
-                if let ChatTask::CopyMessage(index) = hook.task() {
-                    let index = *index;
+            chat.hook(event).write_with(|hook| {
+                let mut abort = false;
+
+                for task in hook.tasks() {
+                    if let ChatTask::CopyMessage(index) = task {
+                        abort = true;
+
+                        let text = chat.messages_ref().read_with(|messages| {
+                            let text = messages.messages[*index].body.as_str();
+                            format!("You copied the following text from Moly (mini): {}", text)
+                        });
+
+                        cx.copy_to_clipboard(&text);
+                    }
+                }
+
+                if abort {
                     hook.abort();
-
-                    let text = chat.messages_ref().read_with(|messages| {
-                        let text = messages.messages[index].body.as_str();
-                        format!("You copied the following text from Moly (mini): {}", text)
-                    });
-
-                    cx.copy_to_clipboard(&text);
                 }
             });
         });
@@ -60,7 +68,9 @@ impl Widget for DemoChat {
             let client = {
                 let moly = MolyClient::new("http://localhost:8085".into());
                 let ollama = MolyClient::new("http://localhost:11434".into());
-                let mut openai = MolyClient::new("https://api.openai.com".into());
+
+                let openai_url = OPENAI_API_URL.unwrap_or("https://api.openai.com");
+                let mut openai = MolyClient::new(openai_url.into());
                 openai.set_key(OPEN_AI_KEY);
 
                 let mut client = MultiBotClient::new();
@@ -84,24 +94,44 @@ impl Widget for DemoChat {
                         .bots()
                         .into_iter()
                         .filter(|b| {
-                            // Try to forcefully exclude some bots that will not work
-                            // as open ai gives you a long list without telling you what
-                            // which works with which endpoint.
-                            let name = b.name.as_str();
-                            let excluded = [
-                                "-latest",
-                                "-embedding",
-                                "-audio",
-                                "-20",
-                                "-realtime",
-                                "davinci",
-                                "dall-e",
-                                "whisper",
-                                "babbage",
-                                "tts",
+                            let openai_whitelist = [
+                                "gpt-4o",
+                                "gpt-4o-mini",
+                                "o1",
+                                "o1-preview",
+                                "o1-mini",
+                                "o3-mini",
+                                "o3-mini-high",
                             ];
 
-                            !excluded.iter().any(|ex| name.contains(ex))
+                            let openai_routed_whitelist = [
+                                "openai/gpt-4o",
+                                "openai/gpt-4o-mini",
+                                "openai/o1",
+                                "openai/o1-preview",
+                                "openai/o1-mini",
+                                "openai/o3-mini",
+                                "openai/o3-mini-high",
+                            ];
+
+                            let whitelist = [
+                                "deepseek-r1:8b",
+                                "llama3.1:8b",
+                                "llama3.2:latest",
+                                "perplexity/sonar",
+                                "perplexity/sonar-reasoning",
+                                "perplexity/r1-1776",
+                                "openrouter/auto",
+                                "google/gemini-2.0-flash-001",
+                                "anthropic/claude-3.5-sonnet",
+                                "deepseek/deepseek-r1",
+                            ];
+
+                            whitelist
+                                .iter()
+                                .chain(openai_whitelist.iter())
+                                .chain(openai_routed_whitelist.iter())
+                                .any(|s| *s == b.id.as_str())
                         })
                         .collect::<Vec<_>>();
 

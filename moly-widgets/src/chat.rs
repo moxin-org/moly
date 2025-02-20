@@ -22,7 +22,7 @@ live_design!(
     }
 );
 
-/// Private action that carries a [ChatHook] for a chat widget.
+/// Private action that carries a [ChatHook] for a [Chat] widget.
 #[derive(Debug)]
 struct ChatAction {
     hook: RwLock<ChatHook>,
@@ -31,33 +31,42 @@ struct ChatAction {
     widget_uid: WidgetUid,
 }
 
-/// Encapsulates a [ChatTask] that can me modified before being executed by the chat widget.
+/// Encapsulates a set of [ChatTask]s that can me modified before being executed
+/// by the [Chat] widget.
 #[derive(Debug)]
 pub struct ChatHook {
     executed: bool,
-    task: Option<ChatTask>,
+    tasks: Option<Vec<ChatTask>>,
 }
 
 impl ChatHook {
+    /// Aborts the set of tasks contained by this hook.
+    ///
+    /// Further calls to `tasks` and `hook` in the [Chat] widget will have no
+    /// effect.
+    ///
+    /// Trying to access tasks through this hook after aborting will panic.
     pub fn abort(&mut self) {
-        self.task = None;
+        self.tasks = None;
     }
 
-    pub fn task(&self) -> &ChatTask {
-        self.task
+    /// Immutable slice over the tasks in this hook.
+    pub fn tasks(&self) -> &[ChatTask] {
+        self.tasks
             .as_ref()
             .expect("the task in this hook has been aborted")
     }
 
-    pub fn task_mut(&mut self) -> &mut ChatTask {
-        self.task
+    /// Mutable reference to the tasks in this hook.
+    pub fn tasks_mut(&mut self) -> &mut Vec<ChatTask> {
+        self.tasks
             .as_mut()
             .expect("the task in this hook has been aborted")
     }
 }
 
-/// A task that was or will be performed by the [Chat] widget depending on if you
-/// read it before the chat widget receives it back or not.
+/// A task of interest that was or will be performed by the [Chat] widget depending
+/// on if you read it before the chat widget receives it back or not.
 ///
 /// The payload in this task will be used to perform the task itself. If you have
 /// access to its wrapper [ChatHook], you can modify the task before it is executed.
@@ -85,15 +94,12 @@ pub enum ChatTask {
 
     /// Editing the message at the given index with the given text.
     UpdateMessage(usize, String),
+}
 
-    /// A task that is not it's own but a sequence of other tasks.
-    ///
-    /// Ex: "Edit & Regenerate" button is actually deleting part of the chat history,
-    /// editing the message, and sending the chat history again.
-    ///
-    /// Ex: "Send" on its own only sends the current chat history. It's composed with
-    /// an insert to send a new message.
-    Compose(Vec<ChatTask>),
+impl From<ChatTask> for Vec<ChatTask> {
+    fn from(task: ChatTask) -> Self {
+        vec![task]
+    }
 }
 
 /// An intermidiate type that can read [ChatTask] from an [Event].
@@ -111,13 +117,15 @@ impl<'e> ChatTaskReader<'e> {
     }
 
     /// Read the tasks from the event.
-    pub fn read(&self, mut reader: impl FnMut(&ChatTask)) {
+    pub fn read_with(&self, mut reader: impl FnMut(&ChatTask)) {
         for action in chat_actions(self.widget_uid, self.event) {
             let hook = action.hook.read().expect("the task is being hooked");
-            let Some(task) = &hook.task else {
+            let Some(tasks) = &hook.tasks else {
                 return;
             };
-            reader(&task);
+            for task in tasks {
+                reader(task);
+            }
         }
     }
 }
@@ -137,13 +145,13 @@ impl<'e> ChatHookWriter<'e> {
     }
 
     /// Get write access to hooks in this event.
-    pub fn write(&self, mut hook_fn: impl FnMut(&mut ChatHook)) {
+    pub fn write_with(&self, mut hook_fn: impl FnMut(&mut ChatHook)) {
         for action in chat_actions(self.widget_uid, self.event) {
             {
                 // let's use `read` first to avoid panicking before other checks
                 let hook = action.hook.read().expect("the task is being hooked");
 
-                if hook.task.is_none() {
+                if hook.tasks.is_none() {
                     return;
                 }
 
@@ -229,15 +237,15 @@ impl Chat {
 
             match action.cast::<MessagesAction>() {
                 MessagesAction::Delete(index) => {
-                    self.dispatch(cx, ChatTask::DeleteMessage(index));
+                    self.dispatch(cx, ChatTask::DeleteMessage(index).into());
                 }
                 MessagesAction::Copy(index) => {
-                    self.dispatch(cx, ChatTask::CopyMessage(index));
+                    self.dispatch(cx, ChatTask::CopyMessage(index).into());
                 }
                 MessagesAction::EditSave(index) => {
                     self.messages_ref().read_with(|m| {
                         let text = m.current_editor_text().expect("no editor text");
-                        self.dispatch(cx, ChatTask::UpdateMessage(index, text));
+                        self.dispatch(cx, ChatTask::UpdateMessage(index, text).into());
                     });
                 }
                 MessagesAction::EditRegenerate(index) => {
@@ -248,13 +256,7 @@ impl Chat {
                         let text = m.current_editor_text().expect("no editor text");
 
                         messages[index].body = text;
-                        self.dispatch(
-                            cx,
-                            ChatTask::Compose(vec![
-                                ChatTask::SetMessages(messages),
-                                ChatTask::Send,
-                            ]),
-                        );
+                        self.dispatch(cx, vec![ChatTask::SetMessages(messages), ChatTask::Send]);
                     });
                 }
                 MessagesAction::None => {}
@@ -280,9 +282,9 @@ impl Chat {
 
             composition.push(ChatTask::Send);
 
-            self.dispatch(cx, ChatTask::Compose(composition));
+            self.dispatch(cx, composition);
         } else if prompt.read().has_stop_task() {
-            self.dispatch(cx, ChatTask::Stop);
+            self.dispatch(cx, ChatTask::Stop.into());
         }
     }
 
@@ -372,14 +374,15 @@ impl Chat {
         self.abort_handle.take().map(|handle| handle.abort());
     }
 
-    /// Dispatch a task to be executed by the [Chat] widget.
+    /// Dispatch a set of tasks to be executed by the [Chat] widget as a single hookable
+    /// unit of work.
     ///
     /// You can still hook into the task before it's executed for real, see [Chat::hook].
-    pub fn dispatch(&self, cx: &mut Cx, task: ChatTask) {
+    pub fn dispatch(&self, cx: &mut Cx, tasks: Vec<ChatTask>) {
         let action = ChatAction {
             hook: RwLock::new(ChatHook {
                 executed: false,
-                task: Some(task),
+                tasks: Some(tasks),
             }),
             widget_uid: self.widget_uid(),
         };
@@ -387,25 +390,28 @@ impl Chat {
         cx.action(action);
     }
 
+    /// Get a reader to each [ChatTask] available in the event.
+    ///
+    /// This yields individual tasks and not the whole set of tasks in the underlying hook.
     pub fn tasks<'e>(&self, event: &'e Event) -> ChatTaskReader<'e> {
         ChatTaskReader::new(self.widget_uid(), event)
     }
 
+    /// Get a writer to the [ChatHook] in the event.
+    ///
+    /// With this you can abort a set of tasks, or modify them before they are executed.
+    ///
+    /// See [ChatHook] for more information.
     pub fn hook<'e>(&self, event: &'e Event) -> ChatHookWriter<'e> {
         ChatHookWriter::new(self.widget_uid(), event)
     }
 
     fn handle_tasks(&mut self, cx: &mut Cx, event: &Event) {
-        self.hook(event).write(|hook| {
+        self.hook(event).write_with(|hook| {
             hook.executed = true;
-            if let Some(task) = hook.task.as_mut() {
-                match task {
-                    ChatTask::Compose(tasks) => {
-                        for task in tasks {
-                            self.handle_primitive_task(cx, task);
-                        }
-                    }
-                    task => self.handle_primitive_task(cx, task),
+            if let Some(tasks) = hook.tasks.as_mut() {
+                for task in tasks {
+                    self.handle_primitive_task(cx, task);
                 }
             }
         });
@@ -458,9 +464,6 @@ impl Chat {
                 });
 
                 self.redraw(cx);
-            }
-            ChatTask::Compose(_) => {
-                panic!("Developer error: Compose tasks should have been expanded before being handled.");
             }
         }
     }
