@@ -943,7 +943,8 @@ impl ChatPanel {
                         Some(ChatEntityId::ModelFile(_)) => {
                             chat_line_item.set_model_avatar_text(
                                 cx,
-                                &get_model_initial_letter(store).unwrap().to_string(),
+                                // Temporary fallback for missing model name (moly-server inaccesible)
+                                &get_model_initial_letter(store).unwrap_or('A').to_string(),
                             );
                         }
                         _ => {}
