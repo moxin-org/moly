@@ -212,8 +212,8 @@ pub enum MessagesAction {
     None,
 }
 
-#[derive(Debug)]
 /// Represents the current open editor for a message.
+#[derive(Debug)]
 struct Editor {
     index: usize,
     buffer: String,
@@ -255,7 +255,7 @@ impl Widget for Messages {
         let jump_to_bottom = self.button(id!(jump_to_bottom));
 
         if jump_to_bottom.clicked(event.actions()) {
-            self.scroll_to_bottom();
+            self.scroll_to_bottom(cx);
             self.redraw(cx);
         }
     }
@@ -382,14 +382,22 @@ impl Messages {
     }
 
     /// Jump to the end of the list instantly.
-    pub fn scroll_to_bottom(&self) {
+    pub fn scroll_to_bottom(&self, _cx: &mut Cx) {
         if self.messages.len() > 0 {
             // This is not the last message, but the marker widget we added to
             // the list. I'm being explicit with the redundant -1/+1.
 
             let last_message_index = self.messages.len() - 1;
             let end_of_chat_index = last_message_index + 1;
-            self.portal_list(id!(list)).set_first_id(end_of_chat_index);
+
+            let list = self.portal_list(id!(list));
+
+            // TODO: This works for scrolling to the end and works reliably even
+            // while streaming, but the portal list event handling will bug unless
+            // an scroll event ocurrs.
+            list.set_first_id(end_of_chat_index);
+
+            // list.smooth_scroll_to(cx, end_of_chat_index, 100., None);
         }
     }
 

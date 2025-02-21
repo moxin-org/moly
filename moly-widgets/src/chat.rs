@@ -309,7 +309,7 @@ impl Chat {
                 is_writing: true,
             });
 
-            messages.scroll_to_bottom();
+            messages.scroll_to_bottom(cx);
 
             messages
                 .messages
@@ -330,7 +330,7 @@ impl Chat {
             while let Some(delta) = message_stream.next().await {
                 let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());
 
-                ui.defer_with_redraw(move |me, _cx, _scope| {
+                ui.defer_with_redraw(move |me, cx, _scope| {
                     me.messages_ref().write_with(|messages| {
                         messages
                             .messages
@@ -340,7 +340,7 @@ impl Chat {
                             .push_str(&delta);
 
                         if messages.is_at_bottom() {
-                            messages.scroll_to_bottom();
+                            messages.scroll_to_bottom(cx);
                         }
                     });
                 });
