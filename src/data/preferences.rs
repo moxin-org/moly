@@ -6,35 +6,48 @@ use serde::{Deserialize, Serialize};
 use super::filesystem::{
     setup_preferences_folder, setup_model_downloads_folder, read_from_file, write_to_file,
 };
+use crate::settings::connection_settings::ProviderType;
+
 const PREFERENCES_FILENAME: &str = "preferences.json";
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ServerConnection {
+    pub address: String,
+    pub provider: ProviderType,
+    #[serde(default)]
+    pub api_key: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Preferences {
     pub current_chat_model: Option<FileID>,
     #[serde(default)]
     pub downloaded_files_dir: PathBuf,
+    #[serde(default)]
+    pub server_connections: Vec<ServerConnection>,
 }
 
 impl Preferences {
     pub fn load() -> Self {
-            let preferences_path = preferences_path();
+        let preferences_path = preferences_path();
 
-            if let Ok(json) = read_from_file(preferences_path) {
-                if let Ok(mut preferences) = serde_json::from_str::<Preferences>(&json) {
-                    // Check if the downloaded_files_dir exists, if not, create it
-                    if !preferences.downloaded_files_dir.exists() {
-                        preferences.downloaded_files_dir = setup_model_downloads_folder();
-                    }
-                    return preferences;
+        if let Ok(json) = read_from_file(preferences_path) {
+            if let Ok(mut preferences) = serde_json::from_str::<Preferences>(&json) {
+                // Check if the downloaded_files_dir exists, if not, create it
+                if !preferences.downloaded_files_dir.exists() {
+                    preferences.downloaded_files_dir = setup_model_downloads_folder();
                 }
-            }
-
-            // If no preferences file exists, create default preferences
-            Self {
-                current_chat_model: None,
-                downloaded_files_dir: setup_model_downloads_folder(),
+                return preferences;
             }
         }
+
+        // If no preferences file exists, create default preferences
+        Self {
+            current_chat_model: None,
+            downloaded_files_dir: setup_model_downloads_folder(),
+            server_connections: vec![],
+        }
+    }
 
     pub fn save(&self) {
         let json = serde_json::to_string(&self).unwrap();
@@ -51,6 +64,35 @@ impl Preferences {
 
     pub fn _set_downloaded_files_dir(&mut self, path: PathBuf) {
         self.downloaded_files_dir = path;
+        self.save();
+    }
+
+    pub fn add_or_update_server_connection(
+        &mut self,
+        provider: ProviderType,
+        address: String,
+        api_key: Option<String>,
+    ) {
+        // Remove existing entry if it exists:
+        if let Some(pos) = self
+            .server_connections
+            .iter()
+            .position(|sc| sc.address == address)
+        {
+            self.server_connections.remove(pos);
+        }
+        // Add the new connection
+        self.server_connections.push(ServerConnection {
+            address,
+            provider,
+            api_key,
+        });
+        self.save();
+    }
+
+    pub fn remove_server_connection(&mut self, address: &str) {
+        self.server_connections
+            .retain(|sc| sc.address != address);
         self.save();
     }
 }

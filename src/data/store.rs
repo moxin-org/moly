@@ -14,6 +14,8 @@ use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
 use moly_mofa::MofaServerResponse;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
+use crate::settings::connection_settings::ProviderType;
+use super::chats::ServerType;
 
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
 
@@ -93,6 +95,8 @@ impl Store {
         store
             .chats
             .register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
+
+        store.load_preference_connections();
 
         store
     }
@@ -399,6 +403,22 @@ impl Store {
                 }
             },
             OpenAiTestServerAction::None => (),
+        }
+    }
+
+    fn load_preference_connections(&mut self) {
+        for conn in &self.preferences.server_connections {
+            match conn.provider {
+                ProviderType::OpenAIAPI => {
+                    self.chats.register_server(ServerType::OpenAI {
+                        address: conn.address.clone(),
+                        api_key: conn.api_key.clone().unwrap_or_default(),
+                    });
+                }
+                ProviderType::MoFa => {
+                    self.chats.register_server(ServerType::Mofa(conn.address.clone()));
+                }
+            }
         }
     }
 }

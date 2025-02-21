@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use serde::{Deserialize, Serialize};
 
 use crate::data::chats::{MofaServer, ServerConnectionStatus, ServerType};
 use crate::data::store::Store;
@@ -319,7 +320,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook, PartialEq, Debug, LiveRead)]
+#[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
 pub enum ProviderType {
     #[pick]
     OpenAIAPI,
@@ -412,33 +413,37 @@ impl Widget for AiServers {
 impl WidgetMatchEvent for AiServers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
-        // let add_server_input = self.view.text_input(id!(add_server_input));
-        // // When user presses "Enter" in the input field to add a new server
-        // if let Some(address) = add_server_input.returned(actions) {
+
         let address = self.view.text_input(id!(add_server_input)).text();
         let api_key_input = self.view.text_input(id!(api_key));
-        let add_server_input = self.view.text_input(id!(add_server_input));
         let provider_type = self.view.drop_down(id!(provider_type));
-
         let add_server_button = self.view.button(id!(add_server_button));
+
         if add_server_button.clicked(actions) {
-            let provider_type = ProviderType::from_usize(provider_type.selected_item());
-            match provider_type {
+            let provider = ProviderType::from_usize(provider_type.selected_item());
+            match provider {
                 ProviderType::OpenAIAPI => {
-                    store.chats.register_server(
-                        ServerType::OpenAI {
-                            address,
-                            api_key: api_key_input.text()
-                        }
-                    );
+                    store.chats.register_server(ServerType::OpenAI {
+                        address: address.clone(),
+                        api_key: api_key_input.text(),
+                    });
                 }
                 ProviderType::MoFa => {
-                    store.chats.register_server(ServerType::Mofa(address));
+                    store.chats.register_server(ServerType::Mofa(address.clone()));
                 }
             }
 
-            add_server_input.set_text(cx, "");
+            // Persist to preferences:
+            store.preferences.add_or_update_server_connection(
+                provider,
+                address.clone(),
+                Some(api_key_input.text()).filter(|s| !s.is_empty()),
+            );
+
+            // Clear the form fields:
+            self.view.text_input(id!(add_server_input)).set_text(cx, "");
             api_key_input.set_text(cx, "");
+
             self.redraw(cx);
         }
     }
@@ -523,9 +528,11 @@ impl WidgetMatchEvent for AiServerItem {
             match &self.server_entry {
                 Some(AiServerEntry::Mofa(ref m)) => {
                     store.chats.remove_mofa_server(&m.client.address);
+                    store.preferences.remove_server_connection(&m.client.address);
                 }
                 Some(AiServerEntry::OpenAI(ref o)) => {
                     store.chats.openai_servers.remove(&o.address);
+                    store.preferences.remove_server_connection(&o.address);
                 }
                 None => {}
             }
@@ -534,7 +541,6 @@ impl WidgetMatchEvent for AiServerItem {
 
         // Re-test connection if the user clicks on the "failure" status
         if let Some(_) = self.view(id!(connection_status_failure)).finger_down(actions) {
-            println!("Re-testing connection for {}", self.server_address);
             match &self.server_entry {
                 Some(AiServerEntry::Mofa(_)) => {
                     store.chats.test_mofa_server_and_fetch_agents(&self.server_address);
