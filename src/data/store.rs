@@ -12,11 +12,12 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
+use super::chats::ServerType;
+use crate::settings::connection_settings::ProviderType;
 use moly_mofa::MofaServerResponse;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
-use crate::settings::connection_settings::ProviderType;
-use super::chats::ServerType;
 
+#[allow(dead_code)]
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
 
 #[derive(Clone, DefaultNone, Debug)]
@@ -69,12 +70,12 @@ impl Default for Store {
 impl Store {
     pub fn new() -> Self {
         let preferences = Preferences::load();
-        
+
         let server_port = std::env::var("MOLY_SERVER_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8765);
-            
+
         let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
 
         let mut store = Self {
@@ -92,9 +93,9 @@ impl Store {
         store.init_current_chat();
 
         store.search.load_featured_models();
-        store
-            .chats
-            .register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
+        // store
+        //     .chats
+        //     .register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
 
         store.load_preference_connections();
 
@@ -183,8 +184,8 @@ impl Store {
                 }
                 ChatEntityId::RemoteModel(model_id) => {
                     if let (Some(client), Some(model)) = (
-                        self.chats.get_client_for_remote_model(&model_id.0),
-                        self.chats.remote_models.get(&model_id.0),
+                        self.chats.get_client_for_remote_model(&model_id),
+                        self.chats.remote_models.get(&model_id),
                     ) {
                         chat.send_message_to_remote_model(prompt, model, &client);
                     } else {
@@ -241,7 +242,7 @@ impl Store {
             Some(ChatEntityId::RemoteModel(model_id)) => self
                 .chats
                 .remote_models
-                .get(&model_id.0)
+                .get(&model_id)
                 .map(|m| m.name.clone()),
             None => {
                 // Fallback to loaded model if exists
@@ -384,8 +385,9 @@ impl Store {
             }
             MoFaTestServerAction::Failure(address) => {
                 if let Some(addr) = address {
-                    self.chats
-                        .handle_mofa_server_connection_result(MofaServerResponse::Unavailable(addr));
+                    self.chats.handle_mofa_server_connection_result(
+                        MofaServerResponse::Unavailable(addr),
+                    );
                 }
             }
             _ => (),
@@ -395,28 +397,41 @@ impl Store {
     pub fn handle_openai_test_server_action(&mut self, action: OpenAiTestServerAction) {
         match action {
             OpenAiTestServerAction::Success(address, models) => {
-                self.chats.handle_openai_server_connection_result(OpenAIServerResponse::Connected(address, models));
-            },
-            OpenAiTestServerAction::Failure(address) => {
-                if let Some(addr) = address {
-                    self.chats.handle_openai_server_connection_result(OpenAIServerResponse::Unavailable(addr));
-                }
-            },
-            OpenAiTestServerAction::None => (),
+                // Merge fetched models with existing preferences
+                self.chats.handle_openai_server_connection_result(
+                    OpenAIServerResponse::Connected(address, models),
+                    &mut self.preferences,
+                );
+
+            }
+            OpenAiTestServerAction::Failure(address_opt) => {
+                if let Some(addr) = address_opt {
+                    eprintln!("Failed to connect to OpenAI-compatible server at {}", addr);
+                    self.chats.handle_openai_server_connection_result(
+                        OpenAIServerResponse::Unavailable(addr),
+                        &mut self.preferences,
+                    );
+                };
+            }
+            OpenAiTestServerAction::None => {}
         }
     }
 
+    // The existing code that loads from preferences and calls register_server
     fn load_preference_connections(&mut self) {
         for conn in &self.preferences.server_connections {
             match conn.provider {
                 ProviderType::OpenAIAPI => {
+                    // Registering will do a test & fetch, we'll merge the models with preferences with
+                    // the fetched models returned by the test.
                     self.chats.register_server(ServerType::OpenAI {
                         address: conn.address.clone(),
                         api_key: conn.api_key.clone().unwrap_or_default(),
                     });
                 }
                 ProviderType::MoFa => {
-                    self.chats.register_server(ServerType::Mofa(conn.address.clone()));
+                    self.chats
+                        .register_server(ServerType::Mofa(conn.address.clone()));
                 }
             }
         }

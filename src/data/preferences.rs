@@ -11,11 +11,19 @@ use crate::settings::connection_settings::ProviderType;
 const PREFERENCES_FILENAME: &str = "preferences.json";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ServerModel {
+    pub name: String,
+    pub enabled: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServerConnection {
     pub address: String,
     pub provider: ProviderType,
     #[serde(default)]
     pub api_key: Option<String>,
+    #[serde(default)]
+    pub models: Vec<ServerModel>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -86,6 +94,7 @@ impl Preferences {
             address,
             provider,
             api_key,
+            models: vec![], // start empty; populate later if needed
         });
         self.save();
     }
@@ -93,6 +102,35 @@ impl Preferences {
     pub fn remove_server_connection(&mut self, address: &str) {
         self.server_connections
             .retain(|sc| sc.address != address);
+        self.save();
+    }
+
+    /// Refresh or insert a model in the server's model list.
+    pub fn _ensure_server_model_exists(&mut self, address: &str, model_name: &str) {
+        if let Some(conn) = self.server_connections.iter_mut().find(|sc| sc.address == address) {
+            let already_exists = conn.models.iter().any(|m| m.name == model_name);
+            if !already_exists {
+                conn.models.push(ServerModel {
+                    name: model_name.to_string(),
+                    enabled: true,
+                });
+            }
+        }
+    }
+
+    /// Update the enabled/disabled status of a model for a specific server
+    pub fn update_model_status(&mut self, address: &str, model_name: &str, enabled: bool) {
+        if let Some(conn) = self.server_connections.iter_mut().find(|sc| sc.address == address) {
+            if let Some(model) = conn.models.iter_mut().find(|m| m.name == model_name) {
+                model.enabled = enabled;
+            } else {
+                // If not found, add it
+                conn.models.push(ServerModel {
+                    name: model_name.to_string(),
+                    enabled,
+                });
+            }
+        }
         self.save();
     }
 }

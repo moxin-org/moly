@@ -16,6 +16,7 @@ use std::{cell::RefCell, path::PathBuf};
 
 use super::filesystem::setup_chats_folder;
 use super::moly_client::MolyClient;
+use super::preferences::{Preferences, ServerModel};
 use super::remote_servers::{OpenAIClient, OpenAIServerResponse, RemoteModel, RemoteModelId};
 
 #[derive(Clone, Debug)]
@@ -62,7 +63,7 @@ pub struct Chats {
     pub mofa_servers: HashMap<MofaServerId, MofaServer>,
     pub available_agents: HashMap<AgentId, MofaAgent>,
 
-    pub remote_models: HashMap<ModelID, RemoteModel>,
+    pub remote_models: HashMap<RemoteModelId, RemoteModel>,
     pub openai_servers: HashMap<String, OpenAIClient>,
 
     /// Set it thru `set_current_chat` method to trigger side effects.
@@ -179,7 +180,7 @@ impl Chats {
                     }
                 }
                 Some(ChatEntityId::RemoteModel(model_id)) => {
-                    if let Some(openai_client) = self.get_client_for_remote_model(&model_id.0) {
+                    if let Some(openai_client) = self.get_client_for_remote_model(&model_id) {
                         chat.cancel_remote_model_interaction(&openai_client);
                     } else {
                         error!("No openai client found for model: {}", model_id.0);
@@ -337,15 +338,60 @@ impl Chats {
         }
     }
 
-    pub fn handle_openai_server_connection_result(&mut self, result: OpenAIServerResponse) {
+    pub fn handle_openai_server_connection_result(
+        &mut self,
+        result: OpenAIServerResponse,
+        preferences: &mut Preferences
+    ) {
         match result {
-            OpenAIServerResponse::Connected(address, models) => {
+            OpenAIServerResponse::Connected(address, fetched_models) => {
+                // Merge with preferences
+                if let Some(conn) = preferences
+                    .server_connections
+                    .iter_mut()
+                    .find(|sc| sc.address == address)
+                {
+                    // For each newly fetched model
+                    for rm in &fetched_models {
+                        if let Some(_existing) =
+                            conn.models.iter_mut().find(|m| m.name == rm.name)
+                        {
+                            // Keep existing enabled status
+                        } else {
+                            // Insert new model with default enabled
+                            conn.models.push(ServerModel {
+                                name: rm.name.clone(),
+                                enabled: true,
+                            });
+                        }
+                    }
+                    // Remove models that no longer appear
+                    conn.models.retain(|m| {
+                        fetched_models.iter().any(|rm| rm.name == m.name)
+                    });
+
+                    preferences.save();
+                }
+
+                // Now store them in memory
+                for mut remote_model in fetched_models {
+                    // Look up preference
+                    let user_pref_enabled = preferences
+                        .server_connections
+                        .iter()
+                        .find(|sc| sc.address == address)
+                        .and_then(|sc| sc.models.iter().find(|m| m.name == remote_model.name))
+                        .map(|m| m.enabled)
+                        .unwrap_or(true);
+                    remote_model.enabled = user_pref_enabled;
+
+                    self.remote_models
+                        .insert(remote_model.id.clone(), remote_model);
+                }
+
+                // Mark the server as connected
                 if let Some(server) = self.openai_servers.get_mut(&address) {
                     server.connection_status = ServerConnectionStatus::Connected;
-
-                    for remote_model in models {
-                        self.remote_models.insert(remote_model.id.0.clone(), remote_model);
-                    }
                 }
             }
             OpenAIServerResponse::Unavailable(address) => {
@@ -376,6 +422,12 @@ impl Chats {
         self.available_agents.retain(|_, agent| agent.server_id.0 != address);
     }
 
+    /// Removes a OpenAI server from the list of available servers.
+    pub fn remove_openai_server(&mut self, address: &str) {
+        self.openai_servers.remove(address);
+        self.remote_models.retain(|_, model| model.server_id.0 != address);
+    }
+
     /// Retrieves the corresponding MofaClient for an agent
     pub fn get_client_for_agent(&self, agent_id: &AgentId) -> Option<&MofaClient> {
         self.available_agents.get(agent_id)
@@ -384,7 +436,7 @@ impl Chats {
     }
 
     /// Retrieves the corresponding OpenAIClient for a remote model
-    pub fn get_client_for_remote_model(&self, model_id: &ModelID) -> Option<&OpenAIClient> {
+    pub fn get_client_for_remote_model(&self, model_id: &RemoteModelId) -> Option<&OpenAIClient> {
         self.remote_models.get(model_id)
             .and_then(|model| self.openai_servers.get(&model.server_id.0))
     }
@@ -397,11 +449,25 @@ impl Chats {
     }
 
     /// Helper method for components that need a sorted vector of remote models
-    pub fn get_remote_models_list(&self) -> Vec<RemoteModel> {
+    pub fn get_remote_models_list(&self, exclude_disabled: bool) -> Vec<RemoteModel> {
         let mut models: Vec<_> = self.remote_models.values().cloned().collect();
         models.sort_by(|a, b| a.name.cmp(&b.name));
+        if exclude_disabled {
+            models.retain(|model| model.enabled);
+        }
         models
     }
+
+    /// Returns a list of remote models for a given server address.
+    pub fn get_remote_models_list_for_server(&self, server_id: &str) -> Vec<RemoteModel> {
+        // TODO: we should make this more efficient by using a map of server_id -> models
+        // instead of iterating over all models.
+        self.remote_models.values()
+            .filter(|model| model.server_id.0 == server_id)
+            .cloned()
+            .collect()
+    }
+
     /// Tests the connection to a MoFa server by requesting /v1/models.
     ///
     /// The connection status is updated at the App level based on the actions dispatched.
@@ -473,7 +539,7 @@ impl Chats {
     }
 
     pub fn get_remote_model_or_placeholder(&self, model_id: &RemoteModelId) -> &RemoteModel {
-        self.remote_models.get(&model_id.0).unwrap_or(&self.unknown_remote_model)
+        self.remote_models.get(model_id).unwrap_or(&self.unknown_remote_model)
     }
 }
 

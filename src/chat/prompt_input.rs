@@ -244,7 +244,7 @@ impl WidgetMatchEvent for PromptInput {
             // Add remote models
             for (idx, remote_model) in store
                 .chats
-                .get_remote_models_list()
+                .get_remote_models_list(true)
                 .iter()
                 .filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t)))
                 .enumerate()

@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 use crate::data::chats::{MofaServer, ServerConnectionStatus, ServerType};
 use crate::data::store::Store;
 use crate::data::remote_servers::OpenAIClient;
+use crate::settings::configure_connection_modal::ConfigureConnectionModalWidgetExt;
+use crate::shared::modal::ModalWidgetExt;
+
+use super::configure_connection_modal::ConfigureConnectionModalAction;
 
 live_design! {
     use link::theme::*;
@@ -14,11 +18,13 @@ live_design! {
     use crate::shared::widgets::*;
     use crate::shared::modal::*;
     use crate::settings::delete_server_modal::DeleteServerModal;
+    use crate::settings::configure_connection_modal::ConfigureConnectionModal;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
-    ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
+    ICON_TRASH = dep("crate://self/resources/images/trash_icon.png")
     ICON_REMOTE = dep("crate://self/resources/images/globe_icon.png")
     ICON_LOCAL = dep("crate://self/resources/images/laptop_icon.png")
+    ICON_SETTINGS = dep("crate://self/resources/images/settings_icon.png")
 
     ICON_SUCCESS = dep("crate://self/resources/images/circle_check_icon.png")
     ICON_LOADER = dep("crate://self/resources/images/loader_icon.png")
@@ -26,13 +32,13 @@ live_design! {
 
     // Not making this based on <Icon> because button does not support images
     // (and these SVGs are too complex for Makepad's SVG support)
-    ConnectionStatusButton = <View> {
+    ConnectionActionButton = <View> {
         visible: false
         cursor: Hand
         width: Fit, height: Fit
         
         icon = <Image> {
-            width: 18, height: 18
+            width: 22, height: 22
             // Override the color of the icon
             draw_bg: {
                 instance tint_color: #B42318
@@ -100,8 +106,8 @@ live_design! {
 
     AiServerItem = {{AiServerItem}} {
         width: Fill
-        height: 50
-        flow: Down
+        height: 55
+        flow: Overlay
 
         separator = <View> {
             margin: {left: 20, right: 20, top: 0, bottom: 10}
@@ -112,7 +118,8 @@ live_design! {
             }
         }
     
-        <View> {
+        main_view = <View> {
+            cursor: Hand
             padding: {left: 30, right: 30, top: 0, bottom: 10}
             align: {x: 0.0, y: 0.5}
             spacing: 20
@@ -138,7 +145,7 @@ live_design! {
     
             <View> {
                 width: Fill, height: Fill
-                spacing: 10
+                spacing: 20
                 align: {x: 0.0, y: 0.5}
                 server_address_label = <Label> {
                     draw_text:{
@@ -149,7 +156,7 @@ live_design! {
 
                 <VerticalFiller> {}
 
-                connection_status_success = <ConnectionStatusButton> {
+                connection_status_success = <ConnectionActionButton> {
                     icon = {
                         source: (ICON_SUCCESS)
                         draw_bg: {
@@ -158,7 +165,7 @@ live_design! {
                     }
                 }
 
-                connection_status_failure = <ConnectionStatusButton> {
+                connection_status_failure = <ConnectionActionButton> {
                     icon = {
                         source: (ICON_FAILURE)
                         draw_bg: {
@@ -167,7 +174,7 @@ live_design! {
                     }
                 }
 
-                connection_status_loading = <ConnectionStatusButton> {
+                connection_status_loading = <ConnectionActionButton> {
                     visible: true
                     icon = {
                         source: (ICON_LOADER)
@@ -177,23 +184,32 @@ live_design! {
                     }
                 }
 
-                remove_server = <MolyButton> {
-                    width: Fit
-                    height: Fit
-
-                    draw_bg: {
-                        border_width: 1,
-                        radius: 3
-                    }
-
-                    icon_walk: {width: 14, height: 14}
-                    draw_icon: {
-                        svg_file: (ICON_DELETE),
-                        fn get_color(self) -> vec4 {
-                            return #B42318;
+                configure_connection = <ConnectionActionButton> {
+                    visible: true
+                    icon = {
+                        source: (ICON_SETTINGS)
+                        draw_bg: {
+                            tint_color: #444
                         }
                     }
                 }
+
+                remove_server = <ConnectionActionButton> {
+                    visible: true
+                    icon = {
+                        source: (ICON_TRASH)
+                        draw_bg: {
+                            tint_color: #B42318
+                        }
+                    }
+                }
+            }
+
+        }
+
+        configure_connection_modal = <Modal> {
+            content: {
+                configure_connection_modal_inner = <ConfigureConnectionModal> {}
             }
         }
     }
@@ -524,14 +540,15 @@ impl WidgetMatchEvent for AiServerItem {
 
         // "Remove server" click
         // TODO: Use the modal instead. Currently broken and needs refactoring.
-        if self.button(id!(remove_server)).clicked(actions) {
+        let remove_server_was_clicked = self.view(id!(remove_server)).finger_up(actions).is_some();
+        if remove_server_was_clicked {
             match &self.server_entry {
                 Some(AiServerEntry::Mofa(ref m)) => {
                     store.chats.remove_mofa_server(&m.client.address);
                     store.preferences.remove_server_connection(&m.client.address);
                 }
                 Some(AiServerEntry::OpenAI(ref o)) => {
-                    store.chats.openai_servers.remove(&o.address);
+                    store.chats.remove_openai_server(&o.address);
                     store.preferences.remove_server_connection(&o.address);
                 }
                 None => {}
@@ -554,6 +571,33 @@ impl WidgetMatchEvent for AiServerItem {
                 None => {}
             }
             self.redraw(cx);
+        }
+
+        let was_item_clicked = self.view(id!(main_view)).finger_up(actions).is_some();
+        let was_configure_connection_clicked = self.view(id!(configure_connection)).finger_down(actions).is_some();
+        if was_configure_connection_clicked || was_item_clicked {
+            if let Some(entry) = &self.server_entry {
+                let (address, _provider) = match entry {
+                    AiServerEntry::Mofa(m) => (m.client.address.clone(), ProviderType::MoFa),
+                    AiServerEntry::OpenAI(o) => (o.address.clone(), ProviderType::OpenAIAPI),
+                };
+
+                self.view.configure_connection_modal(id!(configure_connection_modal_inner))
+                    .set_server_address(address);
+
+                self.modal(id!(configure_connection_modal)).open(cx);
+            }
+        }
+
+        // Handle modal actions
+        for action in actions {
+            if matches!(
+                action.cast(),
+                ConfigureConnectionModalAction::ModalDismissed
+            ) {
+                self.modal(id!(configure_connection_modal)).close(cx);
+                self.redraw(cx);
+            }
         }
     }
 }

@@ -52,7 +52,7 @@ fn should_include_model(url: &str, model_id: &str) -> bool {
 pub struct RemoteModelId(pub String);
 
 impl RemoteModelId {
-    pub fn new(agent_name: &str, server_address: &str) -> Self {
+    pub fn from_model_and_server(agent_name: &str, server_address: &str) -> Self {
         RemoteModelId(format!("{}-{}", agent_name, server_address))
     }
 }
@@ -74,6 +74,7 @@ pub struct RemoteModel {
     pub name: String,
     pub description: String,
     pub server_id: RemoteServerId,
+    pub enabled: bool,
 }
 
 impl RemoteModel {
@@ -86,6 +87,7 @@ impl RemoteModel {
             description: "This model is not currently reachable, its information is not available"
                 .to_string(),
             server_id: RemoteServerId("Unknown".to_string()),
+            enabled: true,
         }
     }
 }
@@ -250,10 +252,11 @@ impl OpenAIClient {
                                             let models: Vec<RemoteModel> = models.data.into_iter()
                                                 .filter(|model| should_include_model(&url, &model.id))
                                                 .map(|model| RemoteModel {
-                                                    id: RemoteModelId::new(&model.id, &url),
+                                                    id: RemoteModelId::from_model_and_server(&model.id, &url),
                                                     name: model.id,
                                                     description: format!("OpenAI {} model", model.object),
                                                     server_id: RemoteServerId(url.clone()),
+                                                    enabled: true,
                                                 })
                                                 .collect();
                                             tx.send(OpenAIServerResponse::Connected(url, models)).unwrap();

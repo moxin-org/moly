@@ -171,7 +171,7 @@ impl ModelSelectorList {
         }
 
         let remote_models_vector: Vec<_> =
-            store.chats.remote_models.values().cloned().collect();
+            store.chats.get_remote_models_list(true).iter().cloned().collect();
 
         for (i, remote_model) in remote_models_vector.iter().enumerate() {
             let item_id = LiveId(10_000 + i as u64).into();
