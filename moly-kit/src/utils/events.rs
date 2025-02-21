@@ -1,3 +1,5 @@
+//! Tries to simplify event handling for makepad at least inside this crate.
+
 use makepad_widgets::{Action, Actions, Event};
 use std::sync::Once;
 
@@ -30,7 +32,7 @@ impl EventExt for Event {
                     let empty = Box::new(Vec::new());
                     EMPTY = Box::leak(empty);
                 });
-                &*EMPTY // Convert raw pointer to reference
+                &*EMPTY
             },
         }
     }

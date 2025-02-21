@@ -12,8 +12,8 @@ live_design!(
     use link::shaders::*;
     use link::widgets::*;
 
-    use crate::messages::*;
-    use crate::prompt_input::*;
+    use crate::widgets::messages::*;
+    use crate::widgets::prompt_input::*;
 
     pub Chat = {{Chat}} <RoundedView> {
         flow: Down,

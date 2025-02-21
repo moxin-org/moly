@@ -13,7 +13,7 @@ live_design!(
     use link::shaders::*;
     use link::widgets::*;
 
-    use moly_kit::chat::*;
+    use moly_kit::widgets::chat::Chat;
     use crate::bot_selector::*;
 
     pub DemoChat = {{DemoChat}} {

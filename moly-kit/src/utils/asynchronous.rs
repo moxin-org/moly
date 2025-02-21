@@ -1,3 +1,35 @@
+//! Asynchronous utilities for MolyKit.
+//!
+//! Mainly helps you to deal with the runtime differences across native and web.
+//!
+//! ## [spawn] function
+
+//! Runs a future independently, in a platform-specific way.
+//! - **Non-WASM**: May run in parallel and needs to be [Send].
+//! - **WASM**: Will run concurrently and doesn't need to be [Send].
+//!
+//! ## [MolyFuture] and [MolyStream]
+//!
+//! Dynamic and pinned wrappers around futures and streams with platform-specific implementations.
+//! - **Non-WASM**: Requires [Send].
+//! - **WASM**: Doesn't require [Send].
+//!
+//! ## [moly_future] and [moly_stream] functions
+//!
+//! Wraps a future or stream into a [MolyFuture] or [MolyStream] respectively.
+//! - **Non-WASM**: Requires [Send].
+//! - **WASM**: Doesn't require [Send].
+
+// Note: I'm documenting functions and types in the module doc because I don't know
+// right now an easy way to share the docs between conditional compilations.
+
+// TODO: Continue thinking on a way to avoid this.
+// The next thing to try would be to limit the native implementation to non-Send,
+// and use `LocalSet` from Tokio as `reqwest` still needs Tokio on native.
+//
+// Note: `reqwest` gives you a `Send` future in native, but on web it uses a `JsValue`
+// so its future is not send there.
+
 use std::{
     pin::Pin,
     task::{Context, Poll},

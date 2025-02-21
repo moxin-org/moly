@@ -1,3 +1,5 @@
+//! The avatar of a bot in a chat message.
+
 use crate::protocol::*;
 use makepad_widgets::*;
 

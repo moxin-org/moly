@@ -1,3 +1,5 @@
+//! Utilities to deal with [serde].
+
 use serde::{Deserialize, Deserializer};
 
 /// The value gets deserialized to its default if set to `null` explicitly.

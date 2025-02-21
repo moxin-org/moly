@@ -1,3 +1,8 @@
+//! Utilities to deal with SSE (Server-Sent Events).
+//!
+//! Note: Eventually, a proper SSE parser should be here but for now it only contains
+//! utility functions to do the parsing somewhere else.
+
 pub(crate) const EVENT_TERMINATOR: &'static [u8] = b"\n\n";
 
 /// Split from the last SSE event terminator.

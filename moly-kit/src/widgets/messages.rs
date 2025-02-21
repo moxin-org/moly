@@ -1,10 +1,9 @@
 use std::cell::{Ref, RefMut};
 
 use crate::{
-    avatar::AvatarWidgetRefExt,
-    message_loading::MessageLoadingWidgetRefExt,
     protocol::*,
     utils::{events::EventExt, portal_list::ItemsRangeIter},
+    widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
 use makepad_widgets::*;
 
@@ -13,9 +12,9 @@ live_design! {
     use link::widgets::*;
     use link::shaders::*;
 
-    use crate::message_markdown::*;
-    use crate::message_loading::*;
-    use crate::avatar::*;
+    use crate::widgets::message_markdown::*;
+    use crate::widgets::message_loading::*;
+    use crate::widgets::avatar::*;
 
     Sender = <View> {
         height: Fit,

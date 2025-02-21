@@ -1,3 +1,5 @@
+//! Utilities to deal with [PortalList] widget.
+
 use makepad_widgets::*;
 use std::ops::RangeBounds;
 
