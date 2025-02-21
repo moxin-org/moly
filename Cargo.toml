@@ -7,7 +7,7 @@ members = [
     "moly-backend",
     "moly-fake-backend",
     "moly-mofa",
-    "moly-widgets",
+    "moly-kit",
     "moly-mini",
 ]
 exclude = ["packaging/before-packaging-command"]

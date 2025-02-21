@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_widgets::{BotId, ChatWidgetRefExt, EntityId, Message};
+use moly_kit::{BotId, ChatWidgetRefExt, EntityId, Message};
 
 use crate::demo_chat::DemoChatWidgetExt;
 

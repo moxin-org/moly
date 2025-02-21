@@ -2005,13 +2005,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "moly-kit"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "futures",
+ "makepad-code-editor",
+ "makepad-widgets",
+ "reqwest 0.12.12",
+ "serde",
+ "serde_json",
+ "tokio",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "moly-mini"
 version = "0.1.0"
 dependencies = [
  "futures",
  "futures-core",
  "makepad-widgets",
- "moly-widgets",
+ "moly-kit",
  "reqwest 0.12.12",
  "serde",
  "serde_json",
@@ -2047,21 +2062,6 @@ dependencies = [
  "directories",
  "powershell_script",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "moly-widgets"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "futures",
- "makepad-code-editor",
- "makepad-widgets",
- "reqwest 0.12.12",
- "serde",
- "serde_json",
- "tokio",
- "wasm-bindgen-futures",
 ]
 
 [[package]]

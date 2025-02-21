@@ -1,7 +1,7 @@
 use makepad_widgets::*;
-use moly_widgets::clients::moly::*;
-use moly_widgets::utils::asynchronous::spawn;
-use moly_widgets::{protocol::*, ChatTask, ChatWidgetExt};
+use moly_kit::clients::moly::*;
+use moly_kit::utils::asynchronous::spawn;
+use moly_kit::{protocol::*, ChatTask, ChatWidgetExt};
 
 use crate::bot_selector::BotSelectorWidgetExt;
 
@@ -13,7 +13,7 @@ live_design!(
     use link::shaders::*;
     use link::widgets::*;
 
-    use moly_widgets::chat::*;
+    use moly_kit::chat::*;
     use crate::bot_selector::*;
 
     pub DemoChat = {{DemoChat}} {

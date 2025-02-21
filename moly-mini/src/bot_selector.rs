@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_widgets::protocol::*;
+use moly_kit::protocol::*;
 
 use crate::meta::MetaWidgetRefExt;
 
