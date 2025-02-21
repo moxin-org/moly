@@ -7,8 +7,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::protocol::*;
-use crate::utils::serde::deserialize_null_default;
+use crate::utils::{serde::deserialize_null_default, sse::EVENT_TERMINATOR};
+use crate::{protocol::*, utils::sse::rsplit_once_terminator};
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -220,7 +220,8 @@ impl BotClient for MolyClient {
                 }
             };
 
-            let mut buffer = String::new();
+            let event_terminator_str = std::str::from_utf8(EVENT_TERMINATOR).unwrap();
+            let mut buffer: Vec<u8> = Vec::new();
             let bytes = response.bytes_stream();
 
             for await chunk in bytes {
@@ -233,28 +234,20 @@ impl BotClient for MolyClient {
                     }
                 };
 
-                // TODO: Chunk may contain eventually valid utf8 bytes that would be discarded
-                // by "from string loosly".
-                //
-                // This is partially safe assuming everything before `\n\n` is valid utf8 as it will be
-                // splitted later.
-                //
-                // But this is not actually safe because it trusts the server on not sending utf8
-                // before a `\n\n`.
-                //
-                // So, let's change the buffer type later and extract valid utf8 strings from there later.
-                buffer.push_str(unsafe { &String::from_utf8_unchecked(chunk.to_vec()) });
-
-                const EVENT_TERMINATOR: &'static str = "\n\n";
+                buffer.extend_from_slice(&chunk);
 
                 let Some((completed_messages, incomplete_message)) =
-                    buffer.rsplit_once(EVENT_TERMINATOR)
+                    rsplit_once_terminator(&buffer)
                 else {
                     continue;
                 };
 
-                let messages = completed_messages
-                    .split(EVENT_TERMINATOR)
+                // Silently drop any invalid utf8 bytes from the completed messages.
+                let completed_messages = String::from_utf8_lossy(completed_messages);
+
+                let messages =
+                    completed_messages
+                    .split(event_terminator_str)
                     .filter(|m| !m.starts_with(":"))
                     .map(|m| m.trim_start().split("data:").nth(1).unwrap())
                     .filter(|m| m.trim() != "[DONE]");
@@ -278,12 +271,10 @@ impl BotClient for MolyClient {
                     yield Ok(text);
                 }
 
-                buffer = incomplete_message.to_string();
+                buffer = incomplete_message.to_vec();
             }
         };
 
         moly_stream(stream)
     }
 }
-
-// fn events_from_bytes(bytes: Byt)
