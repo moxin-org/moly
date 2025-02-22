@@ -1,7 +1,3 @@
-//! A prepared text input for conversation with bots.
-//!
-//! This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
-
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 
@@ -98,6 +94,9 @@ pub enum Interactivity {
     Disabled,
 }
 
+/// A prepared text input for conversation with bots.
+///
+/// This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
 #[derive(Live, LiveHook, Widget)]
 pub struct PromptInput {
     #[deref]

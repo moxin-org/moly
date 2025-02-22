@@ -1,7 +1,3 @@
-//! View over a conversation with messages.
-//!
-//! This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
-
 use std::cell::{Ref, RefMut};
 
 use crate::{
@@ -233,6 +229,9 @@ struct Editor {
     buffer: String,
 }
 
+/// View over a conversation with messages.
+///
+/// This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
 #[derive(Live, LiveHook, Widget)]
 pub struct Messages {
     #[deref]
