@@ -27,7 +27,7 @@
 //! An OpenAI compatible client comes out-of-the-box with MolyKit, [MolyClient].
 //!
 //! So, add the following somewhere appropriate (like in `after_new_from_doc`
-//! from Makepad) to give [Chat] its [ChatRepo]:
+//! from Makepad) to give [Chat] its [BotRepo]:
 //! ```rust
 //! use moly_kit::*
 //!
@@ -51,7 +51,34 @@
 //! - Inject tasks to be executed by the [Chat].
 //! - Change the payload of a task affecting the operation when executed.
 //!
-//! TODO: Continue writing.
+//! TODO: Continue writing and give examples.
+//!
+//! # Web support
+//!
+//! If you want to use the built-in web support (the `async-web` flag), you may need
+//! to do the following at `main.rs`:
+//!
+//! ```rust
+//! #[cfg(target_arch = "wasm32")]
+//! use wasm_bindgen::prelude::*;
+//!
+//! #[cfg(target_arch = "wasm32")]
+//! fn main() {
+//!     your_application_lib::app::app_main()
+//! }
+//!
+//! #[cfg(not(target_arch = "wasm32"))]
+//! #[tokio::main]
+//! async fn main() {
+//!     your_application_lib::app::app_main()
+//! }
+//! ```
+//!
+//! And then run your app with `wasm-bindgen` support like this:
+//!
+//! ```sh
+//! cargo makepad wasm --bindgen run -p your_application_package
+//! ```
 
 pub mod clients;
 pub mod protocol;
