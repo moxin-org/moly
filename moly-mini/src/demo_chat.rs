@@ -1,7 +1,6 @@
 use makepad_widgets::*;
-use moly_kit::clients::moly::*;
 use moly_kit::utils::asynchronous::spawn;
-use moly_kit::{protocol::*, ChatTask, ChatWidgetExt};
+use moly_kit::*;
 
 use crate::bot_selector::BotSelectorWidgetExt;
 
@@ -73,7 +72,7 @@ impl Widget for DemoChat {
                 let mut openai = MolyClient::new(openai_url.into());
                 openai.set_key(OPEN_AI_KEY.unwrap_or(""));
 
-                let mut client = MultiBotClient::new();
+                let mut client = MultiClient::new();
                 client.add_client(Box::new(moly));
                 client.add_client(Box::new(ollama));
                 client.add_client(Box::new(openai));

@@ -12,13 +12,13 @@ use crate::{protocol::*, utils::sse::rsplit_once_terminator};
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Model {
+struct Model {
     id: String,
 }
 
 /// Response from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Models {
+struct Models {
     pub data: Vec<Model>,
 }
 
@@ -32,7 +32,7 @@ pub struct Models {
 /// And SiliconFlow may set `content` to a `null` value, that's why the custom deserializer
 /// is needed.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct IncomingMessage {
+struct IncomingMessage {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_null_default")]
     pub content: String,
@@ -40,7 +40,7 @@ pub struct IncomingMessage {
 
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
-pub struct OutcomingMessage {
+struct OutcomingMessage {
     pub content: String,
     pub role: Role,
 }
@@ -65,7 +65,7 @@ impl TryFrom<Message> for OutcomingMessage {
 
 /// Role of a message that is part of the conversation context.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum Role {
+enum Role {
     /// OpenAI o1 models seems to expect `developer` instead of `system` according
     /// to the documentation. But it also seems like `system` is converted to `developer`
     /// internally.
@@ -78,13 +78,13 @@ pub enum Role {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct Choice {
+struct Choice {
     pub delta: IncomingMessage,
 }
 
 /// Response from the completions endpoint.
 #[derive(Clone, Debug, Deserialize)]
-pub struct Completation {
+struct Completation {
     pub choices: Vec<Choice>,
 }
 
@@ -94,6 +94,7 @@ struct MolyClientInner {
     headers: HeaderMap,
 }
 
+/// A client capable of interacting with Moly Server and other OpenAI-compatible APIs.
 #[derive(Debug)]
 pub struct MolyClient(Arc<Mutex<MolyClientInner>>);
 
@@ -110,6 +111,7 @@ impl From<MolyClientInner> for MolyClient {
 }
 
 impl MolyClient {
+    /// Creates a new client with the given OpenAI-compatible API URL.
     pub fn new(url: String) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse().unwrap());

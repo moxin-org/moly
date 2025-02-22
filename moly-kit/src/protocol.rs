@@ -78,7 +78,7 @@ pub struct Message {
     pub is_writing: bool,
 }
 
-/// An interface to talk to bots.
+/// A standard interface to fetch bots information and send messages to them.
 ///
 /// Warning: Expect this to be cloned to avoid borrow checking issues with
 /// makepad's widgets. Also, it may be cloned inside async contexts. So keep this
@@ -144,6 +144,13 @@ struct InnerBotRepo {
     bots: Vec<Bot>,
 }
 
+/// A sharable wrapper around a [BotClient] that holds loadeed bots and provides
+/// synchronous APIs to access them, mainly from the UI.
+///
+/// Passed down through widgets from this crate.
+///
+/// Separate chat widgets can share the same [BotRepo] to avoid loading the same
+/// bots multiple times.
 pub struct BotRepo(Arc<Mutex<InnerBotRepo>>);
 
 impl Clone for BotRepo {
@@ -195,88 +202,5 @@ impl<T: BotClient + 'static> From<T> for BotRepo {
             client: Box::new(client),
             bots: Vec::new(),
         })))
-    }
-}
-
-#[derive(Clone)]
-pub struct MultiBotClient {
-    clients_with_bots: Arc<Mutex<Vec<(Box<dyn BotClient>, Vec<Bot>)>>>,
-}
-
-impl MultiBotClient {
-    pub fn new() -> Self {
-        MultiBotClient {
-            clients_with_bots: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    pub fn add_client(&mut self, client: Box<dyn BotClient>) {
-        self.clients_with_bots
-            .lock()
-            .unwrap()
-            .push((client, Vec::new()));
-    }
-}
-
-impl BotClient for MultiBotClient {
-    fn send_stream(
-        &mut self,
-        bot: &BotId,
-        messages: &[Message],
-    ) -> MolyStream<'static, Result<String, ()>> {
-        let mut client = self
-            .clients_with_bots
-            .lock()
-            .unwrap()
-            .iter()
-            .find_map(|(client, bots)| {
-                if bots.iter().any(|b| b.id == *bot) {
-                    Some(client.clone())
-                } else {
-                    None
-                }
-            })
-            .expect("no client for bot");
-
-        client.send_stream(&bot, messages)
-    }
-
-    fn clone_box(&self) -> Box<dyn BotClient> {
-        Box::new(self.clone())
-    }
-
-    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>> {
-        let clients_with_bots = self.clients_with_bots.clone();
-
-        let future = async move {
-            let clients = clients_with_bots
-                .lock()
-                .unwrap()
-                .iter()
-                .map(|(client, _)| client.clone())
-                .collect::<Vec<_>>();
-
-            let bot_futures = clients.iter().map(|client| client.bots());
-            let results = futures::future::join_all(bot_futures).await;
-
-            let mut zipped_bots = Vec::new();
-            let mut flat_bots = Vec::new();
-
-            for result in results {
-                // TODO: Let's ignore any errored sub-client for now.
-                let client_bots = result.unwrap_or_default();
-                zipped_bots.push(client_bots.clone());
-                flat_bots.extend(client_bots);
-            }
-
-            *clients_with_bots.lock().unwrap() = clients
-                .into_iter()
-                .zip(zipped_bots.iter().cloned())
-                .collect();
-
-            Ok(flat_bots)
-        };
-
-        moly_future(future)
     }
 }
