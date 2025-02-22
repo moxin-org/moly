@@ -74,26 +74,29 @@ impl ChatHook {
 /// See [Chat::tasks] and [Chat::hook] for more information.
 #[derive(Debug)]
 pub enum ChatTask {
-    /// Sending the current chat for completition.
+    /// When received back, it will send the whole chat context to the bot.
     Send,
 
-    /// Stoping the current completition.
+    /// When received back, it will cancel the response stream from the bot.
     Stop,
 
-    /// Copying the message at the given index to the clipboard.
+    /// When received back, it will copy the message at the given index to the clipboard.
     CopyMessage(usize),
 
-    /// Rewriting the message history.
+    /// When received back, it will re-write the message history with the given messages.
     SetMessages(Vec<Message>),
 
-    /// Inserting a new message at the given index.
+    /// When received back, it will insert a message at the given index with the given text and entity.
     InsertMessage(usize, EntityId, String),
 
-    /// Deleting the message at the given index.
+    /// When received back, it will delete the message at the given index.
     DeleteMessage(usize),
 
-    /// Editing the message at the given index with the given text.
+    /// When received back, it will update the message at the given index with the given text.
     UpdateMessage(usize, String),
+
+    /// When received back, it will clear the prompt input.
+    ClearPrompt,
 }
 
 impl From<ChatTask> for Vec<ChatTask> {
@@ -289,7 +292,7 @@ impl Chat {
                 ));
             }
 
-            composition.push(ChatTask::Send);
+            composition.extend([ChatTask::Send, ChatTask::ClearPrompt]);
 
             self.dispatch(cx, composition);
         } else if prompt.read().has_stop_task() {
@@ -298,8 +301,6 @@ impl Chat {
     }
 
     fn perform_send(&mut self, cx: &mut Cx) {
-        self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
-
         // TODO: See `bot_id` TODO.
         let bot_id = self.bot_id.clone().expect("no bot selected");
 
@@ -473,6 +474,9 @@ impl Chat {
                 });
 
                 self.redraw(cx);
+            }
+            ChatTask::ClearPrompt => {
+                self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
             }
         }
     }
