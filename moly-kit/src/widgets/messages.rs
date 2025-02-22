@@ -1,3 +1,7 @@
+//! View over a conversation with messages.
+//!
+//! This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
+
 use std::cell::{Ref, RefMut};
 
 use crate::{
@@ -202,12 +206,23 @@ live_design! {
 }
 
 /// Relevant actions that should be handled by a parent.
+///
+/// If includes an index, it refers to the index of the message in the list.
 #[derive(Debug, PartialEq, Copy, Clone, DefaultNone)]
 pub enum MessagesAction {
+    /// The message at the given index should be copied.
     Copy(usize),
+
+    /// The message at the given index should be deleted.
     Delete(usize),
-    EditRegenerate(usize),
+
+    /// The message at the given index should be edited and saved.
     EditSave(usize),
+
+    /// The message at the given index should be edited, saved and the messages
+    /// history should be regenerated from here.
+    EditRegenerate(usize),
+
     None,
 }
 
@@ -221,11 +236,13 @@ struct Editor {
 #[derive(Live, LiveHook, Widget)]
 pub struct Messages {
     #[deref]
-    view: View,
+    deref: View,
 
+    /// The list of messages rendered by this widget.
     #[rust]
     pub messages: Vec<Message>,
 
+    /// Bot repository to get bot information.
     #[rust]
     pub bot_repo: Option<BotRepo>,
 
@@ -248,7 +265,7 @@ pub struct Messages {
 
 impl Widget for Messages {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
+        self.deref.handle_event(cx, event, scope);
         self.handle_list(cx, event, scope);
 
         let jump_to_bottom = self.button(id!(jump_to_bottom));
@@ -262,7 +279,7 @@ impl Widget for Messages {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let list_uid = self.portal_list(id!(list)).widget_uid();
 
-        while let Some(widget) = self.view.draw_walk(cx, scope, walk).step() {
+        while let Some(widget) = self.deref.draw_walk(cx, scope, walk).step() {
             if widget.widget_uid() == list_uid {
                 self.draw_list(cx, widget.as_portal_list());
             }

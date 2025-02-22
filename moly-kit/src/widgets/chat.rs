@@ -1,3 +1,5 @@
+//! A batteries-included chat to to implement chatbots.
+
 use futures::{stream::AbortHandle, StreamExt};
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
@@ -176,12 +178,20 @@ pub struct Chat {
     #[deref]
     deref: View,
 
+    /// The bot repository used by this chat to hold bots and interact with them.
     #[rust]
     pub bot_repo: Option<BotRepo>,
 
+    /// The id of the bot the chat will message when sending.
     // TODO: Can this be live?
+    // TODO: Default to the first bot in the repo if `None`.
     #[rust]
     pub bot_id: Option<BotId>,
+
+    /// Toggles response streaming on or off. Default is on.
+    // TODO: Implement this.
+    #[live(true)]
+    pub stream: bool,
 
     #[rust]
     abort_handle: Option<AbortHandle>,
@@ -209,12 +219,12 @@ impl Widget for Chat {
 }
 
 impl Chat {
-    /// Getter to the underlying [[PromptInputRef]] independent of its id.
+    /// Getter to the underlying [PromptInputRef] independent of its id.
     pub fn prompt_input_ref(&self) -> PromptInputRef {
         self.prompt_input(id!(prompt))
     }
 
-    /// Getter to the underlying [[MessagesRef]] independent of its id.
+    /// Getter to the underlying [MessagesRef] independent of its id.
     pub fn messages_ref(&self) -> MessagesRef {
         self.messages(id!(messages))
     }
@@ -291,7 +301,7 @@ impl Chat {
     fn perform_send(&mut self, cx: &mut Cx) {
         self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
 
-        // TODO: Less aggresive error handling for users.
+        // TODO: See `bot_id` TODO.
         let bot_id = self.bot_id.clone().expect("no bot selected");
 
         let repo = self
@@ -481,28 +491,28 @@ fn chat_actions<'e>(
 }
 
 impl ChatRef {
-    /// Immutable access to the underlying [[Chat]].
+    /// Immutable access to the underlying [Chat].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn read(&self) -> Ref<Chat> {
         self.borrow().unwrap()
     }
 
-    /// Mutable access to the underlying [[Chat]].
+    /// Mutable access to the underlying [Chat].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write(&mut self) -> RefMut<Chat> {
         self.borrow_mut().unwrap()
     }
 
-    /// Immutable reader to the underlying [[Chat]].
+    /// Immutable reader to the underlying [Chat].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn read_with<R>(&self, f: impl FnOnce(&Chat) -> R) -> R {
         f(&*self.read())
     }
 
-    /// Mutable writer to the underlying [[Chat]].
+    /// Mutable writer to the underlying [Chat].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Chat) -> R) -> R {

@@ -1,6 +1,9 @@
-use std::cell::{Ref, RefMut};
+//! A prepared text input for conversation with bots.
+//!
+//! This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
 
 use makepad_widgets::*;
+use std::cell::{Ref, RefMut};
 
 live_design! {
     use link::theme::*;
@@ -100,15 +103,19 @@ pub struct PromptInput {
     #[deref]
     deref: CommandTextInput,
 
+    /// Icon used by this widget when the task is set to [Task::Send].
     #[live]
-    send_icon: LiveValue,
+    pub send_icon: LiveValue,
 
+    /// Icon used by this widget when the task is set to [Task::Stop].
     #[live]
-    stop_icon: LiveValue,
+    pub stop_icon: LiveValue,
 
+    /// If this widget should provoke sending a message or stopping the current response.
     #[rust]
     pub task: Task,
 
+    /// If this widget should be interactive or not.
     #[rust]
     pub interactivity: Interactivity,
 }
@@ -166,32 +173,42 @@ impl Widget for PromptInput {
 }
 
 impl PromptInput {
+    /// Check if the submit button or the return key was pressed.
+    ///
+    /// Note: To know what the button submission means, check [Self::task] or
+    /// the utility methods.
     pub fn submitted(&self, actions: &Actions) -> bool {
         let submit = self.button(id!(submit));
         let input = self.text_input_ref();
         submit.clicked(actions) || input.returned(actions).is_some()
     }
 
+    /// Shorthand to check if [Self::task] is set to [Task::Send].
     pub fn has_send_task(&self) -> bool {
         self.task == Task::Send
     }
 
+    /// Shorthand to check if [Self::task] is set to [Task::Stop].
     pub fn has_stop_task(&self) -> bool {
         self.task == Task::Stop
     }
 
+    /// Allows submission.
     pub fn enable(&mut self) {
         self.interactivity = Interactivity::Enabled;
     }
 
+    /// Disallows submission.
     pub fn disable(&mut self) {
         self.interactivity = Interactivity::Disabled;
     }
 
+    /// Shorthand to set [Self::task] to [Task::Send].
     pub fn set_send(&mut self) {
         self.task = Task::Send;
     }
 
+    /// Shorthand to set [Self::task] to [Task::Stop].
     pub fn set_stop(&mut self) {
         self.task = Task::Stop;
     }
