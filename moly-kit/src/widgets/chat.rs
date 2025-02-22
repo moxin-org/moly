@@ -72,6 +72,8 @@ impl ChatHook {
 /// access to its wrapper [ChatHook], you can modify the task before it is executed.
 ///
 /// See [Chat::tasks] and [Chat::hook] for more information.
+// TODO: Using indexes for many uperation like `UpdateMessage` is not ideal. In the future
+// messages may need to have a unique identifier.
 #[derive(Debug)]
 pub enum ChatTask {
     /// When received back, it will send the whole chat context to the bot.
@@ -97,6 +99,9 @@ pub enum ChatTask {
 
     /// When received back, it will clear the prompt input.
     ClearPrompt,
+
+    /// When received back, the chat will scroll to the bottom.
+    ScrollToBottom,
 }
 
 impl From<ChatTask> for Vec<ChatTask> {
@@ -319,7 +324,7 @@ impl Chat {
                 is_writing: true,
             });
 
-            messages.scroll_to_bottom(cx);
+            self.dispatch(cx, ChatTask::ScrollToBottom.into());
 
             messages
                 .messages
@@ -342,15 +347,22 @@ impl Chat {
 
                 ui.defer_with_redraw(move |me, cx, _scope| {
                     me.messages_ref().write_with(|messages| {
-                        messages
+                        let mut body = messages
                             .messages
                             .last_mut()
                             .expect("no message where to put delta")
                             .body
-                            .push_str(&delta);
+                            .clone();
+
+                        body.push_str(&delta);
+
+                        me.dispatch(
+                            cx,
+                            ChatTask::UpdateMessage(messages.messages.len() - 1, body).into(),
+                        );
 
                         if messages.is_at_bottom() {
-                            messages.scroll_to_bottom(cx);
+                            me.dispatch(cx, ChatTask::ScrollToBottom.into());
                         }
                     });
                 });
@@ -400,6 +412,15 @@ impl Chat {
         cx.action(action);
     }
 
+    /// Performs a set of tasks in the [Chat] widget immediately.
+    ///
+    /// This is not hookable, no actions are emitted from this.
+    pub fn perform(&mut self, cx: &mut Cx, tasks: &[ChatTask]) {
+        for task in tasks {
+            self.handle_primitive_task(cx, &task);
+        }
+    }
+
     /// Get a reader to each [ChatTask] available in the event.
     ///
     /// This yields individual tasks and not the whole set of tasks in the underlying hook.
@@ -420,9 +441,7 @@ impl Chat {
         self.hook(event).write_with(|hook| {
             hook.executed = true;
             if let Some(tasks) = hook.tasks.as_mut() {
-                for task in tasks {
-                    self.handle_primitive_task(cx, task);
-                }
+                self.perform(cx, tasks);
             }
         });
     }
@@ -477,6 +496,9 @@ impl Chat {
             }
             ChatTask::ClearPrompt => {
                 self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
+            }
+            ChatTask::ScrollToBottom => {
+                self.messages_ref().write().scroll_to_bottom(cx);
             }
         }
     }
