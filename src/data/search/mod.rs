@@ -1,12 +1,11 @@
 mod faked_models;
 
 use makepad_widgets::{Action, Cx};
-use moly_backend::Backend;
 use moly_protocol::data::*;
-use moly_protocol::protocol::Command;
-use std::rc::Rc;
 use std::sync::mpsc::channel;
 use std::thread;
+
+use super::moly_client::MolyClient;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub enum SortCriteria {
@@ -37,7 +36,7 @@ pub enum SearchState {
     Errored,
 }
 pub struct Search {
-    pub backend: Rc<Backend>,
+    pub moly_client: MolyClient,
     pub models: Vec<Model>,
     pub sorted_by: SortCriteria,
     pub keyword: Option<String>,
@@ -45,9 +44,9 @@ pub struct Search {
 }
 
 impl Search {
-    pub fn new(backend: Rc<Backend>) -> Self {
+    pub fn new(moly_client: MolyClient) -> Self {
         let search = Self {
-            backend,
+            moly_client,
             models: Vec::new(),
             sorted_by: SortCriteria::MostDownloads,
             keyword: None,
@@ -70,11 +69,7 @@ impl Search {
 
         let (tx, rx) = channel();
 
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::GetFeaturedModels(tx))
-            .unwrap();
+        self.moly_client.get_featured_models(tx);
 
         thread::spawn(move || {
             if let Ok(response) = rx.recv() {
@@ -108,11 +103,7 @@ impl Search {
 
         let (tx, rx) = channel();
 
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::SearchModels(keyword.clone(), tx))
-            .unwrap();
+        self.moly_client.search_models(keyword.clone(), tx);
 
         thread::spawn(move || {
             if let Ok(response) = rx.recv() {

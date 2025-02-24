@@ -165,7 +165,7 @@ impl Widget for Sorting {
 }
 
 impl WidgetMatchEvent for Sorting {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(item_selected) = self.drop_down(id!(options)).selected(&actions) {
             // TODO Check if we can use liveids instead of item index
             let criteria = match item_selected {
@@ -182,7 +182,7 @@ impl WidgetMatchEvent for Sorting {
 }
 
 impl SortingRef {
-    pub fn set_visible(&self, cx: &mut Cx, visible: bool) {
+    pub fn _set_visible(&self, cx: &mut Cx, visible: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };

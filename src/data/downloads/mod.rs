@@ -3,12 +3,10 @@ pub mod download;
 use anyhow::{Context, Result};
 use download::{Download, DownloadFileAction, DownloadState};
 use makepad_widgets::Action;
-use moly_backend::Backend;
-use moly_protocol::{
-    data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus},
-    protocol::Command,
-};
-use std::{collections::HashMap, rc::Rc, sync::mpsc::channel};
+use moly_protocol::data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus};
+use std::{collections::HashMap, sync::mpsc::channel};
+
+use super::moly_client::MolyClient;
 
 #[derive(Debug)]
 pub enum DownloadPendingNotification {
@@ -16,7 +14,7 @@ pub enum DownloadPendingNotification {
     DownloadErrored(File),
 }
 pub struct Downloads {
-    pub backend: Rc<Backend>,
+    pub moly_client: MolyClient,
     pub downloaded_files: Vec<DownloadedFile>,
     pub pending_downloads: Vec<PendingDownload>,
     pub current_downloads: HashMap<FileID, Download>,
@@ -24,9 +22,9 @@ pub struct Downloads {
 }
 
 impl Downloads {
-    pub fn new(backend: Rc<Backend>) -> Self {
+    pub fn new(moly_client: MolyClient) -> Self {
         Self {
-            backend,
+            moly_client,
             downloaded_files: Vec::new(),
             pending_downloads: Vec::new(),
             current_downloads: HashMap::new(),
@@ -36,11 +34,7 @@ impl Downloads {
 
     pub fn load_downloaded_files(&mut self) {
         let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::GetDownloadedFiles(tx))
-            .unwrap();
+        self.moly_client.get_downloaded_files(tx);
 
         if let Ok(response) = rx.recv() {
             match response {
@@ -54,11 +48,7 @@ impl Downloads {
 
     pub fn load_pending_downloads(&mut self) {
         let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::GetCurrentDownloads(tx))
-            .unwrap();
+        self.moly_client.get_current_downloads(tx);
 
         if let Ok(response) = rx.recv() {
             match response {
@@ -107,7 +97,7 @@ impl Downloads {
 
         self.current_downloads.insert(
             file.id.clone(),
-            Download::new(file, current_progress, &self.backend.as_ref()),
+            Download::new(file, current_progress, self.moly_client.clone()),
         );
     }
 
@@ -153,11 +143,7 @@ impl Downloads {
         }
 
         let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::PauseDownload(file_id.clone(), tx))
-            .unwrap();
+        self.moly_client.pause_download_file(file_id.clone(), tx);
 
         if let Ok(response) = rx.recv() {
             match response {
@@ -182,11 +168,7 @@ impl Downloads {
         };
 
         let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::CancelDownload(file_id.clone(), tx))
-            .unwrap();
+        self.moly_client.cancel_download_file(file_id.clone(), tx);
 
         if let Ok(response) = rx.recv() {
             match response {
@@ -201,11 +183,7 @@ impl Downloads {
 
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
         let (tx, rx) = channel();
-        self.backend
-            .as_ref()
-            .command_sender
-            .send(Command::DeleteFile(file_id.clone(), tx))
-            .context("Failed to send delete file command")?;
+        self.moly_client.delete_file(file_id, tx);
 
         rx.recv()
             .context("Failed to receive delete file response")?

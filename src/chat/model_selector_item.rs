@@ -2,6 +2,8 @@ use makepad_widgets::*;
 use moly_mofa::MofaAgent;
 use moly_protocol::data::DownloadedFile;
 
+use crate::data::remote_servers::RemoteModel;
+
 use super::shared::ChatAgentAvatarWidgetExt;
 
 live_design! {
@@ -72,6 +74,7 @@ live_design! {
 pub enum ModelSelectorAction {
     ModelSelected(DownloadedFile),
     AgentSelected(MofaAgent),
+    RemoteModelSelected(RemoteModel),
     None,
 }
 
@@ -79,6 +82,7 @@ pub enum ModelSelectorAction {
 enum ModelSelectorEntity {
     Model(DownloadedFile),
     Agent(MofaAgent),
+    RemoteModel(RemoteModel),
     None
 }
 
@@ -113,6 +117,9 @@ impl WidgetMatchEvent for ModelSelectorItem {
                     ModelSelectorEntity::Agent(agent) => {
                         cx.action(ModelSelectorAction::AgentSelected(agent.clone()));
                     }
+                    ModelSelectorEntity::RemoteModel(remote_model) => {
+                        cx.action(ModelSelectorAction::RemoteModelSelected(remote_model.clone()));
+                    }
                     ModelSelectorEntity::None => {}
                 }
             }
@@ -132,6 +139,13 @@ impl ModelSelectorItemRef {
         };
         inner.chat_agent_avatar(id!(avatar)).set_agent(&agent);
         inner.entity = ModelSelectorEntity::Agent(agent);
+    }
+
+    pub fn set_remote_model(&mut self, remote_model: RemoteModel) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.entity = ModelSelectorEntity::RemoteModel(remote_model);
     }
 }
 
