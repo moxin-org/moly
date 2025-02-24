@@ -3,14 +3,14 @@ use makepad_widgets::*;
 use moly_protocol::data::PendingDownloadsStatus;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
 
-    import crate::landing::download_item::DownloadItem;
+    use crate::landing::download_item::DownloadItem;
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
 
@@ -81,7 +81,7 @@ live_design! {
         }
     }
 
-    Downloads = {{Downloads}} {
+    pub Downloads = {{Downloads}} {
         width: Fill,
         height: Fit,
         flow: Down,
@@ -166,14 +166,14 @@ impl Widget for Downloads {
             })
             .count();
         self.label(id!(downloading_count))
-            .set_text(&format!("{} downloading", download_count));
+            .set_text(cx, &format!("{} downloading", download_count));
 
         let paused_count = pending_downloads
             .iter()
             .filter(|d| matches!(d.status, PendingDownloadsStatus::Paused))
             .count();
         self.label(id!(paused_count))
-            .set_text(&format!("{} paused", paused_count));
+            .set_text(cx, &format!("{} paused", paused_count));
 
         let failed_count = pending_downloads
             .iter()
@@ -182,9 +182,9 @@ impl Widget for Downloads {
 
         if failed_count > 0 {
             self.label(id!(failed_count))
-                .set_text(&format!("{} failed", failed_count));
+                .set_text(cx, &format!("{} failed", failed_count));
         } else {
-            self.label(id!(failed_count)).set_text("");
+            self.label(id!(failed_count)).set_text(cx, "");
         }
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {

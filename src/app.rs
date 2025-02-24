@@ -1,34 +1,38 @@
 use crate::chat::chat_panel::ChatPanelAction;
+use crate::chat::model_selector_list::ModelSelectorListAction;
+use crate::data::chats::{MoFaTestServerAction, MofaServerConnectionStatus};
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupWidgetRefExt, DownloadResult,
-    PopupAction,
+    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
+use moly_protocol::data::{File, FileID};
+
 use makepad_widgets::*;
+use markdown::MarkdownAction;
+use moly_mofa::MofaServerId;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
-    import makepad_draw::shader::std::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::popup_notification::*;
-    import crate::shared::widgets::SidebarMenuButton;
-    import crate::shared::download_notification_popup::DownloadNotificationPopup;
-    import crate::shared::desktop_buttons::MolyDesktopButton;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::popup_notification::*;
+    use crate::shared::widgets::SidebarMenuButton;
+    use crate::shared::download_notification_popup::DownloadNotificationPopup;
+    use crate::shared::desktop_buttons::MolyDesktopButton;
 
-    import crate::landing::landing_screen::LandingScreen;
-    import crate::landing::model_card::ModelCardViewAllModal;
-    import crate::chat::chat_screen::ChatScreen;
-    import crate::my_models::my_models_screen::MyModelsScreen;
-    import crate::settings::settings_screen::SettingsScreen;
-
+    use crate::landing::landing_screen::LandingScreen;
+    use crate::landing::model_card::ModelCardViewAllModal;
+    use crate::chat::chat_screen::ChatScreen;
+    use crate::my_models::my_models_screen::MyModelsScreen;
+    use crate::settings::settings_screen::SettingsScreen;
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
@@ -139,6 +143,15 @@ pub struct App {
 
     #[rust]
     store: Store,
+
+    #[rust]
+    timer: Timer,
+
+    #[rust]
+    download_retry_attempts: usize,
+
+    #[rust]
+    file_id: Option<FileID>,
 }
 
 impl LiveRegister for App {
@@ -156,6 +169,16 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        
+        // It triggers when the timer expires.
+        if self.timer.is_event(event).is_some() {
+            if let Some(file_id) = &self.file_id {
+                let (model, file) = self.store.get_model_and_file_download(&file_id);
+                self.store.downloads.download_file(model, file);
+                self.ui.redraw(cx);
+            }
+        }
+      
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
@@ -184,6 +207,10 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
+            if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
+                let _ = robius_open::Uri::new(&url).open();
+            }
+
             self.store.handle_action(action);
 
             if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
@@ -244,6 +271,10 @@ impl MatchEvent for App {
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
 
+            self.store.handle_mofa_test_server_action(action.cast());
+            // redraw the UI to reflect the connection status
+            self.ui.redraw(cx);
+
             if matches!(
                 action.cast(),
                 DownloadNotificationPopupAction::ActionLinkClicked
@@ -266,14 +297,40 @@ impl App {
 
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
-                    popup.set_data(&file, DownloadResult::Success);
+                    popup.set_data(cx, &file, DownloadResult::Success);
+                    cx.action(ModelSelectorListAction::AddedOrDeletedModel);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
-                    popup.set_data(&file, DownloadResult::Failure);
+                    self.file_id = Some((file.id).clone());
+                    self.start_retry_timeout(cx, popup, file);
                 }
             }
 
             self.ui.popup_notification(id!(popup_notification)).open(cx);
+        }
+    }
+
+    fn start_retry_timeout(&mut self, cx: &mut Cx, mut popup: DownloadNotificationPopupRef, file: File) {
+        match self.download_retry_attempts {
+            0 => {
+                self.timer = cx.start_timeout(15.0);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data(cx);
+            },
+            1 => {
+                self.timer = cx.start_timeout(30.0);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data(cx);
+            },
+            2 => {
+                self.timer = cx.start_timeout(60.0);
+                self.download_retry_attempts += 1;
+                popup.set_retry_data(cx);
+            },
+            _ => {
+                popup.set_data(cx, &file, DownloadResult::Failure);
+                self.download_retry_attempts = 0;
+            }
         }
     }
 }

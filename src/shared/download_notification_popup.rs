@@ -4,14 +4,14 @@ use moly_protocol::data::{File, FileID};
 use crate::shared::actions::DownloadAction;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::resource_imports::*;
-    import crate::shared::widgets::MolyButton;
-    import crate::landing::shared::*;
-    import makepad_draw::shader::std::*;
+    use crate::shared::styles::*;
+    use crate::shared::resource_imports::*;
+    use crate::shared::widgets::MolyButton;
+    use crate::landing::shared::*;
 
     SUCCESS_ICON = dep("crate://self/resources/images/success_icon.png")
     FAILURE_ICON = dep("crate://self/resources/images/failure_icon.png")
@@ -180,7 +180,7 @@ live_design! {
         }
     }
 
-    DownloadNotificationPopup = {{DownloadNotificationPopup}} {
+    pub DownloadNotificationPopup = {{DownloadNotificationPopup}} {
         width: Fit
         height: Fit
 
@@ -228,6 +228,8 @@ pub struct DownloadNotificationPopup {
     file_id: Option<FileID>,
     #[rust]
     filename: String,
+    #[rust]
+    count: usize
 }
 
 impl Widget for DownloadNotificationPopup {
@@ -246,9 +248,7 @@ impl Widget for DownloadNotificationPopup {
 }
 
 impl WidgetMatchEvent for DownloadNotificationPopup {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let widget_uid = self.widget_uid();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(DownloadNotificationPopupAction::CloseButtonClicked);
         }
@@ -277,54 +277,91 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
 }
 
 impl DownloadNotificationPopup {
-    pub fn update_content(&mut self) {
+    pub fn update_content(&mut self, cx: &mut Cx) {
         match self.download_result {
-            DownloadResult::Success => self.show_success_content(),
-            DownloadResult::Failure => self.show_failure_content(),
+            DownloadResult::Success => self.show_success_content(cx),
+            DownloadResult::Failure => self.show_failure_content(cx),
         }
     }
 
-    fn show_success_content(&mut self) {
-        self.view(id!(success_icon)).set_visible(true);
-        self.view(id!(failure_icon)).set_visible(false);
+    fn show_success_content(&mut self, cx: &mut Cx) {
+        self.view(id!(success_icon)).set_visible(cx, true);
+        self.view(id!(failure_icon)).set_visible(cx, false);
 
-        self.view(id!(success_actions)).set_visible(true);
-        self.view(id!(failure_actions)).set_visible(false);
+        self.view(id!(success_actions)).set_visible(cx, true);
+        self.view(id!(failure_actions)).set_visible(cx, false);
 
         self.label(id!(title))
-            .set_text("Model Downloaded Successfully");
+            .set_text(cx, "Model Downloaded Successfully");
 
         self.label(id!(summary))
-            .set_text(&(format!("{} successfuly downloaded.", &self.filename)));
+            .set_text(cx, &(format!("{} successfuly downloaded.", &self.filename)));
     }
 
-    fn show_failure_content(&mut self) {
-        self.view(id!(success_icon)).set_visible(false);
-        self.view(id!(failure_icon)).set_visible(true);
+    fn show_failure_content(&mut self, cx: &mut Cx) {
+        self.view(id!(success_icon)).set_visible(cx, false);
+        self.view(id!(failure_icon)).set_visible(cx, true);
 
-        self.view(id!(success_actions)).set_visible(false);
-        self.view(id!(failure_actions)).set_visible(true);
+        self.view(id!(success_actions)).set_visible(cx, false);
+        self.view(id!(failure_actions)).set_visible(cx, true);
 
         self.label(id!(title))
-            .set_text("Errors while downloading models");
+            .set_text(cx, "Errors while downloading models");
 
-        self.label(id!(summary)).set_text(
+        self.label(id!(summary)).set_text(cx,
             &(format!(
                 "{} encountered some errors when downloading.",
                 &self.filename
             )),
         );
     }
+
+    pub fn show_retry_content(&mut self, cx: &mut Cx) {
+
+        let content = self.label(id!(summary));
+        self.view(id!(success_icon)).set_visible(cx, false);
+        self.view(id!(failure_icon)).set_visible(cx, true);
+
+        self.view(id!(success_actions)).set_visible(cx, false);
+        self.view(id!(failure_actions)).set_visible(cx, false);
+
+        self.label(id!(title))
+            .set_text(cx, "Retry");
+
+        match self.count {
+            0 => {
+                content.set_text(cx, "Download interrupted. Will resume in 15 seconds.");
+                self.count += 1;
+            },
+            1 => {
+                content.set_text(cx, "Download interrupted. Will resume in 30 seconds.");
+                self.count += 1;
+            },
+            2 => {
+                content.set_text(cx, "Download interrupted. Will resume in 60 seconds.");
+                self.count += 1;
+            },
+            _ => {
+                self.count = 0;
+            }
+        }
+    }
 }
 
 impl DownloadNotificationPopupRef {
-    pub fn set_data(&mut self, file: &File, download_result: DownloadResult) {
+    pub fn set_data(&mut self, cx: &mut Cx, file: &File, download_result: DownloadResult) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.file_id = Some(file.id.clone());
             inner.filename = file.name.clone();
             inner.download_result = download_result;
 
-            inner.update_content();
+            inner.update_content(cx);
+        }
+    }
+
+    pub fn set_retry_data(&mut self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.show_retry_content(cx);
         }
     }
 }

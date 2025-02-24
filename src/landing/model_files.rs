@@ -4,14 +4,15 @@ use makepad_widgets::*;
 use super::model_files_list::ModelFilesListWidgetExt;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::MolyRadioButtonTab;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::MolyRadioButtonTab;
 
-    import crate::landing::model_files_item::ModelFilesRow;
-    import crate::landing::model_files_list::ModelFilesList;
+    use crate::landing::model_files_item::ModelFilesRow;
+    use crate::landing::model_files_list::ModelFilesList;
 
     ICON_ADD = dep("crate://self/resources/icons/add.svg")
     ICON_REMOVE = dep("crate://self/resources/icons/remove.svg")
@@ -136,7 +137,7 @@ live_design! {
         }
     }
 
-    ModelFiles = {{ModelFiles}}<RoundedView> {
+    pub ModelFiles = {{ModelFiles}}<RoundedView> {
         width: Fill,
         height: Fit,
         flow: Down,
@@ -207,10 +208,10 @@ impl Widget for ModelFiles {
         let featured_count = model.files.iter().filter(|f| f.file.featured).count();
 
         let show_all_button = self.radio_button(id!(tab_buttons.show_all_button));
-        show_all_button.set_text(&format!("All Files ({})", files_count));
+        show_all_button.set_text(cx, &format!("All Files ({})", files_count));
 
         let show_all_button = self.radio_button(id!(tab_buttons.only_recommended_button));
-        show_all_button.set_text(&format!("Only Recommended Files ({})", featured_count));
+        show_all_button.set_text(cx, &format!("Only Recommended Files ({})", featured_count));
 
         let _ = self.view.draw_walk(cx, scope, walk);
 

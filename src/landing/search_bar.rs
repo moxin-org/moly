@@ -4,19 +4,18 @@ use crate::landing::sorting::SortingWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import makepad_draw::shader::std::*;
-
-    import crate::landing::sorting::Sorting;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::landing::sorting::Sorting;
 
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_CLOSE = dep("crate://self/resources/icons/close.svg")
 
-    SearchBar = {{SearchBar}} {
+    pub SearchBar = {{SearchBar}} {
         width: Fill,
         height: 200,
 
@@ -196,14 +195,14 @@ impl WidgetMatchEvent for SearchBar {
         }
 
         if let Some(text) = input.changed(actions) {
-            clear_text_button.set_visible(!text.is_empty());
+            clear_text_button.set_visible(cx, !text.is_empty());
             cx.stop_timer(self.search_timer);
             self.search_timer = cx.start_timeout(self.search_debounce_time);
         }
 
         if self.button(id!(clear_text_button)).clicked(actions) {
-            input.set_text_and_redraw(cx, "");
-            clear_text_button.set_visible(false);
+            input.set_text(cx, "");
+            clear_text_button.set_visible(cx, false);
             input.set_key_focus(cx);
 
             cx.action(StoreAction::ResetSearch);
@@ -236,7 +235,7 @@ impl SearchBarRef {
 
         inner
             .sorting(id!(search_sorting))
-            .set_selected_item(selected_sort);
+            .set_selected_item(cx, selected_sort);
         inner.animator_play(cx, id!(search_bar.collapsed));
     }
 

@@ -6,13 +6,13 @@ use crate::{
 };
 
 live_design! {
-    import makepad_widgets::base::*;
-    import makepad_widgets::theme_desktop_dark::*;
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
 
-    import crate::shared::styles::*;
-    import crate::shared::widgets::*;
-    import crate::shared::tooltip::*;
-    import makepad_draw::shader::std::*;
+    use crate::shared::styles::*;
+    use crate::shared::widgets::*;
+    use crate::shared::tooltip::*;
 
     ICON_CLOSE_PANEL = dep("crate://self/resources/icons/close_right_panel.svg")
     ICON_OPEN_PANEL = dep("crate://self/resources/icons/open_right_panel.svg")
@@ -33,8 +33,10 @@ live_design! {
         }
     }
 
-    ChatParams = {{ChatParams}} <MolyTogglePanel> {
+    pub ChatParams = {{ChatParams}} <MolyTogglePanel> {
+        width: 110,
         open_content = {
+            draw_bg: {opacity: 0.0}
             <View> {
                 width: Fill
                 height: Fill
@@ -201,11 +203,13 @@ live_design! {
                     width: Fill
                 }
                 open = {
+                    visible: true,
                     draw_icon: {
                         svg_file: (ICON_OPEN_PANEL),
                     }
                 }
                 close = {
+                    visible: false,
                     draw_icon: {
                         svg_file: (ICON_CLOSE_PANEL),
                     }
@@ -214,6 +218,12 @@ live_design! {
         }
 
         tooltip = <Tooltip> {}
+
+        animator: {
+            panel = {
+                default: close,
+            }
+        }
     }
 }
 
@@ -260,15 +270,15 @@ impl Widget for ChatParams {
 
             let system_prompt = self.text_input(id!(system_prompt));
 
-            temperature.set_value(ip.temperature.into());
-            top_p.set_value(ip.top_p.into());
-            max_tokens.set_value(ip.max_tokens.into());
-            frequency_penalty.set_value(ip.frequency_penalty.into());
-            presence_penalty.set_value(ip.presence_penalty.into());
-            stop.set_text(&ip.stop);
+            temperature.set_value(cx, ip.temperature.into());
+            top_p.set_value(cx, ip.top_p.into());
+            max_tokens.set_value(cx, ip.max_tokens.into());
+            frequency_penalty.set_value(cx, ip.frequency_penalty.into());
+            presence_penalty.set_value(cx, ip.presence_penalty.into());
+            stop.set_text(cx, &ip.stop);
 
             let system_prompt_value = chat.system_prompt.clone().unwrap_or_default();
-            system_prompt.set_text(&system_prompt_value);
+            system_prompt.set_text(cx, &system_prompt_value);
 
             // Currently, `selected` and `set_selected` interact with the animator of
             // the widget to do what they do. To avoid some visual issues, we should not
@@ -289,20 +299,6 @@ impl WidgetMatchEvent for ChatParams {
         self.handle_tooltip_actions(cx, actions);
 
         let store = scope.data.get_mut::<Store>().unwrap();
-        let close = self.button(id!(close_panel_button));
-        let open = self.button(id!(open_panel_button));
-
-        if close.clicked(&actions) {
-            close.set_visible(false);
-            open.set_visible(true);
-            self.set_open(cx, false);
-        }
-
-        if open.clicked(&actions) {
-            open.set_visible(false);
-            close.set_visible(true);
-            self.set_open(cx, true);
-        }
 
         if let Some(chat) = store.chats.get_current_chat() {
             let mut chat = chat.borrow_mut();

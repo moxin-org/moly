@@ -82,7 +82,7 @@ const WASMEDGE_ROOT_DIR_NAME: &str = {
         ".wasmedge"
     }
     #[cfg(windows)] {
-        "WasmEdge-0.14.0-Windows"
+        "WasmEdge-0.14.1-Windows"
     }
 };
 
@@ -356,7 +356,7 @@ fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io::Error> {
     use std::process::Stdio;
-    println!("Downloading WasmEdge 0.14.0 from GitHub; installing to {}", install_path.as_ref().display());
+    println!("Downloading WasmEdge 0.14.1 from GitHub; installing to {}", install_path.as_ref().display());
     let temp_dir = std::env::temp_dir();
     let curl_script_cmd = Command::new("curl")
         .stdout(Stdio::piped())
@@ -371,7 +371,7 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
         .stdin(Stdio::from(curl_script_cmd.stdout.expect("failed to pipe curl stdout into bash stdin")))
         .arg("-s")
         .arg("--")
-        .arg("--version=0.14.0")
+        .arg("--version=0.14.1")
         .arg(&format!("--path={}", install_path.as_ref().display()))
         // The default `/tmp/` dir used in `install_v2.sh` isn't always accessible to bundled apps.
         .arg(&format!("--tmpdir={}", temp_dir.display()));
@@ -423,18 +423,18 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 #[cfg(windows)]
 fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std::io::Error> {
     let install_path = install_path_ref.as_ref();
-    println!("Downloading WasmEdge 0.14.0 from GitHub; installing to {}", install_path.display());
+    println!("Downloading WasmEdge 0.14.1 from GitHub; installing to {}", install_path.display());
 
-    // Currently we hardcode the URL for the v0.14.0 release of WasmEdge for windows.
-    const WASMEDGE_0_14_0_WINDOWS_URL: &'static str = "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.0/WasmEdge-0.14.0-windows.zip";
+    // Currently we hardcode the URL for the v0.14.1 release of WasmEdge for windows.
+    const WASMEDGE_0_14_0_WINDOWS_URL: &'static str = "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-0.14.1-windows.zip";
     let (wasi_nn_plugin_url, wasi_nn_dir_name) = wasmedge_wasi_nn_plugin_url();
     println!(" --> Using WASI-NN plugin at: {wasi_nn_plugin_url}");
 
     let install_wasmedge_ps1 = format!(
         r#"
         $ProgressPreference = 'SilentlyContinue' ## makes downloads much faster
-        Invoke-WebRequest -Uri "{WASMEDGE_0_14_0_WINDOWS_URL}" -OutFile "$env:TEMP\WasmEdge-0.14.0-windows.zip"
-        Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.0-windows.zip" -DestinationPath "{}"
+        Invoke-WebRequest -Uri "{WASMEDGE_0_14_0_WINDOWS_URL}" -OutFile "$env:TEMP\WasmEdge-0.14.1-windows.zip"
+        Expand-Archive -Force -Path "$env:TEMP\WasmEdge-0.14.1-windows.zip" -DestinationPath "{}"
 
         Invoke-WebRequest -Uri "{wasi_nn_plugin_url}" -OutFile "$env:TEMP\{wasi_nn_dir_name}.zip"
         Expand-Archive -Force -Path "$env:TEMP\{wasi_nn_dir_name}.zip" -DestinationPath "$env:TEMP\{wasi_nn_dir_name}"
@@ -598,7 +598,7 @@ fn run_moly() -> std::io::Result<()> {
 
 
 /// Checks that the current CPU supports AVX512, or either SSE4.2 or SSE4a,
-/// at least one of which is required by the current builds of WasmEdge 0.14.0 on Windows.
+/// at least one of which is required by the current builds of WasmEdge 0.14.1 on Windows.
 ///
 /// This only checks x86_64 platforms, and does nothing on other platforms.
 fn assert_cpu_features() {

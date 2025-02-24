@@ -6,6 +6,7 @@ members = [
     "moly-protocol",
     "moly-backend",
     "moly-fake-backend",
+    "moly-mofa",
 ]
 exclude = ["packaging/before-packaging-command"]
 
@@ -13,7 +14,7 @@ exclude = ["packaging/before-packaging-command"]
 name = "moly"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.79" ## required by cargo-packager
+rust-version = "1.79"                                                 ## required by cargo-packager
 description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moly_app` to avoid naming conflicts
@@ -27,6 +28,7 @@ path = "src/main.rs"
 moly-protocol = { path = "moly-protocol" }
 moly-backend = { path = "moly-backend" }
 moly-fake-backend = { path = "moly-fake-backend" }
+moly-mofa = { path = "moly-mofa" }
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
@@ -135,8 +137,8 @@ bins = ["/usr/bin/curl"]
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
 frameworks = [
-    "./wasmedge/WasmEdge-0.14.0-Darwin/lib/libwasmedge.0.dylib",
-    "./wasmedge/WasmEdge-0.14.0-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
+    "./wasmedge/WasmEdge-0.14.1-Darwin/lib/libwasmedge.0.dylib",
+    "./wasmedge/WasmEdge-0.14.1-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
 ]
 
 

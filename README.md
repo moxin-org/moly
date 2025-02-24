@@ -41,7 +41,7 @@ git clone https://github.com/moxin-org/moly.git
 Install the required WasmEdge WASM runtime (or use [`moly-runner`](#tip-use-moly-runner-for-easy-setup)):
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
 
 source $HOME/.wasmedge/env
 ```
@@ -58,7 +58,7 @@ cargo run --release
 Install the required WasmEdge WASM runtime (or use [`moly-runner`](#tip-use-moly-runner-for-easy-setup)):
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.0
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
 
 source $HOME/.wasmedge/env
 ```
@@ -210,3 +210,71 @@ If you'd like to modify the .dmg background, here is the [Google Drawings file u
 [`.deb` (Debian dpkg)]: https://www.debian.org/doc/manuals/debian-faq/pkg-basics.en.html#package
 [AppImage]: https://appimage.org/
 [pacman]: https://pacman.archlinux.page/pacman.8.html
+
+## Running Moly with MoFa
+
+[MoFa](https://github.com/moxin-org/mofa) is a software framework for building AI agents. Moly supports connecting to MoFa servers to interact with AI agents in the same way it does with local LLMs.
+
+To run Moly with a local MoFa server, you can follow these steps:
+
+### 1. Install Dora
+
+https://github.com/dora-rs/dora?tab=readme-ov-file#installation
+
+### 2. Install MoFa
+
+Requires python ^3.10
+
+```bash
+git clone https://github.com/moxin-org/mofa.git
+```
+Install the required Python libraries, and mainly,
+the mofa library itself
+```bash
+cd python && pip install -r requirements.txt && pip install -e .
+pip install dora-rs
+```
+
+### 3. Run the Moly client (MoFa server for Moly)
+
+Folder of the Dora node that implements the http server
+```bash
+# 
+cd examples/moly_client
+Run MoFa with
+```
+dora up
+dora build dataflow.yml
+dora start dataflow.yml
+```
+If there's any error when doing dora start, you can restart dora
+```bash
+dora destroy && dora up
+```
+
+At this point the server should be up
+You can verify it with a request for chat completion:
+```bash
+curl http://localhost:8000/v1/chat/completions \
+-v -H "Content-Type: application/json" \
+-d '{
+"model": "moly-chat",
+"messages": [
+{ "role": "system", "content": "Use positive language and offer helpful solutions to their problems." },
+{ "role": "user", "content": "What is the currency used in Spain?" }
+],
+"temperature": 0.7,
+"stream": true
+}'
+```
+This should return a JSON response with the completion.
+
+## Connect Moly to MoFa
+
+Go to Settings and make sure there's MoFa server listed with the URL [`http://localhost:8000`](http://localhost:8000/) (should be there by default).
+
+> [!NOTE]
+> For development, if you want to avoid running the MoFa server, you can fake it by setting the `MOFA_BACKEND` environment variable to `fake` (default is `real`):
+> ```
+> MOFA_BACKEND=fake cargo run
+> ```
