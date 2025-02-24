@@ -347,18 +347,18 @@ impl Chat {
 
                 ui.defer_with_redraw(move |me, cx, _scope| {
                     me.messages_ref().write_with(|messages| {
-                        let mut body = messages
+                        let last_index = messages.messages.len() - 1;
+                        let message = messages
                             .messages
                             .last_mut()
-                            .expect("no message where to put delta")
-                            .body
-                            .clone();
+                            .expect("no message where to put delta");
 
-                        body.push_str(&delta);
+                        message.body.push_str(&delta);
+                        let updated_body = message.body.clone();
 
                         me.dispatch(
                             cx,
-                            ChatTask::UpdateMessage(messages.messages.len() - 1, body).into(),
+                            ChatTask::UpdateMessage(last_index, updated_body).into(),
                         );
 
                         if messages.is_at_bottom() {
