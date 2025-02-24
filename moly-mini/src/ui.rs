@@ -62,14 +62,16 @@ impl Widget for Ui {
                     is_writing: false,
                     body: "Hello".to_string(),
                     from: EntityId::User,
+                    citations: vec![],
                 },
                 Message {
                     is_writing: false,
                     body: "World".to_string(),
                     from: EntityId::Bot(bot_id),
+                    citations: vec!["https://en.wikipedia.org/wiki/Andorra".to_string(), "https://en.wikipedia.org/wiki/France".to_string()],
                 },
             ])
-            .take(5)
+            .take(1)
             .flatten()
             .collect();
 

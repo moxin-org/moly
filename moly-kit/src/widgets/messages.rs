@@ -1,11 +1,13 @@
-use std::cell::{Ref, RefMut};
+use std::{cell::{Ref, RefMut}, collections::{HashMap, HashSet}};
 
 use crate::{
     protocol::*,
-    utils::{events::EventExt, portal_list::ItemsRangeIter},
+    utils::{asynchronous::spawn, events::EventExt, portal_list::ItemsRangeIter},
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
+use link_preview::LinkPreview;
 use makepad_widgets::*;
+use url::Url;
 
 live_design! {
     use link::theme::*;
@@ -16,6 +18,10 @@ live_design! {
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
 
+    BOLD_FONT = {
+        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
+    }
+
     Sender = <View> {
         height: Fit,
         spacing: 8,
@@ -24,7 +30,7 @@ live_design! {
         avatar = <Avatar> {}
         name = <Label> {
             draw_text:{
-                // text_style: <BOLD_FONT>{font_size: 10},
+                text_style: <BOLD_FONT>{font_size: 10},
                 color: #000
             }
         }
@@ -93,6 +99,63 @@ live_design! {
         }
     }
 
+    Citations = {{Citations}} {
+        margin: {top: 15}
+        height: Fit, width: Fill,
+        // TODO: For some reason no background is drawn for this Widget.
+        flow: RightWrap, spacing: 10
+        citation_template: {{LinkPreviewUI}}<RoundedView> {
+            cursor: Hand,
+            height: 75, width: 180
+            flow: Down, spacing: 5
+            padding: {left: 15, right: 15, top: 10, bottom: 5}
+            show_bg: true,
+            draw_bg: {
+                color: #f2f2f2
+                radius: 5.0
+            }
+            title = <Label> {
+                text: "Loading..."
+                draw_text: {
+                    text_style: <BOLD_FONT>{},
+                    color: #000
+                }
+            }
+            flow_right_wrapper = <View> {
+                flow: Right, spacing: 5
+                align: {y: 0.5, x: 0.0}
+                image = <Image> {
+                    width: 30, height: 30,
+                    draw_bg: {
+                        fn pixel(self) -> vec4 {
+                            let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                            let c = self.rect_size * 0.5;
+                            sdf.circle(c.x, c.y, c.x - 2.)
+                            sdf.fill_keep(self.get_color());
+                            sdf.stroke((#f), 1);
+                            return sdf.result
+                        }
+                    }
+                }
+                
+                // website_favicon = <RoundedView> {
+                //     width: 20,
+                //     height: 20,
+                //     draw_bg: {
+                //         color: #cccccc
+                //         radius: 5.0
+                //     }
+                // }
+                domain = <Label> {
+                    text: "Loading..."
+                    draw_text: {
+                        color: #000
+                    }
+                }
+            }
+        }
+    }
+
     ChatLine = <View> {
         flow: Down,
         height: Fit,
@@ -134,6 +197,7 @@ live_design! {
         flow: Down,
         height: Fit,
         bubble = <Bubble> {
+            flow: Down, spacing: 10
             padding: {left: 0, top: 0, bottom: 0},
             margin: {left: 32}
             text = <View> {
@@ -141,6 +205,7 @@ live_design! {
                 markdown = <MessageMarkdown> {}
             }
             editor = <Editor> { visible: false }
+            citations = <Citations> { visible: false }
         }
         actions_section = {
             margin: {left: 32}
@@ -300,6 +365,7 @@ impl Messages {
             // End-of-chat
             body: "EOC".into(),
             is_writing: false,
+            citations: vec![],
         });
 
         let mut list = list.borrow_mut().unwrap();
@@ -350,6 +416,7 @@ impl Messages {
                         .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
                         .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
 
+                    // If the message is empty, display a loading animation.
                     let item = if message.is_writing && message.body.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
 
@@ -363,9 +430,14 @@ impl Messages {
                         //
                         // Warning: If you ever read the text from this widget and not
                         // from the list, you should remove the unicode character.
+                        // TODO: Remove this workaround once the markdown widget is fixed.
                         item.label(id!(text.markdown))
                             .set_text(cx, &message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
 
+                        if !message.citations.is_empty() {
+                            let mut citations_ref = item.citations(id!(citations));
+                            citations_ref.set_citations(cx, &message.citations);
+                        }
                         item
                     };
 
@@ -564,4 +636,201 @@ impl MessagesRef {
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Messages) -> R) -> R {
         f(&mut *self.write())
     }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct Citations {
+    #[deref]
+    view: View,
+
+    /// The template for the citation views.
+    #[live]
+    citation_template: Option<LivePtr>,
+
+    /// The views that represent the citations.
+    #[rust]
+    link_preview_children: ComponentMap<usize, LinkPreviewUI>,
+
+    /// The citations (URLs) that are currently being rendered.
+    #[rust]
+    citations: Vec<String>,
+
+    /// Maps the index of the citation to the link preview.
+    #[rust]
+    link_previews: HashMap<usize, LinkPreview>,
+
+    /// Maps the index of the citation to the image blob.
+    #[rust]
+    image_blobs: HashMap<usize, Vec<u8>>,
+
+    /// Track which images have already been loaded
+    #[rust]
+    loaded_image_indices: HashSet<usize>,
+}
+
+impl Widget for Citations {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.ui_runner().handle(cx, event, scope, self);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // TODO: Fix this, currently redrawing on every event
+        cx.begin_turtle(walk, self.layout);
+        for (citation_id, citation) in self.link_preview_children.iter_mut() {
+            let citation_content = &self.citations[*citation_id];
+            let domain = url::Url::parse(citation_content)
+                .ok()
+                .and_then(|u| u.domain().map(|d| d.to_string()))
+                .unwrap_or_default();
+            citation.url = citation_content.clone();
+            citation.label(id!(domain)).set_text(cx, &domain);
+
+            if let Some(link_preview) = self.link_previews.get(citation_id) {
+                if let Some(title) = &link_preview.title {
+                    citation.label(id!(title)).set_text(cx, &title);
+                }
+                if let Some(image_url) = &link_preview.image_url {
+                    if let Some(image_bytes) = self.image_blobs.get(citation_id) {
+                        // only load image if it's not already loaded
+                        if !self.loaded_image_indices.contains(citation_id) {
+                            if is_jpeg(image_bytes) {
+                                citation.image(id!(image)).load_jpg_from_data(cx, &image_bytes);
+                            } else {
+                                citation.image(id!(image)).load_png_from_data(cx, &image_bytes);
+                            }
+                            self.loaded_image_indices.insert(*citation_id);
+                        }
+                    }
+                }
+            }
+            citation.draw(cx, scope);
+        }
+        cx.end_turtle();
+        DrawStep::done()
+    }
+}
+
+impl Citations {
+    fn save_link_preview(&mut self, cx: &mut Cx, index: usize, link_preview: LinkPreview) {
+        let image_url = link_preview.image_url.clone();
+        self.link_previews.insert(index, link_preview);
+        // Only fetch if we don't already have this image
+        if let Some(image_url) = image_url {
+            if !self.image_blobs.contains_key(&index) {  // Add this check
+                let ui = self.ui_runner();
+                spawn(async move {
+                    let fetched_image = fetch_image_blob(image_url).await;
+                    if let Ok(image_bytes) = fetched_image {
+                        ui.defer_with_redraw(move |me, cx, _scope| {
+                            me.image_blobs.insert(index, image_bytes);
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    fn update_citations(&mut self, cx: &mut Cx, citations: &Vec<String>) {
+        self.visible = true;
+        // compare the vecs, if they are the same, return
+        if self.citations.len() == citations.len() {
+            let is_same = self.citations.iter().zip(citations.iter())
+                .all(|(a, b)| a == b);
+            if is_same {
+                return;
+            }
+        }
+
+        self.citations = citations.clone();
+        self.visible = true;
+        self.link_preview_children.clear();
+        self.loaded_image_indices.clear();
+        self.image_blobs.clear();
+
+        for (index, citation) in citations.iter().enumerate() {
+            let new_citation = LinkPreviewUI::new_from_ptr(cx, self.citation_template);
+            self.link_preview_children.insert(index, new_citation);
+
+            let citation_clone = citation.clone();
+            let index_clone = index;
+            let ui = self.ui_runner();
+            let widget_uid = self.widget_uid();
+
+            spawn(async move {
+                let future = async {
+                    match link_preview::fetch::fetch(&citation_clone).await {
+                        Ok(html) => {
+                            let link_preview = LinkPreview::from(html);
+                            let image_url = link_preview.clone().image_url;
+                            ui.defer(move |me, cx, _scope| {
+                                me.save_link_preview(cx, index_clone, link_preview);
+                            });
+                        }
+                        Err(e) => {
+                            println!("Error fetching preview for index {}: {:?}", index_clone, e);
+                        }
+                    }
+                };
+
+                let (future, _abort_handle) = futures::future::abortable(future);
+                future.await.unwrap_or_else(|_| println!("Preview fetch aborted for index {}", index_clone));
+            });
+        }
+
+        // self.redraw(cx);
+    }
+}
+
+impl CitationsRef {
+    fn set_citations(&mut self, cx: &mut Cx, citations: &Vec<String>) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.update_citations(cx, citations);
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct LinkPreviewUI {
+    #[deref]
+    view: View,
+
+    #[rust]
+    url: String,
+}
+
+impl Widget for LinkPreviewUI {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for LinkPreviewUI {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        // TODO: these finger up events are not reaching here.
+        if let Some(item) = actions.find_widget_action(self.widget_uid()) {
+            if let ViewAction::FingerUp(fd) = item.cast() {
+                let _ = robius_open::Uri::new(&self.url).open();
+            }
+        }
+    }
+}
+
+async fn fetch_image_blob(url: Url) -> Result<Vec<u8>, reqwest::Error> {
+    let response = reqwest::get(url.as_str()).await?;
+    let bytes = response.bytes().await?;
+    Ok(bytes.to_vec())
+}
+
+fn is_jpeg(bytes: &[u8]) -> bool {
+    bytes[0] == 0xFF && bytes[1] == 0xD8
+}
+
+fn is_png(bytes: &[u8]) -> bool {
+    bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
 }

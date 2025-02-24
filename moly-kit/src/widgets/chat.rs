@@ -88,8 +88,8 @@ pub enum ChatTask {
     /// When received back, it will re-write the message history with the given messages.
     SetMessages(Vec<Message>),
 
-    /// When received back, it will insert a message at the given index with the given text and entity.
-    InsertMessage(usize, EntityId, String),
+    /// When received back, it will insert a message at the given index.
+    InsertMessage(usize, Message),
 
     /// When received back, it will delete the message at the given index.
     DeleteMessage(usize),
@@ -292,8 +292,12 @@ impl Chat {
             if !text.is_empty() {
                 composition.push(ChatTask::InsertMessage(
                     next_index,
-                    EntityId::User,
-                    text.clone(),
+                    Message {
+                        from: EntityId::User,
+                        body: text.clone(),
+                        is_writing: false,
+                        citations: vec![],
+                    },
                 ));
             }
 
@@ -322,6 +326,7 @@ impl Chat {
                 from: EntityId::Bot(bot_id.clone()),
                 body: String::new(),
                 is_writing: true,
+                citations: vec![],
             });
 
             self.dispatch(cx, ChatTask::ScrollToBottom.into());
@@ -343,24 +348,28 @@ impl Chat {
             let mut message_stream = client.send_stream(&bot_id, &context);
 
             while let Some(delta) = message_stream.next().await {
-                let delta = delta.unwrap_or_else(|_| "An error occurred".to_string());
+                let delta = match delta {
+                    Ok(chat_delta) => chat_delta,
+                    Err(_) => ChatDelta {
+                        content_delta: "An error occurred".to_string(),
+                        citations: None,
+                    },
+                };
 
                 ui.defer_with_redraw(move |me, cx, _scope| {
                     me.messages_ref().write_with(|messages| {
                         let last_index = messages.messages.len() - 1;
-                        let message = messages
-                            .messages
-                            .last_mut()
-                            .expect("no message where to put delta");
+                        let message = messages.messages.last_mut().expect("no message where to put delta");
 
-                        message.body.push_str(&delta);
-                        let updated_body = message.body.clone();
+                        // Append new text
+                        message.body.push_str(&delta.content_delta);
 
-                        me.dispatch(
-                            cx,
-                            ChatTask::UpdateMessage(last_index, updated_body).into(),
-                        );
+                        // If the chunk contains citations, store them
+                        if let Some(cits) = &delta.citations {
+                            message.citations = cits.clone();
+                        }
 
+                        me.dispatch(cx, ChatTask::UpdateMessage(last_index, message.body.clone()).into());
                         if messages.is_at_bottom() {
                             me.dispatch(cx, ChatTask::ScrollToBottom.into());
                         }
@@ -458,14 +467,10 @@ impl Chat {
                 self.messages_ref().write().messages.remove(*index);
                 self.redraw(cx);
             }
-            ChatTask::InsertMessage(index, entity, text) => {
+            ChatTask::InsertMessage(index, message) => {
                 self.messages_ref().write().messages.insert(
                     *index,
-                    Message {
-                        from: entity.clone(),
-                        body: text.clone(),
-                        is_writing: false,
-                    },
+                    message.clone(),
                 );
                 self.redraw(cx);
             }

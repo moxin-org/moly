@@ -6,6 +6,8 @@ use crate::bot_selector::BotSelectorWidgetExt;
 
 const OPEN_AI_KEY: Option<&str> = option_env!("OPENAI_API_KEY");
 const OPENAI_API_URL: Option<&str> = option_env!("OPENAI_API_URL");
+const OPEN_ROUTER_KEY: Option<&str> = option_env!("OPEN_ROUTER_KEY");
+const OPEN_ROUTER_API_URL: Option<&str> = option_env!("OPEN_ROUTER_API_URL");
 
 live_design!(
     use link::theme::*;
@@ -99,10 +101,15 @@ impl LiveHook for DemoChat {
             let mut openai = MolyClient::new(openai_url.into());
             openai.set_key(OPEN_AI_KEY.unwrap_or(""));
 
+            let open_router_url = "https://openrouter.ai/api";
+            let mut open_router = MolyClient::new(open_router_url.into());
+            open_router.set_key(OPEN_ROUTER_KEY.unwrap_or(""));
+
             let mut client = MultiClient::new();
             client.add_client(Box::new(moly));
             client.add_client(Box::new(ollama));
             client.add_client(Box::new(openai));
+            client.add_client(Box::new(open_router));
             client
         };
 

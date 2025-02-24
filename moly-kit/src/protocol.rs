@@ -76,6 +76,15 @@ pub struct Message {
     ///
     /// If `false`, it means the message will not change anymore.
     pub is_writing: bool,
+    /// Citations for the message.
+    pub citations: Vec<String>,
+}
+
+/// A new structure to hold both text delta and optional metadata like citations.
+#[derive(Clone, Debug)]
+pub struct ChatDelta {
+    pub content_delta: String,
+    pub citations: Option<Vec<String>>,
 }
 
 /// A standard interface to fetch bots information and send messages to them.
@@ -92,7 +101,7 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<String, ()>>;
+    ) -> MolyStream<'static, Result<ChatDelta, ()>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -109,24 +118,37 @@ pub trait BotClient: Send {
     fn clone_box(&self) -> Box<dyn BotClient>;
 
     /// Send a message to a bot expecting a full response at once.
-    // TODO: messages may end up being a little bit more complex, using string while thinking.
-    // TODO: Should support a way of passing, unknown, backend-specific, inference parameters.
     fn send(
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyFuture<'static, Result<String, ()>> {
+    ) -> MolyFuture<'static, Result<Message, ()>> {
         let stream = self.send_stream(bot, messages);
+        let bot = bot.clone();
 
         let future = async move {
-            let parts = stream.collect::<Vec<_>>().await;
+            let mut content = String::new();
+            let mut citations = Vec::new();
 
-            if parts.contains(&Err(())) {
-                return Err(());
+            let mut stream = stream;
+            while let Some(delta) = stream.next().await {
+                match delta {
+                    Ok(chat_delta) => {
+                        content.push_str(&chat_delta.content_delta);
+                        if let Some(cits) = chat_delta.citations {
+                            citations = cits;
+                        }
+                    }
+                    Err(()) => return Err(()),
+                }
             }
 
-            let message = parts.into_iter().filter_map(Result::ok).collect::<String>();
-            Ok(message)
+            Ok(Message {
+                from: EntityId::Bot(bot),
+                body: content,
+                is_writing: false,
+                citations,
+            })
         };
 
         moly_future(future)

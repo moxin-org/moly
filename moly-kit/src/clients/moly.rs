@@ -77,15 +77,18 @@ enum Role {
     Assistant,
 }
 
+/// The Choice object as part of a streaming response.
 #[derive(Clone, Debug, Deserialize)]
 struct Choice {
     pub delta: IncomingMessage,
 }
 
-/// Response from the completions endpoint.
+/// Response from the completions endpoint
 #[derive(Clone, Debug, Deserialize)]
-struct Completation {
+struct Completion {
     pub choices: Vec<Choice>,
+    #[serde(default)]
+    pub citations: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -186,11 +189,12 @@ impl BotClient for MolyClient {
         Box::new(self.clone())
     }
 
+    /// Stream pieces of content back as a ChatDelta instead of just a String.
     fn send_stream(
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<String, ()>> {
+    ) -> MolyStream<'static, Result<ChatDelta, ()>> {
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())
@@ -255,8 +259,8 @@ impl BotClient for MolyClient {
                     .filter(|m| m.trim() != "[DONE]");
 
                 for m in messages {
-                    let completition: Completation = match serde_json::from_str(m) {
-                        Ok(completition) => completition,
+                    let completion: Completion = match serde_json::from_str(m) {
+                        Ok(c) => c,
                         Err(error) => {
                             log!("Error: {:?}", error);
                             yield Err(());
@@ -264,13 +268,19 @@ impl BotClient for MolyClient {
                         }
                     };
 
-                    let text = completition
+                    // Combine all partial choices content
+                    let content_delta = completion
                         .choices
                         .iter()
                         .map(|c| c.delta.content.as_str())
                         .collect::<String>();
 
-                    yield Ok(text);
+                    let citations = completion.citations.clone();
+
+                    yield Ok(ChatDelta {
+                        content_delta,
+                        citations,
+                    });
                 }
 
                 buffer = incomplete_message.to_vec();

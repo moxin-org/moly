@@ -28,7 +28,7 @@ impl BotClient for MultiClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<String, ()>> {
+    ) -> MolyStream<'static, Result<ChatDelta, ()>> {
         let mut client = self
             .clients_with_bots
             .lock()
@@ -43,7 +43,7 @@ impl BotClient for MultiClient {
             })
             .expect("no client for bot");
 
-        client.send_stream(&bot, messages)
+        client.send_stream(bot, messages)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
