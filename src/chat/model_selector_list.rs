@@ -170,6 +170,45 @@ impl ModelSelectorList {
             total_height += separator_widget.as_view().area().rect(cx).size.y;
         }
 
+        let remote_models_vector: Vec<_> =
+            store.chats.get_remote_models_list(true).iter().cloned().collect();
+
+        for (i, remote_model) in remote_models_vector.iter().enumerate() {
+            let item_id = LiveId(10_000 + i as u64).into();
+            let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
+                WidgetRef::new_from_ptr(cx, self.model_template)
+            });
+
+            // Remote the starting 'models/' at the beginning of the name (happens with Gemini)
+            let caption = &remote_model.name.trim_start_matches("models/");
+            let size_visible = false;
+
+            let icon_tick_visible = match &chat_entity {
+                Some(ChatEntityId::RemoteModel(model_id)) => model_id.0 == remote_model.id.0,
+                _ => false,
+            };
+
+            item_widget.apply_over(
+                cx,
+                live! {
+                    content = {
+                        label = { text: (caption) }
+                        architecture_tag = { visible: false }
+                        params_size_tag = { visible: false }
+                        file_size_tag = { visible: (size_visible), caption = { text: "" } }
+                        icon_tick_tag = { visible: (icon_tick_visible) }
+                    }
+                },
+            );
+
+            item_widget
+                .as_model_selector_item()
+                .set_remote_model(remote_model.clone());
+            
+            let _ = item_widget.draw_all(cx, &mut Scope::empty());
+            total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
+        }
+
         let agents = store.chats.get_agents_list();
         for (i, agent) in agents.iter().enumerate() {
             let item_id = LiveId((models_count + 1 + i) as u64).into();

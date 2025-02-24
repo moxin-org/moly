@@ -175,7 +175,12 @@ impl DemoChat {
             })
             .collect::<Vec<_>>();
 
-        chat.borrow_mut().unwrap().bot_id = Some(bots.first().unwrap().id.clone());
+        if let Some(bot) = bots.first() {
+            chat.borrow_mut().unwrap().bot_id = Some(bot.id.clone());
+        } else {
+            eprintln!("No models available, check your API keys.");
+        }
+
         self.bot_selector(id!(selector)).set_bots(bots);
     }
 }

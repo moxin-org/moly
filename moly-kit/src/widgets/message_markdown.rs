@@ -45,6 +45,7 @@ live_design! {
     BaseMarkdown = <MessageText> {
         padding: 0,
         margin: 0,
+        // TODO: Fix this empty space issue in Makepad. First paragraph should not have a top margin.
         // Workaround: This property causes an unintended initial space so let's disable it.
         paragraph_spacing: 0,
     }

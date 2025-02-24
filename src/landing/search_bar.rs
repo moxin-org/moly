@@ -182,7 +182,7 @@ impl Widget for SearchBar {
 }
 
 impl WidgetMatchEvent for SearchBar {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let input = self.text_input(id!(input));
         let clear_text_button = self.button(id!(clear_text_button));
 

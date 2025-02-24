@@ -344,7 +344,7 @@ impl Widget for DownloadItem {
 }
 
 impl WidgetMatchEvent for DownloadItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         for actions in actions {
             if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
                 if self.file_id.as_ref() == Some(&action.file_id) {

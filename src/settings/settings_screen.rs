@@ -14,10 +14,137 @@ live_design! {
 
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
-    use crate::settings::mofa_settings::MofaSettings;
+    use crate::settings::connection_settings::ConnectionSettings;
 
     BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
+
+    LocalServerOptions = <View> {
+        width: Fill, height: Fit
+        flow: Down
+        spacing: 20
+
+        <Label> {
+            draw_text:{
+                text_style: <BOLD_FONT>{font_size: 16}
+                color: #000
+            }
+            text: "Moly Server (local inference) Information"
+        }
+
+        no_model = <View> {
+            visible: false,
+            width: Fill, height: Fit
+            <Label> {
+                draw_text:{
+                    text_style: <REGULAR_FONT>{font_size: 12}
+                    color: #000
+                }
+                text: "Local inference options will appear once you have a model loaded."
+            }
+        }
+
+        main = <View> {
+            width: Fill, height: Fit
+            flow: Down
+            align: {x: 0.0, y: 0.0}
+
+            spacing: 5
+
+            <View> {
+                width: Fit, height: Fit
+                flow: Right
+                spacing: 5
+                align: {x: 0.0, y: 0.5}
+
+                <Label> {
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 12}
+                        color: #000
+                    }
+                    text: "Port number:"
+                }
+
+                port_on_edit = <View> {
+                    visible: false,
+                    width: Fit, height: Fit
+
+                    port_number_input = <MolyTextInput> {
+                        width: 100,
+                        height: Fit,
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 12}
+                            color: #000
+                        }
+                    }
+                }
+
+                port_editable = <View> {
+                    width: Fit, height: Fit
+                    spacing: 10
+                    align: {x: 0.0, y: 0.5}
+
+                    port_number_label = <Label> {
+                        draw_text:{
+                            text_style: <REGULAR_FONT>{font_size: 12}
+                            color: #000
+                        }
+                    }
+
+                    edit_port_number = <MolyButton> {
+                        width: Fit
+                        height: Fit
+
+                        draw_bg: {
+                            border_width: 1,
+                            radius: 3
+                        }
+
+                        margin: {bottom: 4}
+
+                        icon_walk: {width: 14, height: 14}
+                        draw_icon: {
+                            svg_file: (ICON_EDIT),
+                            fn get_color(self) -> vec4 {
+                                return #000;
+                            }
+                        }
+                    }
+                }
+            }
+
+            load_info_label = <View> {
+                visible: false,
+                width: Fit, height: Fit
+                <Label> {
+                    draw_text:{
+                        text_style: <REGULAR_FONT>{font_size: 12}
+                        color: #000
+                    }
+                    text: "Something went wrong while loading the model using this port number. Please try another one."
+                }
+            }
+
+            <HorizontalFiller> { height: 10 }
+
+            <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 12}
+                    color: #000
+                }
+                text: "Client code example"
+            }
+
+            code_snippet = <CodeView> {
+                editor: {
+                    pad_left_top: vec2(10.0,10.0)
+                    width: Fill,
+                    height: Fit,
+                    draw_bg: { color: #3c3c3c },
+                }
+            }
+        }
+    }
 
     pub SettingsScreen = {{SettingsScreen}} {
         width: Fill
@@ -34,8 +161,7 @@ live_design! {
             width: Fill, height: Fill
             flow: Down
             padding: 60
-
-            spacing: 60
+            spacing: 30
 
             <Label> {
                 draw_text:{
@@ -48,146 +174,10 @@ live_design! {
             <ScrollYView> {
                 width: Fill, height: Fill
                 spacing: 40
+                flow: Down
 
-                local_server_options = <View> {
-                    width: Fill, height: Fit
-                    flow: Down
-                    spacing: 20
-
-                    <Label> {
-                        draw_text:{
-                            text_style: <BOLD_FONT>{font_size: 16}
-                            color: #000
-                        }
-                        text: "Local inference server information"
-                    }
-
-                    no_model = <View> {
-                        visible: false,
-                        width: Fill, height: Fit
-                        <Label> {
-                            draw_text:{
-                                text_style: <REGULAR_FONT>{font_size: 12}
-                                color: #000
-                            }
-                            text: "Local inference options will appear once you have a model loaded."
-                        }
-                    }
-
-                    main = <View> {
-                        width: Fill, height: Fit
-                        flow: Down
-                        align: {x: 0.0, y: 0.0}
-
-                        spacing: 10
-
-                        <View> {
-                            width: Fit, height: Fit
-                            flow: Right
-                            spacing: 10
-                            align: {x: 0.0, y: 0.5}
-
-                            <Label> {
-                                draw_text:{
-                                    text_style: <REGULAR_FONT>{font_size: 12}
-                                    color: #000
-                                }
-                                text: "Port number:"
-                            }
-
-                            port_on_edit = <View> {
-                                visible: false,
-                                width: Fit, height: Fit
-
-                                port_number_input = <MolyTextInput> {
-                                    width: 100,
-                                    height: Fit,
-                                    draw_text: {
-                                        text_style: <REGULAR_FONT>{font_size: 12}
-                                        color: #000
-                                    }
-                                }
-                            }
-
-                            port_editable = <View> {
-                                width: Fit, height: Fit
-                                spacing: 10
-                                align: {x: 0.0, y: 0.5}
-
-                                port_number_label = <Label> {
-                                    draw_text:{
-                                        text_style: <REGULAR_FONT>{font_size: 12}
-                                        color: #000
-                                    }
-                                }
-
-                                edit_port_number = <MolyButton> {
-                                    width: Fit
-                                    height: Fit
-
-                                    draw_bg: {
-                                        border_width: 1,
-                                        radius: 3
-                                    }
-
-                                    margin: {bottom: 4}
-
-                                    icon_walk: {width: 14, height: 14}
-                                    draw_icon: {
-                                        svg_file: (ICON_EDIT),
-                                        fn get_color(self) -> vec4 {
-                                            return #000;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        load_info_label = <View> {
-                            visible: false,
-                            width: Fit, height: Fit
-                            <Label> {
-                                draw_text:{
-                                    text_style: <REGULAR_FONT>{font_size: 12}
-                                    color: #000
-                                }
-                                text: "Something went wrong while loading the model using this port number. Please try another one."
-                            }
-                        }
-
-                        <HorizontalFiller> { height: 10 }
-
-                        <Label> {
-                            draw_text:{
-                                text_style: <BOLD_FONT>{font_size: 12}
-                                color: #000
-                            }
-                            text: "Client code example"
-                        }
-
-                        code_snippet = <CodeView> {
-                            editor: {
-                                pad_left_top: vec2(10.0,10.0)
-                                width: Fill,
-                                height: Fit,
-                                draw_bg: { color: #3c3c3c },
-                            }
-                        }
-                    }
-                }
-
-                mofa_section = <View> {
-                    spacing: 40
-                    <HorizontalFiller> {
-                        width: 2,
-                        show_bg: true
-                        draw_bg: {
-                            color: #c3c3c3
-                        }
-                    }
-
-                    mofa_options = <MofaSettings> {}
-                }
+                connection_settings = <ConnectionSettings> {}
+                local_server_options = <LocalServerOptions> {}
             }
         }
     }

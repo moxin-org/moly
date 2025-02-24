@@ -333,7 +333,7 @@ impl WidgetMatchEvent for ModelSelector {
 
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) => {
+                ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) | ModelSelectorAction::RemoteModelSelected(_) => {
                     self.hide_options(cx);
                 }
                 _ => {}
@@ -392,6 +392,7 @@ impl ModelSelector {
             .get_current_chat()
             .and_then(|c| c.borrow().associated_entity.clone());
 
+        // Handle agent
         if let Some(ChatEntityId::Agent(agent)) = chat_entity {
             self.view(id!(selected_model)).set_visible(cx, false);
             let selected_view = self.view(id!(selected_agent));
@@ -411,6 +412,28 @@ impl ModelSelector {
             return;
         }
 
+        // Handle remote model
+        if let Some(ChatEntityId::RemoteModel(model_id)) = chat_entity {
+            self.view(id!(selected_agent)).set_visible(cx, false);
+            let selected_view = self.view(id!(selected_model));
+            selected_view.set_visible(cx, true);
+    
+            let remote_model = store.chats.get_remote_model_or_placeholder(&model_id);
+            
+            selected_view.apply_over(
+                cx,
+                live! {
+                    label = { text: (&remote_model.name.trim_start_matches("models/")), draw_text: { color: #x0 }}
+                    // Hide size/architecture tags for remote models
+                    architecture_tag = { visible: false }
+                    params_size_tag = { visible: false }
+                    file_size_tag = { visible: false }
+                },
+            );
+            return;
+        }
+
+        // Handle local model
         let file = match chat_entity {
             Some(ChatEntityId::ModelFile(file_id)) => store.downloads.get_file(&file_id).cloned(),
             _ => loaded_file.cloned(),
@@ -478,5 +501,10 @@ fn no_active_model(store: &Store) -> bool {
         .get_current_chat()
         .and_then(|c| c.borrow().associated_entity.clone());
 
-    chat_entity.is_none() && store.chats.loaded_model.is_none()
+    match chat_entity {
+        None => store.chats.loaded_model.is_none(),
+        Some(ChatEntityId::ModelFile(_)) => false,
+        Some(ChatEntityId::Agent(_)) => false,
+        Some(ChatEntityId::RemoteModel(_)) => false,
+    }
 }

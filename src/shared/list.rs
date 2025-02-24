@@ -45,6 +45,7 @@ impl Widget for List {
     }
 }
 
+#[allow(dead_code)]
 impl List {
     /// Set to an already generated list of widgets.
     pub fn set_items(&mut self, items: Vec<WidgetRef>) {
@@ -71,6 +72,7 @@ impl List {
     }
 }
 
+#[allow(dead_code)]
 impl ListRef {
     /// Calls `set_items` on the inner widget.
     pub fn set_items(&mut self, items: Vec<WidgetRef>) {

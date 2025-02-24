@@ -3,7 +3,6 @@ use crate::chat::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
-use makepad_markdown::parse_markdown;
 use moly_mofa::MofaAgent;
 
 live_design! {
@@ -60,7 +59,9 @@ live_design! {
 
     MessageText = <Markdown> {
         padding: 0,
-        paragraph_spacing: 20.0,
+        // Workaround: we should be using `paragraph_spacing: 20`,
+        // but this property causes an unintended initial space so let's disable it.
+        paragraph_spacing: 0
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
@@ -344,9 +345,11 @@ impl ChatLine {
 
     pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
         let text = self.text_input(id!(input)).text();
-        let to_markdown = parse_markdown(&text);
-        let is_plain_text = to_markdown.nodes.len() <= 3;
-
+        // let to_markdown = parse_markdown(&text);
+        // let is_plain_text = to_markdown.nodes.len() <= 3;
+        // Temporary workaround to always show markdown.
+        // This will be replaced by MolyKit.
+        let is_plain_text = false;
         self.view(id!(plain_text_message_container))
             .set_visible(cx, show && is_plain_text);
         self.view(id!(markdown_message_container))

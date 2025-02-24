@@ -128,6 +128,7 @@ impl Tooltip {
     }
 }
 
+#[allow(dead_code)]
 impl TooltipRef {
     pub fn set_text(&mut self, cx: &mut Cx, text: &str) {
         if let Some(mut inner) = self.borrow_mut() {

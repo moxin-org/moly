@@ -4,20 +4,24 @@ use moly_mofa::{AgentId, MofaAgent};
 use moly_protocol::data::{File, FileID};
 use serde::{Deserialize, Serialize};
 
-/// Identifies either a model file or an agent.
+use crate::data::remote_servers::{RemoteModel, RemoteModelId};
+
+/// Identifies either a local model file, a MoFa agent, or a remote model.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ChatEntityId {
     ModelFile(FileID),
     Agent(AgentId),
+    RemoteModel(RemoteModelId),
 }
 
-/// Reference to either a model file or an agent.
+/// Reference to either a model file, an agent, or a remote model.
 ///
 /// Can be used to chain iterators of both types or simply to take either as a parameter.
 #[derive(Debug, Clone, Serialize, Copy)]
 pub enum ChatEntityRef<'a> {
     Agent(&'a MofaAgent),
     ModelFile(&'a File),
+    RemoteModel(&'a RemoteModel), 
 }
 
 impl<'a> ChatEntityRef<'a> {
@@ -25,6 +29,7 @@ impl<'a> ChatEntityRef<'a> {
         match self {
             ChatEntityRef::ModelFile(file) => ChatEntityId::ModelFile(file.id.clone()),
             ChatEntityRef::Agent(agent) => ChatEntityId::Agent(agent.id.clone()),
+            ChatEntityRef::RemoteModel(model) => ChatEntityId::RemoteModel(model.id.clone()),
         }
     }
 
@@ -32,6 +37,7 @@ impl<'a> ChatEntityRef<'a> {
         match self {
             ChatEntityRef::ModelFile(file) => &file.name,
             ChatEntityRef::Agent(agent) => &agent.name,
+            ChatEntityRef::RemoteModel(model) => &model.name,
         }
     }
 }
@@ -45,5 +51,11 @@ impl<'a> From<&'a MofaAgent> for ChatEntityRef<'a> {
 impl<'a> From<&'a File> for ChatEntityRef<'a> {
     fn from(file: &'a File) -> Self {
         ChatEntityRef::ModelFile(file)
+    }
+}
+
+impl<'a> From<&'a RemoteModel> for ChatEntityRef<'a> {
+    fn from(model: &'a RemoteModel) -> Self {
+        ChatEntityRef::RemoteModel(model)
     }
 }

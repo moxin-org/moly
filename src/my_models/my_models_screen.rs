@@ -1,7 +1,5 @@
 use makepad_widgets::*;
 use moly_protocol::data::DownloadedFile;
-use moly_protocol::protocol::Command;
-use std::path::PathBuf;
 
 use crate::{data::store::Store, shared::utils::BYTES_PER_MB};
 
@@ -160,7 +158,9 @@ live_design! {
                 margin: {top: 10}
                 align: {x: 0.0, y: 0.5}
 
-                download_location = <DownloadLocationButton> {}
+                // Commented out for now as we don't have a way to change the download location yet
+                // and we don't know if we'll support it again.
+                // download_location = <DownloadLocationButton> {}
                 show_in_files = <ShowInFilesButton> {}
                 <View> { width: Fill, height: Fit }
                 search = <SearchBar> {}
@@ -235,27 +235,29 @@ impl WidgetMatchEvent for MyModelsScreen {
                 });
         }
 
-        if self.button(id!(download_location)).clicked(actions) {
-            let scope = &mut scope.data.get_mut::<Store>().unwrap();
-            let models_dir = &scope.preferences.downloaded_files_dir;
-            let models_uri = &format!("file:///{}", models_dir.display());
+        // Commented out for now as we don't have a way to change the download location yet
+        // and we don't know if we'll support it again.
+        // if self.button(id!(download_location)).clicked(actions) {
+        //     let scope = &mut scope.data.get_mut::<Store>().unwrap();
+        //     let models_dir = &scope.preferences.downloaded_files_dir;
+        //     let models_uri = &format!("file:///{}", models_dir.display());
 
-            let path_buf = PathBuf::from(models_uri);
+        //     let path_buf = PathBuf::from(models_uri);
 
-            let res = rfd::FileDialog::new()
-                .set_directory(&path_buf)
-                .pick_folder();
+        //     let res = rfd::FileDialog::new()
+        //         .set_directory(&path_buf)
+        //         .pick_folder();
 
-            if let Some(path) = res {
-                scope.preferences.set_downloaded_files_dir(path.clone());
-                scope
-                    .backend
-                    .as_ref()
-                    .command_sender
-                    .send(Command::ChangeModelsDir(path))
-                    .unwrap();
-            }
-        }
+        //     if let Some(path) = res {
+        //         scope.preferences.set_downloaded_files_dir(path.clone());
+        //         scope
+        //             .backend
+        //             .as_ref()
+        //             .command_sender
+        //             .send(Command::ChangeModelsDir(path))
+        //             .unwrap();
+        //     }
+        // }
 
         if let Some(keywords) = self.text_input(id!(search.input)).changed(actions) {
             if !keywords.is_empty() {
