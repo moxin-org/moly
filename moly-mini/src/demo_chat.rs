@@ -4,10 +4,9 @@ use moly_kit::*;
 
 use crate::bot_selector::BotSelectorWidgetExt;
 
-const OPEN_AI_KEY: Option<&str> = option_env!("OPENAI_API_KEY");
-const OPENAI_API_URL: Option<&str> = option_env!("OPENAI_API_URL");
+const OPEN_AI_KEY: Option<&str> = option_env!("OPEN_AI_KEY");
 const OPEN_ROUTER_KEY: Option<&str> = option_env!("OPEN_ROUTER_KEY");
-const OPEN_ROUTER_API_URL: Option<&str> = option_env!("OPEN_ROUTER_API_URL");
+const SILICON_FLOW_KEY: Option<&str> = option_env!("SILICON_FLOW_KEY");
 
 live_design!(
     use link::theme::*;
@@ -94,22 +93,37 @@ impl Widget for DemoChat {
 impl LiveHook for DemoChat {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         let client = {
-            let moly = MolyClient::new("http://localhost:8085".into());
+            // let moly = MolyClient::new("http://localhost:8085".into());
             let ollama = MolyClient::new("http://localhost:11434".into());
 
-            let openai_url = OPENAI_API_URL.unwrap_or("https://api.openai.com");
-            let mut openai = MolyClient::new(openai_url.into());
-            openai.set_key(OPEN_AI_KEY.unwrap_or(""));
-
-            let open_router_url = "https://openrouter.ai/api";
-            let mut open_router = MolyClient::new(open_router_url.into());
-            open_router.set_key(OPEN_ROUTER_KEY.unwrap_or(""));
-
             let mut client = MultiClient::new();
-            client.add_client(Box::new(moly));
+            // client.add_client(Box::new(moly));
             client.add_client(Box::new(ollama));
-            client.add_client(Box::new(openai));
-            client.add_client(Box::new(open_router));
+
+            // Only add OpenAI client if API key is present
+            if let Some(key) = OPEN_AI_KEY {
+                let openai_url = "https://api.openai.com";
+                let mut openai = MolyClient::new(openai_url.into());
+                openai.set_key(key);
+                client.add_client(Box::new(openai));
+            }
+
+            // Only add OpenRouter client if API key is present
+            if let Some(key) = OPEN_ROUTER_KEY {
+                let open_router_url = "https://openrouter.ai/api";
+                let mut open_router = MolyClient::new(open_router_url.into());
+                open_router.set_key(key);
+                client.add_client(Box::new(open_router));
+            }
+
+            // Only add SiliconFlow client if API key is present
+            if let Some(key) = SILICON_FLOW_KEY {
+                let siliconflow_url = "https://api.siliconflow.cn";
+                let mut siliconflow = MolyClient::new(siliconflow_url.into());
+                siliconflow.set_key(key);
+                client.add_client(Box::new(siliconflow));
+            }
+
             client
         };
 
@@ -171,6 +185,8 @@ impl DemoChat {
                 let siliconflow_whitelist = [
                     "Pro/Qwen/Qwen2-1.5B-Instruct",
                     "Pro/deepseek-ai/DeepSeek-R1",
+                    "Pro/meta-llama/Meta-Llama-3.1-8B-Instruct",
+                    "Qwen/Qwen2-7B-Instruct",
                 ];
 
                 openai_whitelist

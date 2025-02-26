@@ -68,7 +68,7 @@ impl Widget for Ui {
                     is_writing: false,
                     body: "World".to_string(),
                     from: EntityId::Bot(bot_id),
-                    citations: vec!["https://en.wikipedia.org/wiki/Andorra".to_string(), "https://en.wikipedia.org/wiki/France".to_string()],
+                    citations: vec!["https://github.com/ZhangHanDong/url-preview/issues/2".to_string()],
                 },
             ])
             .take(1)

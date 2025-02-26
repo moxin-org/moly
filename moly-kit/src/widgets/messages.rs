@@ -5,9 +5,10 @@ use crate::{
     utils::{asynchronous::spawn, events::EventExt, portal_list::ItemsRangeIter},
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
-use link_preview::LinkPreview;
 use makepad_widgets::*;
+use reqwest::header::{HeaderValue, REFERER, USER_AGENT};
 use url::Url;
+use url_preview::{PreviewService, Preview, PreviewError};
 
 live_design! {
     use link::theme::*;
@@ -21,6 +22,7 @@ live_design! {
     BOLD_FONT = {
         font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
     }
+    LINK_ICON = dep("crate://self/assets/link.png")
 
     Sender = <View> {
         height: Fit,
@@ -102,50 +104,41 @@ live_design! {
     Citations = {{Citations}} {
         margin: {top: 15}
         height: Fit, width: Fill,
-        // TODO: For some reason no background is drawn for this Widget.
         flow: RightWrap, spacing: 10
+        // TODO: We want make these rounded but don't have a straight forward way to have the inner image match the same radius.
         citation_template: {{LinkPreviewUI}}<RoundedView> {
             cursor: Hand,
             height: 75, width: 180
-            flow: Down, spacing: 5
-            padding: {left: 15, right: 15, top: 10, bottom: 5}
+            flow: Right, spacing: 5
             show_bg: true,
             draw_bg: {
                 color: #f2f2f2
-                radius: 5.0
+                radius: 0
             }
-            title = <Label> {
-                text: "Loading..."
-                draw_text: {
-                    text_style: <BOLD_FONT>{},
-                    color: #000
+            align: {y: 0.5}
+            image_wrapper = <RoundedView> {
+                draw_bg: {
+                    radius: 0
+                },
+                align: {y: 0.5, x: 0.5},
+                width: 75, height: Fill,
+                visible: true,
+                image = <Image> {
+                    width: 30, height: 55,
+                    fit: Vertical,
+                    source: (LINK_ICON)
                 }
             }
-            flow_right_wrapper = <View> {
-                flow: Right, spacing: 5
+            flow_down_wrapper = <View> {
+                flow: Down, spacing: 5
                 align: {y: 0.5, x: 0.0}
-                image = <Image> {
-                    width: 30, height: 30,
-                    draw_bg: {
-                        fn pixel(self) -> vec4 {
-                            let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                            let c = self.rect_size * 0.5;
-                            sdf.circle(c.x, c.y, c.x - 2.)
-                            sdf.fill_keep(self.get_color());
-                            sdf.stroke((#f), 1);
-                            return sdf.result
-                        }
+                title = <Label> {
+                    text: "Loading..."
+                    draw_text: {
+                        text_style: <BOLD_FONT>{},
+                        color: #000
                     }
                 }
-                
-                // website_favicon = <RoundedView> {
-                //     width: 20,
-                //     height: 20,
-                //     draw_bg: {
-                //         color: #cccccc
-                //         radius: 5.0
-                //     }
-                // }
                 domain = <Label> {
                     text: "Loading..."
                     draw_text: {
@@ -657,7 +650,7 @@ pub struct Citations {
 
     /// Maps the index of the citation to the link preview.
     #[rust]
-    link_previews: HashMap<usize, LinkPreview>,
+    link_previews: HashMap<usize, Preview>,
 
     /// Maps the index of the citation to the image blob.
     #[rust]
@@ -676,6 +669,7 @@ impl Widget for Citations {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         // TODO: Fix this, currently redrawing on every event
+        // And at the same time, the citations are not being redrawn unless there's a user-triggered event like mouse move or window resize.
         cx.begin_turtle(walk, self.layout);
         for (citation_id, citation) in self.link_preview_children.iter_mut() {
             let citation_content = &self.citations[*citation_id];
@@ -692,12 +686,24 @@ impl Widget for Citations {
                 }
                 if let Some(image_url) = &link_preview.image_url {
                     if let Some(image_bytes) = self.image_blobs.get(citation_id) {
-                        // only load image if it's not already loaded
+                        // Only load image if it's not already loaded
                         if !self.loaded_image_indices.contains(citation_id) {
                             if is_jpeg(image_bytes) {
-                                citation.image(id!(image)).load_jpg_from_data(cx, &image_bytes);
+                                let _ = citation.image(id!(image)).load_jpg_from_data(cx, &image_bytes);
+                                citation.image(id!(image)).apply_over(cx,
+                                live! {
+                                    width: 75, height: 75
+                                });
+                            } else if is_png(image_bytes) {
+                                citation.image(id!(image)).apply_over(cx,
+                                live! {
+                                    width: 75, height: 75
+                                });
+                                let _ = citation.image(id!(image)).load_png_from_data(cx, &image_bytes);
                             } else {
-                                citation.image(id!(image)).load_png_from_data(cx, &image_bytes);
+                                // TODO: handle other image types
+                                // Do not try again
+                                self.loaded_image_indices.insert(*citation_id);
                             }
                             self.loaded_image_indices.insert(*citation_id);
                         }
@@ -712,15 +718,15 @@ impl Widget for Citations {
 }
 
 impl Citations {
-    fn save_link_preview(&mut self, cx: &mut Cx, index: usize, link_preview: LinkPreview) {
+    fn save_link_preview(&mut self, cx: &mut Cx, index: usize, link_preview: Preview) {
         let image_url = link_preview.image_url.clone();
         self.link_previews.insert(index, link_preview);
         // Only fetch if we don't already have this image
         if let Some(image_url) = image_url {
-            if !self.image_blobs.contains_key(&index) {  // Add this check
+            if !self.image_blobs.contains_key(&index) {
                 let ui = self.ui_runner();
                 spawn(async move {
-                    let fetched_image = fetch_image_blob(image_url).await;
+                    let fetched_image = fetch_image_blob(&image_url).await;
                     if let Ok(image_bytes) = fetched_image {
                         ui.defer_with_redraw(move |me, cx, _scope| {
                             me.image_blobs.insert(index, image_bytes);
@@ -757,28 +763,28 @@ impl Citations {
             let ui = self.ui_runner();
             let widget_uid = self.widget_uid();
 
+            // TODO: rework this to use caching and batch fetching from the url-preview crate.
             spawn(async move {
                 let future = async {
-                    match link_preview::fetch::fetch(&citation_clone).await {
-                        Ok(html) => {
-                            let link_preview = LinkPreview::from(html);
-                            let image_url = link_preview.clone().image_url;
-                            ui.defer(move |me, cx, _scope| {
-                                me.save_link_preview(cx, index_clone, link_preview);
+                    let preview = PreviewService::new().generate_preview(&citation_clone).await;
+                    match preview {
+                        Ok(preview) => {
+                            ui.defer_with_redraw(move |me, cx, _scope| {
+                                me.save_link_preview(cx, index_clone, preview);
                             });
                         }
                         Err(e) => {
-                            println!("Error fetching preview for index {}: {:?}", index_clone, e);
+                            eprintln!("Error fetching preview for index {}: {:?}", index_clone, e);
                         }
                     }
                 };
 
                 let (future, _abort_handle) = futures::future::abortable(future);
-                future.await.unwrap_or_else(|_| println!("Preview fetch aborted for index {}", index_clone));
+                future.await.unwrap_or_else(|_| eprintln!("Preview fetch aborted for index {}", index_clone));
             });
         }
 
-        // self.redraw(cx);
+        self.redraw(cx);
     }
 }
 
@@ -821,16 +827,29 @@ impl WidgetMatchEvent for LinkPreviewUI {
     }
 }
 
-async fn fetch_image_blob(url: Url) -> Result<Vec<u8>, reqwest::Error> {
-    let response = reqwest::get(url.as_str()).await?;
+async fn fetch_image_blob(url: &str) -> Result<Vec<u8>, reqwest::Error> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(url)
+        // Trick the server into thinking we're a browser
+        .header(USER_AGENT, HeaderValue::from_static(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        ))
+        .send()
+        .await?;
+
     let bytes = response.bytes().await?;
     Ok(bytes.to_vec())
 }
 
 fn is_jpeg(bytes: &[u8]) -> bool {
-    bytes[0] == 0xFF && bytes[1] == 0xD8
+    bytes.len() >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8
 }
 
 fn is_png(bytes: &[u8]) -> bool {
-    bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
+    bytes.len() >= 4 
+        && bytes[0] == 0x89 
+        && bytes[1] == 0x50 
+        && bytes[2] == 0x4E 
+        && bytes[3] == 0x47
 }

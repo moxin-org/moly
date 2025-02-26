@@ -344,7 +344,7 @@ impl ChatLine {
     }
 
     pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
-        let text = self.text_input(id!(input)).text();
+        // let text = self.text_input(id!(input)).text();
         // let to_markdown = parse_markdown(&text);
         // let is_plain_text = to_markdown.nodes.len() <= 3;
         // Temporary workaround to always show markdown.
