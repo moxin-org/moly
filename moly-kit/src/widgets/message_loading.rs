@@ -5,10 +5,12 @@ live_design! {
     use link::shaders::*;
     use link::widgets::*;
 
-    use crate::shared::styles::*;
-    use crate::shared::widgets::*;
-
     ANIMATION_SPEED = 0.33
+
+    VerticalFiller = <View> {
+        width: Fill,
+        height: 1,
+    }
 
     Bar = <View> {
         width: Fill,
@@ -31,7 +33,7 @@ live_design! {
         }
     }
 
-    pub ChatLineLoading = {{ChatLineLoading}} {
+    pub MessageLoading = {{MessageLoading}} {
         width: Fill,
         height: Fit,
 
@@ -94,7 +96,7 @@ live_design! {
 }
 
 #[derive(Live, LiveHook, Widget)]
-pub struct ChatLineLoading {
+pub struct MessageLoading {
     #[deref]
     view: View,
 
@@ -108,7 +110,7 @@ pub struct ChatLineLoading {
     current_animated_bar: usize,
 }
 
-impl Widget for ChatLineLoading {
+impl Widget for MessageLoading {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         if self.timer.is_event(event).is_some() {
             self.update_animation(cx);
@@ -125,7 +127,7 @@ impl Widget for ChatLineLoading {
     }
 }
 
-impl ChatLineLoading {
+impl MessageLoading {
     pub fn update_animation(&mut self, cx: &mut Cx) {
         self.current_animated_bar = (self.current_animated_bar + 1) % 3;
 
@@ -149,7 +151,7 @@ impl ChatLineLoading {
     }
 }
 
-impl ChatLineLoadingRef {
+impl MessageLoadingRef {
     pub fn animate(&mut self, cx: &mut Cx) {
         let Some(mut inner) = self.borrow_mut() else {
             return;

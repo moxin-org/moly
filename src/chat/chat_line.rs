@@ -3,7 +3,6 @@ use crate::chat::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
-use makepad_markdown::parse_markdown;
 use moly_mofa::MofaAgent;
 
 live_design! {
@@ -60,11 +59,13 @@ live_design! {
 
     MessageText = <Markdown> {
         padding: 0,
-        paragraph_spacing: 20.0,
+        // Workaround: we should be using `paragraph_spacing: 20`,
+        // but this property causes an unintended initial space so let's disable it.
+        paragraph_spacing: 0
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
-        code_block = <View> {   
+        code_block = <View> {
             width:Fill,
             height:Fit,
             code_view = <CodeView>{
@@ -302,7 +303,8 @@ impl Widget for ChatLine {
                 let hovered = self.view.area().rect(cx).contains(e.abs);
                 if self.hovered != hovered {
                     self.hovered = hovered;
-                    self.view(id!(actions_section.actions)).set_visible(cx, hovered);
+                    self.view(id!(actions_section.actions))
+                        .set_visible(cx, hovered);
                     self.redraw(cx);
                 }
             }
@@ -332,7 +334,8 @@ impl ChatLine {
             ChatLineState::Editable
         };
 
-        self.view(id!(actions_section.actions)).set_visible(cx, false);
+        self.view(id!(actions_section.actions))
+            .set_visible(cx, false);
         self.view(id!(edit_buttons)).set_visible(cx, enabled);
         self.view(id!(input_container)).set_visible(cx, enabled);
         self.show_or_hide_message_label(cx, !enabled);
@@ -341,10 +344,12 @@ impl ChatLine {
     }
 
     pub fn show_or_hide_message_label(&mut self, cx: &mut Cx, show: bool) {
-        let text = self.text_input(id!(input)).text();
-        let to_markdown = parse_markdown(&text);
-        let is_plain_text = to_markdown.nodes.len() <= 3;
-
+        // let text = self.text_input(id!(input)).text();
+        // let to_markdown = parse_markdown(&text);
+        // let is_plain_text = to_markdown.nodes.len() <= 3;
+        // Temporary workaround to always show markdown.
+        // This will be replaced by MolyKit.
+        let is_plain_text = false;
         self.view(id!(plain_text_message_container))
             .set_visible(cx, show && is_plain_text);
         self.view(id!(markdown_message_container))
@@ -421,7 +426,9 @@ impl ChatLineRef {
             return;
         };
         inner.view(id!(avatar_section.model)).set_visible(cx, true);
-        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(false);
+        inner
+            .chat_agent_avatar(id!(avatar_section.agent))
+            .set_visible(false);
         inner.label(id!(avatar_label)).set_text(cx, text);
     }
 
@@ -430,8 +437,12 @@ impl ChatLineRef {
             return;
         };
         inner.view(id!(avatar_section.model)).set_visible(cx, false);
-        inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
-        inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(agent);
+        inner
+            .chat_agent_avatar(id!(avatar_section.agent))
+            .set_visible(true);
+        inner
+            .chat_agent_avatar(id!(avatar_section.agent))
+            .set_agent(agent);
     }
 
     pub fn set_message_text(&mut self, cx: &mut Cx, text: &str, is_streaming: bool) {
@@ -440,23 +451,32 @@ impl ChatLineRef {
         };
 
         match inner.edition_state {
-            
             ChatLineState::Editable | ChatLineState::NotEditable => {
                 if is_streaming && !text.is_empty() {
                     let output = format!("{}{}", text, "●");
                     inner.text_input(id!(input)).set_text(cx, &output.trim());
-                    inner.label(id!(plain_text_message)).set_text(cx, &output.trim());
-                    inner.markdown(id!(markdown_message)).set_text(cx, &output.trim());
+                    inner
+                        .label(id!(plain_text_message))
+                        .set_text(cx, &output.trim());
+                    inner
+                        .markdown(id!(markdown_message))
+                        .set_text(cx, &output.trim());
                 } else {
                     inner.text_input(id!(input)).set_text(cx, text.trim());
-                    inner.label(id!(plain_text_message)).set_text(cx, text.trim());
-                    inner.markdown(id!(markdown_message)).set_text(cx, text.trim());
+                    inner
+                        .label(id!(plain_text_message))
+                        .set_text(cx, text.trim());
+                    inner
+                        .markdown(id!(markdown_message))
+                        .set_text(cx, text.trim());
                 }
 
                 // We know only AI assistant messages could be empty, so it is never
                 // displayed in user's chat lines.
                 let show_loading = text.trim().is_empty();
-                inner.view(id!(loading_container)).set_visible(cx, show_loading);
+                inner
+                    .view(id!(loading_container))
+                    .set_visible(cx, show_loading);
 
                 let mut loading_widget = inner.chat_line_loading(id!(loading_container.loading));
                 if show_loading {
@@ -489,7 +509,9 @@ impl ChatLineRef {
             }
         } else {
             inner.edition_state = ChatLineState::NotEditable;
-            inner.view(id!(actions_section.actions)).set_visible(cx, false);
+            inner
+                .view(id!(actions_section.actions))
+                .set_visible(cx, false);
         }
     }
 
@@ -497,6 +519,8 @@ impl ChatLineRef {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
-        inner.button(id!(save_and_regenerate)).set_visible(cx, visible);
+        inner
+            .button(id!(save_and_regenerate))
+            .set_visible(cx, visible);
     }
 }
