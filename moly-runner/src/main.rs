@@ -65,7 +65,7 @@
 //! On Windows and Linux, the concepts are the same, but the file names and 
 //! directory layout of WasmEdge differ from macOS.
 //!
-
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(unused)]
 
 use std::{
