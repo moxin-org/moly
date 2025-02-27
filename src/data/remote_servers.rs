@@ -107,7 +107,7 @@ pub enum RemoteModelCommand {
 pub struct OpenAIClient {
     command_sender: Sender<RemoteModelCommand>,
     pub address: String,
-    api_key: Option<String>,
+    pub api_key: Option<String>,
     pub connection_status: ServerConnectionStatus,
 }
 

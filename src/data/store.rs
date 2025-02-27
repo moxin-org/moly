@@ -12,8 +12,9 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
+use makepad_widgets::*;
+use serde::{Deserialize, Serialize};
 use super::chats::ServerType;
-use crate::settings::connection_settings::ProviderType;
 use moly_mofa::MofaServerResponse;
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 
@@ -434,6 +435,29 @@ impl Store {
                         .register_server(ServerType::Mofa(conn.address.clone()));
                 }
             }
+        }
+    }
+}
+
+#[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
+pub enum ProviderType {
+    #[pick]
+    OpenAIAPI,
+    MoFa,
+}
+
+impl Default for ProviderType {
+    fn default() -> Self {
+        ProviderType::OpenAIAPI
+    }
+}
+
+impl ProviderType {
+    pub fn from_usize(value: usize) -> Self {
+        match value {
+            0 => ProviderType::OpenAIAPI,
+            1 => ProviderType::MoFa,
+            _ => panic!("Invalid provider type"),
         }
     }
 }

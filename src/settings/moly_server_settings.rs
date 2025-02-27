@@ -14,7 +14,6 @@ live_design! {
 
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
-    use crate::settings::connection_settings::ConnectionSettings;
 
     BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
@@ -146,7 +145,7 @@ live_design! {
         }
     }
 
-    pub SettingsScreen = {{SettingsScreen}} {
+    pub MolyServerSettings = {{MolyServerSettings}} {
         width: Fill
         height: Fill
         flow: Overlay
@@ -176,7 +175,6 @@ live_design! {
                 spacing: 40
                 flow: Down
 
-                connection_settings = <ConnectionSettings> {}
                 local_server_options = <LocalServerOptions> {}
             }
         }
@@ -191,7 +189,7 @@ enum ServerPortState {
 }
 
 #[derive(Widget, Live, LiveHook)]
-pub struct SettingsScreen {
+pub struct MolyServerSettings {
     #[deref]
     view: View,
 
@@ -202,7 +200,7 @@ pub struct SettingsScreen {
     override_port: Option<u16>,
 }
 
-impl Widget for SettingsScreen {
+impl Widget for MolyServerSettings {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
@@ -273,7 +271,7 @@ curl http://localhost:{}/v1/chat/completions \\
     }
 }
 
-impl WidgetMatchEvent for SettingsScreen {
+impl WidgetMatchEvent for MolyServerSettings {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 

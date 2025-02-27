@@ -14,10 +14,13 @@ use std::fs;
 use std::sync::mpsc::{self, channel};
 use std::{cell::RefCell, path::PathBuf};
 
+use crate::settings::providers::Provider;
+
 use super::filesystem::setup_chats_folder;
 use super::moly_client::MolyClient;
 use super::preferences::{Preferences, ServerModel};
 use super::remote_servers::{OpenAIClient, OpenAIServerResponse, RemoteModel, RemoteModelId};
+use super::store::ProviderType;
 
 #[derive(Clone, Debug)]
 pub struct MofaServer {
@@ -32,8 +35,9 @@ impl MofaServer {
 }
 
 /// The connection status of the server
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum ServerConnectionStatus {
+    #[default]
     Connecting,
     Connected,
     Disconnected,
@@ -540,6 +544,32 @@ impl Chats {
 
     pub fn get_remote_model_or_placeholder(&self, model_id: &RemoteModelId) -> &RemoteModel {
         self.remote_models.get(model_id).unwrap_or(&self.unknown_remote_model)
+    }
+
+    pub fn get_provider_by_url(&self, url: &str) -> Option<Provider> {
+        // map openai cient or mfoa client into a Provider for now, we'll soon rework those clients to be proper client modules
+        // that take in a provider instead of holding the info directly.
+        // in the store we'll have a map of providers and we'll use the url to find the provider.
+        // and we'll use the client depending on the provider type.
+        if let Some(client) = self.openai_servers.get(url) {
+            Some(Provider {
+                name: client.address.clone(),
+                url: client.address.clone(),
+                api_key: client.api_key.clone(),
+                provider_type: ProviderType::OpenAIAPI,
+                connection_status: client.connection_status.clone(),
+            })
+        } else if let Some(server) = self.mofa_servers.get(&MofaServerId(url.to_string())) {
+            Some(Provider {
+                name: server.client.address.clone(),
+                url: server.client.address.clone(),
+                api_key: None,
+                provider_type: ProviderType::MoFa,
+                connection_status: server.connection_status.clone(),
+            })
+        } else {
+            None
+        }
     }
 }
 

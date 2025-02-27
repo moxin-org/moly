@@ -3,10 +3,9 @@ use std::path::PathBuf;
 use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 
-use super::filesystem::{
-    setup_preferences_folder, setup_model_downloads_folder, read_from_file, write_to_file,
-};
-use crate::settings::connection_settings::ProviderType;
+use super::{filesystem::{
+    read_from_file, setup_model_downloads_folder, setup_preferences_folder, write_to_file
+}, store::ProviderType};
 
 const PREFERENCES_FILENAME: &str = "preferences.json";
 
