@@ -1,16 +1,20 @@
-use crate::data::{remote_servers::RemoteModelId, store::Store};
 use makepad_widgets::*;
+
+use crate::data::{chats::Provider, remote_servers::RemoteModelId, store::Store};
 
 live_design! {
     use link::theme::*;
     use link::shaders::*;
     use link::widgets::*;
 
+    use crate::shared::widgets::*;
     use crate::shared::styles::*;
-    use crate::shared::widgets::MolyButton;
-    use crate::shared::widgets::MolySwitch;
-    use crate::shared::resource_imports::*;
 
+    FormGroup = <View> {
+        flow: Down
+        height: Fit
+        spacing: 10
+    }
 
     ModelEntry = {{ModelEntry}} {
         align: {x: 0.5, y: 0.5}
@@ -58,85 +62,116 @@ live_design! {
             }
         }
     }
-    pub ConfigureConnectionModal = {{ConfigureConnectionModal}} {
-        width: Fit
-        height: Fit
 
-        wrapper = <RoundedView> {
-            flow: Down
-            width: 600, height: 600
-            padding: {top: 44, right: 30 bottom: 30 left: 50}
-            spacing: 10
+    pub ProviderView = {{ProviderView}} {
+        width: Fill, height: Fill
+        // align: {x: 0.0, y: 0.0}
+        padding: {left: 30, right: 30, top: 30, bottom: 30}
+        show_bg: true
+        draw_bg: { color: (SIDEBAR_BG_COLOR) }
 
-            show_bg: true
-            draw_bg: {
-                color: #fff
-                radius: 3
-            }
+        content = <View> {
+            visible: false
+            flow: Down, spacing: 20
 
-            <View> {
-                width: Fill,
-                height: Fit,
-                flow: Right
-
-                padding: {top: 8, bottom: 20}
-
-                title = <View> {
-                    width: Fit,
-                    height: Fit,
-
-                    model_name = <Label> {
-                        text: "Configure Connection"
-                        draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 13},
-                            color: #000
-                        }
+            <FormGroup> {
+                flow: Right,
+                name =<Label> {
+                    text: "OpenAI"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 15}
+                        color: #000
                     }
                 }
 
-                filler_x = <View> {width: Fill, height: Fit}
+                <View> {
+                    width: Fill, height: 1
+                }
 
-                close_button = <MolyButton> {
-                    width: Fit,
-                    height: Fit,
-
-                    margin: {top: -8}
-
-                    draw_icon: {
-                        svg_file: (ICON_CLOSE),
-                        fn get_color(self) -> vec4 {
-                            return #000;
+                enabled_switch = <MolySwitch> {
+                    // Match the default value to avoid the animation on start.
+                    animator: {
+                        selected = {
+                            default: on
                         }
                     }
-                    icon_walk: {width: 12, height: 12}
                 }
             }
 
-            body = <View> {
-                width: Fill,
-                height: Fill,
-                flow: Down,
-                spacing: 40,
 
+            separator = <View> {
+                height: 1,
+                show_bg: true,
+                draw_bg: {
+                    color: #D9D9D9
+                }
+            }
+    
+            // HOST
+            <FormGroup> {
                 <Label> {
-                    text: "You can disable models to prevent them from showing up in the chat view as options."
+                    text: "API Host"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 12}
+                        color: #000
+                    }
+                }
+                
+                api_host = <MolyTextInput> {
+                    width: Fill
+                    text: "https://some-api.com"
+                    is_read_only: true
+                    draw_text: {
+                        text_style: <REGULAR_FONT>{font_size: 12}
+                        color: #000
+                    }
+                }
+            }
+    
+            // API KEY
+            <FormGroup> {
+                <Label> {
+                    text: "API Key"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 12}
+                        color: #000
+                    }
+                }
+        
+                api_key = <MolyTextInput> {
                     width: Fill
                     draw_text: {
                         text_style: <REGULAR_FONT>{
-                            font_size: 10,
-                            height_factor: 1.3
-                        },
-                        color: #000
-                        wrap: Word
+                            font_size: 12
+                            is_secret: true
+                        }
+                        color: #000 
                     }
                 }
+            }
 
-                list = <PortalList> {
+            // MODELS
+            <Label> {
+                text: "Models"
+                draw_text: {
+                    text_style: <BOLD_FONT>{font_size: 12}
+                    color: #000
+                }
+            }
+    
+            <RoundedView> {
+                show_bg: true
+                draw_bg: { 
+                    color: #f
+                    // radius: 3
+                }
+                padding: 10
+                models_list = <PortalList> {
                     width: Fill,
                     height: Fill,
                     flow: Down,
                     spacing: 10,
-
+    
                     model_entry = <ModelEntry> {}
                 }
             }
@@ -144,22 +179,17 @@ live_design! {
     }
 }
 
-#[derive(Clone, Debug, DefaultNone)]
-pub enum ConfigureConnectionModalAction {
-    None,
-    ModalDismissed,
-}
-
-#[derive(Live, LiveHook, Widget)]
-pub struct ConfigureConnectionModal {
+// TODO: Rename into ProviderView
+#[derive(Widget, LiveHook, Live)]
+struct ProviderView {
     #[deref]
     view: View,
 
     #[rust]
-    address: String,
+    provider: Provider,
 }
 
-impl Widget for ConfigureConnectionModal {
+impl Widget for ProviderView {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
@@ -168,7 +198,10 @@ impl Widget for ConfigureConnectionModal {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        let models = store.chats.get_remote_models_list_for_server(&self.address);
+        let models = store.chats.get_provider_models(&self.provider.url);
+
+        self.view.text_input(id!(api_host)).set_text(cx, &self.provider.url);
+        self.view.text_input(id!(api_key)).set_text(cx, &self.provider.api_key.clone().unwrap_or("no key".to_string()));
 
         let entries_count = models.len();
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
@@ -199,11 +232,18 @@ impl Widget for ConfigureConnectionModal {
     }
 }
 
-impl WidgetMatchEvent for ConfigureConnectionModal {
+impl WidgetMatchEvent for ProviderView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.button(id!(close_button)).clicked(actions) {
-            cx.action(ConfigureConnectionModalAction::ModalDismissed);
-        }
+        // TODO(Julian): handle when a provider is enabled/disabled
+        // Re-register this provider if enabled
+        // if new_enabled && new_api_key.is_some() {
+        //     if let Some(mut provider) = store.chats.providers.get_mut(&url) {
+        //         provider.api_key = new_api_key; // update the in-memory struct
+        //         // Now call register_provider to build the client and fetch
+        //         let clone = provider.clone();
+        //         store.chats.register_provider(clone);
+        //     }
+        // }
 
         for action in actions {
             if let Some(action) = action.downcast_ref::<ModelEntryAction>() {
@@ -213,11 +253,13 @@ impl WidgetMatchEvent for ConfigureConnectionModal {
                         let store = scope.data.get_mut::<Store>().unwrap();
                         store
                             .preferences
-                            .update_model_status(&self.address, model_name, *enabled);
+                            .update_model_status(&self.provider.url, model_name, *enabled);
 
                         // Update the model status in the store
                         if let Some(model) = store.chats.remote_models.get_mut(
-                            &RemoteModelId::from_model_and_server(model_name, &self.address),
+                            &RemoteModelId::from_model_and_server(
+                                model_name,
+                                &self.provider.url),
                         ) {
                             model.enabled = *enabled;
                         }
@@ -227,13 +269,15 @@ impl WidgetMatchEvent for ConfigureConnectionModal {
                 }
             }
         }
-    }
+    }    
 }
 
-impl ConfigureConnectionModalRef {
-    pub fn set_server_address(&mut self, address: String) {
+
+impl ProviderViewRef {
+    pub fn set_provider(&mut self, cx: &mut Cx, provider: &Provider) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.address = address;
+            inner.provider = provider.clone();
+            inner.view(id!(content)).set_visible(cx, true);
         }
     }
 }
@@ -257,6 +301,8 @@ impl Widget for ModelEntry {
         self.view.draw_walk(cx, scope, walk)
     }
 }
+
+// MODEL ENTRY
 
 impl WidgetMatchEvent for ModelEntry {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {

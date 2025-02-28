@@ -170,10 +170,10 @@ impl ModelSelectorList {
             total_height += separator_widget.as_view().area().rect(cx).size.y;
         }
 
-        let remote_models_vector: Vec<_> =
-            store.chats.get_remote_models_list(true).iter().cloned().collect();
+        // TODO: a more efficient way to do this
+        let non_agent_models = store.chats.remote_models.values().filter(|m| !store.chats.is_agent(m)).cloned().collect::<Vec<_>>();
 
-        for (i, remote_model) in remote_models_vector.iter().enumerate() {
+        for (i, remote_model) in non_agent_models.iter().enumerate() {
             let item_id = LiveId(10_000 + i as u64).into();
             let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
                 WidgetRef::new_from_ptr(cx, self.model_template)
@@ -209,7 +209,7 @@ impl ModelSelectorList {
             total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
         }
 
-        let agents = store.chats.get_agents_list();
+        let agents = store.chats.get_mofa_agents_list();
         for (i, agent) in agents.iter().enumerate() {
             let item_id = LiveId((models_count + 1 + i) as u64).into();
             let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
@@ -219,7 +219,7 @@ impl ModelSelectorList {
             let agent_name = &agent.name;
             let current_agent_name = match &chat_entity {
                 Some(ChatEntityId::Agent(agent_id)) => {
-                    store.chats.available_agents.get(agent_id).map(|a| &a.name)
+                    store.chats.remote_models.get(agent_id).map(|m| &m.name)
                 },
                 _ => None,
             };
