@@ -1552,7 +1552,6 @@ dependencies = [
  "lipsum",
  "makepad-code-editor",
  "makepad-widgets",
- "moly-mofa",
  "moly-protocol",
  "rand",
  "reqwest",

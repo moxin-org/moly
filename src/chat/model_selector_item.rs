@@ -1,5 +1,4 @@
 use makepad_widgets::*;
-use moly_mofa::MofaAgent;
 use moly_protocol::data::DownloadedFile;
 
 use crate::data::remote_servers::RemoteModel;
@@ -73,7 +72,7 @@ live_design! {
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelSelectorAction {
     ModelSelected(DownloadedFile),
-    AgentSelected(MofaAgent),
+    AgentSelected(RemoteModel),
     RemoteModelSelected(RemoteModel),
     None,
 }
@@ -81,7 +80,7 @@ pub enum ModelSelectorAction {
 #[derive(Clone, DefaultNone, Debug)]
 enum ModelSelectorEntity {
     Model(DownloadedFile),
-    Agent(MofaAgent),
+    Agent(RemoteModel),
     RemoteModel(RemoteModel),
     None
 }
@@ -133,7 +132,7 @@ impl ModelSelectorItemRef {
         inner.entity = ModelSelectorEntity::Model(model);
     }
 
-    pub fn set_agent(&mut self, agent: MofaAgent) {
+    pub fn set_agent(&mut self, agent: RemoteModel) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };

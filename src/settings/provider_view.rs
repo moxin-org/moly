@@ -1,8 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::store::Store;
-
-use super::providers::Provider;
+use crate::data::{chats::Provider, remote_servers::RemoteModelId, store::Store};
 
 live_design! {
     use link::theme::*;
@@ -200,7 +198,7 @@ impl Widget for ProviderView {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        let models = store.chats.get_remote_models_list_for_server(&self.provider.url);
+        let models = store.chats.get_provider_models(&self.provider.url);
 
         self.view.text_input(id!(api_host)).set_text(cx, &self.provider.url);
         self.view.text_input(id!(api_key)).set_text(cx, &self.provider.api_key.clone().unwrap_or("no key".to_string()));
@@ -234,13 +232,51 @@ impl Widget for ProviderView {
     }
 }
 
-impl WidgetMatchEvent for ProviderView {}
+impl WidgetMatchEvent for ProviderView {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        // TODO(Julian): handle when a provider is enabled/disabled
+        // Re-register this provider if enabled
+        // if new_enabled && new_api_key.is_some() {
+        //     if let Some(mut provider) = store.chats.providers.get_mut(&url) {
+        //         provider.api_key = new_api_key; // update the in-memory struct
+        //         // Now call register_provider to build the client and fetch
+        //         let clone = provider.clone();
+        //         store.chats.register_provider(clone);
+        //     }
+        // }
+
+        for action in actions {
+            if let Some(action) = action.downcast_ref::<ModelEntryAction>() {
+                match action {
+                    ModelEntryAction::ModelEnabledChanged(model_name, enabled) => {
+                        // Update the model status in the preferences
+                        let store = scope.data.get_mut::<Store>().unwrap();
+                        store
+                            .preferences
+                            .update_model_status(&self.provider.url, model_name, *enabled);
+
+                        // Update the model status in the store
+                        if let Some(model) = store.chats.remote_models.get_mut(
+                            &RemoteModelId::from_model_and_server(
+                                model_name,
+                                &self.provider.url),
+                        ) {
+                            model.enabled = *enabled;
+                        }
+                        self.redraw(cx);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }    
+}
 
 
 impl ProviderViewRef {
-    pub fn set_provider(&mut self, cx: &mut Cx, provider: Provider) {
+    pub fn set_provider(&mut self, cx: &mut Cx, provider: &Provider) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.provider = provider;
+            inner.provider = provider.clone();
             inner.view(id!(content)).set_visible(cx, true);
         }
     }

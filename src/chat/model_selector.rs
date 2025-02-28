@@ -393,12 +393,12 @@ impl ModelSelector {
             .and_then(|c| c.borrow().associated_entity.clone());
 
         // Handle agent
-        if let Some(ChatEntityId::Agent(agent)) = chat_entity {
+        if let Some(ChatEntityId::Agent(model_id)) = chat_entity {
             self.view(id!(selected_model)).set_visible(cx, false);
             let selected_view = self.view(id!(selected_agent));
             selected_view.set_visible(cx, true);
 
-            let agent = store.chats.get_agent_or_placeholder(&agent);
+            let agent = store.chats.get_remote_model_or_placeholder(&model_id);
             selected_view.apply_over(
                 cx,
                 live! {

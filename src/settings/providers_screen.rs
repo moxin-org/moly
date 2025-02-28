@@ -191,7 +191,7 @@ impl WidgetMatchEvent for ProvidersScreen {
         for action in actions {
             if let ConnectionSettingsAction::ProviderSelected(address) = action.cast() {
                 // fetch provider from store
-                let provider = scope.data.get_mut::<Store>().unwrap().chats.get_provider_by_url(&address);
+                let provider = scope.data.get_mut::<Store>().unwrap().chats.providers.get(&address);
                 if let Some(provider) = provider {
                     self.view.provider_view(id!(provider_view)).set_provider(cx, provider);
                 } else {

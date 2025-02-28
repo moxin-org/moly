@@ -1,8 +1,5 @@
 use makepad_widgets::*;
-
-use crate::data::{chats::{ServerConnectionStatus, ServerType}, store::{ProviderType, Store}};
-
-use super::configure_connection_modal::ConfigureConnectionModalAction;
+use crate::data::{chats::{Provider, ServerConnectionStatus}, store::{ProviderType, Store}};
 
 live_design! {
     use link::widgets::*;
@@ -202,39 +199,7 @@ impl Widget for Providers {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
 
-        // We load the supported providers from the JSON file, and merge them with the servers from the store.
-        // The supported providers are always shown in the list.
-        // ConnectionView then shows a specific provider configuration, using the API key and model config from the store.
-        // read the file in supported_providers.json
-        // let supported_providers = include_str!("supported_providers.json");
-        // let supported_providers: Vec<ProviderType> = serde_json::from_str(supported_providers).unwrap();
-        // println!("Supported providers: {:?}", supported_providers);
-
-        // Collect Mofa servers from store
-        let mut mofa_servers: Vec<_> = store.chats.mofa_servers.values().cloned().map(|m| Provider {
-            name: m.client.address.clone(),
-            url: m.client.address.clone(),
-            api_key: None,
-            provider_type: ProviderType::MoFa,
-            connection_status: m.connection_status.clone(),
-        }).collect();
-
-        // Collect OpenAI servers from store
-        let mut openai_servers: Vec<_> = store.chats.openai_servers.values().cloned().map(|o| Provider {
-            // name: o.address.clone(), // TODO: Fetch the actual name here
-            name: "OpenAI".to_string(),
-            url: o.address.clone(),
-            api_key: o.api_key.clone(),
-            provider_type: ProviderType::OpenAIAPI,
-            connection_status: o.connection_status.clone(),
-        }).collect();
-
-        // Combine them
-        let mut all_providers = Vec::new();
-        all_providers.append(&mut mofa_servers);
-        all_providers.append(&mut openai_servers);
-
-        // Sort them by name
+        let mut all_providers: Vec<Provider> = store.chats.providers.values().cloned().collect();
         all_providers.sort_by(|a, b| a.name.cmp(&b.name));
 
         let entries_count = all_providers.len();
@@ -272,26 +237,37 @@ impl WidgetMatchEvent for Providers {
         let provider_type = self.view.drop_down(id!(provider_type));
         let add_server_button = self.view.button(id!(add_server_button));
 
+        // TODO(Julian): this will be replaced by a modal that allows for custom providers
+        // most providers will be already listed by default from a JSON file (and synced with the preferences, store, and remote server)
         if add_server_button.clicked(actions) {
-            let provider = ProviderType::from_usize(provider_type.selected_item());
-            match provider {
+            let provider_type = ProviderType::from_usize(provider_type.selected_item());
+            let provider = match provider_type {
                 ProviderType::OpenAIAPI => {
-                    store.chats.register_server(ServerType::OpenAI {
-                        address: address.clone(),
-                        api_key: api_key_input.text(),
-                    });
+                    Provider {
+                        name: "OpenAI".to_string(),
+                        url: address.clone(),
+                        api_key: Some(api_key_input.text()),
+                        provider_type: ProviderType::OpenAIAPI,
+                        connection_status: ServerConnectionStatus::Disconnected,
+                        models: vec![],
+                    }
                 }
                 ProviderType::MoFa => {
-                    store.chats.register_server(ServerType::Mofa(address.clone()));
+                    Provider {
+                        name: "MoFa".to_string(),
+                        url: address.clone(),
+                        api_key: None,
+                        provider_type: ProviderType::MoFa,
+                        connection_status: ServerConnectionStatus::Disconnected,
+                        models: vec![],
+                    }
                 }
-            }
+            };
+            // Add to memory
+            store.chats.register_provider(provider.clone());
 
-            // Persist to preferences:
-            store.preferences.add_or_update_server_connection(
-                provider,
-                address.clone(),
-                Some(api_key_input.text()).filter(|s| !s.is_empty()),
-            );
+            // Persist to preferences
+            store.preferences.add_or_update_provider(provider);
 
             // Clear the form fields:
             self.view.text_input(id!(add_server_input)).set_text(cx, "");
@@ -301,31 +277,6 @@ impl WidgetMatchEvent for Providers {
         }
     }
 }
-
-// /// A small enum to unify the idea of either a Mofa server or an OpenAI server.
-// #[derive(Clone, Debug)]
-// pub enum AiServerEntry {
-//     Mofa(MofaServer),
-//     OpenAI(OpenAIClient),
-// }
-
-#[derive(Clone, Debug, Default)]
-pub struct Provider {
-    pub name: String,
-    pub url: String,
-    pub api_key: Option<String>,
-    pub provider_type: ProviderType,
-    pub connection_status: ServerConnectionStatus,
-}
-
-// impl AiServerEntry {
-//     fn address(&self) -> String {
-//         match self {
-//             AiServerEntry::Mofa(m) => m.client.address.clone(),
-//             AiServerEntry::OpenAI(o) => o.address.clone(),
-//         }
-//     }
-// }
 
 #[derive(Widget, LiveHook, Live)]
 struct ProviderItem {
@@ -343,31 +294,6 @@ impl Widget for ProviderItem {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        // Extract address and status
-        // let (address, connection_status, is_local, _is_mofa) = match &self.server_entry {
-        //     Some(AiServerEntry::Mofa(ref m)) => {
-        //         (m.client.address.clone(), m.connection_status.clone(), m.is_local(), true)
-        //     }
-        //     Some(AiServerEntry::OpenAI(ref o)) => {
-        //         (o.address.clone(), o.connection_status.clone(), false, false)
-        //     }
-        //     None => {
-        //         return DrawStep::done();
-        //     }
-        // };
-
-
-        // self.provider.url = address.clone();
-
-        // Show/hide local icon
-        // if is_local {
-        //     self.view.view(id!(icon_local)).set_visible(cx, true);
-        //     self.view.view(id!(icon_remote)).set_visible(cx, false);
-        // } else {
-        //     self.view.view(id!(icon_local)).set_visible(cx, false);
-        //     self.view.view(id!(icon_remote)).set_visible(cx, true);
-        // }
-
         // Update the label
         self.label(id!(provider_name_label))
             .set_text(cx, &self.provider.name);
@@ -391,11 +317,11 @@ impl WidgetMatchEvent for ProviderItem {
             match &self.provider.provider_type {
                 ProviderType::MoFa => {
                     store.chats.remove_mofa_server(&self.provider.url);
-                    store.preferences.remove_server_connection(&self.provider.url);
+                    store.preferences.remove_provider(&self.provider.url);
                 }
                 ProviderType::OpenAIAPI => {
                     store.chats.remove_openai_server(&self.provider.url);
-                    store.preferences.remove_server_connection(&self.provider.url);
+                    store.preferences.remove_provider(&self.provider.url);
                 }
             }
             self.redraw(cx);
@@ -403,48 +329,14 @@ impl WidgetMatchEvent for ProviderItem {
 
         // Re-test connection if the user clicks on the "failure" status
         if let Some(_) = self.view(id!(connection_status_failure)).finger_down(actions) {
-            match &self.provider.provider_type {
-                ProviderType::MoFa => {
-                    store.chats.test_mofa_server_and_fetch_agents(&self.provider.url);
-                    self.update_connection_status(cx, &ServerConnectionStatus::Connecting);
-                }
-                ProviderType::OpenAIAPI => {
-                    // For OpenAI servers:
-                    store.chats.test_openai_server_and_fetch_models(&self.provider.url);
-                    self.update_connection_status(cx, &ServerConnectionStatus::Connecting);
-                }
-            }
+            store.chats.test_provider_and_fetch_models(&self.provider.url);
+            self.update_connection_status(cx, &ServerConnectionStatus::Connecting);
             self.redraw(cx);
         }
 
         let was_item_clicked = self.view(id!(main_view)).finger_up(actions).is_some();
-        // let was_configure_connection_clicked = self.view(id!(configure_connection)).finger_down(actions).is_some();
         if was_item_clicked {
             cx.action(ConnectionSettingsAction::ProviderSelected(self.provider.url.clone()));
-        }
-        // if was_configure_connection_clicked || was_item_clicked {
-        //     if let Some(entry) = &self.server_entry {
-        //         let (address, _provider) = match entry {
-        //             AiServerEntry::Mofa(m) => (m.client.address.clone(), ProviderType::MoFa),
-        //             AiServerEntry::OpenAI(o) => (o.address.clone(), ProviderType::OpenAIAPI),
-        //         };
-
-        //         self.view.configure_connection_modal(id!(configure_connection_modal_inner))
-        //             .set_server_address(address);
-
-        //         self.modal(id!(configure_connection_modal)).open(cx);
-        //     }
-        // }
-
-        // Handle modal actions
-        for action in actions {
-            if matches!(
-                action.cast(),
-                ConfigureConnectionModalAction::ModalDismissed
-            ) {
-                self.modal(id!(configure_connection_modal)).close(cx);
-                self.redraw(cx);
-            }
         }
     }
 }

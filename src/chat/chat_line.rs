@@ -1,10 +1,10 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
 use crate::chat::shared::ChatAgentAvatarWidgetExt;
+use crate::data::remote_servers::RemoteModel;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use makepad_markdown::parse_markdown;
-use moly_mofa::MofaAgent;
 
 live_design! {
     use link::theme::*;
@@ -425,13 +425,13 @@ impl ChatLineRef {
         inner.label(id!(avatar_label)).set_text(cx, text);
     }
 
-    pub fn set_model_avatar(&mut self, cx: &mut Cx, agent: &MofaAgent) {
+    pub fn set_model_avatar(&mut self, cx: &mut Cx, model: &RemoteModel) {
         let Some(inner) = self.borrow_mut() else {
             return;
         };
         inner.view(id!(avatar_section.model)).set_visible(cx, false);
         inner.chat_agent_avatar(id!(avatar_section.agent)).set_visible(true);
-        inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(agent);
+        inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(model);
     }
 
     pub fn set_message_text(&mut self, cx: &mut Cx, text: &str, is_streaming: bool) {

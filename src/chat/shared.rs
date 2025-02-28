@@ -1,5 +1,6 @@
 use makepad_widgets::*;
-use moly_mofa::{AgentType, MofaAgent};
+
+use crate::data::remote_servers::RemoteModel;
 
 live_design! {
     use link::theme::*;
@@ -86,20 +87,22 @@ impl Widget for ChatAgentAvatar {
 }
 
 impl ChatAgentAvatar {
-    pub fn set_agent(&mut self, agent: &MofaAgent) {
-        let dep = match agent.agent_type {
-            AgentType::Reasoner => self.reasoner_agent_icon.clone(),
-            AgentType::ResearchScholar => self.research_scholar_icon.clone(),
-            AgentType::SearchAssistant => self.search_assistant_icon.clone(),
-            AgentType::MakepadExpert => self.makepad_expert_icon.clone(),
-        };
+    pub fn set_agent(&mut self, agent: &RemoteModel) {
+        // TODO(Julian): cleanup
+        // let dep = match agent.agent_type {
+        //     AgentType::Reasoner => self.reasoner_agent_icon.clone(),
+        //     AgentType::ResearchScholar => self.research_scholar_icon.clone(),
+        //     AgentType::SearchAssistant => self.search_assistant_icon.clone(),
+        //     AgentType::MakepadExpert => self.makepad_expert_icon.clone(),
+        // };
+        let dep = self.reasoner_agent_icon.clone();
 
         self.pending_image_update = Some(dep);
     }
 }
 
 impl ChatAgentAvatarRef {
-    pub fn set_agent(&mut self, agent: &MofaAgent) {
+    pub fn set_agent(&mut self, agent: &RemoteModel) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_agent(agent);
         }

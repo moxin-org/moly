@@ -1,8 +1,10 @@
-mod filesystem;
 pub mod chats;
 pub mod downloads;
+mod filesystem;
+pub mod mofa;
+pub mod moly_client;
 pub mod preferences;
+pub mod remote_servers;
 pub mod search;
 pub mod store;
-pub mod moly_client;
-pub mod remote_servers;
+pub mod supported_providers;

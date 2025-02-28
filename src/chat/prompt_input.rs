@@ -241,10 +241,12 @@ impl WidgetMatchEvent for PromptInput {
 
             prompt.clear_items();
 
+            // TODO: A more efficient way to do this
+            let agents = store.chats.get_mofa_agents_list();
+            let non_agent_models = store.chats.remote_models.values().filter(|m| !store.chats.is_agent(m)).cloned().collect::<Vec<_>>();
+
             // Add remote models
-            for (idx, remote_model) in store
-                .chats
-                .get_remote_models_list(true)
+            for (idx, remote_model) in non_agent_models
                 .iter()
                 .filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t)))
                 .enumerate()
@@ -264,9 +266,7 @@ impl WidgetMatchEvent for PromptInput {
             
 
             // Add agents
-            for (idx, agent) in store
-                .chats
-                .get_agents_list()
+            for (idx, agent) in agents
                 .iter()
                 .filter(|a| terms.iter().all(|t| a.name.to_lowercase().contains(t)))
                 .enumerate()
@@ -341,7 +341,7 @@ impl PromptInput {
 
         match entity {
             ChatEntityId::Agent(agent_id) => {
-                let agent = store.chats.get_agent_or_placeholder(agent_id);
+                let agent = store.chats.get_remote_model_or_placeholder(agent_id);
                 label.set_text(cx, &agent.name);
                 agent_avatar.set_agent(agent);
             }

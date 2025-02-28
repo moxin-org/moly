@@ -7,35 +7,23 @@ use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
 use makepad_widgets::{error, ActionDefaultRef, ActionTrait, Cx, DefaultNone};
 use model_loader::ModelLoader;
-use moly_mofa::{AgentId, MofaAgent, MofaClient, MofaServerId, MofaServerResponse};
 use moly_protocol::data::*;
+use moly_protocol::open_ai::ChatResponseData;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::sync::mpsc::{self, channel};
+use std::sync::mpsc::{self, channel, Sender};
 use std::{cell::RefCell, path::PathBuf};
 
-use crate::settings::providers::Provider;
-
 use super::filesystem::setup_chats_folder;
+use super::mofa::MofaClient;
 use super::moly_client::MolyClient;
-use super::preferences::{Preferences, ServerModel};
-use super::remote_servers::{OpenAIClient, OpenAIServerResponse, RemoteModel, RemoteModelId};
+use super::preferences::Preferences;
+use super::remote_servers::{OpenAIClient, RemoteModel, RemoteModelId};
 use super::store::ProviderType;
 
-#[derive(Clone, Debug)]
-pub struct MofaServer {
-    pub client: MofaClient,
-    pub connection_status: ServerConnectionStatus,
-}
-
-impl MofaServer {
-    pub fn is_local(&self) -> bool {
-        self.client.address.starts_with("http://localhost")
-    }
-}
-
 /// The connection status of the server
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum ServerConnectionStatus {
     #[default]
     Connecting,
@@ -44,17 +32,29 @@ pub enum ServerConnectionStatus {
 }
 
 #[derive(Debug, DefaultNone, Clone)]
-pub enum MoFaTestServerAction {
-    Success(String, Vec<MofaAgent>),
+pub enum ProviderTestResultAction {
+    Success(String, Vec<RemoteModel>),
     Failure(Option<String>),
     None,
 }
 
-#[derive(Debug, DefaultNone, Clone)]
-pub enum OpenAiTestServerAction {
-    Success(String, Vec<RemoteModel>),
-    Failure(Option<String>),
-    None,
+pub enum ProviderConnectionResult {
+    Connected(String, Vec<RemoteModel>),
+    Unavailable(String),
+}
+
+
+#[derive(Clone, Debug)]
+pub enum ChatResponse {
+    // https://platform.openai.com/docs/api-reference/chat/object
+    ChatFinalResponseData(ChatResponseData),
+}
+
+
+pub trait ProviderClient: Send + Sync {
+    fn cancel_task(&self);
+    fn fetch_models(&self, tx: Sender<ProviderConnectionResult>);
+    fn send_message(&self, model: &RemoteModel, prompt: &String, tx: Sender<ChatResponse>);
 }
 
 pub struct Chats {
@@ -64,21 +64,20 @@ pub struct Chats {
     pub loaded_model: Option<File>,
     pub model_loader: ModelLoader,
 
-    pub mofa_servers: HashMap<MofaServerId, MofaServer>,
-    pub available_agents: HashMap<AgentId, MofaAgent>,
-
     pub remote_models: HashMap<RemoteModelId, RemoteModel>,
-    pub openai_servers: HashMap<String, OpenAIClient>,
+
+    pub provider_clients: HashMap<String, Box<dyn ProviderClient>>,
+
+    pub providers: HashMap<String, Provider>,
+
+    /// Templates for providers, used to create new providers when registering.
+    pub providers_templates: HashMap<String, Provider>,
 
     /// Set it thru `set_current_chat` method to trigger side effects.
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
 
     override_port: Option<u16>,
-
-    /// Placeholder agent used when an agent is not available
-    /// This is used to avoid recreating it on each call and make borrowing simpler.
-    unknown_agent: MofaAgent,
 
     /// Placeholder remote model used when a remote model is not available
     /// This is used to avoid recreating it on each call and make borrowing simpler.
@@ -95,11 +94,14 @@ impl Chats {
             model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
             override_port: None,
-            mofa_servers: HashMap::new(),
-            available_agents: HashMap::new(),
+            // mofa_servers: HashMap::new(),
+            // available_agents: HashMap::new(),
             remote_models: HashMap::new(),
-            openai_servers: HashMap::new(),
-            unknown_agent: MofaAgent::unknown(),
+            // openai_servers: HashMap::new(),
+            provider_clients: HashMap::new(),
+            providers: HashMap::new(),
+            providers_templates: HashMap::new(),
+            // unknown_agent: MofaAgent::unknown(),
             unknown_remote_model: RemoteModel::unknown(),
         }
     }
@@ -177,17 +179,17 @@ impl Chats {
                     chat.cancel_streaming();
                 }
                 Some(ChatEntityId::Agent(agent_id)) => {
-                    if let Some(mofa_client) = self.get_client_for_agent(&agent_id) {
-                        chat.cancel_agent_interaction(&mofa_client);
+                    if let Some(provider_client) = self.get_client_for_provider(&agent_id.0) {
+                        chat.cancel_interaction(provider_client.as_ref());
                     } else {
-                        error!("No mofa client found for agent: {}", agent_id.0);
+                        error!("No provider client found for agent: {}", agent_id.0);
                     }
                 }
                 Some(ChatEntityId::RemoteModel(model_id)) => {
-                    if let Some(openai_client) = self.get_client_for_remote_model(&model_id) {
-                        chat.cancel_remote_model_interaction(&openai_client);
+                    if let Some(provider_client) = self.get_client_for_provider(&model_id.0) {
+                        chat.cancel_interaction(provider_client.as_ref());
                     } else {
-                        error!("No openai client found for model: {}", model_id.0);
+                        error!("No provider client found for model: {}", model_id.0);
                     }
                 }
                 _ => {}
@@ -254,7 +256,7 @@ impl Chats {
         self.set_current_chat(Some(id));
     }
 
-    pub fn create_empty_chat_with_agent(&mut self, agent_id: &AgentId) {
+    pub fn create_empty_chat_with_agent(&mut self, agent_id: &RemoteModelId) {
         self.create_empty_chat();
         if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
             chat.associated_entity = Some(ChatEntityId::Agent(agent_id.clone()));
@@ -307,220 +309,144 @@ impl Chats {
         }
     }
 
-    pub fn register_server(&mut self, server_type: ServerType) {
-        match server_type {
-            ServerType::Mofa(address) => self.register_mofa_server(address),
-            ServerType::OpenAI { address, api_key } => self.register_openai_server(address, api_key),
-        }
+    pub fn register_provider(&mut self, provider: Provider) {
+        let client: Box<dyn ProviderClient> = match &provider.provider_type {
+            ProviderType::OpenAIAPI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
+            ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
+        };
+        self.provider_clients.insert(provider.url.clone(), client);
+        self.providers.insert(provider.url.clone(), provider.clone());
+        self.test_provider_and_fetch_models(&provider.url);
     }
 
-    pub fn register_openai_server(&mut self, address: String, api_key: String) {
-        let client = OpenAIClient::with_api_key(address.clone(), api_key);
-        self.openai_servers.insert(address.clone(), client);
-        self.test_openai_server_and_fetch_models(&address);
-    }
-
-    pub fn test_openai_server_and_fetch_models(&mut self, address: &str) {
-        if let Some(client) = self.openai_servers.get(address) {
+    pub fn test_provider_and_fetch_models(&mut self, address: &str) {
+        if let Some(client) = self.provider_clients.get(address) {
             let (tx, rx) = mpsc::channel();
-            client.fetch_agents(tx);
+            client.fetch_models(tx);
 
             std::thread::spawn(move || match rx.recv() {
-                Ok(OpenAIServerResponse::Connected(server_address, remote_models)) => {
-                    Cx::post_action(OpenAiTestServerAction::Success(
-                        server_address,
+                Ok(ProviderConnectionResult::Connected(server_address, remote_models)) => {
+                    Cx::post_action(ProviderTestResultAction::Success(
+                        server_address, 
                         remote_models
                     ));
                 }
-                Ok(OpenAIServerResponse::Unavailable(server_address)) => {
-                    Cx::post_action(OpenAiTestServerAction::Failure(Some(server_address)));
+                Ok(ProviderConnectionResult::Unavailable(server_address)) => {
+                    Cx::post_action(ProviderTestResultAction::Failure(Some(server_address)));
                 }
                 Err(_) => {
-                    Cx::post_action(OpenAiTestServerAction::Failure(None));
+                    Cx::post_action(ProviderTestResultAction::Failure(None));
                 }
             });
         }
     }
 
-    pub fn handle_openai_server_connection_result(
+    pub fn handle_provider_connection_result(
         &mut self,
-        result: OpenAIServerResponse,
+        result: ProviderConnectionResult,
         preferences: &mut Preferences
     ) {
         match result {
-            OpenAIServerResponse::Connected(address, fetched_models) => {
-                // Merge with preferences
-                if let Some(conn) = preferences
-                    .server_connections
+            ProviderConnectionResult::Connected(address, fetched_models) => {
+                // Update user's preferences for the provider (adding new models if needed)
+                if let Some(pref_entry) = preferences.providers_preferences
                     .iter_mut()
-                    .find(|sc| sc.address == address)
+                    .find(|pp| pp.url == address)
                 {
-                    // For each newly fetched model
                     for rm in &fetched_models {
-                        if let Some(_existing) =
-                            conn.models.iter_mut().find(|m| m.name == rm.name)
-                        {
-                            // Keep existing enabled status
-                        } else {
-                            // Insert new model with default enabled
-                            conn.models.push(ServerModel {
-                                name: rm.name.clone(),
-                                enabled: true,
-                            });
+                        let maybe_model = pref_entry.models.iter_mut()
+                            .find(|(mname, _)| *mname == rm.name);
+
+                        if maybe_model.is_none() {
+                            // Insert with default enabled: true
+                            pref_entry.models.push((rm.name.clone(), true));
                         }
                     }
-                    // Remove models that no longer appear
-                    conn.models.retain(|m| {
-                        fetched_models.iter().any(|rm| rm.name == m.name)
+                    // Remove stale model names from preferences if needed
+                    pref_entry.models.retain(|(mname, _)| {
+                        fetched_models.iter().any(|rm| rm.name == *mname)
                     });
 
                     preferences.save();
                 }
 
-                // Now store them in memory
+                // Insert the fetched models in memory, respecting preference "enabled" if it exists
                 for mut remote_model in fetched_models {
-                    // Look up preference
-                    let user_pref_enabled = preferences
-                        .server_connections
+                    if let Some(pref_entry) = preferences.providers_preferences
                         .iter()
-                        .find(|sc| sc.address == address)
-                        .and_then(|sc| sc.models.iter().find(|m| m.name == remote_model.name))
-                        .map(|m| m.enabled)
-                        .unwrap_or(true);
-                    remote_model.enabled = user_pref_enabled;
+                        .find(|pp| pp.url == address)
+                    {
+                        // if there's a matching "(model_name, enabled)" in preferences, apply it
+                        if let Some((_m, enabled_val)) = pref_entry.models
+                            .iter()
+                            .find(|(m, _)| *m == remote_model.name)
+                        {
+                            remote_model.enabled = *enabled_val;
+                        }
+                    }
 
-                    self.remote_models
-                        .insert(remote_model.id.clone(), remote_model);
+                    // Add it to the provider record
+                    self.providers.get_mut(&address)
+                        .unwrap()
+                        .models.push(remote_model.id.clone());
+
+                    // Add to the global remote_models
+                    self.remote_models.insert(remote_model.id.clone(), remote_model);
                 }
 
-                // Mark the server as connected
-                if let Some(server) = self.openai_servers.get_mut(&address) {
-                    server.connection_status = ServerConnectionStatus::Connected;
+                if let Some(provider) = self.providers.get_mut(&address) {
+                    provider.connection_status = ServerConnectionStatus::Connected;
                 }
             }
-            OpenAIServerResponse::Unavailable(address) => {
-                error!("Failed to connect to OpenAI-compatible server at {}", address);
+            ProviderConnectionResult::Unavailable(address) => {
+                if let Some(provider) = self.providers.get_mut(&address) {
+                    provider.connection_status = ServerConnectionStatus::Disconnected;
+                }
             }
         }
     }
 
     // Agents
 
-    /// Registers a new MoFa server by creating a new client, automatically testing the connection
-    /// and fetching the available agents.
-    pub fn register_mofa_server(&mut self, address: String) {
-        let server_id = MofaServerId(address.clone());
-        let client = MofaClient::new(address.clone());
-        
-        self.mofa_servers.insert(server_id.clone(), MofaServer {
-            client,
-            connection_status: ServerConnectionStatus::Connecting,
-        });
-
-        self.test_mofa_server_and_fetch_agents(&address);
-    }
-
     /// Removes a MoFa server from the list of available servers.
     pub fn remove_mofa_server(&mut self, address: &str) {
-        self.mofa_servers.remove(&MofaServerId(address.to_string()));
-        self.available_agents.retain(|_, agent| agent.server_id.0 != address);
+        // self.mofa_servers.remove(&MofaServerId(address.to_string()));
+        self.provider_clients.remove(address);
+        self.remote_models.retain(|_, model| model.provider_url != address);
+        self.providers.remove(address);
     }
 
     /// Removes a OpenAI server from the list of available servers.
     pub fn remove_openai_server(&mut self, address: &str) {
-        self.openai_servers.remove(address);
-        self.remote_models.retain(|_, model| model.server_id.0 != address);
+        // self.openai_servers.remove(address);
+        self.provider_clients.remove(address);
+        self.remote_models.retain(|_, model| model.provider_url != address);
+        self.providers.remove(address);
     }
 
-    /// Retrieves the corresponding MofaClient for an agent
-    pub fn get_client_for_agent(&self, agent_id: &AgentId) -> Option<&MofaClient> {
-        self.available_agents.get(agent_id)
-            .and_then(|agent| self.mofa_servers.get(&agent.server_id))
-            .map(|server| &server.client)
-    }
-
-    /// Retrieves the corresponding OpenAIClient for a remote model
-    pub fn get_client_for_remote_model(&self, model_id: &RemoteModelId) -> Option<&OpenAIClient> {
-        self.remote_models.get(model_id)
-            .and_then(|model| self.openai_servers.get(&model.server_id.0))
-    }
-
-    /// Helper method for components that need a sorted vector of agents
-    pub fn get_agents_list(&self) -> Vec<MofaAgent> {
-        let mut agents: Vec<_> = self.available_agents.values().cloned().collect();
-        agents.sort_by(|a, b| a.name.cmp(&b.name));
-        agents
-    }
-
-    /// Helper method for components that need a sorted vector of remote models
-    pub fn get_remote_models_list(&self, exclude_disabled: bool) -> Vec<RemoteModel> {
-        let mut models: Vec<_> = self.remote_models.values().cloned().collect();
-        models.sort_by(|a, b| a.name.cmp(&b.name));
-        if exclude_disabled {
-            models.retain(|model| model.enabled);
-        }
-        models
+    pub fn get_client_for_provider(&self, provider_url: &str) -> Option<&Box<dyn ProviderClient>> {
+        self.provider_clients.get(provider_url)
     }
 
     /// Returns a list of remote models for a given server address.
-    pub fn get_remote_models_list_for_server(&self, server_id: &str) -> Vec<RemoteModel> {
-        // TODO: we should make this more efficient by using a map of server_id -> models
-        // instead of iterating over all models.
-        self.remote_models.values()
-            .filter(|model| model.server_id.0 == server_id)
-            .cloned()
-            .collect()
-    }
-
-    /// Tests the connection to a MoFa server by requesting /v1/models.
-    ///
-    /// The connection status is updated at the App level based on the actions dispatched.
-    pub fn test_mofa_server_and_fetch_agents(&mut self, address: &String) {
-        self.mofa_servers.get_mut(&MofaServerId(address.to_string())).unwrap().connection_status = ServerConnectionStatus::Connecting;
-        let (tx, rx) = mpsc::channel();
-        if let Some(server) = self.mofa_servers.get(&MofaServerId(address.to_string())) {
-            server.client.fetch_agents(tx.clone());
-        }
-
-        std::thread::spawn(move || match rx.recv() {
-            Ok(MofaServerResponse::Connected(server_address, agents)) => {
-                Cx::post_action(MoFaTestServerAction::Success(server_address, agents));
-            }
-            Ok(MofaServerResponse::Unavailable(server_address)) => {
-                Cx::post_action(MoFaTestServerAction::Failure(Some(server_address)));
-            }
-            Err(e) => {
-                error!("Error receiving response from MoFa backend: {:?}", e);
-                Cx::post_action(MoFaTestServerAction::Failure(None));
-            }
-        });
-    }
-
-    pub fn handle_mofa_server_connection_result(&mut self, result: MofaServerResponse) {
-        match result {
-            MofaServerResponse::Connected(address, agents) => {
-                if let Some(server) = self.mofa_servers.get_mut(&MofaServerId(address.clone())) {
-                    server.connection_status = ServerConnectionStatus::Connected;
-
-                    for agent in agents {
-                        self.available_agents.insert(agent.id.clone(), agent);
-                    }
-                }
-            }
-            MofaServerResponse::Unavailable(address) => {
-                if let Some(server) = self.mofa_servers.get_mut(&MofaServerId(address)) {
-                    server.connection_status = ServerConnectionStatus::Disconnected;
-                }
-            }
+    pub fn get_provider_models(&self, server_url: &str) -> Vec<RemoteModel> {
+        if let Some(provider) = self.providers.get(server_url) {
+            provider.models.iter().map(|id| self.remote_models.get(id).unwrap().clone()).collect()
+        } else {
+            vec![]
         }
     }
 
+    // TODO(Julian): Clean this up
     pub fn agents_availability(&self) -> AgentsAvailability {
-        if self.mofa_servers.is_empty() {
+        let no_mofa_providers = self.providers.iter().filter(|(_, p)| p.provider_type == ProviderType::MoFa).count() == 0;
+        let providers_but_no_agents = self.providers.iter().filter(|(_, p)| p.connection_status == ServerConnectionStatus::Connected).all(|(_, p)| p.models.is_empty());
+
+        if no_mofa_providers {
             AgentsAvailability::NoServers
-        } else if self.available_agents.is_empty() {
+        } else if providers_but_no_agents {
             // Check the reason for the lack of agents, is it disconnected servers or servers with no agents?
-            if self.mofa_servers.iter().all(|(_id, s)| s.connection_status == ServerConnectionStatus::Connected) {
+            if self.providers.iter().all(|(_id, p)| p.connection_status == ServerConnectionStatus::Connected) {
                 AgentsAvailability::NoAgents
             } else {
                 AgentsAvailability::ServersNotConnected
@@ -530,46 +456,24 @@ impl Chats {
         }
     }
 
-    /// Returns a reference to an agent by ID, falling back to an unknown agent placeholder
-    /// if the agent is not found in the available agents list.
+    /// Returns a reference to a remote model by ID, falling back to an unknown remote model placeholder
+    /// if the remote model is not found in the available remote models list.
     /// 
-    /// This is useful when dealing with historical chat references to agents that may
-    /// no longer be available (e.g., server disconnected or agent deleted).
+    /// This is useful when dealing with historical chat references to remote models that may
+    /// no longer be available (e.g., server disconnected or remote model deleted).
     /// 
     /// In the future, we'll want a more sophisticated solution, by potentially storing 
-    /// agent information locally and updating it when a server is connected.
-    pub fn get_agent_or_placeholder(&self, agent_id: &AgentId) -> &MofaAgent {
-        self.available_agents.get(agent_id).unwrap_or(&self.unknown_agent)
-    }
-
+    /// remote model information locally and updating it when a server is connected.
     pub fn get_remote_model_or_placeholder(&self, model_id: &RemoteModelId) -> &RemoteModel {
         self.remote_models.get(model_id).unwrap_or(&self.unknown_remote_model)
     }
 
-    pub fn get_provider_by_url(&self, url: &str) -> Option<Provider> {
-        // map openai cient or mfoa client into a Provider for now, we'll soon rework those clients to be proper client modules
-        // that take in a provider instead of holding the info directly.
-        // in the store we'll have a map of providers and we'll use the url to find the provider.
-        // and we'll use the client depending on the provider type.
-        if let Some(client) = self.openai_servers.get(url) {
-            Some(Provider {
-                name: client.address.clone(),
-                url: client.address.clone(),
-                api_key: client.api_key.clone(),
-                provider_type: ProviderType::OpenAIAPI,
-                connection_status: client.connection_status.clone(),
-            })
-        } else if let Some(server) = self.mofa_servers.get(&MofaServerId(url.to_string())) {
-            Some(Provider {
-                name: server.client.address.clone(),
-                url: server.client.address.clone(),
-                api_key: None,
-                provider_type: ProviderType::MoFa,
-                connection_status: server.connection_status.clone(),
-            })
-        } else {
-            None
-        }
+    pub fn get_mofa_agents_list(&self) -> Vec<RemoteModel> {
+        self.remote_models.values().filter(|m| self.is_agent(m)).cloned().collect()
+    }
+
+    pub fn is_agent(&self, model: &RemoteModel) -> bool {
+        self.providers.get(&model.provider_url).map_or(false, |p| p.provider_type == ProviderType::MoFa)
     }
 }
 
@@ -591,10 +495,12 @@ impl AgentsAvailability {
     }
 }
 
-pub enum ServerType {
-    Mofa(String),
-    OpenAI {
-        address: String,
-        api_key: String,
-    },
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Provider {
+    pub name: String,
+    pub url: String,
+    pub api_key: Option<String>,
+    pub provider_type: ProviderType,
+    pub connection_status: ServerConnectionStatus,
+    pub models: Vec<RemoteModelId>,
 }

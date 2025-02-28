@@ -3,27 +3,11 @@ use std::path::PathBuf;
 use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 
-use super::{filesystem::{
+use super::{chats::Provider, filesystem::{
     read_from_file, setup_model_downloads_folder, setup_preferences_folder, write_to_file
-}, store::ProviderType};
+}};
 
 const PREFERENCES_FILENAME: &str = "preferences.json";
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServerModel {
-    pub name: String,
-    pub enabled: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServerConnection {
-    pub address: String,
-    pub provider: ProviderType,
-    #[serde(default)]
-    pub api_key: Option<String>,
-    #[serde(default)]
-    pub models: Vec<ServerModel>,
-}
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Preferences {
@@ -31,7 +15,7 @@ pub struct Preferences {
     #[serde(default)]
     pub downloaded_files_dir: PathBuf,
     #[serde(default)]
-    pub server_connections: Vec<ServerConnection>,
+    pub providers_preferences: Vec<ProviderPreferences>,
 }
 
 impl Preferences {
@@ -52,7 +36,7 @@ impl Preferences {
         Self {
             current_chat_model: None,
             downloaded_files_dir: setup_model_downloads_folder(),
-            server_connections: vec![],
+            providers_preferences: vec![],
         }
     }
 
@@ -74,60 +58,55 @@ impl Preferences {
         self.save();
     }
 
-    pub fn add_or_update_server_connection(
+    pub fn add_or_update_provider(
         &mut self,
-        provider: ProviderType,
-        address: String,
-        api_key: Option<String>,
+        provider: Provider,
     ) {
         // Remove existing entry if it exists:
         if let Some(pos) = self
-            .server_connections
+            .providers_preferences
             .iter()
-            .position(|sc| sc.address == address)
+            .position(|p| p.url == provider.url)
         {
-            self.server_connections.remove(pos);
+            self.providers_preferences.remove(pos);
         }
         // Add the new connection
-        self.server_connections.push(ServerConnection {
-            address,
-            provider,
-            api_key,
-            models: vec![], // start empty; populate later if needed
+        self.providers_preferences.push(ProviderPreferences {
+            url: provider.url,
+            api_key: None,
+            enabled: true,
+            models: vec![],
         });
         self.save();
     }
 
-    pub fn remove_server_connection(&mut self, address: &str) {
-        self.server_connections
-            .retain(|sc| sc.address != address);
+    pub fn remove_provider(&mut self, address: &str) {
+        self.providers_preferences
+            .retain(|p| p.url != address);
         self.save();
     }
 
-    /// Refresh or insert a model in the server's model list.
-    pub fn _ensure_server_model_exists(&mut self, address: &str, model_name: &str) {
-        if let Some(conn) = self.server_connections.iter_mut().find(|sc| sc.address == address) {
-            let already_exists = conn.models.iter().any(|m| m.name == model_name);
-            if !already_exists {
-                conn.models.push(ServerModel {
-                    name: model_name.to_string(),
-                    enabled: true,
-                });
-            }
-        }
-    }
+    /// Refresh or insert a model in the provider's model list.
+    // pub fn _ensure_provider_model_exists(&mut self, address: &str, model_name: &str) {
+    //     if let Some(conn) = self.providers.iter_mut().find(|p| p.url == address) {
+    //         let already_exists = conn.models.iter().any(|m| m.name == model_name);
+    //         if !already_exists {
+    //             conn.models.push(ServerModel {
+    //                 name: model_name.to_string(),
+    //                 enabled: true,
+    //             });
+    //         }
+    //     }
+    // }
 
     /// Update the enabled/disabled status of a model for a specific server
     pub fn update_model_status(&mut self, address: &str, model_name: &str, enabled: bool) {
-        if let Some(conn) = self.server_connections.iter_mut().find(|sc| sc.address == address) {
-            if let Some(model) = conn.models.iter_mut().find(|m| m.name == model_name) {
-                model.enabled = enabled;
+        if let Some(provider) = self.providers_preferences.iter_mut().find(|p| p.url == address) {
+            if let Some(model) = provider.models.iter_mut().find(|m| m.0 == model_name) {
+                model.1 = enabled;
             } else {
                 // If not found, add it
-                conn.models.push(ServerModel {
-                    name: model_name.to_string(),
-                    enabled,
-                });
+                provider.models.push((model_name.to_string(), enabled));
             }
         }
         self.save();
@@ -137,4 +116,13 @@ impl Preferences {
 fn preferences_path() -> PathBuf {
     let preference_dir = setup_preferences_folder();
     preference_dir.join(PREFERENCES_FILENAME)
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct ProviderPreferences {
+    pub url: String,
+    pub api_key: Option<String>,
+    pub enabled: bool,
+    // (model_name, enabled)
+    pub models: Vec<(String, bool)>,
 }

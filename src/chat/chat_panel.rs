@@ -846,7 +846,7 @@ impl ChatPanel {
                             .chat_agent_avatar(id!(avatar_section.agent))
                             .set_visible(true);
 
-                        let agent = store.chats.get_agent_or_placeholder(&agent);
+                        let agent = store.chats.get_remote_model_or_placeholder(&agent);
                         empty_view
                             .chat_agent_avatar(id!(avatar_section.agent))
                             .set_agent(agent);
@@ -936,8 +936,8 @@ impl ChatPanel {
                     chat_line_item.set_regenerate_button_visible(cx, false);
 
                     match &chat_line_data.entity {
-                        Some(ChatEntityId::Agent(agent_id)) => {
-                            let agent = store.chats.get_agent_or_placeholder(&agent_id);
+                        Some(ChatEntityId::Agent(model_id)) => {
+                            let agent = store.chats.get_remote_model_or_placeholder(&model_id);
                             chat_line_item.set_model_avatar(cx, agent);
                         }
                         Some(ChatEntityId::ModelFile(_)) => {
