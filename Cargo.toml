@@ -47,6 +47,25 @@ rand = "0.8.5"
 
 rfd = "0.14.1"
 
+[target.'cfg(target_os = "macos")'.dependencies.objc2]
+version = "0.6.0"
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-app-kit]
+version = "0.3.0"
+default-features = false
+features = [
+    "NSApplication",
+    "NSPasteboard",
+    "NSResponder",
+]
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-foundation]
+version = "0.3.0"
+default-features = false
+features = [
+    "NSString",
+]
+
 
 ## Configuration for `cargo packager`
 [package.metadata.packager]
