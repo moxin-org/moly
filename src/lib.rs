@@ -1,4 +1,5 @@
 pub mod app;
+pub mod capture;
 
 mod chat;
 mod data;
