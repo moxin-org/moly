@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{chats::Provider, filesystem::{
     read_from_file, setup_model_downloads_folder, setup_preferences_folder, write_to_file
-}};
+}, store::ProviderType};
 
 const PREFERENCES_FILENAME: &str = "preferences.json";
 
@@ -58,25 +58,27 @@ impl Preferences {
         self.save();
     }
 
-    pub fn add_or_update_provider(
-        &mut self,
-        provider: Provider,
-    ) {
-        // Remove existing entry if it exists:
-        if let Some(pos) = self
-            .providers_preferences
-            .iter()
-            .position(|p| p.url == provider.url)
-        {
-            self.providers_preferences.remove(pos);
+    pub fn insert_or_update_provider(&mut self, provider: &Provider) {
+        if let Some(provider) = self.providers_preferences.iter_mut().find(|p| p.url == provider.url) {
+            provider.api_key = provider.api_key.clone();
+            provider.enabled = provider.enabled;
+            provider.models = provider.models.clone();
+        } else {
+            self.providers_preferences.push(ProviderPreferences {
+                url: provider.url.clone(),
+                api_key: provider.api_key.clone(),
+                enabled: provider.enabled,
+                provider_type: provider.provider_type.clone(),
+                models: provider.models.iter().map(|m| (m.0.clone(), true)).collect(),
+            });
         }
-        // Add the new connection
-        self.providers_preferences.push(ProviderPreferences {
-            url: provider.url,
-            api_key: None,
-            enabled: true,
-            models: vec![],
-        });
+        self.save();
+    }
+
+    pub fn update_provider_enabled(&mut self, address: &str, enabled: bool) {
+        if let Some(provider) = self.providers_preferences.iter_mut().find(|p| p.url == address) {
+            provider.enabled = enabled;
+        }
         self.save();
     }
 
@@ -123,6 +125,7 @@ pub struct ProviderPreferences {
     pub url: String,
     pub api_key: Option<String>,
     pub enabled: bool,
+    pub provider_type: ProviderType,
     // (model_name, enabled)
     pub models: Vec<(String, bool)>,
 }

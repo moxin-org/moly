@@ -10,6 +10,8 @@ live_design! {
     use crate::shared::widgets::*;
     use crate::shared::styles::*;
 
+    REFRESH_ICON = dep("crate://self/resources/images/refresh_icon.png")
+
     FormGroup = <View> {
         flow: Down
         height: Fit
@@ -76,8 +78,7 @@ live_design! {
 
             <FormGroup> {
                 flow: Right,
-                name =<Label> {
-                    text: "OpenAI"
+                name = <Label> {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 15}
                         color: #000
@@ -88,16 +89,30 @@ live_design! {
                     width: Fill, height: 1
                 }
 
-                enabled_switch = <MolySwitch> {
-                    // Match the default value to avoid the animation on start.
-                    animator: {
-                        selected = {
-                            default: on
+                <View> {
+                    align: {x: 0.5, y: 0.5}
+                    width: Fit, height: Fit
+                    flow: Right, spacing: 10
+                    refresh_button = <View> {
+                        padding: {top: 4} // TODO: this is a hack to align the image view with the switch
+                        cursor: Hand
+                        width: 30, height: 30
+                        
+                        icon = <Image> {
+                            width: 22, height: 22
+                            source: (REFRESH_ICON)
+                        }
+                    }
+                    provider_enabled_switch = <MolySwitch> {
+                        // Match the default value to avoid the animation on start.
+                        animator: {
+                            selected = {
+                                default: on
+                            }
                         }
                     }
                 }
             }
-
 
             separator = <View> {
                 height: 1,
@@ -138,14 +153,26 @@ live_design! {
                     }
                 }
         
-                api_key = <MolyTextInput> {
-                    width: Fill
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{
-                            font_size: 12
-                            is_secret: true
+                <View> {
+                    spacing: 10
+                    width: Fill, height: 30
+                    api_key = <MolyTextInput> {
+                        empty_message: ""
+                        width: Fill, height: 30
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{
+                                font_size: 12
+                                is_secret: false
+                            }
+                            color: #000 
                         }
-                        color: #000 
+                    }
+                    save_api_key = <MolyButton> {
+                        width: Fit
+                        height: 30
+                        padding: {left: 20, right: 20, top: 0, bottom: 0}
+                        text: "Save"
+                        draw_bg: { color: #099250, border_color: #099250 }
                     }
                 }
             }
@@ -197,11 +224,7 @@ impl Widget for ProviderView {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-
         let models = store.chats.get_provider_models(&self.provider.url);
-
-        self.view.text_input(id!(api_host)).set_text(cx, &self.provider.url);
-        self.view.text_input(id!(api_key)).set_text(cx, &self.provider.api_key.clone().unwrap_or("no key".to_string()));
 
         let entries_count = models.len();
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
@@ -234,23 +257,29 @@ impl Widget for ProviderView {
 
 impl WidgetMatchEvent for ProviderView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        // TODO(Julian): handle when a provider is enabled/disabled
-        // Re-register this provider if enabled
-        // if new_enabled && new_api_key.is_some() {
-        //     if let Some(mut provider) = store.chats.providers.get_mut(&url) {
-        //         provider.api_key = new_api_key; // update the in-memory struct
-        //         // Now call register_provider to build the client and fetch
-        //         let clone = provider.clone();
-        //         store.chats.register_provider(clone);
-        //     }
-        // }
+        let store = scope.data.get_mut::<Store>().unwrap();
+        // Handle provider enabled/disabled
+        let provider_enabled_switch = self.check_box(id!(provider_enabled_switch));
+        if let Some(enabled) = provider_enabled_switch.changed(actions) {
+            if enabled {
+                store.chats.test_provider_and_fetch_models(&self.provider.url);
+            }
+
+            self.provider.enabled = enabled;
+            // TODO(Julian): unify the update_provider_enabled method in the store
+            // Update the provider in preferences
+            store.preferences.update_provider_enabled(&self.provider.url, enabled);
+            // Update the provider in the store
+            store.chats.update_provider_enabled(&self.provider.url, enabled);
+            // TODO: this is a hack to force a redraw of the chat panel, this will be replaced by integration with MolyKit
+            cx.redraw_all();
+        }
 
         for action in actions {
             if let Some(action) = action.downcast_ref::<ModelEntryAction>() {
                 match action {
                     ModelEntryAction::ModelEnabledChanged(model_name, enabled) => {
                         // Update the model status in the preferences
-                        let store = scope.data.get_mut::<Store>().unwrap();
                         store
                             .preferences
                             .update_model_status(&self.provider.url, model_name, *enabled);
@@ -269,15 +298,67 @@ impl WidgetMatchEvent for ProviderView {
                 }
             }
         }
+
+        // Handle API Key save
+        if self.button(id!(save_api_key)).clicked(actions) {
+            let should_fetch_models = self.provider.api_key.is_none();
+            self.provider.api_key = Some(self.view.text_input(id!(api_key)).text());
+
+            // Update the provider in the store and preferences
+            store.insert_or_update_provider(&self.provider);
+
+            if should_fetch_models {
+                store.chats.test_provider_and_fetch_models(&self.provider.url);
+            }
+
+            // Set the text input to secret
+            self.view.text_input(id!(api_key)).apply_over(
+                cx, 
+                live! {
+                    draw_text = {
+                        text_style = {
+                            is_secret: true
+                        }
+                    }
+                }
+            );
+        }
+
+        // Handle refresh button
+        if let Some(_fe) = self.view(id!(refresh_button)).finger_up(actions) {
+            store.chats.test_provider_and_fetch_models(&self.provider.url);
+        }
     }    
 }
-
 
 impl ProviderViewRef {
     pub fn set_provider(&mut self, cx: &mut Cx, provider: &Provider) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.provider = provider.clone();
             inner.view(id!(content)).set_visible(cx, true);
+            
+            // Update the text inputs
+            let api_key_input = inner.text_input(id!(api_key));
+            if let Some(api_key) = &provider.api_key {
+                api_key_input.set_text(cx, api_key);
+                api_key_input.apply_over(
+                    cx, 
+                    live! {
+                        draw_text = {
+                            text_style = {
+                                is_secret: true
+                            }
+                        }
+                    }
+                );
+            } else {
+                api_key_input.set_text(cx, "");
+            }
+
+            inner.text_input(id!(api_host)).set_text(cx, &provider.url);
+            inner.label(id!(name)).set_text(cx, &provider.name);
+            inner.check_box(id!(provider_enabled_switch)).set_selected(cx, provider.enabled);
+            inner.view.redraw(cx);
         }
     }
 }
@@ -302,10 +383,9 @@ impl Widget for ModelEntry {
     }
 }
 
-// MODEL ENTRY
-
 impl WidgetMatchEvent for ModelEntry {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        // Handle the enabled switch
         let enabled_switch = self.check_box(id!(enabled_switch));
         if let Some(change) = enabled_switch.changed(actions) {
             cx.action(ModelEntryAction::ModelEnabledChanged(

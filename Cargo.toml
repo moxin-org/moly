@@ -3,7 +3,6 @@ resolver = "2"
 
 members = [
     "moly-runner",
-    "moly-mofa",
 ]
 exclude = ["packaging/before-packaging-command"]
 

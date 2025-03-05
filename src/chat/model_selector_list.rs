@@ -171,7 +171,8 @@ impl ModelSelectorList {
         }
 
         // TODO: a more efficient way to do this
-        let non_agent_models = store.chats.remote_models.values().filter(|m| !store.chats.is_agent(m)).cloned().collect::<Vec<_>>();
+        // let non_agent_models = store.chats.remote_models.values().filter(|m| !store.chats.is_agent(m)).cloned().collect::<Vec<_>>();
+        let non_agent_models = store.chats.get_non_mofa_models_list(true);
 
         for (i, remote_model) in non_agent_models.iter().enumerate() {
             let item_id = LiveId(10_000 + i as u64).into();
@@ -209,7 +210,9 @@ impl ModelSelectorList {
             total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
         }
 
-        let agents = store.chats.get_mofa_agents_list();
+        // TODO(Julian): we should separate the models by provider with a header. 
+
+        let agents = store.chats.get_mofa_agents_list(true);
         for (i, agent) in agents.iter().enumerate() {
             let item_id = LiveId((models_count + 1 + i) as u64).into();
             let item_widget = self.items.get_or_insert(cx, item_id, |cx| {

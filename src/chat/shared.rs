@@ -87,7 +87,7 @@ impl Widget for ChatAgentAvatar {
 }
 
 impl ChatAgentAvatar {
-    pub fn set_agent(&mut self, agent: &RemoteModel) {
+    pub fn set_agent(&mut self, _agent: &RemoteModel) {
         // TODO(Julian): cleanup
         // let dep = match agent.agent_type {
         //     AgentType::Reasoner => self.reasoner_agent_icon.clone(),

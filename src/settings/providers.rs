@@ -15,11 +15,17 @@ live_design! {
     ICON_LOCAL = dep("crate://self/resources/images/laptop_icon.png")
     ICON_SETTINGS = dep("crate://self/resources/images/settings_icon.png")
 
-    ICON_OPENAI = dep("crate://self/resources/images/providers/openai.png")
-
     ICON_SUCCESS = dep("crate://self/resources/images/circle_check_icon.png")
     ICON_LOADER = dep("crate://self/resources/images/loader_icon.png")
     ICON_FAILURE = dep("crate://self/resources/images/refresh_error_icon.png")
+
+    // Provider icons
+    ICON_OPENAI = dep("crate://self/resources/images/providers/openai.png")
+    ICON_GEMINI = dep("crate://self/resources/images/providers/gemini.png")
+    ICON_MOFA = dep("crate://self/resources/images/providers/mofa.png")
+    ICON_SILICONFLOW = dep("crate://self/resources/images/providers/siliconflow.png")
+    ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
+    ICON_CUSTOM_PROVIDER = dep("crate://self/resources/images/providers/custom.png")
 
     // Not making this based on <Icon> because button does not support images
     // (and these SVGs are too complex for Makepad's SVG support)
@@ -48,7 +54,7 @@ live_design! {
     }
 
     ProviderItem = {{ProviderItem}} {
-        width: Fill, height: 55
+        width: Fill, height: 45
         flow: Overlay
         show_bg: true
         draw_bg: {
@@ -56,15 +62,6 @@ live_design! {
         }
         align: {x: 0.0, y: 0.5}
 
-        // separator = <View> {
-        //     margin: {left: 20, right: 20, top: 0, bottom: 10}
-        //     height: 1,
-        //     show_bg: true,
-        //     draw_bg: {
-        //         color: #D9D9D9
-        //     }
-        // }
-    
         main_view = <View> {
             cursor: Hand
             padding: 10
@@ -75,31 +72,16 @@ live_design! {
             provider_icon = <View> {
                 width: Fit, height: Fit
                 visible: true
-                <Image> {
-                    source: (ICON_OPENAI) // TODO: replace with the icon of the provider
+                provider_icon_image = <Image> {
                     width: 25, height: 25
                 }
             }
 
-            // icon_local = <View> {
-            //     width: Fit, height: Fit
-            //     visible: false
-            //     <Image> {
-            //         source: (ICON_LOCAL)
-            //         width: 18, height: 18
-            //     }
-            // }
     
             <View> {
                 width: Fill, height: Fill
                 spacing: 20
                 align: {x: 0.0, y: 0.5}
-                // server_address_label = <Label> {
-                //     draw_text:{
-                //         text_style: <REGULAR_FONT>{font_size: 12}
-                //         color: #000
-                //     }
-                // }
 
                 provider_name_label = <Label> {
                     draw_text:{
@@ -107,80 +89,28 @@ live_design! {
                         color: #000
                     }
                 }
-
-                // <VerticalFiller> {}
-
-                // connection_status_success = <ConnectionActionButton> {
-                //     icon = {
-                //         source: (ICON_SUCCESS)
-                //         draw_bg: {
-                //             tint_color: #099250
-                //         }
-                //     }
-                // }
-
-                // connection_status_failure = <ConnectionActionButton> {
-                //     icon = {
-                //         source: (ICON_FAILURE)
-                //         draw_bg: {
-                //             tint_color: #B42318
-                //         }
-                //     }
-                // }
-
-                // connection_status_loading = <ConnectionActionButton> {
-                //     visible: true
-                //     icon = {
-                //         source: (ICON_LOADER)
-                //         draw_bg: {
-                //             tint_color: #FF8C00
-                //         }
-                //     }
-                // }
-
-                // configure_connection = <ConnectionActionButton> {
-                //     visible: true
-                //     icon = {
-                //         source: (ICON_SETTINGS)
-                //         draw_bg: {
-                //             tint_color: #444
-                //         }
-                //     }
-                // }
-
-                // remove_server = <ConnectionActionButton> {
-                //     visible: true
-                //     icon = {
-                //         source: (ICON_TRASH)
-                //         draw_bg: {
-                //             tint_color: #B42318
-                //         }
-                //     }
-                // }
             }
 
         }
 
-        // configure_connection_modal = <Modal> {
-        //     content: {
-        //         configure_connection_modal_inner = <ConfigureConnectionModal> {}
-        //     }
-        // }
     }
 
-    // delete_modal = <Modal> {
-    //     content: {
-    //         <DeleteServerModal> {}
-    //     }
-    // }
-
     pub Providers = {{Providers}} {
-        width: 400, height: Fill
+        width: 300, height: Fill
         flow: Down, spacing: 20
         providers_list = <PortalList> {
             width: Fill, height: Fill
             provider_item = <ProviderItem> {}
         }
+
+        provider_icons: [
+            (ICON_CUSTOM_PROVIDER),
+            (ICON_OPENAI),
+            (ICON_GEMINI),
+            (ICON_MOFA),
+            (ICON_SILICONFLOW),
+            (ICON_OPENROUTER),
+        ]
     }   
 }
 
@@ -188,6 +118,9 @@ live_design! {
 struct Providers {
     #[deref]
     view: View,
+
+    #[live]
+    provider_icons: Vec<LiveDependency>
 }
 
 impl Widget for Providers {
@@ -218,13 +151,23 @@ impl Widget for Providers {
                         }
 
                         let provider = all_providers[item_id].clone();
-                        item.as_provider_item().set_provider(provider);
+                        let icon = self.get_provider_icon(&provider);
+                        item.as_provider_item().set_provider(cx, provider, icon);
                         item.draw_all(cx, scope);
                     }
                 }
             }
         }
         DrawStep::done()
+    }
+}
+
+impl Providers {
+    fn get_provider_icon(&self, provider: &Provider) -> LiveDependency {
+        // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
+        // Find a path that contains the provider name
+        self.provider_icons.iter().find(|icon| icon.as_str().to_lowercase().contains(&provider.name.to_lowercase()))
+        .unwrap_or(&self.provider_icons[0]).clone()
     }
 }
 
@@ -242,13 +185,14 @@ impl WidgetMatchEvent for Providers {
         if add_server_button.clicked(actions) {
             let provider_type = ProviderType::from_usize(provider_type.selected_item());
             let provider = match provider_type {
-                ProviderType::OpenAIAPI => {
+                ProviderType::OpenAI => {
                     Provider {
                         name: "OpenAI".to_string(),
                         url: address.clone(),
                         api_key: Some(api_key_input.text()),
-                        provider_type: ProviderType::OpenAIAPI,
+                        provider_type: ProviderType::OpenAI,
                         connection_status: ServerConnectionStatus::Disconnected,
+                        enabled: true,
                         models: vec![],
                     }
                 }
@@ -259,6 +203,7 @@ impl WidgetMatchEvent for Providers {
                         api_key: None,
                         provider_type: ProviderType::MoFa,
                         connection_status: ServerConnectionStatus::Disconnected,
+                        enabled: true,
                         models: vec![],
                     }
                 }
@@ -267,7 +212,8 @@ impl WidgetMatchEvent for Providers {
             store.chats.register_provider(provider.clone());
 
             // Persist to preferences
-            store.preferences.add_or_update_provider(provider);
+            // TODO(Julian): this will be replaced by a modal that allows for custom providers
+            // store.preferences.add_or_update_provider(provider);
 
             // Clear the form fields:
             self.view.text_input(id!(add_server_input)).set_text(cx, "");
@@ -319,7 +265,7 @@ impl WidgetMatchEvent for ProviderItem {
                     store.chats.remove_mofa_server(&self.provider.url);
                     store.preferences.remove_provider(&self.provider.url);
                 }
-                ProviderType::OpenAIAPI => {
+                ProviderType::OpenAI => {
                     store.chats.remove_openai_server(&self.provider.url);
                     store.preferences.remove_provider(&self.provider.url);
                 }
@@ -358,11 +304,13 @@ impl ProviderItem {
 }
 
 impl ProviderItemRef {
-    fn set_provider(&mut self, provider: Provider) {
+    fn set_provider(&mut self, cx: &mut Cx, provider: Provider, icon_path: LiveDependency) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
         inner.provider = provider;
+        let _ = inner.image(id!(provider_icon_image))
+        .load_image_dep_by_path(cx, icon_path.as_str());
     }
 }
 

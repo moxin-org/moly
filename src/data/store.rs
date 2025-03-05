@@ -402,12 +402,6 @@ impl Store {
         let mut final_list = Vec::new();
 
         for s in &supported {
-            let ptype = match s.provider_type.to_lowercase().as_str() {
-                "openai" => ProviderType::OpenAIAPI,
-                "mofa" => ProviderType::MoFa,
-                _ => ProviderType::OpenAIAPI,
-            };
-
             let maybe_prefs = self.preferences.providers_preferences
                 .iter()
                 .find(|pp| pp.url == s.url);
@@ -417,12 +411,13 @@ impl Store {
                     name: s.name.clone(),
                     url: prefs.url.clone(),
                     api_key: prefs.api_key.clone(),
-                    provider_type: ptype,
+                    provider_type: s.provider_type.clone(),
                     connection_status: if prefs.enabled {
                         ServerConnectionStatus::Connected
                     } else {
                         ServerConnectionStatus::Disconnected
                     },
+                    enabled: prefs.enabled,
                     models: vec![],
                 });
             } else {
@@ -431,8 +426,9 @@ impl Store {
                     name: s.name.clone(),
                     url: s.url.clone(),
                     api_key: None,
-                    provider_type: ptype,
+                    provider_type: s.provider_type.clone(),
                     connection_status: ServerConnectionStatus::Disconnected,
+                    enabled: true,
                     models: vec![],
                 });
             }
@@ -442,14 +438,13 @@ impl Store {
         for pp in &self.preferences.providers_preferences {
             let is_custom = !supported.iter().any(|sp| sp.url == pp.url);
             if is_custom {
-                // TODO(Julian): keep a provider type in preferences
-                let ptype = ProviderType::OpenAIAPI;
                 final_list.push(Provider {
                     name: pp.url.clone(),
                     url: pp.url.clone(),
                     api_key: pp.api_key.clone(),
-                    provider_type: ptype,
+                    provider_type: pp.provider_type.clone(),
                     connection_status: ServerConnectionStatus::Disconnected,
+                    enabled: pp.enabled,
                     models: vec![],
                 });
             }
@@ -462,12 +457,11 @@ impl Store {
         self.auto_fetch_for_enabled_providers();
     }
 
-    // TODO(Julian): currently providers are not being fetched at startup
-    // because we don't have a way to enable them yet, handle that in provider_view.
     fn auto_fetch_for_enabled_providers(&mut self) {
+        // Automatically fetch providers that are enabled and have an API key or are MoFa servers
         let urls_to_fetch: Vec<String> = self.preferences.providers_preferences
             .iter()
-            .filter(|pp| pp.enabled && pp.api_key.is_some())
+            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.url.starts_with("http://localhost")))
             .map(|pp| pp.url.clone())
             .collect();
 
@@ -479,25 +473,30 @@ impl Store {
             }
         }
     }
+
+    pub fn insert_or_update_provider(&mut self, provider: &Provider) {
+        self.chats.insert_or_update_provider(provider);
+        self.preferences.insert_or_update_provider(provider);
+    }
 }
 
 #[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
 pub enum ProviderType {
     #[pick]
-    OpenAIAPI,
+    OpenAI,
     MoFa,
 }
 
 impl Default for ProviderType {
     fn default() -> Self {
-        ProviderType::OpenAIAPI
+        ProviderType::OpenAI
     }
 }
 
 impl ProviderType {
     pub fn from_usize(value: usize) -> Self {
         match value {
-            0 => ProviderType::OpenAIAPI,
+            0 => ProviderType::OpenAI,
             1 => ProviderType::MoFa,
             _ => panic!("Invalid provider type"),
         }

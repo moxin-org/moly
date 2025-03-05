@@ -18,6 +18,26 @@ const ALLOWED_OPENAI_MODELS: &[&str] = &[
     "o1-preview",
 ];
 
+const ALLOWED_GEMINI_MODELS: &[&str] = &[
+    "models/gemini-1.5-flash",
+    "models/gemini-1.5-pro",
+    "models/gemini-2.0-flash",
+    "models/gemini-2.0-pro",
+];
+
+const ALLOWED_SILICONFLOW_MODELS: &[&str] = &[
+    "Qwen/Qwen2-72B-Instruct",
+    "Pro/Qwen/Qwen2-72B-Instruct",
+    "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "deepseek-ai/DeepSeek-V2.5"
+];
+
+const ALLOWED_OPENROUTER_MODELS: &[&str] = &[
+    "anthropic/claude-3.7-sonnet",
+    "perplexity/sonar",
+    "deepseek/deepseek-r1",
+];
+
 fn should_include_model(url: &str, model_id: &str) -> bool {
     // First, filter out non-chat models
     if model_id.contains("dall-e") || 
@@ -42,7 +62,17 @@ fn should_include_model(url: &str, model_id: &str) -> bool {
 
     // Gemini
     if url.contains("googleapis.com") {
-        return model_id.contains("gemini")
+        return ALLOWED_GEMINI_MODELS.iter().any(|&allowed| model_id.eq(allowed))
+    }
+
+    // SiliconFlow
+    if url.contains("siliconflow.cn") {
+        return ALLOWED_SILICONFLOW_MODELS.iter().any(|&allowed| model_id.eq(allowed))
+    }
+
+    // OpenRouter
+    if url.contains("openrouter.ai") {
+        return ALLOWED_OPENROUTER_MODELS.iter().any(|&allowed| model_id.eq(allowed))
     }
 
     true
@@ -225,7 +255,6 @@ impl OpenAIClient {
                         req = req.header("Authorization", format!("Bearer {}", key));
                     }
 
-                    println!("Fetching {} Using API key: {:?}", url, api_key);
                     let resp = req.send();
 
                     #[allow(dead_code)]

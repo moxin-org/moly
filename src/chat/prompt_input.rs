@@ -242,8 +242,9 @@ impl WidgetMatchEvent for PromptInput {
             prompt.clear_items();
 
             // TODO: A more efficient way to do this
-            let agents = store.chats.get_mofa_agents_list();
-            let non_agent_models = store.chats.remote_models.values().filter(|m| !store.chats.is_agent(m)).cloned().collect::<Vec<_>>();
+            let agents = store.chats.get_mofa_agents_list(true);
+            // let non_agent_models = store.chats.remote_models.values().filter(|m| !store.chats.is_agent(m)).cloned().collect::<Vec<_>>();
+            let non_agent_models = store.chats.get_non_mofa_models_list(true);
 
             // Add remote models
             for (idx, remote_model) in non_agent_models

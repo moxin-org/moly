@@ -108,7 +108,7 @@ impl Widget for ChatHistory {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let agents = store.chats.get_mofa_agents_list();
+        let agents = store.chats.get_mofa_agents_list(true);
 
         enum Item<'a> {
             ChatsHeader,

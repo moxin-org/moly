@@ -160,7 +160,8 @@ live_design! {
             text: "Manage providers and models"
         }
 
-        <AddProvider> {}
+        // TODO(Julian): add this back in as a modal
+        // <AddProvider> {}
 
         <View> {
             providers = <Providers> {}

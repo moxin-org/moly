@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use super::store::ProviderType;
+
 #[derive(Debug, Deserialize)]
 pub struct SupportedProvidersFile {
     pub providers: Vec<SupportedProvider>,
@@ -9,8 +11,7 @@ pub struct SupportedProvidersFile {
 pub struct SupportedProvider {
     pub name: String,
     pub url: String,
-    // TODO(Julian): this should be an enum
-    pub provider_type: String
+    pub provider_type: ProviderType
 }
 
 // Utility to load from the JSON file

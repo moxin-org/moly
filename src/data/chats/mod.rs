@@ -70,9 +70,6 @@ pub struct Chats {
 
     pub providers: HashMap<String, Provider>,
 
-    /// Templates for providers, used to create new providers when registering.
-    pub providers_templates: HashMap<String, Provider>,
-
     /// Set it thru `set_current_chat` method to trigger side effects.
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
@@ -94,14 +91,9 @@ impl Chats {
             model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
             override_port: None,
-            // mofa_servers: HashMap::new(),
-            // available_agents: HashMap::new(),
             remote_models: HashMap::new(),
-            // openai_servers: HashMap::new(),
             provider_clients: HashMap::new(),
             providers: HashMap::new(),
-            providers_templates: HashMap::new(),
-            // unknown_agent: MofaAgent::unknown(),
             unknown_remote_model: RemoteModel::unknown(),
         }
     }
@@ -310,35 +302,36 @@ impl Chats {
     }
 
     pub fn register_provider(&mut self, provider: Provider) {
-        let client: Box<dyn ProviderClient> = match &provider.provider_type {
-            ProviderType::OpenAIAPI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
-            ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
-        };
-        self.provider_clients.insert(provider.url.clone(), client);
         self.providers.insert(provider.url.clone(), provider.clone());
         self.test_provider_and_fetch_models(&provider.url);
     }
 
     pub fn test_provider_and_fetch_models(&mut self, address: &str) {
-        if let Some(client) = self.provider_clients.get(address) {
-            let (tx, rx) = mpsc::channel();
-            client.fetch_models(tx);
+        // Use the existing client if found, otherwise create a new one
+        let client = if let Some(existing_client) = self.provider_clients.get(address) {
+            existing_client
+        } else {
+            let provider = self.providers.get(address).unwrap();
+            self.provider_clients.insert(address.to_string(), create_client_for_provider(provider));
+            self.provider_clients.get(address).unwrap()
+        };
 
-            std::thread::spawn(move || match rx.recv() {
-                Ok(ProviderConnectionResult::Connected(server_address, remote_models)) => {
-                    Cx::post_action(ProviderTestResultAction::Success(
-                        server_address, 
-                        remote_models
-                    ));
-                }
-                Ok(ProviderConnectionResult::Unavailable(server_address)) => {
-                    Cx::post_action(ProviderTestResultAction::Failure(Some(server_address)));
-                }
-                Err(_) => {
-                    Cx::post_action(ProviderTestResultAction::Failure(None));
-                }
-            });
-        }
+        let (tx, rx) = mpsc::channel();
+        client.fetch_models(tx);
+        std::thread::spawn(move || match rx.recv() {
+            Ok(ProviderConnectionResult::Connected(server_address, remote_models)) => {
+                Cx::post_action(ProviderTestResultAction::Success(
+                    server_address, 
+                    remote_models
+                ));
+            }
+            Ok(ProviderConnectionResult::Unavailable(server_address)) => {
+                Cx::post_action(ProviderTestResultAction::Failure(Some(server_address)));
+            }
+            Err(_) => {
+                Cx::post_action(ProviderTestResultAction::Failure(None));
+            }
+        });
     }
 
     pub fn handle_provider_connection_result(
@@ -385,13 +378,17 @@ impl Chats {
                         }
                     }
 
-                    // Add it to the provider record
-                    self.providers.get_mut(&address)
-                        .unwrap()
-                        .models.push(remote_model.id.clone());
+                    // Add it to the provider record, only if it's not already in there
+                    if !self.providers.get(&address).unwrap().models.contains(&remote_model.id) {
+                        self.providers.get_mut(&address)
+                            .unwrap()
+                            .models.push(remote_model.id.clone());
+                    }
 
-                    // Add to the global remote_models
-                    self.remote_models.insert(remote_model.id.clone(), remote_model);
+                    // Add to the global remote_models only if it's not already in there
+                    if !self.remote_models.contains_key(&remote_model.id) {
+                        self.remote_models.insert(remote_model.id.clone(), remote_model);
+                    }
                 }
 
                 if let Some(provider) = self.providers.get_mut(&address) {
@@ -403,6 +400,25 @@ impl Chats {
                     provider.connection_status = ServerConnectionStatus::Disconnected;
                 }
             }
+        }
+    }
+
+    pub fn insert_or_update_provider(&mut self, provider: &Provider) {
+        // If the provider is already in the list update it, and create a new client if there's a new API key
+        if let Some(existing_provider) = self.providers.get_mut(&provider.url) {
+            existing_provider.api_key = provider.api_key.clone();
+            existing_provider.provider_type = provider.provider_type.clone();
+            existing_provider.enabled = provider.enabled;
+            existing_provider.models = provider.models.clone();
+        } else {
+            self.providers.insert(provider.url.clone(), provider.clone());
+            self.provider_clients.insert(provider.url.clone(), create_client_for_provider(provider));
+        }
+    }
+
+    pub fn update_provider_enabled(&mut self, address: &str, enabled: bool) {
+        if let Some(provider) = self.providers.get_mut(address) {
+            provider.enabled = enabled;
         }
     }
 
@@ -468,8 +484,12 @@ impl Chats {
         self.remote_models.get(model_id).unwrap_or(&self.unknown_remote_model)
     }
 
-    pub fn get_mofa_agents_list(&self) -> Vec<RemoteModel> {
-        self.remote_models.values().filter(|m| self.is_agent(m)).cloned().collect()
+    pub fn get_mofa_agents_list(&self, enabled_only: bool) -> Vec<RemoteModel> {
+        self.remote_models.values().filter(|m| self.is_agent(m) && (!enabled_only || m.enabled)).cloned().collect()
+    }
+
+    pub fn get_non_mofa_models_list(&self, enabled_only: bool) -> Vec<RemoteModel> {
+        self.remote_models.values().filter(|m| !self.is_agent(m) && (!enabled_only || m.enabled)).cloned().collect()
     }
 
     pub fn is_agent(&self, model: &RemoteModel) -> bool {
@@ -502,5 +522,13 @@ pub struct Provider {
     pub api_key: Option<String>,
     pub provider_type: ProviderType,
     pub connection_status: ServerConnectionStatus,
+    pub enabled: bool,
     pub models: Vec<RemoteModelId>,
+}
+
+pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {
+    match &provider.provider_type {
+        ProviderType::OpenAI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
+        ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
+    }
 }
