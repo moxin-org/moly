@@ -1,0 +1,29 @@
+{
+    "providers": [
+        {
+            "name": "OpenAI",
+            "url": "https://api.openai.com/v1",
+            "provider_type": "OpenAI"
+        },
+        {
+            "name": "Gemini",
+            "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+            "provider_type": "OpenAI"
+        },
+        {
+            "name": "MoFa",
+            "url": "http://localhost:8000",
+            "provider_type": "MoFa"
+        },
+        {
+            "name": "SiliconFlow",
+            "url": "https://api.siliconflow.cn/v1",
+            "provider_type": "OpenAI"
+        },
+        {
+            "name": "OpenRouter",
+            "url": "https://openrouter.ai/api/v1",
+            "provider_type": "OpenAI"
+        }
+    ]
+}
