@@ -4,6 +4,15 @@
 //! contextual capture functionality, enabling convenient transfer of content
 //! from external sources into Moly.
 //!
+//! Currently, capture is supported with:
+//!
+//! - (macOS) System service accessible via keyboard shortcuts, context menus,
+//!   and similar. Implemented with the macOS/Cocoa pasteboard and service
+//!   provider APIs.
+//!
+//! In the future, the plan is to build upon this functionality with more
+//! extensive, contextual interactions across the system.
+//!
 //! ## Usage
 //!
 //! The primary entrypoint for the API is [`CaptureHandler`], registered with
@@ -52,6 +61,10 @@ pub trait CaptureHandler: 'static + Send + Sync {
 
 /// Initialize platform capture integration with a given [`CaptureHandler`].
 ///
+/// This will register the following to call into the provided handler:
+///
+/// - (macOS) Capture service provider.
+///
 /// See also: [module docs](self), [`CaptureHandler`].
 pub fn register_handler<T>(handler: T) -> Result<(), InitError>
 where
@@ -87,6 +100,8 @@ impl CaptureEvent {
 pub enum CaptureSource {
     #[default]
     Unknown,
+    /// System/platform service (e.g. context menu, keyboard shortcut).
+    System,
 }
 
 /// An error during initialization.
