@@ -409,6 +409,13 @@ impl Chats {
             existing_provider.provider_type = provider.provider_type.clone();
             existing_provider.enabled = provider.enabled;
             existing_provider.models = provider.models.clone();
+            // Update the client if the API key has changed
+            if let Some(_client) = self.provider_clients.get_mut(&provider.url) {
+                // TODO: we should instead have a way to update the client api key without recreating it
+                // skipping that for now as the client will be replaced by MolyKit
+                self.provider_clients.remove(&provider.url);
+                self.provider_clients.insert(provider.url.clone(), create_client_for_provider(provider));
+            }
         } else {
             self.providers.insert(provider.url.clone(), provider.clone());
             self.provider_clients.insert(provider.url.clone(), create_client_for_provider(provider));

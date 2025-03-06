@@ -1,5 +1,8 @@
 use makepad_widgets::*;
 use crate::data::{chats::{Provider, ServerConnectionStatus}, store::{ProviderType, Store}};
+use crate::shared::modal::ModalWidgetExt;
+
+use super::add_provider_modal::AddProviderModalAction;
 
 live_design! {
     use link::widgets::*;
@@ -8,6 +11,8 @@ live_design! {
     
     use crate::shared::widgets::*;
     use crate::shared::styles::*;
+    use crate::settings::add_provider_modal::*;
+    use crate::shared::modal::*;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_TRASH = dep("crate://self/resources/images/trash_icon.png")
@@ -80,6 +85,7 @@ live_design! {
 
     
             <View> {
+                flow: Right
                 width: Fill, height: Fill
                 spacing: 20
                 align: {x: 0.0, y: 0.5}
@@ -88,6 +94,29 @@ live_design! {
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 12}
                         color: #000
+                    }
+                }
+
+                filler = <View> { width: Fill, height: Fill }
+            
+                status_view = <RoundedView> {
+                    align: {x: 0.5, y: 0.5}
+                    show_bg: true
+                    width: Fit, height: Fit
+                    padding: {left: 10, right: 10, bottom: 5, top: 5}
+                    margin: {right: 10}
+                    draw_bg: {
+                        radius: 5
+                        color: #81cca1
+                        border_color: #357852
+                        border_width: 1.2
+                    }
+                    status_label = <Label> {
+                        text: "ON"
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 7.5},
+                            color: #043b1c
+                        }
                     }
                 }
             }
@@ -104,6 +133,32 @@ live_design! {
             provider_item = <ProviderItem> {}
         }
 
+        filler = <View> {
+            height: Fill, width: 1
+        }
+
+        add_provider_button = <RoundedView> {
+            visible: false // TODO(Julian): make visible once the modal is working
+            cursor: Hand
+            margin: {left: 10, right: 10, bottom: 5, top: 10}
+            width: Fill, height: Fit
+            align: {x: 0.5, y: 0.5}
+            padding: {left: 30, right: 30, bottom: 10, top: 10}
+            draw_bg: {
+                color: #fff
+                radius: 5
+                border_color: #ddd
+                border_width: 1
+            }
+            <Label> {
+                text: "+"
+                draw_text: {
+                    text_style: <REGULAR_FONT>{font_size: 15}
+                    color: #000
+                }
+            }
+        }
+
         provider_icons: [
             (ICON_CUSTOM_PROVIDER),
             (ICON_OPENAI),
@@ -112,6 +167,17 @@ live_design! {
             (ICON_SILICONFLOW),
             (ICON_OPENROUTER),
         ]
+
+        <View> {
+            width: Fill, height: Fit
+            flow: Overlay
+
+            add_provider_modal = <Modal> {
+                content: {
+                    add_provider_modal_inner = <AddProviderModal> {}
+                }
+            }
+        }
     }   
 }
 
@@ -234,10 +300,22 @@ impl WidgetMatchEvent for Providers {
             self.redraw(cx);
         }
 
+        // Handle modal open
+        if self.view(id!(add_provider_button)).finger_up(actions).is_some() {
+            let modal = self.modal(id!(add_provider_modal));
+            modal.open(cx);
+        }
+
         // Handle selected provider
         for action in actions {
             if let ConnectionSettingsAction::ProviderSelected(provider_url) = action.cast() {
                 self.selected_provider = Some(provider_url);
+            }
+
+            // Handle modal actions
+            if let AddProviderModalAction::ModalDismissed = action.cast() {
+                self.modal(id!(add_provider_modal)).close(cx);
+                self.redraw(cx);
             }
         }
     }
@@ -266,6 +344,9 @@ impl Widget for ProviderItem {
         let connection_status = self.provider.connection_status.clone();
         // Show connection status icons
         self.update_connection_status(cx, &connection_status);
+
+        self.view(id!(status_view))
+            .set_visible(cx, connection_status == ServerConnectionStatus::Connected && self.provider.enabled);
 
         self.view.draw_walk(cx, scope, walk)
     }

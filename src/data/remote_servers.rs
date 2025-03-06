@@ -300,7 +300,7 @@ impl OpenAIClient {
                                     }
                                 }
                                 status => {
-                                    eprintln!("Failed to fetch models from server {:?}", status);
+                                    eprintln!("Failed to fetch models from server, status: {:?}", status);
                                     tx.send(ProviderConnectionResult::Unavailable(url)).unwrap();
                                 }
                             }

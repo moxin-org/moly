@@ -59,10 +59,9 @@ impl Preferences {
     }
 
     pub fn insert_or_update_provider(&mut self, provider: &Provider) {
-        if let Some(provider) = self.providers_preferences.iter_mut().find(|p| p.url == provider.url) {
-            provider.api_key = provider.api_key.clone();
-            provider.enabled = provider.enabled;
-            provider.models = provider.models.clone();
+        if let Some(existing_provider) = self.providers_preferences.iter_mut().find(|p| p.url == provider.url) {
+            existing_provider.api_key = provider.api_key.clone();
+            existing_provider.enabled = provider.enabled;
         } else {
             self.providers_preferences.push(ProviderPreferences {
                 url: provider.url.clone(),

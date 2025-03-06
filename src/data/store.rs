@@ -428,7 +428,7 @@ impl Store {
                     api_key: None,
                     provider_type: s.provider_type.clone(),
                     connection_status: ServerConnectionStatus::Disconnected,
-                    enabled: true,
+                    enabled: false,
                     models: vec![],
                 });
             }
