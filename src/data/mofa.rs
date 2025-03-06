@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 
-use super::{chats::{ChatResponse, ProviderClient, ProviderConnectionResult}, remote_servers::{ProviderCommand, RemoteModel, RemoteModelId, RemoteServerId}};
+use super::{chats::{ChatResponse, ProviderClient, ProviderConnectionResult}, remote_servers::{ProviderCommand, RemoteModel, RemoteModelId}};
 
 // #[derive(Debug, Serialize, Deserialize)]
 // pub struct MofaResponseReasoner {
@@ -54,12 +54,6 @@ use super::{chats::{ChatResponse, ProviderClient, ProviderConnectionResult}, rem
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub struct AgentId(pub String);
-
-impl AgentId {
-    pub fn new(agent_name: &str, server_address: &str) -> Self {
-        AgentId(format!("{}-{}", agent_name, server_address))
-    }
-}
 
 // #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 // pub enum AgentType {

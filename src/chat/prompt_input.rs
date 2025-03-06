@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 
 use crate::{
-    data::{chats::chat_entity::ChatEntityId, store::Store},
+    data::{chats::chat_entity::ChatEntityId, remote_servers::RemoteModel, store::Store},
     shared::actions::ChatAction,
 };
 
@@ -9,6 +9,8 @@ use super::{
     entity_button::EntityButtonWidgetRefExt, model_selector_item::ModelSelectorAction,
     shared::ChatAgentAvatarWidgetExt,
 };
+
+use std::collections::HashMap;
 
 live_design! {
     use link::theme::*;
@@ -241,31 +243,47 @@ impl WidgetMatchEvent for PromptInput {
 
             prompt.clear_items();
 
-            // TODO: A more efficient way to do this
+            // Get agents and non-agent models
             let agents = store.chats.get_mofa_agents_list(true);
-            // let non_agent_models = store.chats.remote_models.values().filter(|m| !store.chats.is_agent(m)).cloned().collect::<Vec<_>>();
             let non_agent_models = store.chats.get_non_mofa_models_list(true);
 
-            // Add remote models
-            for (idx, remote_model) in non_agent_models
-                .iter()
-                .filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t)))
-                .enumerate()
-            {
-                if idx == 0 {
-                    let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
-                    label.set_text(cx, "Remote models");
-                    prompt.add_unselectable_item(label);
+            // Group non-agent models by provider URL
+            let mut models_by_provider: HashMap<String, Vec<&RemoteModel>> = HashMap::new();
+            
+            for model in non_agent_models.iter().filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t))) {
+                models_by_provider
+                    .entry(model.provider_url.clone())
+                    .or_default()
+                    .push(model);
+            }
+
+            // Add models grouped by provider
+            for (provider_url, models) in models_by_provider {
+                if models.is_empty() {
+                    continue;
                 }
 
-                let option = WidgetRef::new_from_ptr(cx, self.entity_template);
-                let mut entity_button = option.entity_button(id!(button));
-                entity_button.set_entity(cx, remote_model.into());
-                entity_button.set_description_visible(cx, true);
-                prompt.add_item(option);
+                // Get provider name from the providers map
+                let provider_name = store.chats.providers
+                    .get(&provider_url)
+                    .map(|p| p.name.clone())
+                    .unwrap_or_else(|| "Unknown Provider".to_string());
+
+                // Add provider section label
+                let label = WidgetRef::new_from_ptr(cx, self.section_label_template);
+                label.set_text(cx, &provider_name);
+                prompt.add_unselectable_item(label);
+
+                // Add models for this provider
+                for model in models {
+                    let option = WidgetRef::new_from_ptr(cx, self.entity_template);
+                    let mut entity_button = option.entity_button(id!(button));
+                    entity_button.set_entity(cx, model.into());
+                    entity_button.set_description_visible(cx, true);
+                    prompt.add_item(option);
+                }
             }
             
-
             // Add agents
             for (idx, agent) in agents
                 .iter()
