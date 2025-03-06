@@ -31,7 +31,7 @@ live_design! {
             }
         }
 
-        content =<View> {
+        content = <View> {
             flow: Right,
             width: Fill, height: Fill
             padding: {top: 10, bottom: 10, left: 20, right: 20}
@@ -73,7 +73,6 @@ live_design! {
         draw_bg: { color: (SIDEBAR_BG_COLOR) }
 
         content = <View> {
-            visible: false
             flow: Down, spacing: 20
 
             <FormGroup> {
@@ -335,7 +334,6 @@ impl ProviderViewRef {
     pub fn set_provider(&mut self, cx: &mut Cx, provider: &Provider) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.provider = provider.clone();
-            inner.view(id!(content)).set_visible(cx, true);
             
             // Update the text inputs
             let api_key_input = inner.text_input(id!(api_key));

@@ -60,6 +60,7 @@ live_design! {
         draw_bg: {
             color: #f
         }
+        padding: {left: 30}
         align: {x: 0.0, y: 0.5}
 
         main_view = <View> {
@@ -114,13 +115,23 @@ live_design! {
     }   
 }
 
-#[derive(Widget, LiveHook, Live)]
+#[derive(Widget, Live)]
 struct Providers {
     #[deref]
     view: View,
 
     #[live]
-    provider_icons: Vec<LiveDependency>
+    provider_icons: Vec<LiveDependency>,
+    #[rust]
+    selected_provider: Option<String>,
+}
+
+impl LiveHook for Providers {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
+        self.selected_provider = Some(default_provider_url.clone());
+        cx.action(ConnectionSettingsAction::ProviderSelected(default_provider_url));
+    }
 }
 
 impl Widget for Providers {
@@ -152,7 +163,8 @@ impl Widget for Providers {
 
                         let provider = all_providers[item_id].clone();
                         let icon = self.get_provider_icon(&provider);
-                        item.as_provider_item().set_provider(cx, provider, icon);
+                        let is_selected = self.selected_provider == Some(provider.url.clone());
+                        item.as_provider_item().set_provider(cx, provider, icon, is_selected);
                         item.draw_all(cx, scope);
                     }
                 }
@@ -220,6 +232,13 @@ impl WidgetMatchEvent for Providers {
             api_key_input.set_text(cx, "");
 
             self.redraw(cx);
+        }
+
+        // Handle selected provider
+        for action in actions {
+            if let ConnectionSettingsAction::ProviderSelected(provider_url) = action.cast() {
+                self.selected_provider = Some(provider_url);
+            }
         }
     }
 }
@@ -304,13 +323,23 @@ impl ProviderItem {
 }
 
 impl ProviderItemRef {
-    fn set_provider(&mut self, cx: &mut Cx, provider: Provider, icon_path: LiveDependency) {
+    fn set_provider(&mut self, cx: &mut Cx, provider: Provider, icon_path: LiveDependency, is_selected: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
         inner.provider = provider;
         let _ = inner.image(id!(provider_icon_image))
         .load_image_dep_by_path(cx, icon_path.as_str());
+
+        if is_selected {
+            inner.view.apply_over(cx, live! {
+                draw_bg: { color: #F8F8F8 }
+            });
+        } else {
+            inner.view.apply_over(cx, live! {
+                draw_bg: { color: #fff }
+            });
+        }
     }
 }
 

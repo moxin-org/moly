@@ -140,24 +140,30 @@ live_design! {
 
     pub ProvidersScreen = {{ProvidersScreen}} {
         width: Fill, height: Fill
-        flow: Down
         spacing: 20
-        padding: {left: 30, top: 40}
+        flow: Down
 
-        <Label> {
-            draw_text:{
-                text_style: <BOLD_FONT>{font_size: 25}
-                color: #000
-            }
-            text: "Provider Settings"
-        }
+        header = <View> {
+            height: Fit
+            spacing: 20
+            flow: Down
 
-        <Label> {
-            draw_text:{
-                text_style: <BOLD_FONT>{font_size: 12}
-                color: #000
+            padding: {left: 30, top: 40}
+            <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 25}
+                    color: #000
+                }
+                text: "Provider Settings"
             }
-            text: "Manage providers and models"
+    
+            <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 12}
+                    color: #000
+                }
+                text: "Manage providers and models"
+            }
         }
 
         // TODO(Julian): add this back in as a modal
