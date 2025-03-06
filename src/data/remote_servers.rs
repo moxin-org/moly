@@ -27,9 +27,10 @@ const ALLOWED_GEMINI_MODELS: &[&str] = &[
 
 const ALLOWED_SILICONFLOW_MODELS: &[&str] = &[
     "Qwen/Qwen2-72B-Instruct",
-    "Pro/Qwen/Qwen2-72B-Instruct",
+    "Pro/Qwen/Qwen2-7B-Instruct",
     "meta-llama/Meta-Llama-3.1-8B-Instruct",
-    "deepseek-ai/DeepSeek-V2.5"
+    "deepseek-ai/DeepSeek-V2.5",
+    "Pro/deepseek-ai/DeepSeek-V3",
 ];
 
 const ALLOWED_OPENROUTER_MODELS: &[&str] = &[
