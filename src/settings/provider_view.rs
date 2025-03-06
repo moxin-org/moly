@@ -161,7 +161,7 @@ live_design! {
                         draw_text: {
                             text_style: <REGULAR_FONT>{
                                 font_size: 12
-                                is_secret: false
+                                is_secret: true
                             }
                             color: #000 
                         }
@@ -189,7 +189,6 @@ live_design! {
                 show_bg: true
                 draw_bg: { 
                     color: #f
-                    // radius: 3
                 }
                 padding: 10
                 models_list = <PortalList> {
@@ -309,18 +308,6 @@ impl WidgetMatchEvent for ProviderView {
             if should_fetch_models {
                 store.chats.test_provider_and_fetch_models(&self.provider.url);
             }
-
-            // Set the text input to secret
-            self.view.text_input(id!(api_key)).apply_over(
-                cx, 
-                live! {
-                    draw_text = {
-                        text_style = {
-                            is_secret: true
-                        }
-                    }
-                }
-            );
         }
 
         // Handle refresh button
@@ -339,16 +326,6 @@ impl ProviderViewRef {
             let api_key_input = inner.text_input(id!(api_key));
             if let Some(api_key) = &provider.api_key {
                 api_key_input.set_text(cx, api_key);
-                api_key_input.apply_over(
-                    cx, 
-                    live! {
-                        draw_text = {
-                            text_style = {
-                                is_secret: true
-                            }
-                        }
-                    }
-                );
             } else {
                 api_key_input.set_text(cx, "");
             }

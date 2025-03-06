@@ -467,7 +467,6 @@ impl Store {
 
         for url in urls_to_fetch {
             if let Some(provider) = self.chats.providers.get(&url) {
-                // TODO(Julian): split register and test
                 // Register the provider client, it triggers test_provider_and_fetch_models internally
                 self.chats.register_provider(provider.clone());
             }

@@ -250,56 +250,7 @@ impl Providers {
 }
 
 impl WidgetMatchEvent for Providers {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
-        let address = self.view.text_input(id!(add_server_input)).text();
-        let api_key_input = self.view.text_input(id!(api_key));
-        let provider_type = self.view.drop_down(id!(provider_type));
-        let add_server_button = self.view.button(id!(add_server_button));
-
-        // TODO(Julian): this will be replaced by a modal that allows for custom providers
-        // most providers will be already listed by default from a JSON file (and synced with the preferences, store, and remote server)
-        if add_server_button.clicked(actions) {
-            let provider_type = ProviderType::from_usize(provider_type.selected_item());
-            let provider = match provider_type {
-                ProviderType::OpenAI => {
-                    Provider {
-                        name: "OpenAI".to_string(),
-                        url: address.clone(),
-                        api_key: Some(api_key_input.text()),
-                        provider_type: ProviderType::OpenAI,
-                        connection_status: ServerConnectionStatus::Disconnected,
-                        enabled: true,
-                        models: vec![],
-                    }
-                }
-                ProviderType::MoFa => {
-                    Provider {
-                        name: "MoFa".to_string(),
-                        url: address.clone(),
-                        api_key: None,
-                        provider_type: ProviderType::MoFa,
-                        connection_status: ServerConnectionStatus::Disconnected,
-                        enabled: true,
-                        models: vec![],
-                    }
-                }
-            };
-            // Add to memory
-            store.chats.register_provider(provider.clone());
-
-            // Persist to preferences
-            // TODO(Julian): this will be replaced by a modal that allows for custom providers
-            // store.preferences.add_or_update_provider(provider);
-
-            // Clear the form fields:
-            self.view.text_input(id!(add_server_input)).set_text(cx, "");
-            api_key_input.set_text(cx, "");
-
-            self.redraw(cx);
-        }
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         // Handle modal open
         if self.view(id!(add_provider_button)).finger_up(actions).is_some() {
             let modal = self.modal(id!(add_provider_modal));

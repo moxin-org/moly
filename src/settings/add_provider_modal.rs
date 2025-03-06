@@ -248,7 +248,7 @@ impl WidgetMatchEvent for AddProviderModal {
             let provider_type_idx = self.drop_down(id!(provider_type)).selected_item();
 
             let provider_type = ProviderType::from_usize(provider_type_idx);
-            let provider = match provider_type {
+            let _provider = match provider_type {
                 ProviderType::OpenAI => {
                     Provider {
                         name: "OpenAI".to_string(),
@@ -273,7 +273,6 @@ impl WidgetMatchEvent for AddProviderModal {
                 }
             };
 
-            println!("provider: {:?}", provider);
             // TODO(Julian): store the provider, provider dropdown not working
             // store.insert_or_update_provider(&provider);
 

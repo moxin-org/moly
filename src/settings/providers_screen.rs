@@ -54,9 +54,6 @@ live_design! {
             }
         }
 
-        // TODO(Julian): add this back in as a modal
-        // <AddProvider> {}
-
         <View> {
             providers = <Providers> {}
             provider_view = <ProviderView> {}
