@@ -125,7 +125,6 @@ impl Widget for ChatHistory {
         match agents_availability {
             AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
             AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
-            AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
             AgentsAvailability::Available => {
                 for agent in &agents {
                     items.push(Item::AgentButton(agent));

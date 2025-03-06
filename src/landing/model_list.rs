@@ -183,9 +183,6 @@ impl Widget for ModelList {
                 AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
                     agents_availability.to_human_readable(),
                 )),
-                AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(
-                    agents_availability.to_human_readable(),
-                )),
                 AgentsAvailability::Available => {
                     items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
                         agents: chunk,

@@ -88,7 +88,8 @@ impl Widget for ChatAgentAvatar {
 
 impl ChatAgentAvatar {
     pub fn set_agent(&mut self, _agent: &RemoteModel) {
-        // TODO(Julian): cleanup
+        // TODO: cleanup, currently mofa servers do not return an actual agent name or any other information
+        // that would help us identify the agent.
         // let dep = match agent.agent_type {
         //     AgentType::Reasoner => self.reasoner_agent_icon.clone(),
         //     AgentType::ResearchScholar => self.research_scholar_icon.clone(),

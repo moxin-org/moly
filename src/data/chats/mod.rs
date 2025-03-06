@@ -5,7 +5,7 @@ pub mod model_loader;
 use anyhow::{Context, Result};
 use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
-use makepad_widgets::{error, ActionDefaultRef, ActionTrait, Cx, DefaultNone};
+use makepad_widgets::{ActionDefaultRef, ActionTrait, Cx, DefaultNone};
 use model_loader::ModelLoader;
 use moly_protocol::data::*;
 use moly_protocol::open_ai::ChatResponseData;
@@ -173,16 +173,15 @@ impl Chats {
                 Some(ChatEntityId::Agent(agent_id)) => {
                     if let Some(provider_client) = self.get_client_for_provider(&agent_id.0) {
                         chat.cancel_interaction(provider_client.as_ref());
-                    } else {
-                        error!("No provider client found for agent: {}", agent_id.0);
-                    }
+                    } 
+                    // If the client was not found we don't need to cancel
                 }
                 Some(ChatEntityId::RemoteModel(model_id)) => {
                     if let Some(provider_client) = self.get_client_for_provider(&model_id.0) {
                         chat.cancel_interaction(provider_client.as_ref());
-                    } else {
-                        error!("No provider client found for model: {}", model_id.0);
                     }
+                    // If the client was not found we don't need to cancel
+
                 }
                 _ => {}
             }
@@ -453,22 +452,26 @@ impl Chats {
         }
     }
 
-    // TODO(Julian): Clean this up
     pub fn agents_availability(&self) -> AgentsAvailability {
-        let no_mofa_providers = self.providers.iter().filter(|(_, p)| p.provider_type == ProviderType::MoFa).count() == 0;
-        let providers_but_no_agents = self.providers.iter().filter(|(_, p)| p.connection_status == ServerConnectionStatus::Connected).all(|(_, p)| p.models.is_empty());
-
-        if no_mofa_providers {
-            AgentsAvailability::NoServers
-        } else if providers_but_no_agents {
-            // Check the reason for the lack of agents, is it disconnected servers or servers with no agents?
-            if self.providers.iter().all(|(_id, p)| p.connection_status == ServerConnectionStatus::Connected) {
-                AgentsAvailability::NoAgents
-            } else {
-                AgentsAvailability::ServersNotConnected
+        let mut has_mofa_provider = false;
+        let mut has_available_agent = false;
+        
+        for (_, p) in &self.providers {
+            if p.provider_type == ProviderType::MoFa {
+                has_mofa_provider = true;
+                if !p.models.is_empty() {
+                    has_available_agent = true;
+                    break; // No need to continue once we've found an available agent
+                }
             }
-        } else {
+        }
+        
+        if has_available_agent {
             AgentsAvailability::Available
+        } else if !has_mofa_provider {
+            AgentsAvailability::NoServers
+        } else {
+            AgentsAvailability::ServersNotConnected
         }
     }
 
@@ -499,7 +502,6 @@ impl Chats {
 
 pub enum AgentsAvailability {
     Available,
-    NoAgents,
     NoServers,
     ServersNotConnected,
 }
@@ -508,7 +510,6 @@ impl AgentsAvailability {
     pub fn to_human_readable(&self) -> &'static str {
         match self {
             AgentsAvailability::Available => "Agents available",
-            AgentsAvailability::NoAgents => "No agents found in the connected servers.",
             AgentsAvailability::NoServers => "Not connected to any MoFa servers.",
             AgentsAvailability::ServersNotConnected => "Could not connect to some servers. Check your MoFa settings.",
         }
