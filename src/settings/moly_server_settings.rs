@@ -167,7 +167,7 @@ live_design! {
                     text_style: <BOLD_FONT>{font_size: 30}
                     color: #000
                 }
-                text: "Settings"
+                text: "Moly Server Settings"
             }
 
             <ScrollYView> {

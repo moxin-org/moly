@@ -36,7 +36,7 @@ live_design! {
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
-    ICON_SETTINGS = dep("crate://self/resources/icons/settings.svg")
+    ICON_LOCAL = dep("crate://self/resources/icons/local.svg")
     ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
 
     App = {{App}} {
@@ -107,9 +107,9 @@ live_design! {
                             }
                         }
                         moly_server_settings_tab = <SidebarMenuButton> {
-                            text: "Local",
+                            text: "Moly Server",
                             draw_icon: {
-                                svg_file: (ICON_SETTINGS),
+                                svg_file: (ICON_LOCAL),
                             }
                         }
                     }
