@@ -428,19 +428,17 @@ impl Chats {
         }
     }
 
-    // Agents
-
-    /// Removes a MoFa server from the list of available servers.
-    pub fn remove_mofa_server(&mut self, address: &str) {
-        // self.mofa_servers.remove(&MofaServerId(address.to_string()));
+    pub fn remove_provider(&mut self, address: &str) {
         self.provider_clients.remove(address);
         self.remote_models.retain(|_, model| model.provider_url != address);
         self.providers.remove(address);
     }
 
-    /// Removes a OpenAI server from the list of available servers.
-    pub fn remove_openai_server(&mut self, address: &str) {
-        // self.openai_servers.remove(address);
+    // Agents
+
+    /// Removes a MoFa server from the list of available servers.
+    pub fn remove_mofa_server(&mut self, address: &str) {
+        // self.mofa_servers.remove(&MofaServerId(address.to_string()));
         self.provider_clients.remove(address);
         self.remote_models.retain(|_, model| model.provider_url != address);
         self.providers.remove(address);
@@ -532,6 +530,7 @@ pub struct Provider {
     pub connection_status: ServerConnectionStatus,
     pub enabled: bool,
     pub models: Vec<RemoteModelId>,
+    pub was_customly_added: bool,
 }
 
 pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {

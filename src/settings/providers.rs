@@ -1,8 +1,8 @@
 use makepad_widgets::*;
-use crate::data::{chats::{Provider, ServerConnectionStatus}, store::{ProviderType, Store}};
+use crate::data::{chats::{Provider, ServerConnectionStatus}, store::Store};
 use crate::shared::modal::ModalWidgetExt;
 
-use super::add_provider_modal::AddProviderModalAction;
+use super::{add_provider_modal::AddProviderModalAction, provider_view::ProviderViewAction};
 
 live_design! {
     use link::widgets::*;
@@ -138,7 +138,6 @@ live_design! {
         }
 
         add_provider_button = <RoundedView> {
-            visible: false // TODO(Julian): make visible once the modal is working
             cursor: Hand
             margin: {left: 10, right: 10, bottom: 5, top: 10}
             width: Fill, height: Fit
@@ -250,15 +249,15 @@ impl Providers {
 }
 
 impl WidgetMatchEvent for Providers {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         // Handle modal open
         if self.view(id!(add_provider_button)).finger_up(actions).is_some() {
             let modal = self.modal(id!(add_provider_modal));
             modal.open(cx);
         }
 
-        // Handle selected provider
         for action in actions {
+            // Handle selected provider
             if let ConnectionSettingsAction::ProviderSelected(provider_url) = action.cast() {
                 self.selected_provider = Some(provider_url);
             }
@@ -266,6 +265,17 @@ impl WidgetMatchEvent for Providers {
             // Handle modal actions
             if let AddProviderModalAction::ModalDismissed = action.cast() {
                 self.modal(id!(add_provider_modal)).close(cx);
+                self.redraw(cx);
+            }
+
+            // Handle provider removed
+            if let ProviderViewAction::ProviderRemoved = action.cast() {
+                // Select another provider
+                let store = scope.data.get::<Store>().unwrap();
+                if let Some(first_provider) = store.chats.providers.values().next() {
+                    self.selected_provider = Some(first_provider.url.clone());
+                    cx.action(ConnectionSettingsAction::ProviderSelected(first_provider.url.clone()));
+                }
                 self.redraw(cx);
             }
         }
@@ -304,33 +314,7 @@ impl Widget for ProviderItem {
 }
 
 impl WidgetMatchEvent for ProviderItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
-        // "Remove server" click
-        // TODO: Use the modal instead. Currently broken and needs refactoring.
-        let remove_server_was_clicked = self.view(id!(remove_server)).finger_up(actions).is_some();
-        if remove_server_was_clicked {
-            match &self.provider.provider_type {
-                ProviderType::MoFa => {
-                    store.chats.remove_mofa_server(&self.provider.url);
-                    store.preferences.remove_provider(&self.provider.url);
-                }
-                ProviderType::OpenAI => {
-                    store.chats.remove_openai_server(&self.provider.url);
-                    store.preferences.remove_provider(&self.provider.url);
-                }
-            }
-            self.redraw(cx);
-        }
-
-        // Re-test connection if the user clicks on the "failure" status
-        if let Some(_) = self.view(id!(connection_status_failure)).finger_down(actions) {
-            store.chats.test_provider_and_fetch_models(&self.provider.url);
-            self.update_connection_status(cx, &ServerConnectionStatus::Connecting);
-            self.redraw(cx);
-        }
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let was_item_clicked = self.view(id!(main_view)).finger_up(actions).is_some();
         if was_item_clicked {
             cx.action(ConnectionSettingsAction::ProviderSelected(self.provider.url.clone()));

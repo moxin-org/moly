@@ -200,6 +200,20 @@ live_design! {
                     model_entry = <ModelEntry> {}
                 }
             }
+
+            remove_provider_view = <View> {
+                width: Fill, height: Fit
+                align: {x: 1.0, y: 0.5}
+                remove_provider_button = <MolyButton> {
+                    padding: {left: 20, right: 20, top: 10, bottom: 10}
+                    width: Fit, height: Fit
+                    text: "Remove Provider"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 10}
+                    }
+                    draw_bg: { color: #f00, border_color: #f00 }
+                }
+            }
         }
     }
 }
@@ -314,6 +328,14 @@ impl WidgetMatchEvent for ProviderView {
         if let Some(_fe) = self.view(id!(refresh_button)).finger_up(actions) {
             store.chats.test_provider_and_fetch_models(&self.provider.url);
         }
+
+        // Handle remove provider button
+        if self.button(id!(remove_provider_button)).clicked(actions) {
+            println!("Removing provider: {}", self.provider.url);
+            store.remove_provider(&self.provider.url);
+            cx.action(ProviderViewAction::ProviderRemoved);
+            self.redraw(cx);
+        }
     }    
 }
 
@@ -333,9 +355,22 @@ impl ProviderViewRef {
             inner.text_input(id!(api_host)).set_text(cx, &provider.url);
             inner.label(id!(name)).set_text(cx, &provider.name);
             inner.check_box(id!(provider_enabled_switch)).set_selected(cx, provider.enabled);
+
+            if provider.was_customly_added {
+                inner.view(id!(remove_provider_view)).set_visible(cx, true);
+            } else {
+                inner.view(id!(remove_provider_view)).set_visible(cx, false);
+            }
+
             inner.view.redraw(cx);
         }
     }
+}
+
+#[derive(Clone, Debug, DefaultNone)]
+pub enum ProviderViewAction {
+    None,
+    ProviderRemoved
 }
 
 #[derive(Live, LiveHook, Widget)]

@@ -94,6 +94,13 @@ live_design! {
         }
     }
 
+    CustomProviderRadio = <RadioButton> {
+        draw_text: {               
+            uniform color_unselected: #x0
+            text_style: <REGULAR_FONT>{font_size: 12},
+        }
+    }
+
     pub AddProviderModal = {{AddProviderModal}} {
         width: Fit
         height: Fit
@@ -154,7 +161,16 @@ live_design! {
                 width: Fill, height: Fit
                 spacing: 20
                 align: {x: 0.0, y: 0.5}
-        
+
+                <FormGroup> {
+                    <ModalLabel> {
+                        text: "Name"
+                    }
+                    name = <ModalTextInput> {
+                        empty_message: "OpenAI"
+                    }
+                }
+
                 <FormGroup> {
                     <ModalLabel> {
                         text: "API Host"
@@ -177,10 +193,31 @@ live_design! {
                     <ModalLabel> {
                         text: "Provider Type"
                     }
-                    provider_type = <ProviderDropDown> {
-                        width: Fill
-                        labels: ["OpenAI", "MoFa"]
-                        values: [OpenAI, MoFa]
+                    
+                    // TODO: we should replace the radio buttons with a dropdown
+                    // currently the dropdown popup is not working inside the modal
+                    // provider_type = <ProviderDropDown> {
+                    //     width: Fill
+                    //     labels: ["OpenAI", "MoFa"]
+                    //     values: [OpenAI, MoFa]
+                    // }
+
+                    radios = <View> {
+                        flow: Down, spacing: 10
+                        width: Fit, height: Fit,
+                        radio_openai = <CustomProviderRadio> { text: "OpenAI" }
+                        radio_mofa = <CustomProviderRadio> { text: "MoFa" }
+                    }
+                }
+
+                error_view = <View> {
+                    visible: false
+                    width: Fill, height: Fit
+                    error_message = <Label> {
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 12},
+                            color: #f00
+                        }
                     }
                 }
         
@@ -210,7 +247,10 @@ pub enum AddProviderModalAction {
 #[derive(Live, LiveHook, Widget)]
 pub struct AddProviderModal {
     #[deref]
-    view: View
+    view: View,
+
+    #[rust]
+    selected_provider: Option<ProviderType>,
 }
 
 
@@ -235,48 +275,95 @@ impl WidgetMatchEvent for AddProviderModal {
         }
 
         if self.button(id!(add_server_button)).clicked(actions) {
+            self.clear_error_message(cx);
             let api_host = self.text_input(id!(api_host)).text();
-
+            let name = self.text_input(id!(name)).text();
             // Do not create a provider if the api host is already in the list
             if store.chats.providers.contains_key(&api_host) {
-                // TODO(Julian): inform the user that the provider already exists
-                eprintln!("Provider already exists: {}", api_host);
+                self.set_error_message(cx, "Provider already exists with this API host");
+                return;
+            }
+
+            // Check if the URL is valid
+            if !api_host.starts_with("http") {
+                self.set_error_message(cx, "Invalid API host");
+                return;
+            }
+
+            // Check if the provider type is selected
+            if self.selected_provider.is_none() {
+                self.set_error_message(cx, "Please select a provider type");
+                return;
+            }
+
+            // Check if the name is empty
+            if name.is_empty() {
+                self.set_error_message(cx, "Please enter a name for the provider");
                 return;
             }
 
             let api_key = self.text_input(id!(api_key)).text();
-            let provider_type_idx = self.drop_down(id!(provider_type)).selected_item();
-
-            let provider_type = ProviderType::from_usize(provider_type_idx);
-            let _provider = match provider_type {
+            let provider = match self.selected_provider.as_ref().unwrap() {
                 ProviderType::OpenAI => {
                     Provider {
-                        name: "OpenAI".to_string(),
+                        name: name.clone(),
                         url: api_host.clone(),
                         api_key: Some(api_key.clone()),
                         provider_type: ProviderType::OpenAI,
                         connection_status: ServerConnectionStatus::Disconnected,
                         enabled: true,
                         models: vec![],
+                        was_customly_added: true,
                     }
                 }
                 ProviderType::MoFa => {
                     Provider {
-                        name: "MoFa".to_string(),
+                        name: name.clone(),
                         url: api_host.clone(),
                         api_key: Some(api_key.clone()),
                         provider_type: ProviderType::MoFa,
                         connection_status: ServerConnectionStatus::Disconnected,
                         enabled: true,
                         models: vec![],
+                        was_customly_added: true,
                     }
                 }
             };
 
-            // TODO(Julian): store the provider, provider dropdown not working
-            // store.insert_or_update_provider(&provider);
+            store.insert_or_update_provider(&provider);
+            store.chats.test_provider_and_fetch_models(&provider.url);
 
             cx.action(AddProviderModalAction::ModalDismissed);
+            self.clear_form(cx);
         }
+
+        let selected = self.radio_button_set(ids!(radios.radio_openai, radios.radio_mofa)).selected(cx, actions);
+        if let Some(selected) = selected {
+            self.selected_provider = match selected {
+                0 => Some(ProviderType::OpenAI),
+                1 => Some(ProviderType::MoFa),
+                _ => Some(ProviderType::OpenAI),
+            };
+        }
+    }
+}
+
+
+impl AddProviderModal {
+    fn set_error_message(&mut self, cx: &mut Cx, message: &str) {
+        self.view(id!(error_view)).set_visible(cx, true);
+        self.label(id!(error_message)).set_text(cx, message);
+    }
+
+    fn clear_error_message(&mut self, cx: &mut Cx) {
+        self.label(id!(error_message)).set_text(cx, "");
+        self.view(id!(error_view)).set_visible(cx, false);
+    }
+
+    fn clear_form(&mut self, cx: &mut Cx) {
+        self.text_input(id!(api_host)).set_text(cx, "");
+        self.text_input(id!(api_key)).set_text(cx, "");
+        self.clear_error_message(cx);
+        self.selected_provider = None;
     }
 }

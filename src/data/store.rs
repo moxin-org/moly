@@ -419,9 +419,10 @@ impl Store {
                     },
                     enabled: prefs.enabled,
                     models: vec![],
+                    was_customly_added: prefs.was_customly_added,
                 });
             } else {
-                // Known from JSON but user has no preferences
+                // Known from supported_providers.json but user has no preferences
                 final_list.push(Provider {
                     name: s.name.clone(),
                     url: s.url.clone(),
@@ -430,22 +431,24 @@ impl Store {
                     connection_status: ServerConnectionStatus::Disconnected,
                     enabled: false,
                     models: vec![],
+                    was_customly_added: false,
                 });
             }
         }
 
-        // Custom providers from preferences (not in the JSON)
+        // Custom providers from preferences (not in the supported_providers.json)
         for pp in &self.preferences.providers_preferences {
             let is_custom = !supported.iter().any(|sp| sp.url == pp.url);
             if is_custom {
                 final_list.push(Provider {
-                    name: pp.url.clone(),
+                    name: pp.name.clone(),
                     url: pp.url.clone(),
                     api_key: pp.api_key.clone(),
                     provider_type: pp.provider_type.clone(),
                     connection_status: ServerConnectionStatus::Disconnected,
                     enabled: pp.enabled,
                     models: vec![],
+                    was_customly_added: pp.was_customly_added,
                 });
             }
         }
@@ -477,6 +480,11 @@ impl Store {
         self.chats.insert_or_update_provider(provider);
         self.preferences.insert_or_update_provider(provider);
     }
+
+    pub fn remove_provider(&mut self, url: &str) {
+        self.chats.remove_provider(url);
+        self.preferences.remove_provider(url);
+    }
 }
 
 #[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
@@ -489,15 +497,5 @@ pub enum ProviderType {
 impl Default for ProviderType {
     fn default() -> Self {
         ProviderType::OpenAI
-    }
-}
-
-impl ProviderType {
-    pub fn from_usize(value: usize) -> Self {
-        match value {
-            0 => ProviderType::OpenAI,
-            1 => ProviderType::MoFa,
-            _ => panic!("Invalid provider type"),
-        }
     }
 }

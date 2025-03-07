@@ -64,11 +64,13 @@ impl Preferences {
             existing_provider.enabled = provider.enabled;
         } else {
             self.providers_preferences.push(ProviderPreferences {
+                name: provider.name.clone(),
                 url: provider.url.clone(),
                 api_key: provider.api_key.clone(),
                 enabled: provider.enabled,
                 provider_type: provider.provider_type.clone(),
                 models: provider.models.iter().map(|m| (m.0.clone(), true)).collect(),
+                was_customly_added: provider.was_customly_added,
             });
         }
         self.save();
@@ -121,10 +123,12 @@ fn preferences_path() -> PathBuf {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ProviderPreferences {
+    pub name: String,
     pub url: String,
     pub api_key: Option<String>,
     pub enabled: bool,
     pub provider_type: ProviderType,
     // (model_name, enabled)
     pub models: Vec<(String, bool)>,
+    pub was_customly_added: bool,
 }
