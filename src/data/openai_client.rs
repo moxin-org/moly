@@ -222,8 +222,6 @@ impl OpenAIClient {
                         data: Vec<ModelInfo>,
                     }
 
-                    std::thread::sleep(std::time::Duration::from_secs(4));
-
                     match resp {
                         Ok(r) => {
                             match r.status() {
