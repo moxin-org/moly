@@ -5,12 +5,12 @@ pub mod model_loader;
 use anyhow::{Context, Result};
 use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
-use makepad_widgets::{ActionTrait, Cx};
+use makepad_widgets::ActionTrait;
 use model_loader::ModelLoader;
 use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::fs;
-use std::sync::mpsc::{self, channel};
+use std::sync::mpsc::channel;
 use std::{cell::RefCell, path::PathBuf};
 
 use super::filesystem::setup_chats_folder;
