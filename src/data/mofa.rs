@@ -4,8 +4,8 @@ use moly_protocol::open_ai::{
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
-
-use super::providers::{ProviderCommand, RemoteModel, RemoteModelId, ChatResponse, ProviderClient, ProviderConnectionResult};
+use makepad_widgets::Cx;
+use super::providers::{ChatResponse, ProviderClient, ProviderClientError, ProviderCommand, ProviderFetchModelsResult, RemoteModel, RemoteModelId};
 
 // #[derive(Debug, Serialize, Deserialize)]
 // pub struct MofaResponseReasoner {
@@ -63,15 +63,11 @@ pub struct AgentId(pub String);
 //     MakepadExpert,
 // }
 
+/// This is a OpenAI-compatible client for MoFa.
+/// The only reason we have this is to return fake responses upon model fetching.
 #[derive(Clone, Debug)]
 pub struct MofaClient {
     command_sender: Sender<ProviderCommand>,
-}
-
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-pub enum BackendType {
-    Local,
-    Remote,
 }
 
 impl ProviderClient for MofaClient {
@@ -81,15 +77,15 @@ impl ProviderClient for MofaClient {
             .unwrap();
     }
 
-    fn fetch_models(&self, tx: Sender<ProviderConnectionResult>) {
+    fn fetch_models(&self) {
         self.command_sender
-            .send(ProviderCommand::FetchModels(tx))
+            .send(ProviderCommand::FetchModels())
             .unwrap();
     }
 
     fn send_message(&self, model: &RemoteModel, prompt: &String, tx: Sender<ChatResponse>) {
         self.command_sender
-            .send(ProviderCommand::SendTask(
+            .send(ProviderCommand::SendMessage(
                 prompt.clone(),
                 model.clone(),
                 tx,
@@ -118,7 +114,7 @@ impl MofaClient {
 
         while let Ok(command) = command_receiver.recv() {
             match command {
-                ProviderCommand::SendTask(task, agent, tx) => {
+                ProviderCommand::SendMessage(task, agent, tx) => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
@@ -160,7 +156,7 @@ impl MofaClient {
                     }
                     continue;
                 }
-                ProviderCommand::FetchModels(tx) => {
+                ProviderCommand::FetchModels() => {
                     let url = address.clone();
                     let resp = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
@@ -170,21 +166,35 @@ impl MofaClient {
                         .get(format!("{}/v1/models", url))
                         .send();
 
+
                     match resp {
-                        Ok(r) if r.status().is_success() => {
-                            let agents = vec![
-                                RemoteModel {
-                                    id: RemoteModelId::from_model_and_server("Reasoner", &url),
-                                    name: "Reasoner".to_string(),
-                                    description: "An agent that will help you find good questions about any topic".to_string(),
-                                    enabled: true,
-                                    provider_url: url.clone(),
-                                },
-                            ];
-                            tx.send(ProviderConnectionResult::Connected(url, agents)).unwrap();
-                        }
-                        _ => {
-                            tx.send(ProviderConnectionResult::Unavailable(url)).unwrap();
+                        Ok(r) => {
+                            match r.status() {
+                                reqwest::StatusCode::OK => {
+                                    let agents = vec![
+                                        RemoteModel {
+                                            id: RemoteModelId::from_model_and_server("Reasoner", &url),
+                                            name: "Reasoner".to_string(),
+                                            description: "An agent that will help you find good questions about any topic".to_string(),
+                                            enabled: true,
+                                            provider_url: url.clone(),
+                                        },
+                                    ];
+                                    Cx::post_action(ProviderFetchModelsResult::Success(url, agents));
+                                }
+                                reqwest::StatusCode::UNAUTHORIZED => {
+                                    eprintln!("Unauthorized to fetch models from: {}, your API key might be missing or invalid", url);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::Unauthorized));
+                                }
+                                status => {
+                                    eprintln!("Failed to fetch models from: {}, with status: {:?}", url, status);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("Failed to fetch models from server: {e}");
+                            Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                         }
                     }
                 }
@@ -216,7 +226,7 @@ impl MofaClient {
         std::thread::spawn(move || {
             while let Ok(command) = command_receiver.recv() {
                 match command {
-                    ProviderCommand::SendTask(_task, _agent, tx) => {
+                    ProviderCommand::SendMessage(_task, _agent, tx) => {
                         let content = r#"{
                             "step_name": "fake",
                             "node_results": "This is a fake response",
@@ -247,7 +257,7 @@ impl MofaClient {
                         };
                         let _ = tx.send(ChatResponse::ChatFinalResponseData(data));
                     }
-                    ProviderCommand::FetchModels(tx) => {
+                    ProviderCommand::FetchModels() => {
                         let agents = vec![RemoteModel {
                             id: RemoteModelId::from_model_and_server("Reasoner", &address_clone),
                             name: "Reasoner".to_string(),
@@ -257,8 +267,7 @@ impl MofaClient {
                             enabled: true,
                             provider_url: address_clone.clone(),
                         }];
-                        tx.send(ProviderConnectionResult::Connected(address_clone.clone(), agents))
-                            .unwrap();
+                        Cx::post_action(ProviderFetchModelsResult::Success(address_clone.clone(), agents));
                     }
                     ProviderCommand::CancelTask => {}
                 }

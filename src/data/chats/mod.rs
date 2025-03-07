@@ -16,7 +16,7 @@ use std::{cell::RefCell, path::PathBuf};
 use super::filesystem::setup_chats_folder;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
-use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderConnectionResult, ProviderTestResultAction, ProviderType, RemoteModel, RemoteModelId, ServerConnectionStatus};
+use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, RemoteModel, RemoteModelId, ProviderConnectionStatus};
 
 pub struct Chats {
     pub moly_client: MolyClient,
@@ -276,31 +276,16 @@ impl Chats {
             self.provider_clients.get(address).unwrap()
         };
 
-        let (tx, rx) = mpsc::channel();
-        client.fetch_models(tx);
-        std::thread::spawn(move || match rx.recv() {
-            Ok(ProviderConnectionResult::Connected(server_address, remote_models)) => {
-                Cx::post_action(ProviderTestResultAction::Success(
-                    server_address, 
-                    remote_models
-                ));
-            }
-            Ok(ProviderConnectionResult::Unavailable(server_address)) => {
-                Cx::post_action(ProviderTestResultAction::Failure(Some(server_address)));
-            }
-            Err(_) => {
-                Cx::post_action(ProviderTestResultAction::Failure(None));
-            }
-        });
+        client.fetch_models();
     }
 
     pub fn handle_provider_connection_result(
         &mut self,
-        result: ProviderConnectionResult,
+        result: ProviderFetchModelsResult,
         preferences: &mut Preferences
     ) {
         match result {
-            ProviderConnectionResult::Connected(address, fetched_models) => {
+            ProviderFetchModelsResult::Success(address, fetched_models) => {
                 // Update user's preferences for the provider (adding new models if needed)
                 if let Some(pref_entry) = preferences.providers_preferences
                     .iter_mut()
@@ -352,14 +337,15 @@ impl Chats {
                 }
 
                 if let Some(provider) = self.providers.get_mut(&address) {
-                    provider.connection_status = ServerConnectionStatus::Connected;
+                    provider.connection_status = ProviderConnectionStatus::Connected;
                 }
             }
-            ProviderConnectionResult::Unavailable(address) => {
+            ProviderFetchModelsResult::Failure(address, error) => {
                 if let Some(provider) = self.providers.get_mut(&address) {
-                    provider.connection_status = ServerConnectionStatus::Disconnected;
+                    provider.connection_status = ProviderConnectionStatus::Error(error);
                 }
-            }
+            },
+            _ => {}
         }
     }
 
@@ -370,6 +356,7 @@ impl Chats {
             existing_provider.provider_type = provider.provider_type.clone();
             existing_provider.enabled = provider.enabled;
             existing_provider.models = provider.models.clone();
+            existing_provider.connection_status = provider.connection_status.clone();
             // Update the client if the API key has changed
             if let Some(_client) = self.provider_clients.get_mut(&provider.url) {
                 // TODO: we should instead have a way to update the client api key without recreating it
@@ -380,12 +367,6 @@ impl Chats {
         } else {
             self.providers.insert(provider.url.clone(), provider.clone());
             self.provider_clients.insert(provider.url.clone(), create_client_for_provider(provider));
-        }
-    }
-
-    pub fn update_provider_enabled(&mut self, address: &str, enabled: bool) {
-        if let Some(provider) = self.providers.get_mut(address) {
-            provider.enabled = enabled;
         }
     }
 

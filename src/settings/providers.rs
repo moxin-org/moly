@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::{providers::{Provider, ServerConnectionStatus}, store::Store};
+use crate::data::{providers::{Provider, ProviderConnectionStatus}, store::Store};
 use crate::shared::modal::ModalWidgetExt;
 
 use super::{add_provider_modal::AddProviderModalAction, provider_view::ProviderViewAction};
@@ -307,7 +307,7 @@ impl Widget for ProviderItem {
         self.update_connection_status(cx, &connection_status);
 
         self.view(id!(status_view))
-            .set_visible(cx, connection_status == ServerConnectionStatus::Connected && self.provider.enabled);
+            .set_visible(cx, connection_status == ProviderConnectionStatus::Connected && self.provider.enabled);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -327,14 +327,14 @@ impl ProviderItem {
     fn update_connection_status(
         &mut self,
         cx: &mut Cx,
-        connection_status: &ServerConnectionStatus
+        connection_status: &ProviderConnectionStatus
     ) {
         self.view(id!(connection_status_success))
-            .set_visible(cx, *connection_status == ServerConnectionStatus::Connected);
+            .set_visible(cx, *connection_status == ProviderConnectionStatus::Connected);
         self.view(id!(connection_status_failure))
-            .set_visible(cx, *connection_status == ServerConnectionStatus::Disconnected);
+            .set_visible(cx, *connection_status == ProviderConnectionStatus::Disconnected);
         self.view(id!(connection_status_loading))
-            .set_visible(cx, *connection_status == ServerConnectionStatus::Connecting);
+            .set_visible(cx, *connection_status == ProviderConnectionStatus::Connecting);
     }
 }
 

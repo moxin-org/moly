@@ -4,7 +4,7 @@ use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
-use super::providers::ProviderType;
+use super::providers::{ProviderFetchModelsResult, ProviderType};
 use super::search::SortCriteria;
 use super::supported_providers;
 use super::{chats::Chats, downloads::Downloads, search::Search};
@@ -12,7 +12,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
-use super::providers::{Provider, ProviderConnectionResult, ProviderTestResultAction, ServerConnectionStatus};
+use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 
 #[allow(dead_code)]
@@ -378,21 +378,9 @@ impl Store {
         // support having no chat selected
         self.init_current_chat();
     }
-    
-    // TODO Rework this mess
-    pub fn handle_provider_connection_action(&mut self, result: ProviderTestResultAction) {
-        match result {
-            ProviderTestResultAction::Success(address, models) => {
-                self.chats.handle_provider_connection_result(ProviderConnectionResult::Connected(address, models), &mut self.preferences);
-            }
-            ProviderTestResultAction::Failure(address_opt) => {
-                if let Some(addr) = address_opt {
-                    eprintln!("Failed to connect to provider at {}", addr);
-                    self.chats.handle_provider_connection_result(ProviderConnectionResult::Unavailable(addr), &mut self.preferences);
-                }
-            },
-            _ => {},
-        }
+
+    pub fn handle_provider_connection_action(&mut self, result: ProviderFetchModelsResult) {
+        self.chats.handle_provider_connection_result(result, &mut self.preferences);
     }
 
     /// Loads the preference connections from the preferences and registers them in the chats.
@@ -411,11 +399,7 @@ impl Store {
                     url: prefs.url.clone(),
                     api_key: prefs.api_key.clone(),
                     provider_type: s.provider_type.clone(),
-                    connection_status: if prefs.enabled {
-                        ServerConnectionStatus::Connected
-                    } else {
-                        ServerConnectionStatus::Disconnected
-                    },
+                    connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: prefs.enabled,
                     models: vec![],
                     was_customly_added: prefs.was_customly_added,
@@ -427,7 +411,7 @@ impl Store {
                     url: s.url.clone(),
                     api_key: None,
                     provider_type: s.provider_type.clone(),
-                    connection_status: ServerConnectionStatus::Disconnected,
+                    connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: false,
                     models: vec![],
                     was_customly_added: false,
@@ -444,7 +428,7 @@ impl Store {
                     url: pp.url.clone(),
                     api_key: pp.api_key.clone(),
                     provider_type: pp.provider_type.clone(),
-                    connection_status: ServerConnectionStatus::Disconnected,
+                    connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: pp.enabled,
                     models: vec![],
                     was_customly_added: pp.was_customly_added,

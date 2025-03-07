@@ -15,7 +15,7 @@ pub struct Provider {
     pub api_key: Option<String>,
     /// Determines the API format used by the provider
     pub provider_type: ProviderType,
-    pub connection_status: ServerConnectionStatus,
+    pub connection_status: ProviderConnectionStatus,
     pub enabled: bool,
     pub models: Vec<RemoteModelId>,
     /// Whether the provider was added by the user or not
@@ -68,25 +68,56 @@ impl RemoteModel {
 
 /// The connection status of the server
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub enum ServerConnectionStatus {
+pub enum ProviderConnectionStatus {
     #[default]
     Connecting,
     Connected,
     Disconnected,
+    Error(ProviderClientError),
+}
+
+impl ProviderConnectionStatus {
+    pub fn to_human_readable(&self) -> &str {
+        match self {
+            ProviderConnectionStatus::Connecting => "Connecting...",
+            ProviderConnectionStatus::Connected => "Models synchronized",
+            ProviderConnectionStatus::Disconnected => "Haven't synchronized models since app launch",
+            ProviderConnectionStatus::Error(error) => error.to_human_readable(),
+            
+        }
+    }
 }
 
 #[derive(Debug, DefaultNone, Clone)]
-pub enum ProviderTestResultAction {
+pub enum ProviderFetchModelsResult {
     Success(String, Vec<RemoteModel>),
-    Failure(Option<String>),
+    Failure(String, ProviderClientError),
     None,
 }
 
-pub enum ProviderConnectionResult {
-    Connected(String, Vec<RemoteModel>),
-    Unavailable(String),
+/// Errors that can occur when interacting with the provider client.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ProviderClientError {
+    Unauthorized,
+    BadRequest,
+    UnexpectedResponse,
+    InternalServerError,
+    Timeout,
+    Other(String),
 }
 
+impl ProviderClientError {
+    pub fn to_human_readable(&self) -> &str {
+        match self {
+            ProviderClientError::Unauthorized => "Unauthorized, check your API key",
+            ProviderClientError::BadRequest => "Something is wrong in our end, please file an issue if you think this is an error",
+            ProviderClientError::UnexpectedResponse => "Unexpected Response",
+            ProviderClientError::InternalServerError => "We have trouble reaching the server",
+            ProviderClientError::Timeout => "The server is taking too long to respond, please try again later",
+            ProviderClientError::Other(message) => message,
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum ChatResponse {
@@ -97,7 +128,7 @@ pub enum ChatResponse {
 /// The behaviour that must be implemented by the provider clients.
 pub trait ProviderClient: Send + Sync {
     fn cancel_task(&self);
-    fn fetch_models(&self, tx: Sender<ProviderConnectionResult>);
+    fn fetch_models(&self);
     fn send_message(&self, model: &RemoteModel, prompt: &String, tx: Sender<ChatResponse>);
 }
 
@@ -117,7 +148,7 @@ impl Default for ProviderType {
 /// Commands for the provider client to interact with their background thread.
 /// Used internally by the provider clients, not exposed used by the rest of the app.
 pub enum ProviderCommand {
-    SendTask(String, RemoteModel, Sender<ChatResponse>),
+    SendMessage(String, RemoteModel, Sender<ChatResponse>),
     CancelTask,
-    FetchModels(Sender<ProviderConnectionResult>),
+    FetchModels(),
 }

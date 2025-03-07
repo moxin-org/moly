@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::{providers::{Provider, RemoteModelId}, store::Store};
+use crate::data::{providers::{Provider, RemoteModelId, ProviderConnectionStatus}, store::Store};
 
 live_design! {
     use link::theme::*;
@@ -174,6 +174,16 @@ live_design! {
                         draw_bg: { color: #099250, border_color: #099250 }
                     }
                 }
+                <View> {
+                    width: Fill, height: Fit
+                    align: {x: 0.0, y: 0.5}
+                    connection_status = <Label> {
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 10},
+                            color: #000
+                        }
+                    }
+                }
             }
 
             // MODELS
@@ -238,6 +248,10 @@ impl Widget for ProviderView {
         let store = scope.data.get_mut::<Store>().unwrap();
         let models = store.chats.get_provider_models(&self.provider.url);
 
+        // Catch up with the latest provider status in the store
+        self.provider = store.chats.providers.get(&self.provider.url).unwrap().clone();
+        self.update_connection_status(cx);
+
         let entries_count = models.len();
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
@@ -267,6 +281,36 @@ impl Widget for ProviderView {
     }
 }
 
+impl ProviderView {
+    fn update_connection_status(&mut self, cx: &mut Cx) {
+        let connection_status_label = self.label(id!(connection_status));
+        connection_status_label.set_text(cx, &self.provider.connection_status.to_human_readable());
+        let text_color = match &self.provider.connection_status {
+            ProviderConnectionStatus::Connected => {
+                // green
+                vec4(0.0, 0.576, 0.314, 1.0)
+            }
+            ProviderConnectionStatus::Disconnected => {
+                // black
+                vec4(0.0, 0.0, 0.0, 1.0)
+            }
+            ProviderConnectionStatus::Connecting => {
+                // gray
+                vec4(0.5, 0.5, 0.5, 1.0)
+            }
+            ProviderConnectionStatus::Error(_error) => {
+                // red
+                vec4(1.0, 0.0, 0.0, 1.0)
+            }
+        };
+        connection_status_label.apply_over(cx, live!{
+            draw_text: {
+                color: (text_color)
+            }
+        });
+    }
+}
+
 impl WidgetMatchEvent for ProviderView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
@@ -278,11 +322,8 @@ impl WidgetMatchEvent for ProviderView {
             }
 
             self.provider.enabled = enabled;
-            // TODO(Julian): unify the update_provider_enabled method in the store
-            // Update the provider in preferences
-            store.preferences.update_provider_enabled(&self.provider.url, enabled);
-            // Update the provider in the store
-            store.chats.update_provider_enabled(&self.provider.url, enabled);
+            // Update the provider in store and preferences
+            store.insert_or_update_provider(&self.provider);
             // TODO: this is a hack to force a redraw of the chat panel, this will be replaced by integration with MolyKit
             cx.redraw_all();
         }
@@ -313,25 +354,37 @@ impl WidgetMatchEvent for ProviderView {
 
         // Handle API Key save
         if self.button(id!(save_api_key)).clicked(actions) {
-            let should_fetch_models = self.provider.api_key.is_none();
             self.provider.api_key = Some(self.view.text_input(id!(api_key)).text());
 
+            // Because the provider is being updated, we assume the user wants to use it.
+            // This allows the app to fetch the models from the provider and give feedback to the user.
+            self.provider.enabled = true;
+            self.provider.connection_status = ProviderConnectionStatus::Connecting;
             // Update the provider in the store and preferences
             store.insert_or_update_provider(&self.provider);
-
-            if should_fetch_models {
-                store.chats.test_provider_and_fetch_models(&self.provider.url);
-            }
+            // Fetch the models from the provider
+            store.chats.test_provider_and_fetch_models(&self.provider.url);
+            // Update the provider enabled switch
+            self.check_box(id!(provider_enabled_switch)).set_selected(cx, true);
+            // Update the UI
+            self.update_connection_status(cx);
+            self.redraw(cx);
         }
 
         // Handle refresh button
         if let Some(_fe) = self.view(id!(refresh_button)).finger_up(actions) {
+            // Update the provider status in the store
+            self.provider.connection_status = ProviderConnectionStatus::Connecting;
+            store.insert_or_update_provider(&self.provider);
+            // Fetch the models from the provider
             store.chats.test_provider_and_fetch_models(&self.provider.url);
+            // Update UI
+            self.update_connection_status(cx);
+            self.redraw(cx);
         }
 
         // Handle remove provider button
         if self.button(id!(remove_provider_button)).clicked(actions) {
-            println!("Removing provider: {}", self.provider.url);
             store.remove_provider(&self.provider.url);
             cx.action(ProviderViewAction::ProviderRemoved);
             self.redraw(cx);

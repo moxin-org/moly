@@ -76,31 +76,11 @@ impl Preferences {
         self.save();
     }
 
-    pub fn update_provider_enabled(&mut self, address: &str, enabled: bool) {
-        if let Some(provider) = self.providers_preferences.iter_mut().find(|p| p.url == address) {
-            provider.enabled = enabled;
-        }
-        self.save();
-    }
-
     pub fn remove_provider(&mut self, address: &str) {
         self.providers_preferences
             .retain(|p| p.url != address);
         self.save();
     }
-
-    /// Refresh or insert a model in the provider's model list.
-    // pub fn _ensure_provider_model_exists(&mut self, address: &str, model_name: &str) {
-    //     if let Some(conn) = self.providers.iter_mut().find(|p| p.url == address) {
-    //         let already_exists = conn.models.iter().any(|m| m.name == model_name);
-    //         if !already_exists {
-    //             conn.models.push(ServerModel {
-    //                 name: model_name.to_string(),
-    //                 enabled: true,
-    //             });
-    //         }
-    //     }
-    // }
 
     /// Update the enabled/disabled status of a model for a specific server
     pub fn update_model_status(&mut self, address: &str, model_name: &str, enabled: bool) {

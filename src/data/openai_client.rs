@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 
-use super::providers::{ChatResponse, ProviderClient, ProviderConnectionResult, RemoteModel, RemoteModelId, ProviderCommand};
+use makepad_widgets::Cx;
+use crate::data::providers::ProviderClientError;
+
+use super::providers::{ChatResponse, ProviderClient, ProviderFetchModelsResult, RemoteModel, RemoteModelId, ProviderCommand};
 
 const ALLOWED_OPENAI_MODELS: &[&str] = &[
     "gpt-4-turbo",
@@ -84,12 +87,6 @@ pub struct OpenAIClient {
     command_sender: Sender<ProviderCommand>,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-pub enum BackendType {
-    Local,
-    Remote,
-}
-
 impl ProviderClient for OpenAIClient {
     fn cancel_task(&self) {
         self.command_sender
@@ -97,9 +94,9 @@ impl ProviderClient for OpenAIClient {
             .unwrap();
     }
 
-    fn fetch_models(&self, tx: Sender<ProviderConnectionResult>) {
+    fn fetch_models(&self) {
         self.command_sender
-            .send(ProviderCommand::FetchModels(tx))
+            .send(ProviderCommand::FetchModels())
             .unwrap();
     }
 
@@ -110,7 +107,7 @@ impl ProviderClient for OpenAIClient {
         tx: Sender<ChatResponse>,
     ) {
         self.command_sender
-            .send(ProviderCommand::SendTask(
+            .send(ProviderCommand::SendMessage(
                 prompt.clone(),
                 model.clone(),
                 tx,
@@ -144,7 +141,7 @@ impl OpenAIClient {
 
         while let Ok(command) = command_receiver.recv() {
             match command {
-                ProviderCommand::SendTask(task, model, tx) => {
+                ProviderCommand::SendMessage(task, model, tx) => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
@@ -191,7 +188,7 @@ impl OpenAIClient {
                     }
                     continue;
                 }
-                ProviderCommand::FetchModels(tx) => {
+                ProviderCommand::FetchModels() => {
                     let url = address.clone();
                     let client = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
@@ -225,6 +222,8 @@ impl OpenAIClient {
                         data: Vec<ModelInfo>,
                     }
 
+                    std::thread::sleep(std::time::Duration::from_secs(4));
+
                     match resp {
                         Ok(r) => {
                             match r.status() {
@@ -241,23 +240,27 @@ impl OpenAIClient {
                                                     enabled: true,
                                                 })
                                                 .collect();
-                                            tx.send(ProviderConnectionResult::Connected(url, models)).unwrap();
+                                            Cx::post_action(ProviderFetchModelsResult::Success(url, models));
                                         }
                                         Err(e) => {
                                             eprintln!("Failed to parse models from server: {:?}", e);
-                                            tx.send(ProviderConnectionResult::Unavailable(url)).unwrap();
+                                            Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                                         }
                                     }
                                 }
+                                reqwest::StatusCode::UNAUTHORIZED => {
+                                    eprintln!("Unauthorized to fetch models from: {}, your API key might be missing or invalid", url);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::Unauthorized));
+                                }
                                 status => {
-                                    eprintln!("Failed to fetch models from server, status: {:?}", status);
-                                    tx.send(ProviderConnectionResult::Unavailable(url)).unwrap();
+                                    eprintln!("Failed to fetch models from: {}, with status: {:?}", url, status);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                                 }
                             }
                         },
                         Err(e) => {
                             eprintln!("Failed to fetch models from server: {e}");
-                            tx.send(ProviderConnectionResult::Unavailable(url)).unwrap();
+                            Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                         }
                     }
                 }

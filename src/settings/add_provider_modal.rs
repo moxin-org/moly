@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::{providers::{Provider, ServerConnectionStatus, ProviderType}, store::Store};
+use crate::data::{providers::{Provider, ProviderConnectionStatus, ProviderType}, store::Store};
 
 live_design! {
     use link::theme::*;
@@ -308,7 +308,7 @@ impl WidgetMatchEvent for AddProviderModal {
                         url: api_host.clone(),
                         api_key: Some(api_key.clone()),
                         provider_type: ProviderType::OpenAI,
-                        connection_status: ServerConnectionStatus::Disconnected,
+                        connection_status: ProviderConnectionStatus::Disconnected,
                         enabled: true,
                         models: vec![],
                         was_customly_added: true,
@@ -320,7 +320,7 @@ impl WidgetMatchEvent for AddProviderModal {
                         url: api_host.clone(),
                         api_key: Some(api_key.clone()),
                         provider_type: ProviderType::MoFa,
-                        connection_status: ServerConnectionStatus::Disconnected,
+                        connection_status: ProviderConnectionStatus::Disconnected,
                         enabled: true,
                         models: vec![],
                         was_customly_added: true,

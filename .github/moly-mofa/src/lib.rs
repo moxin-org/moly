@@ -111,12 +111,6 @@ pub struct MofaClient {
     pub address: String,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-pub enum BackendType {
-    Local,
-    Remote,
-}
-
 impl MofaClient {
     pub fn cancel_task(&self) {
         self.command_sender
