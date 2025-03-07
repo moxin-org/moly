@@ -1,8 +1,7 @@
-use crate::data::chats::chat_entity::{ChatEntityId, ChatEntityRef};
+use crate::data::{chats::chat_entity::{ChatEntityId, ChatEntityRef}, providers::RemoteModel};
 
 use super::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::*;
-use moly_mofa::MofaAgent;
 
 use std::cell::Ref;
 
@@ -162,7 +161,7 @@ impl EntityButton {
         self.entity.as_ref()
     }
 
-    pub fn set_agent(&mut self, cx: &mut Cx, agent: &MofaAgent) {
+    pub fn set_agent(&mut self, cx: &mut Cx, agent: &RemoteModel) {
         self.set_entity(cx, ChatEntityRef::Agent(agent));
     }
 
@@ -184,10 +183,10 @@ impl EntityButton {
             avatar.set_agent(agent);
             description_label.set_text(cx, &agent.description);
             
-            let formatted_server_url = agent.server_id.0
+            let formatted_server_url = agent.provider_url
                 .strip_prefix("https://")
-                .or_else(|| agent.server_id.0.strip_prefix("http://"))
-                .unwrap_or(&agent.server_id.0);
+                .or_else(|| agent.provider_url.strip_prefix("http://"))
+                .unwrap_or(&agent.provider_url);
             server_url.set_text(cx, formatted_server_url);
         } else {
             avatar.set_visible(false);
@@ -209,7 +208,7 @@ impl EntityButtonRef {
         }
     }
 
-    pub fn set_agent(&mut self, cx: &mut Cx, agent: &MofaAgent) {
+    pub fn set_agent(&mut self, cx: &mut Cx, agent: &RemoteModel) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_agent(cx, agent);
         }

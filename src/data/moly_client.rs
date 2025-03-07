@@ -13,10 +13,6 @@ pub struct MolyClient {
     blocking_client: reqwest::blocking::Client,
 }
 
-// TODO(Julian):
-// - We might want to do some things async
-// - We likely want to avoid spawning threads for each request
-
 impl MolyClient {
     pub fn new(address: String) -> Self {
         let blocking_client = reqwest::blocking::Client::builder()

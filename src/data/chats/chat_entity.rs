@@ -1,16 +1,15 @@
 //! Hopefully, provisional solution to unify model files and agents in the chat system.
 
-use moly_mofa::{AgentId, MofaAgent};
 use moly_protocol::data::{File, FileID};
 use serde::{Deserialize, Serialize};
 
-use crate::data::remote_servers::{RemoteModel, RemoteModelId};
+use crate::data::providers::{RemoteModel, RemoteModelId};
 
 /// Identifies either a local model file, a MoFa agent, or a remote model.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ChatEntityId {
     ModelFile(FileID),
-    Agent(AgentId),
+    Agent(RemoteModelId),
     RemoteModel(RemoteModelId),
 }
 
@@ -19,7 +18,7 @@ pub enum ChatEntityId {
 /// Can be used to chain iterators of both types or simply to take either as a parameter.
 #[derive(Debug, Clone, Serialize, Copy)]
 pub enum ChatEntityRef<'a> {
-    Agent(&'a MofaAgent),
+    Agent(&'a RemoteModel),
     ModelFile(&'a File),
     RemoteModel(&'a RemoteModel), 
 }
@@ -42,11 +41,11 @@ impl<'a> ChatEntityRef<'a> {
     }
 }
 
-impl<'a> From<&'a MofaAgent> for ChatEntityRef<'a> {
-    fn from(agent: &'a MofaAgent) -> Self {
-        ChatEntityRef::Agent(agent)
-    }
-}
+// impl<'a> From<&'a MofaAgent> for ChatEntityRef<'a> {
+//     fn from(agent: &'a MofaAgent) -> Self {
+//         ChatEntityRef::Agent(agent)
+//     }
+// }
 
 impl<'a> From<&'a File> for ChatEntityRef<'a> {
     fn from(file: &'a File) -> Self {

@@ -1,8 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::store::Store;
-use crate::data::chats::MofaServer;
-
+use crate::data::{providers::Provider, store::Store};
 
 live_design! {
     use link::theme::*;
@@ -157,8 +155,8 @@ impl Widget for DeleteServerModal {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let server = scope.props.get::<MofaServer>().unwrap();
-        self.server_address = server.client.address.clone();
+        let provider = scope.props.get::<Provider>().unwrap();
+        self.server_address = provider.url.clone();
 
         let prompt_text = format!(
             "Are you sure you want to delete the server at {}?",

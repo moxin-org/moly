@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat_entity::ChatEntityId, store::Store},
+    data::{chats::chat_entity::ChatEntityId, providers::RemoteModel, store::Store},
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
@@ -23,7 +23,13 @@ live_design! {
         flow: Down,
         model_template: <ModelSelectorItem> { content = <ModelInfo> {} }
         agent_template: <ModelSelectorItem> { content = <AgentInfo> {} }
-        separator_template: <Line> {}
+        section_label_template: <Label> {
+            padding: {left: 4, top: 4., bottom: 4.}
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 10.0},
+                color: #98A2B3
+            }
+        }
     }
 }
 
@@ -50,7 +56,7 @@ pub struct ModelSelectorList {
     #[live]
     agent_template: Option<LivePtr>,
     #[live]
-    separator_template: Option<LivePtr>,
+    section_label_template: Option<LivePtr>,
 
     #[live(true)]
     visible: bool,
@@ -102,34 +108,196 @@ impl WidgetMatchEvent for ModelSelectorList {
 impl ModelSelectorList {
     fn draw_items(&mut self, cx: &mut Cx2d, store: &Store) {
         let mut models = store.downloads.downloaded_files.clone();
-        models.sort_by(|a, b| b.downloaded_at.cmp(&a.downloaded_at));
+        // Sort local models consistently by name
+        models.sort_by(|a, b| a.file.name.cmp(&b.file.name));
 
         self.map_to_downloaded_files = HashMap::new();
         let mut total_height = 0.0;
-        let models_count = models.len();
+        
+        // Keep track of the current item index for LiveId generation
+        let mut current_index = 0;
 
         let chat_entity = store
             .chats
             .get_current_chat()
             .and_then(|c| c.borrow().associated_entity.clone());
 
-        for i in 0..models.len() {
-            let item_id = LiveId(i as u64).into();
+        // Get non-agent models
+        let non_agent_models = store.chats.get_non_mofa_models_list(true);
+
+        // Group models by provider
+        let mut models_by_provider: HashMap<String, (String, Vec<RemoteModel>)> = HashMap::new();
+        
+        for model in non_agent_models.iter() {
+            // Get provider name from the providers map
+            let provider_name = store.chats.providers
+                .get(&model.provider_url)
+                .map(|p| p.name.clone())
+                .unwrap_or_else(|| "Unknown Provider".to_string());
+                
+            models_by_provider
+                .entry(model.provider_url.clone())
+                .or_insert_with(|| (provider_name, Vec::new()))
+                .1
+                .push(model.clone());
+        }
+
+        // Convert to a vector and sort by provider name for consistent ordering
+        let mut providers: Vec<(String, String, Vec<RemoteModel>)> = models_by_provider
+            .into_iter()
+            .map(|(url, (name, models))| (url, name, models))
+            .collect();
+        
+        // Sort providers alphabetically by name
+        providers.sort_by(|a, b| a.1.cmp(&b.1));
+
+        // Add models grouped by provider
+        for (_provider_url, provider_name, mut provider_models) in providers {
+            if provider_models.is_empty() {
+                continue;
+            }
+
+            // Sort models within each provider by name for consistent ordering
+            provider_models.sort_by(|a, b| a.name.cmp(&b.name));
+
+            // Add provider section label
+            let section_id = LiveId(current_index as u64).into();
+            current_index += 1;
+            
+            let section_label = self.items.get_or_insert(cx, section_id, |cx| {
+                WidgetRef::new_from_ptr(cx, self.section_label_template)
+            });
+            section_label.set_text(cx, &provider_name);
+            let _ = section_label.draw_all(cx, &mut Scope::empty());
+            total_height += section_label.as_view().area().rect(cx).size.y;
+
+            // Add models for this provider
+            for remote_model in provider_models.iter() {
+                let item_id = LiveId(current_index as u64).into();
+                current_index += 1;
+                
+                let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
+                    WidgetRef::new_from_ptr(cx, self.model_template)
+                });
+
+                // Remove the starting 'models/' at the beginning of the name (happens with Gemini)
+                let caption = &remote_model.name.trim_start_matches("models/");
+                let size_visible = false;
+
+                let icon_tick_visible = match &chat_entity {
+                    Some(ChatEntityId::RemoteModel(model_id)) => model_id.0 == remote_model.id.0,
+                    _ => false,
+                };
+
+                item_widget.apply_over(
+                    cx,
+                    live! {
+                        content = {
+                            label = { text: (caption) }
+                            architecture_tag = { visible: false }
+                            params_size_tag = { visible: false }
+                            file_size_tag = { visible: (size_visible), caption = { text: "" } }
+                            icon_tick_tag = { visible: (icon_tick_visible) }
+                        }
+                    },
+                );
+
+                item_widget
+                    .as_model_selector_item()
+                    .set_remote_model(remote_model.clone());
+                
+                let _ = item_widget.draw_all(cx, &mut Scope::empty());
+                total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
+            }
+        }
+
+        // Add agents section if we have any
+        let mut agents = store.chats.get_mofa_agents_list(true);
+        // Sort agents by name for consistent ordering
+        agents.sort_by(|a, b| a.name.cmp(&b.name));
+        
+        if !agents.is_empty() {
+            let section_id = LiveId(current_index as u64).into();
+            current_index += 1;
+            
+            let section_label = self.items.get_or_insert(cx, section_id, |cx| {
+                WidgetRef::new_from_ptr(cx, self.section_label_template)
+            });
+            section_label.set_text(cx, "Agents");
+            let _ = section_label.draw_all(cx, &mut Scope::empty());
+            total_height += section_label.as_view().area().rect(cx).size.y;
+        }
+
+        // Add agents
+        for agent in agents.iter() {
+            let item_id = LiveId(current_index as u64).into();
+            current_index += 1;
+            
+            let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
+                WidgetRef::new_from_ptr(cx, self.agent_template)
+            });
+
+            let agent_name = &agent.name;
+            let current_agent_name = match &chat_entity {
+                Some(ChatEntityId::Agent(agent_id)) => {
+                    store.chats.remote_models.get(agent_id).map(|m| &m.name)
+                },
+                _ => None,
+            };
+            let icon_tick_visible = current_agent_name == Some(agent_name);
+
+            item_widget.apply_over(
+                cx,
+                live! {
+                    content = {
+                        label = { text: (agent_name) }
+                        icon_tick_tag = { visible: (icon_tick_visible) }
+                    }
+                },
+            );
+            
+            item_widget
+                .as_model_selector_item()
+                .set_agent(agent.clone());
+
+            let _ = item_widget.draw_all(cx, &mut Scope::empty());
+            total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
+        }
+
+        // Add local models section header if we have any models
+        if !models.is_empty() {
+            // Add local models section header
+            let section_id = LiveId(current_index as u64).into();
+            current_index += 1;
+            
+            let section_label = self.items.get_or_insert(cx, section_id, |cx| {
+                WidgetRef::new_from_ptr(cx, self.section_label_template)
+            });
+            section_label.set_text(cx, "Local models");
+            let _ = section_label.draw_all(cx, &mut Scope::empty());
+            total_height += section_label.as_view().area().rect(cx).size.y;
+        }
+
+        // Draw local models
+        for model in models.iter() {
+            let item_id = LiveId(current_index as u64).into();
+            current_index += 1;
+            
             let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
                 WidgetRef::new_from_ptr(cx, self.model_template)
             });
             self.map_to_downloaded_files
-                .insert(item_id, models[i].clone());
+                .insert(item_id, model.clone());
 
-            let caption = &models[i].file.name;
+            let caption = &model.file.name;
 
-            let architecture = &models[i].model.architecture;
+            let architecture = &model.model.architecture;
             let architecture_visible = !architecture.trim().is_empty();
 
-            let param_size = &models[i].model.size;
+            let param_size = &model.model.size;
             let param_size_visible = !param_size.trim().is_empty();
 
-            let size = format_model_size(&models[i].file.size).unwrap_or("".to_string());
+            let size = format_model_size(&model.file.size).unwrap_or("".to_string());
             let size_visible = !size.trim().is_empty();
 
             let current_file_id = match chat_entity {
@@ -155,89 +323,7 @@ impl ModelSelectorList {
 
             item_widget
                 .as_model_selector_item()
-                .set_model(models[i].clone());
-
-            let _ = item_widget.draw_all(cx, &mut Scope::empty());
-            total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
-        }
-
-        if models_count > 0 {
-            let separator_id = LiveId(models_count as u64).into();
-            let separator_widget = self.items.get_or_insert(cx, separator_id, |cx| {
-                WidgetRef::new_from_ptr(cx, self.separator_template)
-            });
-            let _ = separator_widget.draw_all(cx, &mut Scope::empty());
-            total_height += separator_widget.as_view().area().rect(cx).size.y;
-        }
-
-        let remote_models_vector: Vec<_> =
-            store.chats.get_remote_models_list(true).iter().cloned().collect();
-
-        for (i, remote_model) in remote_models_vector.iter().enumerate() {
-            let item_id = LiveId(10_000 + i as u64).into();
-            let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
-                WidgetRef::new_from_ptr(cx, self.model_template)
-            });
-
-            // Remote the starting 'models/' at the beginning of the name (happens with Gemini)
-            let caption = &remote_model.name.trim_start_matches("models/");
-            let size_visible = false;
-
-            let icon_tick_visible = match &chat_entity {
-                Some(ChatEntityId::RemoteModel(model_id)) => model_id.0 == remote_model.id.0,
-                _ => false,
-            };
-
-            item_widget.apply_over(
-                cx,
-                live! {
-                    content = {
-                        label = { text: (caption) }
-                        architecture_tag = { visible: false }
-                        params_size_tag = { visible: false }
-                        file_size_tag = { visible: (size_visible), caption = { text: "" } }
-                        icon_tick_tag = { visible: (icon_tick_visible) }
-                    }
-                },
-            );
-
-            item_widget
-                .as_model_selector_item()
-                .set_remote_model(remote_model.clone());
-            
-            let _ = item_widget.draw_all(cx, &mut Scope::empty());
-            total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
-        }
-
-        let agents = store.chats.get_agents_list();
-        for (i, agent) in agents.iter().enumerate() {
-            let item_id = LiveId((models_count + 1 + i) as u64).into();
-            let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
-                WidgetRef::new_from_ptr(cx, self.agent_template)
-            });
-
-            let agent_name = &agent.name;
-            let current_agent_name = match &chat_entity {
-                Some(ChatEntityId::Agent(agent_id)) => {
-                    store.chats.available_agents.get(agent_id).map(|a| &a.name)
-                },
-                _ => None,
-            };
-            let icon_tick_visible = current_agent_name == Some(agent_name);
-
-            item_widget.apply_over(
-                cx,
-                live! {
-                    content = {
-                        label = { text: (agent_name) }
-                        icon_tick_tag = { visible: (icon_tick_visible) }
-                    }
-                },
-            );
-            
-            item_widget
-                .as_model_selector_item()
-                .set_agent(agent.clone());
+                .set_model(model.clone());
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
             total_height += item_widget.view(id!(content)).area().rect(cx).size.y;

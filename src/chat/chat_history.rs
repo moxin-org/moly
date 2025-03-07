@@ -2,10 +2,10 @@ use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
 use crate::data::chats::AgentsAvailability;
+use crate::data::providers::RemoteModel;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
-use moly_mofa::MofaAgent;
 
 live_design! {
     use link::theme::*;
@@ -108,13 +108,13 @@ impl Widget for ChatHistory {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let agents = store.chats.get_agents_list();
+        let agents = store.chats.get_mofa_agents_list(true);
 
         enum Item<'a> {
             ChatsHeader,
             AgentsHeader,
             NoAgentsWarning(&'a str),
-            AgentButton(&'a MofaAgent),
+            AgentButton(&'a RemoteModel),
             ChatButton(&'a ChatID),
         }
 
@@ -125,7 +125,6 @@ impl Widget for ChatHistory {
         match agents_availability {
             AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
             AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
-            AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
             AgentsAvailability::Available => {
                 for agent in &agents {
                     items.push(Item::AgentButton(agent));
