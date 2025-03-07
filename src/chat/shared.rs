@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::remote_servers::RemoteModel;
+use crate::data::providers::RemoteModel;
 
 live_design! {
     use link::theme::*;

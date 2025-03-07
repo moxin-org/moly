@@ -9,8 +9,8 @@ use std::thread;
 use std::sync::{Arc, RwLock};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
-use crate::data::remote_servers::RemoteModel;
-use crate::data::chats::ChatResponse as RemoteModelChatResponse;
+use crate::data::providers::RemoteModel;
+use crate::data::providers::ChatResponse as RemoteModelChatResponse;
 
 use super::chat_entity::ChatEntityId;
 use super::model_loader::ModelLoader;

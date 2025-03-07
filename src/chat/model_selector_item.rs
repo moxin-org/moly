@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moly_protocol::data::DownloadedFile;
 
-use crate::data::remote_servers::RemoteModel;
+use crate::data::providers::RemoteModel;
 
 use super::shared::ChatAgentAvatarWidgetExt;
 

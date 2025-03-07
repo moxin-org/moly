@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 
 use crate::{
-    data::{chats::chat_entity::ChatEntityId, remote_servers::RemoteModel, store::Store},
+    data::{chats::chat_entity::ChatEntityId, providers::RemoteModel, store::Store},
     shared::actions::ChatAction,
 };
 

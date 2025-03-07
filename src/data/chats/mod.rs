@@ -5,57 +5,18 @@ pub mod model_loader;
 use anyhow::{Context, Result};
 use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
-use makepad_widgets::{ActionDefaultRef, ActionTrait, Cx, DefaultNone};
+use makepad_widgets::{ActionTrait, Cx};
 use model_loader::ModelLoader;
 use moly_protocol::data::*;
-use moly_protocol::open_ai::ChatResponseData;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::sync::mpsc::{self, channel, Sender};
+use std::sync::mpsc::{self, channel};
 use std::{cell::RefCell, path::PathBuf};
 
 use super::filesystem::setup_chats_folder;
-use super::mofa::MofaClient;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
-use super::remote_servers::{OpenAIClient, RemoteModel, RemoteModelId};
-use super::store::ProviderType;
-
-/// The connection status of the server
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub enum ServerConnectionStatus {
-    #[default]
-    Connecting,
-    Connected,
-    Disconnected,
-}
-
-#[derive(Debug, DefaultNone, Clone)]
-pub enum ProviderTestResultAction {
-    Success(String, Vec<RemoteModel>),
-    Failure(Option<String>),
-    None,
-}
-
-pub enum ProviderConnectionResult {
-    Connected(String, Vec<RemoteModel>),
-    Unavailable(String),
-}
-
-
-#[derive(Clone, Debug)]
-pub enum ChatResponse {
-    // https://platform.openai.com/docs/api-reference/chat/object
-    ChatFinalResponseData(ChatResponseData),
-}
-
-
-pub trait ProviderClient: Send + Sync {
-    fn cancel_task(&self);
-    fn fetch_models(&self, tx: Sender<ProviderConnectionResult>);
-    fn send_message(&self, model: &RemoteModel, prompt: &String, tx: Sender<ChatResponse>);
-}
+use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderConnectionResult, ProviderTestResultAction, ProviderType, RemoteModel, RemoteModelId, ServerConnectionStatus};
 
 pub struct Chats {
     pub moly_client: MolyClient,
@@ -518,24 +479,5 @@ impl AgentsAvailability {
             AgentsAvailability::NoServers => "Not connected to any MoFa servers.",
             AgentsAvailability::ServersNotConnected => "Could not connect to some servers. Check your MoFa settings.",
         }
-    }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct Provider {
-    pub name: String,
-    pub url: String,
-    pub api_key: Option<String>,
-    pub provider_type: ProviderType,
-    pub connection_status: ServerConnectionStatus,
-    pub enabled: bool,
-    pub models: Vec<RemoteModelId>,
-    pub was_customly_added: bool,
-}
-
-pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {
-    match &provider.provider_type {
-        ProviderType::OpenAI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
-        ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
     }
 }

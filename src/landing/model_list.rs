@@ -1,6 +1,6 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::AgentsAvailability;
-use crate::data::remote_servers::RemoteModel;
+use crate::data::providers::RemoteModel;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;

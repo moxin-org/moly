@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 
-use super::chats::{ChatResponse, ProviderClient, ProviderConnectionResult};
+use super::providers::{ChatResponse, ProviderClient, ProviderConnectionResult, RemoteModel, RemoteModelId, ProviderCommand};
 
 const ALLOWED_OPENAI_MODELS: &[&str] = &[
     "gpt-4-turbo",
@@ -77,56 +77,6 @@ fn should_include_model(url: &str, model_id: &str) -> bool {
     }
 
     true
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
-pub struct RemoteModelId(pub String);
-
-impl RemoteModelId {
-    pub fn from_model_and_server(agent_name: &str, server_address: &str) -> Self {
-        RemoteModelId(format!("{}-{}", agent_name, server_address))
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum AgentType {
-    Reasoner,
-    SearchAssistant,
-    ResearchScholar,
-    MakepadExpert,
-}
-
-#[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RemoteServerId(pub String);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RemoteModel {
-    pub id: RemoteModelId,
-    pub name: String,
-    pub description: String,
-    pub provider_url: String,
-    pub enabled: bool,
-}
-
-impl RemoteModel {
-    /// Returns a dummy agent whenever the corresponding Agent cannot be found
-    /// (due to the server not being available, the server no longer providing the agent, etc.).
-    pub fn unknown() -> Self {
-        RemoteModel {
-            id: RemoteModelId("unknown".to_string()),
-            name: "Inaccesible model - check your connections".to_string(),
-            description: "This model is not currently reachable, its information is not available"
-                .to_string(),
-            provider_url: "unknown".to_string(),
-            enabled: true,
-        }
-    }
-}
-
-pub enum ProviderCommand {
-    SendTask(String, RemoteModel, Sender<ChatResponse>),
-    CancelTask,
-    FetchModels(Sender<ProviderConnectionResult>),
 }
 
 #[derive(Clone, Debug)]

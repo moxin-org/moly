@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 
-use super::{chats::{ChatResponse, ProviderClient, ProviderConnectionResult}, remote_servers::{ProviderCommand, RemoteModel, RemoteModelId}};
+use super::providers::{ProviderCommand, RemoteModel, RemoteModelId, ChatResponse, ProviderClient, ProviderConnectionResult};
 
 // #[derive(Debug, Serialize, Deserialize)]
 // pub struct MofaResponseReasoner {

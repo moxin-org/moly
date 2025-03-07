@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 
-use super::{chats::Provider, filesystem::{
+use super::{filesystem::{
     read_from_file, setup_model_downloads_folder, setup_preferences_folder, write_to_file
-}, store::ProviderType};
+}, providers::{Provider, ProviderType}};
 
 const PREFERENCES_FILENAME: &str = "preferences.json";
 

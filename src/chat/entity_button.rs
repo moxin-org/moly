@@ -1,4 +1,4 @@
-use crate::data::{chats::chat_entity::{ChatEntityId, ChatEntityRef}, remote_servers::RemoteModel};
+use crate::data::{chats::chat_entity::{ChatEntityId, ChatEntityRef}, providers::RemoteModel};
 
 use super::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::*;

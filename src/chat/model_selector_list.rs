@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat_entity::ChatEntityId, remote_servers::RemoteModel, store::Store},
+    data::{chats::chat_entity::ChatEntityId, providers::RemoteModel, store::Store},
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;

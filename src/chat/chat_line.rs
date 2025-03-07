@@ -1,6 +1,6 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
 use crate::chat::shared::ChatAgentAvatarWidgetExt;
-use crate::data::remote_servers::RemoteModel;
+use crate::data::providers::RemoteModel;
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 

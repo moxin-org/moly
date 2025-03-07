@@ -4,6 +4,7 @@ use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
+use super::providers::ProviderType;
 use super::search::SortCriteria;
 use super::supported_providers;
 use super::{chats::Chats, downloads::Downloads, search::Search};
@@ -11,9 +12,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
-use makepad_widgets::*;
-use serde::{Deserialize, Serialize};
-use super::chats::{Provider, ProviderConnectionResult, ProviderTestResultAction, ServerConnectionStatus};
+use super::providers::{Provider, ProviderConnectionResult, ProviderTestResultAction, ServerConnectionStatus};
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 
 #[allow(dead_code)]
@@ -484,18 +483,5 @@ impl Store {
     pub fn remove_provider(&mut self, url: &str) {
         self.chats.remove_provider(url);
         self.preferences.remove_provider(url);
-    }
-}
-
-#[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
-pub enum ProviderType {
-    #[pick]
-    OpenAI,
-    MoFa,
-}
-
-impl Default for ProviderType {
-    fn default() -> Self {
-        ProviderType::OpenAI
     }
 }

@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::{chats::Provider, remote_servers::RemoteModelId, store::Store};
+use crate::data::{providers::{Provider, RemoteModelId}, store::Store};
 
 live_design! {
     use link::theme::*;

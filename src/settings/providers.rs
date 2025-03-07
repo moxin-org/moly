@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use crate::data::{chats::{Provider, ServerConnectionStatus}, store::Store};
+use crate::data::{providers::{Provider, ServerConnectionStatus}, store::Store};
 use crate::shared::modal::ModalWidgetExt;
 
 use super::{add_provider_modal::AddProviderModalAction, provider_view::ProviderViewAction};

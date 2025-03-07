@@ -3,7 +3,7 @@
 use moly_protocol::data::{File, FileID};
 use serde::{Deserialize, Serialize};
 
-use crate::data::remote_servers::{RemoteModel, RemoteModelId};
+use crate::data::providers::{RemoteModel, RemoteModelId};
 
 /// Identifies either a local model file, a MoFa agent, or a remote model.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
