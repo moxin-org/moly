@@ -1,11 +1,11 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::AgentsAvailability;
+use crate::data::providers::RemoteModel;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
-use moly_mofa::MofaAgent;
 use moly_protocol::data::Model;
 
 live_design! {
@@ -159,11 +159,11 @@ impl Widget for ModelList {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let agents = store.chats.get_agents_list();
+        let agents = store.chats.get_mofa_agents_list(true);
 
         enum Item<'a> {
             AgentRow {
-                agents: &'a [MofaAgent],
+                agents: &'a [RemoteModel],
                 margin_bottom: f32,
             },
             NoAgentsWarning(&'static str),
@@ -181,9 +181,6 @@ impl Widget for ModelList {
                     agents_availability.to_human_readable(),
                 )),
                 AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
-                    agents_availability.to_human_readable(),
-                )),
-                AgentsAvailability::NoAgents => items.push(Item::NoAgentsWarning(
                     agents_availability.to_human_readable(),
                 )),
                 AgentsAvailability::Available => {

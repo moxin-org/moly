@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 
-use super::chats::ServerConnectionStatus;
+use makepad_widgets::Cx;
+use crate::data::providers::ProviderClientError;
+
+use super::providers::{ChatResponse, ProviderClient, ProviderFetchModelsResult, RemoteModel, RemoteModelId, ProviderCommand};
 
 const ALLOWED_OPENAI_MODELS: &[&str] = &[
     "gpt-4-turbo",
@@ -16,6 +19,27 @@ const ALLOWED_OPENAI_MODELS: &[&str] = &[
     "o1-mini",
     "o3-mini",
     "o1-preview",
+];
+
+const ALLOWED_GEMINI_MODELS: &[&str] = &[
+    "models/gemini-1.5-flash",
+    "models/gemini-1.5-pro",
+    "models/gemini-2.0-flash",
+    "models/gemini-2.0-pro",
+];
+
+const ALLOWED_SILICONFLOW_MODELS: &[&str] = &[
+    "Qwen/Qwen2-72B-Instruct",
+    "Pro/Qwen/Qwen2-7B-Instruct",
+    "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "deepseek-ai/DeepSeek-V2.5",
+    "Pro/deepseek-ai/DeepSeek-V3",
+];
+
+const ALLOWED_OPENROUTER_MODELS: &[&str] = &[
+    "anthropic/claude-3.7-sonnet",
+    "perplexity/sonar",
+    "deepseek/deepseek-r1",
 ];
 
 fn should_include_model(url: &str, model_id: &str) -> bool {
@@ -42,113 +66,68 @@ fn should_include_model(url: &str, model_id: &str) -> bool {
 
     // Gemini
     if url.contains("googleapis.com") {
-        return model_id.contains("gemini")
+        return ALLOWED_GEMINI_MODELS.iter().any(|&allowed| model_id.eq(allowed))
+    }
+
+    // SiliconFlow
+    if url.contains("siliconflow.cn") {
+        return ALLOWED_SILICONFLOW_MODELS.iter().any(|&allowed| model_id.eq(allowed))
+    }
+
+    // OpenRouter
+    if url.contains("openrouter.ai") {
+        return ALLOWED_OPENROUTER_MODELS.iter().any(|&allowed| model_id.eq(allowed))
     }
 
     true
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
-pub struct RemoteModelId(pub String);
-
-impl RemoteModelId {
-    pub fn from_model_and_server(agent_name: &str, server_address: &str) -> Self {
-        RemoteModelId(format!("{}-{}", agent_name, server_address))
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum AgentType {
-    Reasoner,
-    SearchAssistant,
-    ResearchScholar,
-    MakepadExpert,
-}
-
-#[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RemoteServerId(pub String);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RemoteModel {
-    pub id: RemoteModelId,
-    pub name: String,
-    pub description: String,
-    pub server_id: RemoteServerId,
-    pub enabled: bool,
-}
-
-impl RemoteModel {
-    /// Returns a dummy agent whenever the corresponding Agent cannot be found
-    /// (due to the server not being available, the server no longer providing the agent, etc.).
-    pub fn unknown() -> Self {
-        RemoteModel {
-            id: RemoteModelId("unknown".to_string()),
-            name: "Inaccesible model - check your connections".to_string(),
-            description: "This model is not currently reachable, its information is not available"
-                .to_string(),
-            server_id: RemoteServerId("Unknown".to_string()),
-            enabled: true,
-        }
-    }
-}
-
-pub enum OpenAIServerResponse {
-    Connected(String, Vec<RemoteModel>),
-    Unavailable(String),
-}
-
-pub enum RemoteModelCommand {
-    SendTask(String, RemoteModel, Sender<ChatResponse>),
-    CancelTask,
-    FetchAgentsFromServer(Sender<OpenAIServerResponse>),
-}
-
 #[derive(Clone, Debug)]
 pub struct OpenAIClient {
-    command_sender: Sender<RemoteModelCommand>,
-    pub address: String,
-    api_key: Option<String>,
-    pub connection_status: ServerConnectionStatus,
+    command_sender: Sender<ProviderCommand>,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-pub enum BackendType {
-    Local,
-    Remote,
-}
-
-impl OpenAIClient {
-    pub fn cancel_task(&self) {
+impl ProviderClient for OpenAIClient {
+    fn cancel_task(&self) {
         self.command_sender
-            .send(RemoteModelCommand::CancelTask)
+            .send(ProviderCommand::CancelTask)
             .unwrap();
     }
 
-    pub fn fetch_agents(&self, tx: Sender<OpenAIServerResponse>) {
+    fn fetch_models(&self) {
         self.command_sender
-            .send(RemoteModelCommand::FetchAgentsFromServer(tx))
+            .send(ProviderCommand::FetchModels())
             .unwrap();
     }
 
-    pub fn send_message_to_agent(
+    fn send_message(
         &self,
-        agent: &RemoteModel,
+        model: &RemoteModel,
         prompt: &String,
         tx: Sender<ChatResponse>,
     ) {
         self.command_sender
-            .send(RemoteModelCommand::SendTask(
+            .send(ProviderCommand::SendMessage(
                 prompt.clone(),
-                agent.clone(),
+                model.clone(),
                 tx,
             ))
             .unwrap();
     }
+}
 
-    pub fn with_api_key(address: String, api_key: String) -> Self {
-        let mut client = Self::new_real(address, Some(api_key.clone()));
-        client.api_key = Some(api_key);
-        client
+impl OpenAIClient {
+    pub fn new(address: String, api_key: Option<String>) -> Self {
+        let (command_sender, command_receiver) = channel();
+        let address_clone = address.clone();
+        let api_key_clone = api_key.clone();
+        std::thread::spawn(move || {
+            Self::process_agent_commands(command_receiver, address_clone, api_key_clone);
+        });
+
+        Self {
+            command_sender,
+        }
     }
 
     /// Handles the communication between the OpenAIClient and the remote server
@@ -156,19 +135,19 @@ impl OpenAIClient {
     /// This function runs in a separate thread and processes commands received through the command channel.
     ///
     /// The loop continues until the command channel is closed or an unrecoverable error occurs.
-    fn process_agent_commands(command_receiver: mpsc::Receiver<RemoteModelCommand>, address: String, api_key: Option<String>) {
+    fn process_agent_commands(command_receiver: mpsc::Receiver<ProviderCommand>, address: String, api_key: Option<String>) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 
         while let Ok(command) = command_receiver.recv() {
             match command {
-                RemoteModelCommand::SendTask(task, agent, tx) => {
+                ProviderCommand::SendMessage(task, model, tx) => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
 
                     let data = ChatRequest {
-                        model: agent.name,
+                        model: model.name,
                         messages: vec![MessageData {
                             role: Role::User,
                             content: task,
@@ -203,13 +182,13 @@ impl OpenAIClient {
                         }
                     }));
                 }
-                RemoteModelCommand::CancelTask => {
+                ProviderCommand::CancelTask => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
                     continue;
                 }
-                RemoteModelCommand::FetchAgentsFromServer(tx) => {
+                ProviderCommand::FetchModels() => {
                     let url = address.clone();
                     let client = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
@@ -230,8 +209,8 @@ impl OpenAIClient {
                     #[derive(Deserialize, Debug)]
                     struct ModelInfo {
                         id: String,
-                        object: String,
                         // may not be present
+                        object: Option<String>,
                         created: Option<i64>,
                         owned_by: Option<String>,
                     }
@@ -253,29 +232,33 @@ impl OpenAIClient {
                                                 .filter(|model| should_include_model(&url, &model.id))
                                                 .map(|model| RemoteModel {
                                                     id: RemoteModelId::from_model_and_server(&model.id, &url),
-                                                    name: model.id,
-                                                    description: format!("OpenAI {} model", model.object),
-                                                    server_id: RemoteServerId(url.clone()),
+                                                    name: model.id.clone(),
+                                                    description: format!("OpenAI {} model", model.object.unwrap_or(model.id)),
+                                                    provider_url: url.clone(),
                                                     enabled: true,
                                                 })
                                                 .collect();
-                                            tx.send(OpenAIServerResponse::Connected(url, models)).unwrap();
+                                            Cx::post_action(ProviderFetchModelsResult::Success(url, models));
                                         }
                                         Err(e) => {
                                             eprintln!("Failed to parse models from server: {:?}", e);
-                                            tx.send(OpenAIServerResponse::Unavailable(url)).unwrap();
+                                            Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                                         }
                                     }
                                 }
+                                reqwest::StatusCode::UNAUTHORIZED => {
+                                    eprintln!("Unauthorized to fetch models from: {}, your API key might be missing or invalid", url);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::Unauthorized));
+                                }
                                 status => {
-                                    eprintln!("Failed to fetch models from server {:?}", status);
-                                    tx.send(OpenAIServerResponse::Unavailable(url)).unwrap();
+                                    eprintln!("Failed to fetch models from: {}, with status: {:?}", url, status);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                                 }
                             }
                         },
                         Err(e) => {
                             eprintln!("Failed to fetch models from server: {e}");
-                            tx.send(OpenAIServerResponse::Unavailable(url)).unwrap();
+                            Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                         }
                     }
                 }
@@ -287,28 +270,6 @@ impl OpenAIClient {
             handle.abort();
         }
     }
-
-    fn new_real(address: String, api_key: Option<String>) -> Self {
-        let (command_sender, command_receiver) = channel();
-        let address_clone = address.clone();
-        let api_key_clone = api_key.clone();
-        std::thread::spawn(move || {
-            Self::process_agent_commands(command_receiver, address_clone, api_key_clone);
-        });
-
-        Self {
-            command_sender,
-            address,
-            api_key: None,
-            connection_status: ServerConnectionStatus::Disconnected,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum ChatResponse {
-    // https://platform.openai.com/docs/api-reference/chat/object
-    ChatFinalResponseData(ChatResponseData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

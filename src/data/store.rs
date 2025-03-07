@@ -1,20 +1,18 @@
 use super::chats::chat::ChatID;
 use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
-use super::chats::{MoFaTestServerAction, OpenAiTestServerAction};
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
-use super::remote_servers::OpenAIServerResponse;
+use super::providers::{ProviderFetchModelsResult, ProviderType};
 use super::search::SortCriteria;
+use super::supported_providers;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
-use super::chats::ServerType;
-use crate::settings::connection_settings::ProviderType;
-use moly_mofa::MofaServerResponse;
+use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 
 #[allow(dead_code)]
@@ -162,14 +160,17 @@ impl Store {
             }
 
             match entity_id {
-                ChatEntityId::Agent(agent_id) => {
-                    if let (Some(client), Some(agent)) = (
-                        self.chats.get_client_for_agent(agent_id),
-                        self.chats.available_agents.get(agent_id),
-                    ) {
-                        chat.send_message_to_agent(agent, prompt, &client);
+                ChatEntityId::Agent(model_id) => {
+                    let model = self.chats.remote_models.get(model_id);
+                    if let Some(model) = model {
+                        let client = self.chats.get_client_for_provider(&model.provider_url);
+                        if let Some(client) = client {
+                            chat.send_message_to_agent(model, prompt, client.as_ref());
+                        } else {
+                            eprintln!("client not found for provider: {:?}", model.provider_url);
+                        }
                     } else {
-                        eprintln!("client or agent not found: {:?}", agent_id);
+                        eprintln!("model not found: {:?}", model_id);
                     }
                 }
                 ChatEntityId::ModelFile(file_id) => {
@@ -183,13 +184,16 @@ impl Store {
                     }
                 }
                 ChatEntityId::RemoteModel(model_id) => {
-                    if let (Some(client), Some(model)) = (
-                        self.chats.get_client_for_remote_model(&model_id),
-                        self.chats.remote_models.get(&model_id),
-                    ) {
-                        chat.send_message_to_remote_model(prompt, model, &client);
+                    let model = self.chats.remote_models.get(model_id);
+                    if let Some(model) = model {
+                        let client = self.chats.get_client_for_provider(&model.provider_url);
+                        if let Some(client) = client {
+                            chat.send_message_to_remote_model(prompt, model, client.as_ref());
+                        } else {
+                            eprintln!("client not found for provider: {:?}", model.provider_url);
+                        }
                     } else {
-                        eprintln!("client or model not found: {:?}", model_id);
+                        eprintln!("model not found: {:?}", model_id);
                     }
                 }
             }
@@ -234,11 +238,11 @@ impl Store {
                 .iter()
                 .find(|df| df.file.id == *file_id)
                 .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntityId::Agent(agent)) => self
+            Some(ChatEntityId::Agent(model_id)) => self
                 .chats
-                .available_agents
-                .get(&agent)
-                .map(|a| a.name.clone()),
+                .remote_models
+                .get(model_id)
+                .map(|m| m.name.clone()),
             Some(ChatEntityId::RemoteModel(model_id)) => self
                 .chats
                 .remote_models
@@ -375,65 +379,93 @@ impl Store {
         self.init_current_chat();
     }
 
-    pub fn handle_mofa_test_server_action(&mut self, action: MoFaTestServerAction) {
-        match action {
-            MoFaTestServerAction::Success(address, agents) => {
-                self.chats
-                    .handle_mofa_server_connection_result(MofaServerResponse::Connected(
-                        address, agents,
-                    ));
+    pub fn handle_provider_connection_action(&mut self, result: ProviderFetchModelsResult) {
+        self.chats.handle_provider_connection_result(result, &mut self.preferences);
+    }
+
+    /// Loads the preference connections from the preferences and registers them in the chats.
+    pub fn load_preference_connections(&mut self) {
+        let supported = supported_providers::load_supported_providers();
+        let mut final_list = Vec::new();
+
+        for s in &supported {
+            let maybe_prefs = self.preferences.providers_preferences
+                .iter()
+                .find(|pp| pp.url == s.url);
+
+            if let Some(prefs) = maybe_prefs {
+                final_list.push(Provider {
+                    name: s.name.clone(),
+                    url: prefs.url.clone(),
+                    api_key: prefs.api_key.clone(),
+                    provider_type: s.provider_type.clone(),
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: prefs.enabled,
+                    models: vec![],
+                    was_customly_added: prefs.was_customly_added,
+                });
+            } else {
+                // Known from supported_providers.json but user has no preferences
+                final_list.push(Provider {
+                    name: s.name.clone(),
+                    url: s.url.clone(),
+                    api_key: None,
+                    provider_type: s.provider_type.clone(),
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: false,
+                    models: vec![],
+                    was_customly_added: false,
+                });
             }
-            MoFaTestServerAction::Failure(address) => {
-                if let Some(addr) = address {
-                    self.chats.handle_mofa_server_connection_result(
-                        MofaServerResponse::Unavailable(addr),
-                    );
-                }
+        }
+
+        // Custom providers from preferences (not in the supported_providers.json)
+        for pp in &self.preferences.providers_preferences {
+            let is_custom = !supported.iter().any(|sp| sp.url == pp.url);
+            if is_custom {
+                final_list.push(Provider {
+                    name: pp.name.clone(),
+                    url: pp.url.clone(),
+                    api_key: pp.api_key.clone(),
+                    provider_type: pp.provider_type.clone(),
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: pp.enabled,
+                    models: vec![],
+                    was_customly_added: pp.was_customly_added,
+                });
             }
-            _ => (),
+        }
+
+        for provider in final_list {
+            self.chats.providers.insert(provider.url.clone(), provider);
+        }
+
+        self.auto_fetch_for_enabled_providers();
+    }
+
+    fn auto_fetch_for_enabled_providers(&mut self) {
+        // Automatically fetch providers that are enabled and have an API key or are MoFa servers
+        let urls_to_fetch: Vec<String> = self.preferences.providers_preferences
+            .iter()
+            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.url.starts_with("http://localhost")))
+            .map(|pp| pp.url.clone())
+            .collect();
+
+        for url in urls_to_fetch {
+            if let Some(provider) = self.chats.providers.get(&url) {
+                // Register the provider client, it triggers test_provider_and_fetch_models internally
+                self.chats.register_provider(provider.clone());
+            }
         }
     }
 
-    pub fn handle_openai_test_server_action(&mut self, action: OpenAiTestServerAction) {
-        match action {
-            OpenAiTestServerAction::Success(address, models) => {
-                // Merge fetched models with existing preferences
-                self.chats.handle_openai_server_connection_result(
-                    OpenAIServerResponse::Connected(address, models),
-                    &mut self.preferences,
-                );
-
-            }
-            OpenAiTestServerAction::Failure(address_opt) => {
-                if let Some(addr) = address_opt {
-                    eprintln!("Failed to connect to OpenAI-compatible server at {}", addr);
-                    self.chats.handle_openai_server_connection_result(
-                        OpenAIServerResponse::Unavailable(addr),
-                        &mut self.preferences,
-                    );
-                };
-            }
-            OpenAiTestServerAction::None => {}
-        }
+    pub fn insert_or_update_provider(&mut self, provider: &Provider) {
+        self.chats.insert_or_update_provider(provider);
+        self.preferences.insert_or_update_provider(provider);
     }
 
-    // The existing code that loads from preferences and calls register_server
-    fn load_preference_connections(&mut self) {
-        for conn in &self.preferences.server_connections {
-            match conn.provider {
-                ProviderType::OpenAIAPI => {
-                    // Registering will do a test & fetch, we'll merge the models with preferences with
-                    // the fetched models returned by the test.
-                    self.chats.register_server(ServerType::OpenAI {
-                        address: conn.address.clone(),
-                        api_key: conn.api_key.clone().unwrap_or_default(),
-                    });
-                }
-                ProviderType::MoFa => {
-                    self.chats
-                        .register_server(ServerType::Mofa(conn.address.clone()));
-                }
-            }
-        }
+    pub fn remove_provider(&mut self, url: &str) {
+        self.chats.remove_provider(url);
+        self.preferences.remove_provider(url);
     }
 }

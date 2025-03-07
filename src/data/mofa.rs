@@ -1,150 +1,100 @@
 use moly_protocol::open_ai::{
     ChatResponseData, ChoiceData, MessageData, Role, StopReason, UsageData,
 };
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
+use makepad_widgets::Cx;
+use super::providers::{ChatResponse, ProviderClient, ProviderClientError, ProviderCommand, ProviderFetchModelsResult, RemoteModel, RemoteModelId};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MofaResponseReasoner {
-    pub task: String,
-    pub result: String,
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct MofaResponseReasoner {
+//     pub task: String,
+//     pub result: String,
+// }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MofaResponseResearchScholar {
-    pub task: String,
-    pub suggestion: String,
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct MofaResponseResearchScholar {
+//     pub task: String,
+//     pub suggestion: String,
+// }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MofaResponseSearchAssistantResource {
-    pub name: String,
-    pub url: String,
-    pub snippet: String,
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct MofaResponseSearchAssistantResource {
+//     pub name: String,
+//     pub url: String,
+//     pub snippet: String,
+// }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MofaResponseSearchAssistantResult {
-    pub web_search_results: String,
-    #[serde(deserialize_with = "parse_web_search_resource")]
-    pub web_search_resource: Vec<MofaResponseSearchAssistantResource>,
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct MofaResponseSearchAssistantResult {
+//     pub web_search_results: String,
+//     #[serde(deserialize_with = "parse_web_search_resource")]
+//     pub web_search_resource: Vec<MofaResponseSearchAssistantResource>,
+// }
 
-fn parse_web_search_resource<'de, D>(
-    deserializer: D,
-) -> Result<Vec<MofaResponseSearchAssistantResource>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    let resources: Vec<MofaResponseSearchAssistantResource> =
-        serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
+// fn parse_web_search_resource<'de, D>(
+//     deserializer: D,
+// ) -> Result<Vec<MofaResponseSearchAssistantResource>, D::Error>
+// where
+//     D: Deserializer<'de>,
+// {
+//     let s: String = Deserialize::deserialize(deserializer)?;
+//     let resources: Vec<MofaResponseSearchAssistantResource> =
+//         serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
 
-    Ok(resources)
-}
+//     Ok(resources)
+// }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MofaResponseSearchAssistant {
-    pub task: String,
-    pub result: MofaResponseSearchAssistantResult,
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct MofaResponseSearchAssistant {
+//     pub task: String,
+//     pub result: MofaResponseSearchAssistantResult,
+// }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub struct AgentId(pub String);
 
-impl AgentId {
-    pub fn new(agent_name: &str, server_address: &str) -> Self {
-        AgentId(format!("{}-{}", agent_name, server_address))
-    }
-}
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+// pub enum AgentType {
+//     Reasoner,
+//     SearchAssistant,
+//     ResearchScholar,
+//     MakepadExpert,
+// }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum AgentType {
-    Reasoner,
-    SearchAssistant,
-    ResearchScholar,
-    MakepadExpert,
-}
-
-#[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct MofaServerId(pub String);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MofaAgent {
-    pub id: AgentId,
-    pub name: String,
-    pub description: String,
-    pub agent_type: AgentType,
-    pub server_id: MofaServerId,
-}
-
-impl MofaAgent {
-    /// Returns a dummy agent whenever the corresponding Agent cannot be found
-    /// (due to the server not being available, the server no longer providing the agent, etc.).
-    pub fn unknown() -> Self {
-        MofaAgent {
-            id: AgentId("unknown".to_string()),
-            name: "Inaccesible Agent".to_string(),
-            description: "This agent is not currently reachable, its information is not available"
-                .to_string(),
-            agent_type: AgentType::Reasoner,
-            server_id: MofaServerId("Unknown".to_string()),
-        }
-    }
-}
-
-pub enum MofaServerResponse {
-    Connected(String, Vec<MofaAgent>),
-    Unavailable(String),
-}
-
-pub enum MofaAgentCommand {
-    SendTask(String, MofaAgent, Sender<ChatResponse>),
-    CancelTask,
-    FetchAgentsFromServer(Sender<MofaServerResponse>),
-}
-
+/// This is a OpenAI-compatible client for MoFa.
+/// The only reason we have this is to return fake responses upon model fetching.
 #[derive(Clone, Debug)]
 pub struct MofaClient {
-    command_sender: Sender<MofaAgentCommand>,
-    pub address: String,
+    command_sender: Sender<ProviderCommand>,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-pub enum BackendType {
-    Local,
-    Remote,
-}
-
-impl MofaClient {
-    pub fn cancel_task(&self) {
+impl ProviderClient for MofaClient {
+    fn cancel_task(&self) {
         self.command_sender
-            .send(MofaAgentCommand::CancelTask)
+            .send(ProviderCommand::CancelTask)
             .unwrap();
     }
 
-    pub fn fetch_agents(&self, tx: Sender<MofaServerResponse>) {
+    fn fetch_models(&self) {
         self.command_sender
-            .send(MofaAgentCommand::FetchAgentsFromServer(tx))
+            .send(ProviderCommand::FetchModels())
             .unwrap();
     }
 
-    pub fn send_message_to_agent(
-        &self,
-        agent: &MofaAgent,
-        prompt: &String,
-        tx: Sender<ChatResponse>,
-    ) {
+    fn send_message(&self, model: &RemoteModel, prompt: &String, tx: Sender<ChatResponse>) {
         self.command_sender
-            .send(MofaAgentCommand::SendTask(
+            .send(ProviderCommand::SendMessage(
                 prompt.clone(),
-                agent.clone(),
+                model.clone(),
                 tx,
             ))
             .unwrap();
     }
+}
 
+impl MofaClient {
     pub fn new(address: String) -> Self {
         if should_be_real() {
             Self::new_real(address)
@@ -158,13 +108,13 @@ impl MofaClient {
     /// This function runs in a separate thread and processes commands received through the command channel.
     ///
     /// The loop continues until the command channel is closed or an unrecoverable error occurs.
-    fn process_agent_commands(command_receiver: mpsc::Receiver<MofaAgentCommand>, address: String) {
+    fn process_agent_commands(command_receiver: mpsc::Receiver<ProviderCommand>, address: String) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 
         while let Ok(command) = command_receiver.recv() {
             match command {
-                MofaAgentCommand::SendTask(task, agent, tx) => {
+                ProviderCommand::SendMessage(task, agent, tx) => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
@@ -200,13 +150,13 @@ impl MofaClient {
                         }
                     }));
                 }
-                MofaAgentCommand::CancelTask => {
+                ProviderCommand::CancelTask => {
                     if let Some(handle) = current_request.take() {
                         handle.abort();
                     }
                     continue;
                 }
-                MofaAgentCommand::FetchAgentsFromServer(tx) => {
+                ProviderCommand::FetchModels() => {
                     let url = address.clone();
                     let resp = reqwest::blocking::ClientBuilder::new()
                         .timeout(std::time::Duration::from_secs(5))
@@ -216,21 +166,35 @@ impl MofaClient {
                         .get(format!("{}/v1/models", url))
                         .send();
 
+
                     match resp {
-                        Ok(r) if r.status().is_success() => {
-                            let agents = vec![
-                                MofaAgent {
-                                    id: AgentId::new("Reasoner", &url),
-                                    name: "Reasoner".to_string(),
-                                    description: "An agent that will help you find good questions about any topic".to_string(),
-                                    agent_type: AgentType::Reasoner,
-                                    server_id: MofaServerId(url.clone()),
-                                },
-                            ];
-                            tx.send(MofaServerResponse::Connected(url, agents)).unwrap();
-                        }
-                        _ => {
-                            tx.send(MofaServerResponse::Unavailable(url)).unwrap();
+                        Ok(r) => {
+                            match r.status() {
+                                reqwest::StatusCode::OK => {
+                                    let agents = vec![
+                                        RemoteModel {
+                                            id: RemoteModelId::from_model_and_server("Reasoner", &url),
+                                            name: "Reasoner".to_string(),
+                                            description: "An agent that will help you find good questions about any topic".to_string(),
+                                            enabled: true,
+                                            provider_url: url.clone(),
+                                        },
+                                    ];
+                                    Cx::post_action(ProviderFetchModelsResult::Success(url, agents));
+                                }
+                                reqwest::StatusCode::UNAUTHORIZED => {
+                                    eprintln!("Unauthorized to fetch models from: {}, your API key might be missing or invalid", url);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::Unauthorized));
+                                }
+                                status => {
+                                    eprintln!("Failed to fetch models from: {}, with status: {:?}", url, status);
+                                    Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("Failed to fetch models from server: {e}");
+                            Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                         }
                     }
                 }
@@ -252,7 +216,6 @@ impl MofaClient {
 
         Self {
             command_sender,
-            address,
         }
     }
 
@@ -263,7 +226,7 @@ impl MofaClient {
         std::thread::spawn(move || {
             while let Ok(command) = command_receiver.recv() {
                 match command {
-                    MofaAgentCommand::SendTask(_task, _agent, tx) => {
+                    ProviderCommand::SendMessage(_task, _agent, tx) => {
                         let content = r#"{
                             "step_name": "fake",
                             "node_results": "This is a fake response",
@@ -294,27 +257,25 @@ impl MofaClient {
                         };
                         let _ = tx.send(ChatResponse::ChatFinalResponseData(data));
                     }
-                    MofaAgentCommand::FetchAgentsFromServer(tx) => {
-                        let agents = vec![MofaAgent {
-                            id: AgentId::new("Reasoner", &address_clone),
+                    ProviderCommand::FetchModels() => {
+                        let agents = vec![RemoteModel {
+                            id: RemoteModelId::from_model_and_server("Reasoner", &address_clone),
                             name: "Reasoner".to_string(),
                             description:
                                 "An agent that will help you find good questions about any topic"
                                     .to_string(),
-                            agent_type: AgentType::Reasoner,
-                            server_id: MofaServerId(address_clone.clone()),
+                            enabled: true,
+                            provider_url: address_clone.clone(),
                         }];
-                        tx.send(MofaServerResponse::Connected(address_clone.clone(), agents))
-                            .unwrap();
+                        Cx::post_action(ProviderFetchModelsResult::Success(address_clone.clone(), agents));
                     }
-                    MofaAgentCommand::CancelTask => {}
+                    ProviderCommand::CancelTask => {}
                 }
             }
         });
 
         Self {
             command_sender,
-            address,
         }
     }
 }
@@ -323,11 +284,11 @@ pub fn should_be_real() -> bool {
     std::env::var("MOFA_BACKEND").as_deref().unwrap_or("real") != "fake"
 }
 
-#[derive(Clone, Debug)]
-pub enum ChatResponse {
-    // https://platform.openai.com/docs/api-reference/chat/object
-    ChatFinalResponseData(ChatResponseData),
-}
+// #[derive(Clone, Debug)]
+// pub enum ChatResponse {
+//     // https://platform.openai.com/docs/api-reference/chat/object
+//     ChatFinalResponseData(ChatResponseData),
+// }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ChatRequest {

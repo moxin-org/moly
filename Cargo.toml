@@ -3,7 +3,6 @@ resolver = "2"
 
 members = [
     "moly-runner",
-    "moly-mofa",
     "moly-kit",
     "moly-mini",
 ]
@@ -24,7 +23,6 @@ path = "src/main.rs"
 
 
 [dependencies]
-moly-mofa = { path = "moly-mofa" }
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }

@@ -30,12 +30,14 @@ live_design! {
     use crate::landing::model_card::ModelCardViewAllModal;
     use crate::chat::chat_screen::ChatScreen;
     use crate::my_models::my_models_screen::MyModelsScreen;
-    use crate::settings::settings_screen::SettingsScreen;
+    use crate::settings::moly_server_settings::MolyServerSettings;
+    use crate::settings::providers_screen::ProvidersScreen;
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
-    ICON_SETTINGS = dep("crate://self/resources/icons/settings.svg")
+    ICON_LOCAL = dep("crate://self/resources/icons/local.svg")
+    ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
 
     App = {{App}} {
         ui: <Window> {
@@ -98,10 +100,16 @@ live_design! {
                             }
                         }
                         <HorizontalFiller> {}
-                        settings_tab = <SidebarMenuButton> {
-                            text: "Settings",
+                        providers_tab = <SidebarMenuButton> {
+                            text: "Providers",
                             draw_icon: {
-                                svg_file: (ICON_SETTINGS),
+                                svg_file: (ICON_CLOUD),
+                            }
+                        }
+                        moly_server_settings_tab = <SidebarMenuButton> {
+                            text: "Moly Server",
+                            draw_icon: {
+                                svg_file: (ICON_LOCAL),
                             }
                         }
                     }
@@ -118,7 +126,8 @@ live_design! {
                         discover_frame = <LandingScreen> {visible: true}
                         chat_frame = <ChatScreen> {visible: false}
                         my_models_frame = <MyModelsScreen> {visible: false}
-                        settings_frame = <SettingsScreen> {visible: false}
+                        moly_server_settings_frame = <MolyServerSettings> {visible: false}
+                        providers_frame = <ProvidersScreen> {visible: false}
                     }
                 }
 
@@ -190,7 +199,8 @@ impl MatchEvent for App {
                 sidebar_menu.discover_tab,
                 sidebar_menu.chat_tab,
                 sidebar_menu.my_models_tab,
-                sidebar_menu.settings_tab,
+                sidebar_menu.moly_server_settings_tab,
+                sidebar_menu.providers_tab,
             ))
             .selected_to_visible(
                 cx,
@@ -200,7 +210,8 @@ impl MatchEvent for App {
                     application_pages.discover_frame,
                     application_pages.chat_frame,
                     application_pages.my_models_frame,
-                    application_pages.settings_frame,
+                    application_pages.moly_server_settings_frame,
+                    application_pages.providers_frame,
                 ),
             );
 
@@ -269,9 +280,7 @@ impl MatchEvent for App {
                 discover_radio_button.select(cx, &mut Scope::empty());
             }
 
-            self.store.handle_mofa_test_server_action(action.cast());
-
-            self.store.handle_openai_test_server_action(action.cast());
+            self.store.handle_provider_connection_action(action.cast());
             // redraw the UI to reflect the connection status
             self.ui.redraw(cx);
 
