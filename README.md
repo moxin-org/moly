@@ -237,17 +237,16 @@ pip install dora-rs
 
 ### 3. Run the Moly client (MoFa server for Moly)
 
-Folder of the Dora node that implements the http server
 ```bash
-# 
+# Folder of the Dora node that implements the http server
 cd examples/moly_client
-Run MoFa with
-```
+# Run MoFa with
 dora up
 dora build dataflow.yml
 dora start dataflow.yml
 ```
 If there's any error when doing dora start, you can restart dora
+
 ```bash
 dora destroy && dora up
 ```
