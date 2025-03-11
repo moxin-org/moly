@@ -19,24 +19,25 @@ impl MolyClient {
             .no_proxy()
             .build()
             .expect("Failed to build reqwest client");
-            
-        Self { 
-            address, 
-            blocking_client 
+
+        Self {
+            address,
+            blocking_client
         }
     }
 
     pub fn get_featured_models(&self, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/featured", self.address);
-        
+        let blocking_client = self.blocking_client.clone();
+
         std::thread::spawn(move || {
-            let resp = reqwest::blocking::get(&url);
+            let resp = blocking_client.get(&url).send();
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
                         match r.json::<Vec<Model>>() {
                             Ok(models) => {
-                                let _ = tx.send(Ok(models));    
+                                let _ = tx.send(Ok(models));
                             }
                             Err(e) => {
                                 let _ = tx.send(Err(anyhow::anyhow!("Failed to parse models: {}", e)));
@@ -55,9 +56,10 @@ impl MolyClient {
 
     pub fn search_models(&self, query: String, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/search?q={}", self.address, query);
-        
+
+        let blocking_client = self.blocking_client.clone();
         std::thread::spawn(move || {
-            let resp = reqwest::blocking::get(&url);
+            let resp = blocking_client.get(&url).send();
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
@@ -82,15 +84,15 @@ impl MolyClient {
 
     pub fn get_downloaded_files(&self, tx: Sender<Result<Vec<DownloadedFile>, anyhow::Error>>) {
         let url = format!("{}/files", self.address);
-        
+        let blocking_client = self.blocking_client.clone();
         std::thread::spawn(move || {
-            let resp = reqwest::blocking::get(&url);
+            let resp = blocking_client.get(&url).send();
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
                         match r.json::<Vec<DownloadedFile>>() {
                             Ok(files) => {
-                                let _ = tx.send(Ok(files)); 
+                                let _ = tx.send(Ok(files));
                             }
                             Err(e) => {
                                 println!("Error parsing files: {}", e);
@@ -110,9 +112,10 @@ impl MolyClient {
 
     pub fn get_current_downloads(&self, tx: Sender<Result<Vec<PendingDownload>, anyhow::Error>>) {
         let url = format!("{}/downloads", self.address);
-        
+        let blocking_client = self.blocking_client.clone();
+
         std::thread::spawn(move || {
-            let resp = reqwest::blocking::get(&url);
+            let resp = blocking_client.get(&url).send();
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
@@ -145,8 +148,8 @@ impl MolyClient {
                     "file_id": file.id
                 }))
                 .send();
-            
-            match resp {    
+
+            match resp {
                 Ok(r) => {
                     if r.status().is_success() {
                         let _ = tx.send(Ok(()));
@@ -168,7 +171,7 @@ impl MolyClient {
             .pop_if_empty()
             .push(&file_id)
             .push("progress");
-        
+
         let client = self.blocking_client.clone();
         std::thread::spawn(move || {
             let response = client.get(url).send();
@@ -177,7 +180,7 @@ impl MolyClient {
                     let mut reader = std::io::BufReader::new(res);
                     let mut line = String::new();
                     let mut current_event = String::new();
-                    
+
                     while reader.read_line(&mut line).unwrap() > 0 {
                         if line.starts_with("event: ") {
                             current_event = line.trim_start_matches("event: ").trim().to_string();
@@ -220,7 +223,7 @@ impl MolyClient {
             .expect("Cannot modify path segments")
             .pop_if_empty() // Remove the trailing slash, if any
             .push(&file_id);
-        
+
         let blocking_client = self.blocking_client.clone();
         std::thread::spawn(move || {
             let resp = blocking_client.post(url)
@@ -228,8 +231,8 @@ impl MolyClient {
                     "file_id": file_id
                 }))
                 .send();
-            
-            match resp {    
+
+            match resp {
                 Ok(r) => {
                     if r.status().is_success() {
                         let _ = tx.send(Ok(()));
@@ -260,7 +263,7 @@ impl MolyClient {
                     "file_id": file_id
                 }))
                 .send();
-            
+
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
@@ -285,11 +288,11 @@ impl MolyClient {
             .pop_if_empty() // Remove the trailing slash, if any
             .push(&file_id);
 
-        let blocking_client = self.blocking_client.clone();        
+        let blocking_client = self.blocking_client.clone();
         std::thread::spawn(move || {
             let resp = blocking_client.delete(url)
                 .send();
-            
+
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
@@ -306,7 +309,7 @@ impl MolyClient {
     }
 
     /// Loads a model. Should only be called from a background thread to avoid blocking the UI.
-    pub fn load_model(&self, file_id: FileID, options: LoadModelOptions, 
+    pub fn load_model(&self, file_id: FileID, options: LoadModelOptions,
         tx: Sender<Result<LoadModelResponse, anyhow::Error>>) {
         let url = format!("{}/models/load", self.address);
         let request = serde_json::json!({
@@ -319,7 +322,7 @@ impl MolyClient {
             let resp = blocking_client.post(&url)
                 .json(&request)
                 .send();
-            
+
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
@@ -368,7 +371,10 @@ impl MolyClient {
         request: ChatRequestData,
         tx: Sender<Result<ChatResponse, anyhow::Error>>,
     ) {
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::blocking::Client::builder()
+                .no_proxy()
+                .build()
+                .expect("Failed to build reqwest client");
         let url = format!("{}/models/v1/chat/completions", self.address);
 
         std::thread::spawn(move || {
@@ -404,9 +410,9 @@ impl MolyClient {
                             }
                             if line.starts_with("data: ") {
                                 // Skip "data: " prefix (6 bytes)
-                                let resp: Result<ChatResponseChunkData, _> = 
+                                let resp: Result<ChatResponseChunkData, _> =
                                     serde_json::from_slice(line[6..].as_bytes());
-                                
+
                                 match resp {
                                     Ok(chunk_data) => {
                                         let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(chunk_data)));
