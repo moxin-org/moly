@@ -43,7 +43,7 @@ impl Widget for DemoChat {
             chat.hook(event).write_with(|hook| {
                 let mut abort = false;
 
-                for task in hook.tasks() {
+                for task in hook.tasks_mut() {
                     if let ChatTask::CopyMessage(index) = task {
                         abort = true;
 
@@ -53,6 +53,14 @@ impl Widget for DemoChat {
                         });
 
                         cx.copy_to_clipboard(&text);
+                    }
+
+                    if let ChatTask::UpdateMessage(_index, message) = task {
+                        message.body = message.body.replace("ello", "3110 (hooked)");
+
+                        if message.body.contains("bad word") {
+                            abort = true;
+                        }
                     }
                 }
 
@@ -69,8 +77,8 @@ impl Widget for DemoChat {
         // after `handle_event`.
         chat.read_with(|chat| {
             chat.tasks(event).read_with(|task| {
-                if let ChatTask::UpdateMessage(index, body) = task {
-                    log!("Message updated at index {}: {}", index, body);
+                if let ChatTask::UpdateMessage(index, message) = task {
+                    log!("Message updated at index {}: {}", index, message.body);
                 }
             });
         });
