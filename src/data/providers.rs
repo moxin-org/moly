@@ -4,7 +4,7 @@ use makepad_widgets::*;
 use moly_protocol::open_ai::ChatResponseData;
 use serde::{Deserialize, Serialize};
 
-use super::{mofa::MofaClient, openai_client::OpenAIClient};
+use super::{mofa::MofaClient, openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
 
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -27,6 +27,7 @@ pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient
     match &provider.provider_type {
         ProviderType::OpenAI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
         ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
+        ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone(), provider.api_key.clone())),
     }
 }
 
@@ -137,6 +138,7 @@ pub enum ProviderType {
     #[pick]
     OpenAI,
     MoFa,
+    DeepInquire,
 }
 
 impl Default for ProviderType {

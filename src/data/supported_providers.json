@@ -16,6 +16,11 @@
             "provider_type": "MoFa"
         },
         {
+            "name": "DeepInquire",
+            "url": "http://127.0.0.1:8000/v3",
+            "provider_type": "DeepInquire"
+        },
+        {
             "name": "SiliconFlow",
             "url": "https://api.siliconflow.cn/v1",
             "provider_type": "OpenAI"
