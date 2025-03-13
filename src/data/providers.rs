@@ -123,7 +123,22 @@ impl ProviderClientError {
 #[derive(Clone, Debug)]
 pub enum ChatResponse {
     // https://platform.openai.com/docs/api-reference/chat/object
-    ChatFinalResponseData(ChatResponseData),
+    ChatFinalResponseData(MolyChatResponse),
+}
+
+#[derive(Clone, Debug)]
+pub struct MolyChatResponse {
+    pub content: String,
+    pub articles: Vec<Article>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Article {
+    pub title: String,
+    pub url: String,
+    pub snippet: String,
+    pub source: String,
+    pub relevance: u32,
 }
 
 /// The behaviour that must be implemented by the provider clients.

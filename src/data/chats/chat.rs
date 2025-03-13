@@ -9,7 +9,7 @@ use std::thread;
 use std::sync::{Arc, RwLock};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
-use crate::data::providers::RemoteModel;
+use crate::data::providers::{Article, RemoteModel};
 use crate::data::providers::ChatResponse as RemoteModelChatResponse;
 
 use super::chat_entity::ChatEntityId;
@@ -28,7 +28,7 @@ pub struct ChatEntityAction {
 enum ChatEntityActionKind {
     ModelAppendDelta(String),
     ModelStreamingDone,
-    MofaAgentResult(String),
+    MofaAgentResult(String, Vec<Article>),
     MofaAgentCancelled,
 }
 
@@ -39,6 +39,7 @@ pub struct ChatMessage {
     pub username: Option<String>,
     pub entity: Option<ChatEntityId>,
     pub content: String,
+    pub articles: Vec<Article>,
 }
 
 impl ChatMessage {
@@ -317,6 +318,7 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt.clone(),
+            articles: vec![],
         });
 
         self.messages.push(ChatMessage {
@@ -325,6 +327,7 @@ impl Chat {
             username: Some(wanted_file.name.clone()),
             entity: Some(ChatEntityId::ModelFile(wanted_file.id.clone())),
             content: "".to_string(),
+            articles: vec![],
         });
 
         *self.state.write().unwrap() = ChatState::Receiving;
@@ -417,6 +420,7 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt,
+            articles: vec![],
         });
 
         self.messages.push(ChatMessage {
@@ -425,6 +429,7 @@ impl Chat {
             username: Some(agent.name.clone()),
             entity: Some(ChatEntityId::Agent(agent.id.clone())),
             content: "".to_string(),
+            articles: vec![],
         });
 
         *self.state.write().unwrap() = ChatState::Receiving;
@@ -433,10 +438,10 @@ impl Chat {
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
                 Ok(RemoteModelChatResponse::ChatFinalResponseData(data)) => {
-                    let content = data.choices[0].message.content.clone();
+                    let content = data.content.clone();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentResult(content),
+                        kind: ChatEntityActionKind::MofaAgentResult(content, data.articles),
                     });
 
                     break '_loop;
@@ -474,6 +479,7 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt,
+            articles: vec![],
         });
 
         self.messages.push(ChatMessage {
@@ -482,6 +488,7 @@ impl Chat {
             username: Some(remote_model.name.clone()),
             entity: Some(ChatEntityId::RemoteModel(remote_model.id.clone())),
             content: "".to_string(),
+            articles: vec![],
         });
 
         *self.state.write().unwrap() = ChatState::Receiving;
@@ -490,10 +497,10 @@ impl Chat {
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
                 Ok(RemoteModelChatResponse::ChatFinalResponseData(data)) => {
-                    let content = data.choices[0].message.content.clone();
+                    let content = data.content.clone();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentResult(content),
+                        kind: ChatEntityActionKind::MofaAgentResult(content, data.articles),
                     });
 
                     break '_loop;
@@ -583,9 +590,10 @@ impl Chat {
                 self.is_streaming = false;
                 *self.state.write().unwrap() = ChatState::Idle;
             }
-            ChatEntityActionKind::MofaAgentResult(response) => {
+            ChatEntityActionKind::MofaAgentResult(response, articles) => {
                 let last = self.messages.last_mut().unwrap();
                 last.content = response.clone();
+                last.articles = articles.clone();
                 *self.state.write().unwrap() = ChatState::Idle;
             }
             ChatEntityActionKind::MofaAgentCancelled => {

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 use makepad_widgets::Cx;
-use super::providers::{ChatResponse, ProviderClient, ProviderClientError, ProviderCommand, ProviderFetchModelsResult, RemoteModel, RemoteModelId};
+use super::providers::*;
 use std::io::BufRead;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
@@ -109,26 +109,9 @@ impl DeepInquireClient {
                                     
                                     if line.starts_with("data: [DONE]") {
                                         // Send the accumulated content as the final response
-                                        let _ = tx.send(ChatResponse::ChatFinalResponseData(ChatResponseData {
-                                            id: "stream-complete".to_string(),
-                                            choices: vec![ChoiceData {
-                                                finish_reason: StopReason::Stop,
-                                                index: 0,
-                                                message: MessageData {
-                                                    content: accumulated_content.clone(),
-                                                    role: Role::Assistant,
-                                                },
-                                                logprobs: None,
-                                            }],
-                                            created: 0,
-                                            model: "DeepInquire".to_string(),
-                                            system_fingerprint: String::new(),
-                                            usage: UsageData {
-                                                completion_tokens: 0,
-                                                prompt_tokens: 0,
-                                                total_tokens: 0,
-                                            },
-                                            object: String::new(),
+                                        let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                                            content: accumulated_content.clone(),
+                                            articles: vec![],
                                         }));
                                         break;
                                     }
@@ -140,26 +123,9 @@ impl DeepInquireClient {
                                         if json_str == "[DONE]" {
                                             println!("Received [DONE] marker");
                                             // Send the accumulated content as the final response
-                                            let _ = tx.send(ChatResponse::ChatFinalResponseData(ChatResponseData {
-                                                id: "stream-complete".to_string(),
-                                                choices: vec![ChoiceData {
-                                                    finish_reason: StopReason::Stop,
-                                                    index: 0,
-                                                    message: MessageData {
-                                                        content: accumulated_content.clone(),
-                                                        role: Role::Assistant,
-                                                    },
-                                                    logprobs: None,
-                                                }],
-                                                created: 0,
-                                                model: "DeepInquire".to_string(),
-                                                system_fingerprint: String::new(),
-                                                usage: UsageData {
-                                                    completion_tokens: 0,
-                                                    prompt_tokens: 0,
-                                                    total_tokens: 0,
-                                                },
-                                                object: String::new(),
+                                            let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                                                content: accumulated_content.clone(),
+                                                articles: vec![],
                                             }));
                                             break;
                                         }
@@ -173,12 +139,22 @@ impl DeepInquireClient {
                                                 if let Some(choice) = deep_inquire_response.choices.first() {
                                                     let content = choice.delta.content.clone();
                                                     println!("Content length: {}", content.len());
-                                                    println!("Content preview: {}", &content[..std::cmp::min(50, content.len())]);
                                                     
                                                     // Accumulate content
                                                     accumulated_content.push_str(&content);
                                                     
-                                                    // Create a standard response with the content
+                                                    // Extract articles from the response
+                                                    let articles = choice.delta.articles.iter().map(|article| {
+                                                        Article {
+                                                            title: article.title.clone(),
+                                                            url: article.url.clone(),
+                                                            snippet: article.snippet.clone(),
+                                                            source: article.source.clone(),
+                                                            relevance: article.relevance,
+                                                        }
+                                                    }).collect::<Vec<Article>>();
+                                                    
+                                                    // Create a standard response with the content and articles
                                                     let response_data = ChatResponseData {
                                                         id: deep_inquire_response.id,
                                                         choices: vec![ChoiceData {
@@ -201,7 +177,10 @@ impl DeepInquireClient {
                                                         object: deep_inquire_response.object,
                                                     };
                                                     
-                                                    let _ = tx.send(ChatResponse::ChatFinalResponseData(response_data));
+                                                    let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                                                        content: response_data.choices[0].message.content.clone(),
+                                                        articles
+                                                    }));
                                                     
                                                     // Check if we're done
                                                     if choice.finish_reason.is_some() {
@@ -219,26 +198,9 @@ impl DeepInquireClient {
                                         // send a final response with the accumulated content
                                         if !accumulated_content.is_empty() {
                                             println!("Received empty line, sending final response with accumulated content");
-                                            let _ = tx.send(ChatResponse::ChatFinalResponseData(ChatResponseData {
-                                                id: "stream-complete".to_string(),
-                                                choices: vec![ChoiceData {
-                                                    finish_reason: StopReason::Stop,
-                                                    index: 0,
-                                                    message: MessageData {
-                                                        content: accumulated_content.clone(),
-                                                        role: Role::Assistant,
-                                                    },
-                                                    logprobs: None,
-                                                }],
-                                                created: 0,
-                                                model: "DeepInquire".to_string(),
-                                                system_fingerprint: String::new(),
-                                                usage: UsageData {
-                                                    completion_tokens: 0,
-                                                    prompt_tokens: 0,
-                                                    total_tokens: 0,
-                                                },
-                                                object: String::new(),
+                                            let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                                                content: accumulated_content.clone(),
+                                                articles: vec![],
                                             }));
                                         }
                                     }
@@ -250,26 +212,9 @@ impl DeepInquireClient {
                                 // Send a final response with the accumulated content
                                 if !accumulated_content.is_empty() {
                                     println!("Streaming complete, sending final response with accumulated content");
-                                    let _ = tx.send(ChatResponse::ChatFinalResponseData(ChatResponseData {
-                                        id: "stream-complete".to_string(),
-                                        choices: vec![ChoiceData {
-                                            finish_reason: StopReason::Stop,
-                                            index: 0,
-                                            message: MessageData {
-                                                content: accumulated_content,
-                                                role: Role::Assistant,
-                                            },
-                                            logprobs: None,
-                                        }],
-                                        created: 0,
-                                        model: "DeepInquire".to_string(),
-                                        system_fingerprint: String::new(),
-                                        usage: UsageData {
-                                            completion_tokens: 0,
-                                            prompt_tokens: 0,
-                                            total_tokens: 0,
-                                        },
-                                        object: String::new(),
+                                    let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                                        content: accumulated_content.clone(),
+                                        articles: vec![],
                                     }));
                                 }
                                 
@@ -356,7 +301,10 @@ impl DeepInquireClient {
                             },
                             object: "".to_string(),
                         };
-                        let _ = tx.send(ChatResponse::ChatFinalResponseData(data));
+                        let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                            content: data.choices[0].message.content.clone(),
+                            articles: vec![],
+                        }));
                     }
                     ProviderCommand::FetchModels() => {
                         let agents = vec![RemoteModel {
@@ -388,14 +336,6 @@ struct ChatRequest {
     stream: Option<bool>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Article {
-    title: String,
-    url: String,
-    snippet: String,
-    source: String,
-    relevance: u32,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Metadata {

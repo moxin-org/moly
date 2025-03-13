@@ -24,6 +24,8 @@ path = "src/main.rs"
 
 [dependencies]
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
+url-preview = "0.3.0"
+#moly-protocol = { path = "../moly-server/moly-protocol" }
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }

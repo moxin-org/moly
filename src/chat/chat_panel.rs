@@ -966,10 +966,10 @@ impl ChatPanel {
                     }
                 ) && item_id == messages_count - 1
                 {
-                    chat_line_item.set_message_text(cx, &chat_line_data.content, true);
+                    chat_line_item.set_message_content(cx, &chat_line_data.content, &chat_line_data.articles, true);
                     chat_line_item.set_actions_enabled(cx, false);
                 } else {
-                    chat_line_item.set_message_text(cx, &chat_line_data.content, false);
+                    chat_line_item.set_message_content(cx, &chat_line_data.content, &chat_line_data.articles, false);
                     chat_line_item.set_actions_enabled(cx, true);
                 }
 

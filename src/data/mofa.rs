@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use tokio::task::JoinHandle;
 use makepad_widgets::Cx;
-use super::providers::{ChatResponse, ProviderClient, ProviderClientError, ProviderCommand, ProviderFetchModelsResult, RemoteModel, RemoteModelId};
+use super::providers::*;
 
 // #[derive(Debug, Serialize, Deserialize)]
 // pub struct MofaResponseReasoner {
@@ -142,7 +142,10 @@ impl MofaClient {
                         let resp: Result<ChatResponseData, reqwest::Error> = resp.json().await;
                         match resp {
                             Ok(resp) => {
-                                let _ = tx.send(ChatResponse::ChatFinalResponseData(resp.clone()));
+                                let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                                    content: resp.choices[0].message.content.clone(),
+                                    articles: vec![],
+                                }));
                             }
                             Err(e) => {
                                 eprintln!("{e}");
@@ -255,7 +258,10 @@ impl MofaClient {
                             },
                             object: "".to_string(),
                         };
-                        let _ = tx.send(ChatResponse::ChatFinalResponseData(data));
+                        let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                            content: data.choices[0].message.content.clone(),
+                            articles: vec![],
+                        }));
                     }
                     ProviderCommand::FetchModels() => {
                         let agents = vec![RemoteModel {
@@ -283,12 +289,6 @@ impl MofaClient {
 pub fn should_be_real() -> bool {
     std::env::var("MOFA_BACKEND").as_deref().unwrap_or("real") != "fake"
 }
-
-// #[derive(Clone, Debug)]
-// pub enum ChatResponse {
-//     // https://platform.openai.com/docs/api-reference/chat/object
-//     ChatFinalResponseData(ChatResponseData),
-// }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ChatRequest {
