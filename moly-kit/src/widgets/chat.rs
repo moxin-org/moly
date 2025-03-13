@@ -21,15 +21,13 @@ live_design!(
     }
 );
 
-/// A task of interest that was or will be performed by the [Chat] widget depending
-/// on xxxxxxxxx
+/// A task of interest that was or will be performed by the [Chat] widget.
 ///
-/// TODO: Fix this documentation.
+/// You can get notified when a group of tasks were already executed by using [Chat::set_hook_after].
 ///
-/// The payload in this task will be used to perform the task itself. If you have
-/// access to its wrapper [ChatHook], you can modify the task before it is executed.
-///
-/// See xxxxxxx for more information.
+/// You can also "hook" into the group of tasks before it's executed with [Chat::set_hook_before].
+/// This allows you to modify their payloads (which are used by the task when executed), add and remove
+/// tasks from the group, abort the group (by clearing the tasks vector), etc.
 // TODO: Using indexes for many operations like `UpdateMessage` is not ideal. In the future
 // messages may need to have a unique identifier.
 #[derive(Debug)]
@@ -52,7 +50,7 @@ pub enum ChatTask {
     /// When received back, it will delete the message at the given index.
     DeleteMessage(usize),
 
-    /// When received back, it will update the message at the given index with the given text.
+    /// When received back, it will update the message at the given index.
     UpdateMessage(usize, Message),
 
     /// When received back, it will clear the prompt input.
@@ -316,7 +314,13 @@ impl Chat {
     /// Dispatch a set of tasks to be executed by the [Chat] widget as a single hookable
     /// unit of work.
     ///
-    /// You can still hook into the task before it's executed for real.
+    /// You can still hook into these tasks before they are executed if you set a hook with
+    /// [Chat::set_hook_before].
+    ///
+    /// Warning: Like other operation over makepad's [WidgetRef], this function may panic if you hold
+    /// borrows to widgets inside [Chat], for example [Messages] or [PromptInput]. Be aware when using
+    /// `read_with` and `write_with` methods.
+    // TODO: Mitigate interior mutability issues with many tricks or improving makepad.
     pub fn dispatch(&mut self, cx: &mut Cx, tasks: &mut Vec<ChatTask>) {
         self.is_hooking = true;
 
@@ -326,11 +330,6 @@ impl Chat {
         }
 
         for task in tasks.iter() {
-            // TODO: Okey, this is what is causing the runtime borrow explosion.
-            // now that this is immediate, it will explose because other dispatching stuff
-            // will keep holding stuff.
-            // I should delay dispatch processing to be executed at the end of specific places
-            // like handle event to mimic the old behavior.
             self.handle_task(cx, task);
         }
 
@@ -404,6 +403,12 @@ impl Chat {
         }
     }
 
+    /// Sets a hook to be executed before a group of tasks is executed.
+    ///
+    /// You get mutable access to the group of tasks, so you can modify what is
+    /// about to happen. See [ChatTask] for more details about this.
+    ///
+    /// If you just want to get notified when something already happened, see [Chat::set_hook_after].
     pub fn set_hook_before(
         &mut self,
         hook: impl FnMut(&mut Vec<ChatTask>, &mut Chat, &mut Cx) + 'static,
@@ -415,6 +420,9 @@ impl Chat {
         self.hook_before = Some(Box::new(hook));
     }
 
+    /// Sets a hook to be executed after a group of tasks is executed.
+    ///
+    /// You get immutable access to the group of tasks, so you can inspect what happened.
     pub fn set_hook_after(&mut self, hook: impl FnMut(&[ChatTask], &mut Chat, &mut Cx) + 'static) {
         if self.is_hooking {
             panic!("Cannot set a hook while hooking");

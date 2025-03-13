@@ -56,6 +56,7 @@ impl Widget for DemoChat {
 
 impl LiveHook for DemoChat {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        // Setup some hooks as an example of how to use them.
         self.setup_chat_hooks();
         self.setup_chat_repo();
     }
