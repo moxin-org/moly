@@ -35,53 +35,9 @@ impl Widget for DemoChat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let selector = self.bot_selector(id!(selector));
         let chat = self.chat(id!(chat));
+
         self.ui_runner().handle(cx, event, scope, self);
-
-        // Let's override what happens when a user copies a message, for demonstration purposes.
-        // Hooking is only possible before `handle_event` is called on the child widget.
-        chat.read_with(|chat| {
-            chat.hook(event).write_with(|hook| {
-                let mut abort = false;
-
-                for task in hook.tasks_mut() {
-                    if let ChatTask::CopyMessage(index) = task {
-                        abort = true;
-
-                        let text = chat.messages_ref().read_with(|messages| {
-                            let text = messages.messages[*index].body.as_str();
-                            format!("You copied the following text from Moly (mini): {}", text)
-                        });
-
-                        cx.copy_to_clipboard(&text);
-                    }
-
-                    if let ChatTask::UpdateMessage(_index, message) = task {
-                        message.body = message.body.replace("ello", "3110 (hooked)");
-
-                        if message.body.contains("bad word") {
-                            abort = true;
-                        }
-                    }
-                }
-
-                if abort {
-                    hook.abort();
-                }
-            });
-        });
-
         self.deref.handle_event(cx, event, scope);
-
-        // Let's log message updates for demonstration purposes.
-        // This will be something that already happened since we are doing this
-        // after `handle_event`.
-        chat.read_with(|chat| {
-            chat.tasks(event).read_with(|task| {
-                if let ChatTask::UpdateMessage(index, message) = task {
-                    log!("Message updated at index {}: {}", index, message.body);
-                }
-            });
-        });
 
         let Event::Actions(actions) = event else {
             return;
@@ -100,52 +56,8 @@ impl Widget for DemoChat {
 
 impl LiveHook for DemoChat {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        let client = {
-            // let moly = MolyClient::new("http://localhost:8085".into());
-            let ollama = MolyClient::new("http://localhost:11434".into());
-
-            let mut client = MultiClient::new();
-            // client.add_client(Box::new(moly));
-            client.add_client(Box::new(ollama));
-
-            // Only add OpenAI client if API key is present
-            if let Some(key) = OPEN_AI_KEY {
-                let openai_url = "https://api.openai.com";
-                let mut openai = MolyClient::new(openai_url.into());
-                openai.set_key(key);
-                client.add_client(Box::new(openai));
-            }
-
-            // Only add OpenRouter client if API key is present
-            if let Some(key) = OPEN_ROUTER_KEY {
-                let open_router_url = "https://openrouter.ai/api";
-                let mut open_router = MolyClient::new(open_router_url.into());
-                open_router.set_key(key);
-                client.add_client(Box::new(open_router));
-            }
-
-            // Only add SiliconFlow client if API key is present
-            if let Some(key) = SILICON_FLOW_KEY {
-                let siliconflow_url = "https://api.siliconflow.cn";
-                let mut siliconflow = MolyClient::new(siliconflow_url.into());
-                siliconflow.set_key(key);
-                client.add_client(Box::new(siliconflow));
-            }
-
-            client
-        };
-
-        let mut repo: BotRepo = client.into();
-        self.chat(id!(chat)).write().bot_repo = Some(repo.clone());
-
-        let ui = self.ui_runner();
-        spawn(async move {
-            repo.load().await.expect("TODO: Handle loading better");
-            ui.defer_with_redraw(move |me, _cx, _scope| {
-                me.fill_selector(repo.bots());
-                me.chat(id!(chat)).write().visible = true;
-            });
-        });
+        self.setup_chat_hooks();
+        self.setup_chat_repo();
     }
 }
 
@@ -213,5 +125,95 @@ impl DemoChat {
         }
 
         self.bot_selector(id!(selector)).set_bots(bots);
+    }
+
+    fn setup_chat_hooks(&self) {
+        self.chat(id!(chat)).write_with(|chat| {
+            chat.set_hook_before(|group, chat, cx| {
+                let mut abort = false;
+
+                for task in group.iter_mut() {
+                    if let ChatTask::CopyMessage(index) = task {
+                        abort = true;
+
+                        let text = chat.messages_ref().read_with(|messages| {
+                            let text = messages.messages[*index].body.as_str();
+                            format!("You copied the following text from Moly (mini): {}", text)
+                        });
+
+                        cx.copy_to_clipboard(&text);
+                    }
+
+                    if let ChatTask::UpdateMessage(_index, message) = task {
+                        message.body = message.body.replace("ello", "3110 (hooked)");
+
+                        if message.body.contains("bad word") {
+                            abort = true;
+                        }
+                    }
+                }
+
+                if abort {
+                    group.clear();
+                }
+            });
+
+            chat.set_hook_after(|group, _, _| {
+                for task in group.iter() {
+                    if let ChatTask::UpdateMessage(_index, message) = task {
+                        log!("Message updated after hook: {}", message.body);
+                    }
+                }
+            });
+        });
+    }
+
+    fn setup_chat_repo(&self) {
+        let client = {
+            // let moly = MolyClient::new("http://localhost:8085".into());
+            let ollama = MolyClient::new("http://localhost:11434".into());
+
+            let mut client = MultiClient::new();
+            // client.add_client(Box::new(moly));
+            client.add_client(Box::new(ollama));
+
+            // Only add OpenAI client if API key is present
+            if let Some(key) = OPEN_AI_KEY {
+                let openai_url = "https://api.openai.com";
+                let mut openai = MolyClient::new(openai_url.into());
+                openai.set_key(key);
+                client.add_client(Box::new(openai));
+            }
+
+            // Only add OpenRouter client if API key is present
+            if let Some(key) = OPEN_ROUTER_KEY {
+                let open_router_url = "https://openrouter.ai/api";
+                let mut open_router = MolyClient::new(open_router_url.into());
+                open_router.set_key(key);
+                client.add_client(Box::new(open_router));
+            }
+
+            // Only add SiliconFlow client if API key is present
+            if let Some(key) = SILICON_FLOW_KEY {
+                let siliconflow_url = "https://api.siliconflow.cn";
+                let mut siliconflow = MolyClient::new(siliconflow_url.into());
+                siliconflow.set_key(key);
+                client.add_client(Box::new(siliconflow));
+            }
+
+            client
+        };
+
+        let mut repo: BotRepo = client.into();
+        self.chat(id!(chat)).write().bot_repo = Some(repo.clone());
+
+        let ui = self.ui_runner();
+        spawn(async move {
+            repo.load().await.expect("TODO: Handle loading better");
+            ui.defer_with_redraw(move |me, _cx, _scope| {
+                me.fill_selector(repo.bots());
+                me.chat(id!(chat)).write().visible = true;
+            });
+        });
     }
 }
