@@ -1,7 +1,6 @@
 use std::sync::mpsc::Sender;
 
 use makepad_widgets::*;
-use moly_protocol::open_ai::ChatResponseData;
 use serde::{Deserialize, Serialize};
 
 use super::{mofa::MofaClient, openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};

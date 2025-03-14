@@ -661,10 +661,10 @@ impl Chat {
                                 _ => {}
                             }
                         }
-                        Stage::Writing(content, articles) => {
+                        Stage::Writing(_content, _articles) => {
                             last.stages.push(stage.clone())
                         }
-                        Stage::Completed(content, articles) => {
+                        Stage::Completed(_content, _articles) => {
                             last.stages.push(stage.clone());
                             *self.state.write().unwrap() = ChatState::Idle;
                         }

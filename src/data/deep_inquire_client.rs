@@ -55,7 +55,6 @@ impl DeepInquireClient {
     ///
     /// The loop continues until the command channel is closed or an unrecoverable error occurs.
     fn process_agent_commands(command_receiver: mpsc::Receiver<ProviderCommand>, address: String, api_key: Option<String>) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 
         while let Ok(command) = command_receiver.recv() {

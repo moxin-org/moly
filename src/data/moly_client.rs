@@ -6,7 +6,6 @@ use moly_protocol::{
 use url::Url;
 use std::sync::mpsc::Sender;
 use std::io::BufRead;
-use super::providers::*;
 
 #[derive(Clone, Debug)]
 pub struct MolyClient {
