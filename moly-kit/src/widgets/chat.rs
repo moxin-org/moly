@@ -248,10 +248,10 @@ impl Chat {
 
             while let Some(delta) = message_stream.next().await {
                 let delta = match delta {
-                    Ok(chat_delta) => chat_delta,
-                    Err(_) => ChatDelta {
-                        content_delta: "An error occurred".to_string(),
-                        citations: None,
+                    Ok(delta) => delta,
+                    Err(_) => MessageDelta {
+                        body: "An error occurred".to_string(),
+                        ..Default::default()
                     },
                 };
 
@@ -263,10 +263,13 @@ impl Chat {
                             .expect("no message where to put delta")
                             .clone();
 
-                        message.body.push_str(&delta.content_delta);
-                        message
-                            .citations
-                            .extend(delta.citations.unwrap_or_default());
+                        message.body.push_str(&delta.body);
+                        // TODO: Maybe this is a good case for a sorted set, like `BTreeSet`.
+                        for citation in delta.citations {
+                            if !message.citations.contains(&citation) {
+                                message.citations.push(citation);
+                            }
+                        }
 
                         (
                             messages.messages.len() - 1,
