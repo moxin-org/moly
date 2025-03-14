@@ -205,6 +205,7 @@ live_design! {
                         width: Fit, height: Fit,
                         radio_openai = <CustomProviderRadio> { text: "OpenAI" }
                         radio_mofa = <CustomProviderRadio> { text: "MoFa" }
+                        radio_deepinquire = <CustomProviderRadio> { text: "DeepInquire" }
                     }
                 }
 
@@ -320,6 +321,18 @@ impl WidgetMatchEvent for AddProviderModal {
                         url: api_host.clone(),
                         api_key: Some(api_key.clone()),
                         provider_type: ProviderType::MoFa,
+                        connection_status: ProviderConnectionStatus::Disconnected,
+                        enabled: true,
+                        models: vec![],
+                        was_customly_added: true,
+                    }
+                }
+                ProviderType::DeepInquire => {
+                    Provider {
+                        name: name.clone(),
+                        url: api_host.clone(),
+                        api_key: Some(api_key.clone()),
+                        provider_type: ProviderType::DeepInquire,
                         connection_status: ProviderConnectionStatus::Disconnected,
                         enabled: true,
                         models: vec![],

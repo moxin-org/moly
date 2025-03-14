@@ -1,4 +1,5 @@
 pub mod chats;
+pub mod deep_inquire_client;
 pub mod downloads;
 mod filesystem;
 pub mod mofa;

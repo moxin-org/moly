@@ -9,7 +9,7 @@ use std::thread;
 use std::sync::{Arc, RwLock};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
-use crate::data::providers::RemoteModel;
+use crate::data::providers::{Article, RemoteModel, Stage};
 use crate::data::providers::ChatResponse as RemoteModelChatResponse;
 
 use super::chat_entity::ChatEntityId;
@@ -28,17 +28,27 @@ pub struct ChatEntityAction {
 enum ChatEntityActionKind {
     ModelAppendDelta(String),
     ModelStreamingDone,
-    MofaAgentResult(String),
+    ModelStage(Stage),
+    MofaAgentResult(String, Vec<Article>, bool),
     MofaAgentCancelled,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ChatMessage {
     pub id: usize,
     pub role: Role,
     pub username: Option<String>,
     pub entity: Option<ChatEntityId>,
     pub content: String,
+    pub articles: Vec<Article>,
+    pub stages: Vec<Stage>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Stages {
+    pub thinking: Option<String>, 
+    pub writing: Option<String>,
+    pub completed: Option<String>,
 }
 
 impl ChatMessage {
@@ -317,6 +327,8 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt.clone(),
+            articles: vec![],
+            stages: vec![],
         });
 
         self.messages.push(ChatMessage {
@@ -325,6 +337,8 @@ impl Chat {
             username: Some(wanted_file.name.clone()),
             entity: Some(ChatEntityId::ModelFile(wanted_file.id.clone())),
             content: "".to_string(),
+            articles: vec![],
+            stages: vec![],
         });
 
         *self.state.write().unwrap() = ChatState::Receiving;
@@ -417,6 +431,8 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt,
+            articles: vec![],
+            stages: vec![],
         });
 
         self.messages.push(ChatMessage {
@@ -425,6 +441,8 @@ impl Chat {
             username: Some(agent.name.clone()),
             entity: Some(ChatEntityId::Agent(agent.id.clone())),
             content: "".to_string(),
+            articles: vec![],
+            stages: vec![],
         });
 
         *self.state.write().unwrap() = ChatState::Receiving;
@@ -432,14 +450,20 @@ impl Chat {
         let chat_id = self.id;
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
-                Ok(RemoteModelChatResponse::ChatFinalResponseData(data)) => {
-                    let content = data.choices[0].message.content.clone();
+                Ok(RemoteModelChatResponse::ChatFinalResponseData(data, is_final)) => {
+                    let content = data.content.clone();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentResult(content),
+                        kind: ChatEntityActionKind::MofaAgentResult(content, data.articles, is_final),
                     });
 
                     break '_loop;
+                }
+                Ok(RemoteModelChatResponse::ChatStage(stage)) => {
+                    Cx::post_action(ChatEntityAction {
+                        chat_id,
+                        kind: ChatEntityActionKind::ModelStage(stage),
+                    });
                 }
                 Err(e) => {
                     println!("Error receiving response from agent: {:?}", e);
@@ -474,6 +498,8 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt,
+            articles: vec![],
+            stages: vec![],
         });
 
         self.messages.push(ChatMessage {
@@ -482,6 +508,8 @@ impl Chat {
             username: Some(remote_model.name.clone()),
             entity: Some(ChatEntityId::RemoteModel(remote_model.id.clone())),
             content: "".to_string(),
+            articles: vec![],
+            stages: vec![],
         });
 
         *self.state.write().unwrap() = ChatState::Receiving;
@@ -489,14 +517,27 @@ impl Chat {
         let chat_id = self.id;
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
-                Ok(RemoteModelChatResponse::ChatFinalResponseData(data)) => {
-                    let content = data.choices[0].message.content.clone();
+                Ok(RemoteModelChatResponse::ChatFinalResponseData(data, is_final)) => {
+                    let content = data.content.clone();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentResult(content),
+                        kind: ChatEntityActionKind::MofaAgentResult(content, data.articles, is_final),
                     });
 
-                    break '_loop;
+                    if is_final {
+                        break '_loop;
+                    }
+                }
+                Ok(RemoteModelChatResponse::ChatStage(stage)) => {
+                    let should_break = matches!(stage, Stage::Completed(_, _));
+                    Cx::post_action(ChatEntityAction {
+                        chat_id,
+                        kind: ChatEntityActionKind::ModelStage(stage),
+                    });
+
+                    if should_break {
+                        break '_loop;
+                    }
                 }
                 Err(e) => {
                     println!("Error receiving response from agent: {:?}", e);
@@ -583,15 +624,54 @@ impl Chat {
                 self.is_streaming = false;
                 *self.state.write().unwrap() = ChatState::Idle;
             }
-            ChatEntityActionKind::MofaAgentResult(response) => {
+            ChatEntityActionKind::MofaAgentResult(response, articles, is_final) => {
                 let last = self.messages.last_mut().unwrap();
                 last.content = response.clone();
-                *self.state.write().unwrap() = ChatState::Idle;
+                last.articles = articles.clone();
+                if *is_final {
+                    *self.state.write().unwrap() = ChatState::Idle;
+                }
             }
             ChatEntityActionKind::MofaAgentCancelled => {
                 *self.state.write().unwrap() = ChatState::Idle;
                 // Remove the last message sent by the user
                 self.messages.pop();
+            }
+            ChatEntityActionKind::ModelStage(stage) => {
+                let last = self.messages.last_mut().unwrap();
+
+                // Often DeepInquire returns the same stage multiple times with the content extended (instead of a delta).
+                // However sometimes it returns the same stage with completely different content.
+                // To avoid very abrupt changes in the text (and because I don't think it's useful otherwise), we check: 
+                // if the new stage content is an extension of the previous stage content, we simply add a new stage.
+                // However if the new stage content is completely different, we add a new stage with a combination of the previous stage and the new stage.
+                // This way the user can see the evolution of the thought process rather than just a few sentences at a time that don't 
+                // make sense in isolation.
+                if let Some(last_stage) = last.stages.last() {
+                    match stage {
+                        Stage::Thinking(content) => {        
+                            match last_stage {
+                                Stage::Thinking(last_content) => {
+                                    if last_content.contains(content) {
+                                        last.stages.push(Stage::Thinking(content.clone()));
+                                    } else {
+                                        last.stages.push(Stage::Thinking(format!("{} {}", last_content, content)));
+                                    }
+                                },
+                                _ => {}
+                            }
+                        }
+                        Stage::Writing(_content, _articles) => {
+                            last.stages.push(stage.clone())
+                        }
+                        Stage::Completed(_content, _articles) => {
+                            last.stages.push(stage.clone());
+                            *self.state.write().unwrap() = ChatState::Idle;
+                        }
+                    }
+                } else {
+                    last.stages.push(stage.clone());
+                }
             }
         }
         self.save();

@@ -8,7 +8,7 @@ use tokio::task::JoinHandle;
 use makepad_widgets::Cx;
 use crate::data::providers::ProviderClientError;
 
-use super::providers::{ChatResponse, ProviderClient, ProviderFetchModelsResult, RemoteModel, RemoteModelId, ProviderCommand};
+use super::providers::*;
 
 const ALLOWED_OPENAI_MODELS: &[&str] = &[
     "gpt-4-turbo",
@@ -174,7 +174,10 @@ impl OpenAIClient {
                         let resp: Result<ChatResponseDataWrapper, reqwest::Error> = resp.json().await;
                         match resp {
                             Ok(resp) => {
-                                let _ = tx.send(ChatResponse::ChatFinalResponseData(resp.into()));
+                                let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
+                                    content: resp.choices[0].message.content.clone(),
+                                    articles: vec![],
+                                }, true));
                             }
                             Err(e) => {
                                 eprintln!("{e}");

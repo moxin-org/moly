@@ -1,10 +1,9 @@
 use std::sync::mpsc::Sender;
 
 use makepad_widgets::*;
-use moly_protocol::open_ai::ChatResponseData;
 use serde::{Deserialize, Serialize};
 
-use super::{mofa::MofaClient, openai_client::OpenAIClient};
+use super::{mofa::MofaClient, openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
 
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -27,6 +26,7 @@ pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient
     match &provider.provider_type {
         ProviderType::OpenAI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
         ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
+        ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone(), provider.api_key.clone())),
     }
 }
 
@@ -121,8 +121,30 @@ impl ProviderClientError {
 
 #[derive(Clone, Debug)]
 pub enum ChatResponse {
-    // https://platform.openai.com/docs/api-reference/chat/object
-    ChatFinalResponseData(ChatResponseData),
+    ChatFinalResponseData(MolyChatResponse, bool),
+    ChatStage(Stage),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Stage {
+    Thinking(String),
+    Writing(String, Vec<Article>),
+    Completed(String, Vec<Article>),
+}
+
+#[derive(Clone, Debug)]
+pub struct MolyChatResponse {
+    pub content: String,
+    pub articles: Vec<Article>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Article {
+    pub title: String,
+    pub url: String,
+    pub snippet: String,
+    pub source: String,
+    pub relevance: u32,
 }
 
 /// The behaviour that must be implemented by the provider clients.
@@ -137,6 +159,7 @@ pub enum ProviderType {
     #[pick]
     OpenAI,
     MoFa,
+    DeepInquire,
 }
 
 impl Default for ProviderType {
