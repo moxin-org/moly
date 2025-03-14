@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::utils::asynchronous::spawn;
+use crate::utils::{asynchronous::spawn, events::EventExt};
 use makepad_widgets::*;
 use reqwest::header::{HeaderValue, USER_AGENT};
 use url_preview::{Preview, PreviewService};
@@ -15,53 +15,54 @@ live_design! {
 
     LINK_ICON = dep("crate://self/assets/link.png")
 
+    LinkPreviewUI = {{LinkPreviewUI}} <RoundedView> {
+        cursor: Hand,
+        height: 75, width: 180
+        flow: Right, spacing: 5
+        show_bg: true,
+        draw_bg: {
+            color: #f2f2f2
+            radius: 0
+        }
+        align: {y: 0.5}
+        image_wrapper = <RoundedView> {
+            draw_bg: {
+                radius: 0
+            },
+            align: {y: 0.5, x: 0.5},
+            width: 75, height: Fill,
+            visible: true,
+            image = <Image> {
+                width: 30, height: 55,
+                fit: Vertical,
+                source: (LINK_ICON)
+            }
+        }
+        flow_down_wrapper = <View> {
+            flow: Down, spacing: 5
+            align: {y: 0.5, x: 0.0}
+            title = <Label> {
+                text: "Loading..."
+                draw_text: {
+                    text_style: <BOLD_FONT>{},
+                    color: #000
+                }
+            }
+            domain = <Label> {
+                text: "Loading..."
+                draw_text: {
+                    color: #000
+                }
+            }
+        }
+    }
 
     pub Citations = {{Citations}} {
         margin: {top: 15}
         height: Fit, width: Fill,
         flow: RightWrap, spacing: 10
         // TODO: We want make these rounded but don't have a straight forward way to have the inner image match the same radius.
-        citation_template: {{LinkPreviewUI}}<RoundedView> {
-            cursor: Hand,
-            height: 75, width: 180
-            flow: Right, spacing: 5
-            show_bg: true,
-            draw_bg: {
-                color: #f2f2f2
-                radius: 0
-            }
-            align: {y: 0.5}
-            image_wrapper = <RoundedView> {
-                draw_bg: {
-                    radius: 0
-                },
-                align: {y: 0.5, x: 0.5},
-                width: 75, height: Fill,
-                visible: true,
-                image = <Image> {
-                    width: 30, height: 55,
-                    fit: Vertical,
-                    source: (LINK_ICON)
-                }
-            }
-            flow_down_wrapper = <View> {
-                flow: Down, spacing: 5
-                align: {y: 0.5, x: 0.0}
-                title = <Label> {
-                    text: "Loading..."
-                    draw_text: {
-                        text_style: <BOLD_FONT>{},
-                        color: #000
-                    }
-                }
-                domain = <Label> {
-                    text: "Loading..."
-                    draw_text: {
-                        color: #000
-                    }
-                }
-            }
-        }
+        citation_template: <LinkPreviewUI> {}
     }
 
 
@@ -99,6 +100,9 @@ pub struct Citations {
 
 impl Widget for Citations {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        for (_citation_id, citation) in self.link_preview_children.iter_mut() {
+            citation.handle_event(cx, event, scope);
+        }
         self.view.handle_event(cx, event, scope);
         self.ui_runner().handle(cx, event, scope, self);
     }
@@ -258,23 +262,17 @@ pub struct LinkPreviewUI {
 impl Widget for LinkPreviewUI {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
-        self.widget_match_event(cx, event, scope);
+        if let Some(item) = event.actions().find_widget_action(self.view.widget_uid()) {
+            if let ViewAction::FingerUp(fu) = item.cast() {
+                if fu.was_tap() {
+                    let _ = robius_open::Uri::new(&self.url).open();
+                }
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
-    }
-}
-
-impl WidgetMatchEvent for LinkPreviewUI {
-    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        // TODO: these finger up events are not reaching here.
-        if let Some(item) = actions.find_widget_action(self.widget_uid()) {
-            if let ViewAction::FingerUp(_fd) = item.cast() {
-                // TODO: This should check for `was_tap` right?
-                let _ = robius_open::Uri::new(&self.url).open();
-            }
-        }
     }
 }
 
