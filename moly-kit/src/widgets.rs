@@ -3,6 +3,7 @@
 //! Note: Some widgets may depend on certain feature flags.
 
 mod avatar;
+mod citations;
 mod message_loading;
 mod message_markdown;
 
@@ -17,6 +18,7 @@ pub use messages::*;
 pub use prompt_input::*;
 
 pub fn live_design(cx: &mut makepad_widgets::Cx) {
+    citations::live_design(cx);
     makepad_code_editor::live_design(cx);
     message_markdown::live_design(cx);
     message_loading::live_design(cx);
