@@ -61,8 +61,9 @@ live_design! {
                     draw_bg: {
                         color: #15859A
                     }
-                    markdown_message_container = {
-                        markdown_message = {
+                    markdown_writing_stage = {
+                        padding: 0
+                        markdown = {
                             font_color: #fff,
                             draw_normal: {
                                 color: #fff,
@@ -123,8 +124,8 @@ live_design! {
             body_section = {
                 bubble = {
                     padding: {left: 0, bottom: 0, top: 0}
-                    markdown_message_container = {
-                        markdown_message = {
+                    markdown_writing_stage = {
+                        markdown = {
                             draw_normal: {
                                 color: (#000),
                             }
@@ -966,10 +967,10 @@ impl ChatPanel {
                     }
                 ) && item_id == messages_count - 1
                 {
-                    chat_line_item.set_message_content(cx, &chat_line_data.content, &chat_line_data.articles, true);
+                    chat_line_item.set_message_content(cx, &chat_line_data, true);
                     chat_line_item.set_actions_enabled(cx, false);
                 } else {
-                    chat_line_item.set_message_content(cx, &chat_line_data.content, &chat_line_data.articles, false);
+                    chat_line_item.set_message_content(cx, &chat_line_data, false);
                     chat_line_item.set_actions_enabled(cx, true);
                 }
 

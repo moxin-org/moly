@@ -1,6 +1,7 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
 use crate::chat::shared::ChatAgentAvatarWidgetExt;
-use crate::data::providers::{Article, RemoteModel};
+use crate::data::chats::chat::ChatMessage;
+use crate::data::providers::{Article, RemoteModel, Stage};
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
@@ -63,6 +64,19 @@ live_design! {
         text: "Cancel"
     }
 
+    StagePill = <RoundedView> {
+        cursor: Hand,
+        width: Fit, height: Fit
+        padding: {left: 10, right: 10, top: 7, bottom: 7}
+        draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 0, border_width: 2 }
+        stage_text = <Label> {
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 10},
+                color: #000
+            }
+        }
+    }
+    
     ArticlesList = {{ArticlesList}} {
         margin: {top: 15}
         height: Fit, width: Fill,
@@ -116,9 +130,9 @@ live_design! {
 
     MessageText = <Markdown> {
         padding: 0,
-        // Workaround: we should be using `paragraph_spacing: 20`,
-        // but this property causes an unintended initial space so let's disable it.
-        paragraph_spacing: 0
+        paragraph_spacing: 20
+        // Hack to account for the paragraph_spacing causing an empty space on top of the text
+        margin: {top: -25},
         font_color: #000,
         width: Fill, height: Fit,
         font_size: 10.0,
@@ -203,7 +217,47 @@ live_design! {
             height: Fit,
             flow: Down,
             padding: {left: 16, right: 18, top: 18, bottom: 14},
-            align: {x: 0.5, y: 0.0},
+            align: {x: 0.0, y: 0.0},
+            spacing: 10
+
+            stages_container = <RoundedView> {
+                cursor: Hand
+                flow: Right, spacing: 0
+                visible: false,
+                width: Fit, height: Fit,
+                thinking_pill = <StagePill> {
+                    stage_text = { text: "Thinking" }
+                }
+                writing_pill = <StagePill> {
+                    stage_text = { text: "Writing" }
+                }
+                completed_pill = <StagePill> {
+                    stage_text = { text: "Completed" }
+                }
+            }
+
+            markdown_thinking_stage = <RoundedView> {
+                visible: false,
+                width: Fill, height: Fit,
+                padding: {left: 16, right: 18, top: 18, bottom: 14},
+                draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 5 },
+                markdown = <MessageText> {}
+            }
+
+            markdown_writing_stage = <RoundedView> {
+                visible: false,
+                width: Fill, height: Fit,
+                padding: {left: 16, right: 18, top: 18, bottom: 14},
+                markdown = <MessageText> {}
+            }
+
+            markdown_overview_stage = <RoundedView> {
+                visible: false,
+                width: Fill, height: Fit,
+                padding: {left: 16, right: 18, top: 18, bottom: 14},
+                draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 5 },
+                markdown = <MessageText> {}
+            }
 
             input_container = <View> {
                 visible: false,
@@ -214,18 +268,14 @@ live_design! {
             }
 
             loading_container = <View> {
+                visible: false,
                 width: Fill,
                 height: Fit,
                 loading = <ChatLineLoading> {}
             }
 
-            markdown_message_container = <View> {
-                width: Fill,
-                height: Fit,
-                markdown_message = <MessageText> {}
-            }
-
             plain_text_message_container = <View> {
+                visible: false,
                 width: Fill,
                 height: Fit,
                 plain_text_message = <Label> {
@@ -338,6 +388,12 @@ pub enum ChatLineState {
     OnEdit,
 }
 
+enum StageType {
+    Thinking,
+    Writing,
+    Completed,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatLine {
     #[deref]
@@ -351,6 +407,9 @@ pub struct ChatLine {
 
     #[rust]
     hovered: bool,
+
+    #[rust]
+    latest_message: Option<ChatMessage>,
 }
 
 impl Widget for ChatLine {
@@ -387,6 +446,57 @@ impl WidgetMatchEvent for ChatLine {
             ChatLineState::OnEdit => self.handle_on_edit_actions(cx, actions),
             ChatLineState::NotEditable => {}
         }
+
+        let mut new_stage_selected = None;
+
+        if let Some(latest_message) = &self.latest_message {
+            if self.view(id!(thinking_pill)).finger_down(actions).is_some() {
+                self.view(id!(markdown_thinking_stage)).set_visible(cx, true);
+                self.view(id!(markdown_writing_stage)).set_visible(cx, false);
+                self.view(id!(markdown_overview_stage)).set_visible(cx, false);
+                if let Some(stage) = latest_message.stages.iter().rev().find(|stage| matches!(stage, Stage::Thinking(_))) {
+                    match stage {
+                        Stage::Thinking(content) => {
+                            self.markdown(id!(markdown_thinking_stage.markdown)).set_text(cx, &content);
+                            new_stage_selected = Some(StageType::Thinking);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if self.view(id!(writing_pill)).finger_down(actions).is_some() {
+                self.view(id!(markdown_writing_stage)).set_visible(cx, true);
+                self.view(id!(markdown_thinking_stage)).set_visible(cx, false);
+                self.view(id!(markdown_overview_stage)).set_visible(cx, false);
+                if let Some(stage) = latest_message.stages.iter().rev().find(|stage| matches!(stage, Stage::Writing(_, _))) {
+                    match stage {
+                        Stage::Writing(content, _) => {
+                            self.markdown(id!(markdown_writing_stage.markdown)).set_text(cx, &content);
+                            new_stage_selected = Some(StageType::Writing);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if self.view(id!(completed_pill)).finger_down(actions).is_some() {
+                self.view(id!(markdown_overview_stage)).set_visible(cx, true);
+                self.view(id!(markdown_writing_stage)).set_visible(cx, false);
+                self.view(id!(markdown_thinking_stage)).set_visible(cx, false);
+                if let Some(stage) = latest_message.stages.iter().rev().find(|stage| matches!(stage, Stage::Completed(_, _))) {
+                    match stage {
+                        Stage::Completed(content, _) => {
+                            self.markdown(id!(markdown_overview_stage.markdown)).set_text(cx, &content);
+                            new_stage_selected = Some(StageType::Completed);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            if let Some(stage_type) = new_stage_selected {
+                self.update_selected_stage_pill(cx, &stage_type);
+            }
+        }
     }
 }
 
@@ -413,10 +523,16 @@ impl ChatLine {
         // let is_plain_text = to_markdown.nodes.len() <= 3;
         // Temporary workaround to always show markdown.
         // This will be replaced by MolyKit.
-        let is_plain_text = false;
+        let mut is_plain_text = false;
+        if let Some(latest_message) = &self.latest_message {
+            // Set plain text for user messages.
+            if !latest_message.is_assistant() {
+                is_plain_text = true;
+            }
+        }
         self.view(id!(plain_text_message_container))
             .set_visible(cx, show && is_plain_text);
-        self.view(id!(markdown_message_container))
+        self.view(id!(markdown_writing_stage))
             .set_visible(cx, show && !is_plain_text);
     }
 
@@ -475,6 +591,126 @@ impl ChatLine {
             self.set_edit_mode(cx, false);
         }
     }
+
+    pub fn update_selected_stage_pill(&mut self, cx: &mut Cx, stage_type: &StageType) {
+        let thinking_pill = self.view(id!(thinking_pill));
+        let writing_pill = self.view(id!(writing_pill));
+        let completed_pill = self.view(id!(completed_pill));
+    
+        // rgb(242, 242, 242)
+        let light_border_color = vec4(0.9490196078431372, 0.9490196078431372, 0.9490196078431372, 1.0);
+        thinking_pill.apply_over(cx, live! {
+            draw_bg: {
+                border_color: (light_border_color),
+            }
+        });
+        writing_pill.apply_over(cx, live! {
+            draw_bg: {
+                border_color: (light_border_color),
+            }
+        });
+        completed_pill.apply_over(cx, live! {
+            draw_bg: {
+                border_color: (light_border_color),
+            }
+        });
+
+        //rgb(141, 138, 138)
+        let dark_border_color = vec4(0.803921568627451, 0.803921568627451, 0.803921568627451, 1.0);
+
+        match stage_type {
+            StageType::Thinking => {
+                thinking_pill.apply_over(cx, live! {
+                    draw_bg: {
+                        border_color: (dark_border_color),
+                    }
+                });
+            },
+            StageType::Writing => {
+                writing_pill.apply_over(cx, live! {
+                    draw_bg: {
+                        border_color: (dark_border_color),
+                    }
+                });
+            }
+            StageType::Completed => {
+                completed_pill.apply_over(cx, live! {
+                    draw_bg: {
+                        border_color: (dark_border_color),
+                    }
+                });
+            }
+        }
+    }
+
+    pub fn update_stage_pills(&mut self, cx: &mut Cx, stage_type: &StageType) {
+        let thinking_pill = self.view(id!(thinking_pill));
+        let writing_pill = self.view(id!(writing_pill));
+        let completed_pill = self.view(id!(completed_pill));
+    
+        thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking");
+        writing_pill.label(id!(stage_text)).set_text(cx, "Writing Response");
+        completed_pill.label(id!(stage_text)).set_text(cx, "Completed");
+    
+        let mut view_set = self.view_set(ids!(
+            thinking_pill,
+            writing_pill,
+            completed_pill
+        ));
+
+        view_set.set_visible(cx, false);
+
+        match stage_type {
+            StageType::Thinking => {
+                thinking_pill.set_visible(cx, true);
+                thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking...");
+                writing_pill.set_visible(cx, false);
+                completed_pill.set_visible(cx, false);
+            },
+            StageType::Writing => {
+                thinking_pill.set_visible(cx, true);
+                writing_pill.set_visible(cx, true);
+                thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking  >");
+                writing_pill.label(id!(stage_text)).set_text(cx, "Writing Response...");
+                completed_pill.set_visible(cx, false);
+            }
+            StageType::Completed => {
+                thinking_pill.set_visible(cx, true);
+                writing_pill.set_visible(cx, true);
+                completed_pill.set_visible(cx, true);
+                thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking  >");
+                writing_pill.label(id!(stage_text)).set_text(cx, "Writing Response  >");
+                completed_pill.label(id!(stage_text)).set_text(cx, "Completed");
+            }
+        }
+
+        self.update_selected_stage_pill(cx, stage_type);
+    }
+
+    fn update_markdown_stage_visibilities(&mut self, cx: &mut Cx, selected_stage: &StageType) {
+        let markdown_thinking_stage = self.view(id!(markdown_thinking_stage));
+        let markdown_writing_stage = self.view(id!(markdown_writing_stage));
+        let markdown_overview_stage = self.view(id!(markdown_overview_stage));
+        
+        let mut view_set = self.view_set(ids!(
+            markdown_thinking_stage,
+            markdown_writing_stage,
+            markdown_overview_stage
+        ));
+        view_set.set_visible(cx, false);
+
+        match selected_stage {
+            StageType::Thinking => {
+                markdown_thinking_stage.set_visible(cx, true);
+            }
+            StageType::Writing => {
+                markdown_writing_stage.set_visible(cx, true);
+            }
+            StageType::Completed => {
+                markdown_overview_stage.set_visible(cx, true);
+            }
+        }
+    }
 }
 
 impl ChatLineRef {
@@ -505,55 +741,102 @@ impl ChatLineRef {
         inner.chat_agent_avatar(id!(avatar_section.agent)).set_agent(model);
     }
 
-    pub fn set_message_content(&mut self, cx: &mut Cx, text: &str, articles: &Vec<Article>, is_streaming: bool) {
+    pub fn set_message_content(&mut self, cx: &mut Cx, chat_line_data: &ChatMessage, is_streaming: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
 
+        // If the message hasn't changed, return early.
+        if inner.latest_message == Some(chat_line_data.clone()) {
+            return;
+        }
+
+        inner.latest_message = Some(chat_line_data.clone());
+
+        let mut show_loading = false;
+
         match inner.edition_state {
             ChatLineState::Editable | ChatLineState::NotEditable => {
-                if is_streaming && !text.is_empty() {
-                    let output = format!("{}{}", text, "●");
+                // Handle stages, ignore chat_line_data.content
+                if !chat_line_data.stages.is_empty() {
+                    if let Some(stage) = chat_line_data.stages.last() {
+                        // Show stages container                    
+                        inner.view(id!(stages_container)).set_visible(cx, true);
+                        match stage {
+                            Stage::Thinking(content) => {
+                                inner.markdown(id!(markdown_thinking_stage.markdown)).set_text(cx, &content.trim());
+                                show_loading = false;
+                                inner.update_stage_pills(cx, &StageType::Thinking);
+                                inner.update_markdown_stage_visibilities(cx, &StageType::Thinking);
+                            }
+                            Stage::Writing(content, articles) => {
+                                inner.text_input(id!(input)).set_text(cx, &content);
+                                inner.label(id!(plain_text_message)).set_text(cx, &content);
+                                inner.markdown(id!(markdown_writing_stage.markdown)).set_text(cx, &content.trim());
+                                show_loading = false;
+
+                                if !articles.is_empty() {
+                                    inner.view(id!(articles_container)).set_visible(cx, true);
+                                    let mut articles_ref = inner.articles_list(id!(articles));
+                                    articles_ref.set_articles(cx, &articles);
+                                } else {
+                                    inner.view(id!(articles_container)).set_visible(cx, false);
+                                }
+
+                                inner.update_stage_pills(cx, &StageType::Writing);
+                                inner.update_markdown_stage_visibilities(cx, &StageType::Writing);
+                            }
+                            Stage::Completed(content, articles) => {
+                                inner.view(id!(markdown_writing_stage)).set_visible(cx, false);
+                                inner.markdown(id!(markdown_overview_stage.markdown)).set_text(cx, &content.trim());
+                                show_loading = false;
+
+                                if !articles.is_empty() {
+                                    inner.view(id!(articles_container)).set_visible(cx, true);
+                                    let mut articles_ref = inner.articles_list(id!(articles));
+                                    articles_ref.set_articles(cx, &articles);
+                                } else {
+                                    inner.view(id!(articles_container)).set_visible(cx, false);
+                                }
+
+                                inner.update_stage_pills(cx, &StageType::Completed);
+                                inner.update_markdown_stage_visibilities(cx, &StageType::Completed);
+                            }
+                        }
+                    }
+                // No stages, handle content directly
+                } else if is_streaming && !chat_line_data.content.is_empty() {
+                    let output = format!("{}{}", chat_line_data.content, "●");
                     inner.text_input(id!(input)).set_text(cx, &output.trim());
                     inner
                         .label(id!(plain_text_message))
                         .set_text(cx, &output.trim());
                     inner
-                        .markdown(id!(markdown_message))
+                        .markdown(id!(markdown_writing_stage.markdown))
                         .set_text(cx, &output.trim());
+                    show_loading = false;
+                    inner.show_or_hide_message_label(cx, true);
+                // No stages, no streaming, but there is content
                 } else {
-                    inner.text_input(id!(input)).set_text(cx, text.trim());
+                    inner.text_input(id!(input)).set_text(cx, chat_line_data.content.trim());
                     inner
                         .label(id!(plain_text_message))
-                        .set_text(cx, text.trim());
+                        .set_text(cx, chat_line_data.content.trim());
                     inner
-                        .markdown(id!(markdown_message))
-                        .set_text(cx, &text.trim().replace("\n\n", "\n\n\u{00A0}\n\n"));
+                        .markdown(id!(markdown_writing_stage.markdown))
+                        .set_text(cx, &chat_line_data.content.trim().replace("\n\n", "\n\n\u{00A0}\n\n"));
+
+                    show_loading = chat_line_data.content.trim().is_empty();
+                    inner.show_or_hide_message_label(cx, true);
                 }
 
-                if !articles.is_empty() {
-                    inner.view(id!(articles_container)).set_visible(cx, true);
-                    let mut articles_ref = inner.articles_list(id!(articles));
-                    articles_ref.set_articles(cx, &articles);
-                } else {
-                    inner.view(id!(articles_container)).set_visible(cx, false);
-                }
-
-                // We know only AI assistant messages could be empty, so it is never
-                // displayed in user's chat lines.
-                let show_loading = text.trim().is_empty();
-                inner
-                    .view(id!(loading_container))
-                    .set_visible(cx, show_loading);
-
+                inner.view(id!(loading_container)).set_visible(cx, show_loading);
                 let mut loading_widget = inner.chat_line_loading(id!(loading_container.loading));
                 if show_loading {
                     loading_widget.animate(cx);
                 } else {
                     loading_widget.stop_animation();
                 }
-
-                inner.show_or_hide_message_label(cx, true);
             }
             ChatLineState::OnEdit => {}
         }

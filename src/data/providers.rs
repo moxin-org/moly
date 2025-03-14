@@ -122,8 +122,15 @@ impl ProviderClientError {
 
 #[derive(Clone, Debug)]
 pub enum ChatResponse {
-    // https://platform.openai.com/docs/api-reference/chat/object
-    ChatFinalResponseData(MolyChatResponse),
+    ChatFinalResponseData(MolyChatResponse, bool),
+    ChatStage(Stage),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Stage {
+    Thinking(String),
+    Writing(String, Vec<Article>),
+    Completed(String, Vec<Article>),
 }
 
 #[derive(Clone, Debug)]
