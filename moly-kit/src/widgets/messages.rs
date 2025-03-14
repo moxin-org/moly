@@ -1,4 +1,7 @@
-use std::{cell::{Ref, RefMut}, collections::{HashMap, HashSet}};
+use std::{
+    cell::{Ref, RefMut},
+    collections::{HashMap, HashSet},
+};
 
 use crate::{
     protocol::*,
@@ -6,9 +9,8 @@ use crate::{
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
 use makepad_widgets::*;
-use reqwest::header::{HeaderValue, REFERER, USER_AGENT};
-use url::Url;
-use url_preview::{PreviewService, Preview, PreviewError};
+use reqwest::header::{HeaderValue, USER_AGENT};
+use url_preview::{Preview, PreviewService};
 
 live_design! {
     use link::theme::*;
@@ -684,22 +686,30 @@ impl Widget for Citations {
                 if let Some(title) = &link_preview.title {
                     citation.label(id!(title)).set_text(cx, &title);
                 }
-                if let Some(image_url) = &link_preview.image_url {
+                if link_preview.image_url.is_some() {
                     if let Some(image_bytes) = self.image_blobs.get(citation_id) {
                         // Only load image if it's not already loaded
                         if !self.loaded_image_indices.contains(citation_id) {
                             if is_jpeg(image_bytes) {
-                                let _ = citation.image(id!(image)).load_jpg_from_data(cx, &image_bytes);
-                                citation.image(id!(image)).apply_over(cx,
-                                live! {
-                                    width: 75, height: 75
-                                });
+                                let _ = citation
+                                    .image(id!(image))
+                                    .load_jpg_from_data(cx, &image_bytes);
+                                citation.image(id!(image)).apply_over(
+                                    cx,
+                                    live! {
+                                        width: 75, height: 75
+                                    },
+                                );
                             } else if is_png(image_bytes) {
-                                citation.image(id!(image)).apply_over(cx,
-                                live! {
-                                    width: 75, height: 75
-                                });
-                                let _ = citation.image(id!(image)).load_png_from_data(cx, &image_bytes);
+                                citation.image(id!(image)).apply_over(
+                                    cx,
+                                    live! {
+                                        width: 75, height: 75
+                                    },
+                                );
+                                let _ = citation
+                                    .image(id!(image))
+                                    .load_png_from_data(cx, &image_bytes);
                             } else {
                                 // TODO: handle other image types
                                 // Do not try again
@@ -710,7 +720,7 @@ impl Widget for Citations {
                     }
                 }
             }
-            citation.draw(cx, scope);
+            while citation.draw(cx, scope).step().is_some() {}
         }
         cx.end_turtle();
         DrawStep::done()
@@ -718,7 +728,7 @@ impl Widget for Citations {
 }
 
 impl Citations {
-    fn save_link_preview(&mut self, cx: &mut Cx, index: usize, link_preview: Preview) {
+    fn save_link_preview(&mut self, index: usize, link_preview: Preview) {
         let image_url = link_preview.image_url.clone();
         self.link_previews.insert(index, link_preview);
         // Only fetch if we don't already have this image
@@ -728,7 +738,7 @@ impl Citations {
                 spawn(async move {
                     let fetched_image = fetch_image_blob(&image_url).await;
                     if let Ok(image_bytes) = fetched_image {
-                        ui.defer_with_redraw(move |me, cx, _scope| {
+                        ui.defer_with_redraw(move |me, _cx, _scope| {
                             me.image_blobs.insert(index, image_bytes);
                         });
                     }
@@ -741,7 +751,10 @@ impl Citations {
         self.visible = true;
         // compare the vecs, if they are the same, return
         if self.citations.len() == citations.len() {
-            let is_same = self.citations.iter().zip(citations.iter())
+            let is_same = self
+                .citations
+                .iter()
+                .zip(citations.iter())
                 .all(|(a, b)| a == b);
             if is_same {
                 return;
@@ -761,16 +774,17 @@ impl Citations {
             let citation_clone = citation.clone();
             let index_clone = index;
             let ui = self.ui_runner();
-            let widget_uid = self.widget_uid();
 
             // TODO: rework this to use caching and batch fetching from the url-preview crate.
             spawn(async move {
                 let future = async {
-                    let preview = PreviewService::new().generate_preview(&citation_clone).await;
+                    let preview = PreviewService::new()
+                        .generate_preview(&citation_clone)
+                        .await;
                     match preview {
                         Ok(preview) => {
-                            ui.defer_with_redraw(move |me, cx, _scope| {
-                                me.save_link_preview(cx, index_clone, preview);
+                            ui.defer_with_redraw(move |me, _cx, _scope| {
+                                me.save_link_preview(index_clone, preview);
                             });
                         }
                         Err(e) => {
@@ -780,7 +794,9 @@ impl Citations {
                 };
 
                 let (future, _abort_handle) = futures::future::abortable(future);
-                future.await.unwrap_or_else(|_| eprintln!("Preview fetch aborted for index {}", index_clone));
+                future.await.unwrap_or_else(|_| {
+                    eprintln!("Preview fetch aborted for index {}", index_clone)
+                });
             });
         }
 
@@ -817,10 +833,11 @@ impl Widget for LinkPreviewUI {
 }
 
 impl WidgetMatchEvent for LinkPreviewUI {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         // TODO: these finger up events are not reaching here.
         if let Some(item) = actions.find_widget_action(self.widget_uid()) {
-            if let ViewAction::FingerUp(fd) = item.cast() {
+            if let ViewAction::FingerUp(_fd) = item.cast() {
+                // TODO: This should check for `was_tap` right?
                 let _ = robius_open::Uri::new(&self.url).open();
             }
         }
@@ -847,9 +864,5 @@ fn is_jpeg(bytes: &[u8]) -> bool {
 }
 
 fn is_png(bytes: &[u8]) -> bool {
-    bytes.len() >= 4 
-        && bytes[0] == 0x89 
-        && bytes[1] == 0x50 
-        && bytes[2] == 0x4E 
-        && bytes[3] == 0x47
+    bytes.len() >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
 }
