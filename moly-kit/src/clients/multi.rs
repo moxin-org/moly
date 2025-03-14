@@ -28,7 +28,7 @@ impl BotClient for MultiClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<ChatDelta, ()>> {
+    ) -> MolyStream<'static, Result<MessageDelta, ()>> {
         let mut client = self
             .clients_with_bots
             .lock()
