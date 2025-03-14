@@ -817,7 +817,7 @@ impl ChatLineRef {
                     show_loading = false;
                     inner.show_or_hide_message_label(cx, true);
                 // No stages, no streaming, but there is content
-                } else {
+                } else if !chat_line_data.content.is_empty() {
                     inner.text_input(id!(input)).set_text(cx, chat_line_data.content.trim());
                     inner
                         .label(id!(plain_text_message))
@@ -826,8 +826,12 @@ impl ChatLineRef {
                         .markdown(id!(markdown_writing_stage.markdown))
                         .set_text(cx, &chat_line_data.content.trim().replace("\n\n", "\n\n\u{00A0}\n\n"));
 
-                    show_loading = chat_line_data.content.trim().is_empty();
+                    show_loading = false;
                     inner.show_or_hide_message_label(cx, true);
+                // No stages, no streaming, no content
+                } else {
+                    show_loading = true;
+                    inner.show_or_hide_message_label(cx, false);
                 }
 
                 inner.view(id!(loading_container)).set_visible(cx, show_loading);
