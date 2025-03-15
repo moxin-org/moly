@@ -366,7 +366,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e58aa60e59d8dbfcc36138f5f18be5f24394d33b38b24f7fd0b1caa33095f22f"
 dependencies = [
  "block-sys",
- "objc2",
+ "objc2 0.5.2",
 ]
 
 [[package]]
@@ -375,7 +375,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c132eebf10f5cad5289222520a4a058514204aed6d791f1cf4fe8088b82d15f"
 dependencies = [
- "objc2",
+ "objc2 0.5.2",
 ]
 
 [[package]]
@@ -1354,7 +1354,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fb69199826926eb864697bddd27f73d9fddcffc004f5733131e15b465e30642"
 dependencies = [
  "block2 0.4.0",
- "objc2",
+ "objc2 0.5.2",
 ]
 
 [[package]]
@@ -2020,6 +2020,9 @@ dependencies = [
  "makepad-code-editor",
  "makepad-widgets",
  "moly-protocol",
+ "objc2 0.6.0",
+ "objc2-app-kit",
+ "objc2-foundation 0.3.0",
  "rand",
  "reqwest 0.11.27",
  "rfd",
@@ -2238,6 +2241,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "objc2"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3531f65190d9cff863b77a99857e74c314dd16bf56c538c4b57c7cbc3f3a6e59"
+dependencies = [
+ "objc2-encode",
+]
+
+[[package]]
+name = "objc2-app-kit"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5906f93257178e2f7ae069efb89fbd6ee94f0592740b5f8a1512ca498814d0fb"
+dependencies = [
+ "bitflags 2.9.0",
+ "objc2 0.6.0",
+ "objc2-foundation 0.3.0",
+]
+
+[[package]]
 name = "objc2-encode"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2252,7 +2275,17 @@ dependencies = [
  "bitflags 2.9.0",
  "block2 0.5.1",
  "libc",
- "objc2",
+ "objc2 0.5.2",
+]
+
+[[package]]
+name = "objc2-foundation"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a21c6c9014b82c39515db5b396f91645182611c97d24637cf56ac01e5f8d998"
+dependencies = [
+ "bitflags 2.9.0",
+ "objc2 0.6.0",
 ]
 
 [[package]]
@@ -2901,7 +2934,7 @@ dependencies = [
  "cfg-if",
  "icrate",
  "jni",
- "objc2",
+ "objc2 0.5.2",
  "robius-android-env",
  "windows 0.54.0",
 ]
@@ -2912,8 +2945,8 @@ version = "0.1.0"
 source = "git+https://github.com/project-robius/robius-url-handler#a31f86f42cda993e9c1beb03b7f538e9ee0270be"
 dependencies = [
  "cfg-if",
- "objc2",
- "objc2-foundation",
+ "objc2 0.5.2",
+ "objc2-foundation 0.2.2",
  "windows 0.57.0",
 ]
 
