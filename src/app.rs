@@ -41,7 +41,7 @@ live_design! {
 
     App = {{App}} {
         ui: <Window> {
-            window: {inner_size: vec2(1440, 1024)},
+            window: {inner_size: vec2(1440, 1024), title: "Moly"},
             pass: {clear_color: #fff}
 
             caption_bar = {
