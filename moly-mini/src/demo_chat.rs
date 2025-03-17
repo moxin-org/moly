@@ -172,7 +172,7 @@ impl DemoChat {
     fn setup_chat_repo(&self) {
         let client = {
             // let moly = MolyClient::new("http://localhost:8085".into());
-            let ollama = MolyClient::new("http://localhost:11434".into());
+            let ollama = OpenAIClient::new("http://localhost:11434".into());
 
             let mut client = MultiClient::new();
             // client.add_client(Box::new(moly));
@@ -181,7 +181,7 @@ impl DemoChat {
             // Only add OpenAI client if API key is present
             if let Some(key) = OPEN_AI_KEY {
                 let openai_url = "https://api.openai.com";
-                let mut openai = MolyClient::new(openai_url.into());
+                let mut openai = OpenAIClient::new(openai_url.into());
                 openai.set_key(key);
                 client.add_client(Box::new(openai));
             }
@@ -189,7 +189,7 @@ impl DemoChat {
             // Only add OpenRouter client if API key is present
             if let Some(key) = OPEN_ROUTER_KEY {
                 let open_router_url = "https://openrouter.ai/api";
-                let mut open_router = MolyClient::new(open_router_url.into());
+                let mut open_router = OpenAIClient::new(open_router_url.into());
                 open_router.set_key(key);
                 client.add_client(Box::new(open_router));
             }
@@ -197,7 +197,7 @@ impl DemoChat {
             // Only add SiliconFlow client if API key is present
             if let Some(key) = SILICON_FLOW_KEY {
                 let siliconflow_url = "https://api.siliconflow.cn";
-                let mut siliconflow = MolyClient::new(siliconflow_url.into());
+                let mut siliconflow = OpenAIClient::new(siliconflow_url.into());
                 siliconflow.set_key(key);
                 client.add_client(Box::new(siliconflow));
             }
