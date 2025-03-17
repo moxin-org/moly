@@ -92,34 +92,34 @@ struct Completion {
 }
 
 #[derive(Clone, Debug, Default)]
-struct MolyClientInner {
+struct OpenAIClientInner {
     url: String,
     headers: HeaderMap,
 }
 
 /// A client capable of interacting with Moly Server and other OpenAI-compatible APIs.
 #[derive(Debug)]
-pub struct MolyClient(Arc<Mutex<MolyClientInner>>);
+pub struct OpenAIClient(Arc<Mutex<OpenAIClientInner>>);
 
-impl Clone for MolyClient {
+impl Clone for OpenAIClient {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl From<MolyClientInner> for MolyClient {
-    fn from(inner: MolyClientInner) -> Self {
+impl From<OpenAIClientInner> for OpenAIClient {
+    fn from(inner: OpenAIClientInner) -> Self {
         Self(Arc::new(Mutex::new(inner)))
     }
 }
 
-impl MolyClient {
+impl OpenAIClient {
     /// Creates a new client with the given OpenAI-compatible API URL.
     pub fn new(url: String) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse().unwrap());
 
-        MolyClientInner {
+        OpenAIClientInner {
             url,
             headers: HeaderMap::new(),
             ..Default::default()
@@ -140,7 +140,7 @@ impl MolyClient {
     }
 }
 
-impl BotClient for MolyClient {
+impl BotClient for OpenAIClient {
     fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>> {
         let inner = self.0.clone();
 

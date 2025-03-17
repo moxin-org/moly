@@ -24,14 +24,14 @@
 //! with (mostly remote) bot providers like OpenAI, Ollama, OpenRouter,
 //! Moly Server, MoFa, etc.
 //!
-//! An OpenAI compatible client comes out-of-the-box with MolyKit, [MolyClient].
+//! An OpenAI compatible client comes out-of-the-box with MolyKit, [OpenAIClient].
 //!
 //! So, add the following somewhere appropriate (like in `after_new_from_doc`
 //! from Makepad) to give [Chat] its [BotRepo]:
 //! ```rust
 //! use moly_kit::*
 //!
-//! let mut client = MolyClient::new("https://api.openai.com".into());
+//! let mut client = OpenAIClient::new("https://api.openai.com".into());
 //! client.set_key("<YOUR_KEY>".into());
 //!
 //! let repo = BotRepo::from(client);
