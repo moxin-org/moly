@@ -80,11 +80,13 @@ pub struct Message {
     pub citations: Vec<String>,
 }
 
-/// A new structure to hold both text delta and optional metadata like citations.
-#[derive(Clone, Debug)]
-pub struct ChatDelta {
-    pub content_delta: String,
-    pub citations: Option<Vec<String>>,
+/// A delta response for an existing [Message].
+#[derive(Clone, Debug, Default)]
+pub struct MessageDelta {
+    /// Delta for the [Message::body] field.
+    pub body: String,
+    /// Delta for the [Message::citations] field.
+    pub citations: Vec<String>,
 }
 
 /// A standard interface to fetch bots information and send messages to them.
@@ -101,7 +103,7 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<ChatDelta, ()>>;
+    ) -> MolyStream<'static, Result<MessageDelta, ()>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -127,17 +129,15 @@ pub trait BotClient: Send {
         let bot = bot.clone();
 
         let future = async move {
-            let mut content = String::new();
+            let mut body = String::new();
             let mut citations = Vec::new();
 
             let mut stream = stream;
             while let Some(delta) = stream.next().await {
                 match delta {
-                    Ok(chat_delta) => {
-                        content.push_str(&chat_delta.content_delta);
-                        if let Some(cits) = chat_delta.citations {
-                            citations = cits;
-                        }
+                    Ok(delta) => {
+                        body.push_str(&delta.body);
+                        citations.extend(delta.citations);
                     }
                     Err(()) => return Err(()),
                 }
@@ -145,7 +145,7 @@ pub trait BotClient: Send {
 
             Ok(Message {
                 from: EntityId::Bot(bot),
-                body: content,
+                body,
                 is_writing: false,
                 citations,
             })
