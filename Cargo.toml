@@ -12,7 +12,7 @@ exclude = ["packaging/before-packaging-command"]
 name = "moly"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.79"                                                 ## required by cargo-packager
+rust-version = "1.81"                                                 ## required by cargo-packager
 description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moly_app` to avoid naming conflicts
