@@ -209,7 +209,10 @@ impl Chat {
         }
     }
 
-    fn perform_send(&mut self, cx: &mut Cx) {
+    fn handle_send_task(&mut self, cx: &mut Cx) {
+        // Let's start clean before starting a new stream.
+        self.abort();
+
         // TODO: See `bot_id` TODO.
         let bot_id = self.bot_id.clone().expect("no bot selected");
 
@@ -291,21 +294,29 @@ impl Chat {
         self.abort_handle = Some(abort_handle);
 
         spawn(async move {
-            // The abortable error is meaningless, it just indicates that it was aborted.
-            let _ = future.await;
-            ui.defer_with_redraw(|me, _cx, _scope| {
-                me.abort_handle = None;
-                me.prompt_input_ref().write().set_send();
-                me.messages_ref().write().messages.retain_mut(|m| {
-                    m.is_writing = false;
-                    !m.body.is_empty()
+            // The wrapper Future is only error if aborted.
+            //
+            // Cleanup caused by signaling stuff like `Chat::abort` should be done synchronously
+            // so one can abort and immediately start a new stream without race conditions.
+            //
+            // Only cleanup after natural termination of the stream should be here.
+            if future.await.is_ok() {
+                ui.defer_with_redraw(|me, _cx, _scope| {
+                    me.clean_streaming_artifacts();
                 });
-            });
+            }
         });
     }
 
-    fn perform_stop(&mut self, _cx: &mut Cx) {
+    fn handle_stop_task(&mut self, _cx: &mut Cx) {
+        self.abort();
+    }
+
+    /// Immediately remove resources/data related to the current streaming and signal
+    /// the stream to stop as soon as possible.
+    fn abort(&mut self) {
         self.abort_handle.take().map(|handle| handle.abort());
+        self.clean_streaming_artifacts();
     }
 
     /// Dispatch a set of tasks to be executed by the [Chat] widget as a single hookable
@@ -367,10 +378,10 @@ impl Chat {
                 self.redraw(cx);
             }
             ChatTask::Send => {
-                self.perform_send(cx);
+                self.handle_send_task(cx);
             }
             ChatTask::Stop => {
-                self.perform_stop(cx);
+                self.handle_stop_task(cx);
             }
             ChatTask::UpdateMessage(index, message) => {
                 self.messages_ref().write_with(|m| {
@@ -426,6 +437,19 @@ impl Chat {
         }
 
         self.hook_after = Some(Box::new(hook));
+    }
+
+    /// Remove data related to current streaming, leaving everything ready for a new one.
+    ///
+    /// Called as soon as possible after streaming completes naturally or immediately when
+    /// calling [Chat::abort].
+    fn clean_streaming_artifacts(&mut self) {
+        self.abort_handle = None;
+        self.prompt_input_ref().write().set_send();
+        self.messages_ref().write().messages.retain_mut(|m| {
+            m.is_writing = false;
+            !m.body.is_empty()
+        });
     }
 }
 
