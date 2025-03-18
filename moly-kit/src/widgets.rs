@@ -6,6 +6,7 @@ mod avatar;
 mod citations;
 mod message_loading;
 mod message_markdown;
+mod message_thinking_block;
 
 #[cfg(any(feature = "async-rt", feature = "async-web"))]
 pub mod chat;
@@ -26,4 +27,5 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     messages::live_design(cx);
     prompt_input::live_design(cx);
     chat::live_design(cx);
+    message_thinking_block::live_design(cx);
 }
