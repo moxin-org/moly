@@ -285,27 +285,21 @@ impl Chat {
                     }
                 });
             }
-
-            ui.defer_with_redraw(|me, _cx, _scope| {
-                me.messages_ref().write_with(|messages| {
-                    messages
-                        .messages
-                        .last_mut()
-                        .expect("no message where to put delta")
-                        .is_writing = false;
-                });
-            });
         };
 
         let (future, abort_handle) = futures::future::abortable(future);
-
         self.abort_handle = Some(abort_handle);
 
         spawn(async move {
-            future.await.unwrap_or_else(|_| log!("Aborted"));
+            // The abortable error is meaningless, it just indicates that it was aborted.
+            let _ = future.await;
             ui.defer_with_redraw(|me, _cx, _scope| {
                 me.abort_handle = None;
                 me.prompt_input_ref().write().set_send();
+                me.messages_ref().write().messages.retain_mut(|m| {
+                    m.is_writing = false;
+                    !m.body.is_empty()
+                });
             });
         });
     }
