@@ -88,7 +88,7 @@ struct Choice {
 struct Completion {
     pub choices: Vec<Choice>,
     #[serde(default)]
-    pub citations: Option<Vec<String>>,
+    pub citations: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -194,7 +194,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<ChatDelta, ()>> {
+    ) -> MolyStream<'static, Result<MessageDelta, ()>> {
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())
@@ -268,17 +268,16 @@ impl BotClient for OpenAIClient {
                         }
                     };
 
-                    // Combine all partial choices content
-                    let content_delta = completion
+                    let body = completion
                         .choices
                         .iter()
                         .map(|c| c.delta.content.as_str())
                         .collect::<String>();
 
-                    let citations = completion.citations.clone();
+                    let citations = completion.citations;
 
-                    yield Ok(ChatDelta {
-                        content_delta,
+                    yield Ok(MessageDelta {
+                        body,
                         citations,
                     });
                 }
