@@ -1,3 +1,4 @@
+pub mod capture;
 pub mod chats;
 pub mod deep_inquire_client;
 pub mod downloads;

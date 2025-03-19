@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Info.plist merged by cargo-packager with its generated copy. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>Capture in Moly</string>
+            </dict>
+            <key>NSMessage</key>
+            <string>capture</string>
+            <key>NSPortName</key>
+            <string>Moly</string>
+            <key>NSRequiredContext</key>
+            <dict/>
+            <key>NSSendTypes</key>
+            <array>
+                <string>NSPasteboardTypeString</string>
+                <string>NSStringPboardType</string>
+                <string>public.utf8-plain-text</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

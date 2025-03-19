@@ -1,7 +1,10 @@
 use makepad_widgets::*;
 
 use crate::{
-    data::{chats::chat_entity::ChatEntityId, providers::RemoteModel, store::Store},
+    data::{
+        capture::CaptureAction, chats::chat_entity::ChatEntityId, providers::RemoteModel,
+        store::Store,
+    },
     shared::actions::ChatAction,
 };
 
@@ -340,6 +343,14 @@ impl WidgetMatchEvent for PromptInput {
                     self.on_deselected(cx);
                 }
                 _ => (),
+            }
+
+            match action.cast() {
+                CaptureAction::Capture { event } => {
+                    self.command_text_input(id!(prompt))
+                        .set_text(cx, event.contents());
+                }
+                _ => {}
             }
         }
 

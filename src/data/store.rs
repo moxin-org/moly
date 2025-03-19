@@ -1,3 +1,4 @@
+use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
 use super::chats::chat_entity::ChatEntityId;
 use super::chats::model_loader::ModelLoaderStatusChanged;
@@ -75,6 +76,8 @@ impl Store {
             .unwrap_or(8765);
 
         let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
+
+        register_capture_manager();
 
         let mut store = Self {
             moly_client: moly_client.clone(),
