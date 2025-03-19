@@ -336,8 +336,9 @@ impl Chat {
         });
     }
 
-    fn handle_stop_task(&mut self, _cx: &mut Cx) {
+    fn handle_stop_task(&mut self, cx: &mut Cx) {
         self.abort();
+        self.redraw(cx);
     }
 
     /// Immediately remove resources/data related to the current streaming and signal
