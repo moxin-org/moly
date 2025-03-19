@@ -4,6 +4,7 @@ use std::cell::{Ref, RefMut};
 use utils::asynchronous::spawn;
 
 use crate::utils::events::EventExt;
+use crate::utils::ui_runner::DeferWithRedrawAsync;
 use crate::*;
 
 live_design!(
@@ -265,43 +266,57 @@ impl Chat {
                     },
                 };
 
-                // TODO: Should be awaitable to avoid deferring many?
-                ui.defer_with_redraw(move |me, cx, _| {
-                    let messages = me.messages_ref();
+                // In theory, with the synchroneous defer, if stream messages come
+                // faster than deferred closures are executed, and one closure causes
+                // an abort, the other already deferred closures will still be executed
+                // and may cause race conditions.
+                //
+                // In practice, this never happened in my tests. But better safe than
+                // sorry. The async variant let this async context wait before processing
+                // the next delta. And also allows to stop naturally from here as well
+                // thanks to its ability to send a value back.
+                let should_break = ui
+                    .defer_with_redraw_async(move |me, cx, _| {
+                        let messages = me.messages_ref();
 
-                    // Let's stop if we don't have where to put the delta.
-                    let Some(mut message) = messages.read().messages.last().cloned() else {
-                        me.abort();
-                        return;
-                    };
+                        // Let's stop if we don't have where to put the delta.
+                        let Some(mut message) = messages.read().messages.last().cloned() else {
+                            return true;
+                        };
 
-                    // Let's abort if we see we are putting delta in the wrong message.
-                    if let Some(expected_message) = me.expected_message.as_ref() {
-                        if message != *expected_message {
-                            me.abort();
-                            return;
+                        // Let's abort if we see we are putting delta in the wrong message.
+                        if let Some(expected_message) = me.expected_message.as_ref() {
+                            if message != *expected_message {
+                                return true;
+                            }
                         }
-                    }
 
-                    message.body.push_str(&delta.body);
-                    // TODO: Maybe this is a good case for a sorted set, like `BTreeSet`.
-                    for citation in delta.citations {
-                        if !message.citations.contains(&citation) {
-                            message.citations.push(citation);
+                        message.body.push_str(&delta.body);
+                        // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
+                        for citation in delta.citations {
+                            if !message.citations.contains(&citation) {
+                                message.citations.push(citation);
+                            }
                         }
-                    }
 
-                    me.expected_message = Some(message.clone());
+                        me.expected_message = Some(message.clone());
 
-                    let index = messages.read().messages.len() - 1;
-                    let is_at_bottom = messages.read().is_at_bottom();
+                        let index = messages.read().messages.len() - 1;
+                        let is_at_bottom = messages.read().is_at_bottom();
 
-                    me.dispatch(cx, &mut ChatTask::UpdateMessage(index, message).into());
+                        me.dispatch(cx, &mut ChatTask::UpdateMessage(index, message).into());
 
-                    if is_at_bottom {
-                        me.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
-                    }
-                });
+                        if is_at_bottom {
+                            me.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
+                        }
+
+                        false
+                    })
+                    .await;
+
+                if should_break.unwrap_or(true) {
+                    break;
+                }
             }
         };
 
@@ -457,6 +472,7 @@ impl Chat {
     /// Called as soon as possible after streaming completes naturally or immediately when
     /// calling [Chat::abort].
     fn clean_streaming_artifacts(&mut self) {
+        log!("Cleaning streaming artifacts");
         self.abort_handle = None;
         self.expected_message = None;
         self.prompt_input_ref().write().set_send();
