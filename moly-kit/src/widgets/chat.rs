@@ -90,6 +90,13 @@ pub struct Chat {
     #[rust]
     abort_handle: Option<AbortHandle>,
 
+    /// Used to control we are putting message deltas into the right message during
+    /// streaming.
+    // Note: If messages had unique identifiers, we wouldn't need to keep a copy of
+    // the message as a workaround.
+    #[rust]
+    expected_message: Option<Message>,
+
     #[rust]
     hook_before: Option<Box<dyn FnMut(&mut Vec<ChatTask>, &mut Chat, &mut Cx)>>,
 
@@ -247,8 +254,8 @@ impl Chat {
         let ui = self.ui_runner();
         let future = async move {
             let mut client = repo.client();
-            let mut message_stream = client.send_stream(&bot_id, &context);
 
+            let mut message_stream = client.send_stream(&bot_id, &context);
             while let Some(delta) = message_stream.next().await {
                 let delta = match delta {
                     Ok(delta) => delta,
@@ -258,28 +265,36 @@ impl Chat {
                     },
                 };
 
-                ui.defer_with_redraw(move |me, cx, _scope| {
-                    let (index, message, is_at_bottom) = me.messages_ref().read_with(|messages| {
-                        let mut message = messages
-                            .messages
-                            .last()
-                            .expect("no message where to put delta")
-                            .clone();
+                // TODO: Should be awaitable to avoid deferring many?
+                ui.defer_with_redraw(move |me, cx, _| {
+                    let messages = me.messages_ref();
 
-                        message.body.push_str(&delta.body);
-                        // TODO: Maybe this is a good case for a sorted set, like `BTreeSet`.
-                        for citation in delta.citations {
-                            if !message.citations.contains(&citation) {
-                                message.citations.push(citation);
-                            }
+                    // Let's stop if we don't have where to put the delta.
+                    let Some(mut message) = messages.read().messages.last().cloned() else {
+                        me.abort();
+                        return;
+                    };
+
+                    // Let's abort if we see we are putting delta in the wrong message.
+                    if let Some(expected_message) = me.expected_message.as_ref() {
+                        if message != *expected_message {
+                            me.abort();
+                            return;
                         }
+                    }
 
-                        (
-                            messages.messages.len() - 1,
-                            message,
-                            messages.is_at_bottom(),
-                        )
-                    });
+                    message.body.push_str(&delta.body);
+                    // TODO: Maybe this is a good case for a sorted set, like `BTreeSet`.
+                    for citation in delta.citations {
+                        if !message.citations.contains(&citation) {
+                            message.citations.push(citation);
+                        }
+                    }
+
+                    me.expected_message = Some(message.clone());
+
+                    let index = messages.read().messages.len() - 1;
+                    let is_at_bottom = messages.read().is_at_bottom();
 
                     me.dispatch(cx, &mut ChatTask::UpdateMessage(index, message).into());
 
@@ -301,9 +316,7 @@ impl Chat {
             //
             // Only cleanup after natural termination of the stream should be here.
             if future.await.is_ok() {
-                ui.defer_with_redraw(|me, _cx, _scope| {
-                    me.clean_streaming_artifacts();
-                });
+                ui.defer_with_redraw(|me, _, _| me.clean_streaming_artifacts());
             }
         });
     }
@@ -445,6 +458,7 @@ impl Chat {
     /// calling [Chat::abort].
     fn clean_streaming_artifacts(&mut self) {
         self.abort_handle = None;
+        self.expected_message = None;
         self.prompt_input_ref().write().set_send();
         self.messages_ref().write().messages.retain_mut(|m| {
             m.is_writing = false;
