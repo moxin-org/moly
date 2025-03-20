@@ -299,12 +299,16 @@ impl Chat {
                             }
                         }
 
-                        me.expected_message = Some(message.clone());
-
                         let index = messages.read().messages.len() - 1;
                         let is_at_bottom = messages.read().is_at_bottom();
 
-                        me.dispatch(cx, &mut ChatTask::UpdateMessage(index, message).into());
+                        let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
+                        me.dispatch(cx, &mut tasks);
+
+                        let Some(ChatTask::UpdateMessage(_, message)) = tasks.pop() else {
+                            panic!();
+                        };
+                        me.expected_message = Some(message);
 
                         if is_at_bottom {
                             me.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
