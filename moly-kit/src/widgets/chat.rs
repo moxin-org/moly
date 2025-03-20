@@ -276,46 +276,7 @@ impl Chat {
                 // the next delta. And also allows to stop naturally from here as well
                 // thanks to its ability to send a value back.
                 let should_break = ui
-                    .defer_with_redraw_async(move |me, cx, _| {
-                        let messages = me.messages_ref();
-
-                        // Let's stop if we don't have where to put the delta.
-                        let Some(mut message) = messages.read().messages.last().cloned() else {
-                            return true;
-                        };
-
-                        // Let's abort if we see we are putting delta in the wrong message.
-                        if let Some(expected_message) = me.expected_message.as_ref() {
-                            if message != *expected_message {
-                                return true;
-                            }
-                        }
-
-                        message.body.push_str(&delta.body);
-                        // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
-                        for citation in delta.citations {
-                            if !message.citations.contains(&citation) {
-                                message.citations.push(citation);
-                            }
-                        }
-
-                        let index = messages.read().messages.len() - 1;
-                        let is_at_bottom = messages.read().is_at_bottom();
-
-                        let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
-                        me.dispatch(cx, &mut tasks);
-
-                        let Some(ChatTask::UpdateMessage(_, message)) = tasks.pop() else {
-                            panic!();
-                        };
-                        me.expected_message = Some(message);
-
-                        if is_at_bottom {
-                            me.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
-                        }
-
-                        false
-                    })
+                    .defer_with_redraw_async(move |me, cx, _| me.handle_message_delta(cx, delta))
                     .await;
 
                 if should_break.unwrap_or(true) {
@@ -484,6 +445,48 @@ impl Chat {
             m.is_writing = false;
             !m.body.is_empty()
         });
+    }
+
+    fn handle_message_delta(&mut self, cx: &mut Cx, delta: MessageDelta) -> bool {
+        let messages = self.messages_ref();
+
+        // Let's stop if we don't have where to put the delta.
+        let Some(mut message) = messages.read().messages.last().cloned() else {
+            return true;
+        };
+
+        // Let's abort if we see we are putting delta in the wrong message.
+        if let Some(expected_message) = self.expected_message.as_ref() {
+            if message != *expected_message {
+                return true;
+            }
+        }
+
+        message.body.push_str(&delta.body);
+        // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
+        for citation in delta.citations {
+            if !message.citations.contains(&citation) {
+                message.citations.push(citation);
+            }
+        }
+
+        let index = messages.read().messages.len() - 1;
+        let is_at_bottom = messages.read().is_at_bottom();
+
+        let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
+        self.dispatch(cx, &mut tasks);
+
+        let Some(ChatTask::UpdateMessage(_, message)) = tasks.pop() else {
+            panic!();
+        };
+
+        self.expected_message = Some(message);
+
+        if is_at_bottom {
+            self.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
+        }
+
+        false
     }
 }
 
