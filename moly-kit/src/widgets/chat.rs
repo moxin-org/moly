@@ -473,7 +473,6 @@ impl Chat {
     /// Called as soon as possible after streaming completes naturally or immediately when
     /// calling [Chat::abort].
     fn clean_streaming_artifacts(&mut self) {
-        log!("Cleaning streaming artifacts");
         self.abort_handle = None;
         self.expected_message = None;
         self.prompt_input_ref().write().set_send();
