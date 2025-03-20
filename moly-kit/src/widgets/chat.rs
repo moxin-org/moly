@@ -477,7 +477,8 @@ impl Chat {
         self.dispatch(cx, &mut tasks);
 
         let Some(ChatTask::UpdateMessage(_, message)) = tasks.pop() else {
-            panic!();
+            // Let's abort if the tasks were modified in an unexpected way.
+            return true;
         };
 
         self.expected_message = Some(message);
