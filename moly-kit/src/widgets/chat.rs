@@ -4,6 +4,7 @@ use std::cell::{Ref, RefMut};
 use utils::asynchronous::spawn;
 
 use crate::utils::events::EventExt;
+use crate::utils::ui_runner::DeferWithRedrawAsync;
 use crate::*;
 
 live_design!(
@@ -89,6 +90,13 @@ pub struct Chat {
 
     #[rust]
     abort_handle: Option<AbortHandle>,
+
+    /// Used to control we are putting message deltas into the right message during
+    /// streaming.
+    // Note: If messages had unique identifiers, we wouldn't need to keep a copy of
+    // the message as a workaround.
+    #[rust]
+    expected_message: Option<Message>,
 
     #[rust]
     hook_before: Option<Box<dyn FnMut(&mut Vec<ChatTask>, &mut Chat, &mut Cx)>>,
@@ -209,7 +217,10 @@ impl Chat {
         }
     }
 
-    fn perform_send(&mut self, cx: &mut Cx) {
+    fn handle_send_task(&mut self, cx: &mut Cx) {
+        // Let's start clean before starting a new stream.
+        self.abort();
+
         // TODO: See `bot_id` TODO.
         let bot_id = self.bot_id.clone().expect("no bot selected");
 
@@ -256,63 +267,51 @@ impl Chat {
                     },
                 };
 
-                ui.defer_with_redraw(move |me, cx, _scope| {
-                    let (index, message, is_at_bottom) = me.messages_ref().read_with(|messages| {
-                        let mut message = messages
-                            .messages
-                            .last()
-                            .expect("no message where to put delta")
-                            .clone();
+                // In theory, with the synchroneous defer, if stream messages come
+                // faster than deferred closures are executed, and one closure causes
+                // an abort, the other already deferred closures will still be executed
+                // and may cause race conditions.
+                //
+                // In practice, this never happened in my tests. But better safe than
+                // sorry. The async variant let this async context wait before processing
+                // the next delta. And also allows to stop naturally from here as well
+                // thanks to its ability to send a value back.
+                let should_break = ui
+                    .defer_with_redraw_async(move |me, cx, _| me.handle_message_delta(cx, delta))
+                    .await;
 
-                        message.body.push_str(&delta.body);
-                        // TODO: Maybe this is a good case for a sorted set, like `BTreeSet`.
-                        for citation in delta.citations {
-                            if !message.citations.contains(&citation) {
-                                message.citations.push(citation);
-                            }
-                        }
-
-                        (
-                            messages.messages.len() - 1,
-                            message,
-                            messages.is_at_bottom(),
-                        )
-                    });
-
-                    me.dispatch(cx, &mut ChatTask::UpdateMessage(index, message).into());
-
-                    if is_at_bottom {
-                        me.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
-                    }
-                });
+                if should_break.unwrap_or(true) {
+                    break;
+                }
             }
-
-            ui.defer_with_redraw(|me, _cx, _scope| {
-                me.messages_ref().write_with(|messages| {
-                    messages
-                        .messages
-                        .last_mut()
-                        .expect("no message where to put delta")
-                        .is_writing = false;
-                });
-            });
         };
 
         let (future, abort_handle) = futures::future::abortable(future);
-
         self.abort_handle = Some(abort_handle);
 
         spawn(async move {
-            future.await.unwrap_or_else(|_| log!("Aborted"));
-            ui.defer_with_redraw(|me, _cx, _scope| {
-                me.abort_handle = None;
-                me.prompt_input_ref().write().set_send();
-            });
+            // The wrapper Future is only error if aborted.
+            //
+            // Cleanup caused by signaling stuff like `Chat::abort` should be done synchronously
+            // so one can abort and immediately start a new stream without race conditions.
+            //
+            // Only cleanup after natural termination of the stream should be here.
+            if future.await.is_ok() {
+                ui.defer_with_redraw(|me, _, _| me.clean_streaming_artifacts());
+            }
         });
     }
 
-    fn perform_stop(&mut self, _cx: &mut Cx) {
+    fn handle_stop_task(&mut self, cx: &mut Cx) {
+        self.abort();
+        self.redraw(cx);
+    }
+
+    /// Immediately remove resources/data related to the current streaming and signal
+    /// the stream to stop as soon as possible.
+    fn abort(&mut self) {
         self.abort_handle.take().map(|handle| handle.abort());
+        self.clean_streaming_artifacts();
     }
 
     /// Dispatch a set of tasks to be executed by the [Chat] widget as a single hookable
@@ -374,10 +373,10 @@ impl Chat {
                 self.redraw(cx);
             }
             ChatTask::Send => {
-                self.perform_send(cx);
+                self.handle_send_task(cx);
             }
             ChatTask::Stop => {
-                self.perform_stop(cx);
+                self.handle_stop_task(cx);
             }
             ChatTask::UpdateMessage(index, message) => {
                 self.messages_ref().write_with(|m| {
@@ -433,6 +432,63 @@ impl Chat {
         }
 
         self.hook_after = Some(Box::new(hook));
+    }
+
+    /// Remove data related to current streaming, leaving everything ready for a new one.
+    ///
+    /// Called as soon as possible after streaming completes naturally or immediately when
+    /// calling [Chat::abort].
+    fn clean_streaming_artifacts(&mut self) {
+        self.abort_handle = None;
+        self.expected_message = None;
+        self.prompt_input_ref().write().set_send();
+        self.messages_ref().write().messages.retain_mut(|m| {
+            m.is_writing = false;
+            !m.body.is_empty()
+        });
+    }
+
+    fn handle_message_delta(&mut self, cx: &mut Cx, delta: MessageDelta) -> bool {
+        let messages = self.messages_ref();
+
+        // Let's stop if we don't have where to put the delta.
+        let Some(mut message) = messages.read().messages.last().cloned() else {
+            return true;
+        };
+
+        // Let's abort if we see we are putting delta in the wrong message.
+        if let Some(expected_message) = self.expected_message.as_ref() {
+            if message != *expected_message {
+                return true;
+            }
+        }
+
+        message.body.push_str(&delta.body);
+        // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
+        for citation in delta.citations {
+            if !message.citations.contains(&citation) {
+                message.citations.push(citation);
+            }
+        }
+
+        let index = messages.read().messages.len() - 1;
+        let is_at_bottom = messages.read().is_at_bottom();
+
+        let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
+        self.dispatch(cx, &mut tasks);
+
+        let Some(ChatTask::UpdateMessage(_, message)) = tasks.pop() else {
+            // Let's abort if the tasks were modified in an unexpected way.
+            return true;
+        };
+
+        self.expected_message = Some(message);
+
+        if is_at_bottom {
+            self.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
+        }
+
+        false
     }
 }
 
