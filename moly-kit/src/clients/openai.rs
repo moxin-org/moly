@@ -157,10 +157,23 @@ impl BotClient for OpenAIClient {
                 }
             };
 
-            let models: Models = match response.json().await {
-                Ok(models) => models,
+            let models: Models = match response.text().await {
+                Ok(text) => {
+                    if text.is_empty() {
+                        log!("Empty response from server");
+                        return Err(());
+                    }
+                    
+                    match serde_json::from_str(&text) {
+                        Ok(models) => models,
+                        Err(error) => {
+                            log!("Error parsing models response: {:?}, text: {}", error, text);
+                            return Err(());
+                        }
+                    }
+                },
                 Err(error) => {
-                    log!("Error {:?}", error);
+                    log!("Error fetching response text: {:?}", error);
                     return Err(());
                 }
             };
