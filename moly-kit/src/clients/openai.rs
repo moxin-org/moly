@@ -143,10 +143,12 @@ impl OpenAIClient {
 impl BotClient for OpenAIClient {
     fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>> {
         let inner = self.0.clone();
+        let server_url = self.0.lock().unwrap().url.clone();
 
         let future = async move {
+            let url = format!("{}/models", inner.lock().unwrap().url);
             let request = reqwest::Client::new()
-                .get(format!("{}/v1/models", inner.lock().unwrap().url))
+                .get(url)
                 .headers(inner.lock().unwrap().headers.clone());
 
             let response = match request.send().await {
@@ -169,7 +171,9 @@ impl BotClient for OpenAIClient {
                 .data
                 .iter()
                 .map(|m| Bot {
-                    id: BotId::from(m.id.as_str()),
+                    id: BotId::new(&m.id, &server_url),
+                    model_id: m.id.clone(),
+                    provider_url: server_url.clone(),
                     name: m.id.clone(),
                     // TODO: Handle this char as a grapheme.
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
@@ -192,7 +196,7 @@ impl BotClient for OpenAIClient {
     /// Stream pieces of content back as a ChatDelta instead of just a String.
     fn send_stream(
         &mut self,
-        bot: &BotId,
+        bot: &Bot,
         messages: &[Message],
     ) -> MolyStream<'static, Result<MessageDelta, ()>> {
         let moly_messages: Vec<OutcomingMessage> = messages
@@ -205,11 +209,13 @@ impl BotClient for OpenAIClient {
             (inner.url.clone(), inner.headers.clone())
         };
 
+        let url = format!("{}/chat/completions", url);
+
         let request = reqwest::Client::new()
-            .post(format!("{}/v1/chat/completions", url))
+            .post(url)
             .headers(headers)
             .json(&serde_json::json!({
-                "model": bot.as_str(),
+                "model": bot.model_id.clone(),
                 "messages": moly_messages,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,
@@ -218,9 +224,11 @@ impl BotClient for OpenAIClient {
 
         let stream = stream! {
             let response = match request.send().await {
-                Ok(response) => response,
+                Ok(response) => {
+                    response
+                },
                 Err(error) => {
-                    log!("Error {:?}", error);
+                    eprintln!("Error: {:?}", error);
                     yield Err(());
                     return;
                 }

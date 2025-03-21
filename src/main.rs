@@ -1,6 +1,16 @@
 use std::io::Write;
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
+#[cfg(target_arch = "wasm32")]
 fn main() {
+    moly_mini::app::app_main()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[tokio::main]
+async fn main() {
     robius_url_handler::register_handler(|incoming_url| {
         // Note: here is where the URL should be acted upon.
         // Currently, we just log it to a temp file to prove that it works.

@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{mofa::MofaClient, openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
 
+use sha2::{Sha256, Digest};
+use hex;
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Provider {
@@ -35,7 +37,11 @@ pub struct RemoteModelId(pub String);
 
 impl RemoteModelId {
     pub fn from_model_and_server(agent_name: &str, server_address: &str) -> Self {
-        RemoteModelId(format!("{}-{}", agent_name, server_address))
+        let mut hasher = Sha256::new();
+        hasher.update(format!("{}-{}", agent_name, server_address));
+        let result = hasher.finalize();
+        // Take first 16 bytes of hash for a shorter but still unique identifier
+        RemoteModelId(hex::encode(&result[..16]))
     }
 }
 

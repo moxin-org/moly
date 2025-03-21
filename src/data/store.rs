@@ -16,6 +16,8 @@ use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
 
+use moly_kit::*;
+
 #[allow(dead_code)]
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
 
@@ -58,6 +60,7 @@ pub struct Store {
     pub downloads: Downloads,
     pub chats: Chats,
     pub preferences: Preferences,
+    pub bot_repo: Option<BotRepo>,
 }
 
 impl Default for Store {
@@ -85,6 +88,7 @@ impl Store {
             downloads: Downloads::new(moly_client.clone()),
             chats: Chats::new(moly_client.clone()),
             preferences,
+            bot_repo: None,
         };
 
         store.downloads.load_downloaded_files();
@@ -463,8 +467,20 @@ impl Store {
     }
 
     pub fn insert_or_update_provider(&mut self, provider: &Provider) {
+        // Update in memory
         self.chats.insert_or_update_provider(provider);
+        // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
+        // Update in MolyKit (to update the API key used by the client, if needed)
+        if let Some(bot_repo) = &self.bot_repo {
+            // Because MolyKit does not currently expose an API to update the clients, 
+            // we'll remove and recreate the entire bot repo
+            // TODO(MolyKit): I think BotRepo should be an actual repository-like interface and not a client interface, it might still hold a main
+            // client/multi_client, but the crate user should be able to update the clients (add new ones, update existing ones, remove, etc.)
+            // it would also be helpful if BotRepo can expose the bots without re-fetching every time. (or at least rename BotRepo, it does not follow
+            // a repository pattern)
+            self.bot_repo = None;
+        }
     }
 
     pub fn remove_provider(&mut self, url: &str) {

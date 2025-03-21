@@ -224,7 +224,7 @@ impl Chat {
         self.title_state = TitleState::Updated;
     }
 
-    fn update_title_based_on_first_message(&mut self) {
+    pub fn update_title_based_on_first_message(&mut self) {
         // If it hasnt been updated, and theres at least one message, use the first
         // one as title. Else we just return the default one.
         if matches!(self.title_state, TitleState::Default) {

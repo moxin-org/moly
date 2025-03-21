@@ -25,7 +25,9 @@ path = "src/main.rs"
 [dependencies]
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 url-preview = "0.3.0"
-#moly-protocol = { path = "../moly-server/moly-protocol" }
+moly-kit = { path = "./moly-kit", features = ["full"] }
+sha2 = "0.10"
+hex = "0.4"
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
@@ -44,7 +46,7 @@ rand = "0.8.5"
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 url = "2.5.4"
 rfd = "0.14.1"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.43.0", features = ["full"] }
 
 [target.'cfg(target_os = "macos")'.dependencies.objc2]
 version = "0.6.0"

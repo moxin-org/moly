@@ -418,6 +418,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
             if fe.tap_count == 1 {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(Some(self.chat_id));
+                cx.action(ChatAction::ChatSelected(self.chat_id));
                 self.redraw(cx);
             }
         }

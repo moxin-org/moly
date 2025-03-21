@@ -244,7 +244,8 @@ impl Chat {
         let ui = self.ui_runner();
         let future = async move {
             let mut client = repo.client();
-            let mut message_stream = client.send_stream(&bot_id, &context);
+            let bot = repo.get_bot(&bot_id).expect(format!("No bot found for the given id: {:?}", bot_id).as_str());
+            let mut message_stream = client.send_stream(&bot, &context);
 
             while let Some(delta) = message_stream.next().await {
                 let delta = match delta {

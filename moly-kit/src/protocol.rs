@@ -4,6 +4,9 @@ use std::sync::{Arc, Mutex};
 
 pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
 
+use sha2::{Sha256, Digest};
+use hex;
+
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Picture {
@@ -36,7 +39,12 @@ pub enum EntityId {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Bot {
+    /// Unique internal identifier for the bot across all providers
     pub id: BotId,
+    /// Original model identifier from the provider
+    pub model_id: String,
+    /// Provider URL this bot belongs to
+    pub provider_url: String,
     pub name: String,
     pub avatar: Picture,
 }
@@ -60,6 +68,15 @@ impl ToString for BotId {
 impl BotId {
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Creates a unique bot ID by hashing the provider URL and model ID
+    pub fn new(model_id: &str, provider_url: &str) -> Self {
+        let mut hasher = Sha256::new();
+        hasher.update(format!("{}-{}", model_id, provider_url));
+        let result = hasher.finalize();
+        // Take first 16 bytes of hash for a shorter but still unique identifier
+        BotId::from(hex::encode(&result[..16]).as_str())
     }
 }
 
@@ -101,7 +118,7 @@ pub trait BotClient: Send {
     /// Send a message to a bot expecting a streamed response.
     fn send_stream(
         &mut self,
-        bot: &BotId,
+        bot: &Bot,
         messages: &[Message],
     ) -> MolyStream<'static, Result<MessageDelta, ()>>;
 
@@ -122,7 +139,7 @@ pub trait BotClient: Send {
     /// Send a message to a bot expecting a full response at once.
     fn send(
         &mut self,
-        bot: &BotId,
+        bot: &Bot,
         messages: &[Message],
     ) -> MolyFuture<'static, Result<Message, ()>> {
         let stream = self.send_stream(bot, messages);
@@ -144,7 +161,7 @@ pub trait BotClient: Send {
             }
 
             Ok(Message {
-                from: EntityId::Bot(bot),
+                from: EntityId::Bot(bot.id.clone()),
                 body,
                 is_writing: false,
                 citations,

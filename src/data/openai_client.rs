@@ -3,7 +3,7 @@ use moly_protocol::{data::ModelID, open_ai::{
 }};
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
-use tokio::task::JoinHandle;
+use tokio::{spawn, task::JoinHandle};
 
 use makepad_widgets::Cx;
 use crate::data::providers::ProviderClientError;
@@ -136,7 +136,6 @@ impl OpenAIClient {
     ///
     /// The loop continues until the command channel is closed or an unrecoverable error occurs.
     fn process_agent_commands(command_receiver: mpsc::Receiver<ProviderCommand>, address: String, api_key: Option<String>) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
         let mut current_request: Option<JoinHandle<()>> = None;
 
         while let Ok(command) = command_receiver.recv() {
@@ -168,7 +167,7 @@ impl OpenAIClient {
 
                     let req = req.json(&data);
 
-                    current_request = Some(rt.spawn(async move {
+                    current_request = Some(spawn(async move {
                         let resp = req.send().await.expect("Failed to send request");
 
                         let resp: Result<ChatResponseDataWrapper, reqwest::Error> = resp.json().await;
