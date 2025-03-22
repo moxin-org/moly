@@ -1,6 +1,10 @@
 use futures::StreamExt;
 use makepad_widgets::LiveValue;
-use std::sync::{Arc, Mutex};
+use std::{
+    error::Error,
+    fmt,
+    sync::{Arc, Mutex},
+};
 
 pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
 
@@ -87,6 +91,83 @@ pub struct MessageDelta {
     pub body: String,
     /// Delta for the [Message::citations] field.
     pub citations: Vec<String>,
+}
+
+/// The standard error kinds a client implementatiin should facilitate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ClientErrorKind {
+    /// The network connection could not be established properly or was lost.
+    Network,
+    /// The connection could be established, but the remote server/peer gave us
+    /// an error.
+    ///
+    /// Example: On a centralized HTTP server, this would happen when it returns
+    /// an HTTP error code.
+    Remote,
+    /// The remote server/peer returned a successful response, but we can't parse
+    /// its content.
+    ///
+    /// Example: When working with JSON APIs, this can happen when the schema of
+    /// the JSON response is not what we expected or is not JSON at all.
+    Format,
+    /// A kind of error that is not contemplated by MolyKit at the client layer.
+    Unknown,
+}
+
+impl fmt::Display for ClientErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kind_str = match self {
+            ClientErrorKind::Network => "NetworkError",
+            ClientErrorKind::Remote => "RemoteError",
+            ClientErrorKind::Format => "FormatError",
+            ClientErrorKind::Unknown => "UnknownError",
+        };
+        write!(f, "{}", kind_str)
+    }
+}
+
+/// Standard error returned from client operations.
+#[derive(Debug, Clone)]
+pub struct ClientError {
+    kind: ClientErrorKind,
+    message: String,
+    source: Option<Arc<dyn Error + Send + Sync + 'static>>,
+}
+
+impl fmt::Display for ClientError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.kind, self.message)
+    }
+}
+
+impl Error for ClientError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.source.as_ref().map(|s| &**s as _)
+    }
+}
+
+impl ClientError {
+    pub fn new(
+        kind: ClientErrorKind,
+        message: String,
+        source: Option<impl std::error::Error + Send + Sync + 'static>,
+    ) -> Self {
+        ClientError {
+            kind,
+            message,
+            source: source.map(|s| Arc::new(s) as _),
+        }
+    }
+
+    /// Error kind accessor.
+    pub fn kind(&self) -> ClientErrorKind {
+        self.kind
+    }
+
+    /// Error message accessor.
+    pub fn message(&self) -> &str {
+        self.message.as_str()
+    }
 }
 
 /// A standard interface to fetch bots information and send messages to them.
