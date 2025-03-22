@@ -147,11 +147,23 @@ impl Error for ClientError {
 }
 
 impl ClientError {
-    pub fn new(
-        kind: ClientErrorKind,
-        message: String,
-        source: Option<impl std::error::Error + Send + Sync + 'static>,
-    ) -> Self {
+    /// Construct a simple client error without source.
+    ///
+    /// If you have an underlying error you want to include as the source, use
+    /// [ClientError::new_with_source] instead.
+    pub fn new(kind: ClientErrorKind, message: String) -> Self {
+        ClientError {
+            kind,
+            message,
+            source: None,
+        }
+    }
+
+    /// Construct a client error using an underlying error as the source.
+    pub fn new_with_source<S>(kind: ClientErrorKind, message: String, source: Option<S>) -> Self
+    where
+        S: Error + Send + Sync + 'static,
+    {
         ClientError {
             kind,
             message,
@@ -184,7 +196,7 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<MessageDelta, ()>>;
+    ) -> MolyStream<'static, Result<MessageDelta, ClientError>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -195,7 +207,7 @@ pub trait BotClient: Send {
     // NOTE: Could be a stream, but may add complexity rarely needed.
     // TODO: Support partial results with errors for an union multi client/service
     // later.
-    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>>;
+    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ClientError>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
@@ -205,7 +217,7 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyFuture<'static, Result<Message, ()>> {
+    ) -> MolyFuture<'static, Result<Message, ClientError>> {
         let stream = self.send_stream(bot, messages);
         let bot = bot.clone();
 
@@ -220,7 +232,7 @@ pub trait BotClient: Send {
                         body.push_str(&delta.body);
                         citations.extend(delta.citations);
                     }
-                    Err(()) => return Err(()),
+                    Err(error) => return Err(error),
                 }
             }
 
@@ -279,7 +291,7 @@ impl BotRepo {
 
     pub fn load(&mut self) -> MolyFuture<Result<(), ()>> {
         let future = async move {
-            let new_bots = self.client().bots().await?;
+            let new_bots = self.client().bots().await.map_err(|_| ())?;
             self.0.lock().unwrap().bots = new_bots;
             Ok(())
         };
