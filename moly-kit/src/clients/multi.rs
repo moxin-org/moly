@@ -28,7 +28,7 @@ impl BotClient for MultiClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<MessageDelta, ClientError>> {
+    ) -> MolyStream<'static, ClientResult<MessageDelta>> {
         let mut client = self
             .clients_with_bots
             .lock()
@@ -50,7 +50,7 @@ impl BotClient for MultiClient {
         Box::new(self.clone())
     }
 
-    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ClientError>> {
+    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let clients_with_bots = self.clients_with_bots.clone();
 
         let future = async move {

@@ -146,6 +146,12 @@ impl Error for ClientError {
     }
 }
 
+impl<T> From<ClientError> for (Vec<ClientError>, Option<T>) {
+    fn from(error: ClientError) -> Self {
+        (vec![error], None)
+    }
+}
+
 impl ClientError {
     /// Construct a simple client error without source.
     ///
@@ -182,6 +188,12 @@ impl ClientError {
     }
 }
 
+/// The outcome of a client operation.
+///
+/// The error variant may contain multiple errors and may still contain a successful
+/// result if the operation was partially successful.
+pub type ClientResult<T> = Result<T, (Vec<ClientError>, Option<T>)>;
+
 /// A standard interface to fetch bots information and send messages to them.
 ///
 /// Warning: Expect this to be cloned to avoid borrow checking issues with
@@ -196,7 +208,7 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<MessageDelta, ClientError>>;
+    ) -> MolyStream<'static, ClientResult<MessageDelta>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -207,7 +219,7 @@ pub trait BotClient: Send {
     // NOTE: Could be a stream, but may add complexity rarely needed.
     // TODO: Support partial results with errors for an union multi client/service
     // later.
-    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ClientError>>;
+    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
@@ -217,9 +229,8 @@ pub trait BotClient: Send {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyFuture<'static, Result<Message, ClientError>> {
+    ) -> MolyFuture<'static, ClientResult<MessageDelta>> {
         let stream = self.send_stream(bot, messages);
-        let bot = bot.clone();
 
         let future = async move {
             let mut body = String::new();
@@ -236,12 +247,7 @@ pub trait BotClient: Send {
                 }
             }
 
-            Ok(Message {
-                from: EntityId::Bot(bot),
-                body,
-                is_writing: false,
-                citations,
-            })
+            Ok(MessageDelta { body, citations })
         };
 
         moly_future(future)

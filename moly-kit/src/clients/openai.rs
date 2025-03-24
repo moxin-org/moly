@@ -140,7 +140,7 @@ impl OpenAIClient {
 }
 
 impl BotClient for OpenAIClient {
-    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ClientError>> {
+    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let inner = self.0.clone();
 
         let future = async move {
@@ -157,7 +157,8 @@ impl BotClient for OpenAIClient {
                         ClientErrorKind::Network,
                         format!("An error ocurred sending a request to {url}."),
                         Some(error),
-                    ));
+                    )
+                    .into());
                 }
             };
 
@@ -166,7 +167,8 @@ impl BotClient for OpenAIClient {
                 return Err(ClientError::new(
                     ClientErrorKind::Remote,
                     format!("Got unexpected HTTP status code {code} from {url}."),
-                ));
+                )
+                .into());
             }
 
             let models: Models = match response.json().await {
@@ -176,7 +178,7 @@ impl BotClient for OpenAIClient {
                         ClientErrorKind::Format,
                         format!("Could not parse the response from {url} as JSON or its structure does not match the expected format."),
                         Some(error),
-                    ));
+                    ).into());
                 }
             };
 
@@ -209,7 +211,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<MessageDelta, ClientError>> {
+    ) -> MolyStream<'static, ClientResult<MessageDelta>> {
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())
@@ -241,7 +243,7 @@ impl BotClient for OpenAIClient {
                         ClientErrorKind::Network,
                         format!("An error ocurred sending a request to {url}."),
                         Some(error),
-                    ));
+                    ).into());
                     return;
                 }
             };
@@ -258,7 +260,7 @@ impl BotClient for OpenAIClient {
                             ClientErrorKind::Network,
                             format!("Something wrong happend while a chunk of bytes from {url}."),
                             Some(error),
-                        ));
+                        ).into());
                         return;
                     }
                 };
@@ -290,7 +292,7 @@ impl BotClient for OpenAIClient {
                                 ClientErrorKind::Format,
                                 format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
                                 Some(error),
-                            ));
+                            ).into());
                             return;
                         }
                     };
