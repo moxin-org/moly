@@ -298,11 +298,23 @@ impl BotRepo {
         Arc::as_ptr(&self.0) as usize
     }
 
-    pub fn load(&mut self) -> MolyFuture<Result<(), ()>> {
+    /// Fetches the bots and keeps them to be read synchronously later.
+    ///
+    /// It errors with whatever the underlying client errors with.
+    pub fn load(&mut self) -> MolyFuture<ClientResult<()>> {
         let future = async move {
-            let new_bots = self.client().bots().await.map_err(|_| ())?;
-            self.0.lock().unwrap().bots = new_bots;
-            Ok(())
+            let new_bots = self.client().bots().await;
+
+            match new_bots {
+                Ok(bots) => {
+                    self.0.lock().unwrap().bots = bots;
+                    Ok(())
+                }
+                Err((errors, bots)) => {
+                    self.0.lock().unwrap().bots = bots.unwrap_or_default();
+                    Err((errors, None))
+                }
+            }
         };
 
         moly_future(future)
