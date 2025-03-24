@@ -61,7 +61,7 @@ live_design! {
                     draw_bg: {
                         color: #15859A
                     }
-                    markdown_writing_stage = {
+                    markdown_message_container = {
                         padding: 0
                         markdown = {
                             font_color: #fff,
@@ -124,7 +124,7 @@ live_design! {
             body_section = {
                 bubble = {
                     padding: {left: 0, bottom: 0, top: 0}
-                    markdown_writing_stage = {
+                    markdown_message_container = {
                         markdown = {
                             draw_normal: {
                                 color: (#000),

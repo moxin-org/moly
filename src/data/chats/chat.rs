@@ -9,7 +9,7 @@ use std::thread;
 use std::sync::{Arc, RwLock};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
-use crate::data::providers::{Article, RemoteModel, Stage};
+use crate::data::providers::{DeepInquireMessage, DeepInquireStage, RemoteModel};
 use crate::data::providers::ChatResponse as RemoteModelChatResponse;
 
 use super::chat_entity::ChatEntityId;
@@ -28,8 +28,8 @@ pub struct ChatEntityAction {
 enum ChatEntityActionKind {
     ModelAppendDelta(String),
     ModelStreamingDone,
-    ModelStage(Stage),
-    MofaAgentResult(String, Vec<Article>, bool),
+    DeepnInquireResponse(DeepInquireMessage),
+    MofaAgentResult(String, bool),
     MofaAgentCancelled,
 }
 
@@ -40,15 +40,7 @@ pub struct ChatMessage {
     pub username: Option<String>,
     pub entity: Option<ChatEntityId>,
     pub content: String,
-    pub articles: Vec<Article>,
-    pub stages: Vec<Stage>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Stages {
-    pub thinking: Option<String>, 
-    pub writing: Option<String>,
-    pub completed: Option<String>,
+    pub stages: Vec<DeepInquireStage>,
 }
 
 impl ChatMessage {
@@ -327,7 +319,6 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt.clone(),
-            articles: vec![],
             stages: vec![],
         });
 
@@ -337,7 +328,6 @@ impl Chat {
             username: Some(wanted_file.name.clone()),
             entity: Some(ChatEntityId::ModelFile(wanted_file.id.clone())),
             content: "".to_string(),
-            articles: vec![],
             stages: vec![],
         });
 
@@ -431,7 +421,6 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt,
-            articles: vec![],
             stages: vec![],
         });
 
@@ -441,7 +430,7 @@ impl Chat {
             username: Some(agent.name.clone()),
             entity: Some(ChatEntityId::Agent(agent.id.clone())),
             content: "".to_string(),
-            articles: vec![],
+            // articles: vec![],
             stages: vec![],
         });
 
@@ -454,15 +443,15 @@ impl Chat {
                     let content = data.content.clone();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentResult(content, data.articles, is_final),
+                        kind: ChatEntityActionKind::MofaAgentResult(content, is_final),
                     });
 
                     break '_loop;
                 }
-                Ok(RemoteModelChatResponse::ChatStage(stage)) => {
+                Ok(RemoteModelChatResponse::DeepnInquireResponse(message)) => {
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::ModelStage(stage),
+                        kind: ChatEntityActionKind::DeepnInquireResponse(message),
                     });
                 }
                 Err(e) => {
@@ -498,7 +487,6 @@ impl Chat {
             username: None,
             entity: None,
             content: prompt,
-            articles: vec![],
             stages: vec![],
         });
 
@@ -508,7 +496,6 @@ impl Chat {
             username: Some(remote_model.name.clone()),
             entity: Some(ChatEntityId::RemoteModel(remote_model.id.clone())),
             content: "".to_string(),
-            articles: vec![],
             stages: vec![],
         });
 
@@ -521,18 +508,18 @@ impl Chat {
                     let content = data.content.clone();
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentResult(content, data.articles, is_final),
+                        kind: ChatEntityActionKind::MofaAgentResult(content, is_final),
                     });
 
                     if is_final {
                         break '_loop;
                     }
                 }
-                Ok(RemoteModelChatResponse::ChatStage(stage)) => {
-                    let should_break = matches!(stage, Stage::Completed(_, _));
+                Ok(RemoteModelChatResponse::DeepnInquireResponse(message)) => {
+                    let should_break = matches!(message, DeepInquireMessage::Completed(_, _));
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::ModelStage(stage),
+                        kind: ChatEntityActionKind::DeepnInquireResponse(message),
                     });
 
                     if should_break {
@@ -624,10 +611,9 @@ impl Chat {
                 self.is_streaming = false;
                 *self.state.write().unwrap() = ChatState::Idle;
             }
-            ChatEntityActionKind::MofaAgentResult(response, articles, is_final) => {
+            ChatEntityActionKind::MofaAgentResult(response, is_final) => {
                 let last = self.messages.last_mut().unwrap();
                 last.content = response.clone();
-                last.articles = articles.clone();
                 if *is_final {
                     *self.state.write().unwrap() = ChatState::Idle;
                 }
@@ -637,50 +623,66 @@ impl Chat {
                 // Remove the last message sent by the user
                 self.messages.pop();
             }
-            ChatEntityActionKind::ModelStage(stage) => {
-                let last = self.messages.last_mut().unwrap();
+            ChatEntityActionKind::DeepnInquireResponse(message) => {
+                let last_message = self.messages.last_mut().unwrap();
 
-                // Often DeepInquire returns the same stage multiple times with the content extended (instead of a delta).
-                // However sometimes it returns the same stage with completely different content.
-                // To avoid very abrupt changes in the text (and because I don't think it's useful otherwise), we check: 
-                // if the new stage content is an extension of the previous stage content, we simply add a new stage.
-                // However if the new stage content is completely different, we add a new stage with a combination of the previous stage and the new stage.
-                // This way the user can see the evolution of the thought process rather than just a few sentences at a time that don't 
-                // make sense in isolation.
-                if let Some(last_stage) = last.stages.last() {
-                    match stage {
-                        Stage::Thinking(content) => {        
-                            match last_stage {
-                                Stage::Thinking(last_content) => {
-                                    if last_content.contains(content) {
-                                        last.stages.push(Stage::Thinking(content.clone()));
-                                    } else {
-                                        last.stages.push(Stage::Thinking(format!("{} {}", last_content, content)));
-                                    }
-                                },
-                                _ => {}
-                            }
+                // Completed messages arrive with stage id 1, but they should be the last stage
+                // I'm actually unsure of this behavior, perhaps it's a bug, perhaps we should add the completed block
+                // to the last active stage instead of creating a new one.
+                match message {
+                    DeepInquireMessage::Completed(_, content) => {
+                        last_message.stages.push(DeepInquireStage { 
+                            id: last_message.stages.len(),
+                            thinking: None,
+                            writing: None,
+                            completed: Some(content.clone()),
+                        });
+                        *self.state.write().unwrap() = ChatState::Idle;
+                        return;
+                    }
+                    _ => {}
+                }
+
+                // If there is an existing stage with the same id, we update it
+                if let Some(existing_stage) = last_message.stages.iter_mut().find(|stage| stage.id == message.id()) {
+                    match message {
+                        DeepInquireMessage::Thinking(_, content) => {
+                            existing_stage.thinking = Some(content.clone());
                         }
-                        Stage::Writing(_content, _articles) => {
-                            last.stages.push(stage.clone())
+                        DeepInquireMessage::Writing(_, content) => {
+                            existing_stage.writing = Some(content.clone());
                         }
-                        Stage::Completed(_content, _articles) => {
-                            last.stages.push(stage.clone());
+                        DeepInquireMessage::Completed(_, content) => {
+                            existing_stage.completed = Some(content.clone());
                             *self.state.write().unwrap() = ChatState::Idle;
                         }
                     }
                 } else {
-                    last.stages.push(stage.clone());
+                    // Otherwise we add a new stage
+                    let mut new_stage = DeepInquireStage {
+                        id: message.id(),
+                        thinking: None,
+                        writing: None,
+                        completed: None,
+                    };
+
+                    match message {
+                        DeepInquireMessage::Thinking(_, content) => {
+                            new_stage.thinking = Some(content.clone());
+                        }
+                        DeepInquireMessage::Writing(_, content) => {
+                            new_stage.writing = Some(content.clone());
+                        }
+                        DeepInquireMessage::Completed(_, content) => {
+                            new_stage.completed = Some(content.clone());
+                            *self.state.write().unwrap() = ChatState::Idle;
+                        }
+                    }
+
+                    last_message.stages.push(new_stage);
                 }
             }
         }
         self.save();
     }
-}
-
-#[derive(Serialize, Deserialize)]
-struct MofaAgentResponse {
-    step_name: String,
-    node_results: String,
-    dataflow_status: bool,
 }

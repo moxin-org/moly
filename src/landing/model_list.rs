@@ -132,7 +132,7 @@ live_design! {
                     text_style: <REGULAR_FONT>{font_size: 13},
                     color: #000
                 }
-                text: "Error fetching models. Please check your internet connection and try again."
+                text: "Error fetching models. Check your connection to MolyServer."
             }
         }
     }
