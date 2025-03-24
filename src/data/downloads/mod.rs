@@ -41,7 +41,7 @@ impl Downloads {
                 Ok(files) => {
                     self.downloaded_files = files;
                 }
-                Err(err) => eprintln!("Error fetching downloaded files: {:?}", err),
+                Err(_err) => eprintln!("Failed to fetch downloaded files. Couldn't connect to MolyServer."),
             }
         };
     }
@@ -70,7 +70,7 @@ impl Downloads {
                         }
                     });
                 }
-                Err(err) => eprintln!("Error fetching pending downloads: {:?}", err),
+                Err(_err) => eprintln!("Failed to fetch pending downloads. Couldn't connect to MolyServer."),
             }
         };
     }

@@ -1,13 +1,15 @@
 use crate::chat::chat_line_loading::ChatLineLoadingWidgetExt;
 use crate::chat::shared::ChatAgentAvatarWidgetExt;
 use crate::data::chats::chat::ChatMessage;
-use crate::data::providers::{Article, RemoteModel, Stage};
+use crate::data::providers::{Article, RemoteModel};
 use makepad_widgets::markdown::MarkdownWidgetExt;
 use makepad_widgets::*;
 
 use url_preview::Preview;
 
 use std::collections::{HashMap, HashSet};
+
+use super::stages_pill_list::{StagePillAction, StagesPillListWidgetExt};
 
 live_design! {
     use link::theme::*;
@@ -21,7 +23,7 @@ live_design! {
     use crate::chat::chat_line_loading::ChatLineLoading;
     use crate::chat::shared::ChatModelAvatar;
     use crate::chat::shared::ChatAgentAvatar;
-
+    use crate::chat::stages_pill_list::StagesPillList;
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
     ICON_EXTERNAL_LINK = dep("crate://self/resources/icons/external_link.svg")
@@ -61,22 +63,9 @@ live_design! {
         }
         text: "Cancel"
     }
-
-    StagePill = <RoundedView> {
-        cursor: Hand,
-        width: Fit, height: Fit
-        padding: {left: 10, right: 10, top: 7, bottom: 7}
-        draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 0, border_width: 2 }
-        stage_text = <Label> {
-            draw_text: {
-                text_style: <REGULAR_FONT>{font_size: 10},
-                color: #000
-            }
-        }
-    }
     
     ArticlesList = {{ArticlesList}} {
-        margin: {top: 15}
+        margin: {top: 10}
         height: Fit, width: Fill,
         flow: RightWrap, spacing: 10
         article_template: {{LinkPreviewUI}}<RoundedView> {
@@ -188,7 +177,7 @@ live_design! {
     ChatLineBody = <View> {
         width: Fill,
         height: Fit,
-        spacing: 20,
+        spacing: 10,
         flow: Down,
 
         sender_name_layout = <View> {
@@ -218,43 +207,55 @@ live_design! {
             align: {x: 0.0, y: 0.0},
             spacing: 10
 
-            stages_container = <RoundedView> {
-                cursor: Hand
-                flow: Right, spacing: 0
-                visible: false,
-                width: Fit, height: Fit,
-                thinking_pill = <StagePill> {
-                    stage_text = { text: "Thinking" }
-                }
-                writing_pill = <StagePill> {
-                    stage_text = { text: "Writing" }
-                }
-                completed_pill = <StagePill> {
-                    stage_text = { text: "Completed" }
-                }
-            }
+            stages_pill_list = <StagesPillList> {}
 
-            markdown_thinking_stage = <RoundedView> {
-                visible: false,
-                width: Fill, height: Fit,
-                padding: {left: 16, right: 18, top: 18, bottom: 14},
-                draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 5 },
-                markdown = <MessageText> {}
-            }
-
-            markdown_writing_stage = <RoundedView> {
-                visible: false,
-                width: Fill, height: Fit,
-                padding: {left: 16, right: 18, top: 18, bottom: 14},
-                markdown = <MessageText> {}
-            }
-
-            markdown_overview_stage = <RoundedView> {
-                visible: false,
-                width: Fill, height: Fit,
-                padding: {left: 16, right: 18, top: 18, bottom: 14},
-                draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 5 },
-                markdown = <MessageText> {}
+            stage_container = <RoundedView> {
+                width: Fill, height: Fit
+                visible: false
+                flow: Down
+                thinking_block = <View> {
+                    visible: false
+                    flow: Down, spacing: 10,
+                    <Label> {
+                        text: "Thinking"
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 15},
+                            color: #15859A
+                        }
+                    }
+                    width: Fill, height: Fit,
+                    padding: {left: 16, right: 18, top: 18, bottom: 14},
+                    // draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 5 },
+                    thinking_markdown = <MessageText> {}
+                }
+                writing_block = <View> {
+                    visible: false,
+                    flow: Down, spacing: 10,
+                    <Label> {
+                        text: "Writing"
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 15},
+                            color: #15859A
+                        }
+                    }
+                    width: Fill, height: Fit,
+                    padding: {left: 16, right: 18, top: 18, bottom: 14},
+                    writing_markdown = <MessageText> {}
+                }
+                completed_block = <View> {
+                    visible: false,
+                    flow: Down, spacing: 10,
+                    <Label> {
+                        text: "Completed"
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 15},
+                            color: #15859A
+                        }
+                    }
+                    width: Fill, height: Fit,
+                    padding: {left: 16, right: 18, top: 18, bottom: 14},
+                    completed_markdown = <MessageText> {}
+                }
             }
 
             input_container = <View> {
@@ -270,6 +271,14 @@ live_design! {
                 width: Fill,
                 height: Fit,
                 loading = <ChatLineLoading> {}
+            }
+
+            markdown_message_container = <RoundedView> {
+                visible: false,
+                width: Fill, height: Fit,
+                padding: {top: 14, bottom: 14}
+                // draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 5 },
+                markdown = <MessageText> {}
             }
 
             plain_text_message_container = <View> {
@@ -386,14 +395,6 @@ pub enum ChatLineState {
     OnEdit,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub enum StageType {
-    #[default]
-    Thinking,
-    Writing,
-    Completed,
-}
-
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatLine {
     #[deref]
@@ -410,6 +411,9 @@ pub struct ChatLine {
 
     #[rust]
     latest_message: Option<ChatMessage>,
+
+    #[rust]
+    user_selected_stage: Option<usize>,
 }
 
 impl Widget for ChatLine {
@@ -447,54 +451,13 @@ impl WidgetMatchEvent for ChatLine {
             ChatLineState::NotEditable => {}
         }
 
-        let mut new_stage_selected = None;
-
-        if let Some(latest_message) = &self.latest_message {
-            if self.view(id!(thinking_pill)).finger_down(actions).is_some() {
-                self.view(id!(markdown_thinking_stage)).set_visible(cx, true);
-                self.view(id!(markdown_writing_stage)).set_visible(cx, false);
-                self.view(id!(markdown_overview_stage)).set_visible(cx, false);
-                if let Some(stage) = latest_message.stages.iter().rev().find(|stage| matches!(stage, Stage::Thinking(_))) {
-                    match stage {
-                        Stage::Thinking(content) => {
-                            self.markdown(id!(markdown_thinking_stage.markdown)).set_text(cx, &content);
-                            new_stage_selected = Some(StageType::Thinking);
-                        }
-                        _ => {}
-                    }
+        for action in actions {
+            match action.cast() {
+                StagePillAction::StagePillClicked(stage_id) => {
+                    self.user_selected_stage = Some(stage_id);
+                    self.update_selected_stage(cx, stage_id);
                 }
-            }
-            if self.view(id!(writing_pill)).finger_down(actions).is_some() {
-                self.view(id!(markdown_writing_stage)).set_visible(cx, true);
-                self.view(id!(markdown_thinking_stage)).set_visible(cx, false);
-                self.view(id!(markdown_overview_stage)).set_visible(cx, false);
-                if let Some(stage) = latest_message.stages.iter().rev().find(|stage| matches!(stage, Stage::Writing(_, _))) {
-                    match stage {
-                        Stage::Writing(content, _) => {
-                            self.markdown(id!(markdown_writing_stage.markdown)).set_text(cx, &content);
-                            new_stage_selected = Some(StageType::Writing);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            if self.view(id!(completed_pill)).finger_down(actions).is_some() {
-                self.view(id!(markdown_overview_stage)).set_visible(cx, true);
-                self.view(id!(markdown_writing_stage)).set_visible(cx, false);
-                self.view(id!(markdown_thinking_stage)).set_visible(cx, false);
-                if let Some(stage) = latest_message.stages.iter().rev().find(|stage| matches!(stage, Stage::Completed(_, _))) {
-                    match stage {
-                        Stage::Completed(content, _) => {
-                            self.markdown(id!(markdown_overview_stage.markdown)).set_text(cx, &content);
-                            new_stage_selected = Some(StageType::Completed);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
-            if let Some(stage_type) = new_stage_selected {
-                self.update_selected_stage_pill(cx, &stage_type);
+                _ => {}
             }
         }
     }
@@ -532,7 +495,7 @@ impl ChatLine {
         }
         self.view(id!(plain_text_message_container))
             .set_visible(cx, show && is_plain_text);
-        self.view(id!(markdown_writing_stage))
+        self.view(id!(markdown_message_container))
             .set_visible(cx, show && !is_plain_text);
     }
 
@@ -592,122 +555,47 @@ impl ChatLine {
         }
     }
 
-    pub fn update_selected_stage_pill(&mut self, cx: &mut Cx, stage_type: &StageType) {
-        let thinking_pill = self.view(id!(thinking_pill));
-        let writing_pill = self.view(id!(writing_pill));
-        let completed_pill = self.view(id!(completed_pill));
-    
-        // rgb(242, 242, 242)
-        let light_border_color = vec4(0.9490196078431372, 0.9490196078431372, 0.9490196078431372, 1.0);
-        thinking_pill.apply_over(cx, live! {
-            draw_bg: {
-                border_color: (light_border_color),
-            }
-        });
-        writing_pill.apply_over(cx, live! {
-            draw_bg: {
-                border_color: (light_border_color),
-            }
-        });
-        completed_pill.apply_over(cx, live! {
-            draw_bg: {
-                border_color: (light_border_color),
-            }
-        });
-
-        //rgb(141, 138, 138)
-        let dark_border_color = vec4(0.803921568627451, 0.803921568627451, 0.803921568627451, 1.0);
-
-        match stage_type {
-            StageType::Thinking => {
-                thinking_pill.apply_over(cx, live! {
-                    draw_bg: {
-                        border_color: (dark_border_color),
-                    }
-                });
-            },
-            StageType::Writing => {
-                writing_pill.apply_over(cx, live! {
-                    draw_bg: {
-                        border_color: (dark_border_color),
-                    }
-                });
-            }
-            StageType::Completed => {
-                completed_pill.apply_over(cx, live! {
-                    draw_bg: {
-                        border_color: (dark_border_color),
-                    }
-                });
-            }
-        }
-    }
-
-    pub fn update_stage_pills(&mut self, cx: &mut Cx, stage_type: &StageType) {
-        let thinking_pill = self.view(id!(thinking_pill));
-        let writing_pill = self.view(id!(writing_pill));
-        let completed_pill = self.view(id!(completed_pill));
-    
-        thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking");
-        writing_pill.label(id!(stage_text)).set_text(cx, "Writing Response");
-        completed_pill.label(id!(stage_text)).set_text(cx, "Completed");
-    
-        let view_set = self.view_set(ids!(
-            thinking_pill,
-            writing_pill,
-            completed_pill
-        ));
-
-        view_set.set_visible(cx, false);
-
-        match stage_type {
-            StageType::Thinking => {
-                thinking_pill.set_visible(cx, true);
-                thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking...");
-                writing_pill.set_visible(cx, false);
-                completed_pill.set_visible(cx, false);
-            },
-            StageType::Writing => {
-                thinking_pill.set_visible(cx, true);
-                writing_pill.set_visible(cx, true);
-                thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking  >");
-                writing_pill.label(id!(stage_text)).set_text(cx, "Writing Response...");
-                completed_pill.set_visible(cx, false);
-            }
-            StageType::Completed => {
-                thinking_pill.set_visible(cx, true);
-                writing_pill.set_visible(cx, true);
-                completed_pill.set_visible(cx, true);
-                thinking_pill.label(id!(stage_text)).set_text(cx, "Thinking  >");
-                writing_pill.label(id!(stage_text)).set_text(cx, "Writing Response  >");
-                completed_pill.label(id!(stage_text)).set_text(cx, "Completed");
-            }
-        }
-
-        self.update_selected_stage_pill(cx, stage_type);
-    }
-
-    fn update_markdown_stage_visibilities(&mut self, cx: &mut Cx, selected_stage: &StageType) {
-        let markdown_thinking_stage = self.view(id!(markdown_thinking_stage));
-        let markdown_writing_stage = self.view(id!(markdown_writing_stage));
-        let markdown_overview_stage = self.view(id!(markdown_overview_stage));
+    pub fn update_selected_stage(&mut self, cx: &mut Cx, stage_id: usize) {
+        if let Some(latest_message) = &self.latest_message {
+            if let Some(stage) = latest_message.stages.get(stage_id) { 
+                // Show stage container                    
+                self.view(id!(stage_container)).set_visible(cx, true);
+                // Make all blocks invisible first
+                self.view(id!(thinking_block)).set_visible(cx, false);
+                self.view(id!(writing_block)).set_visible(cx, false);
+                self.view(id!(completed_block)).set_visible(cx, false);
         
-        let view_set = self.view_set(ids!(
-            markdown_thinking_stage,
-            markdown_writing_stage,
-            markdown_overview_stage
-        ));
-        view_set.set_visible(cx, false);
+                // Aggregate articles from all stages, without duplicates
+                let mut aggregated_articles = Vec::new();
+                
+                if let Some(thinking_block) = &stage.thinking {
+                    self.view(id!(thinking_block)).set_visible(cx, true);
+                    self.markdown(id!(thinking_markdown)).set_text(cx, &thinking_block.content.trim());
+                    aggregated_articles.extend(thinking_block.articles.clone());
+                }
+        
+                if let Some(writing_block) = &stage.writing {
+                    self.view(id!(writing_block)).set_visible(cx, true);
+                    self.text_input(id!(input)).set_text(cx, &writing_block.content.trim());
+                    self.label(id!(plain_text_message)).set_text(cx, &writing_block.content.trim());
+                    self.markdown(id!(writing_markdown)).set_text(cx, &writing_block.content.trim());
+                    aggregated_articles.extend(writing_block.articles.clone());
+                }
+        
+                if let Some(completed_block) = &stage.completed {
+                    self.view(id!(completed_block)).set_visible(cx, true);
+                    self.markdown(id!(completed_markdown)).set_text(cx, &completed_block.content.trim());
+                    aggregated_articles.extend(completed_block.articles.clone());
+                }
 
-        match selected_stage {
-            StageType::Thinking => {
-                markdown_thinking_stage.set_visible(cx, true);
-            }
-            StageType::Writing => {
-                markdown_writing_stage.set_visible(cx, true);
-            }
-            StageType::Completed => {
-                markdown_overview_stage.set_visible(cx, true);
+                if !aggregated_articles.is_empty() {
+                    self.view(id!(articles_container)).set_visible(cx, true);
+                    self.articles_list(id!(articles)).set_articles(cx, &aggregated_articles);
+                } else {
+                    self.view(id!(articles_container)).set_visible(cx, false);
+                }
+        
+                self.redraw(cx);
             }
         }
     }
@@ -751,6 +639,7 @@ impl ChatLineRef {
             return;
         }
 
+        let previous_message = inner.latest_message.clone();
         inner.latest_message = Some(chat_line_data.clone());
 
         let mut show_loading = false;
@@ -759,51 +648,40 @@ impl ChatLineRef {
             ChatLineState::Editable | ChatLineState::NotEditable => {
                 // Handle stages, ignore chat_line_data.content
                 if !chat_line_data.stages.is_empty() {
-                    if let Some(stage) = chat_line_data.stages.last() {
-                        // Show stages container                    
-                        inner.view(id!(stages_container)).set_visible(cx, true);
-                        match stage {
-                            Stage::Thinking(content) => {
-                                inner.markdown(id!(markdown_thinking_stage.markdown)).set_text(cx, &content.trim());
-                                show_loading = false;
-                                inner.update_stage_pills(cx, &StageType::Thinking);
-                                inner.update_markdown_stage_visibilities(cx, &StageType::Thinking);
-                            }
-                            Stage::Writing(content, articles) => {
-                                inner.text_input(id!(input)).set_text(cx, &content);
-                                inner.label(id!(plain_text_message)).set_text(cx, &content);
-                                inner.markdown(id!(markdown_writing_stage.markdown)).set_text(cx, &content.trim());
-                                show_loading = false;
 
-                                if !articles.is_empty() {
-                                    inner.view(id!(articles_container)).set_visible(cx, true);
-                                    let mut articles_ref = inner.articles_list(id!(articles));
-                                    articles_ref.set_articles(cx, &articles);
-                                } else {
-                                    inner.view(id!(articles_container)).set_visible(cx, false);
+                    let mut stages_pill_list = inner.stages_pill_list(id!(stages_pill_list));
+                    stages_pill_list.update_stages(cx, &chat_line_data.stages.iter().map(|stage| stage.id).collect());
+
+                    // If there is a selected stage, use it, otherwise use the last one
+                    let stage_to_draw = if let Some(stage_id) = inner.user_selected_stage {
+                        chat_line_data.stages.get(stage_id)
+                    } else {
+                        chat_line_data.stages.last()
+                    };
+
+                    if let Some(stage_to_draw) = stage_to_draw {
+                        inner.update_selected_stage(cx, stage_to_draw.id);
+                        stages_pill_list.set_selected_stage(cx, stage_to_draw.id);
+
+                        // If we're streaming, check if there's new content on a stage that is not currently visible
+                        if is_streaming {
+                            if let Some(last_message) = &previous_message {
+                                for (index, updated_stage) in chat_line_data.stages.iter().enumerate() {
+                                    if let Some(matching_stage) = last_message.stages.get(index) {
+                                        let stage_isnt_selected = stage_to_draw.id != index;
+                                        let stage_has_new_content = updated_stage != matching_stage;
+
+                                        if stage_isnt_selected && stage_has_new_content {
+                                            stages_pill_list.set_stage_has_new_content(cx, index);
+                                        }
+                                    } else if index != stage_to_draw.id {
+                                        stages_pill_list.set_stage_has_new_content(cx, index);
+                                    }
                                 }
-
-                                inner.update_stage_pills(cx, &StageType::Writing);
-                                inner.update_markdown_stage_visibilities(cx, &StageType::Writing);
-                            }
-                            Stage::Completed(content, articles) => {
-                                inner.view(id!(markdown_writing_stage)).set_visible(cx, false);
-                                inner.markdown(id!(markdown_overview_stage.markdown)).set_text(cx, &content.trim());
-                                show_loading = false;
-
-                                if !articles.is_empty() {
-                                    inner.view(id!(articles_container)).set_visible(cx, true);
-                                    let mut articles_ref = inner.articles_list(id!(articles));
-                                    articles_ref.set_articles(cx, &articles);
-                                } else {
-                                    inner.view(id!(articles_container)).set_visible(cx, false);
-                                }
-
-                                inner.update_stage_pills(cx, &StageType::Completed);
-                                inner.update_markdown_stage_visibilities(cx, &StageType::Completed);
                             }
                         }
                     }
+
                 // No stages, handle content directly
                 } else if is_streaming && !chat_line_data.content.is_empty() {
                     let output = format!("{}{}", chat_line_data.content, "●");
@@ -812,7 +690,7 @@ impl ChatLineRef {
                         .label(id!(plain_text_message))
                         .set_text(cx, &output.trim());
                     inner
-                        .markdown(id!(markdown_writing_stage.markdown))
+                        .markdown(id!(markdown_message_container.markdown))
                         .set_text(cx, &output.trim());
                     show_loading = false;
                     inner.show_or_hide_message_label(cx, true);
@@ -823,7 +701,7 @@ impl ChatLineRef {
                         .label(id!(plain_text_message))
                         .set_text(cx, chat_line_data.content.trim());
                     inner
-                        .markdown(id!(markdown_writing_stage.markdown))
+                        .markdown(id!(markdown_message_container.markdown))
                         .set_text(cx, &chat_line_data.content.trim().replace("\n\n", "\n\n\u{00A0}\n\n"));
 
                     show_loading = false;
@@ -880,8 +758,6 @@ impl ChatLineRef {
     }
 }
 
-
-
 #[derive(Live, LiveHook, Widget)]
 pub struct ArticlesList {
     #[deref]
@@ -915,6 +791,11 @@ pub struct ArticlesList {
 impl Widget for ArticlesList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+
+        // Redirect the event to each children
+        for (_link_preview_id, link_preview_ui) in self.link_preview_children.iter_mut() {
+            link_preview_ui.handle_event(cx, event, scope);
+        }
         // self.ui_runner().handle(cx, event, scope, self);
     }
 
