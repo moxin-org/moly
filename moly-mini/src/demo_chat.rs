@@ -210,10 +210,28 @@ impl DemoChat {
 
         let ui = self.ui_runner();
         spawn(async move {
-            repo.load().await.expect("TODO: Handle loading better");
+            let errors = repo
+                .load()
+                .await
+                .err()
+                .map(|(errors, _)| errors)
+                .unwrap_or_default();
+
             ui.defer_with_redraw(move |me, _cx, _scope| {
+                let mut chat = me.chat(id!(chat));
+                let mut messages = chat.read().messages_ref();
+
                 me.fill_selector(repo.bots());
-                me.chat(id!(chat)).write().visible = true;
+                chat.write().visible = true;
+
+                for error in errors {
+                    messages.write().messages.push(Message {
+                        body: error.to_string(),
+                        is_writing: false,
+                        citations: Vec::new(),
+                        from: EntityId::User,
+                    });
+                }
             });
         });
     }
