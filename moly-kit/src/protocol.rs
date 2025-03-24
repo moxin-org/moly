@@ -55,15 +55,15 @@ impl From<&str> for BotId {
     }
 }
 
-impl ToString for BotId {
-    fn to_string(&self) -> String {
-        self.0.to_string()
-    }
-}
-
 impl BotId {
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl fmt::Display for BotId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -98,18 +98,21 @@ pub struct MessageDelta {
 pub enum ClientErrorKind {
     /// The network connection could not be established properly or was lost.
     Network,
+
     /// The connection could be established, but the remote server/peer gave us
     /// an error.
     ///
     /// Example: On a centralized HTTP server, this would happen when it returns
     /// an HTTP error code.
     Remote,
+
     /// The remote server/peer returned a successful response, but we can't parse
     /// its content.
     ///
     /// Example: When working with JSON APIs, this can happen when the schema of
     /// the JSON response is not what we expected or is not JSON at all.
     Format,
+
     /// A kind of error that is not contemplated by MolyKit at the client layer.
     Unknown,
 }

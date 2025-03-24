@@ -29,7 +29,7 @@ impl BotClient for MultiClient {
         bot: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageDelta>> {
-        let mut client = self
+        let client = self
             .clients_with_bots
             .lock()
             .unwrap()
@@ -40,11 +40,24 @@ impl BotClient for MultiClient {
                 } else {
                     None
                 }
-            })
-            .expect("no client for bot");
+            });
 
-        client.send_stream(bot, messages)
+        match client {
+            Some(mut client) => client.send_stream(bot, messages),
+            None => {
+                let bot = bot.clone();
+                moly_stream(futures::stream::once(async move {
+                    Err(ClientError::new(
+                        ClientErrorKind::Unknown,
+                        format!("Can't find a client to communicate with the bot {}", bot),
+                    )
+                    .into())
+                }))
+            }
+        }
     }
+
+    // TODO: Add `send` implementation to take adventage of `send` implementation in sub-clients.
 
     fn clone_box(&self) -> Box<dyn BotClient> {
         Box::new(self.clone())
@@ -66,10 +79,13 @@ impl BotClient for MultiClient {
 
             let mut zipped_bots = Vec::new();
             let mut flat_bots = Vec::new();
+            let mut errors = Vec::new();
 
             for result in results {
-                // TODO: Let's ignore any errored sub-client for now.
-                let client_bots = result.unwrap_or_default();
+                let client_bots = result.unwrap_or_else(|(sub_errors, bots)| {
+                    errors.extend(sub_errors);
+                    bots.unwrap_or_default()
+                });
                 zipped_bots.push(client_bots.clone());
                 flat_bots.extend(client_bots);
             }
@@ -79,7 +95,15 @@ impl BotClient for MultiClient {
                 .zip(zipped_bots.iter().cloned())
                 .collect();
 
-            Ok(flat_bots)
+            if errors.is_empty() {
+                Ok(flat_bots)
+            } else {
+                if flat_bots.is_empty() {
+                    Err((errors, None))
+                } else {
+                    Err((errors, Some(flat_bots)))
+                }
+            }
         };
 
         moly_future(future)
