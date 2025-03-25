@@ -2,8 +2,8 @@ use std::cell::{Ref, RefMut};
 
 use crate::{
     protocol::*,
-    utils::{events::EventExt, portal_list::ItemsRangeIter},
-    widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
+    utils::{asynchronous::spawn, events::EventExt, portal_list::ItemsRangeIter},
+    widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt, message_thinking_block::MessageThinkingBlockWidgetRefExt},
 };
 use makepad_widgets::*;
 
@@ -14,6 +14,7 @@ live_design! {
     use link::widgets::*;
     use link::shaders::*;
 
+    use crate::widgets::message_thinking_block::*;
     use crate::widgets::message_markdown::*;
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
@@ -145,7 +146,9 @@ live_design! {
             padding: {left: 0, top: 0, bottom: 0},
             margin: {left: 32}
             text = <View> {
+                flow: Down
                 height: Fit,
+                thinking_block = <MessageThinkingBlock> {margin: {bottom: 10}}
                 markdown = <MessageMarkdown> {}
             }
             editor = <Editor> { visible: false }
@@ -375,8 +378,15 @@ impl Messages {
                         // Warning: If you ever read the text from this widget and not
                         // from the list, you should remove the unicode character.
                         // TODO: Remove this workaround once the markdown widget is fixed.
-                        item.label(id!(text.markdown))
-                            .set_text(cx, &message.body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+
+                        let (thinking_block, message_body) = extract_and_remove_think_tag(&message.body);
+
+                        item.message_thinking_block(id!(text.thinking_block)).set_thinking_text(thinking_block);
+
+                        if let Some(body) = message_body {
+                            item.label(id!(text.markdown))
+                                .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                        }
 
                         if !message.citations.is_empty() {
                             let mut citations_ref = item.citations(id!(citations));
@@ -580,4 +590,36 @@ impl MessagesRef {
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Messages) -> R) -> R {
         f(&mut *self.write())
     }
+}
+
+fn extract_and_remove_think_tag(text: &str) -> (Option<String>, Option<String>) {
+    let (start_tag, end_tag) = ("<think>", "</think>");
+
+    let start_search = text.find(start_tag);
+    let end_search = text.find(end_tag);
+
+    let Some(start) = start_search else {
+        return (None, Some(text.to_string()));
+    };
+
+    let thinking_content = if let Some(end) = end_search {
+        text[start + start_tag.len()..end].trim().to_string()
+    } else {
+        text[start + start_tag.len()..].trim().to_string()
+    };
+
+    let thinking = if thinking_content.len() > 0 {
+        Some(thinking_content)
+    } else {
+        None
+    };
+
+    let body = if let Some(end) = end_search {
+        let body = text[end + end_tag.len()..].trim().to_string();
+        Some(body)
+    } else {
+        None
+    };
+
+    (thinking, body)
 }
