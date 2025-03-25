@@ -229,7 +229,7 @@ impl DemoChat {
                         body: error.to_string(),
                         is_writing: false,
                         citations: Vec::new(),
-                        from: EntityId::User,
+                        from: EntityId::App,
                     });
                 }
             });
