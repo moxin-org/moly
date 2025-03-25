@@ -43,7 +43,7 @@ live_design! {
             width: Fill,
             height: Fill,
             align: {x: 0.5},
-            padding: {top: 48, bottom: 48 }
+            padding: {top: 48, bottom: 48, right: 48, left: 48},
             flow: Down,
 
             model_selector = <ModelSelector> {}
@@ -122,8 +122,13 @@ impl WidgetMatchEvent for ChatScreen {
             // Handle model selector actions
             match action.cast() {
                 ModelSelectorAction::ModelSelected(downloaded_file) => {
-                    // TODO(MolyKit): Handle local files
-                    // currently loading the file first is necessary: store.load_model(&downloaded_file.file);
+                    let bot_id = BotId::from(downloaded_file.file.id.as_str());
+                    chat_widget.write().bot_id = Some(bot_id);
+
+                    if let Some(chat) = store.chats.get_current_chat() {
+                        chat.borrow_mut().associated_entity = Some(ChatEntityId::ModelFile(downloaded_file.file.id.clone()));
+                        chat.borrow().save();
+                    }
                 }
                 ModelSelectorAction::AgentSelected(agent) => {
                     // TODO(MolyKit): Handle agents
@@ -284,8 +289,13 @@ impl WidgetMatchEvent for ChatScreen {
                         // TODO(MolyKit): Replace ChatMessage everywhere with MolyKit's Message struct
                         let messages = chat.borrow().messages.iter().map(|m| {
                             // TODO(MolyKit): Handle the right entity for the message
-                            let from = if m.role == Role::Assistant { EntityId::Bot(BotId::from("anthropic/claude-3.7-sonnet-https://openrouter.ai/api/v1")) } else { EntityId::User };
-                            // let from = if m.role == Role::Assistant { EntityId::Bot() } else { EntityId::User };
+                            let from = if m.role == Role::Assistant {
+                                let bot_id = m.entity.clone().unwrap().as_bot_id();
+                                EntityId::Bot(bot_id)
+                            } else { 
+                                EntityId::User 
+                            };
+
                             Message {
                                 from,
                                 body: m.content.clone(),
@@ -294,12 +304,12 @@ impl WidgetMatchEvent for ChatScreen {
                             }
                         }).collect();
 
+                        // Load messages from history into the messages widget
                         self.messages(id!(chat.messages)).write().messages = messages;
-                    
 
+                        // Set the chat's associated model in the model selector
                         if let Some(entity) = &chat.borrow().associated_entity {
                             self.model_selector(id!(model_selector)).set_currently_selected_model(Some(entity.clone()));
-                            // TODO(Julian): figure out how to map RemoteModelId to BotId
                             let bot_id = match entity {
                                 ChatEntityId::RemoteModel(model_id) => {
                                     Some(BotId::from(model_id.0.as_str()))
@@ -332,7 +342,7 @@ impl ChatScreen {
             for provider in store.chats.providers.iter() {
                 match provider.1.provider_type {
                     ProviderType::OpenAI => {
-                        if provider.1.enabled && provider.1.api_key.is_some() {
+                        if provider.1.enabled && (provider.1.api_key.is_some() || provider.1.url.starts_with("http://localhost")) {
                             let mut new_client = OpenAIClient::new(provider.1.url.clone());
                             if let Some(key) = provider.1.api_key.as_ref() {
                                 new_client.set_key(&key);
@@ -369,7 +379,6 @@ impl ChatScreen {
             spawn(async move {
                 repo.load().await.expect("TODO: Handle loading better");
                 ui.defer_with_redraw(move |me, _cx, _scope| {
-                // println!("bots: {:?}", repo.bots());                    
                 me.should_load_repo_to_store = true;
                 me.creating_bot_repo = false;
             });

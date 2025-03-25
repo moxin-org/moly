@@ -181,22 +181,44 @@ impl ModelSelectorList {
                 });
 
                 // Remove the starting 'models/' at the beginning of the name (happens with Gemini)
-                let caption = &remote_model.name.trim_start_matches("models/");
-                let size_visible = false;
+                let mut caption = remote_model.name.trim_start_matches("models/");
 
                 let icon_tick_visible = match &chat_entity {
                     Some(ChatEntityId::RemoteModel(model_id)) => model_id.0 == remote_model.id.0,
                     _ => false,
                 };
 
+                // If the model is a local model get the different tag values
+                let mut architecture = None;
+                let mut param_size = None;
+                let mut size = None;
+
+                if let Some(downloaded_file) = store.downloads.downloaded_files.iter().find(|f| f.file.id == remote_model.name) {
+                    // Only set the value as some if the string isn't empty
+                    architecture = if !downloaded_file.model.architecture.is_empty() {
+                        Some(downloaded_file.model.architecture.clone())
+                    } else {
+                        None
+                    };
+                    param_size = if !downloaded_file.model.size.is_empty() {
+                        Some(downloaded_file.model.size.clone())
+                    } else {
+                        None
+                    };
+                    size = Some(format_model_size(&downloaded_file.file.size).unwrap_or("".to_string()));
+
+                    // Override the caption with the local file name
+                    caption = &downloaded_file.file.name;
+                }
+
                 item_widget.apply_over(
                     cx,
                     live! {
                         content = {
                             label = { text: (caption) }
-                            architecture_tag = { visible: false }
-                            params_size_tag = { visible: false }
-                            file_size_tag = { visible: (size_visible), caption = { text: "" } }
+                            architecture_tag = { visible: (architecture.is_some()), caption = { text: (architecture.unwrap_or("".to_string())) } }
+                            params_size_tag = { visible: (param_size.is_some()), caption = { text: (param_size.unwrap_or("".to_string())) } }
+                            file_size_tag = { visible: (size.is_some()), caption = { text: (size.unwrap_or("".to_string())) } }
                             icon_tick_tag = { visible: (icon_tick_visible) }
                         }
                     },
@@ -259,71 +281,6 @@ impl ModelSelectorList {
             item_widget
                 .as_model_selector_item()
                 .set_agent(agent.clone());
-
-            let _ = item_widget.draw_all(cx, &mut Scope::empty());
-            total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
-        }
-
-        // Add local models section header if we have any models
-        if !models.is_empty() {
-            // Add local models section header
-            let section_id = LiveId(current_index as u64).into();
-            current_index += 1;
-            
-            let section_label = self.items.get_or_insert(cx, section_id, |cx| {
-                WidgetRef::new_from_ptr(cx, self.section_label_template)
-            });
-            section_label.set_text(cx, "Local models");
-            let _ = section_label.draw_all(cx, &mut Scope::empty());
-            total_height += section_label.as_view().area().rect(cx).size.y;
-        }
-
-        // Draw local models
-        for model in models.iter() {
-            let item_id = LiveId(current_index as u64).into();
-            current_index += 1;
-            
-            let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
-                WidgetRef::new_from_ptr(cx, self.model_template)
-            });
-            self.map_to_downloaded_files
-                .insert(item_id, model.clone());
-
-            let caption = &model.file.name;
-
-            let architecture = &model.model.architecture;
-            let architecture_visible = !architecture.trim().is_empty();
-
-            let param_size = &model.model.size;
-            let param_size_visible = !param_size.trim().is_empty();
-
-            let size = format_model_size(&model.file.size).unwrap_or("".to_string());
-            let size_visible = !size.trim().is_empty();
-
-            let current_file_id = match chat_entity {
-                Some(ChatEntityId::ModelFile(ref file_id)) => Some(file_id.clone()),
-                Some(ChatEntityId::Agent(_)) => None,
-                _ => store.chats.loaded_model.as_ref().map(|m| m.id.clone()),
-            };
-            let icon_tick_visible = current_file_id.as_ref()
-                == Some(&self.map_to_downloaded_files.get(&item_id).unwrap().file.id);
-
-            item_widget.apply_over(
-                cx,
-                live! {
-                    content = {
-                        label = { text: (caption) }
-                        architecture_tag = { visible: (architecture_visible), caption = { text: (architecture) } }
-                        params_size_tag = { visible: (param_size_visible), caption = { text: (param_size) } }
-                        file_size_tag = { visible: (size_visible), caption = { text: (size) } }
-                        icon_tick_tag = { visible: (icon_tick_visible) }
-                    }
-                },
-            );
-
-            item_widget
-                .as_model_selector_item()
-                .set_model(model.clone());
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
             total_height += item_widget.view(id!(content)).area().rect(cx).size.y;

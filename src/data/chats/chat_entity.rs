@@ -1,5 +1,6 @@
 //! Hopefully, provisional solution to unify model files and agents in the chat system.
 
+use moly_kit::BotId;
 use moly_protocol::data::{File, FileID};
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,16 @@ pub enum ChatEntityId {
     ModelFile(FileID),
     Agent(RemoteModelId),
     RemoteModel(RemoteModelId),
+}
+
+impl ChatEntityId {
+    pub fn as_bot_id(&self) -> BotId {
+        match self {
+            ChatEntityId::Agent(agent) => BotId::from(agent.0.as_str()),
+            ChatEntityId::RemoteModel(model) => BotId::from(model.0.as_str()),
+            ChatEntityId::ModelFile(file) => BotId::from(file.as_str()),
+        }
+    }
 }
 
 /// Reference to either a model file, an agent, or a remote model.
