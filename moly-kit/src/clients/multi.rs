@@ -47,11 +47,11 @@ impl BotClient for MultiClient {
             None => {
                 let bot = bot.clone();
                 moly_stream(futures::stream::once(async move {
-                    Err(ClientError::new(
+                    ClientError::new(
                         ClientErrorKind::Unknown,
                         format!("Can't find a client to communicate with the bot {}", bot),
                     )
-                    .into())
+                    .into()
                 }))
             }
         }
@@ -82,12 +82,11 @@ impl BotClient for MultiClient {
             let mut errors = Vec::new();
 
             for result in results {
-                let client_bots = result.unwrap_or_else(|(sub_errors, bots)| {
-                    errors.extend(sub_errors);
-                    bots.unwrap_or_default()
-                });
-                zipped_bots.push(client_bots.clone());
-                flat_bots.extend(client_bots);
+                let (v, e) = result.into_value_and_errors();
+                let v = v.unwrap_or_default();
+                zipped_bots.push(v.clone());
+                flat_bots.extend(v);
+                errors.extend(e);
             }
 
             *clients_with_bots.lock().unwrap() = clients
@@ -96,12 +95,12 @@ impl BotClient for MultiClient {
                 .collect();
 
             if errors.is_empty() {
-                Ok(flat_bots)
+                ClientResult::new_ok(flat_bots)
             } else {
                 if flat_bots.is_empty() {
-                    Err((errors, None))
+                    ClientResult::new_err(errors)
                 } else {
-                    Err((errors, Some(flat_bots)))
+                    ClientResult::new_ok_and_err(flat_bots, errors)
                 }
             }
         };

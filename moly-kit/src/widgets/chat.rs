@@ -257,13 +257,14 @@ impl Chat {
             let mut client = repo.client();
 
             let mut message_stream = client.send_stream(&bot_id, &context);
-            while let Some(delta) = message_stream.next().await {
-                let delta = match delta {
-                    Ok(delta) => delta,
-                    Err(_) => MessageDelta {
+            while let Some(result) = message_stream.next().await {
+                let delta = if let Some(delta) = result.into_value() {
+                    delta
+                } else {
+                    MessageDelta {
                         body: "An error occurred".to_string(),
                         ..Default::default()
-                    },
+                    }
                 };
 
                 // In theory, with the synchroneous defer, if stream messages come

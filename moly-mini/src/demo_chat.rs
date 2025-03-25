@@ -210,12 +210,7 @@ impl DemoChat {
 
         let ui = self.ui_runner();
         spawn(async move {
-            let errors = repo
-                .load()
-                .await
-                .err()
-                .map(|(errors, _)| errors)
-                .unwrap_or_default();
+            let errors = repo.load().await.into_errors();
 
             ui.defer_with_redraw(move |me, _cx, _scope| {
                 let mut chat = me.chat(id!(chat));

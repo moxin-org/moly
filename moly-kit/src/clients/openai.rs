@@ -153,32 +153,32 @@ impl BotClient for OpenAIClient {
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
-                    return Err(ClientError::new_with_source(
+                    return ClientError::new_with_source(
                         ClientErrorKind::Network,
                         format!("An error ocurred sending a request to {url}."),
                         Some(error),
                     )
-                    .into());
+                    .into();
                 }
             };
 
             if !response.status().is_success() {
                 let code = response.status().as_u16();
-                return Err(ClientError::new(
+                return ClientError::new(
                     ClientErrorKind::Remote,
                     format!("Got unexpected HTTP status code {code} from {url}."),
                 )
-                .into());
+                .into();
             }
 
             let models: Models = match response.json().await {
                 Ok(models) => models,
                 Err(error) => {
-                    return Err(ClientError::new_with_source(
+                    return ClientError::new_with_source(
                         ClientErrorKind::Format,
                         format!("Could not parse the response from {url} as JSON or its structure does not match the expected format."),
                         Some(error),
-                    ).into());
+                    ).into();
                 }
             };
 
@@ -195,7 +195,7 @@ impl BotClient for OpenAIClient {
 
             bots.sort_by(|a, b| a.name.cmp(&b.name));
 
-            Ok(bots)
+            ClientResult::new_ok(bots)
         };
 
         moly_future(future)
@@ -239,11 +239,11 @@ impl BotClient for OpenAIClient {
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
-                    yield Err(ClientError::new_with_source(
+                    yield ClientError::new_with_source(
                         ClientErrorKind::Network,
                         format!("An error ocurred sending a request to {url}."),
                         Some(error),
-                    ).into());
+                    ).into();
                     return;
                 }
             };
@@ -256,11 +256,11 @@ impl BotClient for OpenAIClient {
                 let chunk = match chunk {
                     Ok(chunk) => chunk,
                     Err(error) => {
-                        yield Err(ClientError::new_with_source(
+                        yield ClientError::new_with_source(
                             ClientErrorKind::Network,
                             format!("Something wrong happend while a chunk of bytes from {url}."),
                             Some(error),
-                        ).into());
+                        ).into();
                         return;
                     }
                 };
@@ -288,11 +288,11 @@ impl BotClient for OpenAIClient {
                     let completion: Completion = match serde_json::from_str(m) {
                         Ok(c) => c,
                         Err(error) => {
-                            yield Err(ClientError::new_with_source(
+                            yield ClientError::new_with_source(
                                 ClientErrorKind::Format,
                                 format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
                                 Some(error),
-                            ).into());
+                            ).into();
                             return;
                         }
                     };
@@ -305,7 +305,7 @@ impl BotClient for OpenAIClient {
 
                     let citations = completion.citations;
 
-                    yield Ok(MessageDelta {
+                    yield ClientResult::new_ok(MessageDelta {
                         body,
                         citations,
                     });
