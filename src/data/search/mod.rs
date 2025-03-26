@@ -77,8 +77,7 @@ impl Search {
                     Ok(models) => {
                         Cx::post_action(SearchAction::Results(models));
                     }
-                    Err(err) => {
-                        eprintln!("Error fetching models: {:?}", err);
+                    Err(_err) => {
                         Cx::post_action(SearchAction::Error);
                     }
                 }
@@ -195,7 +194,6 @@ impl Search {
                 SearchAction::Error => {
                     self.state = SearchState::Errored;
                     self.set_models(vec![]);
-                    eprintln!("Error fetching models from the server");
                 }
             }
         }

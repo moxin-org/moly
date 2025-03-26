@@ -454,7 +454,8 @@ impl Store {
         // Automatically fetch providers that are enabled and have an API key or are MoFa servers
         let urls_to_fetch: Vec<String> = self.preferences.providers_preferences
             .iter()
-            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.url.starts_with("http://localhost")))
+            // TODO: If the provider requires an API key, we should fetch only if the API key is set
+            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.provider_type == ProviderType::DeepInquire || pp.url.starts_with("http://localhost")))
             .map(|pp| pp.url.clone())
             .collect();
 

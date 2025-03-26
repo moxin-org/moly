@@ -128,20 +128,43 @@ impl ProviderClientError {
 #[derive(Clone, Debug)]
 pub enum ChatResponse {
     ChatFinalResponseData(MolyChatResponse, bool),
-    ChatStage(Stage),
+    DeepnInquireResponse(DeepInquireMessage),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum Stage {
-    Thinking(String),
-    Writing(String, Vec<Article>),
-    Completed(String, Vec<Article>),
+pub enum DeepInquireMessage {
+    Thinking(usize, DeepInquireStageContent),
+    Writing(usize, DeepInquireStageContent),
+    Completed(usize, DeepInquireStageContent),
+}
+
+impl DeepInquireMessage {
+    pub fn id(&self) -> usize {
+        match self {
+            DeepInquireMessage::Thinking(id, _) => *id,
+            DeepInquireMessage::Writing(id, _) => *id,
+            DeepInquireMessage::Completed(id, _) => *id,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct DeepInquireStage {
+    pub id: usize,
+    pub thinking: Option<DeepInquireStageContent>, 
+    pub writing: Option<DeepInquireStageContent>,
+    pub completed: Option<DeepInquireStageContent>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct DeepInquireStageContent {
+    pub content: String,
+    pub articles: Vec<Article>,
 }
 
 #[derive(Clone, Debug)]
 pub struct MolyChatResponse {
     pub content: String,
-    pub articles: Vec<Article>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

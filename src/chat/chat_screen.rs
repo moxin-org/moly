@@ -219,7 +219,6 @@ impl WidgetMatchEvent for ChatScreen {
                                         username: None,
                                         entity,
                                         content: message.body.clone(),
-                                        articles: vec![],
                                         stages: vec![],
                                     };
 
@@ -270,7 +269,6 @@ impl WidgetMatchEvent for ChatScreen {
                         username: None,
                         entity: None,
                         content: new_message.body.clone(),
-                        articles: vec![],
                         stages: vec![],
                     });
 

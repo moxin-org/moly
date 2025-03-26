@@ -175,7 +175,6 @@ impl OpenAIClient {
                             Ok(resp) => {
                                 let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
                                     content: resp.choices[0].message.content.clone(),
-                                    articles: vec![],
                                 }, true));
                             }
                             Err(e) => {
