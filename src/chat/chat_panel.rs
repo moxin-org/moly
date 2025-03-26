@@ -1,5 +1,6 @@
 use makepad_widgets::*;
-use std::cell::{Ref, RefCell, RefMut};
+use rand::seq::SliceRandom;
+use std::{cell::{Ref, RefCell, RefMut}, fs};
 
 use crate::{
     chat::{
@@ -17,8 +18,7 @@ use crate::{
 };
 
 use super::{
-    model_selector_list::ModelSelectorListAction, prompt_input::PromptInputWidgetExt,
-    shared::ChatAgentAvatarWidgetRefExt,
+    model_selector_list::ModelSelectorListAction, prompt_input::PromptInputWidgetExt, shared::ChatAgentAvatarWidgetRefExt
 };
 
 live_design! {
@@ -184,6 +184,86 @@ live_design! {
         }
     }
 
+    PromptExample = <View> {
+        width: Fit,
+        height: Fit,
+        flow: Right,
+        spacing: 10,
+
+        prompt1 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 1",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+
+        prompt2 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 2",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+
+        prompt3 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 3",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+
+        prompt4 = <MolyButton> {
+            width: 150
+            height: 100,
+
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 14},
+                color:  #98A2B3,
+            }
+
+            text: "prompt 4",
+
+            draw_bg: {
+                radius: 10.0,
+                border_width: 1.0,
+                border_color: #98A2B3,
+            }
+        }
+    }
+
+
     pub ChatPanel = {{ChatPanel}} {
         flow: Overlay
         width: Fill
@@ -313,6 +393,8 @@ live_design! {
                     }
                     text: "How can I help you?"
                 }
+
+                prompt_example = <PromptExample> {}
             }
 
             main = <View> {
@@ -398,6 +480,12 @@ pub struct ChatPanel {
 
     #[rust]
     current_chat_id: Option<ChatID>,
+
+    #[rust]
+    prompt_example: String,
+
+    #[rust(false)]
+    load_prompt: bool,
 }
 
 impl Widget for ChatPanel {
@@ -418,6 +506,25 @@ impl Widget for ChatPanel {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.update_view(cx, scope);
+
+        // if self.load_prompt {
+        //     // Read a file from JSON.
+        //     let file_content = fs::read_to_string("./resources/files/prompt_data.json").expect("Failed to read JSON file");
+
+        //     // Parse the JSON data and store it in a vector.
+        //     let items: Vec<String> = serde_json::from_str(&file_content).expect("Failed to parse JSON");
+
+        //     // Randomly select 4 items from the vector.
+        //     let mut rng = rand::thread_rng();
+        //     let selected_items: Vec<&String> = items.choose_multiple(&mut rng, 4).collect();
+
+        //     self.button(id!(prompt1)).set_text(selected_items[0]);
+        //     self.button(id!(prompt2)).set_text(selected_items[1]);
+        //     self.button(id!(prompt3)).set_text(selected_items[2]);
+        //     self.button(id!(prompt4)).set_text(selected_items[3]);
+
+        //     self.load_prompt = false;
+        // }
 
         // We need to make sure we're drawing this widget in order to focus on the prompt input
         // Otherwise, when navigating from another section this command would happen before the widget is drawn
@@ -446,6 +553,32 @@ impl Widget for ChatPanel {
 impl WidgetMatchEvent for ChatPanel {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        let prompt1 = self.button(id!(prompt1));
+        let prompt2 = self.button(id!(prompt2));
+        let prompt3 = self.button(id!(prompt3));
+        let prompt4 = self.button(id!(prompt4));
+
+        if prompt1.clicked(actions) {
+            log!("prompt1 clicked");
+            self.prompt_example = prompt1.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
+
+        if prompt2.clicked(actions) {
+            self.prompt_example = prompt2.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
+
+        if prompt3.clicked(actions) {
+            self.prompt_example = prompt3.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
+
+        if prompt4.clicked(actions) {
+            self.prompt_example = prompt4.text();
+            self.prompt_input(id!(main_prompt_input)).set_text_and_redraw(cx, &self.prompt_example);
+        }
 
         for action in actions {
             if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
@@ -982,6 +1115,14 @@ impl ChatPanel {
             }
         }
     }
+
+    fn show_prompt_example(&mut self, cx: &mut Cx) {
+        let prompt_items = get_prompts();
+        self.button(id!(prompt1)).set_text_and_redraw(cx, &prompt_items[0]);
+        self.button(id!(prompt2)).set_text_and_redraw(cx, &prompt_items[1]);
+        self.button(id!(prompt3)).set_text_and_redraw(cx, &prompt_items[2]);
+        self.button(id!(prompt4)).set_text_and_redraw(cx, &prompt_items[3]);
+    }
 }
 
 #[derive(Clone, DefaultNone, Debug)]
@@ -1010,3 +1151,17 @@ fn get_chat_messages(store: &Store) -> Option<Ref<Vec<ChatMessage>>> {
 fn get_chat_id(store: &Store) -> Option<ChatID> {
     get_chat(store).map(|chat| chat.borrow().id)
 }
+
+ fn get_prompts() -> Vec<String> {
+    // Read a file from JSON.
+    let file_content = fs::read_to_string("./resources/files/prompt_data.json").expect("Failed to read JSON file");
+
+    // Parse the JSON data and store it in a vector.
+    let items: Vec<String> = serde_json::from_str(&file_content).expect("Failed to parse JSON");
+
+    // Randomly select 4 items from the vector.
+    let mut rng = rand::thread_rng();
+    let selected_items: Vec<String> = items.choose_multiple(&mut rng, 4).cloned().collect();
+
+    selected_items
+ }
