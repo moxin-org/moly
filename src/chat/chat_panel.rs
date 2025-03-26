@@ -327,9 +327,7 @@ live_design! {
 
                 chat = <PortalList> {
                     margin: { bottom: 15 }
-                    scroll_bar: {
-                        bar_size: 0.0,
-                    }
+                    scroll_bar: <MolyScrollBar> {}
                     width: Fill,
                     height: Fill,
 

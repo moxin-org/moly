@@ -499,4 +499,55 @@ live_design! {
             }
         }
     }
+
+    pub MolyScrollBar = <ScrollBar> {
+        bar_size: 5.0,
+        bar_side_margin: 3.0
+        min_handle_size: 30.0
+        axis: Vertical
+        smoothing: 10.0
+
+        draw_bar: {
+            instance pressed: 0.0
+            instance hover: 0.0
+            
+            instance color: #888,
+            instance color_hover: #999
+            instance color_pressed: #666
+            
+            uniform bar_width: 6.0
+            uniform border_radius: 1.5
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                if self.is_vertical > 0.5 {
+                    sdf.box(
+                        1.,
+                        self.rect_size.y * self.norm_scroll,
+                        self.bar_width,
+                        self.rect_size.y * self.norm_handle,
+                        self.border_radius
+                    );
+                }
+                else {
+                    sdf.box(
+                        self.rect_size.x * self.norm_scroll,
+                        1.,
+                        self.rect_size.x * self.norm_handle,
+                        self.bar_width,
+                        self.border_radius
+                    );
+                }
+                return sdf.fill(mix(
+                    self.color, 
+                    mix(
+                        self.color_hover,
+                        self.color_pressed,
+                        self.pressed
+                    ),
+                    self.hover
+                ));
+            }
+        }
+    }
 }
