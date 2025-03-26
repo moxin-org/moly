@@ -169,7 +169,7 @@ impl ModelSelectorList {
             });
             section_label.set_text(cx, &provider_name);
             let _ = section_label.draw_all(cx, &mut Scope::empty());
-            total_height += section_label.as_view().area().rect(cx).size.y;
+            total_height += section_label.as_label().area().rect(cx).size.y;
 
             // Add models for this provider
             for remote_model in provider_models.iter() {
