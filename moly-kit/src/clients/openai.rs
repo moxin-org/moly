@@ -163,7 +163,7 @@ impl BotClient for OpenAIClient {
                         log!("Empty response from server");
                         return Err(());
                     }
-                    
+
                     match serde_json::from_str(&text) {
                         Ok(models) => models,
                         Err(error) => {
@@ -233,7 +233,8 @@ impl BotClient for OpenAIClient {
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
-                    log!("Error {:?}", error);
+                    log!("Network connection error: {:?}", error);
+                    // When an error occurs at the connection layer, we need to provide feedback to the UI because no content has been rendered yet
                     yield Err(());
                     return;
                 }
@@ -247,8 +248,9 @@ impl BotClient for OpenAIClient {
                 let chunk = match chunk {
                     Ok(chunk) => chunk,
                     Err(error) => {
-                        log!("Error {:?}", error);
-                        yield Err(());
+                        log!("Network Error during stream: {:?}", error);
+                        // instead of immediately exiting, record the error and indicate the stream ended,
+                        // so the UI can retain content that's already been rendered
                         return;
                     }
                 };
@@ -261,23 +263,30 @@ impl BotClient for OpenAIClient {
                     continue;
                 };
 
-                // Silently drop any invalid utf8 bytes from the completed messages.
-                let completed_messages = String::from_utf8_lossy(completed_messages);
+                // Handle invalid UTF-8 bytes without interrupting the entire processing flow
+                let completed_messages = match String::from_utf8(completed_messages.to_vec()) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log!("UTF-8 decoding error, using lossy conversion: {:?}", e);
+                        String::from_utf8_lossy(completed_messages).to_string()
+                    }
+                };
 
                 let messages =
                     completed_messages
                     .split(event_terminator_str)
                     .filter(|m| !m.starts_with(":"))
-                    .map(|m| m.trim_start().split("data:").nth(1).unwrap())
+                    .filter_map(|m| m.trim_start().split("data:").nth(1))
                     .filter(|m| m.trim() != "[DONE]");
 
                 for m in messages {
                     let completion: Completion = match serde_json::from_str(m) {
                         Ok(c) => c,
                         Err(error) => {
-                            log!("Error: {:?}", error);
-                            yield Err(());
-                            return;
+                            log!("JSON parsing error: {:?} in message: '{}'", error, m);
+                            // If we've already received some content, we shouldn't lose it due to a parsing error
+                            // We just skip this message and continue processing
+                            continue;
                         }
                     };
 

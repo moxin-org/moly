@@ -211,6 +211,7 @@ impl DeepInquireClient {
                                         content: latest_content.clone(),
                                         articles: all_articles.clone(),
                                     };
+                                    // Use 0 as default ID when no valid completion was received
                                     let _ = tx.send(ChatResponse::DeepnInquireResponse(DeepInquireMessage::Completed(0, final_content)));
                                 }
                             },
@@ -266,6 +267,7 @@ struct DeltaContent {
     metadata: serde_json::Value,
     #[serde(default)]
     r#type: Option<String>,
+    #[serde(default)]
     id: usize,
 }
 
