@@ -195,11 +195,13 @@ live_design! {
                 name = {text: "Application"}
             }
         }
+        actions_section = {
+            margin: {left: 2}
+        }
     }
 
     ErrorLine = <AppLine> {
         message_section = {
-            padding: 12,
             draw_bg: {color: #f003}
 
             sender = {
