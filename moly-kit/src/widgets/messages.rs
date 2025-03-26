@@ -354,6 +354,7 @@ impl Messages {
                             Some(Picture::Grapheme("A".into()));
                         item.label(id!(name)).set_text(cx, "Application");
                         item.label(id!(text.markdown)).set_text(cx, &message.body);
+                        self.apply_actions_and_editor_visibility(cx, &item, index);
                         item.draw_all(cx, &mut Scope::empty());
                     }
                 }

@@ -295,6 +295,15 @@ impl<T> ClientResult<T> {
     pub fn into_value_and_errors(self) -> (Option<T>, Vec<ClientError>) {
         (self.value, self.errors)
     }
+
+    /// Consume the result to convert it into a standard Result.
+    pub fn into_result(self) -> Result<T, Vec<ClientError>> {
+        if self.errors.is_empty() {
+            Ok(self.value.expect("ClientResult has no value nor errors"))
+        } else {
+            Err(self.errors)
+        }
+    }
 }
 
 /// A standard interface to fetch bots information and send messages to them.
