@@ -211,6 +211,17 @@ If you'd like to modify the .dmg background, here is the [Google Drawings file u
 [AppImage]: https://appimage.org/
 [pacman]: https://pacman.archlinux.page/pacman.8.html
 
+## Running Moly with Moly Server
+
+[Moly Server](https://github.com/moxin-org/moly-server) is a local HTTP server which provides capabilities for searching, downloading, and running local LLMs over an OpenAI-compatible API. While not required for use of Moly, it can be run alongside and connected to by the main Moly application.
+
+After following the [setup guide](https://github.com/moxin-org/moly-server?tab=readme-ov-file#building-and-running) in its README, the server can be run with:
+
+```bash
+cd moly-server/
+cargo run -p moly-server
+```
+
 ## Running Moly with MoFa
 
 [MoFa](https://github.com/moxin-org/mofa) is a software framework for building AI agents. Moly supports connecting to MoFa servers to interact with AI agents in the same way it does with local LLMs.
