@@ -260,9 +260,12 @@ impl Chat {
             while let Some(delta) = message_stream.next().await {
                 let delta = match delta {
                     Ok(delta) => delta,
-                    Err(_) => MessageDelta {
-                        body: "An error occurred".to_string(),
-                        ..Default::default()
+                    Err(_) => {
+                        println!("Error receiving response: RecvError");
+                        MessageDelta {
+                            body: "\n\n[Connection interrupted. Please check your network...]".to_string(),
+                            ..Default::default()
+                        }
                     },
                 };
 
@@ -441,9 +444,10 @@ impl Chat {
         self.abort_handle = None;
         self.expected_message = None;
         self.prompt_input_ref().write().set_send();
+        // 保留所有消息，仅改变写入状态，不再按内容空白条件过滤
         self.messages_ref().write().messages.retain_mut(|m| {
             m.is_writing = false;
-            !m.body.is_empty()
+            true // 保留所有消息，即使内容为空
         });
     }
 

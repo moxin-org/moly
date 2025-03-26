@@ -21,16 +21,17 @@ pub type ChatID = u128;
 #[derive(Debug)]
 pub struct ChatEntityAction {
     pub chat_id: ChatID,
-    kind: ChatEntityActionKind,
+    pub kind: ChatEntityActionKind,
 }
 
 #[derive(Debug)]
-enum ChatEntityActionKind {
+pub enum ChatEntityActionKind {
     ModelAppendDelta(String),
     ModelStreamingDone,
     DeepnInquireResponse(DeepInquireMessage),
     MofaAgentResult(String, bool),
     MofaAgentCancelled,
+    NetworkError,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -437,6 +438,8 @@ impl Chat {
         *self.state.write().unwrap() = ChatState::Receiving;
 
         let chat_id = self.id;
+        let messages_clone = self.messages.clone();
+
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
                 Ok(RemoteModelChatResponse::ChatFinalResponseData(data, is_final)) => {
@@ -456,10 +459,32 @@ impl Chat {
                 }
                 Err(e) => {
                     println!("Error receiving response from agent: {:?}", e);
+
+                    // Send network error notification action
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentCancelled,
+                        kind: ChatEntityActionKind::NetworkError,
                     });
+
+                    // 先更新消息内容，显示中断消息，但保留已有内容
+                    if let Some(last) = messages_clone.last() {
+                        let updated_content = if last.content.is_empty() {
+                            "[Connection interrupted. Please check your network...]".to_string()
+                        } else {
+                            format!("{}\n\n[Connection interrupted. Please check your network...]", last.content)
+                        };
+
+                        Cx::post_action(ChatEntityAction {
+                            chat_id,
+                            kind: ChatEntityActionKind::MofaAgentResult(updated_content, true),
+                        });
+                    } else {
+                        // 如果没有消息，发送取消动作
+                        Cx::post_action(ChatEntityAction {
+                            chat_id,
+                            kind: ChatEntityActionKind::MofaAgentCancelled,
+                        });
+                    }
 
                     break '_loop;
                 }
@@ -502,6 +527,8 @@ impl Chat {
         *self.state.write().unwrap() = ChatState::Receiving;
 
         let chat_id = self.id;
+        let messages_clone = self.messages.clone();
+
         std::thread::spawn(move || '_loop: loop {
             match rx.recv() {
                 Ok(RemoteModelChatResponse::ChatFinalResponseData(data, is_final)) => {
@@ -528,10 +555,32 @@ impl Chat {
                 }
                 Err(e) => {
                     println!("Error receiving response from agent: {:?}", e);
+
+                    // Send network error notification action
                     Cx::post_action(ChatEntityAction {
                         chat_id,
-                        kind: ChatEntityActionKind::MofaAgentCancelled,
+                        kind: ChatEntityActionKind::NetworkError,
                     });
+
+                    // 先更新消息内容，显示中断消息，但保留已有内容
+                    if let Some(last) = messages_clone.last() {
+                        let updated_content = if last.content.is_empty() {
+                            "[Connection interrupted. Please check your network...]".to_string()
+                        } else {
+                            format!("{}\n\n[Connection interrupted. Please check your network...]", last.content)
+                        };
+
+                        Cx::post_action(ChatEntityAction {
+                            chat_id,
+                            kind: ChatEntityActionKind::MofaAgentResult(updated_content, true),
+                        });
+                    } else {
+                        // 如果没有消息，发送取消动作
+                        Cx::post_action(ChatEntityAction {
+                            chat_id,
+                            kind: ChatEntityActionKind::MofaAgentCancelled,
+                        });
+                    }
 
                     break '_loop;
                 }
@@ -553,7 +602,7 @@ impl Chat {
         } else {
             ChatState::Cancelled(false)
         };
-        
+
         *self.state.write().unwrap() = new_state;
     }
 
@@ -612,16 +661,26 @@ impl Chat {
                 *self.state.write().unwrap() = ChatState::Idle;
             }
             ChatEntityActionKind::MofaAgentResult(response, is_final) => {
-                let last = self.messages.last_mut().unwrap();
-                last.content = response.clone();
-                if *is_final {
-                    *self.state.write().unwrap() = ChatState::Idle;
+                if let Some(last) = self.messages.last_mut() {
+                    last.content = response.clone();
+                    if *is_final {
+                        *self.state.write().unwrap() = ChatState::Idle;
+                    }
                 }
             }
             ChatEntityActionKind::MofaAgentCancelled => {
                 *self.state.write().unwrap() = ChatState::Idle;
-                // Remove the last message sent by the user
-                self.messages.pop();
+                // 保留上一条消息，确保已有内容不丢失
+                if let Some(last) = self.messages.last_mut() {
+                    if last.content.is_empty() {
+                        last.content = "[Connection interrupted. Please check your network...]".to_string();
+                    }
+                }
+            }
+            ChatEntityActionKind::NetworkError => {
+                // Here we would trigger a notification to be displayed
+                println!("Network error action received - should show notification to user");
+                // In a real implementation, this would show a notification popup
             }
             ChatEntityActionKind::DeepnInquireResponse(message) => {
                 let last_message = self.messages.last_mut().unwrap();
@@ -631,7 +690,7 @@ impl Chat {
                 // to the last active stage instead of creating a new one.
                 match message {
                     DeepInquireMessage::Completed(_, content) => {
-                        last_message.stages.push(DeepInquireStage { 
+                        last_message.stages.push(DeepInquireStage {
                             id: last_message.stages.len(),
                             thinking: None,
                             writing: None,

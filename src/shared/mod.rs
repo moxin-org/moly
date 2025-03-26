@@ -7,6 +7,7 @@ pub mod download_notification_popup;
 pub mod external_link;
 pub mod meta;
 pub mod modal;
+pub mod network_error_popup;
 pub mod popup_notification;
 pub mod resource_imports;
 pub mod styles;
@@ -24,6 +25,7 @@ pub fn live_design(cx: &mut Cx) {
     popup_notification::live_design(cx);
     external_link::live_design(cx);
     download_notification_popup::live_design(cx);
+    network_error_popup::live_design(cx);
     tooltip::live_design(cx);
     desktop_buttons::live_design(cx);
 }

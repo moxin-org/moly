@@ -1,5 +1,6 @@
 use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
+use crate::data::chats::chat::{ChatEntityAction, ChatEntityActionKind};
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::store::*;
@@ -7,6 +8,9 @@ use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
+};
+use crate::shared::network_error_popup::{
+    NetworkErrorPopupAction, NetworkErrorPopup
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use moly_protocol::data::{File, FileID};
@@ -24,6 +28,7 @@ live_design! {
     use crate::shared::popup_notification::*;
     use crate::shared::widgets::SidebarMenuButton;
     use crate::shared::download_notification_popup::DownloadNotificationPopup;
+    use crate::shared::network_error_popup::NetworkErrorPopup;
     use crate::shared::desktop_buttons::MolyDesktopButton;
 
     use crate::landing::landing_screen::LandingScreen;
@@ -134,6 +139,7 @@ live_design! {
                 popup_notification = <PopupNotification> {
                     content: {
                         popup_download_notification = <DownloadNotificationPopup> {}
+                        popup_network_error = <NetworkErrorPopup> {}
                     }
                 }
             }
@@ -176,7 +182,7 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        
+
         // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
             if let Some(file_id) = &self.file_id {
@@ -185,12 +191,14 @@ impl AppMain for App {
                 self.ui.redraw(cx);
             }
         }
-      
+
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
     }
 }
+
+
 
 impl MatchEvent for App {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
@@ -224,6 +232,11 @@ impl MatchEvent for App {
 
             if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
                 self.notify_downloaded_files(cx);
+            }
+
+            // Handle chat entity actions like NetworkError
+            if let Some(ce_action) = action.downcast_ref::<ChatEntityAction>() {
+                self.handle_chat_entity_action(cx, ce_action);
             }
 
             match action.cast() {
@@ -293,11 +306,34 @@ impl MatchEvent for App {
                     .popup_notification(id!(popup_notification))
                     .close(cx);
             }
+
+            if matches!(
+                action.downcast_ref::<NetworkErrorPopupAction>(),
+                Some(NetworkErrorPopupAction::CloseButtonClicked)
+                    | Some(NetworkErrorPopupAction::RetryButtonClicked)
+            ) {
+                self.ui
+                    .popup_notification(id!(popup_notification))
+                    .close(cx);
+            }
         }
     }
 }
 
 impl App {
+    fn handle_chat_entity_action(&mut self, cx: &mut Cx, action: &ChatEntityAction) {
+        if let ChatEntityActionKind::NetworkError = action.kind {
+            let network_error_popup = self.ui.widget(id!(popup_network_error));
+
+            if let Some(mut popup) = network_error_popup.borrow_mut::<NetworkErrorPopup>() {
+                popup.set_message(cx, "Connection to AI service was interrupted. Please check your network or agent service and try again.");
+            }
+
+            let popup = self.ui.popup_notification(id!(popup_notification));
+            popup.open(cx);
+        }
+    }
+
     fn notify_downloaded_files(&mut self, cx: &mut Cx) {
         if let Some(notification) = self.store.downloads.next_download_notification() {
             let mut popup = self
