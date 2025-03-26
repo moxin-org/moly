@@ -90,8 +90,8 @@ impl DeepInquireClient {
                     }
 
                     let req = req.json(&data);
+                    let address = address.clone();
 
-                    // Spawn in a separate thread to avoid blocking the tokio runtime
                     std::thread::spawn(move || {
                         let mut latest_content = String::new();
                         let mut all_articles: Vec<Article> = Vec::new();
@@ -99,110 +99,129 @@ impl DeepInquireClient {
                         
                         match req.send() {
                             Ok(res) => {
-                                // Process streaming response line by line
+                                if !res.status().is_success() {
+                                    eprintln!("Server returned error status: {} - {}", res.status(), res.status().canonical_reason().unwrap_or("Unknown"));
+                                    return;
+                                }
+
                                 let mut reader = std::io::BufReader::new(res);
                                 let mut line = String::new();
                                 
-                                while reader.read_line(&mut line).unwrap_or(0) > 0 {
-                                    if line.starts_with("data: ") {
-                                        // Skip "data: " prefix (6 bytes)
-                                        let json_str = &line[6..];
-                                        
-                                        // Try to parse as our custom format
-                                        match serde_json::from_str::<DeepInquireResponse>(json_str) {
-                                            Ok(deep_inquire_response) => {
-                                                if let Some(choice) = deep_inquire_response.choices.first() {
-                                                    let message_type = choice.delta.r#type.clone().unwrap_or_default();
+                                loop {
+                                    match reader.read_line(&mut line) {
+                                        Ok(0) => break, // EOF
+                                        Ok(_) => {
+                                            if line.starts_with("data: ") {
+                                                // Skip "data: " prefix (6 bytes)
+                                                let json_str = &line[6..];
+                                                
+                                                match serde_json::from_str::<DeepInquireResponse>(json_str) {
+                                                    Ok(deep_inquire_response) => {
+                                                        if let Some(choice) = deep_inquire_response.choices.first() {
+                                                            let message_type = choice.delta.r#type.clone().unwrap_or_default();
 
-                                                    match message_type.as_str() {
-                                                        "thinking" => {
-                                                            let content = DeepInquireStageContent {
-                                                                content: choice.delta.content.clone(),
-                                                                articles: choice.delta.articles.clone(),
-                                                            };
+                                                            match message_type.as_str() {
+                                                                "thinking" => {
+                                                                    let content = DeepInquireStageContent {
+                                                                        content: choice.delta.content.clone(),
+                                                                        articles: choice.delta.articles.clone(),
+                                                                    };
 
-                                                            all_articles.extend(choice.delta.articles.clone());
+                                                                    all_articles.extend(choice.delta.articles.clone());
 
-                                                            let _ = tx.send(ChatResponse::DeepnInquireResponse(
-                                                                DeepInquireMessage::Thinking(choice.delta.id, content)
-                                                            ));
-                                                        },
-                                                        "content" => {
-                                                            let new_content = choice.delta.content.clone();
-                                                            // Overwrite the latest_content with the new chunk
-                                                            latest_content = new_content;
-                                                            
-                                                            // Extract articles
-                                                            let articles = choice.delta.articles
-                                                                .iter()
-                                                                .map(|article| Article {
-                                                                    title: article.title.clone(),
-                                                                    url: article.url.clone(),
-                                                                    snippet: article.snippet.clone(),
-                                                                    source: article.source.clone(),
-                                                                    relevance: article.relevance,
-                                                                })
-                                                                .collect::<Vec<Article>>();
-                                                            
-                                                            all_articles.extend(articles.clone());
+                                                                    let _ = tx.send(ChatResponse::DeepnInquireResponse(
+                                                                        DeepInquireMessage::Thinking(choice.delta.id, content)
+                                                                    ));
+                                                                },
+                                                                "content" => {
+                                                                    let new_content = choice.delta.content.clone();
+                                                                    // Overwrite the latest_content with the new chunk
+                                                                    latest_content = new_content;
+                                                                    
+                                                                    // Extract articles
+                                                                    let articles = choice.delta.articles
+                                                                        .iter()
+                                                                        .map(|article| Article {
+                                                                            title: article.title.clone(),
+                                                                            url: article.url.clone(),
+                                                                            snippet: article.snippet.clone(),
+                                                                            source: article.source.clone(),
+                                                                            relevance: article.relevance,
+                                                                        })
+                                                                        .collect::<Vec<Article>>();
+                                                                    
+                                                                    all_articles.extend(articles.clone());
 
-                                                            let content = DeepInquireStageContent {
-                                                                content: latest_content.clone(),
-                                                                articles: articles.clone(),
-                                                            };
+                                                                    let content = DeepInquireStageContent {
+                                                                        content: latest_content.clone(),
+                                                                        articles: articles.clone(),
+                                                                    };
 
-                                                            let _ = tx.send(ChatResponse::DeepnInquireResponse(
-                                                                DeepInquireMessage::Writing(choice.delta.id, content)
-                                                            ));
-                                                        },
-                                                        "completion" => {
-                                                            let final_content = choice.delta.content.clone();
-                                                            
-                                                            latest_content = final_content;
-                                                            
-                                                            let articles = choice.delta.articles
-                                                                .iter()
-                                                                .map(|article| Article {
-                                                                    title: article.title.clone(),
-                                                                    url: article.url.clone(),
-                                                                    snippet: article.snippet.clone(),
-                                                                    source: article.source.clone(),
-                                                                    relevance: article.relevance,
-                                                                })
-                                                                .collect::<Vec<Article>>();
-                                                            
-                                                            all_articles.extend(articles.clone());
-                                                            // Remove duplicates
-                                                            all_articles.sort_by_key(|a| a.url.clone());
-                                                            all_articles.dedup_by_key(|a| a.url.clone());
+                                                                    let _ = tx.send(ChatResponse::DeepnInquireResponse(
+                                                                        DeepInquireMessage::Writing(choice.delta.id, content)
+                                                                    ));
+                                                                },
+                                                                "completion" => {
+                                                                    let final_content = choice.delta.content.clone();
+                                                                    
+                                                                    latest_content = final_content;
+                                                                    
+                                                                    let articles = choice.delta.articles
+                                                                        .iter()
+                                                                        .map(|article| Article {
+                                                                            title: article.title.clone(),
+                                                                            url: article.url.clone(),
+                                                                            snippet: article.snippet.clone(),
+                                                                            source: article.source.clone(),
+                                                                            relevance: article.relevance,
+                                                                        })
+                                                                        .collect::<Vec<Article>>();
+                                                                    
+                                                                    all_articles.extend(articles.clone());
+                                                                    // Remove duplicates
+                                                                    all_articles.sort_by_key(|a| a.url.clone());
+                                                                    all_articles.dedup_by_key(|a| a.url.clone());
 
-                                                            let final_content = DeepInquireStageContent {
-                                                                content: latest_content.clone(),
-                                                                articles: all_articles.clone(),
-                                                            };
+                                                                    let final_content = DeepInquireStageContent {
+                                                                        content: latest_content.clone(),
+                                                                        articles: all_articles.clone(),
+                                                                    };
 
-                                                            let _ = tx.send(ChatResponse::DeepnInquireResponse(
-                                                                DeepInquireMessage::Completed(choice.delta.id, final_content)
-                                                            ));
-                                                            received_completion = true;
-                                                        },
-                                                        // unknown -> just log
-                                                        _ => {
-                                                            eprintln!("Unknown message type: {}", message_type);
+                                                                    let _ = tx.send(ChatResponse::DeepnInquireResponse(
+                                                                        DeepInquireMessage::Completed(choice.delta.id, final_content)
+                                                                    ));
+                                                                    received_completion = true;
+                                                                },
+                                                                // unknown -> just log
+                                                                _ => {
+                                                                    eprintln!("Unknown message type: {}", message_type);
+                                                                }
+                                                            }
+                                                        } else {
+                                                            eprintln!("Received empty choices array in response: {}", json_str);
+                                                        }
+                                                    },
+                                                    Err(e1) => {
+                                                        eprintln!("Error parsing response JSON: {}", e1);
+                                                        eprintln!("Raw JSON content: {}", json_str);
+                                                        // Try to parse as raw JSON to see the structure
+                                                        if let Ok(raw) = serde_json::from_str::<serde_json::Value>(json_str) {
+                                                            eprintln!("Raw JSON structure: {:#?}", raw);
                                                         }
                                                     }
                                                 }
-                                            },
-                                            Err(e1) => {
-                                                eprintln!("Error parsing as DeepInquire format: {}", e1);
+                                            } else if !line.trim().is_empty() {
+                                                eprintln!("Received unexpected line format: {}", line);
                                             }
+                                            
+                                            // Clear the buffer for the next iteration
+                                            line.clear();
                                         }
-                                    } else if line.trim().is_empty() {
-                                        // ignoring empty lines
+                                        Err(e) => {
+                                            eprintln!("Error reading response stream: {}", e);
+                                            break;
+                                        }
                                     }
-                                    
-                                    // Clear the buffer for the next iteration
-                                    line.clear();
                                 }
                                 
                                 // If we never got a "completion" and there's text to show
@@ -215,7 +234,8 @@ impl DeepInquireClient {
                                 }
                             },
                             Err(e) => {
-                                eprintln!("Provider client error: {}", e);
+                                let error_msg = format!("Failed to connect to server: {} ({})", e, address);
+                                eprintln!("{}", error_msg);
                             }
                         }
                     });
