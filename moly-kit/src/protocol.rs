@@ -19,7 +19,7 @@ pub enum Picture {
 }
 
 /// Indentify the entities that are recognized by this crate, mainly in a chat.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub enum EntityId {
     /// Represents the user operating this app.
     User,
@@ -35,6 +35,7 @@ pub enum EntityId {
     /// (like inline errors).
     ///
     /// It's not supposed to be sent as part of a conversation to bots.
+    #[default]
     App,
 }
 
@@ -67,21 +68,40 @@ impl fmt::Display for BotId {
     }
 }
 
+/// The level of a message similar to log levels.
+///
+/// Controls when and how the message should be displayed.
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
+pub enum MessageLevel {
+    /// A message displayed without any special meaning.
+    #[default]
+    Normal,
+
+    /// A message displayed as an error.
+    Error,
+}
+
 /// A message that is part of a conversation.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
+
     /// Content of the message.
     pub body: String,
+
     /// If this message is still being written.
     ///
     /// This means the message is still going to be modified.
     ///
     /// If `false`, it means the message will not change anymore.
     pub is_writing: bool,
+
     /// Citations for the message.
     pub citations: Vec<String>,
+
+    /// The level of the message. See [MessageLevel] for more information.
+    pub level: MessageLevel,
 }
 
 /// A delta response for an existing [Message].

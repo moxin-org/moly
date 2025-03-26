@@ -226,10 +226,10 @@ impl DemoChat {
 
                 for error in errors {
                     messages.write().messages.push(Message {
-                        body: error.to_string(),
-                        is_writing: false,
-                        citations: Vec::new(),
                         from: EntityId::App,
+                        body: error.to_string(),
+                        level: MessageLevel::Error,
+                        ..Default::default()
                     });
                 }
             });

@@ -101,7 +101,7 @@ live_design! {
         }
     }
 
-    ChatLine = <View> {
+    ChatLine = <RoundedView> {
         flow: Down,
         height: Fit,
         sender = <Sender> {}
@@ -142,8 +142,8 @@ live_design! {
         flow: Down,
         height: Fit,
         bubble = <Bubble> {
-            flow: Down, spacing: 10
-            padding: {left: 0, top: 0, bottom: 0},
+            flow: Down,
+            padding: 0,
             margin: {left: 32}
             text = <View> {
                 flow: Down
@@ -318,8 +318,7 @@ impl Messages {
             from: EntityId::App,
             // End-of-chat
             body: "EOC".into(),
-            is_writing: false,
-            citations: vec![],
+            ..Default::default()
         });
 
         let mut list = list.borrow_mut().unwrap();
@@ -354,6 +353,35 @@ impl Messages {
                             Some(Picture::Grapheme("A".into()));
                         item.label(id!(name)).set_text(cx, "Application");
                         item.label(id!(text.markdown)).set_text(cx, &message.body);
+
+                        if let MessageLevel::Error = message.level {
+                            item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                                Some(Picture::Grapheme("E".into()));
+
+                            item.avatar(id!(avatar)).view(id!(grapheme)).apply_over(
+                                cx,
+                                live! {
+                                    draw_bg: {
+                                        color: #f003
+                                    }
+                                },
+                            );
+
+                            item.label(id!(name)).set_text(cx, "Error");
+
+                            item.apply_over(
+                                cx,
+                                live! {
+                                    padding: {left: 12, top: 12},
+                                    margin: {bottom: 8},
+                                    draw_bg: {
+                                        radius: 8.0,
+                                        color: #f003
+                                    }
+                                },
+                            );
+                        }
+
                         self.apply_actions_and_editor_visibility(cx, &item, index);
                         item.draw_all(cx, &mut Scope::empty());
                     }

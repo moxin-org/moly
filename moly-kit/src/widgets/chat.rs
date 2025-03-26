@@ -203,8 +203,7 @@ impl Chat {
                     Message {
                         from: EntityId::User,
                         body: text.clone(),
-                        is_writing: false,
-                        citations: vec![],
+                        ..Default::default()
                     },
                 ));
             }
@@ -235,9 +234,8 @@ impl Chat {
 
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
-                body: String::new(),
                 is_writing: true,
-                citations: vec![],
+                ..Default::default()
             });
 
             messages
@@ -494,8 +492,8 @@ impl Chat {
                             Message {
                                 from: EntityId::App,
                                 body: e.to_string(),
-                                is_writing: false,
-                                citations: vec![],
+                                level: MessageLevel::Error,
+                                ..Default::default()
                             },
                         )
                     })
