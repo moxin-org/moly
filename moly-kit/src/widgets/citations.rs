@@ -108,6 +108,12 @@ impl Widget for Citations {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Without this, margins and paddings would be considered even if not visible
+        // because of the turtle.
+        if !self.visible {
+            return DrawStep::done();
+        }
+
         // TODO: Fix this, currently redrawing on every event
         // And at the same time, the citations are not being redrawn unless there's a user-triggered event like mouse move or window resize.
         cx.begin_turtle(walk, self.layout);
