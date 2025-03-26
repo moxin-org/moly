@@ -228,7 +228,6 @@ impl DemoChat {
                     messages.write().messages.push(Message {
                         from: EntityId::App,
                         body: error.to_string(),
-                        level: MessageLevel::Error,
                         ..Default::default()
                     });
                 }

@@ -492,7 +492,6 @@ impl Chat {
                             Message {
                                 from: EntityId::App,
                                 body: e.to_string(),
-                                level: MessageLevel::Error,
                                 ..Default::default()
                             },
                         )

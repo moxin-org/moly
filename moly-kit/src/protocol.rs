@@ -68,19 +68,6 @@ impl fmt::Display for BotId {
     }
 }
 
-/// The level of a message similar to log levels.
-///
-/// Controls when and how the message should be displayed.
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
-pub enum MessageLevel {
-    /// A message displayed without any special meaning.
-    #[default]
-    Normal,
-
-    /// A message displayed as an error.
-    Error,
-}
-
 /// A message that is part of a conversation.
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Message {
@@ -99,9 +86,6 @@ pub struct Message {
 
     /// Citations for the message.
     pub citations: Vec<String>,
-
-    /// The level of the message. See [MessageLevel] for more information.
-    pub level: MessageLevel,
 }
 
 /// A delta response for an existing [Message].
@@ -137,15 +121,14 @@ pub enum ClientErrorKind {
     Unknown,
 }
 
-impl fmt::Display for ClientErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let kind_str = match self {
-            ClientErrorKind::Network => "NetworkError",
-            ClientErrorKind::Remote => "RemoteError",
-            ClientErrorKind::Format => "FormatError",
-            ClientErrorKind::Unknown => "UnknownError",
-        };
-        write!(f, "{}", kind_str)
+impl ClientErrorKind {
+    pub fn to_human_readable(&self) -> &str {
+        match self {
+            ClientErrorKind::Network => "Network error",
+            ClientErrorKind::Remote => "Remote error",
+            ClientErrorKind::Format => "Format error",
+            ClientErrorKind::Unknown => "Unknown error",
+        }
     }
 }
 
@@ -159,7 +142,7 @@ pub struct ClientError {
 
 impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.kind, self.message)
+        write!(f, "{}: {}", self.kind.to_human_readable(), self.message)
     }
 }
 
