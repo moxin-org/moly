@@ -12,7 +12,7 @@ live_design! {
         font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
     }
 
-    LINK_ICON = dep("crate://self/assets/link.png")
+    LINK_ICON = dep("crate://self/resources/link.png")
 
     LinkPreviewUI = {{LinkPreviewUI}} <RoundedView> {
         cursor: Hand,

@@ -71,17 +71,17 @@ live_design! {
         spacing: 6,
         copy = <ActionButton> {
             draw_icon: {
-                svg_file: dep("crate://self/assets/copy.svg")
+                svg_file: dep("crate://self/resources/copy.svg")
             }
         }
         edit = <ActionButton> {
             draw_icon: {
-                svg_file: dep("crate://self/assets/edit.svg")
+                svg_file: dep("crate://self/resources/edit.svg")
             }
         }
         delete = <ActionButton> {
             draw_icon: {
-                svg_file: dep("crate://self/assets/delete.svg")
+                svg_file: dep("crate://self/resources/delete.svg")
             }
         }
     }
@@ -238,7 +238,7 @@ live_design! {
                 padding: {bottom: 2},
                 icon_walk: {width: 12, height: 12}
                 draw_icon: {
-                    svg_file: dep("crate://self/assets/jump_to_bottom.svg")
+                    svg_file: dep("crate://self/resources/jump_to_bottom.svg")
                     color: #1C1B1F,
                 }
                 draw_bg: {

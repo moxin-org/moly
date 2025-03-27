@@ -7,8 +7,8 @@ live_design! {
     use link::shaders::*;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
-        send_icon: dep("crate://self/assets/send.svg"),
-        stop_icon: dep("crate://self/assets/stop.svg"),
+        send_icon: dep("crate://self/resources/send.svg"),
+        stop_icon: dep("crate://self/resources/stop.svg"),
 
         persistent = {
             padding: {top: 8, bottom: 6, left: 4, right: 10}
