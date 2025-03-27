@@ -31,6 +31,7 @@ live_design! {
     ICON_SILICONFLOW = dep("crate://self/resources/images/providers/siliconflow.png")
     ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
     ICON_DEEPINQUIRE = dep("crate://self/resources/images/providers/deepinquire.png")
+    ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
     ICON_CUSTOM_PROVIDER = dep("crate://self/resources/images/providers/custom.png")
 
     // Not making this based on <Icon> because button does not support images
@@ -167,6 +168,7 @@ live_design! {
             (ICON_SILICONFLOW),
             (ICON_OPENROUTER),
             (ICON_DEEPINQUIRE),
+            (ICON_MOLYSERVER),
         ]
 
         <View> {
