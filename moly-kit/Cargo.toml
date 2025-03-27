@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 futures = "0.3.31"
 url = "2.4.10"
-url-preview = "0.3.0"
 robius-open = "0.1.1"
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
