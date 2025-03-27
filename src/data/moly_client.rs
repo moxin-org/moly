@@ -1,11 +1,11 @@
 use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
-    open_ai::{ChatRequestData, ChatResponse, ChatResponseChunkData, ChatResponseData, ChunkChoiceData, MessageData, Role, StopReason},
+    open_ai::{ChatRequestData, ChatResponse},
     protocol::{FileDownloadResponse, LoadModelOptions, LoadModelResponse},
 };
 use url::Url;
 use std::sync::mpsc::Sender;
-use std::io::BufRead;
+use futures::TryStreamExt;
 
 #[derive(Clone, Debug)]
 pub struct MolyClient {
@@ -139,7 +139,7 @@ impl MolyClient {
         });
     }
 
-    pub fn download_file(&self, file: File, tx: Sender<Result<(), anyhow::Error>>) {
+    pub fn download_file(&self, file: File, tx: tokio::sync::mpsc::Sender<Result<(), anyhow::Error>>) {
         let url = format!("{}/downloads", self.address);
         let client = self.client.clone();
 
@@ -153,68 +153,82 @@ impl MolyClient {
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        let _ = tx.send(Ok(()));
+                        let _ = tx.send(Ok(())).await;
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status()))).await;
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e))).await;
                 }
             }
         });
     }
 
-    // TODO(MolyKit): Broke since switching from blocking and std::thread::spawn.
-    pub fn track_download_progress(&self, file_id: FileID, tx: Sender<Result<FileDownloadResponse, anyhow::Error>>) {
-        // let mut url = Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
-        // url.path_segments_mut()
-        //     .expect("Cannot modify path segments")
-        //     .pop_if_empty()
-        //     .push(&file_id)
-        //     .push("progress");
+    // TODO(Julian): downloads are getting stuck at 99%, only show 100% on app restart
+    pub async fn track_download_progress(&self, file_id: FileID, tx: tokio::sync::mpsc::Sender<Result<FileDownloadResponse, anyhow::Error>>) {
+        let mut url = Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
+        url.path_segments_mut()
+            .expect("Cannot modify path segments")
+            .pop_if_empty()
+            .push(&file_id)
+            .push("progress");
 
-        // let client = self.blocking_client.clone();
-        // std::thread::spawn(move || {
-        //     let response = client.get(url).send();
-        //     match response {
-        //         Ok(res) => {
-        //             let mut reader = std::io::BufReader::new(res);
-        //             let mut line = String::new();
-        //             let mut current_event = String::new();
+        let client = self.client.clone();
+        let response = client.get(url).send().await;
+        match response {
+            Ok(res) => {
+                let mut bytes = res.bytes_stream();
+                let mut buffer = String::new();
+                let mut current_event = String::new();
 
-        //             while reader.read_line(&mut line).unwrap() > 0 {
-        //                 if line.starts_with("event: ") {
-        //                     current_event = line.trim_start_matches("event: ").trim().to_string();
-        //                 } else if line.starts_with("data: ") {
-        //                     let event_data = line.trim_start_matches("data: ").trim();
-        //                     match current_event.as_str() {
-        //                         "complete" => {
-        //                             let _ = tx.send(Ok(FileDownloadResponse::Completed(
-        //                                 moly_protocol::data::DownloadedFile::default()
-        //                             )));
-        //                             break;
-        //                         }
-        //                         "error" => {
-        //                             let _ = tx.send(Err(anyhow::anyhow!("Download failed")));
-        //                             break;
-        //                         }
-        //                         "progress" => {
-        //                             if let Ok(value) = event_data.parse::<f32>() {
-        //                                 let _ = tx.send(Ok(FileDownloadResponse::Progress(file_id.clone(), value)));
-        //                             }
-        //                         }
-        //                         _ => {}
-        //                     }
-        //                 }
-        //                 line.clear();
-        //             }
-        //         }
-        //         Err(e) => {
-        //             let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
-        //         }
-        //     }
-        // });
+                while let Ok(Some(chunk)) = bytes.try_next().await {
+                    if let Ok(text) = String::from_utf8(chunk.to_vec()) {
+                        buffer.push_str(&text);
+                        
+                        while let Some(pos) = buffer.find('\n') {
+                            let line = buffer[..pos].trim().to_string();
+                            buffer = buffer[pos + 1..].to_string();
+
+                            if line.starts_with("event: ") {
+                                current_event = line.trim_start_matches("event: ").trim().to_string();
+                            } else if line.starts_with("data: ") {
+                                let event_data = line.trim_start_matches("data: ").trim();
+                                match current_event.as_str() {
+                                    "complete" => {
+                                        if let Err(e) = tx.send(Ok(FileDownloadResponse::Completed(
+                                            moly_protocol::data::DownloadedFile::default()
+                                        ))).await {
+                                            eprintln!("Failed to send completion message: {}", e);
+                                        }
+                                        break;
+                                    }
+                                    "error" => {
+                                        if let Err(e) = tx.send(Err(anyhow::anyhow!("Download failed"))).await {
+                                            eprintln!("Failed to send error message: {}", e);
+                                        }
+                                        break;
+                                    }
+                                    "progress" => {
+                                        if let Ok(value) = event_data.parse::<f32>() {
+                                            let _ = tx.send(Ok(FileDownloadResponse::Progress(file_id.clone(), value))).await;
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        
+                        if current_event == "complete" || current_event == "error" {
+                            break;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e))).await;
+            }
+        }
     }
 
     pub fn pause_download_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
