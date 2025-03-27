@@ -4,6 +4,9 @@ use crate::utils::{asynchronous::spawn, events::EventExt};
 use makepad_widgets::*;
 use reqwest::header::{HeaderValue, USER_AGENT};
 
+#[cfg(not(target_arch = "wasm32"))]
+use url_preview::{Preview, PreviewService};
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -91,6 +94,11 @@ pub struct Citations {
     /// Track which images have already been loaded
     #[rust]
     loaded_image_indices: HashSet<usize>,
+
+    /// Maps the index of the citation to the link preview.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[rust]
+    link_previews: HashMap<usize, Preview>,
 }
 
 impl Widget for Citations {
@@ -121,6 +129,16 @@ impl Widget for Citations {
             citation.url = citation_content.clone();
             citation.label(id!(domain)).set_text(cx, &domain);
 
+            #[cfg(not(target_arch = "wasm32"))]
+            apply_link_preview(
+                cx,
+                &self.link_previews,
+                &mut self.loaded_image_indices,
+                &self.image_blobs,
+                *citation_id,
+                citation,
+            );
+
             while citation.draw(cx, scope).step().is_some() {}
         }
         cx.end_turtle();
@@ -129,6 +147,54 @@ impl Widget for Citations {
 }
 
 impl Citations {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_link_preview(&mut self, index: usize, link_preview: Preview) {
+        let image_url = link_preview.image_url.clone();
+        self.link_previews.insert(index, link_preview);
+        // Only fetch if we don't already have this image
+        if let Some(image_url) = image_url {
+            if !self.image_blobs.contains_key(&index) {
+                let ui = self.ui_runner();
+                spawn(async move {
+                    let fetched_image = fetch_image_blob(&image_url).await;
+                    if let Ok(image_bytes) = fetched_image {
+                        ui.defer_with_redraw(move |me, _cx, _scope| {
+                            me.image_blobs.insert(index, image_bytes);
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn fetch_link_preview(&mut self, index: usize, citation: &str) {
+        let ui = self.ui_runner();
+        let citation = citation.to_string();
+
+        // TODO: rework this to use caching and batch fetching from the url-preview crate.
+        spawn(async move {
+            let future = async {
+                let preview = PreviewService::new().generate_preview(&citation).await;
+                match preview {
+                    Ok(preview) => {
+                        ui.defer_with_redraw(move |me, _cx, _scope| {
+                            me.save_link_preview(index, preview);
+                        });
+                    }
+                    Err(e) => {
+                        eprintln!("Error fetching preview for index {}: {:?}", index, e);
+                    }
+                }
+            };
+
+            let (future, _abort_handle) = futures::future::abortable(future);
+            future
+                .await
+                .unwrap_or_else(|_| eprintln!("Preview fetch aborted for index {}", index));
+        });
+    }
+
     fn update_citations(&mut self, cx: &mut Cx, citations: &Vec<String>) {
         self.visible = true;
         // compare the vecs, if they are the same, return
@@ -153,9 +219,8 @@ impl Citations {
             let new_citation = LinkPreviewUI::new_from_ptr(cx, self.citation_template);
             self.link_preview_children.insert(index, new_citation);
 
-            let citation_clone = citation.clone();
-            let index_clone = index;
-            let ui = self.ui_runner();
+            #[cfg(not(target_arch = "wasm32"))]
+            self.fetch_link_preview(index, &citation);
         }
 
         self.redraw(cx);
@@ -217,4 +282,53 @@ fn is_jpeg(bytes: &[u8]) -> bool {
 
 fn is_png(bytes: &[u8]) -> bool {
     bytes.len() >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn apply_link_preview(
+    cx: &mut Cx,
+    link_previews: &HashMap<usize, Preview>,
+    loaded_image_indices: &mut HashSet<usize>,
+    image_blobs: &HashMap<usize, Vec<u8>>,
+    citation_id: usize,
+    citation: &mut LinkPreviewUI,
+) {
+    if let Some(link_preview) = link_previews.get(&citation_id) {
+        if let Some(title) = &link_preview.title {
+            citation.label(id!(title)).set_text(cx, &title);
+        }
+        if link_preview.image_url.is_some() {
+            if let Some(image_bytes) = image_blobs.get(&citation_id) {
+                // Only load image if it's not already loaded
+                if !loaded_image_indices.contains(&citation_id) {
+                    if is_jpeg(image_bytes) {
+                        let _ = citation
+                            .image(id!(image))
+                            .load_jpg_from_data(cx, &image_bytes);
+                        citation.image(id!(image)).apply_over(
+                            cx,
+                            live! {
+                                width: 75, height: 75
+                            },
+                        );
+                    } else if is_png(image_bytes) {
+                        citation.image(id!(image)).apply_over(
+                            cx,
+                            live! {
+                                width: 75, height: 75
+                            },
+                        );
+                        let _ = citation
+                            .image(id!(image))
+                            .load_png_from_data(cx, &image_bytes);
+                    } else {
+                        // TODO: handle other image types
+                        // Do not try again
+                        loaded_image_indices.insert(citation_id);
+                    }
+                    loaded_image_indices.insert(citation_id);
+                }
+            }
+        }
+    }
 }

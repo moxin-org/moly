@@ -2050,6 +2050,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "url",
+ "url-preview",
  "wasm-bindgen-futures",
 ]
 
