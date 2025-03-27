@@ -171,7 +171,27 @@ impl BotClient for OpenAIClient {
                 .into();
             }
 
-            let models: Models = match response.json().await {
+            let text = match response.text().await {
+                Ok(text) => text,
+                Err(error) => {
+                    return ClientError::new_with_source(
+                        ClientErrorKind::Format,
+                        format!("Could not parse the response from {url} as valid text."),
+                        Some(error),
+                    )
+                    .into();
+                }
+            };
+
+            if text.is_empty() {
+                return ClientError::new(
+                    ClientErrorKind::Format,
+                    format!("The response from {url} is empty."),
+                )
+                .into();
+            }
+
+            let models: Models = match serde_json::from_str(&text) {
                 Ok(models) => models,
                 Err(error) => {
                     return ClientError::new_with_source(
