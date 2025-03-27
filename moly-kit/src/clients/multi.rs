@@ -28,8 +28,8 @@ impl BotClient for MultiClient {
         &mut self,
         bot: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<MessageDelta, ()>> {
-        let mut client = self
+    ) -> MolyStream<'static, ClientResult<MessageDelta>> {
+        let client = self
             .clients_with_bots
             .lock()
             .unwrap()
@@ -40,17 +40,30 @@ impl BotClient for MultiClient {
                 } else {
                     None
                 }
-            })
-            .expect("no client for bot");
+            });
 
-        client.send_stream(bot, messages)
+        match client {
+            Some(mut client) => client.send_stream(bot, messages),
+            None => {
+                let bot = bot.clone();
+                moly_stream(futures::stream::once(async move {
+                    ClientError::new(
+                        ClientErrorKind::Unknown,
+                        format!("Can't find a client to communicate with the bot {}", bot),
+                    )
+                    .into()
+                }))
+            }
+        }
     }
+
+    // TODO: Add `send` implementation to take adventage of `send` implementation in sub-clients.
 
     fn clone_box(&self) -> Box<dyn BotClient> {
         Box::new(self.clone())
     }
 
-    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>> {
+    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let clients_with_bots = self.clients_with_bots.clone();
 
         let future = async move {
@@ -66,12 +79,14 @@ impl BotClient for MultiClient {
 
             let mut zipped_bots = Vec::new();
             let mut flat_bots = Vec::new();
+            let mut errors = Vec::new();
 
             for result in results {
-                // TODO: Let's ignore any errored sub-client for now.
-                let client_bots = result.unwrap_or_default();
-                zipped_bots.push(client_bots.clone());
-                flat_bots.extend(client_bots);
+                let (v, e) = result.into_value_and_errors();
+                let v = v.unwrap_or_default();
+                zipped_bots.push(v.clone());
+                flat_bots.extend(v);
+                errors.extend(e);
             }
 
             *clients_with_bots.lock().unwrap() = clients
@@ -79,7 +94,15 @@ impl BotClient for MultiClient {
                 .zip(zipped_bots.iter().cloned())
                 .collect();
 
-            Ok(flat_bots)
+            if errors.is_empty() {
+                ClientResult::new_ok(flat_bots)
+            } else {
+                if flat_bots.is_empty() {
+                    ClientResult::new_err(errors)
+                } else {
+                    ClientResult::new_ok_and_err(flat_bots, errors)
+                }
+            }
         };
 
         moly_future(future)

@@ -203,8 +203,7 @@ impl Chat {
                     Message {
                         from: EntityId::User,
                         body: text.clone(),
-                        is_writing: false,
-                        citations: vec![],
+                        ..Default::default()
                     },
                 ));
             }
@@ -235,9 +234,8 @@ impl Chat {
 
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
-                body: String::new(),
                 is_writing: true,
-                citations: vec![],
+                ..Default::default()
             });
 
             messages
@@ -257,15 +255,7 @@ impl Chat {
             let mut client = repo.client();
 
             let mut message_stream = client.send_stream(&bot_id, &context);
-            while let Some(delta) = message_stream.next().await {
-                let delta = match delta {
-                    Ok(delta) => delta,
-                    Err(_) => MessageDelta {
-                        body: "An error occurred".to_string(),
-                        ..Default::default()
-                    },
-                };
-
+            while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes
                 // an abort, the other already deferred closures will still be executed
@@ -276,7 +266,7 @@ impl Chat {
                 // the next delta. And also allows to stop naturally from here as well
                 // thanks to its ability to send a value back.
                 let should_break = ui
-                    .defer_with_redraw_async(move |me, cx, _| me.handle_message_delta(cx, delta))
+                    .defer_with_redraw_async(move |me, cx, _| me.handle_message_delta(cx, result))
                     .await;
 
                 if should_break.unwrap_or(true) {
@@ -447,47 +437,76 @@ impl Chat {
         });
     }
 
-    fn handle_message_delta(&mut self, cx: &mut Cx, delta: MessageDelta) -> bool {
+    fn handle_message_delta(&mut self, cx: &mut Cx, result: ClientResult<MessageDelta>) -> bool {
         let messages = self.messages_ref();
 
-        // Let's stop if we don't have where to put the delta.
-        let Some(mut message) = messages.read().messages.last().cloned() else {
-            return true;
-        };
+        // For simplicity, lets handle this as an standard Result, ignoring delta
+        // if there are errors.
+        match result.into_result() {
+            Ok(delta) => {
+                // Let's abort if we don't have where to put the delta.
+                let Some(mut message) = messages.read().messages.last().cloned() else {
+                    return true;
+                };
 
-        // Let's abort if we see we are putting delta in the wrong message.
-        if let Some(expected_message) = self.expected_message.as_ref() {
-            if message != *expected_message {
-                return true;
+                // Let's abort if we see we are putting delta in the wrong message.
+                if let Some(expected_message) = self.expected_message.as_ref() {
+                    if message != *expected_message {
+                        return true;
+                    }
+                }
+
+                message.body.push_str(&delta.body);
+                // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
+                for citation in delta.citations {
+                    if !message.citations.contains(&citation) {
+                        message.citations.push(citation);
+                    }
+                }
+
+                let index = messages.read().messages.len() - 1;
+                let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
+
+                if messages.read().is_at_bottom() {
+                    tasks.push(ChatTask::ScrollToBottom);
+                }
+
+                self.dispatch(cx, &mut tasks);
+
+                let Some(ChatTask::UpdateMessage(_, message)) = tasks.into_iter().next() else {
+                    // Let's abort if the tasks were modified in an unexpected way.
+                    return true;
+                };
+
+                self.expected_message = Some(message);
+
+                false
+            }
+            Err(errors) => {
+                let mut tasks = errors
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, e)| {
+                        ChatTask::InsertMessage(
+                            messages.read().messages.len() + i,
+                            Message {
+                                from: EntityId::App,
+                                body: e.to_string(),
+                                ..Default::default()
+                            },
+                        )
+                    })
+                    .collect::<Vec<_>>();
+
+                if messages.read().is_at_bottom() {
+                    tasks.push(ChatTask::ScrollToBottom);
+                }
+
+                self.dispatch(cx, &mut tasks);
+
+                true
             }
         }
-
-        message.body.push_str(&delta.body);
-        // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
-        for citation in delta.citations {
-            if !message.citations.contains(&citation) {
-                message.citations.push(citation);
-            }
-        }
-
-        let index = messages.read().messages.len() - 1;
-        let is_at_bottom = messages.read().is_at_bottom();
-
-        let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
-        self.dispatch(cx, &mut tasks);
-
-        let Some(ChatTask::UpdateMessage(_, message)) = tasks.pop() else {
-            // Let's abort if the tasks were modified in an unexpected way.
-            return true;
-        };
-
-        self.expected_message = Some(message);
-
-        if is_at_bottom {
-            self.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
-        }
-
-        false
     }
 }
 
