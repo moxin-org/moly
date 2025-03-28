@@ -148,22 +148,31 @@ impl WidgetMatchEvent for ChatScreen {
 
             // Handle chat start
             match action.cast() {
-                ChatAction::Start(handler) => match handler {
+                ChatAction::Start(chat_entity_id) => match &chat_entity_id {
                     ChatEntityId::ModelFile(file_id) => {
                         if let Some(file) = store.downloads.get_file(&file_id) {
                             store.chats.create_empty_chat_and_load_file(file);
                             self.messages(id!(chat.messages)).write().messages = vec![];
+                            let bot_id = chat_entity_id.as_bot_id();
+                            self.chat(id!(chat)).write().bot_id = Some(bot_id);
+                            self.model_selector(id!(model_selector)).set_currently_selected_model(Some(chat_entity_id.clone()));
                             // self.focus_on_prompt_input_pending = true;
                         }
                     }
                     ChatEntityId::Agent(agent_id) => {
                         store.chats.create_empty_chat_with_agent(&agent_id);
                         self.messages(id!(chat.messages)).write().messages = vec![];
+                        let bot_id = chat_entity_id.as_bot_id();
+                        self.chat(id!(chat)).write().bot_id = Some(bot_id);
+                        self.model_selector(id!(model_selector)).set_currently_selected_model(Some(chat_entity_id.clone()));
                         // self.focus_on_prompt_input_pending = true;
                     },
                     ChatEntityId::RemoteModel(model_id) => {
                         store.chats.create_empty_chat_with_remote_model(&model_id);
                         self.messages(id!(chat.messages)).write().messages = vec![];
+                        let bot_id = chat_entity_id.as_bot_id();
+                        self.chat(id!(chat)).write().bot_id = Some(bot_id);
+                        self.model_selector(id!(model_selector)).set_currently_selected_model(Some(chat_entity_id.clone()));
                         // self.focus_on_prompt_input_pending = true;
                     }
                 },

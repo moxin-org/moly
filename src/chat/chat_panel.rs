@@ -470,7 +470,6 @@ impl WidgetMatchEvent for ChatPanel {
 
             match action.cast() {
                 ModelSelectorAction::ModelSelected(downloaded_file) => {
-                    store.load_model(&downloaded_file.file);
 
                     if let Some(chat) = store.chats.get_current_chat() {
                         chat.borrow_mut().associated_entity =
@@ -595,7 +594,8 @@ impl ChatPanel {
             State::NoModelSelected
         } else {
             // Model or Agent is selected
-            let is_loading = store.chats.model_loader.is_loading();
+            // let is_loading = store.chats.model_loader.is_loading();
+            let is_loading = false;
 
             store.chats.get_current_chat().map_or(
                 State::ModelSelectedWithEmptyChat { is_loading },

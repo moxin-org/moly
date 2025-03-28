@@ -1,7 +1,7 @@
 use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
     open_ai::{ChatRequestData, ChatResponse},
-    protocol::{FileDownloadResponse, LoadModelOptions, LoadModelResponse},
+    protocol::FileDownloadResponse,
 };
 use url::Url;
 use std::sync::mpsc::Sender;
@@ -324,42 +324,42 @@ impl MolyClient {
         });
     }
 
-    /// Loads a model. Should only be called from a background thread to avoid blocking the UI.
-    pub fn load_model(&self, file_id: FileID, options: LoadModelOptions,
-        tx: Sender<Result<LoadModelResponse, anyhow::Error>>) {
-        let url = format!("{}/models/load", self.address);
-        let request = serde_json::json!({
-            "file_id": file_id,
-            "options": options,
-        });
+    // /// Loads a model. Should only be called from a background thread to avoid blocking the UI.
+    // pub fn load_model(&self, file_id: FileID, options: LoadModelOptions,
+    //     tx: Sender<Result<LoadModelResponse, anyhow::Error>>) {
+    //     let url = format!("{}/models/load", self.address);
+    //     let request = serde_json::json!({
+    //         "file_id": file_id,
+    //         "options": options,
+    //     });
 
-        let client = self.client.clone();
-        tokio::spawn(async move {
-            let resp = client.post(&url)
-                .json(&request)
-                .send().await;
+    //     let client = self.client.clone();
+    //     tokio::spawn(async move {
+    //         let resp = client.post(&url)
+    //             .json(&request)
+    //             .send().await;
 
-            match resp {
-                Ok(r) => {
-                    if r.status().is_success() {
-                        match r.json::<LoadModelResponse>().await {
-                            Ok(response) => {
-                                let _ = tx.send(Ok(response));
-                            }
-                            Err(e) => {
-                                let _ = tx.send(Err(anyhow::anyhow!("Failed to parse response: {}", e)));
-                            }
-                        }
-                    } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
-                    }
-                },
-                Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
-                }
-            }
-        });
-    }
+    //         match resp {
+    //             Ok(r) => {
+    //                 if r.status().is_success() {
+    //                     match r.json::<LoadModelResponse>().await {
+    //                         Ok(response) => {
+    //                             let _ = tx.send(Ok(response));
+    //                         }
+    //                         Err(e) => {
+    //                             let _ = tx.send(Err(anyhow::anyhow!("Failed to parse response: {}", e)));
+    //                         }
+    //                     }
+    //                 } else {
+    //                     let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+    //                 }
+    //             },
+    //             Err(e) => {
+    //                 let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+    //             }
+    //         }
+    //     });
+    // }
 
     pub fn eject_model(&self, tx: Sender<Result<(), anyhow::Error>>) {
         let url = format!("{}/models/eject", self.address);

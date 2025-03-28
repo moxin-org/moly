@@ -13,7 +13,6 @@ use crate::data::providers::{DeepInquireMessage, DeepInquireStage, RemoteModel};
 use crate::data::providers::ChatResponse as RemoteModelChatResponse;
 
 use super::chat_entity::ChatEntityId;
-use super::model_loader::ModelLoader;
 use super::{MolyClient, ProviderClient};
 
 pub type ChatID = u128;
@@ -246,7 +245,6 @@ impl Chat {
         &mut self,
         prompt: String,
         wanted_file: &File,
-        mut model_loader: ModelLoader,
         moly_client: &MolyClient,
     ) {
         let mut messages: Vec<_> = self
@@ -339,10 +337,6 @@ impl Chat {
         let state_clone = self.state.clone();
 
         thread::spawn(move || {
-            if let Err(err) = model_loader.load(wanted_file.id.clone(), moly_client.clone(), None) {
-                eprintln!("Error loading model: {}", err);
-                return;
-            }
 
             moly_client.send_chat_message(request, tx);
 

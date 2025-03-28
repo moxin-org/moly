@@ -1,12 +1,10 @@
 pub mod chat;
 pub mod chat_entity;
-pub mod model_loader;
 
 use anyhow::{Context, Result};
 use chat::{Chat, ChatEntityAction, ChatID};
 use chat_entity::ChatEntityId;
 use makepad_widgets::ActionTrait;
-use model_loader::ModelLoader;
 use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::fs;
@@ -23,7 +21,6 @@ pub struct Chats {
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub loaded_model: Option<File>,
-    pub model_loader: ModelLoader,
 
     pub remote_models: HashMap<RemoteModelId, RemoteModel>,
 
@@ -34,8 +31,6 @@ pub struct Chats {
     /// Set it thru `set_current_chat` method to trigger side effects.
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
-
-    override_port: Option<u16>,
 
     /// Placeholder remote model used when a remote model is not available
     /// This is used to avoid recreating it on each call and make borrowing simpler.
@@ -49,9 +44,7 @@ impl Chats {
             saved_chats: Vec::new(),
             current_chat_id: None,
             loaded_model: None,
-            model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
-            override_port: None,
             remote_models: HashMap::new(),
             provider_clients: HashMap::new(),
             providers: HashMap::new(),
@@ -78,21 +71,6 @@ impl Chats {
             .iter()
             .max_by_key(|c| c.borrow().accessed_at)
             .map(|c| c.borrow().id)
-    }
-
-    pub fn load_model(&mut self, file: &File, override_port: Option<u16>) {
-        self.cancel_chat_streaming();
-
-        if self.model_loader.is_loading() {
-            return;
-        }
-
-        self.override_port = override_port;
-        self.model_loader.load_async(
-            file.id.clone(),
-            self.moly_client.clone(),
-            override_port,
-        );
     }
 
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
@@ -233,7 +211,7 @@ impl Chats {
         self.saved_chats.push(RefCell::new(new_chat));
         self.set_current_chat(Some(id));
 
-        self.load_model(file, None);
+        self.cancel_chat_streaming();
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {

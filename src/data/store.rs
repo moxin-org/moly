@@ -1,7 +1,6 @@
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
 use super::chats::chat_entity::ChatEntityId;
-use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
@@ -107,39 +106,6 @@ impl Store {
         store
     }
 
-    pub fn load_model(&mut self, file: &File) {
-        self.chats.load_model(file, None);
-    }
-
-    pub fn update_server_port(&mut self, server_port: u16) {
-        if let Some(file) = &self.chats.loaded_model {
-            if !self.chats.model_loader.is_loading() {
-                self.chats.load_model(&file.clone(), Some(server_port));
-            }
-        }
-    }
-
-    fn update_load_model(&mut self) {
-        if self.chats.model_loader.is_loaded() {
-            self.chats.loaded_model = self
-                .chats
-                .model_loader
-                .file_id()
-                .map(|id| self.downloads.get_file(&id))
-                .flatten()
-                .cloned();
-        }
-
-        if let Some(file) = &self.chats.loaded_model {
-            self.preferences.set_current_chat_model(file.id.clone());
-
-            // If there is no chat, create an empty one
-            if self.chats.get_current_chat().is_none() {
-                self.chats.create_empty_chat();
-            }
-        }
-    }
-
     pub fn send_message_to_current_entity(
         &mut self,
         prompt: String,
@@ -185,7 +151,6 @@ impl Store {
                         chat.send_message_to_model(
                             prompt,
                             file,
-                            self.chats.model_loader.clone(),
                             &self.moly_client,
                         );
                     }
@@ -211,14 +176,6 @@ impl Store {
         if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
             chat.edit_message(message_id, updated_message);
         }
-    }
-
-    pub fn _get_loading_file(&self) -> Option<&File> {
-        self.chats
-            .model_loader
-            .get_loading_file_id()
-            .map(|file_id| self.downloads.get_file(&file_id))
-            .flatten()
     }
 
     pub fn _get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
@@ -334,10 +291,6 @@ impl Store {
         self.search.handle_action(action);
         self.downloads.handle_action(action);
 
-        if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
-            self.update_load_model();
-        }
-
         if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
             self.update_downloads();
         }
@@ -361,20 +314,6 @@ impl Store {
             self.chats.create_empty_chat();
         }
 
-        // If there is no load model, let's try to load the one from preferences
-        if self.chats.loaded_model.is_none() {
-            if let Some(ref file_id) = self.preferences.current_chat_model {
-                if let Some(file) = self
-                    .downloads
-                    .downloaded_files
-                    .iter()
-                    .find(|d| d.file.id == *file_id)
-                    .map(|d| d.file.clone())
-                {
-                    self.load_model(&file);
-                }
-            }
-        }
     }
 
     pub fn delete_chat(&mut self, chat_id: ChatID) {

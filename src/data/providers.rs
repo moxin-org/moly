@@ -37,12 +37,16 @@ pub struct RemoteModelId(pub String);
 
 impl RemoteModelId {
     pub fn from_model_and_server(agent_name: &str, server_address: &str) -> Self {
-        let mut hasher = Sha256::new();
-        hasher.update(format!("{}-{}", agent_name, server_address));
-        let result = hasher.finalize();
-        // Take first 16 bytes of hash for a shorter but still unique identifier
-        RemoteModelId(hex::encode(&result[..16]))
+        RemoteModelId(bot_id_as_str(agent_name, server_address))
     }
+}
+
+pub fn bot_id_as_str(model_id: &str, server_address: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(format!("{}-{}", model_id, server_address));
+    let result = hasher.finalize();
+    // Take first 16 bytes of hash for a shorter but still unique identifier
+    hex::encode(&result[..16])
 }
 
 #[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]

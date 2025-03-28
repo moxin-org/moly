@@ -2,14 +2,14 @@ use crate::{
     data::{chats::chat_entity::ChatEntityId, store::Store},
     shared::{
         actions::ChatAction,
-        utils::{format_model_size, hex_rgb_color},
+        utils::format_model_size,
     },
 };
 use makepad_widgets::*;
 
 use super::{
-    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt,
-    model_selector_loading::ModelSelectorLoadingWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
+    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt, 
+    shared::ChatAgentAvatarWidgetRefExt,
 };
 
 live_design! {
@@ -24,7 +24,6 @@ live_design! {
     use crate::chat::model_selector_loading::ModelSelectorLoading;
 
     ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
-
 
     ModelSelectorButton = <RoundedView> {
         width: Fill,
@@ -278,8 +277,6 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        self.update_loading_model_state(cx, store);
-
         if self.currently_selected_model.is_none() {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(selected_agent)).set_visible(cx, false);
@@ -342,6 +339,7 @@ impl WidgetMatchEvent for ModelSelector {
                     should_hide_options = true;
                 }
                 ModelSelectorAction::ModelSelected(m) => {
+                    // TODO: Here we could start showing the load animation, and cancel it out as soon as we get streaming back from the server
                     self.currently_selected_model = Some(ChatEntityId::ModelFile(m.file.id));
                     should_hide_options = true;
                 }
@@ -376,32 +374,31 @@ impl ModelSelector {
         self.redraw(cx);
     }
 
-    fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-        let is_associated_model_loading = store
-            .chats
-            .get_current_chat()
-            .and_then(|c| match &c.borrow().associated_entity {
-                Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
-                _ => None,
-            })
-            .map(|file_id| {
-                let model_loader = &store.chats.model_loader;
-                model_loader.file_id() == Some(file_id) && model_loader.is_loading()
-            })
-            .unwrap_or(false);
+    // fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
+    //     let is_associated_model_loading = store
+    //         .chats
+    //         .get_current_chat()
+    //         .and_then(|c| match &c.borrow().associated_entity {
+    //             Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
+    //             _ => None,
+    //         })
+    //         .map(|file_id| {
+    //             let model_loader = &store.chats.model_loader;
+    //             model_loader.file_id() == Some(file_id) && model_loader.is_loading()
+    //         })
+    //         .unwrap_or(false);
 
-        if is_associated_model_loading {
-            self.model_selector_loading(id!(loading))
-                .show_and_animate(cx);
-        } else {
-            self.model_selector_loading(id!(loading)).hide();
-        }
-    }
+    //     if is_associated_model_loading {
+    //         self.model_selector_loading(id!(loading))
+    //             .show_and_animate(cx);
+    //     } else {
+    //         self.model_selector_loading(id!(loading)).hide();
+    //     }
+    // }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
         self.view(id!(choose)).set_visible(cx, false);
 
-        let is_loading = store.chats.model_loader.is_loading();
         let loaded_file = store.chats.loaded_model.as_ref();
 
         // let chat_entity = self.currently_selected_model.clone();
@@ -454,48 +451,34 @@ impl ModelSelector {
             _ => loaded_file.cloned(),
         };
 
-        let is_file_in_loader =
-            store.chats.model_loader.file_id().as_ref() == file.as_ref().map(|f| &f.id);
-
         if let Some(file) = file {
             self.view(id!(selected_agent)).set_visible(cx, false);
             let selected_view = self.view(id!(selected_model));
             selected_view.set_visible(cx, true);
 
-            let text_color = if Some(&file.id) == loaded_file.map(|f| &f.id) {
-                hex_rgb_color(0x000000)
-            } else {
-                hex_rgb_color(0x667085)
-            };
-
-            let caption = if is_loading && is_file_in_loader {
-                format!("Loading {}", file.name.trim())
-            } else {
-                file.name.trim().to_string()
-            };
-
             let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
-            let is_file_size_visible = !file_size.is_empty() && !is_loading;
+            let is_file_size_visible = !file_size.is_empty();
+            let caption = file.name.trim();
 
             selected_view.apply_over(
                 cx,
                 live! {
-                    label = { text: (caption), draw_text: { color: (text_color) }}
-                    file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size), draw_text: { color: (text_color) }}}
+                    label = { text: (caption) }
+                    file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size) }}
                 },
             );
 
             if let Some(model) = store.downloads.get_model_by_file_id(&file.id) {
                 let architecture = model.architecture.trim();
                 let params_size = model.size.trim();
-                let is_architecture_visible = !architecture.is_empty() && !is_loading;
-                let is_params_size_visible = !params_size.is_empty() && !is_loading;
+                let is_architecture_visible = !architecture.is_empty();
+                let is_params_size_visible = !params_size.is_empty();
 
                 selected_view.apply_over(
                     cx,
                     live! {
-                        architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture), draw_text: { color: (text_color) }}}
-                        params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size), draw_text: { color: (text_color) }}}
+                        architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture) }}
+                        params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size) }}
                     },
                 );
             }

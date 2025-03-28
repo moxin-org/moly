@@ -4,7 +4,7 @@ use moly_kit::BotId;
 use moly_protocol::data::{File, FileID};
 use serde::{Deserialize, Serialize};
 
-use crate::data::providers::{RemoteModel, RemoteModelId};
+use crate::data::providers::{bot_id_as_str, RemoteModel, RemoteModelId};
 
 /// Identifies either a local model file, a MoFa agent, or a remote model.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -19,7 +19,11 @@ impl ChatEntityId {
         match self {
             ChatEntityId::Agent(agent) => BotId::from(agent.0.as_str()),
             ChatEntityId::RemoteModel(model) => BotId::from(model.0.as_str()),
-            ChatEntityId::ModelFile(file) => BotId::from(file.as_str()),
+            ChatEntityId::ModelFile(file) => {
+                // TODO(Julian): Rework this so that this mapping is not hardcoded or necessary at all
+                let id = bot_id_as_str(file.as_str(), "http://localhost:8765/api/v1");
+                BotId::from(id.as_str())
+            },
         }
     }
 }
