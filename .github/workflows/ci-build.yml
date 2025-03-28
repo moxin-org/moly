@@ -7,14 +7,14 @@ concurrency:
 on:
   push:
     branches:
-      - 'main'
-      - 'dev'
+      - "main"
+      - "dev"
     paths-ignore:
       - "**/*.md"
   pull_request:
     branches:
-      - 'main'
-      - 'dev'
+      - "main"
+      - "dev"
     paths-ignore:
       - "**/*.md"
 
@@ -121,7 +121,26 @@ jobs:
       - name: Build
         run: |
           cargo build
-      
+
       - name: Build before-packaging-command
         run: |
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
+
+  build_web_moly_kit:
+    name: Web (moly-kit)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [1.81]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Build
+        run: |
+          cargo build --manifest-path moly-kit/Cargo.toml --target wasm32-unknown-unknown
