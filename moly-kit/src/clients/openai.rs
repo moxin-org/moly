@@ -3,7 +3,7 @@ use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
     time::Duration,
 };
 
@@ -94,7 +94,7 @@ struct Completion {
     pub citations: Vec<String>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct OpenAIClientInner {
     url: String,
     headers: HeaderMap,
@@ -103,7 +103,7 @@ struct OpenAIClientInner {
 
 /// A client capable of interacting with Moly Server and other OpenAI-compatible APIs.
 #[derive(Debug)]
-pub struct OpenAIClient(Arc<Mutex<OpenAIClientInner>>);
+pub struct OpenAIClient(Arc<RwLock<OpenAIClientInner>>);
 
 impl Clone for OpenAIClient {
     fn clone(&self) -> Self {
@@ -113,7 +113,7 @@ impl Clone for OpenAIClient {
 
 impl From<OpenAIClientInner> for OpenAIClient {
     fn from(inner: OpenAIClientInner) -> Self {
-        Self(Arc::new(Mutex::new(inner)))
+        Self(Arc::new(RwLock::new(inner)))
     }
 }
 
@@ -133,7 +133,7 @@ impl OpenAIClient {
 
     pub fn set_header(&mut self, key: &str, value: &str) {
         self.0
-            .lock()
+            .write()
             .unwrap()
             .headers
             .insert(HeaderName::from_str(key).unwrap(), value.parse().unwrap());
@@ -146,14 +146,14 @@ impl OpenAIClient {
 
 impl BotClient for OpenAIClient {
     fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
-        let inner = self.0.clone();
+        let inner = self.0.read().unwrap().clone();
+
+        let url = format!("{}/v1/models", inner.url);
+        let headers = inner.headers;
+
+        let request = inner.client.get(&url).headers(headers);
 
         let future = async move {
-            let url = format!("{}/v1/models", inner.lock().unwrap().url);
-            let headers = inner.lock().unwrap().headers.clone();
-
-            let request = inner.lock().unwrap().client.get(&url).headers(headers);
-
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
@@ -226,7 +226,6 @@ impl BotClient for OpenAIClient {
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
-        // ref should be shared but since hardcoded it should be ok
         Box::new(self.clone())
     }
 
@@ -236,22 +235,17 @@ impl BotClient for OpenAIClient {
         bot: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageDelta>> {
+        let inner = self.0.read().unwrap().clone();
+
+        let url = format!("{}/v1/chat/completions", inner.url);
+        let headers = inner.headers;
+
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())
             .collect();
 
-        let (url, headers) = {
-            let inner = self.0.lock().unwrap();
-            (inner.url.clone(), inner.headers.clone())
-        };
-
-        let url = format!("{}/v1/chat/completions", url);
-
-        let request = self
-            .0
-            .lock()
-            .unwrap()
+        let request = inner
             .client
             .post(&url)
             .headers(headers)
