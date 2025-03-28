@@ -348,8 +348,11 @@ fn default_client() -> reqwest::Client {
     reqwest::Client::builder()
         // Only considered while establishing the connection.
         .connect_timeout(Duration::from_secs(15))
-        // Considered while reading the response and reset on every chunk received.
-        // Note: Do not use normal `timeout` method as it doesn't consider this.
+        // Considered while reading the response and reset on every chunk
+        // received.
+        //
+        // Warning: Do not use normal `timeout` method as it doesn't consider
+        // this.
         .read_timeout(Duration::from_secs(15))
         .build()
         .unwrap()
