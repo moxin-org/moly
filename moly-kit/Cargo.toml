@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 futures = "0.3.31"
 url = "2.4.10"
-url-preview = "0.3.0"
 robius-open = "0.1.1"
 sha2 = "0.10"
 hex = "0.4"
@@ -21,6 +20,7 @@ async-stream = "0.3.6"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.43.0", features = ["full"], optional = true }
+url-preview = "0.3.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = { version = "0.4.50", optional = true }

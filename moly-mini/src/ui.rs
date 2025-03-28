@@ -59,16 +59,17 @@ impl Widget for Ui {
 
             let messages = std::iter::repeat([
                 Message {
-                    is_writing: false,
-                    body: "Hello".to_string(),
                     from: EntityId::User,
-                    citations: vec![],
+                    body: "Hello".to_string(),
+                    ..Default::default()
                 },
                 Message {
-                    is_writing: false,
-                    body: "World".to_string(),
                     from: EntityId::Bot(bot_id),
-                    citations: vec!["https://github.com/ZhangHanDong/url-preview/issues/2".to_string()],
+                    body: "World".to_string(),
+                    citations: vec![
+                        "https://github.com/ZhangHanDong/url-preview/issues/2".to_string()
+                    ],
+                    ..Default::default()
                 },
             ])
             .take(1)

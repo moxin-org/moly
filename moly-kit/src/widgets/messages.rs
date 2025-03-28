@@ -2,8 +2,11 @@ use std::cell::{Ref, RefMut};
 
 use crate::{
     protocol::*,
-    utils::{asynchronous::spawn, events::EventExt, portal_list::ItemsRangeIter},
-    widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt, message_thinking_block::MessageThinkingBlockWidgetRefExt},
+    utils::{events::EventExt, portal_list::ItemsRangeIter},
+    widgets::{
+        avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt,
+        message_thinking_block::MessageThinkingBlockWidgetRefExt,
+    },
 };
 use makepad_widgets::*;
 
@@ -48,7 +51,7 @@ live_design! {
         }
     }
 
-    ActionButton =  <Button> {
+    ActionButton = <Button> {
         width: 14
         height: 14
         icon_walk: {width: 14, height: 14},
@@ -68,17 +71,17 @@ live_design! {
         spacing: 6,
         copy = <ActionButton> {
             draw_icon: {
-                svg_file: dep("crate://self/assets/copy.svg")
+                svg_file: dep("crate://self/resources/copy.svg")
             }
         }
         edit = <ActionButton> {
             draw_icon: {
-                svg_file: dep("crate://self/assets/edit.svg")
+                svg_file: dep("crate://self/resources/edit.svg")
             }
         }
         delete = <ActionButton> {
             draw_icon: {
-                svg_file: dep("crate://self/assets/delete.svg")
+                svg_file: dep("crate://self/resources/delete.svg")
             }
         }
     }
@@ -101,13 +104,16 @@ live_design! {
         }
     }
 
-    ChatLine = <View> {
+    ChatLine = <RoundedView> {
         flow: Down,
         height: Fit,
-        sender = <Sender> {}
-        bubble = <Bubble> {}
+        message_section = <RoundedView> {
+            flow: Down,
+            height: Fit,
+            sender = <Sender> {}
+            bubble = <Bubble> {}
+        }
         actions_section = <View> {
-            width: Fill,
             margin: {top: 8, bottom: 8},
             height: 16,
             actions = <Actions> { visible: false }
@@ -117,21 +123,23 @@ live_design! {
 
     UserLine = <ChatLine> {
         height: Fit,
-        sender = { visible: false }
-        bubble = <Bubble> {
-            margin: {left: 100}
-            draw_bg: {color: #15859A}
-            text = <View> {
-                height: Fit
-                label = <Label> {
-                    width: Fill,
-                    draw_text: {
-                        // text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
-                        color: #fff
+        message_section = {
+            sender = { visible: false }
+            bubble = <Bubble> {
+                margin: {left: 100}
+                draw_bg: {color: #15859A}
+                text = <View> {
+                    height: Fit
+                    label = <Label> {
+                        width: Fill,
+                        draw_text: {
+                            // text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
+                            color: #fff
+                        }
                     }
                 }
+                editor = <Editor> { visible: false }
             }
-            editor = <Editor> { visible: false }
         }
         actions_section = {
             margin: {left: 100}
@@ -141,18 +149,20 @@ live_design! {
     BotLine = <ChatLine> {
         flow: Down,
         height: Fit,
-        bubble = <Bubble> {
-            flow: Down, spacing: 10
-            padding: {left: 0, top: 0, bottom: 0},
-            margin: {left: 32}
-            text = <View> {
-                flow: Down
-                height: Fit,
-                thinking_block = <MessageThinkingBlock> {margin: {bottom: 10}}
-                markdown = <MessageMarkdown> {}
+        message_section = {
+            bubble = <Bubble> {
+                flow: Down,
+                padding: 0,
+                margin: {left: 32}
+                text = <View> {
+                    flow: Down
+                    height: Fit,
+                    thinking_block = <MessageThinkingBlock> {margin: {bottom: 10}}
+                    markdown = <MessageMarkdown> {}
+                }
+                editor = <Editor> { visible: false }
+                citations = <Citations> { visible: false }
             }
-            editor = <Editor> { visible: false }
-            citations = <Citations> { visible: false }
         }
         actions_section = {
             margin: {left: 32}
@@ -160,10 +170,44 @@ live_design! {
     }
 
     LoadingLine = <BotLine> {
-        bubble = {
-            text = <View> {
-                height: Fit,
-                loading = <MessageLoading> {}
+        message_section = {
+            bubble = {
+                text = <View> {
+                    height: Fit,
+                    loading = <MessageLoading> {}
+                }
+            }
+        }
+    }
+
+    // Note: For now, let's use bot's apparence for app messages.
+    // Idea: With the current design, this can be something centered and fit
+    // up to the fill size. If we drop the current design and simplify it, we could
+    // just use the bot's design for all messages.
+    AppLine = <BotLine> {
+        message_section = {
+            padding: 12,
+            draw_bg: {color: #00f3}
+            sender = {
+                avatar = {
+                    grapheme = {draw_bg: {color: #00f3}}
+                }
+                name = {text: "Application"}
+            }
+        }
+        actions_section = {
+            margin: {left: 2}
+        }
+    }
+
+    ErrorLine = <AppLine> {
+        message_section = {
+            draw_bg: {color: #f003}
+
+            sender = {
+                avatar = {
+                    grapheme = {draw_bg: {color: #f003}}
+                }
             }
         }
     }
@@ -177,6 +221,8 @@ live_design! {
             UserLine = <UserLine> {}
             BotLine = <BotLine> {}
             LoadingLine = <LoadingLine> {}
+            AppLine = <AppLine> {}
+            ErrorLine = <ErrorLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -192,7 +238,7 @@ live_design! {
                 padding: {bottom: 2},
                 icon_walk: {width: 12, height: 12}
                 draw_icon: {
-                    svg_file: dep("crate://self/assets/jump_to_bottom.svg")
+                    svg_file: dep("crate://self/resources/jump_to_bottom.svg")
                     color: #1C1B1F,
                 }
                 draw_bg: {
@@ -311,8 +357,7 @@ impl Messages {
             from: EntityId::App,
             // End-of-chat
             body: "EOC".into(),
-            is_writing: false,
-            citations: vec![],
+            ..Default::default()
         });
 
         let mut list = list.borrow_mut().unwrap();
@@ -336,14 +381,37 @@ impl Messages {
                     // TODO: Can or should system messages be rendered?
                 }
                 EntityId::App => {
-                    // TODO: Display app messages. They may be errors.
                     if message.body == "EOC" {
                         let item = list.item(cx, index, live_id!(EndOfChat));
                         item.draw_all(cx, &mut Scope::empty());
                         self.is_list_end_drawn = true;
-                    } else {
-                        todo!();
+                        continue;
                     }
+
+                    if let Some((left, right)) = message.body.split_once(':') {
+                        if let Some("error") = left
+                            .split_whitespace()
+                            .last()
+                            .map(|s| s.to_lowercase())
+                            .as_deref()
+                        {
+                            let item = list.item(cx, index, live_id!(ErrorLine));
+                            item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                                Some(Picture::Grapheme("X".into()));
+                            item.label(id!(name)).set_text(cx, left);
+                            item.label(id!(text.markdown)).set_text(cx, right);
+                            self.apply_actions_and_editor_visibility(cx, &item, index);
+                            item.draw_all(cx, &mut Scope::empty());
+                            continue;
+                        }
+                    }
+
+                    let item = list.item(cx, index, live_id!(AppLine));
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                        Some(Picture::Grapheme("A".into()));
+                    item.label(id!(text.markdown)).set_text(cx, &message.body);
+                    self.apply_actions_and_editor_visibility(cx, &item, index);
+                    item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
@@ -379,9 +447,11 @@ impl Messages {
                         // from the list, you should remove the unicode character.
                         // TODO: Remove this workaround once the markdown widget is fixed.
 
-                        let (thinking_block, message_body) = extract_and_remove_think_tag(&message.body);
+                        let (thinking_block, message_body) =
+                            extract_and_remove_think_tag(&message.body);
 
-                        item.message_thinking_block(id!(text.thinking_block)).set_thinking_text(thinking_block);
+                        item.message_thinking_block(id!(text.thinking_block))
+                            .set_thinking_text(thinking_block);
 
                         if let Some(body) = message_body {
                             item.label(id!(text.markdown))

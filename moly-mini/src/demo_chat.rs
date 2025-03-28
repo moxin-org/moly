@@ -3,6 +3,7 @@ use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
 use crate::bot_selector::BotSelectorWidgetExt;
+use crate::tester_client::TesterClient;
 
 const OPEN_AI_KEY: Option<&str> = option_env!("OPEN_AI_KEY");
 const OPEN_ROUTER_KEY: Option<&str> = option_env!("OPEN_ROUTER_KEY");
@@ -110,11 +111,14 @@ impl DemoChat {
                     "Qwen/Qwen2-7B-Instruct",
                 ];
 
+                let tester_whitelist = ["tester"];
+
                 openai_whitelist
                     .iter()
                     .chain(openrouter_whitelist.iter())
                     .chain(ollama_whitelist.iter())
                     .chain(siliconflow_whitelist.iter())
+                    .chain(tester_whitelist.iter())
                     .any(|s| *s == b.id.as_str())
             })
             .collect::<Vec<_>>();
@@ -171,11 +175,12 @@ impl DemoChat {
 
     fn setup_chat_repo(&self) {
         let client = {
-            // let moly = MolyClient::new("http://localhost:8085".into());
-            let ollama = OpenAIClient::new("http://localhost:11434".into());
-
             let mut client = MultiClient::new();
-            // client.add_client(Box::new(moly));
+
+            let tester = TesterClient;
+            client.add_client(Box::new(tester));
+
+            let ollama = OpenAIClient::new("http://localhost:11434".into());
             client.add_client(Box::new(ollama));
 
             // Only add OpenAI client if API key is present
@@ -210,10 +215,22 @@ impl DemoChat {
 
         let ui = self.ui_runner();
         spawn(async move {
-            repo.load().await.expect("TODO: Handle loading better");
+            let errors = repo.load().await.into_errors();
+
             ui.defer_with_redraw(move |me, _cx, _scope| {
+                let mut chat = me.chat(id!(chat));
+                let mut messages = chat.read().messages_ref();
+
                 me.fill_selector(repo.bots());
-                me.chat(id!(chat)).write().visible = true;
+                chat.write().visible = true;
+
+                for error in errors {
+                    messages.write().messages.push(Message {
+                        from: EntityId::App,
+                        body: error.to_string(),
+                        ..Default::default()
+                    });
+                }
             });
         });
     }

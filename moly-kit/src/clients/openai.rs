@@ -1,5 +1,4 @@
 use async_stream::stream;
-use makepad_widgets::log;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -141,29 +140,65 @@ impl OpenAIClient {
 }
 
 impl BotClient for OpenAIClient {
-    fn bots(&self) -> MolyFuture<'static, Result<Vec<Bot>, ()>> {
+    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let inner = self.0.clone();
         let server_url = self.0.lock().unwrap().url.clone();
 
         let future = async move {
             let url = format!("{}/models", inner.lock().unwrap().url);
             let request = reqwest::Client::new()
-                .get(url)
+                .get(url.clone())
                 .headers(inner.lock().unwrap().headers.clone());
 
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
-                    log!("Error {:?}", error);
-                    return Err(());
+                    return ClientError::new_with_source(
+                        ClientErrorKind::Network,
+                        format!("An error ocurred sending a request to {url}."),
+                        Some(error),
+                    )
+                    .into();
                 }
             };
 
-            let models: Models = match response.json().await {
+            if !response.status().is_success() {
+                let code = response.status().as_u16();
+                return ClientError::new(
+                    ClientErrorKind::Remote,
+                    format!("Got unexpected HTTP status code {code} from {url}."),
+                )
+                .into();
+            }
+
+            let text = match response.text().await {
+                Ok(text) => text,
+                Err(error) => {
+                    return ClientError::new_with_source(
+                        ClientErrorKind::Format,
+                        format!("Could not parse the response from {url} as valid text."),
+                        Some(error),
+                    )
+                    .into();
+                }
+            };
+
+            if text.is_empty() {
+                return ClientError::new(
+                    ClientErrorKind::Format,
+                    format!("The response from {url} is empty."),
+                )
+                .into();
+            }
+
+            let models: Models = match serde_json::from_str(&text) {
                 Ok(models) => models,
                 Err(error) => {
-                    log!("Error {:?}", error);
-                    return Err(());
+                    return ClientError::new_with_source(
+                        ClientErrorKind::Format,
+                        format!("Could not parse the response from {url} as JSON or its structure does not match the expected format."),
+                        Some(error),
+                    ).into();
                 }
             };
 
@@ -182,7 +217,7 @@ impl BotClient for OpenAIClient {
 
             bots.sort_by(|a, b| a.name.cmp(&b.name));
 
-            Ok(bots)
+            ClientResult::new_ok(bots)
         };
 
         moly_future(future)
@@ -198,7 +233,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot: &Bot,
         messages: &[Message],
-    ) -> MolyStream<'static, Result<MessageDelta, ()>> {
+    ) -> MolyStream<'static, ClientResult<MessageDelta>> {
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())
@@ -212,7 +247,7 @@ impl BotClient for OpenAIClient {
         let url = format!("{}/chat/completions", url);
 
         let request = reqwest::Client::new()
-            .post(url)
+            .post(url.clone())
             .headers(headers)
             .json(&serde_json::json!({
                 "model": bot.model_id.clone(),
@@ -228,8 +263,11 @@ impl BotClient for OpenAIClient {
                     response
                 },
                 Err(error) => {
-                    eprintln!("Error: {:?}", error);
-                    yield Err(());
+                    yield ClientError::new_with_source(
+                        ClientErrorKind::Network,
+                        format!("An error ocurred sending a request to {url}."),
+                        Some(error),
+                    ).into();
                     return;
                 }
             };
@@ -242,8 +280,11 @@ impl BotClient for OpenAIClient {
                 let chunk = match chunk {
                     Ok(chunk) => chunk,
                     Err(error) => {
-                        log!("Error {:?}", error);
-                        yield Err(());
+                        yield ClientError::new_with_source(
+                            ClientErrorKind::Network,
+                            format!("Something wrong happend while a chunk of bytes from {url}."),
+                            Some(error),
+                        ).into();
                         return;
                     }
                 };
@@ -263,6 +304,7 @@ impl BotClient for OpenAIClient {
                     completed_messages
                     .split(event_terminator_str)
                     .filter(|m| !m.starts_with(":"))
+                    // TODO: Return a format error instead of unwraping.
                     .map(|m| m.trim_start().split("data:").nth(1).unwrap())
                     .filter(|m| m.trim() != "[DONE]");
 
@@ -270,8 +312,11 @@ impl BotClient for OpenAIClient {
                     let completion: Completion = match serde_json::from_str(m) {
                         Ok(c) => c,
                         Err(error) => {
-                            log!("Error: {:?}", error);
-                            yield Err(());
+                            yield ClientError::new_with_source(
+                                ClientErrorKind::Format,
+                                format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
+                                Some(error),
+                            ).into();
                             return;
                         }
                     };
@@ -284,7 +329,7 @@ impl BotClient for OpenAIClient {
 
                     let citations = completion.citations;
 
-                    yield Ok(MessageDelta {
+                    yield ClientResult::new_ok(MessageDelta {
                         body,
                         citations,
                     });
