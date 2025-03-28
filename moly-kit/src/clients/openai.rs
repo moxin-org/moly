@@ -3,11 +3,15 @@ use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
+    time::Duration,
 };
 
-use crate::utils::{serde::deserialize_null_default, sse::EVENT_TERMINATOR};
-use crate::{protocol::*, utils::sse::rsplit_once_terminator};
+use crate::protocol::*;
+use crate::utils::{
+    serde::deserialize_null_default,
+    sse::{rsplit_once_terminator, EVENT_TERMINATOR},
+};
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -90,15 +94,16 @@ struct Completion {
     pub citations: Vec<String>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct OpenAIClientInner {
     url: String,
     headers: HeaderMap,
+    client: reqwest::Client,
 }
 
 /// A client capable of interacting with Moly Server and other OpenAI-compatible APIs.
 #[derive(Debug)]
-pub struct OpenAIClient(Arc<Mutex<OpenAIClientInner>>);
+pub struct OpenAIClient(Arc<RwLock<OpenAIClientInner>>);
 
 impl Clone for OpenAIClient {
     fn clone(&self) -> Self {
@@ -108,27 +113,27 @@ impl Clone for OpenAIClient {
 
 impl From<OpenAIClientInner> for OpenAIClient {
     fn from(inner: OpenAIClientInner) -> Self {
-        Self(Arc::new(Mutex::new(inner)))
+        Self(Arc::new(RwLock::new(inner)))
     }
 }
 
 impl OpenAIClient {
     /// Creates a new client with the given OpenAI-compatible API URL.
     pub fn new(url: String) -> Self {
-        let mut headers = HeaderMap::new();
-        headers.insert("Content-Type", "application/json".parse().unwrap());
+        let headers = HeaderMap::new();
+        let client = default_client();
 
         OpenAIClientInner {
             url,
-            headers: HeaderMap::new(),
-            ..Default::default()
+            headers,
+            client,
         }
         .into()
     }
 
     pub fn set_header(&mut self, key: &str, value: &str) {
         self.0
-            .lock()
+            .write()
             .unwrap()
             .headers
             .insert(HeaderName::from_str(key).unwrap(), value.parse().unwrap());
@@ -141,15 +146,14 @@ impl OpenAIClient {
 
 impl BotClient for OpenAIClient {
     fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
-        let inner = self.0.clone();
+        let inner = self.0.read().unwrap().clone();
+
+        let url = format!("{}/v1/models", inner.url);
+        let headers = inner.headers;
+
+        let request = inner.client.get(&url).headers(headers);
 
         let future = async move {
-            let url = format!("{}/v1/models", inner.lock().unwrap().url);
-
-            let request = reqwest::Client::new()
-                .get(&url)
-                .headers(inner.lock().unwrap().headers.clone());
-
             let response = match request.send().await {
                 Ok(response) => response,
                 Err(error) => {
@@ -222,7 +226,6 @@ impl BotClient for OpenAIClient {
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
-        // ref should be shared but since hardcoded it should be ok
         Box::new(self.clone())
     }
 
@@ -232,19 +235,18 @@ impl BotClient for OpenAIClient {
         bot: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageDelta>> {
+        let inner = self.0.read().unwrap().clone();
+
+        let url = format!("{}/v1/chat/completions", inner.url);
+        let headers = inner.headers;
+
         let moly_messages: Vec<OutcomingMessage> = messages
             .iter()
             .filter_map(|m| m.clone().try_into().ok())
             .collect();
 
-        let (url, headers) = {
-            let inner = self.0.lock().unwrap();
-            (inner.url.clone(), inner.headers.clone())
-        };
-
-        let url = format!("{}/v1/chat/completions", url);
-
-        let request = reqwest::Client::new()
+        let request = inner
+            .client
             .post(&url)
             .headers(headers)
             .json(&serde_json::json!({
@@ -261,7 +263,7 @@ impl BotClient for OpenAIClient {
                 Err(error) => {
                     yield ClientError::new_with_source(
                         ClientErrorKind::Network,
-                        format!("An error ocurred sending a request to {url}."),
+                        format!("Could not send request to {url}. Verify your connection and the server status."),
                         Some(error),
                     ).into();
                     return;
@@ -278,7 +280,7 @@ impl BotClient for OpenAIClient {
                     Err(error) => {
                         yield ClientError::new_with_source(
                             ClientErrorKind::Network,
-                            format!("Something wrong happend while a chunk of bytes from {url}."),
+                            format!("Response streaming got interrupted while reading from {url}. This may be a problem with your connection or the server."),
                             Some(error),
                         ).into();
                         return;
@@ -337,4 +339,28 @@ impl BotClient for OpenAIClient {
 
         moly_stream(stream)
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn default_client() -> reqwest::Client {
+    // On native, there are no default timeouts. Connection may hand if we don't
+    // configure them.
+    reqwest::Client::builder()
+        // Only considered while establishing the connection.
+        .connect_timeout(Duration::from_secs(15))
+        // Considered while reading the response and reset on every chunk
+        // received.
+        //
+        // Warning: Do not use normal `timeout` method as it doesn't consider
+        // this.
+        .read_timeout(Duration::from_secs(15))
+        .build()
+        .unwrap()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn default_client() -> reqwest::Client {
+    // On web, reqwest timeouts are not configurable, but it uses the browser's
+    // fetch API under the hood, which handles connection issues properly.
+    reqwest::Client::new()
 }
