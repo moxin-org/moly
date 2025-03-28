@@ -82,7 +82,6 @@ pub struct ChatScreen {
 
 impl Widget for ChatScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let chat = self.chat(id!(chat));
         self.ui_runner().handle(cx, event, scope, self);
         self.widget_match_event(cx, event, scope);
   
@@ -121,18 +120,6 @@ impl WidgetMatchEvent for ChatScreen {
         for action in actions {
             // Handle model selector actions
             match action.cast() {
-                ModelSelectorAction::ModelSelected(downloaded_file) => {
-                    let bot_id = BotId::from(downloaded_file.file.id.as_str());
-                    chat_widget.write().bot_id = Some(bot_id);
-
-                    if let Some(chat) = store.chats.get_current_chat() {
-                        chat.borrow_mut().associated_entity = Some(ChatEntityId::ModelFile(downloaded_file.file.id.clone()));
-                        chat.borrow().save();
-                    }
-                }
-                ModelSelectorAction::AgentSelected(agent) => {
-                    // TODO(MolyKit): Handle agents
-                }
                 ModelSelectorAction::RemoteModelSelected(remote_model) => {
                     let bot_id = BotId::from(remote_model.id.0.as_str());
                     chat_widget.write().bot_id = Some(bot_id);
@@ -192,7 +179,7 @@ impl WidgetMatchEvent for ChatScreen {
                 chat.set_hook_after(move |group, _, _| {
                     for task in group.iter() {
                         // Handle new messsages (User)
-                        if let ChatTask::InsertMessage(index, message) = task {
+                        if let ChatTask::InsertMessage(_index, message) = task {
                             message_ref.borrow_mut().replace(message.clone());
                         }
 
@@ -204,7 +191,7 @@ impl WidgetMatchEvent for ChatScreen {
                             let message = message.clone();
                             // TODO(MolyKit): For some reason the index is off by 1, does not include the first user message.
                             let index = index +  1;
-                            ui.defer_with_redraw(move |me, cx, scope| {
+                            ui.defer_with_redraw(move |_me, _cx, scope| {
                                 let current_chat = scope.data.get::<Store>().unwrap().chats.get_current_chat();
                                 if let Some(store_chat) = current_chat {
                                     
@@ -289,10 +276,12 @@ impl WidgetMatchEvent for ChatScreen {
 
             // Handle chat selection (from chat history)
             match action.cast() {
-                ChatAction::ChatSelected(chat_id) => {
+                ChatAction::ChatSelected(_chat_id) => {
                     let current_chat = store.chats.get_current_chat();
 
                     if let Some(chat) = current_chat {
+                        store.preferences.set_current_chat_model(chat.borrow().associated_entity.clone());
+
                         // TODO(MolyKit): Replace ChatMessage everywhere with MolyKit's Message struct
                         let messages = chat.borrow().messages.iter().map(|m| {
                             // TODO(MolyKit): Handle the right entity for the message
@@ -340,7 +329,7 @@ impl WidgetMatchEvent for ChatScreen {
 
 
 impl ChatScreen {
-    fn create_bot_repo(&mut self, cx: &mut Cx, scope: &mut Scope) {
+    fn create_bot_repo(&mut self, _cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         let multi_client = {

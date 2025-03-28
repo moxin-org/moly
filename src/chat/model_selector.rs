@@ -334,15 +334,6 @@ impl WidgetMatchEvent for ModelSelector {
         let mut should_hide_options = false;
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::AgentSelected(agent) => {
-                    self.currently_selected_model = Some(ChatEntityId::Agent(agent.id));
-                    should_hide_options = true;
-                }
-                ModelSelectorAction::ModelSelected(m) => {
-                    // TODO: Here we could start showing the load animation, and cancel it out as soon as we get streaming back from the server
-                    self.currently_selected_model = Some(ChatEntityId::ModelFile(m.file.id));
-                    should_hide_options = true;
-                }
                 ModelSelectorAction::RemoteModelSelected(m) => {
                     self.currently_selected_model = Some(ChatEntityId::RemoteModel(m.id));
                     should_hide_options = true;

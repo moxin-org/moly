@@ -32,7 +32,7 @@ pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq, Default)]
 pub struct RemoteModelId(pub String);
 
 impl RemoteModelId {
@@ -52,7 +52,7 @@ pub fn bot_id_as_str(model_id: &str, server_address: &str) -> String {
 #[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RemoteServerId(pub String);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RemoteModel {
     pub id: RemoteModelId,
     pub name: String,

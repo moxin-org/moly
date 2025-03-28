@@ -1,4 +1,3 @@
-use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
@@ -273,11 +272,6 @@ impl MatchEvent for App {
             if let PopupAction::NavigateToMyModels = action.cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
-            }
-
-            if let ChatPanelAction::NavigateToDiscover = action.cast() {
-                let discover_radio_button = self.ui.radio_button(id!(discover_tab));
-                discover_radio_button.select(cx, &mut Scope::empty());
             }
 
             self.store.handle_provider_connection_action(action.cast());

@@ -339,7 +339,7 @@ impl WidgetMatchEvent for PromptInput {
 
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) | ModelSelectorAction::RemoteModelSelected(_) => {
+                ModelSelectorAction::RemoteModelSelected(_) => {
                     self.on_deselected(cx);
                 }
                 _ => (),

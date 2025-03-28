@@ -1,6 +1,5 @@
 use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
-    open_ai::{ChatRequestData, ChatResponse},
     protocol::FileDownloadResponse,
 };
 use url::Url;
@@ -379,84 +378,5 @@ impl MolyClient {
                 }
             }
         });
-    }
-
-    // TODO(MolyKit): This will be removed entirely from this client.
-    // Ideally for chat, MolyServer will just used through the OpenAI Client in MoltKit.
-    // This MolyClient client will be used exclusively for local file management.
-    // Load and eject model will be baked into MolyServer, if you hit v1/chat/completions, MolyServer should
-    // automatically load the model.
-    pub fn send_chat_message(
-        &self,
-        request: ChatRequestData,
-        tx: Sender<Result<ChatResponse, anyhow::Error>>,
-    ) {
-        // let client = self.client.clone();
-        // let url = format!("{}/models/v1/chat/completions", self.address);
-
-        // tokio::spawn(async move {
-        //     let response = client
-        //         .post(&url)
-        //         .json(&request)
-        //         .send().await;
-
-        //     match response {
-        //         Ok(res) => {
-        //             if request.stream.unwrap_or(false) {
-        //                 let mut reader = std::io::BufReader::new(res);
-        //                 let mut line = String::new();
-        //                 while reader.read_line(&mut line).unwrap() > 0 {
-        //                     if line.starts_with("data: [DONE]") {
-        //                         let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
-        //                             id: String::new(),
-        //                             choices: vec![ChunkChoiceData {
-        //                                 finish_reason: Some(StopReason::Stop),
-        //                                 index: 0,
-        //                                 delta: MessageData {
-        //                                     content: String::new(),
-        //                                     role: Role::Assistant,
-        //                                 },
-        //                                 logprobs: None,
-        //                             }],
-        //                             created: 0,
-        //                             model: String::new(),
-        //                             system_fingerprint: String::new(),
-        //                             object: "chat.completion.chunk".to_string(),
-        //                         })));
-        //                         break;
-        //                     }
-        //                     if line.starts_with("data: ") {
-        //                         // Skip "data: " prefix (6 bytes)
-        //                         let resp: Result<ChatResponseChunkData, _> =
-        //                             serde_json::from_slice(line[6..].as_bytes());
-
-        //                         match resp {
-        //                             Ok(chunk_data) => {
-        //                                 let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(chunk_data)));
-        //                             }
-        //                             Err(e) => {
-        //                                 let _ = tx.send(Err(anyhow::anyhow!("Failed to parse chunk: {}", e)));
-        //                                 break;
-        //                             }
-        //                         }
-        //                     }
-        //                     line.clear();
-        //                 }
-        //             } else {
-        //                 match res.json::<ChatResponseData>() {
-        //                     Ok(data) => {
-        //                         let _ = tx.send(Ok(ChatResponse::ChatFinalResponseData(data)));
-        //                     }
-        //                     Err(e) => {
-        //                         let _ = tx.send(Err(anyhow::anyhow!("Failed to parse response: {}", e)));
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //         Err(e) => {
-        //             let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
-        //         }
-        //     }
-        // });
     }
 }

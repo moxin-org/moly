@@ -280,7 +280,7 @@ impl ModelSelectorList {
             
             item_widget
                 .as_model_selector_item()
-                .set_agent(agent.clone());
+                .set_remote_model(agent.clone());
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
             total_height += item_widget.view(id!(content)).area().rect(cx).size.y;

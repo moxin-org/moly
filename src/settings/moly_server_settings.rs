@@ -1,10 +1,6 @@
 use makepad_code_editor::code_view::CodeViewWidgetExt;
 use makepad_widgets::*;
 
-use crate::data::{
-    store::Store,
-};
-
 live_design! {
     use link::theme::*;
     use link::shaders::*;
@@ -194,9 +190,6 @@ pub struct MolyServerSettings {
 
     #[rust]
     server_port_state: ServerPortState,
-
-    #[rust]
-    override_port: Option<u16>,
 }
 
 impl Widget for MolyServerSettings {
@@ -206,8 +199,6 @@ impl Widget for MolyServerSettings {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
         match self.server_port_state {
             ServerPortState::OnEdit => {
                 self.view.view(id!(port_editable)).set_visible(cx, false);
@@ -265,9 +256,7 @@ curl http://localhost:{}/v1/chat/completions \\
 }
 
 impl WidgetMatchEvent for MolyServerSettings {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         // for action in actions {
         //     // Once the modals are reloaded, let's clear the override port
         //     if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {

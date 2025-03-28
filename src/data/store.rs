@@ -50,11 +50,6 @@ pub struct ModelWithDownloadInfo {
 }
 
 pub struct Store {
-    /// This is the backend representation, including the sender and receiver ends of the channels to
-    /// communicate with the backend thread.
-    // pub backend: Rc<Backend>,
-    pub moly_client: MolyClient,
-
     pub search: Search,
     pub downloads: Downloads,
     pub chats: Chats,
@@ -82,10 +77,9 @@ impl Store {
         register_capture_manager();
 
         let mut store = Self {
-            moly_client: moly_client.clone(),
             search: Search::new(moly_client.clone()),
             downloads: Downloads::new(moly_client.clone()),
-            chats: Chats::new(moly_client.clone()),
+            chats: Chats::new(moly_client),
             preferences,
             bot_repo: None,
         };
@@ -104,72 +98,6 @@ impl Store {
         store.load_preference_connections();
 
         store
-    }
-
-    pub fn send_message_to_current_entity(
-        &mut self,
-        prompt: String,
-        regenerate_from: Option<usize>,
-    ) {
-        let entity_id = self
-            .chats
-            .get_current_chat()
-            .and_then(|c| c.borrow().associated_entity.clone());
-
-        if let Some(entity_id) = entity_id {
-            self.send_entity_message(&entity_id, prompt, regenerate_from);
-        }
-    }
-
-    pub fn send_entity_message(
-        &mut self,
-        entity_id: &ChatEntityId,
-        prompt: String,
-        regenerate_from: Option<usize>,
-    ) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            if let Some(message_id) = regenerate_from {
-                chat.remove_messages_from(message_id);
-            }
-
-            match entity_id {
-                ChatEntityId::Agent(model_id) => {
-                    let model = self.chats.remote_models.get(model_id);
-                    if let Some(model) = model {
-                        let client = self.chats.get_client_for_provider(&model.provider_url);
-                        if let Some(client) = client {
-                            chat.send_message_to_agent(model, prompt, client.as_ref());
-                        } else {
-                            eprintln!("client not found for provider: {:?}", model.provider_url);
-                        }
-                    } else {
-                        eprintln!("model not found: {:?}", model_id);
-                    }
-                }
-                ChatEntityId::ModelFile(file_id) => {
-                    if let Some(file) = self.downloads.get_file(&file_id) {
-                        chat.send_message_to_model(
-                            prompt,
-                            file,
-                            &self.moly_client,
-                        );
-                    }
-                }
-                ChatEntityId::RemoteModel(model_id) => {
-                    let model = self.chats.remote_models.get(model_id);
-                    if let Some(model) = model {
-                        let client = self.chats.get_client_for_provider(&model.provider_url);
-                        if let Some(client) = client {
-                            chat.send_message_to_remote_model(prompt, model, client.as_ref());
-                        } else {
-                            eprintln!("client not found for provider: {:?}", model.provider_url);
-                        }
-                    } else {
-                        eprintln!("model not found: {:?}", model_id);
-                    }
-                }
-            }
-        }
     }
 
     pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
@@ -412,7 +340,7 @@ impl Store {
         // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
         // Update in MolyKit (to update the API key used by the client, if needed)
-        if let Some(bot_repo) = &self.bot_repo {
+        if let Some(_bot_repo) = &self.bot_repo {
             // Because MolyKit does not currently expose an API to update the clients, 
             // we'll remove and recreate the entire bot repo
             // TODO(MolyKit): I think BotRepo should be an actual repository-like interface and not a client interface, it might still hold a main
