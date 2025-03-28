@@ -165,7 +165,6 @@ impl MolyClient {
         });
     }
 
-    // TODO(Julian): downloads are getting stuck at 99%, only show 100% on app restart
     pub async fn track_download_progress(&self, file_id: FileID, tx: tokio::sync::mpsc::Sender<Result<FileDownloadResponse, anyhow::Error>>) {
         let mut url = Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
         url.path_segments_mut()
