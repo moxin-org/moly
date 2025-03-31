@@ -92,7 +92,7 @@ live_design! {
         }
     }
 
-    ChatLine = <RoundedView> {
+    pub ChatLine = <RoundedView> {
         flow: Down,
         height: Fit,
         message_section = <RoundedView> {
@@ -109,7 +109,7 @@ live_design! {
         }
     }
 
-    UserLine = <ChatLine> {
+    pub UserLine = <ChatLine> {
         height: Fit,
         message_section = {
             sender = { visible: false }
@@ -134,7 +134,7 @@ live_design! {
         }
     }
 
-    BotLine = <ChatLine> {
+    pub BotLine = <ChatLine> {
         flow: Down,
         height: Fit,
         message_section = {
@@ -157,7 +157,7 @@ live_design! {
         }
     }
 
-    LoadingLine = <BotLine> {
+    pub LoadingLine = <BotLine> {
         message_section = {
             bubble = {
                 text = <View> {
@@ -172,7 +172,7 @@ live_design! {
     // Idea: With the current design, this can be something centered and fit
     // up to the fill size. If we drop the current design and simplify it, we could
     // just use the bot's design for all messages.
-    AppLine = <BotLine> {
+    pub AppLine = <BotLine> {
         message_section = {
             padding: 12,
             draw_bg: {color: #00f3}
@@ -188,7 +188,7 @@ live_design! {
         }
     }
 
-    ErrorLine = <AppLine> {
+    pub ErrorLine = <AppLine> {
         message_section = {
             draw_bg: {color: #f003}
 

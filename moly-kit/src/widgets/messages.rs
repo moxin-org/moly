@@ -10,7 +10,7 @@ use crate::{
 };
 use makepad_widgets::*;
 
-use super::citations::CitationsWidgetRefExt;
+use super::{citations::CitationsWidgetRefExt, deep_inquire_line::DeepInquireBotLineWidgetRefExt};
 
 live_design! {
     use link::theme::*;
@@ -18,6 +18,7 @@ live_design! {
     use link::shaders::*;
 
     use crate::widgets::chat_lines::*;
+    use crate::widgets::deep_inquire_line::*;
 
     pub Messages = {{Messages}} {
         flow: Overlay,
@@ -27,6 +28,7 @@ live_design! {
             }
             UserLine = <UserLine> {}
             BotLine = <BotLine> {}
+            DeepInquireBotLine = <DeepInquireBotLine> {}
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
@@ -241,9 +243,17 @@ impl Messages {
                     // If the message is empty, display a loading animation.
                     let item = if message.is_writing && message.body.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
-
                         item.message_loading(id!(text.loading)).animate(cx);
-
+                        item
+                    } else if !message.stages.is_empty() {
+                        // Use specialized DeepInquireBotLine for messages with stages
+                        let item = list.item(cx, index, live_id!(DeepInquireBotLine));
+                        
+                        // TODO(MolyKit): We might want to introduce a trait for this, that the different bot lines implement
+                        // to update their message content.
+                        // Update the DeepInquireBotLine with the message content
+                        item.as_deep_inquire_bot_line().set_message(cx, message, message.is_writing);
+                        
                         item
                     } else {
                         let item = list.item(cx, index, live_id!(BotLine));
@@ -286,9 +296,6 @@ impl Messages {
             assert!(message.from == EntityId::App);
             assert!(message.body == "EOC");
         }
-
-        // dbg!(list_end_reached);
-        // dbg!(list.is_at_end());
 
         self.button(id!(jump_to_bottom))
             .set_visible(cx, !self.is_list_end_drawn);

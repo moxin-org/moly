@@ -248,9 +248,10 @@ impl DeepInquireClient {
                     continue;
                 }
                 ProviderCommand::FetchModels() => {
+                    let id =  RemoteModelId::from_model_and_server("DeepInquire", &address);
                     let agents = vec![
                         RemoteModel {
-                            id: RemoteModelId::from_model_and_server("DeepInquire", &address),
+                            id,
                             name: "DeepInquire".to_string(),
                             description: "A search assistant".to_string(),
                             enabled: true,

@@ -4,11 +4,9 @@ use std::rc::Rc;
 use makepad_widgets::*;
 use moly_kit::*;
 use moly_kit::utils::asynchronous::spawn;
-use moly_protocol::open_ai::Role;
 
-use crate::data::chats::chat::ChatMessage;
 use crate::data::chats::chat_entity::ChatEntityId;
-use crate::data::providers::{ProviderType, RemoteModelId};
+use crate::data::providers::ProviderType;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 
@@ -194,37 +192,16 @@ impl WidgetMatchEvent for ChatScreen {
                             ui.defer_with_redraw(move |_me, _cx, scope| {
                                 let current_chat = scope.data.get::<Store>().unwrap().chats.get_current_chat();
                                 if let Some(store_chat) = current_chat {
-                                    
-                                    let (entity, role) = match &message.from {
-                                        EntityId::Bot(bot_id) => {
-                                            let remote_model_id = RemoteModelId(bot_id.to_string());
-                                            (Some(ChatEntityId::RemoteModel(remote_model_id)), Role::Assistant)
-                                        },
-                                        EntityId::User => {
-                                            (None, Role::User)
-                                        },
-                                        _ => {
-                                            (None, Role::System)
-                                        }
-                                    };
-
-                                    // Map MolyKit Message to ChatMessage
-                                    let chat_message = ChatMessage {
-                                        id: index,
-                                        role,
-                                        username: None,
-                                        entity,
-                                        content: message.body.clone(),
-                                        stages: vec![],
-                                    };
-
                                     let mut chat_ref = store_chat.borrow_mut();
-                                    let message_index = chat_ref.messages.iter().position(|m| m.id == index);
-                                    
-                                    if let Some(idx) = message_index {
-                                        chat_ref.messages[idx] = chat_message;
+                                    if let Some(message_to_update) = chat_ref.messages.get_mut(index) {
+                                        message_to_update.is_writing = false;
+                                        message_to_update.body = message.body.clone();
+                                        message_to_update.stages = message.stages.clone();
+                                        message_to_update.citations = message.citations.clone();
                                     } else {
-                                        chat_ref.messages.push(chat_message);
+                                        let mut new_message = message.clone();
+                                        new_message.is_writing = false;
+                                        chat_ref.messages.push(new_message);
                                     }
                                     chat_ref.save();
                                 }
@@ -258,15 +235,7 @@ impl WidgetMatchEvent for ChatScreen {
             // There is a new message to insert in the history
             if let Some(new_message) = self.message_container.borrow_mut().take() {
                 if let Some(current_chat) = store.chats.get_current_chat() {
-                    let next_id = current_chat.borrow().messages.last().map(|m| m.id).unwrap_or(0) + 1;
-                    current_chat.borrow_mut().messages.push(ChatMessage {
-                        id: next_id,
-                        role: Role::User,
-                        username: None,
-                        entity: None,
-                        content: new_message.body.clone(),
-                        stages: vec![],
-                    });
+                    current_chat.borrow_mut().messages.push(new_message);
 
                     current_chat.borrow_mut().update_title_based_on_first_message();
                     current_chat.borrow().save();
@@ -282,26 +251,8 @@ impl WidgetMatchEvent for ChatScreen {
                     if let Some(chat) = current_chat {
                         store.preferences.set_current_chat_model(chat.borrow().associated_entity.clone());
 
-                        // TODO(MolyKit): Replace ChatMessage everywhere with MolyKit's Message struct
-                        let messages = chat.borrow().messages.iter().map(|m| {
-                            // TODO(MolyKit): Handle the right entity for the message
-                            let from = if m.role == Role::Assistant {
-                                let bot_id = m.entity.clone().unwrap().as_bot_id();
-                                EntityId::Bot(bot_id)
-                            } else { 
-                                EntityId::User 
-                            };
-
-                            Message {
-                                from,
-                                body: m.content.clone(),
-                                is_writing: false,
-                                citations: vec![],
-                            }
-                        }).collect();
-
                         // Load messages from history into the messages widget
-                        self.messages(id!(chat.messages)).write().messages = messages;
+                        self.messages(id!(chat.messages)).write().messages = chat.borrow().messages.clone();
 
                         // Set the chat's associated model in the model selector
                         if let Some(entity) = &chat.borrow().associated_entity {
@@ -346,7 +297,6 @@ impl ChatScreen {
                             multi_client.add_client(Box::new(new_client));
                         }
                     },
-                    // TODO(MolyKit) add support for other clients here
                     ProviderType::MoFa => {
                         // For MoFa we don't require an API key
                         if provider.1.enabled {
@@ -358,7 +308,11 @@ impl ChatScreen {
                         }
                     },
                     ProviderType::DeepInquire => {
-                        // TODO
+                        let mut new_client = DeepInquireClient::new(provider.1.url.clone());
+                        if let Some(key) = provider.1.api_key.as_ref() {
+                            new_client.set_key(&key);
+                        }
+                        multi_client.add_client(Box::new(new_client));
                     }
                 }
             }

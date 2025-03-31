@@ -457,13 +457,7 @@ impl Chat {
                     }
                 }
 
-                message.body.push_str(&delta.body);
-                // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
-                for citation in delta.citations {
-                    if !message.citations.contains(&citation) {
-                        message.citations.push(citation);
-                    }
-                }
+                message.apply_delta(delta);
 
                 let index = messages.read().messages.len() - 1;
                 let mut tasks = vec![ChatTask::UpdateMessage(index, message)];

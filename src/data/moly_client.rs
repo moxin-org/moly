@@ -95,7 +95,7 @@ impl MolyClient {
                                 let _ = tx.send(Ok(files));
                             }
                             Err(e) => {
-                                println!("Error parsing files: {}", e);
+                                eprintln!("Error parsing files: {}", e);
                                 let _ = tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
                             }
                         }

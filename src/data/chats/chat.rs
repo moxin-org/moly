@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use moly_kit::Message;
 use moly_protocol::data::FileID;
 use moly_protocol::open_ai::*;
 use serde::{Deserialize, Serialize};
@@ -28,22 +29,6 @@ enum ChatEntityActionKind {
     MofaAgentCancelled,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ChatMessage {
-    pub id: usize,
-    pub role: Role,
-    pub username: Option<String>,
-    pub entity: Option<ChatEntityId>,
-    pub content: String,
-    pub stages: Vec<DeepInquireStage>,
-}
-
-impl ChatMessage {
-    pub fn is_assistant(&self) -> bool {
-        matches!(self.role, Role::Assistant)
-    }
-}
-
 #[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
 enum TitleState {
     #[default]
@@ -66,7 +51,7 @@ struct ChatData {
     id: ChatID,
     associated_entity: Option<ChatEntityId>,
     system_prompt: Option<String>,
-    messages: Vec<ChatMessage>,
+    messages: Vec<Message>,
     title: String,
     #[serde(default)]
     title_state: TitleState,
@@ -112,7 +97,7 @@ pub struct Chat {
     /// For agents it is the agent that originated the chat.
     pub associated_entity: Option<ChatEntityId>,
 
-    pub messages: Vec<ChatMessage>,
+    pub messages: Vec<Message>,
     pub is_streaming: bool,
     pub inferences_params: ChatInferenceParams,
     pub system_prompt: Option<String>,
@@ -219,9 +204,9 @@ impl Chat {
                 let max_char_length = 25;
                 let ellipsis = "...";
 
-                let title = if message.content.len() > max_char_length {
+                let title = if message.body.len() > max_char_length {
                     let mut truncated = message
-                        .content
+                        .body
                         .chars()
                         .take(max_char_length)
                         .collect::<String>()
@@ -229,7 +214,7 @@ impl Chat {
                     truncated.push_str(ellipsis);
                     truncated
                 } else {
-                    message.content.clone()
+                    message.body.clone()
                 };
 
                 self.set_title(title);
@@ -243,7 +228,7 @@ impl Chat {
         }
 
         let message = self.messages.last_mut().unwrap();
-        let new_state = if message.content.trim().is_empty() {
+        let new_state = if message.body.trim().is_empty() {
             ChatState::Cancelled(true)
         } else {
             ChatState::Cancelled(false)
@@ -262,25 +247,20 @@ impl Chat {
 
         *self.state.write().unwrap() = ChatState::Cancelled(true);
         let message = self.messages.last_mut().unwrap();
-        message.content = "Cancelling, please wait...".to_string();
+        message.body = "Cancelling, please wait...".to_string();
     }
 
-    pub fn delete_message(&mut self, message_id: usize) {
-        self.messages.retain(|message| message.id != message_id);
+    pub fn delete_message(&mut self, message_index: usize) {
+        self.messages.remove(message_index);
     }
 
-    pub fn edit_message(&mut self, message_id: usize, updated_message: String) {
-        if let Some(message) = self.messages.iter_mut().find(|m| m.id == message_id) {
-            message.content = updated_message;
+    pub fn edit_message(&mut self, message_index: usize, updated_message: String) {
+        if let Some(message) = self.messages.get_mut(message_index) {
+            message.body = updated_message;
         }
     }
 
-    pub fn remove_messages_from(&mut self, message_id: usize) {
-        let message_index = self
-            .messages
-            .iter()
-            .position(|m| m.id == message_id)
-            .unwrap();
+    pub fn remove_messages_from(&mut self, message_index: usize) {
         self.messages.truncate(message_index);
     }
 
@@ -300,7 +280,7 @@ impl Chat {
         match &action.kind {
             ChatEntityActionKind::ModelAppendDelta(response) => {
                 let last = self.messages.last_mut().unwrap();
-                last.content.push_str(&response);
+                last.body.push_str(&response);
             }
             ChatEntityActionKind::ModelStreamingDone => {
                 self.is_streaming = false;
@@ -308,7 +288,7 @@ impl Chat {
             }
             ChatEntityActionKind::MofaAgentResult(response, is_final) => {
                 let last = self.messages.last_mut().unwrap();
-                last.content = response.clone();
+                last.body = response.clone();
                 if *is_final {
                     *self.state.write().unwrap() = ChatState::Idle;
                 }
@@ -317,66 +297,8 @@ impl Chat {
                 *self.state.write().unwrap() = ChatState::Idle;
                 // Remove the last message sent by the user
                 self.messages.pop();
-            }
-            ChatEntityActionKind::DeepnInquireResponse(message) => {
-                let last_message = self.messages.last_mut().unwrap();
-
-                // Completed messages arrive with stage id 1, but they should be the last stage
-                // I'm actually unsure of this behavior, perhaps it's a bug, perhaps we should add the completed block
-                // to the last active stage instead of creating a new one.
-                match message {
-                    DeepInquireMessage::Completed(_, content) => {
-                        last_message.stages.push(DeepInquireStage { 
-                            id: last_message.stages.len(),
-                            thinking: None,
-                            writing: None,
-                            completed: Some(content.clone()),
-                        });
-                        *self.state.write().unwrap() = ChatState::Idle;
-                        return;
-                    }
-                    _ => {}
-                }
-
-                // If there is an existing stage with the same id, we update it
-                if let Some(existing_stage) = last_message.stages.iter_mut().find(|stage| stage.id == message.id()) {
-                    match message {
-                        DeepInquireMessage::Thinking(_, content) => {
-                            existing_stage.thinking = Some(content.clone());
-                        }
-                        DeepInquireMessage::Writing(_, content) => {
-                            existing_stage.writing = Some(content.clone());
-                        }
-                        DeepInquireMessage::Completed(_, content) => {
-                            existing_stage.completed = Some(content.clone());
-                            *self.state.write().unwrap() = ChatState::Idle;
-                        }
-                    }
-                } else {
-                    // Otherwise we add a new stage
-                    let mut new_stage = DeepInquireStage {
-                        id: message.id(),
-                        thinking: None,
-                        writing: None,
-                        completed: None,
-                    };
-
-                    match message {
-                        DeepInquireMessage::Thinking(_, content) => {
-                            new_stage.thinking = Some(content.clone());
-                        }
-                        DeepInquireMessage::Writing(_, content) => {
-                            new_stage.writing = Some(content.clone());
-                        }
-                        DeepInquireMessage::Completed(_, content) => {
-                            new_stage.completed = Some(content.clone());
-                            *self.state.write().unwrap() = ChatState::Idle;
-                        }
-                    }
-
-                    last_message.stages.push(new_stage);
-                }
-            }
+            },
+            _ => {}
         }
         self.save();
     }

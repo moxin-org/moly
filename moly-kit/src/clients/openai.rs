@@ -334,6 +334,7 @@ impl BotClient for OpenAIClient {
                     yield ClientResult::new_ok(MessageDelta {
                         body,
                         citations,
+                        stage_block: None,
                     });
                 }
 

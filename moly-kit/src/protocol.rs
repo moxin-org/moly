@@ -1,5 +1,6 @@
 use futures::StreamExt;
 use makepad_widgets::LiveValue;
+use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
     fmt,
@@ -23,6 +24,7 @@ pub enum Picture {
 
 /// Indentify the entities that are recognized by this crate, mainly in a chat.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub enum EntityId {
     /// Represents the user operating this app.
     User,
@@ -58,6 +60,23 @@ pub struct Bot {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BotId(Arc<str>);
 
+impl Serialize for BotId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for BotId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> {
+        let s = String::deserialize(deserializer)?;
+        Ok(BotId::from(s.as_str()))
+    }
+}
+
 impl From<&str> for BotId {
     fn from(id: &str) -> Self {
         BotId(id.into())
@@ -87,31 +106,157 @@ impl fmt::Display for BotId {
 
 /// A message that is part of a conversation.
 #[derive(Clone, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
 
     /// Content of the message.
     pub body: String,
-
-    /// If this message is still being written.
-    ///
-    /// This means the message is still going to be modified.
-    ///
-    /// If `false`, it means the message will not change anymore.
+    /// Citations (e.g., URLs) to associate with the message
+    pub citations: Vec<String>,
+    /// Stages for multi-stage messages (like DeepInquire)
+    pub stages: Vec<MessageStage>,
+    /// Wether the message is actively being modified. False when no more changes are expected.
     pub is_writing: bool,
+}
 
-    /// Citations for the message.
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct MessageStage {
+    /// Stage identifier
+    pub id: usize,
+    /// Thinking block content
+    pub thinking: Option<MessageBlockContent>,
+    /// Writing block content
+    pub writing: Option<MessageBlockContent>,
+    /// Completed block content
+    pub completed: Option<MessageBlockContent>,
+}
+
+/// Content for a specific stage
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct MessageBlockContent {
+    /// Text content of the block
+    pub content: String,
+    /// Citations associated with this block
     pub citations: Vec<String>,
 }
 
-/// A delta response for an existing [Message].
-#[derive(Clone, Debug, Default)]
+/// A stage in the message generation process
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum StageBlock {
+    /// Thinking block, early reasoning steps
+    Thinking {
+        id: usize,
+        content: String,
+        citations: Vec<String>,
+    },
+    /// Writing block, formulating the response
+    Writing {
+        id: usize,
+        content: String,
+        citations: Vec<String>,
+    },
+    /// Completed stage, final response
+    Completed {
+        id: usize,
+        content: String,
+        citations: Vec<String>,
+    },
+}
+
+impl StageBlock {
+    /// Get the ID of this stage
+    pub fn id(&self) -> usize {
+        match self {
+            StageBlock::Thinking { id, .. } => *id,
+            StageBlock::Writing { id, .. } => *id,
+            StageBlock::Completed { id, .. } => *id,
+        }
+    }
+}
+
+/// Delta for streaming responses
+#[derive(Clone, Debug, PartialEq)]
 pub struct MessageDelta {
     /// Delta for the [Message::body] field.
     pub body: String,
     /// Delta for the [Message::citations] field.
     pub citations: Vec<String>,
+    /// Optional stage block information for multi-stage messages (DeepInquire)
+    pub stage_block: Option<StageBlock>,
+}
+
+impl Message {
+    /// Update the message with a delta
+    pub fn apply_delta(&mut self, delta: MessageDelta) {
+        // Always append to the body regardless of stage
+        self.body.push_str(&delta.body);
+        
+        // Add any new citations
+        for citation in delta.citations {
+            if !self.citations.contains(&citation) {
+                self.citations.push(citation);
+            }
+        }
+        
+        // If we have stage information, update the stages
+        if let Some(stage_block) = delta.stage_block {
+            self.update_stage(stage_block);
+        }
+    }   
+    
+    fn update_stage(&mut self, stage_block: StageBlock) {
+        let stage_id = stage_block.id();
+        
+        // Check if we have this stage already
+        let stage_exists = self.stages.iter().any(|s| s.id == stage_id);
+        
+        // If not, create a new one
+        // We also always create a new last stage for completion
+        // This is because currently DeepInquire returns id 1, but we want to make it the last stage.
+        let is_block_completion = matches!(stage_block, StageBlock::Completed { .. });
+        if !stage_exists || is_block_completion {
+            self.stages.push(MessageStage {
+                id: self.stages.len(),
+                thinking: None,
+                writing: None,
+                completed: None,
+            });
+        }
+        
+        // Now get a mutable reference to the stage
+        let stage_collection = self.stages.iter_mut()
+            .find(|s| s.id == stage_id)
+            .unwrap(); // Safe since we either found it or added it
+        
+        // Update the appropriate stage
+        match stage_block {
+            StageBlock::Thinking { id: _, content, citations } => {
+                stage_collection.thinking = Some(MessageBlockContent {
+                    content,
+                    citations,
+                });
+            },
+            StageBlock::Writing { id: _, content, citations } => {
+                stage_collection.writing = Some(MessageBlockContent {
+                    content,
+                    citations,
+                });
+            },
+            StageBlock::Completed { id: _, content, citations } => {
+                stage_collection.completed = Some(MessageBlockContent {
+                    content, 
+                    citations,
+                });
+                // Mark message as completed when we get a completed stage
+                self.is_writing = false;
+            },
+        }
+    }
 }
 
 /// The standard error kinds a client implementatiin should facilitate.
@@ -385,9 +530,9 @@ pub trait BotClient: Send {
             }
 
             if errors.is_empty() {
-                ClientResult::new_ok(MessageDelta { body, citations })
+                ClientResult::new_ok(MessageDelta { body, citations, stage_block: None })
             } else {
-                ClientResult::new_ok_and_err(MessageDelta { body, citations }, errors)
+                ClientResult::new_ok_and_err(MessageDelta { body, citations, stage_block: None }, errors)
             }
         };
 
