@@ -104,21 +104,54 @@ impl fmt::Display for BotId {
     }
 }
 
+/// Content types for messages, supporting different provider formats
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum MessageContent {
+    /// Simple text content with optional citations
+    PlainText {
+        /// The text content
+        text: String,
+        /// Citations/sources associated with this content
+        citations: Vec<String>,
+    },
+    
+    /// Multi-stage content (like DeepInquire)
+    MultiStage {
+        /// Text representation
+        text: String,
+        /// Stages in various states
+        stages: Vec<MessageStage>,
+        /// Citations/sources associated with this content
+        citations: Vec<String>,
+    },
+}
+
 /// A message that is part of a conversation.
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
 
-    /// Content of the message.
-    pub body: String,
-    /// Citations (e.g., URLs) to associate with the message
-    pub citations: Vec<String>,
-    /// Stages for multi-stage messages (like DeepInquire)
-    pub stages: Vec<MessageStage>,
-    /// Wether the message is actively being modified. False when no more changes are expected.
+    /// The content of the message (text, stages, etc.)
+    pub content: MessageContent,
+    
+    /// Whether the message is actively being modified. False when no more changes are expected.
     pub is_writing: bool,
+}
+
+impl Default for Message {
+    fn default() -> Self {
+        Message {
+            from: EntityId::default(),
+            content: MessageContent::PlainText { 
+                text: String::new(),
+                citations: Vec::new(),
+            },
+            is_writing: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -134,6 +167,26 @@ pub struct MessageStage {
     pub completed: Option<MessageBlockContent>,
 }
 
+impl MessageStage {
+    /// Check if this stage has completed content
+    pub fn is_completed(&self) -> bool {
+        self.completed.is_some()
+    }
+    
+    /// Get the text content of the most advanced stage (completed > writing > thinking)
+    pub fn latest_content(&self) -> Option<&str> {
+        if let Some(completed) = &self.completed {
+            Some(&completed.content)
+        } else if let Some(writing) = &self.writing {
+            Some(&writing.content)
+        } else if let Some(thinking) = &self.thinking {
+            Some(&thinking.content)
+        } else {
+            None
+        }
+    }
+}
+
 /// Content for a specific stage
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -144,116 +197,165 @@ pub struct MessageBlockContent {
     pub citations: Vec<String>,
 }
 
-/// A stage in the message generation process
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub enum StageBlock {
-    /// Thinking block, early reasoning steps
-    Thinking {
-        id: usize,
-        content: String,
-        citations: Vec<String>,
-    },
-    /// Writing block, formulating the response
-    Writing {
-        id: usize,
-        content: String,
-        citations: Vec<String>,
-    },
-    /// Completed stage, final response
-    Completed {
-        id: usize,
-        content: String,
-        citations: Vec<String>,
-    },
-}
-
-impl StageBlock {
-    /// Get the ID of this stage
-    pub fn id(&self) -> usize {
-        match self {
-            StageBlock::Thinking { id, .. } => *id,
-            StageBlock::Writing { id, .. } => *id,
-            StageBlock::Completed { id, .. } => *id,
-        }
-    }
-}
-
 /// Delta for streaming responses
 #[derive(Clone, Debug, PartialEq)]
 pub struct MessageDelta {
-    /// Delta for the [Message::body] field.
-    pub body: String,
-    /// Delta for the [Message::citations] field.
-    pub citations: Vec<String>,
-    /// Optional stage block information for multi-stage messages (DeepInquire)
-    pub stage_block: Option<StageBlock>,
+    /// The content delta
+    pub content: MessageContent,
 }
 
 impl Message {
     /// Update the message with a delta
     pub fn apply_delta(&mut self, delta: MessageDelta) {
-        // Always append to the body regardless of stage
-        self.body.push_str(&delta.body);
-        
-        // Add any new citations
-        for citation in delta.citations {
-            if !self.citations.contains(&citation) {
-                self.citations.push(citation);
+        match (&mut self.content, &delta.content) {
+            // PlainText + PlainText -> append text and add citations
+            (MessageContent::PlainText { text, citations }, 
+             MessageContent::PlainText { text: delta_text, citations: delta_citations }) => {
+                text.push_str(delta_text);
+                for citation in delta_citations {
+                    if !citations.contains(citation) {
+                        citations.push(citation.clone());
+                    }
+                }
+            },
+            
+            // MultiStage + MultiStage -> update stages and append text
+            (MessageContent::MultiStage { text, stages, citations }, 
+             MessageContent::MultiStage { text: delta_text, stages: delta_stages, citations: delta_citations }) => {
+                // Append text if not empty
+                if !delta_text.is_empty() {
+                    text.push_str(delta_text);
+                }
+                
+                // Merge stages from delta into existing stages
+                for new_stage in delta_stages {
+                    if let Some(existing_stage) = stages.iter_mut().find(|s| s.id == new_stage.id) {
+                        // Update existing stage
+                        if new_stage.thinking.is_some() {
+                            existing_stage.thinking = new_stage.thinking.clone();
+                        }
+                        if new_stage.writing.is_some() {
+                            existing_stage.writing = new_stage.writing.clone();
+                        }
+                        if new_stage.completed.is_some() {
+                            existing_stage.completed = new_stage.completed.clone();
+                            // Mark message as completed when we get a completed stage
+                            self.is_writing = false;
+                        }
+                    } else {
+                        // Add new stage
+                        stages.push(new_stage.clone());
+                    }
+                }
+                
+                // Add new citations
+                for citation in delta_citations {
+                    if !citations.contains(citation) {
+                        citations.push(citation.clone());
+                    }
+                }
+            },
+            
+            // PlainText + MultiStage -> convert to MultiStage and update
+            (MessageContent::PlainText { text: existing_text, citations: existing_citations },
+             MessageContent::MultiStage { text: delta_text, stages: delta_stages, citations: delta_citations }) => {
+                let mut combined_text = existing_text.clone();
+                if !delta_text.is_empty() {
+                    combined_text.push_str(delta_text);
+                }
+                
+                let mut combined_citations = existing_citations.clone();
+                for citation in delta_citations {
+                    if !combined_citations.contains(citation) {
+                        combined_citations.push(citation.clone());
+                    }
+                }
+                
+                // Convert to MultiStage
+                self.content = MessageContent::MultiStage {
+                    text: combined_text,
+                    stages: delta_stages.clone(),
+                    citations: combined_citations,
+                };
+            },
+            
+            // MultiStage + PlainText -> just append text and citations
+            (MessageContent::MultiStage { text, citations, .. },
+             MessageContent::PlainText { text: delta_text, citations: delta_citations }) => {
+                text.push_str(delta_text);
+                
+                for citation in delta_citations {
+                    if !citations.contains(citation) {
+                        citations.push(citation.clone());
+                    }
+                }
+            },
+            
+            // Shouldn't happen, but handle it anyway by replacing content
+            _ => {
+                self.content = delta.content.clone();
             }
         }
-        
-        // If we have stage information, update the stages
-        if let Some(stage_block) = delta.stage_block {
-            self.update_stage(stage_block);
+    }
+
+    /// Gets the visible text content to display, regardless of the content type
+    pub fn visible_text(&self) -> String {
+        match &self.content {
+            MessageContent::PlainText { text, .. } => text.clone(),
+            MessageContent::MultiStage { text, .. } => text.clone(),
         }
-    }   
+    }
     
-    fn update_stage(&mut self, stage_block: StageBlock) {
-        let stage_id = stage_block.id();
-        
-        // Check if we have this stage already
-        let stage_exists = self.stages.iter().any(|s| s.id == stage_id);
-        
-        // If not, create a new one
-        // We also always create a new last stage for completion
-        // This is because currently DeepInquire returns id 1, but we want to make it the last stage.
-        let is_block_completion = matches!(stage_block, StageBlock::Completed { .. });
-        if !stage_exists || is_block_completion {
-            self.stages.push(MessageStage {
-                id: self.stages.len(),
-                thinking: None,
-                writing: None,
-                completed: None,
-            });
+    /// Gets the citations/sources regardless of the content type
+    pub fn sources(&self) -> Vec<String> {
+        match &self.content {
+            MessageContent::PlainText { citations, .. } => citations.clone(),
+            MessageContent::MultiStage { citations, .. } => citations.clone(),
         }
-        
-        // Now get a mutable reference to the stage
-        let stage_collection = self.stages.iter_mut()
-            .find(|s| s.id == stage_id)
-            .unwrap(); // Safe since we either found it or added it
-        
-        // Update the appropriate stage
-        match stage_block {
-            StageBlock::Thinking { id: _, content, citations } => {
-                stage_collection.thinking = Some(MessageBlockContent {
-                    content,
-                    citations,
-                });
+    }
+    
+    /// Checks if this message has multi-stage content
+    pub fn has_stages(&self) -> bool {
+        match &self.content {
+            MessageContent::PlainText { .. } => false,
+            MessageContent::MultiStage { stages, .. } => !stages.is_empty(),
+        }
+    }
+    
+    /// Gets the stages if this message has multi-stage content
+    pub fn get_stages(&self) -> Vec<MessageStage> {
+        match &self.content {
+            MessageContent::PlainText { .. } => Vec::new(),
+            MessageContent::MultiStage { stages, .. } => stages.clone(),
+        }
+    }
+}
+
+/// Factory methods for creating properly formatted MessageDelta objects
+pub trait MessageDeltaFactory {
+    /// Create a text-only delta with optional citations
+    fn text_delta(text: String, citations: Vec<String>) -> MessageDelta;
+    
+    /// Create a stage-based delta
+    fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> MessageDelta;
+}
+
+impl MessageDeltaFactory for MessageDelta {
+    fn text_delta(text: String, citations: Vec<String>) -> Self {
+        MessageDelta {
+            content: MessageContent::PlainText {
+                text,
+                citations,
             },
-            StageBlock::Writing { id: _, content, citations } => {
-                stage_collection.writing = Some(MessageBlockContent {
-                    content,
-                    citations,
-                });
-            },
-            StageBlock::Completed { id: _, content, citations } => {
-                stage_collection.completed = Some(MessageBlockContent {
-                    content, 
-                    citations,
-                });
-                // Mark message as completed when we get a completed stage
-                self.is_writing = false;
+        }
+    }
+    
+    fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> Self {
+        MessageDelta {
+            content: MessageContent::MultiStage {
+                text,
+                stages: vec![stage],
+                citations,
             },
         }
     }
@@ -510,7 +612,7 @@ pub trait BotClient: Send {
         let stream = self.send_stream(bot, messages);
 
         let future = async move {
-            let mut body = String::new();
+            let mut text = String::new();
             let mut citations = Vec::new();
             let mut errors = Vec::new();
 
@@ -519,8 +621,16 @@ pub trait BotClient: Send {
                 let (v, e) = result.into_value_and_errors();
 
                 if let Some(delta) = v {
-                    body.push_str(&delta.body);
-                    citations.extend(delta.citations);
+                    match &delta.content {
+                        MessageContent::PlainText { text: delta_text, citations: delta_citations } => {
+                            text.push_str(delta_text);
+                            citations.extend(delta_citations.clone());
+                        },
+                        MessageContent::MultiStage { text: delta_text, citations: delta_citations, .. } => {
+                            text.push_str(delta_text);
+                            citations.extend(delta_citations.clone());
+                        }
+                    }
                 }
 
                 if !e.is_empty() {
@@ -530,9 +640,22 @@ pub trait BotClient: Send {
             }
 
             if errors.is_empty() {
-                ClientResult::new_ok(MessageDelta { body, citations, stage_block: None })
+                ClientResult::new_ok(MessageDelta {
+                    content: MessageContent::PlainText {
+                        text,
+                        citations,
+                    }
+                })
             } else {
-                ClientResult::new_ok_and_err(MessageDelta { body, citations, stage_block: None }, errors)
+                ClientResult::new_ok_and_err(
+                    MessageDelta {
+                        content: MessageContent::PlainText {
+                            text,
+                            citations,
+                        }
+                    },
+                    errors
+                )
             }
         };
 

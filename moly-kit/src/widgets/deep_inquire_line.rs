@@ -126,7 +126,7 @@ impl WidgetMatchEvent for DeepInquireBotLine {
 impl DeepInquireBotLine {
     fn set_message(&mut self, cx: &mut Cx, message: &Message, is_streaming: bool) {
         // Skip if message doesn't have stages
-        if message.stages.is_empty() {
+        if !message.has_stages() {
             return;
         }
 
@@ -137,8 +137,11 @@ impl DeepInquireBotLine {
         // Always update the message
         self.message = Some(message.clone());
         
+        // Get stages from the message
+        let stages = message.get_stages();
+        
         // Get stage IDs and update pill list
-        let stage_ids: Vec<usize> = message.stages.iter().map(|stage| stage.id).collect();
+        let stage_ids: Vec<usize> = stages.iter().map(|stage| stage.id).collect();
         let mut stages_pill_list = self.view.stages_pill_list(id!(message_section.bubble.stages_pill_list));
         stages_pill_list.update_stages(cx, &stage_ids);
         
@@ -146,20 +149,20 @@ impl DeepInquireBotLine {
         let stage_to_display = if self.user_manually_selected {
             // User has manually selected a stage, try to keep that selection
             if let Some(selected_id) = self.selected_stage {
-                if let Some(stage) = message.stages.iter().find(|s| s.id == selected_id) {
+                if let Some(stage) = stages.iter().find(|s| s.id == selected_id) {
                     Some(stage)
                 } else {
                     // If the manually selected stage no longer exists, fall back to the last stage
                     // but keep the "manual selection" flag
-                    message.stages.last()
+                    stages.last()
                 }
             } else {
                 // Shouldn't happen, but just in case
-                message.stages.last()
+                stages.last()
             }
         } else {
             // Auto-select the most recent stage (the last one)
-            let last_stage = message.stages.last();
+            let last_stage = stages.last();
             if let Some(stage) = last_stage {
                 self.selected_stage = Some(stage.id);
             }
@@ -183,16 +186,17 @@ impl DeepInquireBotLine {
             // If streaming, check for updates in other stages
             if is_streaming && previous_message.is_some() {
                 let prev_message = previous_message.unwrap();
+                let prev_stages = prev_message.get_stages();
                 
                 // Check each stage for new content
-                for current_stage in &message.stages {
+                for current_stage in &stages {
                     // Skip the currently displayed stage
                     if current_stage.id == stage.id {
                         continue;
                     }
                     
                     // Find matching stage in previous message
-                    let stage_changed = if let Some(prev_stage) = prev_message.stages.iter().find(|s| s.id == current_stage.id) {
+                    let stage_changed = if let Some(prev_stage) = prev_stages.iter().find(|s| s.id == current_stage.id) {
                         // Compare each block to see if anything changed
                         let thinking_changed = match (&current_stage.thinking, &prev_stage.thinking) {
                             (Some(curr), Some(prev)) => curr.content != prev.content,
@@ -231,7 +235,7 @@ impl DeepInquireBotLine {
     // Updates just the content of the stage without changing visibility or other settings
     fn update_stage_content(&mut self, cx: &mut Cx, stage_id: usize) {
         if let Some(message) = &self.message {
-            if let Some(stage) = message.stages.iter().find(|s| s.id == stage_id) {
+            if let Some(stage) = message.get_stages().iter().find(|s| s.id == stage_id) {
                 // Update thinking block if present
                 if let Some(thinking) = &stage.thinking {
                     self.markdown(id!(message_section.bubble.stage_container.thinking_block.thinking_markdown))
@@ -270,7 +274,7 @@ impl DeepInquireBotLine {
         
         // Get the message and stage
         if let Some(message) = &self.message {
-            if let Some(stage) = message.stages.iter().find(|s| s.id == stage_id) {
+            if let Some(stage) = message.get_stages().iter().find(|s| s.id == stage_id) {
                 // Show thinking block if present
                 if let Some(thinking) = &stage.thinking {
                     self.view(id!(message_section.bubble.stage_container.thinking_block)).set_visible(cx, true);
@@ -278,14 +282,14 @@ impl DeepInquireBotLine {
                         .set_text(cx, &thinking.content);
                 }
                 
-                // Show writing block if present
+                // Update writing block if present
                 if let Some(writing) = &stage.writing {
                     self.view(id!(message_section.bubble.stage_container.writing_block)).set_visible(cx, true);
                     self.markdown(id!(message_section.bubble.stage_container.writing_block.writing_markdown))
                         .set_text(cx, &writing.content);
                 }
                 
-                // Show completed block if present
+                // Update completed block if present
                 if let Some(completed) = &stage.completed {
                     self.view(id!(message_section.bubble.stage_container.completed_block)).set_visible(cx, true);
                     self.markdown(id!(message_section.bubble.stage_container.completed_block.completed_markdown))
@@ -294,10 +298,10 @@ impl DeepInquireBotLine {
                 
                 // Update the pill list to show this stage as selected
                 let mut stages_pill_list = self.view.stages_pill_list(id!(message_section.bubble.stages_pill_list));
-                stages_pill_list.set_selected_stage(cx, stage_id);
+                stages_pill_list.set_selected_stage(cx, stage.id);
                 
                 // Clear the "new content" indicator for this stage
-                stages_pill_list.clear_stage_new_content(cx, stage_id);
+                stages_pill_list.clear_stage_new_content(cx, stage.id);
             }
         }
         

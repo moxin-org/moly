@@ -164,9 +164,12 @@ impl Messages {
         // risking a manual math bug. Removed immediately after rendering the items.
         self.messages.push(Message {
             from: EntityId::App,
-            // End-of-chat
-            body: "EOC".into(),
-            ..Default::default()
+            // End-of-chat marker
+            content: MessageContent::PlainText {
+                text: "EOC".into(),
+                citations: Vec::new(),
+            },
+            is_writing: false,
         });
 
         let mut list = list.borrow_mut().unwrap();
@@ -190,14 +193,17 @@ impl Messages {
                     // TODO: Can or should system messages be rendered?
                 }
                 EntityId::App => {
-                    if message.body == "EOC" {
+                    // Handle EOC marker
+                    let body_text = message.visible_text();
+                    if body_text == "EOC" {
                         let item = list.item(cx, index, live_id!(EndOfChat));
                         item.draw_all(cx, &mut Scope::empty());
                         self.is_list_end_drawn = true;
                         continue;
                     }
 
-                    if let Some((left, right)) = message.body.split_once(':') {
+                    // Handle error messages
+                    if let Some((left, right)) = body_text.split_once(':') {
                         if let Some("error") = left
                             .split_whitespace()
                             .last()
@@ -215,16 +221,17 @@ impl Messages {
                         }
                     }
 
+                    // Handle regular app messages
                     let item = list.item(cx, index, live_id!(AppLine));
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("A".into()));
-                    item.label(id!(text.markdown)).set_text(cx, &message.body);
+                    item.label(id!(text.markdown)).set_text(cx, &body_text);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
-                    item.label(id!(text.label)).set_text(cx, &message.body);
+                    item.label(id!(text.label)).set_text(cx, &message.visible_text());
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -240,17 +247,16 @@ impl Messages {
                         .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
                         .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
 
-                    // If the message is empty, display a loading animation.
-                    let item = if message.is_writing && message.body.is_empty() {
+                    // If the message is empty and still writing, display a loading animation
+                    let body_text = message.visible_text();
+                    let item = if message.is_writing && body_text.is_empty() && !message.has_stages() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
                         item.message_loading(id!(text.loading)).animate(cx);
                         item
-                    } else if !message.stages.is_empty() {
+                    } else if message.has_stages() {
                         // Use specialized DeepInquireBotLine for messages with stages
                         let item = list.item(cx, index, live_id!(DeepInquireBotLine));
                         
-                        // TODO(MolyKit): We might want to introduce a trait for this, that the different bot lines implement
-                        // to update their message content.
                         // Update the DeepInquireBotLine with the message content
                         item.as_deep_inquire_bot_line().set_message(cx, message, message.is_writing);
                         
@@ -265,7 +271,7 @@ impl Messages {
                         // TODO: Remove this workaround once the markdown widget is fixed.
 
                         let (thinking_block, message_body) =
-                            extract_and_remove_think_tag(&message.body);
+                            extract_and_remove_think_tag(&body_text);
 
                         item.message_thinking_block(id!(text.thinking_block))
                             .set_thinking_text(thinking_block);
@@ -275,9 +281,11 @@ impl Messages {
                                 .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
                         }
 
-                        if !message.citations.is_empty() {
+                        // Set citations from the message
+                        let citations = message.sources();
+                        if !citations.is_empty() {
                             let mut citations_ref = item.citations(id!(citations));
-                            citations_ref.set_citations(cx, &message.citations);
+                            citations_ref.set_citations(cx, &citations);
                         }
                         item
                     };
@@ -294,7 +302,7 @@ impl Messages {
 
         if let Some(message) = self.messages.pop() {
             assert!(message.from == EntityId::App);
-            assert!(message.body == "EOC");
+            assert!(message.visible_text() == "EOC");
         }
 
         self.button(id!(jump_to_bottom))
@@ -337,7 +345,7 @@ impl Messages {
         }
 
         if visible {
-            let buffer = self.messages[index].body.clone();
+            let buffer = self.messages[index].visible_text();
             self.current_editor = Some(Editor { index, buffer });
         } else if self.current_editor.as_ref().map(|e| e.index) == Some(index) {
             self.current_editor = None;

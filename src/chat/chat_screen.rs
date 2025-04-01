@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use makepad_widgets::*;
 use moly_kit::*;
 use moly_kit::utils::asynchronous::spawn;
@@ -73,9 +70,6 @@ pub struct ChatScreen {
 
     #[rust]
     creating_bot_repo: bool,
-
-    #[rust]
-    message_container: Rc<RefCell<Option<Message>>>,
 }
 
 impl Widget for ChatScreen {
@@ -113,7 +107,6 @@ impl WidgetMatchEvent for ChatScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
         let mut chat_widget = self.chat(id!(chat));
-        let mut should_redraw = false;
 
         for action in actions {
             // Handle model selector actions
@@ -168,49 +161,53 @@ impl WidgetMatchEvent for ChatScreen {
                 _ => {}
             }
 
-            let message_ref = Rc::clone(&self.message_container);
-
             // Hook into message updates to update the persisted chat history
             self.chat(id!(chat)).write_with(|chat| {
                 let ui = self.ui_runner();
-                let message_ref = Rc::clone(&message_ref);
                 chat.set_hook_after(move |group, _, _| {
                     for task in group.iter() {
-                        // Handle new messsages (User)
+                        // Handle new User messsages
                         if let ChatTask::InsertMessage(_index, message) = task {
-                            message_ref.borrow_mut().replace(message.clone());
+                            let message = message.clone();
+                            ui.defer_with_redraw(move |_me, _cx, scope| {
+                                let current_chat = scope.data.get::<Store>().unwrap().chats.get_current_chat();
+                                if let Some(store_chat) = current_chat {
+                                    let mut store_chat = store_chat.borrow_mut();
+                                    let mut new_message = message.clone();
+                                    new_message.is_writing = false;
+                                    store_chat.messages.push(new_message);
+                                    store_chat.update_title_based_on_first_message();
+                                    store_chat.save();
+                                }
+                            });
                         }
 
-                        // Handle updated messages (Bot messages)
+                        // Handle updated Bot messages
                         // UpdateMessage tasks mean that a bot message has been updated, either a User edit or a Bot message delta from the stream
                         // We fetch the current chat from the store and update the corresponding message, or insert it if it's not present 
                         // (if it's the first chunk from the bot message)
                         if let ChatTask::UpdateMessage(index, message) = task {
                             let message = message.clone();
-                            // TODO(MolyKit): For some reason the index is off by 1, does not include the first user message.
-                            let index = index +  1;
+                            let index = index.clone();
                             ui.defer_with_redraw(move |_me, _cx, scope| {
                                 let current_chat = scope.data.get::<Store>().unwrap().chats.get_current_chat();
                                 if let Some(store_chat) = current_chat {
-                                    let mut chat_ref = store_chat.borrow_mut();
-                                    if let Some(message_to_update) = chat_ref.messages.get_mut(index) {
+                                    let mut store_chat = store_chat.borrow_mut();
+                                    if let Some(message_to_update) = store_chat.messages.get_mut(index) {
+                                        message_to_update.content = message.content.clone();
                                         message_to_update.is_writing = false;
-                                        message_to_update.body = message.body.clone();
-                                        message_to_update.stages = message.stages.clone();
-                                        message_to_update.citations = message.citations.clone();
                                     } else {
                                         let mut new_message = message.clone();
                                         new_message.is_writing = false;
-                                        chat_ref.messages.push(new_message);
+                                        store_chat.messages.push(new_message);
                                     }
-                                    chat_ref.save();
+                                    store_chat.save();
                                 }
                             });
                         }
 
                         if let ChatTask::DeleteMessage(index) = task {
-                            // TODO(MolyKit): For some reason the index is off by 1, does not include the first user message.
-                            let index = index + 1;
+                            let index = index.clone();
                             ui.defer_with_redraw(move |me, cx, scope| {
                                 let store = scope.data.get_mut::<Store>().unwrap();
                                 store.chats.delete_chat_message(index);
@@ -231,17 +228,6 @@ impl WidgetMatchEvent for ChatScreen {
                     }
                 });
             });
-
-            // There is a new message to insert in the history
-            if let Some(new_message) = self.message_container.borrow_mut().take() {
-                if let Some(current_chat) = store.chats.get_current_chat() {
-                    current_chat.borrow_mut().messages.push(new_message);
-
-                    current_chat.borrow_mut().update_title_based_on_first_message();
-                    current_chat.borrow().save();
-                    should_redraw = true;
-                }
-            }; // TODO(Julian) this semicolon is needed to end the closure, find a better way to do this
 
             // Handle chat selection (from chat history)
             match action.cast() {
@@ -271,9 +257,6 @@ impl WidgetMatchEvent for ChatScreen {
                 }
                 _ => {}
             }
-        }
-        if should_redraw {
-            self.redraw(cx);
         }
     }
 }
@@ -336,8 +319,11 @@ impl ChatScreen {
                 for error in errors {
                     me.messages(id!(chat.messages)).write().messages.push(Message {
                         from: EntityId::App,
-                        body: error.to_string(),
-                        ..Default::default()
+                        content: MessageContent::PlainText {
+                            text: error.to_string(),
+                            citations: Vec::new(),
+                        },
+                        is_writing: false,
                     });
                 }
             });

@@ -204,9 +204,9 @@ impl Chat {
                 let max_char_length = 25;
                 let ellipsis = "...";
 
-                let title = if message.body.len() > max_char_length {
+                let title = if message.visible_text().len() > max_char_length {
                     let mut truncated = message
-                        .body
+                        .visible_text()
                         .chars()
                         .take(max_char_length)
                         .collect::<String>()
@@ -214,7 +214,7 @@ impl Chat {
                     truncated.push_str(ellipsis);
                     truncated
                 } else {
-                    message.body.clone()
+                    message.visible_text()
                 };
 
                 self.set_title(title);
@@ -223,31 +223,31 @@ impl Chat {
     }
 
     pub fn cancel_streaming(&mut self) {
-        if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
-            return;
-        }
+        // if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
+        //     return;
+        // }
 
-        let message = self.messages.last_mut().unwrap();
-        let new_state = if message.body.trim().is_empty() {
-            ChatState::Cancelled(true)
-        } else {
-            ChatState::Cancelled(false)
-        };
+        // let message = self.messages.last_mut().unwrap();
+        // let new_state = if message.body.trim().is_empty() {
+        //     ChatState::Cancelled(true)
+        // } else {
+        //     ChatState::Cancelled(false)
+        // };
         
-        *self.state.write().unwrap() = new_state;
+        // *self.state.write().unwrap() = new_state;
     }
 
 
     pub fn cancel_interaction(&mut self, client: &dyn ProviderClient) {
-        if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
-            return;
-        }
+        // if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
+        //     return;
+        // }
 
-        client.cancel_task();
+        // client.cancel_task();
 
-        *self.state.write().unwrap() = ChatState::Cancelled(true);
-        let message = self.messages.last_mut().unwrap();
-        message.body = "Cancelling, please wait...".to_string();
+        // *self.state.write().unwrap() = ChatState::Cancelled(true);
+        // let message = self.messages.last_mut().unwrap();
+        // message.body = "Cancelling, please wait...".to_string();
     }
 
     pub fn delete_message(&mut self, message_index: usize) {
@@ -255,9 +255,9 @@ impl Chat {
     }
 
     pub fn edit_message(&mut self, message_index: usize, updated_message: String) {
-        if let Some(message) = self.messages.get_mut(message_index) {
-            message.body = updated_message;
-        }
+        // if let Some(message) = self.messages.get_mut(message_index) {
+        //     message.body = updated_message;
+        // }
     }
 
     pub fn remove_messages_from(&mut self, message_index: usize) {
@@ -277,29 +277,29 @@ impl Chat {
     }
 
     pub fn handle_action(&mut self, action: &ChatEntityAction) {
-        match &action.kind {
-            ChatEntityActionKind::ModelAppendDelta(response) => {
-                let last = self.messages.last_mut().unwrap();
-                last.body.push_str(&response);
-            }
-            ChatEntityActionKind::ModelStreamingDone => {
-                self.is_streaming = false;
-                *self.state.write().unwrap() = ChatState::Idle;
-            }
-            ChatEntityActionKind::MofaAgentResult(response, is_final) => {
-                let last = self.messages.last_mut().unwrap();
-                last.body = response.clone();
-                if *is_final {
-                    *self.state.write().unwrap() = ChatState::Idle;
-                }
-            }
-            ChatEntityActionKind::MofaAgentCancelled => {
-                *self.state.write().unwrap() = ChatState::Idle;
-                // Remove the last message sent by the user
-                self.messages.pop();
-            },
-            _ => {}
-        }
-        self.save();
+        // match &action.kind {
+        //     ChatEntityActionKind::ModelAppendDelta(response) => {
+        //         let last = self.messages.last_mut().unwrap();
+        //         last.body.push_str(&response);
+        //     }
+        //     ChatEntityActionKind::ModelStreamingDone => {
+        //         self.is_streaming = false;
+        //         *self.state.write().unwrap() = ChatState::Idle;
+        //     }
+        //     ChatEntityActionKind::MofaAgentResult(response, is_final) => {
+        //         let last = self.messages.last_mut().unwrap();
+        //         last.body = response.clone();
+        //         if *is_final {
+        //             *self.state.write().unwrap() = ChatState::Idle;
+        //         }
+        //     }
+        //     ChatEntityActionKind::MofaAgentCancelled => {
+        //         *self.state.write().unwrap() = ChatState::Idle;
+        //         // Remove the last message sent by the user
+        //         self.messages.pop();
+        //     },
+        //     _ => {}
+        // }
+        // self.save();
     }
 }

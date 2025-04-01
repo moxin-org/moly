@@ -60,7 +60,7 @@ impl TryFrom<Message> for OutcomingMessage {
         }?;
 
         Ok(Self {
-            content: message.body,
+            content: message.visible_text(),
             role,
         })
     }
@@ -332,9 +332,10 @@ impl BotClient for OpenAIClient {
                     let citations = completion.citations;
 
                     yield ClientResult::new_ok(MessageDelta {
-                        body,
-                        citations,
-                        stage_block: None,
+                        content: MessageContent::PlainText {
+                            text: body,
+                            citations,
+                        },
                     });
                 }
 

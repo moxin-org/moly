@@ -56,7 +56,7 @@ impl TryFrom<Message> for OutcomingMessage {
         }?;
 
         Ok(Self {
-            content: message.body,
+            content: message.visible_text(),
             role,
         })
     }
@@ -277,42 +277,93 @@ impl BotClient for DeepInquireClient {
                     for choice in &response.choices {
                         let delta = &choice.delta;
                         
-                        // Convert article URLs to citation strings (could be improved)
-                        let citations = delta.articles.iter()
-                            .map(|article| article.url.clone())
-                            .collect::<Vec<_>>();
-                        
                         // Determine the stage type based on the delta's type field
-                        let stage_block = if let Some(stage_type) = &delta.r#type {
+                        let message_delta = if let Some(stage_type) = &delta.r#type {
+                            let stage_id = delta.id;
+                            let content = delta.content.clone();
+                            let stage_citations = delta.articles.iter()
+                                .map(|article| article.url.clone())
+                                .collect::<Vec<_>>();
+                            
+                            // Create appropriate MessageStage based on type
+                            let mut stage = MessageStage {
+                                id: stage_id,
+                                thinking: None,
+                                writing: None,
+                                completed: None,
+                            };
+                            
                             match stage_type.as_str() {
-                                "thinking" => Some(StageBlock::Thinking {
-                                    id: delta.id,
-                                    content: delta.content.clone(),
-                                    citations: citations.clone(),
-                                }),
-                                "content" => Some(StageBlock::Writing {
-                                    id: delta.id,
-                                    content: delta.content.clone(),
-                                    citations: citations.clone(),
-                                }),
-                                "completion" => Some(StageBlock::Completed {
-                                    id: delta.id,
-                                    content: delta.content.clone(),
-                                    citations: citations.clone(),
-                                }),
-                                _ => None,
+                                "thinking" => {
+                                    stage.thinking = Some(MessageBlockContent {
+                                        content: content.clone(),
+                                        citations: stage_citations.clone(),
+                                    });
+                                    
+                                    // Use the MessageContent approach
+                                    MessageDelta {
+                                        content: MessageContent::MultiStage {
+                                            text: String::new(),
+                                            stages: vec![stage],
+                                            citations: stage_citations,
+                                        },
+                                    }
+                                },
+                                "content" => {
+                                    stage.writing = Some(MessageBlockContent {
+                                        content: content.clone(),
+                                        citations: stage_citations.clone(),
+                                    });
+                                    
+                                    // Use the MessageContent approach
+                                    MessageDelta {
+                                        content: MessageContent::MultiStage {
+                                            text: String::new(),
+                                            stages: vec![stage],
+                                            citations: stage_citations,
+                                        },
+                                    }
+                                },
+                                "completion" => {
+                                    stage.completed = Some(MessageBlockContent {
+                                        content: content.clone(),
+                                        citations: stage_citations.clone(),
+                                    });
+                                    
+                                    // Use the MessageContent approach
+                                    MessageDelta {
+                                        content: MessageContent::MultiStage {
+                                            text: String::new(),
+                                            stages: vec![stage],
+                                            citations: stage_citations,
+                                        },
+                                    }
+                                },
+                                _ => {
+                                    // Fallback to text-only delta for unknown types
+                                    MessageDelta {
+                                        content: MessageContent::PlainText {
+                                            text: delta.content.clone(),
+                                            citations: stage_citations,
+                                        },
+                                    }
+                                }
                             }
                         } else {
-                            None
+                            // Text-only delta (no stage info)
+                            let citations = delta.articles.iter()
+                                .map(|article| article.url.clone())
+                                .collect::<Vec<_>>();
+                                
+                            MessageDelta {
+                                content: MessageContent::PlainText {
+                                    text: delta.content.clone(),
+                                    citations,
+                                },
+                            }
                         };
-
-                        // TODO(Julian): Send the body as empty, the delta is already in the stage_block
-                        // If there are any places using the body to apply the stage_block delta, update it to use the stage_block instead
-                        yield ClientResult::new_ok(MessageDelta {
-                            body: delta.content.clone(),
-                            citations,
-                            stage_block,
-                        });
+                        
+                        yield ClientResult::new_ok(message_delta);
                     }
                 }
 
