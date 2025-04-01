@@ -110,27 +110,38 @@ live_design! {
     }
 
     pub UserLine = <ChatLine> {
+        flow: Down,
         height: Fit,
         message_section = {
-            sender = { visible: false }
+	    sender = {
+		avatar = {
+		    grapheme = {
+			draw_bg: {
+			    color: #32a868,
+			}
+		    }
+		}
+	    }
+
             bubble = <Bubble> {
-                margin: {left: 100}
-                draw_bg: {color: #15859A}
+                flow: Down,
+                padding: 0,
+                margin: {left: 32}
                 text = <View> {
-                    height: Fit
-                    label = <Label> {
-                        width: Fill,
-                        draw_text: {
-                            // text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
-                            color: #fff
-                        }
-                    }
+                    flow: Down
+                    height: Fit,
+		    label = <Label> {
+			width: Fill,
+			draw_text: {
+			    color: #000
+			}
+		    }
                 }
                 editor = <Editor> { visible: false }
             }
         }
         actions_section = {
-            margin: {left: 100}
+            margin: {left: 32}
         }
     }
 
@@ -199,6 +210,5 @@ live_design! {
             }
         }
     }
-    
-    
 }
+
