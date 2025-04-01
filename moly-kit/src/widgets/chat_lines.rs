@@ -10,7 +10,8 @@ live_design! {
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
     use crate::widgets::citations::*;
-    
+    use crate::widgets::citation_list::*;
+
     BOLD_FONT = {
         font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
     }
@@ -113,15 +114,15 @@ live_design! {
         flow: Down,
         height: Fit,
         message_section = {
-	    sender = {
-		avatar = {
-		    grapheme = {
-			draw_bg: {
-			    color: #32a868,
-			}
-		    }
-		}
-	    }
+        sender = {
+        avatar = {
+            grapheme = {
+            draw_bg: {
+                color: #32a868,
+            }
+            }
+        }
+        }
 
             bubble = <Bubble> {
                 flow: Down,
@@ -130,12 +131,12 @@ live_design! {
                 text = <View> {
                     flow: Down
                     height: Fit,
-		    label = <Label> {
-			width: Fill,
-			draw_text: {
-			    color: #000
-			}
-		    }
+            label = <Label> {
+            width: Fill,
+            draw_text: {
+                color: #000
+            }
+            }
                 }
                 editor = <Editor> { visible: false }
             }
@@ -161,6 +162,7 @@ live_design! {
                 }
                 editor = <Editor> { visible: false }
                 citations = <Citations> { visible: false }
+                citationss = <CitationList> {}
             }
         }
         actions_section = {
@@ -211,4 +213,3 @@ live_design! {
         }
     }
 }
-

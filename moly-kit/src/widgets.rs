@@ -3,13 +3,15 @@
 //! Note: Some widgets may depend on certain feature flags.
 
 mod avatar;
+mod chat_lines;
+mod citation;
+mod citation_list;
 mod citations;
+mod deep_inquire_line;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
-mod chat_lines;
 mod stages_pill_list;
-mod deep_inquire_line;
 
 #[cfg(any(feature = "async-rt", feature = "async-web"))]
 pub mod chat;
@@ -22,6 +24,8 @@ pub use messages::*;
 pub use prompt_input::*;
 
 pub fn live_design(cx: &mut makepad_widgets::Cx) {
+    citation::live_design(cx);
+    citation_list::live_design(cx);
     citations::live_design(cx);
     makepad_code_editor::live_design(cx);
     message_markdown::live_design(cx);
