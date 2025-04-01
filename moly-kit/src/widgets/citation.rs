@@ -4,23 +4,41 @@ live_design! {
     use link::theme::*;
     use link::widgets::*;
 
-    pub Citation = {{Citation}} {
+    pub Citation = {{Citation}} <RoundedView> {
+        flow: Down,
         height: Fit,
-        width: Fit,
+        width: 200,
+        padding: 6,
+        spacing: 4,
+        draw_bg: {
+            color: #f0f0f0
+            radius: 3
+        }
+
         <View> {
-            width: 64,
-            height: 64,
-            show_bg: true,
-            draw_bg: {
-                color: #f00
+            height: Fit,
+            align: {y: 0.5},
+            icon = <Image> {
+                width: 16,
+                height: 16,
+                source: dep("crate://self/resources/link.png")
+            }
+
+            site = <Label> {
+                text: "3.basecamp.com",
+                draw_text: {
+                    color: #555,
+                }
             }
         }
+
         <View> {
-            width: 128,
-            height: 64,
-            show_bg: true,
-            draw_bg: {
-                color: #0f0
+            height: Fit,
+            title = <Label> {
+                text: "[MolyKit] Complete URL preview feature",
+                draw_text: {
+                    color: #000,
+                }
             }
         }
     }
