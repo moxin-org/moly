@@ -92,7 +92,7 @@ live_design! {
         }
     }
 
-    ChatLine = <RoundedView> {
+    pub ChatLine = <RoundedView> {
         flow: Down,
         height: Fit,
         message_section = <RoundedView> {
@@ -109,32 +109,43 @@ live_design! {
         }
     }
 
-    UserLine = <ChatLine> {
+    pub UserLine = <ChatLine> {
+        flow: Down,
         height: Fit,
         message_section = {
-            sender = { visible: false }
+	    sender = {
+		avatar = {
+		    grapheme = {
+			draw_bg: {
+			    color: #32a868,
+			}
+		    }
+		}
+	    }
+
             bubble = <Bubble> {
-                margin: {left: 100}
-                draw_bg: {color: #15859A}
+                flow: Down,
+                padding: 0,
+                margin: {left: 32}
                 text = <View> {
-                    height: Fit
-                    label = <Label> {
-                        width: Fill,
-                        draw_text: {
-                            // text_style: <REGULAR_FONT>{height_factor: (1.3*1.3), font_size: 10},
-                            color: #fff
-                        }
-                    }
+                    flow: Down
+                    height: Fit,
+		    label = <Label> {
+			width: Fill,
+			draw_text: {
+			    color: #000
+			}
+		    }
                 }
                 editor = <Editor> { visible: false }
             }
         }
         actions_section = {
-            margin: {left: 100}
+            margin: {left: 32}
         }
     }
 
-    BotLine = <ChatLine> {
+    pub BotLine = <ChatLine> {
         flow: Down,
         height: Fit,
         message_section = {
@@ -157,7 +168,7 @@ live_design! {
         }
     }
 
-    LoadingLine = <BotLine> {
+    pub LoadingLine = <BotLine> {
         message_section = {
             bubble = {
                 text = <View> {
@@ -172,7 +183,7 @@ live_design! {
     // Idea: With the current design, this can be something centered and fit
     // up to the fill size. If we drop the current design and simplify it, we could
     // just use the bot's design for all messages.
-    AppLine = <BotLine> {
+    pub AppLine = <BotLine> {
         message_section = {
             padding: 12,
             draw_bg: {color: #00f3}
@@ -188,7 +199,7 @@ live_design! {
         }
     }
 
-    ErrorLine = <AppLine> {
+    pub ErrorLine = <AppLine> {
         message_section = {
             draw_bg: {color: #f003}
 
@@ -199,6 +210,5 @@ live_design! {
             }
         }
     }
-    
-    
 }
+

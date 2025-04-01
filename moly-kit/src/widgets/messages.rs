@@ -222,6 +222,13 @@ impl Messages {
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
+
+		    let name = "You";
+		    let avatar = Some(Picture::Grapheme("Y".into()));
+
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
+                    item.label(id!(name)).set_text(cx, name);
+
                     item.label(id!(text.label)).set_text(cx, &message.body);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
