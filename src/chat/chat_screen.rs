@@ -129,7 +129,7 @@ impl WidgetMatchEvent for ChatScreen {
                 ChatAction::Start(chat_entity_id) => match &chat_entity_id {
                     ChatEntityId::ModelFile(file_id) => {
                         if let Some(file) = store.downloads.get_file(&file_id) {
-                            store.chats.create_empty_chat_and_load_file(file);
+                            store.chats.create_empty_chat_with_local_model(&file);
                             self.messages(id!(chat.messages)).write().messages = vec![];
                             let bot_id = chat_entity_id.as_bot_id();
                             self.chat(id!(chat)).write().bot_id = Some(bot_id);

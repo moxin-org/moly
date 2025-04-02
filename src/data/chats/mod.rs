@@ -2,9 +2,8 @@ pub mod chat;
 pub mod chat_entity;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatEntityAction, ChatID};
+use chat::{Chat, ChatID};
 use chat_entity::ChatEntityId;
-use makepad_widgets::ActionTrait;
 use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::fs;
@@ -92,38 +91,12 @@ impl Chats {
     }
 
     pub fn set_current_chat(&mut self, chat_id: Option<ChatID>) {
-        self.cancel_chat_streaming();
         self.current_chat_id = chat_id;
 
         if let Some(chat) = self.get_current_chat() {
             let mut chat = chat.borrow_mut();
             chat.update_accessed_at();
             chat.save();
-        }
-    }
-
-    pub fn cancel_chat_streaming(&mut self) {
-        if let Some(chat) = self.get_current_chat() {
-            let mut chat = chat.borrow_mut();
-            match &chat.associated_entity {
-                Some(ChatEntityId::ModelFile(_)) => {
-                    chat.cancel_streaming();
-                }
-                Some(ChatEntityId::Agent(agent_id)) => {
-                    if let Some(provider_client) = self.get_client_for_provider(&agent_id.0) {
-                        chat.cancel_interaction(provider_client.as_ref());
-                    } 
-                    // If the client was not found we don't need to cancel
-                }
-                Some(ChatEntityId::RemoteModel(model_id)) => {
-                    if let Some(provider_client) = self.get_client_for_provider(&model_id.0) {
-                        chat.cancel_interaction(provider_client.as_ref());
-                    }
-                    // If the client was not found we don't need to cancel
-
-                }
-                _ => {}
-            }
         }
     }
 
@@ -202,7 +175,7 @@ impl Chats {
         }
     }
 
-    pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
+    pub fn create_empty_chat_with_local_model(&mut self, file: &File) {
         let mut new_chat = Chat::new(self.chats_dir.clone());
         let id = new_chat.id;
         new_chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
@@ -210,8 +183,6 @@ impl Chats {
 
         self.saved_chats.push(RefCell::new(new_chat));
         self.set_current_chat(Some(id));
-
-        self.cancel_chat_streaming();
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
@@ -227,16 +198,6 @@ impl Chats {
 
         let chat = self.saved_chats.remove(pos);
         chat.borrow().remove_saved_file();
-    }
-
-    pub fn handle_action(&mut self, action: &Box<dyn ActionTrait>) {
-        if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
-            if let Some(chat) = self.get_chat_by_id(action.chat_id) {
-                if chat.borrow().id == action.chat_id {
-                    chat.borrow_mut().handle_action(action);
-                }
-            }
-        }
     }
 
     pub fn register_provider(&mut self, provider: Provider) {
@@ -362,10 +323,6 @@ impl Chats {
         self.provider_clients.remove(address);
         self.remote_models.retain(|_, model| model.provider_url != address);
         self.providers.remove(address);
-    }
-
-    pub fn get_client_for_provider(&self, provider_url: &str) -> Option<&Box<dyn ProviderClient>> {
-        self.provider_clients.get(provider_url)
     }
 
     /// Returns a list of remote models for a given server address.

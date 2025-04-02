@@ -1,5 +1,3 @@
-use std::sync::mpsc::Sender;
-
 use makepad_widgets::*;
 use serde::{Deserialize, Serialize};
 
@@ -129,62 +127,9 @@ impl ProviderClientError {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum ChatResponse {
-    ChatFinalResponseData(MolyChatResponse, bool),
-    DeepnInquireResponse(DeepInquireMessage),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum DeepInquireMessage {
-    Thinking(usize, DeepInquireStageContent),
-    Writing(usize, DeepInquireStageContent),
-    Completed(usize, DeepInquireStageContent),
-}
-
-impl DeepInquireMessage {
-    pub fn id(&self) -> usize {
-        match self {
-            DeepInquireMessage::Thinking(id, _) => *id,
-            DeepInquireMessage::Writing(id, _) => *id,
-            DeepInquireMessage::Completed(id, _) => *id,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct DeepInquireStage {
-    pub id: usize,
-    pub thinking: Option<DeepInquireStageContent>, 
-    pub writing: Option<DeepInquireStageContent>,
-    pub completed: Option<DeepInquireStageContent>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct DeepInquireStageContent {
-    pub content: String,
-    pub articles: Vec<Article>,
-}
-
-#[derive(Clone, Debug)]
-pub struct MolyChatResponse {
-    pub content: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Article {
-    pub title: String,
-    pub url: String,
-    pub snippet: String,
-    pub source: String,
-    pub relevance: u32,
-}
-
 /// The behaviour that must be implemented by the provider clients.
 pub trait ProviderClient: Send + Sync {
-    fn cancel_task(&self);
     fn fetch_models(&self);
-    fn send_message(&self, model: &RemoteModel, prompt: &String, tx: Sender<ChatResponse>);
 }
 
 #[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
@@ -204,7 +149,5 @@ impl Default for ProviderType {
 /// Commands for the provider client to interact with their background thread.
 /// Used internally by the provider clients, not exposed used by the rest of the app.
 pub enum ProviderCommand {
-    SendMessage(String, RemoteModel, Sender<ChatResponse>),
-    CancelTask,
     FetchModels(),
 }

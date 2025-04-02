@@ -289,11 +289,6 @@ impl Message {
                         citations.push(citation.clone());
                     }
                 }
-            },
-            
-            // Shouldn't happen, but handle it anyway by replacing content
-            _ => {
-                self.content = delta.content.clone();
             }
         }
     }

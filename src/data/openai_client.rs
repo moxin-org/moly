@@ -1,9 +1,5 @@
-use moly_protocol::{data::ModelID, open_ai::{
-    ChatResponseData, ChoiceData, MessageData, Role, UsageData,
-}};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::mpsc::{self, channel, Sender};
-use tokio::{spawn, task::JoinHandle};
 
 use makepad_widgets::Cx;
 use crate::data::providers::ProviderClientError;
@@ -88,30 +84,9 @@ pub struct OpenAIClient {
 }
 
 impl ProviderClient for OpenAIClient {
-    fn cancel_task(&self) {
-        self.command_sender
-            .send(ProviderCommand::CancelTask)
-            .unwrap();
-    }
-
     fn fetch_models(&self) {
         self.command_sender
             .send(ProviderCommand::FetchModels())
-            .unwrap();
-    }
-
-    fn send_message(
-        &self,
-        model: &RemoteModel,
-        prompt: &String,
-        tx: Sender<ChatResponse>,
-    ) {
-        self.command_sender
-            .send(ProviderCommand::SendMessage(
-                prompt.clone(),
-                model.clone(),
-                tx,
-            ))
             .unwrap();
     }
 }
@@ -136,59 +111,8 @@ impl OpenAIClient {
     ///
     /// The loop continues until the command channel is closed or an unrecoverable error occurs.
     fn process_agent_commands(command_receiver: mpsc::Receiver<ProviderCommand>, address: String, api_key: Option<String>) {
-        let mut current_request: Option<JoinHandle<()>> = None;
-
         while let Ok(command) = command_receiver.recv() {
             match command {
-                ProviderCommand::SendMessage(task, model, tx) => {
-                    if let Some(handle) = current_request.take() {
-                        handle.abort();
-                    }
-
-                    let data = ChatRequest {
-                        model: model.name,
-                        messages: vec![MessageData {
-                            role: Role::User,
-                            content: task,
-                        }],
-                    };
-                    let client = reqwest::Client::builder()
-                        .no_proxy()
-                        .build()
-                        .expect("Failed to build a reqwest client for a remote server");
-
-                    let mut req = client
-                        .post(format!("{}/chat/completions", &address))
-                        .header("Content-Type", "application/json");
-
-                    if let Some(key) = &api_key {
-                        req = req.header("Authorization", format!("Bearer {}", key));
-                    }
-
-                    let req = req.json(&data);
-
-                    current_request = Some(spawn(async move {
-                        let resp = req.send().await.expect("Failed to send request");
-
-                        let resp: Result<ChatResponseDataWrapper, reqwest::Error> = resp.json().await;
-                        match resp {
-                            Ok(resp) => {
-                                let _ = tx.send(ChatResponse::ChatFinalResponseData(MolyChatResponse {
-                                    content: resp.choices[0].message.content.clone(),
-                                }, true));
-                            }
-                            Err(e) => {
-                                eprintln!("{e}");
-                            }
-                        }
-                    }));
-                }
-                ProviderCommand::CancelTask => {
-                    if let Some(handle) = current_request.take() {
-                        handle.abort();
-                    }
-                    continue;
-                }
                 ProviderCommand::FetchModels() => {
                     let url = address.clone();
                     let client = reqwest::blocking::ClientBuilder::new()
@@ -264,54 +188,6 @@ impl OpenAIClient {
                     }
                 }
             }
-        }
-
-        // Clean up any pending request when the channel is closed
-        if let Some(handle) = current_request {
-            handle.abort();
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct ChatRequest {
-    model: String,
-    messages: Vec<MessageData>,
-}
-
-// Workaround for providers with missing fields in their responses
-#[derive(Clone, Debug, Deserialize)]
-struct ChatResponseDataWrapper {
-    #[serde(default = "default_id")]
-    id: String,
-    choices: Vec<ChoiceData>,
-    created: u32,
-    model: ModelID,
-    #[serde(default)]
-    system_fingerprint: String,
-    usage: UsageData,
-    #[serde(default = "response_object")]
-    object: String,
-}
-
-fn default_id() -> String {
-    "unknown".to_string()
-}
-
-fn response_object() -> String {
-    "chat.completion".to_string()
-}
-
-impl From<ChatResponseDataWrapper> for ChatResponseData {
-    fn from(wrapper: ChatResponseDataWrapper) -> Self {
-        Self {
-            id: wrapper.id,
-            choices: wrapper.choices,
-            created: wrapper.created,
-            model: wrapper.model,
-            system_fingerprint: wrapper.system_fingerprint,
-            usage: wrapper.usage,
-            object: wrapper.object,
         }
     }
 }

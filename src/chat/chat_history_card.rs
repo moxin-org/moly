@@ -432,12 +432,6 @@ impl WidgetMatchEvent for ChatHistoryCard {
             ) {
                 self.modal(id!(delete_chat_modal)).close(cx);
             }
-
-            if let ChatAction::TitleUpdated(chat_id) = action.cast() {
-                if self.chat_id == chat_id {
-                    self.redraw(cx);
-                }
-            }
         }
     }
 }

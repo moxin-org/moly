@@ -1,49 +1,21 @@
 use anyhow::{anyhow, Result};
 use moly_kit::Message;
 use moly_protocol::data::FileID;
-use moly_protocol::open_ai::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
 
 use crate::data::filesystem::{read_from_file, write_to_file};
-use crate::data::providers::{DeepInquireMessage, DeepInquireStage};
 
 use super::chat_entity::ChatEntityId;
-use super::ProviderClient;
 
 pub type ChatID = u128;
 
-#[derive(Debug)]
-pub struct ChatEntityAction {
-    pub chat_id: ChatID,
-    kind: ChatEntityActionKind,
-}
-
-#[derive(Debug)]
-enum ChatEntityActionKind {
-    ModelAppendDelta(String),
-    ModelStreamingDone,
-    DeepnInquireResponse(DeepInquireMessage),
-    MofaAgentResult(String, bool),
-    MofaAgentCancelled,
-}
 
 #[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
 enum TitleState {
     #[default]
     Default,
     Updated,
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-pub enum ChatState {
-    #[default]
-    Idle,
-    Receiving,
-    // The boolean indicates if the last message should be removed.
-    #[allow(dead_code)]
-    Cancelled(bool),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -98,14 +70,12 @@ pub struct Chat {
     pub associated_entity: Option<ChatEntityId>,
 
     pub messages: Vec<Message>,
-    pub is_streaming: bool,
     pub inferences_params: ChatInferenceParams,
     pub system_prompt: Option<String>,
     pub accessed_at: chrono::DateTime<chrono::Utc>,
 
     title: String,
     title_state: TitleState,
-    state: Arc<RwLock<ChatState>>,
     chats_dir: PathBuf,
 }
 
@@ -119,8 +89,6 @@ impl Chat {
             title: String::from("New Chat"),
             messages: vec![],
             associated_entity: None,
-            state: Arc::new(RwLock::new(ChatState::Idle)),
-            is_streaming: false,
             title_state: TitleState::default(),
             chats_dir,
             inferences_params: ChatInferenceParams::default(),
@@ -147,8 +115,6 @@ impl Chat {
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
-                    state: Arc::new(RwLock::new(ChatState::Idle)),
-                    is_streaming: false,
                     chats_dir,
                     inferences_params: ChatInferenceParams::default(),
                     system_prompt: data.system_prompt,
@@ -222,84 +188,11 @@ impl Chat {
         }
     }
 
-    pub fn cancel_streaming(&mut self) {
-        // if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
-        //     return;
-        // }
-
-        // let message = self.messages.last_mut().unwrap();
-        // let new_state = if message.body.trim().is_empty() {
-        //     ChatState::Cancelled(true)
-        // } else {
-        //     ChatState::Cancelled(false)
-        // };
-        
-        // *self.state.write().unwrap() = new_state;
-    }
-
-
-    pub fn cancel_interaction(&mut self, client: &dyn ProviderClient) {
-        // if matches!(*self.state.read().unwrap(), ChatState::Idle | ChatState::Cancelled(_)) {
-        //     return;
-        // }
-
-        // client.cancel_task();
-
-        // *self.state.write().unwrap() = ChatState::Cancelled(true);
-        // let message = self.messages.last_mut().unwrap();
-        // message.body = "Cancelling, please wait...".to_string();
-    }
-
     pub fn delete_message(&mut self, message_index: usize) {
         self.messages.remove(message_index);
     }
 
-    pub fn edit_message(&mut self, message_index: usize, updated_message: String) {
-        // if let Some(message) = self.messages.get_mut(message_index) {
-        //     message.body = updated_message;
-        // }
-    }
-
-    pub fn remove_messages_from(&mut self, message_index: usize) {
-        self.messages.truncate(message_index);
-    }
-
     pub fn update_accessed_at(&mut self) {
         self.accessed_at = chrono::Utc::now();
-    }
-
-    pub fn is_receiving(&self) -> bool {
-        matches!(*self.state.read().unwrap(), ChatState::Receiving)
-    }
-
-    pub fn was_cancelled(&self) -> bool {
-        matches!(*self.state.read().unwrap(), ChatState::Cancelled(_))
-    }
-
-    pub fn handle_action(&mut self, action: &ChatEntityAction) {
-        // match &action.kind {
-        //     ChatEntityActionKind::ModelAppendDelta(response) => {
-        //         let last = self.messages.last_mut().unwrap();
-        //         last.body.push_str(&response);
-        //     }
-        //     ChatEntityActionKind::ModelStreamingDone => {
-        //         self.is_streaming = false;
-        //         *self.state.write().unwrap() = ChatState::Idle;
-        //     }
-        //     ChatEntityActionKind::MofaAgentResult(response, is_final) => {
-        //         let last = self.messages.last_mut().unwrap();
-        //         last.body = response.clone();
-        //         if *is_final {
-        //             *self.state.write().unwrap() = ChatState::Idle;
-        //         }
-        //     }
-        //     ChatEntityActionKind::MofaAgentCancelled => {
-        //         *self.state.write().unwrap() = ChatState::Idle;
-        //         // Remove the last message sent by the user
-        //         self.messages.pop();
-        //     },
-        //     _ => {}
-        // }
-        // self.save();
     }
 }

@@ -100,12 +100,6 @@ impl Store {
         store
     }
 
-    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.edit_message(message_id, updated_message);
-        }
-    }
-
     pub fn _get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
         if let Some(file) = &self.chats.loaded_model {
             self.downloads
@@ -215,7 +209,6 @@ impl Store {
     }
 
     pub fn handle_action(&mut self, action: &Action) {
-        self.chats.handle_action(action);
         self.search.handle_action(action);
         self.downloads.handle_action(action);
 

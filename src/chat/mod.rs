@@ -12,7 +12,6 @@ pub mod model_selector_list;
 pub mod model_selector_loading;
 pub mod prompt_input;
 pub mod shared;
-pub mod stages_pill_list;
 
 use makepad_widgets::Cx;
 
@@ -21,7 +20,6 @@ pub fn live_design(cx: &mut Cx) {
     prompt_input::live_design(cx);
     chat_history_card::live_design(cx);
     chat_history::live_design(cx);
-    stages_pill_list::live_design(cx);
     chat_params::live_design(cx);
     chat_screen::live_design(cx);
     model_info::live_design(cx);

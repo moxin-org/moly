@@ -11,8 +11,6 @@ pub enum ChatAction {
     Start(ChatEntityId),
     // Select a chat from the chat history
     ChatSelected(ChatID),
-    // Update the title of a chat
-    TitleUpdated(ChatID),
     None,
 }
 
