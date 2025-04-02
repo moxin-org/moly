@@ -57,7 +57,7 @@ pub struct Bot {
 }
 
 /// Indentifies any kind of bot, local or remote, model or agent, whatever.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct BotId(Arc<str>);
 
 impl Serialize for BotId {

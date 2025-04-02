@@ -4,8 +4,8 @@ use moly_protocol::data::{File, FileID, PendingDownloadsStatus};
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::{
     data::{
-        chats::chat_entity::ChatEntityId, downloads::download::DownloadFileAction,
-        store::FileWithDownloadInfo,
+        downloads::download::DownloadFileAction,
+        store::{FileWithDownloadInfo, Store},
     },
     shared::{
         actions::{ChatAction, DownloadAction},
@@ -322,7 +322,7 @@ impl Widget for ModelFilesItem {
 }
 
 impl WidgetMatchEvent for ModelFilesItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for actions in actions {
             if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
                 if self.file_id.as_ref() == Some(&action.file_id) {
@@ -340,7 +340,11 @@ impl WidgetMatchEvent for ModelFilesItem {
         }
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
-            cx.action(ChatAction::Start(ChatEntityId::ModelFile(file_id.clone())));
+            let store = scope.data.get_mut::<Store>().unwrap();
+            let bot_id = store.chats.get_bot_id_by_file_id(&file_id);
+            if let Some(bot_id) = bot_id {
+                cx.action(ChatAction::Start(bot_id));
+            }
         }
 
         if [id!(resume_download_button), id!(retry_download_button)]

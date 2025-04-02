@@ -1,9 +1,8 @@
-use crate::data::{chats::chat_entity::{ChatEntityId, ChatEntityRef}, providers::RemoteModel};
+use crate::data::store::Store;
 
 use super::shared::ChatAgentAvatarWidgetExt;
 use makepad_widgets::*;
-
-use std::cell::Ref;
+use moly_kit::BotId;
 
 live_design!(
     use link::theme::*;
@@ -120,7 +119,10 @@ pub struct EntityButton {
     server_url_visible: bool,
 
     #[rust]
-    entity: Option<ChatEntityId>,
+    bot_id: Option<BotId>,
+
+    #[rust]
+    should_update_bot_info: bool,
 
     /// Do not listen to events. Make this fully read-only.
     #[live]
@@ -141,6 +143,11 @@ impl Widget for EntityButton {
             self.view(id!(server_url)).set_visible(cx, true);
         }
 
+        if self.should_update_bot_info && self.bot_id.is_some() {
+            self.update_bot_info(cx, scope);
+            self.should_update_bot_info = false;
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -156,44 +163,46 @@ impl EntityButton {
         false
     }
 
-    #[allow(dead_code)]
-    pub fn get_entity_id(&self) -> Option<&ChatEntityId> {
-        self.entity.as_ref()
-    }
+    pub fn update_bot_info(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        let bot_id = match &self.bot_id {
+            Some(bot_id) => bot_id.clone(),
+            None => return,
+        };
 
-    pub fn set_agent(&mut self, cx: &mut Cx, agent: &RemoteModel) {
-        self.set_entity(cx, ChatEntityRef::Agent(agent));
-    }
-
-    pub fn set_entity(&mut self, cx: &mut Cx, entity: ChatEntityRef) {
+        let store = scope.data.get_mut::<Store>().unwrap();
         self.visible = true;
 
-
-        let name_label = self.label(id!(caption));
         let description_label = self.label(id!(description.label));
+        let name_label = self.label(id!(caption));
         let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
         let server_url = self.label(id!(server_url.label));
-        
-        // Trim the '/models/' at the beginning of the name (happens with Gemini)
-        let name = entity.name().trim_start_matches("models/");
+
+
+        let remote_model = store.chats.get_remote_model_or_placeholder(&bot_id);
+
+        let name = remote_model.human_readable_name();
         name_label.set_text(cx, &name);
 
-        if let ChatEntityRef::Agent(agent) = entity {
+        if store.chats.is_agent(&bot_id) {
             avatar.set_visible(true);
-            avatar.set_agent(agent);
-            description_label.set_text(cx, &agent.description);
-            
-            let formatted_server_url = agent.provider_url
+            avatar.set_bot(remote_model);
+            description_label.set_text(cx, &remote_model.description);
+
+            let formatted_server_url = remote_model.provider_url
                 .strip_prefix("https://")
-                .or_else(|| agent.provider_url.strip_prefix("http://"))
-                .unwrap_or(&agent.provider_url);
+                .or_else(|| remote_model.provider_url.strip_prefix("http://"))
+                .unwrap_or(&remote_model.provider_url);
             server_url.set_text(cx, formatted_server_url);
         } else {
             avatar.set_visible(false);
             description_label.set_text(cx, "");
         }
+    }
 
-        self.entity = Some(entity.id());
+    pub fn set_bot_id(&mut self, cx: &mut Cx, bot_id: &BotId) {
+        self.bot_id = Some(bot_id.clone());
+        self.should_update_bot_info = true;
+        self.redraw(cx);
     }
 
     pub fn set_description_visible(&mut self, cx: &mut Cx, visible: bool) {
@@ -208,25 +217,15 @@ impl EntityButtonRef {
         }
     }
 
-    pub fn set_agent(&mut self, cx: &mut Cx, agent: &RemoteModel) {
+    pub fn set_bot_id(&mut self, cx: &mut Cx, bot_id: &BotId) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_agent(cx, agent);
+            inner.set_bot_id(cx, bot_id);
         }
     }
 
-    pub fn set_entity(&mut self, cx: &mut Cx, entity: ChatEntityRef) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.set_entity(cx, entity);
-        }
-    }
-
-    pub fn get_entity_id(&self) -> Option<Ref<ChatEntityId>> {
+    pub fn get_bot_id(&self) -> Option<BotId> {
         if let Some(inner) = self.borrow() {
-            if inner.entity.is_none() {
-                return None;
-            }
-
-            Some(Ref::map(inner, |inner| inner.entity.as_ref().unwrap()))
+            inner.bot_id.clone()
         } else {
             None
         }

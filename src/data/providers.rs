@@ -1,10 +1,9 @@
 use makepad_widgets::*;
+use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 
 use super::{mofa::MofaClient, openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
 
-use sha2::{Sha256, Digest};
-use hex;
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Provider {
@@ -16,7 +15,7 @@ pub struct Provider {
     pub provider_type: ProviderType,
     pub connection_status: ProviderConnectionStatus,
     pub enabled: bool,
-    pub models: Vec<RemoteModelId>,
+    pub models: Vec<BotId>,
     /// Whether the provider was added by the user or not
     pub was_customly_added: bool,
 }
@@ -24,27 +23,10 @@ pub struct Provider {
 /// Creates a client for the provider based on the provider type
 pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {
     match &provider.provider_type {
-        ProviderType::OpenAI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
+        ProviderType::OpenAI | ProviderType::MolyServer => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
         ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
         ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone(), provider.api_key.clone())),
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq, Default)]
-pub struct RemoteModelId(pub String);
-
-impl RemoteModelId {
-    pub fn from_model_and_server(agent_name: &str, server_address: &str) -> Self {
-        RemoteModelId(bot_id_as_str(agent_name, server_address))
-    }
-}
-
-pub fn bot_id_as_str(model_id: &str, server_address: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(format!("{}-{}", model_id, server_address));
-    let result = hasher.finalize();
-    // Take first 16 bytes of hash for a shorter but still unique identifier
-    hex::encode(&result[..16])
 }
 
 #[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -52,7 +34,7 @@ pub struct RemoteServerId(pub String);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RemoteModel {
-    pub id: RemoteModelId,
+    pub id: BotId,
     pub name: String,
     pub description: String,
     pub provider_url: String,
@@ -64,13 +46,19 @@ impl RemoteModel {
     /// (due to the server not being available, the server no longer providing the agent, etc.).
     pub fn unknown() -> Self {
         RemoteModel {
-            id: RemoteModelId("unknown".to_string()),
+            id: BotId::new("unknown", "unknown"),
             name: "Inaccesible model - check your connections".to_string(),
             description: "This model is not currently reachable, its information is not available"
                 .to_string(),
             provider_url: "unknown".to_string(),
             enabled: true,
         }
+    }
+
+    pub fn human_readable_name(&self) -> &str {
+        // Trim the 'models/' prefix from Gemini models
+        // TODO: also trim and cleanup naming for filenames
+        self.name.trim_start_matches("models/")
     }
 }
 
@@ -138,6 +126,7 @@ pub enum ProviderType {
     OpenAI,
     MoFa,
     DeepInquire,
+    MolyServer
 }
 
 impl Default for ProviderType {

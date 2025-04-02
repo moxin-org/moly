@@ -1,9 +1,8 @@
 pub mod chat;
-pub mod chat_entity;
 
 use anyhow::{Context, Result};
 use chat::{Chat, ChatID};
-use chat_entity::ChatEntityId;
+use moly_kit::BotId;
 use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::fs;
@@ -13,15 +12,13 @@ use std::{cell::RefCell, path::PathBuf};
 use super::filesystem::setup_chats_folder;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
-use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, RemoteModel, RemoteModelId, ProviderConnectionStatus};
+use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, RemoteModel, ProviderConnectionStatus};
 
 pub struct Chats {
     pub moly_client: MolyClient,
     pub saved_chats: Vec<RefCell<Chat>>,
 
-    pub loaded_model: Option<File>,
-
-    pub remote_models: HashMap<RemoteModelId, RemoteModel>,
+    pub remote_models: HashMap<BotId, RemoteModel>,
 
     pub provider_clients: HashMap<String, Box<dyn ProviderClient>>,
 
@@ -42,7 +39,6 @@ impl Chats {
             moly_client,
             saved_chats: Vec::new(),
             current_chat_id: None,
-            loaded_model: None,
             chats_dir: setup_chats_folder(),
             remote_models: HashMap::new(),
             provider_clients: HashMap::new(),
@@ -116,71 +112,21 @@ impl Chats {
             .context("Failed to receive eject model response")?
             .context("Eject model operation failed");
 
-        self.loaded_model = None;
         Ok(())
     }
 
-    pub fn remove_file_from_associated_entity(&mut self, file_id: &FileID) {
-        for chat in &self.saved_chats {
-            let mut chat = chat.borrow_mut();
-            if let Some(ChatEntityId::ModelFile(chat_file_id)) = &chat.associated_entity {
-                if chat_file_id == file_id {
-                    chat.associated_entity = None;
-                    chat.save();
-                }
-            }
-        }
-    }
-
-    /// Get the file id to use with this chat, or the loaded file id as a fallback.
-    /// The fallback is used if the chat does not have a file id set, or, if it has
-    /// one but references a no longer existing (deleted) file.
-    #[allow(dead_code)]
-    pub fn get_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
-        match &chat.associated_entity {
-            Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
-            _ => {
-                let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
-                Some(file_id)
-            }
-        }
-    }
-
-    pub fn create_empty_chat(&mut self) {
+    pub fn create_empty_chat(&mut self, bot_id: Option<BotId>) {
         let mut new_chat = Chat::new(self.chats_dir.clone());
         let id = new_chat.id;
-        new_chat.associated_entity = self
-            .loaded_model
-            .as_ref()
-            .map(|m| ChatEntityId::ModelFile(m.id.clone()));
+
+        // TODO: A better default bot id, for now we just use the first available one
+        new_chat.associated_bot = if bot_id.is_some() {
+            bot_id
+        } else {
+            self.remote_models.keys().next().map(|id| id.clone())
+        };
 
         new_chat.save();
-        self.saved_chats.push(RefCell::new(new_chat));
-        self.set_current_chat(Some(id));
-    }
-
-    pub fn create_empty_chat_with_agent(&mut self, agent_id: &RemoteModelId) {
-        self.create_empty_chat();
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntityId::Agent(agent_id.clone()));
-            chat.save();
-        }
-    }
-
-    pub fn create_empty_chat_with_remote_model(&mut self, model_id: &RemoteModelId) {
-        self.create_empty_chat();
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntityId::RemoteModel(model_id.clone()));
-            chat.save();
-        }
-    }
-
-    pub fn create_empty_chat_with_local_model(&mut self, file: &File) {
-        let mut new_chat = Chat::new(self.chats_dir.clone());
-        let id = new_chat.id;
-        new_chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
-        new_chat.save();
-
         self.saved_chats.push(RefCell::new(new_chat));
         self.set_current_chat(Some(id));
     }
@@ -365,20 +311,44 @@ impl Chats {
     /// 
     /// In the future, we'll want a more sophisticated solution, by potentially storing 
     /// remote model information locally and updating it when a server is connected.
-    pub fn get_remote_model_or_placeholder(&self, model_id: &RemoteModelId) -> &RemoteModel {
-        self.remote_models.get(model_id).unwrap_or(&self.unknown_remote_model)
+    pub fn get_remote_model_or_placeholder(&self, bot_id: &BotId) -> &RemoteModel {
+        self.remote_models.get(bot_id).unwrap_or(&self.unknown_remote_model)
     }
 
     pub fn get_mofa_agents_list(&self, enabled_only: bool) -> Vec<RemoteModel> {
-        self.remote_models.values().filter(|m| self.is_agent(m) && (!enabled_only || m.enabled)).cloned().collect()
+        self.remote_models.values().filter(|m| self.is_agent(&m.id) && (!enabled_only || m.enabled)).cloned().collect()
     }
 
     pub fn get_non_mofa_models_list(&self, enabled_only: bool) -> Vec<RemoteModel> {
-        self.remote_models.values().filter(|m| !self.is_agent(m) && (!enabled_only || m.enabled)).cloned().collect()
+        self.remote_models.values().filter(|m| !self.is_agent(&m.id) && (!enabled_only || m.enabled)).cloned().collect()
     }
 
-    pub fn is_agent(&self, model: &RemoteModel) -> bool {
-        self.providers.get(&model.provider_url).map_or(false, |p| p.provider_type == ProviderType::MoFa)
+    pub fn is_agent(&self, bot_id: &BotId) -> bool {
+       if let Some(remote_model) = self.remote_models.get(bot_id) {
+            if let Some(provider) = self.providers.get(&remote_model.provider_url) {
+                provider.provider_type == ProviderType::MoFa
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    pub fn is_local_model(&self, bot_id: &BotId) -> bool {
+        if let Some(remote_model) = self.remote_models.get(bot_id) {
+            if let Some(provider) = self.providers.get(&remote_model.provider_url) {
+                provider.provider_type == ProviderType::MolyServer
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    pub fn get_bot_id_by_file_id(&self, file_id: &FileID) -> Option<BotId> {
+        self.remote_models.values().find(|m| m.name == file_id.as_str()).map(|m| m.id.clone())
     }
 }
 

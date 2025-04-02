@@ -206,6 +206,7 @@ live_design! {
                         radio_openai = <CustomProviderRadio> { text: "OpenAI" }
                         radio_mofa = <CustomProviderRadio> { text: "MoFa" }
                         radio_deepinquire = <CustomProviderRadio> { text: "DeepInquire" }
+                        radio_moly_server = <CustomProviderRadio> { text: "MolyServer" }
                     }
                 }
 
@@ -309,6 +310,18 @@ impl WidgetMatchEvent for AddProviderModal {
                         url: api_host.clone(),
                         api_key: Some(api_key.clone()),
                         provider_type: ProviderType::OpenAI,
+                        connection_status: ProviderConnectionStatus::Disconnected,
+                        enabled: true,
+                        models: vec![],
+                        was_customly_added: true,
+                    }
+                }
+                ProviderType::MolyServer => {
+                    Provider {
+                        name: name.clone(),
+                        url: api_host.clone(),
+                        api_key: Some(api_key.clone()),
+                        provider_type: ProviderType::MolyServer,
                         connection_status: ProviderConnectionStatus::Disconnected,
                         enabled: true,
                         models: vec![],

@@ -33,7 +33,7 @@
         {
             "name": "MolyServer",
             "url": "http://localhost:8765/api/v1",
-            "provider_type": "OpenAI"
+            "provider_type": "MolyServer"
         }
     ]
 }

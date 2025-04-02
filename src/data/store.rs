@@ -1,6 +1,5 @@
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
-use super::chats::chat_entity::ChatEntityId;
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
@@ -13,7 +12,7 @@ use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
 use super::providers::{Provider, ProviderConnectionStatus};
-use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
+use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
 use moly_kit::*;
 
@@ -100,45 +99,8 @@ impl Store {
         store
     }
 
-    pub fn _get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
-        if let Some(file) = &self.chats.loaded_model {
-            self.downloads
-                .downloaded_files
-                .iter()
-                .find(|d| d.file.id == file.id)
-                .cloned()
-        } else {
-            None
-        }
-    }
-
-    pub fn get_chat_entity_name(&self, chat_id: ChatID) -> Option<String> {
-        let Some(chat) = self.chats.get_chat_by_id(chat_id) else {
-            return None;
-        };
-
-        match &chat.borrow().associated_entity {
-            Some(ChatEntityId::ModelFile(ref file_id)) => self
-                .downloads
-                .downloaded_files
-                .iter()
-                .find(|df| df.file.id == *file_id)
-                .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntityId::Agent(model_id)) => self
-                .chats
-                .remote_models
-                .get(model_id)
-                .map(|m| m.name.clone()),
-            Some(ChatEntityId::RemoteModel(model_id)) => self
-                .chats
-                .remote_models
-                .get(&model_id)
-                .map(|m| m.name.clone()),
-            None => {
-                // Fallback to loaded model if exists
-                self.chats.loaded_model.as_ref().map(|m| m.name.clone())
-            }
-        }
+    pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {
+        self.chats.get_chat_by_id(chat_id).and_then(|chat| chat.borrow().associated_bot.clone())
     }
 
     /// This function combines the search results information for a given model
@@ -191,16 +153,8 @@ impl Store {
     }
 
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
-        if self
-            .chats
-            .loaded_model
-            .as_ref()
-            .map_or(false, |file| file.id == file_id)
-        {
-            self.chats.eject_model().expect("Failed to eject model");
-        }
+        self.chats.eject_model().expect("Failed to eject model");
 
-        self.chats.remove_file_from_associated_entity(&file_id);
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
@@ -232,9 +186,8 @@ impl Store {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
             self.chats.set_current_chat(Some(chat_id));
         } else {
-            self.chats.create_empty_chat();
+            self.chats.create_empty_chat(None);
         }
-
     }
 
     pub fn delete_chat(&mut self, chat_id: ChatID) {

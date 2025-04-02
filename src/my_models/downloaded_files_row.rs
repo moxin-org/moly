@@ -1,5 +1,5 @@
 use super::{delete_model_modal::DeleteModelModalAction, model_info_modal::ModelInfoModalAction};
-use crate::data::chats::chat_entity::ChatEntityId;
+use crate::data::store::Store;
 use crate::shared::modal::ModalWidgetExt;
 use crate::shared::utils::format_model_size;
 use crate::shared::{actions::ChatAction, utils::human_readable_name};
@@ -252,10 +252,14 @@ impl Widget for DownloadedFilesRow {
 }
 
 impl WidgetMatchEvent for DownloadedFilesRow {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.button(id!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
-                cx.action(ChatAction::Start(ChatEntityId::ModelFile(file_id.clone())));
+                let store = scope.data.get_mut::<Store>().unwrap();
+                let bot_id = store.chats.get_bot_id_by_file_id(file_id);
+                if let Some(bot_id) = bot_id {
+                    cx.action(ChatAction::Start(bot_id));
+                }
             }
         }
 

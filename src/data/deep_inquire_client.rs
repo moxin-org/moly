@@ -1,3 +1,4 @@
+use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use makepad_widgets::Cx;
@@ -42,7 +43,7 @@ impl DeepInquireClient {
         while let Ok(command) = command_receiver.recv() {
             match command {
                 ProviderCommand::FetchModels() => {
-                    let id =  RemoteModelId::from_model_and_server("DeepInquire", &address);
+                    let id = BotId::new("DeepInquire", &address);
                     let agents = vec![
                         RemoteModel {
                             id,

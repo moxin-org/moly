@@ -1,8 +1,9 @@
 use makepad_widgets::*;
+use moly_kit::BotId;
 
 use crate::{
     data::{
-        capture::CaptureAction, chats::chat_entity::ChatEntityId, providers::RemoteModel,
+        capture::CaptureAction, providers::RemoteModel,
         store::Store,
     },
     shared::actions::ChatAction,
@@ -212,7 +213,7 @@ pub struct PromptInput {
     section_label_template: Option<LivePtr>,
 
     #[rust]
-    pub entity_selected: Option<ChatEntityId>,
+    pub selected_bot: Option<BotId>,
 }
 
 impl Widget for PromptInput {
@@ -232,8 +233,10 @@ impl WidgetMatchEvent for PromptInput {
 
         if let Some(item) = prompt.item_selected(actions) {
             let entity_button = item.entity_button(id!(button));
-            let entity = entity_button.get_entity_id().unwrap();
-            self.on_entity_selected(cx, scope, &*entity);
+            let bot_id = entity_button.get_bot_id();
+            if let Some(bot_id) = bot_id {
+                self.on_bot_selected(cx, scope, &bot_id);
+            }
         }
 
         if prompt.should_build_items(actions) {
@@ -281,7 +284,7 @@ impl WidgetMatchEvent for PromptInput {
                 for model in models {
                     let option = WidgetRef::new_from_ptr(cx, self.entity_template);
                     let mut entity_button = option.entity_button(id!(button));
-                    entity_button.set_entity(cx, model.into());
+                    entity_button.set_bot_id(cx, &model.id);
                     entity_button.set_description_visible(cx, true);
                     prompt.add_item(option);
                 }
@@ -301,7 +304,7 @@ impl WidgetMatchEvent for PromptInput {
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
                 let mut entity_button = option.entity_button(id!(button));
-                entity_button.set_entity(cx, agent.into());
+                entity_button.set_bot_id(cx, &agent.id);
                 entity_button.set_description_visible(cx, true);
                 prompt.add_item(option);
             }
@@ -323,9 +326,12 @@ impl WidgetMatchEvent for PromptInput {
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
                 let mut entity_button = option.entity_button(id!(button));
-                entity_button.set_entity(cx, file.into());
-                entity_button.set_description_visible(cx, true);
-                prompt.add_item(option);
+                let bot_id = store.chats.remote_models.iter().find(|(_, m)| m.name == file.id).map(|(id, _)| id);
+                if let Some(bot_id) = bot_id {
+                    entity_button.set_bot_id(cx, &bot_id);
+                    entity_button.set_description_visible(cx, true);
+                    prompt.add_item(option);
+                }
             }
         }
 
@@ -363,40 +369,22 @@ impl WidgetMatchEvent for PromptInput {
 }
 
 impl PromptInput {
-    fn on_entity_selected(&mut self, cx: &mut Cx, scope: &mut Scope, entity: &ChatEntityId) {
+    fn on_bot_selected(&mut self, cx: &mut Cx, scope: &mut Scope, bot_id: &BotId) {
         let store = scope.data.get::<Store>().unwrap();
 
         let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
         let label = self.label(id!(selected_label));
 
-        match entity {
-            ChatEntityId::Agent(agent_id) => {
-                let agent = store.chats.get_remote_model_or_placeholder(agent_id);
-                label.set_text(cx, &agent.name);
-                agent_avatar.set_agent(agent);
-            }
-            ChatEntityId::ModelFile(file_id) => {
-                let store = scope.data.get_mut::<Store>().unwrap();
-                let file = store
-                    .downloads
-                    .get_file(file_id)
-                    .expect("selected file not found");
-                label.set_text(cx, &file.name);
-                agent_avatar.set_visible(false);
-            }
-            ChatEntityId::RemoteModel(model_id) => {
-                let model = store.chats.get_remote_model_or_placeholder(model_id);
-                label.set_text(cx, &model.name);
-                agent_avatar.set_visible(false);
-            }
-        }
+        let bot = store.chats.get_remote_model_or_placeholder(bot_id);
+        label.set_text(cx, &bot.name);
+        agent_avatar.set_visible(false);
 
-        self.entity_selected = Some(entity.clone());
+        self.selected_bot = Some(bot_id.clone());
         self.view(id!(selected_bubble)).set_visible(cx, true);
     }
 
     fn on_deselected(&mut self, cx: &mut Cx) {
-        self.entity_selected = None;
+        self.selected_bot = None;
         self.view(id!(selected_bubble)).set_visible(cx, false);
     }
 }

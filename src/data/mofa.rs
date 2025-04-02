@@ -1,3 +1,4 @@
+use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use makepad_widgets::Cx;
@@ -112,7 +113,7 @@ impl MofaClient {
                                 reqwest::StatusCode::OK => {
                                     let agents = vec![
                                         RemoteModel {
-                                            id: RemoteModelId::from_model_and_server("Reasoner", &url),
+                                            id: BotId::new("Reasoner", &url),
                                             name: "Reasoner".to_string(),
                                             description: "An agent that will help you find good questions about any topic".to_string(),
                                             enabled: true,

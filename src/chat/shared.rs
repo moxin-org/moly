@@ -75,7 +75,7 @@ impl Widget for ChatAgentAvatar {
 }
 
 impl ChatAgentAvatar {
-    pub fn set_agent(&mut self, _agent: &RemoteModel) {
+    pub fn set_bot(&mut self, _agent: &RemoteModel) {
         let dep = self.reasoner_agent_icon.clone();
 
         self.pending_image_update = Some(dep);
@@ -83,9 +83,9 @@ impl ChatAgentAvatar {
 }
 
 impl ChatAgentAvatarRef {
-    pub fn set_agent(&mut self, agent: &RemoteModel) {
+    pub fn set_bot(&mut self, agent: &RemoteModel) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_agent(agent);
+            inner.set_bot(agent);
         }
     }
 

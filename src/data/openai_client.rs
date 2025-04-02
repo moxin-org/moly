@@ -1,3 +1,4 @@
+use moly_kit::BotId;
 use serde::Deserialize;
 use std::sync::mpsc::{self, channel, Sender};
 
@@ -156,7 +157,7 @@ impl OpenAIClient {
                                             let models: Vec<RemoteModel> = models.data.into_iter()
                                                 .filter(|model| should_include_model(&url, &model.id))
                                                 .map(|model| RemoteModel {
-                                                    id: RemoteModelId::from_model_and_server(&model.id, &url),
+                                                    id: BotId::new(&model.id, &url),
                                                     name: model.id.clone(),
                                                     description: format!("OpenAI {} model", model.object.unwrap_or(model.id)),
                                                     provider_url: url.clone(),

@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
+use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 
-use super::{chats::chat_entity::ChatEntityId, filesystem::{
+use super::{filesystem::{
     read_from_file, setup_model_downloads_folder, setup_preferences_folder, write_to_file
 }, providers::{Provider, ProviderType}};
 
@@ -10,7 +11,7 @@ const PREFERENCES_FILENAME: &str = "preferences.json";
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Preferences {
-    pub current_chat_model: Option<ChatEntityId>,
+    pub current_chat_model: Option<BotId>,
     #[serde(default)]
     pub downloaded_files_dir: PathBuf,
     #[serde(default)]
@@ -47,8 +48,8 @@ impl Preferences {
         }
     }
 
-    pub fn set_current_chat_model(&mut self, chat_entity_id: Option<ChatEntityId>) {
-        self.current_chat_model = chat_entity_id;
+    pub fn set_current_chat_model(&mut self, bot_id: Option<BotId>) {
+        self.current_chat_model = bot_id;
         self.save();
     }
 
@@ -68,7 +69,7 @@ impl Preferences {
                 api_key: provider.api_key.clone(),
                 enabled: provider.enabled,
                 provider_type: provider.provider_type.clone(),
-                models: provider.models.iter().map(|m| (m.0.clone(), true)).collect(),
+                models: provider.models.iter().map(|m| (m.as_str().to_string(), true)).collect(),
                 was_customly_added: provider.was_customly_added,
             });
         }

@@ -2,7 +2,6 @@ use makepad_widgets::*;
 use moly_kit::*;
 use moly_kit::utils::asynchronous::spawn;
 
-use crate::data::chats::chat_entity::ChatEntityId;
 use crate::data::providers::ProviderType;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
@@ -86,7 +85,6 @@ impl Widget for ChatScreen {
 
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        // TODO(MolyKit): Cleanup, might be unnecessary to track first_render
         let should_recreate_bot_repo = store.bot_repo.is_none();
 
         if self.should_load_repo_to_store {
@@ -112,11 +110,10 @@ impl WidgetMatchEvent for ChatScreen {
             // Handle model selector actions
             match action.cast() {
                 ModelSelectorAction::RemoteModelSelected(remote_model) => {
-                    let bot_id = BotId::from(remote_model.id.0.as_str());
-                    chat_widget.write().bot_id = Some(bot_id);
+                    chat_widget.write().bot_id = Some(remote_model.id.clone());
 
                     if let Some(chat) = store.chats.get_current_chat() {
-                        chat.borrow_mut().associated_entity = Some(ChatEntityId::RemoteModel(remote_model.id.clone()));
+                        chat.borrow_mut().associated_bot = Some(remote_model.id.clone());
                         chat.borrow().save();
                     }
                     // self.focus_on_prompt_input_pending = true;
@@ -126,34 +123,13 @@ impl WidgetMatchEvent for ChatScreen {
 
             // Handle chat start
             match action.cast() {
-                ChatAction::Start(chat_entity_id) => match &chat_entity_id {
-                    ChatEntityId::ModelFile(file_id) => {
-                        if let Some(file) = store.downloads.get_file(&file_id) {
-                            store.chats.create_empty_chat_with_local_model(&file);
-                            self.messages(id!(chat.messages)).write().messages = vec![];
-                            let bot_id = chat_entity_id.as_bot_id();
-                            self.chat(id!(chat)).write().bot_id = Some(bot_id);
-                            self.model_selector(id!(model_selector)).set_currently_selected_model(Some(chat_entity_id.clone()));
-                            // self.focus_on_prompt_input_pending = true;
-                        }
-                    }
-                    ChatEntityId::Agent(agent_id) => {
-                        store.chats.create_empty_chat_with_agent(&agent_id);
-                        self.messages(id!(chat.messages)).write().messages = vec![];
-                        let bot_id = chat_entity_id.as_bot_id();
-                        self.chat(id!(chat)).write().bot_id = Some(bot_id);
-                        self.model_selector(id!(model_selector)).set_currently_selected_model(Some(chat_entity_id.clone()));
-                        // self.focus_on_prompt_input_pending = true;
-                    },
-                    ChatEntityId::RemoteModel(model_id) => {
-                        store.chats.create_empty_chat_with_remote_model(&model_id);
-                        self.messages(id!(chat.messages)).write().messages = vec![];
-                        let bot_id = chat_entity_id.as_bot_id();
-                        self.chat(id!(chat)).write().bot_id = Some(bot_id);
-                        self.model_selector(id!(model_selector)).set_currently_selected_model(Some(chat_entity_id.clone()));
-                        // self.focus_on_prompt_input_pending = true;
-                    }
-                },
+                ChatAction::Start(bot_id) => {
+                    store.chats.create_empty_chat(Some(bot_id.clone()));
+                    self.messages(id!(chat.messages)).write().messages = vec![];
+                    self.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
+                    self.model_selector(id!(model_selector)).set_currently_selected_model(Some(bot_id));
+                    // self.focus_on_prompt_input_pending = true;
+                }
                 ChatAction::StartWithoutEntity => {
                     self.messages(id!(chat.messages)).write().messages = vec![];
                     // self.focus_on_prompt_input_pending = true;
@@ -235,21 +211,15 @@ impl WidgetMatchEvent for ChatScreen {
                     let current_chat = store.chats.get_current_chat();
 
                     if let Some(chat) = current_chat {
-                        store.preferences.set_current_chat_model(chat.borrow().associated_entity.clone());
+                        store.preferences.set_current_chat_model(chat.borrow().associated_bot.clone());
 
                         // Load messages from history into the messages widget
                         self.messages(id!(chat.messages)).write().messages = chat.borrow().messages.clone();
 
                         // Set the chat's associated model in the model selector
-                        if let Some(entity) = &chat.borrow().associated_entity {
-                            self.model_selector(id!(model_selector)).set_currently_selected_model(Some(entity.clone()));
-                            let bot_id = match entity {
-                                ChatEntityId::RemoteModel(model_id) => {
-                                    Some(BotId::from(model_id.0.as_str()))
-                                },
-                                _ => None
-                            };
-                            self.chat(id!(chat)).write().bot_id = bot_id;
+                        if let Some(bot_id) = &chat.borrow().associated_bot {
+                            self.model_selector(id!(model_selector)).set_currently_selected_model(Some(bot_id.clone()));
+                            self.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
                         }
 
                         self.redraw(cx);
@@ -271,7 +241,7 @@ impl ChatScreen {
 
             for provider in store.chats.providers.iter() {
                 match provider.1.provider_type {
-                    ProviderType::OpenAI => {
+                    ProviderType::OpenAI | ProviderType::MolyServer => {
                         if provider.1.enabled && (provider.1.api_key.is_some() || provider.1.url.starts_with("http://localhost")) {
                             let mut new_client = OpenAIClient::new(provider.1.url.clone());
                             if let Some(key) = provider.1.api_key.as_ref() {

@@ -235,7 +235,7 @@ impl Widget for ModelList {
                                                 },
                                             );
                                             let mut button = cell.entity_button(id!(button));
-                                            button.set_agent(cx, agent);
+                                            button.set_bot_id(cx, &agent.id);
                                             button.set_description_visible(cx, true);
                                         }
                                     });
@@ -286,8 +286,10 @@ impl WidgetMatchEvent for ModelList {
             .find(|button| button.clicked(actions));
 
         if let Some(entity_button) = clicked_entity_button {
-            let entity_id = entity_button.get_entity_id().unwrap().clone();
-            cx.action(ChatAction::Start(entity_id));
+            let bot_id = entity_button.get_bot_id();
+            if let Some(bot_id) = bot_id {
+                cx.action(ChatAction::Start(bot_id));
+            }
         }
 
         for action in actions.iter() {

@@ -1,12 +1,10 @@
 use anyhow::{anyhow, Result};
-use moly_kit::Message;
+use moly_kit::{BotId, Message};
 use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::data::filesystem::{read_from_file, write_to_file};
-
-use super::chat_entity::ChatEntityId;
 
 pub type ChatID = u128;
 
@@ -21,7 +19,7 @@ enum TitleState {
 #[derive(Serialize, Deserialize)]
 struct ChatData {
     id: ChatID,
-    associated_entity: Option<ChatEntityId>,
+    associated_bot: Option<BotId>,
     system_prompt: Option<String>,
     messages: Vec<Message>,
     title: String,
@@ -67,7 +65,7 @@ pub struct Chat {
     /// This is the model or agent that is currently "active" on the chat
     /// For models it is the most recent model used or loaded in the context of this chat session.
     /// For agents it is the agent that originated the chat.
-    pub associated_entity: Option<ChatEntityId>,
+    pub associated_bot: Option<BotId>,
 
     pub messages: Vec<Message>,
     pub inferences_params: ChatInferenceParams,
@@ -88,7 +86,7 @@ impl Chat {
             id,
             title: String::from("New Chat"),
             messages: vec![],
-            associated_entity: None,
+            associated_bot: None,
             title_state: TitleState::default(),
             chats_dir,
             inferences_params: ChatInferenceParams::default(),
@@ -104,14 +102,14 @@ impl Chat {
 
                 // Fallback to last_used_file_id if last_used_entity is None.
                 // Until this field is removed, we need to keep this logic.
-                let chat_entity = data.associated_entity.or_else(|| {
+                let associated_bot = data.associated_bot.or_else(|| {
                     data.last_used_file_id
-                        .map(|file_id| ChatEntityId::ModelFile(file_id))
+                        .map(|file_id| BotId::from(file_id.as_str()))
                 });
 
                 let chat = Chat {
                     id: data.id,
-                    associated_entity: chat_entity,
+                    associated_bot,
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
@@ -129,7 +127,7 @@ impl Chat {
     pub fn save(&self) {
         let data = ChatData {
             id: self.id,
-            associated_entity: self.associated_entity.clone(),
+            associated_bot: self.associated_bot.clone(),
             system_prompt: self.system_prompt.clone(),
             messages: self.messages.clone(),
             title: self.title.clone(),

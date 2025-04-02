@@ -1,5 +1,5 @@
 use crate::{
-    data::{chats::chat_entity::ChatEntityId, providers::RemoteModel, store::Store},
+    data::{providers::RemoteModel, store::Store},
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
@@ -117,10 +117,10 @@ impl ModelSelectorList {
         // Keep track of the current item index for LiveId generation
         let mut current_index = 0;
 
-        let chat_entity = store
+        let current_bot_id = store
             .chats
             .get_current_chat()
-            .and_then(|c| c.borrow().associated_entity.clone());
+            .and_then(|c| c.borrow().associated_bot.clone());
 
         // Get non-agent models
         let non_agent_models = store.chats.get_non_mofa_models_list(true);
@@ -180,11 +180,10 @@ impl ModelSelectorList {
                     WidgetRef::new_from_ptr(cx, self.model_template)
                 });
 
-                // Remove the starting 'models/' at the beginning of the name (happens with Gemini)
-                let mut caption = remote_model.name.trim_start_matches("models/");
+                let mut caption = remote_model.human_readable_name();
 
-                let icon_tick_visible = match &chat_entity {
-                    Some(ChatEntityId::RemoteModel(model_id)) => model_id.0 == remote_model.id.0,
+                let icon_tick_visible = match &current_bot_id {
+                    Some(bot_id) => bot_id == &remote_model.id,
                     _ => false,
                 };
 
@@ -260,13 +259,10 @@ impl ModelSelectorList {
             });
 
             let agent_name = &agent.name;
-            let current_agent_name = match &chat_entity {
-                Some(ChatEntityId::Agent(agent_id)) => {
-                    store.chats.remote_models.get(agent_id).map(|m| &m.name)
-                },
-                _ => None,
+            let icon_tick_visible = match &current_bot_id {
+                Some(bot_id) => bot_id == &agent.id,
+                _ => false,
             };
-            let icon_tick_visible = current_agent_name == Some(agent_name);
 
             item_widget.apply_over(
                 cx,
