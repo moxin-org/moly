@@ -489,7 +489,7 @@ impl WidgetMatchEvent for ChatPanel {
                     self.focus_on_prompt_input_pending = true;
                     self.redraw(cx);
                 }
-                ModelSelectorAction::RemoteModelSelected(remote_model) => {
+                ModelSelectorAction::BotSelected(remote_model) => {
                     if let Some(chat) = store.chats.get_current_chat() {
                         chat.borrow_mut().associated_entity = Some(ChatEntityId::RemoteModel(remote_model.id.clone()));
                         chat.borrow().save();
@@ -847,7 +847,7 @@ impl ChatPanel {
                             .chat_agent_avatar(id!(avatar_section.agent))
                             .set_visible(true);
 
-                        let agent = store.chats.get_remote_model_or_placeholder(&agent);
+                        let agent = store.chats.get_bot_or_placeholder(&agent);
                         empty_view
                             .chat_agent_avatar(id!(avatar_section.agent))
                             .set_agent(agent);
@@ -938,7 +938,7 @@ impl ChatPanel {
 
                     match &chat_line_data.entity {
                         Some(ChatEntityId::Agent(model_id)) => {
-                            let agent = store.chats.get_remote_model_or_placeholder(&model_id);
+                            let agent = store.chats.get_bot_or_placeholder(&model_id);
                             chat_line_item.set_model_avatar(cx, agent);
                         }
                         Some(ChatEntityId::ModelFile(_)) => {

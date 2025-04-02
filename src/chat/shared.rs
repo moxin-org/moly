@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::providers::RemoteModel;
+use crate::data::providers::ProviderBot;
 
 live_design! {
     use link::theme::*;
@@ -75,7 +75,7 @@ impl Widget for ChatAgentAvatar {
 }
 
 impl ChatAgentAvatar {
-    pub fn set_bot(&mut self, _agent: &RemoteModel) {
+    pub fn set_bot(&mut self, _agent: &ProviderBot) {
         let dep = self.reasoner_agent_icon.clone();
 
         self.pending_image_update = Some(dep);
@@ -83,7 +83,7 @@ impl ChatAgentAvatar {
 }
 
 impl ChatAgentAvatarRef {
-    pub fn set_bot(&mut self, agent: &RemoteModel) {
+    pub fn set_bot(&mut self, agent: &ProviderBot) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_bot(agent);
         }

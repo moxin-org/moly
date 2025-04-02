@@ -112,7 +112,7 @@ impl MofaClient {
                             match r.status() {
                                 reqwest::StatusCode::OK => {
                                     let agents = vec![
-                                        RemoteModel {
+                                        ProviderBot {
                                             id: BotId::new("Reasoner", &url),
                                             name: "Reasoner".to_string(),
                                             description: "An agent that will help you find good questions about any topic".to_string(),

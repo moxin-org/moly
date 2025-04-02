@@ -1,5 +1,5 @@
 use crate::{
-    data::{providers::RemoteModel, store::Store},
+    data::{providers::ProviderBot, store::Store},
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
@@ -126,7 +126,7 @@ impl ModelSelectorList {
         let non_agent_models = store.chats.get_non_mofa_models_list(true);
 
         // Group models by provider
-        let mut models_by_provider: HashMap<String, (String, Vec<RemoteModel>)> = HashMap::new();
+        let mut models_by_provider: HashMap<String, (String, Vec<ProviderBot>)> = HashMap::new();
         
         for model in non_agent_models.iter() {
             // Get provider name from the providers map
@@ -143,7 +143,7 @@ impl ModelSelectorList {
         }
 
         // Convert to a vector and sort by provider name for consistent ordering
-        let mut providers: Vec<(String, String, Vec<RemoteModel>)> = models_by_provider
+        let mut providers: Vec<(String, String, Vec<ProviderBot>)> = models_by_provider
             .into_iter()
             .map(|(url, (name, models))| (url, name, models))
             .collect();
@@ -152,13 +152,13 @@ impl ModelSelectorList {
         providers.sort_by(|a, b| a.1.cmp(&b.1));
 
         // Add models grouped by provider
-        for (_provider_url, provider_name, mut provider_models) in providers {
-            if provider_models.is_empty() {
+        for (_provider_url, provider_name, mut provider_bots) in providers {
+            if provider_bots.is_empty() {
                 continue;
             }
 
             // Sort models within each provider by name for consistent ordering
-            provider_models.sort_by(|a, b| a.name.cmp(&b.name));
+            provider_bots.sort_by(|a, b| a.name.cmp(&b.name));
 
             // Add provider section label
             let section_id = LiveId(current_index as u64).into();
@@ -172,7 +172,7 @@ impl ModelSelectorList {
             total_height += section_label.as_label().area().rect(cx).size.y;
 
             // Add models for this provider
-            for remote_model in provider_models.iter() {
+            for provider_bot in provider_bots.iter() {
                 let item_id = LiveId(current_index as u64).into();
                 current_index += 1;
                 
@@ -180,10 +180,10 @@ impl ModelSelectorList {
                     WidgetRef::new_from_ptr(cx, self.model_template)
                 });
 
-                let mut caption = remote_model.human_readable_name();
+                let mut caption = provider_bot.human_readable_name();
 
                 let icon_tick_visible = match &current_bot_id {
-                    Some(bot_id) => bot_id == &remote_model.id,
+                    Some(bot_id) => bot_id == &provider_bot.id,
                     _ => false,
                 };
 
@@ -192,7 +192,7 @@ impl ModelSelectorList {
                 let mut param_size = None;
                 let mut size = None;
 
-                if let Some(downloaded_file) = store.downloads.downloaded_files.iter().find(|f| f.file.id == remote_model.name) {
+                if let Some(downloaded_file) = store.downloads.downloaded_files.iter().find(|f| f.file.id == provider_bot.name) {
                     // Only set the value as some if the string isn't empty
                     architecture = if !downloaded_file.model.architecture.is_empty() {
                         Some(downloaded_file.model.architecture.clone())
@@ -225,7 +225,7 @@ impl ModelSelectorList {
 
                 item_widget
                     .as_model_selector_item()
-                    .set_remote_model(remote_model.clone());
+                    .set_bot(provider_bot.clone());
                 
                 let _ = item_widget.draw_all(cx, &mut Scope::empty());
                 total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
@@ -276,7 +276,7 @@ impl ModelSelectorList {
             
             item_widget
                 .as_model_selector_item()
-                .set_remote_model(agent.clone());
+                .set_bot(agent.clone());
 
             let _ = item_widget.draw_all(cx, &mut Scope::empty());
             total_height += item_widget.view(id!(content)).area().rect(cx).size.y;

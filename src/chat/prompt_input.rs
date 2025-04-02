@@ -3,7 +3,7 @@ use moly_kit::BotId;
 
 use crate::{
     data::{
-        capture::CaptureAction, providers::RemoteModel,
+        capture::CaptureAction, providers::ProviderBot,
         store::Store,
     },
     shared::actions::ChatAction,
@@ -254,7 +254,7 @@ impl WidgetMatchEvent for PromptInput {
             let non_agent_models = store.chats.get_non_mofa_models_list(true);
 
             // Group non-agent models by provider URL
-            let mut models_by_provider: HashMap<String, Vec<&RemoteModel>> = HashMap::new();
+            let mut models_by_provider: HashMap<String, Vec<&ProviderBot>> = HashMap::new();
             
             for model in non_agent_models.iter().filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t))) {
                 models_by_provider
@@ -326,7 +326,7 @@ impl WidgetMatchEvent for PromptInput {
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
                 let mut entity_button = option.entity_button(id!(button));
-                let bot_id = store.chats.remote_models.iter().find(|(_, m)| m.name == file.id).map(|(id, _)| id);
+                let bot_id = store.chats.available_bots.iter().find(|(_, m)| m.name == file.id).map(|(id, _)| id);
                 if let Some(bot_id) = bot_id {
                     entity_button.set_bot_id(cx, &bot_id);
                     entity_button.set_description_visible(cx, true);
@@ -345,7 +345,7 @@ impl WidgetMatchEvent for PromptInput {
 
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::RemoteModelSelected(_) => {
+                ModelSelectorAction::BotSelected(_) => {
                     self.on_deselected(cx);
                 }
                 _ => (),
@@ -375,7 +375,7 @@ impl PromptInput {
         let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
         let label = self.label(id!(selected_label));
 
-        let bot = store.chats.get_remote_model_or_placeholder(bot_id);
+        let bot = store.chats.get_bot_or_placeholder(bot_id);
         label.set_text(cx, &bot.name);
         agent_avatar.set_visible(false);
 

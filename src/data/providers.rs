@@ -29,11 +29,8 @@ pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient
     }
 }
 
-#[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RemoteServerId(pub String);
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct RemoteModel {
+pub struct ProviderBot {
     pub id: BotId,
     pub name: String,
     pub description: String,
@@ -41,11 +38,11 @@ pub struct RemoteModel {
     pub enabled: bool,
 }
 
-impl RemoteModel {
+impl ProviderBot {
     /// Returns a dummy agent whenever the corresponding Agent cannot be found
     /// (due to the server not being available, the server no longer providing the agent, etc.).
     pub fn unknown() -> Self {
-        RemoteModel {
+        ProviderBot {
             id: BotId::new("unknown", "unknown"),
             name: "Inaccesible model - check your connections".to_string(),
             description: "This model is not currently reachable, its information is not available"
@@ -86,7 +83,7 @@ impl ProviderConnectionStatus {
 
 #[derive(Debug, DefaultNone, Clone)]
 pub enum ProviderFetchModelsResult {
-    Success(String, Vec<RemoteModel>),
+    Success(String, Vec<ProviderBot>),
     Failure(String, ProviderClientError),
     None,
 }

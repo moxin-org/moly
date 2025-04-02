@@ -346,7 +346,7 @@ impl Widget for ChatHistoryCard {
         }
 
         let caption = store.get_chat_associated_bot(self.chat_id)
-            .map(|bot_id| store.chats.remote_models.get(&bot_id).map(|m| m.name.clone()).unwrap_or("Unknown".to_string()));
+            .map(|bot_id| store.chats.available_bots.get(&bot_id).map(|m| m.name.clone()).unwrap_or("Unknown".to_string()));
         self.set_title_text(
             cx,
             chat.borrow_mut().get_title(),
@@ -364,7 +364,7 @@ impl Widget for ChatHistoryCard {
 
         match &chat.borrow().associated_bot {
             Some(bot_id) => {
-                let agent = store.chats.get_remote_model_or_placeholder(&bot_id);
+                let agent = store.chats.get_bot_or_placeholder(&bot_id);
 
                 self.view(id!(avatar_section.model)).set_visible(cx, false);
                 self.chat_agent_avatar(id!(avatar_section.agent))

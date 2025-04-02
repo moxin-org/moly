@@ -1,6 +1,6 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::AgentsAvailability;
-use crate::data::providers::RemoteModel;
+use crate::data::providers::ProviderBot;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
@@ -163,7 +163,7 @@ impl Widget for ModelList {
 
         enum Item<'a> {
             AgentRow {
-                agents: &'a [RemoteModel],
+                agents: &'a [ProviderBot],
                 margin_bottom: f32,
             },
             NoAgentsWarning(&'static str),

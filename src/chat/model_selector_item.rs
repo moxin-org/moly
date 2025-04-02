@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::providers::RemoteModel;
+use crate::data::providers::ProviderBot;
 
 live_design! {
     use link::theme::*;
@@ -68,7 +68,7 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelSelectorAction {
-    RemoteModelSelected(RemoteModel),
+    BotSelected(ProviderBot),
     None,
 }
 
@@ -78,7 +78,7 @@ pub struct ModelSelectorItem {
     view: View,
 
     #[rust]
-    model: RemoteModel,
+    model: ProviderBot,
 }
 
 impl Widget for ModelSelectorItem {
@@ -96,17 +96,17 @@ impl WidgetMatchEvent for ModelSelectorItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(fd) = self.view(id!(content)).finger_down(&actions) {
             if fd.tap_count == 1 {
-                cx.action(ModelSelectorAction::RemoteModelSelected(self.model.clone()));
+                cx.action(ModelSelectorAction::BotSelected(self.model.clone()));
             }
         }
     }
 }
 
 impl ModelSelectorItemRef {
-    pub fn set_remote_model(&mut self, remote_model: RemoteModel) {
+    pub fn set_bot(&mut self, bot: ProviderBot) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.model = remote_model;
+        inner.model = bot;
     }
 }

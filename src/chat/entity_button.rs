@@ -178,20 +178,20 @@ impl EntityButton {
         let server_url = self.label(id!(server_url.label));
 
 
-        let remote_model = store.chats.get_remote_model_or_placeholder(&bot_id);
+        let bot = store.chats.get_bot_or_placeholder(&bot_id);
 
-        let name = remote_model.human_readable_name();
+        let name = bot.human_readable_name();
         name_label.set_text(cx, &name);
 
         if store.chats.is_agent(&bot_id) {
             avatar.set_visible(true);
-            avatar.set_bot(remote_model);
-            description_label.set_text(cx, &remote_model.description);
+            avatar.set_bot(bot);
+            description_label.set_text(cx, &bot.description);
 
-            let formatted_server_url = remote_model.provider_url
+            let formatted_server_url = bot.provider_url
                 .strip_prefix("https://")
-                .or_else(|| remote_model.provider_url.strip_prefix("http://"))
-                .unwrap_or(&remote_model.provider_url);
+                .or_else(|| bot.provider_url.strip_prefix("http://"))
+                .unwrap_or(&bot.provider_url);
             server_url.set_text(cx, formatted_server_url);
         } else {
             avatar.set_visible(false);

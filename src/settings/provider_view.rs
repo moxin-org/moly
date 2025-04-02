@@ -338,7 +338,7 @@ impl WidgetMatchEvent for ProviderView {
                             .update_model_status(&self.provider.url, model_name, *enabled);
 
                         // Update the model status in the store
-                        if let Some(model) = store.chats.remote_models.get_mut(
+                        if let Some(model) = store.chats.available_bots.get_mut(
                             &BotId::new(
                                 model_name,
                                 &self.provider.url),

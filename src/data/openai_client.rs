@@ -154,9 +154,9 @@ impl OpenAIClient {
                                 reqwest::StatusCode::OK => {
                                     match r.json::<ModelsResponse>() {
                                         Ok(models) => {
-                                            let models: Vec<RemoteModel> = models.data.into_iter()
+                                            let models: Vec<ProviderBot> = models.data.into_iter()
                                                 .filter(|model| should_include_model(&url, &model.id))
-                                                .map(|model| RemoteModel {
+                                                .map(|model| ProviderBot {
                                                     id: BotId::new(&model.id, &url),
                                                     name: model.id.clone(),
                                                     description: format!("OpenAI {} model", model.object.unwrap_or(model.id)),

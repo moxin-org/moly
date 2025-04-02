@@ -45,7 +45,7 @@ impl DeepInquireClient {
                 ProviderCommand::FetchModels() => {
                     let id = BotId::new("DeepInquire", &address);
                     let agents = vec![
-                        RemoteModel {
+                        ProviderBot {
                             id,
                             name: "DeepInquire".to_string(),
                             description: "A search assistant".to_string(),

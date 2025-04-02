@@ -109,11 +109,11 @@ impl WidgetMatchEvent for ChatScreen {
         for action in actions {
             // Handle model selector actions
             match action.cast() {
-                ModelSelectorAction::RemoteModelSelected(remote_model) => {
-                    chat_widget.write().bot_id = Some(remote_model.id.clone());
+                ModelSelectorAction::BotSelected(bot) => {
+                    chat_widget.write().bot_id = Some(bot.id.clone());
 
                     if let Some(chat) = store.chats.get_current_chat() {
-                        chat.borrow_mut().associated_bot = Some(remote_model.id.clone());
+                        chat.borrow_mut().associated_bot = Some(bot.id.clone());
                         chat.borrow().save();
                     }
                     // self.focus_on_prompt_input_pending = true;

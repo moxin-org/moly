@@ -335,7 +335,7 @@ impl WidgetMatchEvent for ModelSelector {
         let mut should_hide_options = false;
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::RemoteModelSelected(m) => {
+                ModelSelectorAction::BotSelected(m) => {
                     self.currently_selected_model = Some(m.id);
                     should_hide_options = true;
                 }
@@ -400,7 +400,7 @@ impl ModelSelector {
                 let selected_view = self.view(id!(selected_agent));
                 selected_view.set_visible(cx, true);
 
-                let agent = store.chats.get_remote_model_or_placeholder(&bot_id);
+                let agent = store.chats.get_bot_or_placeholder(&bot_id);
                 selected_view.apply_over(
                     cx,
                     live! {
@@ -416,8 +416,8 @@ impl ModelSelector {
                 
                 // TODO: Find a better way to map bot ids into file ids, currently relying
                 // on the fact that we use the file id as the name of the bot.
-                let remote_model = store.chats.get_remote_model_or_placeholder(&bot_id);
-                let file = store.downloads.get_file(&remote_model.name).cloned();
+                let bot = store.chats.get_bot_or_placeholder(&bot_id);
+                let file = store.downloads.get_file(&bot.name).cloned();
 
                 if let Some(file) = file {
                     self.view(id!(selected_agent)).set_visible(cx, false);
@@ -458,12 +458,12 @@ impl ModelSelector {
                 let selected_view = self.view(id!(selected_model));
                 selected_view.set_visible(cx, true);
         
-                let remote_model = store.chats.get_remote_model_or_placeholder(&bot_id);
+                let bot = store.chats.get_bot_or_placeholder(&bot_id);
                 
                 selected_view.apply_over(
                     cx,
                     live! {
-                        label = { text: (&remote_model.name.trim_start_matches("models/")), draw_text: { color: #x0 }}
+                        label = { text: (&bot.name.trim_start_matches("models/")), draw_text: { color: #x0 }}
                         // Hide size/architecture tags for remote models
                         architecture_tag = { visible: false }
                         params_size_tag = { visible: false }
