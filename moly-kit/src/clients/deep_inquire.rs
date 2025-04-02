@@ -80,8 +80,6 @@ struct DeltaContent {
     #[serde(default)]
     articles: Vec<Article>,
     #[serde(default)]
-    metadata: serde_json::Value,
-    #[serde(default)]
     r#type: Option<String>,
     id: usize,
 }
@@ -90,17 +88,11 @@ struct DeltaContent {
 #[derive(Clone, Debug, Deserialize)]
 struct DeltaChoice {
     delta: DeltaContent,
-    index: u32,
-    finish_reason: Option<String>,
 }
 
 /// Response from the DeepInquire API
 #[derive(Clone, Debug, Deserialize)]
 struct DeepInquireResponse {
-    id: String,
-    object: String,
-    created: u64,
-    model: String,
     choices: Vec<DeltaChoice>,
 }
 

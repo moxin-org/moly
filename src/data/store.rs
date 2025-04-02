@@ -287,12 +287,8 @@ impl Store {
         self.preferences.insert_or_update_provider(provider);
         // Update in MolyKit (to update the API key used by the client, if needed)
         if let Some(_bot_repo) = &self.bot_repo {
-            // Because MolyKit does not currently expose an API to update the clients, 
-            // we'll remove and recreate the entire bot repo
-            // TODO(MolyKit): I think BotRepo should be an actual repository-like interface and not a client interface, it might still hold a main
-            // client/multi_client, but the crate user should be able to update the clients (add new ones, update existing ones, remove, etc.)
-            // it would also be helpful if BotRepo can expose the bots without re-fetching every time. (or at least rename BotRepo, it does not follow
-            // a repository pattern)
+            // Because MolyKit does not currently expose an API to update the clients, we'll remove and recreate the entire bot repo
+            // TODO(MolyKit): Find a better way to do this
             self.bot_repo = None;
         }
     }
