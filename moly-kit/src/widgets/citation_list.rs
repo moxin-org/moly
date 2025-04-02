@@ -1,5 +1,7 @@
 use makepad_widgets::*;
 
+use super::citation::CitationWidgetRefExt;
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -54,6 +56,10 @@ impl CitationList {
             }
 
             let item = list.item(cx, index, live_id!(Citation));
+            item.as_citation().borrow_mut().unwrap().set_citation_once(
+                cx,
+                "https://3.basecamp.com/5400951/buckets/39928887/card_tables/cards/8415051747",
+            );
             item.draw_all(cx, &mut Scope::empty());
         }
     }
