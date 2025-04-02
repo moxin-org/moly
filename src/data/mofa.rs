@@ -1,64 +1,7 @@
 use moly_kit::BotId;
-use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use makepad_widgets::Cx;
 use super::providers::*;
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct MofaResponseReasoner {
-//     pub task: String,
-//     pub result: String,
-// }
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct MofaResponseResearchScholar {
-//     pub task: String,
-//     pub suggestion: String,
-// }
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct MofaResponseSearchAssistantResource {
-//     pub name: String,
-//     pub url: String,
-//     pub snippet: String,
-// }
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct MofaResponseSearchAssistantResult {
-//     pub web_search_results: String,
-//     #[serde(deserialize_with = "parse_web_search_resource")]
-//     pub web_search_resource: Vec<MofaResponseSearchAssistantResource>,
-// }
-
-// fn parse_web_search_resource<'de, D>(
-//     deserializer: D,
-// ) -> Result<Vec<MofaResponseSearchAssistantResource>, D::Error>
-// where
-//     D: Deserializer<'de>,
-// {
-//     let s: String = Deserialize::deserialize(deserializer)?;
-//     let resources: Vec<MofaResponseSearchAssistantResource> =
-//         serde_json::from_str(&s).map_err(serde::de::Error::custom)?;
-
-//     Ok(resources)
-// }
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct MofaResponseSearchAssistant {
-//     pub task: String,
-//     pub result: MofaResponseSearchAssistantResult,
-// }
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
-pub struct AgentId(pub String);
-
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-// pub enum AgentType {
-//     Reasoner,
-//     SearchAssistant,
-//     ResearchScholar,
-//     MakepadExpert,
-// }
 
 /// This is a OpenAI-compatible client for MoFa.
 /// The only reason we have this is to return fake responses upon model fetching.

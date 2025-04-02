@@ -39,8 +39,8 @@ pub struct ProviderBot {
 }
 
 impl ProviderBot {
-    /// Returns a dummy agent whenever the corresponding Agent cannot be found
-    /// (due to the server not being available, the server no longer providing the agent, etc.).
+    /// Returns a dummy provider bot whenever the corresponding provider bot cannot be found
+    /// (due to the server not being available, the server no longer providing the provider bot, etc.).
     pub fn unknown() -> Self {
         ProviderBot {
             id: BotId::new("unknown", "unknown"),

@@ -1,12 +1,8 @@
 use moly_kit::BotId;
-use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{self, channel, Sender};
 use makepad_widgets::Cx;
 
 use super::providers::*;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
-pub struct AgentId(pub String);
 
 #[derive(Clone, Debug)]
 pub struct DeepInquireClient {
@@ -44,7 +40,7 @@ impl DeepInquireClient {
             match command {
                 ProviderCommand::FetchModels() => {
                     let id = BotId::new("DeepInquire", &address);
-                    let agents = vec![
+                    let provider_bots = vec![
                         ProviderBot {
                             id,
                             name: "DeepInquire".to_string(),
@@ -53,7 +49,7 @@ impl DeepInquireClient {
                             provider_url: address.clone(),
                         },
                     ];
-                    Cx::post_action(ProviderFetchModelsResult::Success(address.clone(), agents));
+                    Cx::post_action(ProviderFetchModelsResult::Success(address.clone(), provider_bots));
                 }
             }
         }
