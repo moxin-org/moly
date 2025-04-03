@@ -10,7 +10,7 @@ use crate::{
 };
 use makepad_widgets::*;
 
-use super::citations::CitationsWidgetRefExt;
+use super::{citation_list::CitationListWidgetRefExt, citations::CitationsWidgetRefExt};
 
 live_design! {
     use link::theme::*;
@@ -223,8 +223,8 @@ impl Messages {
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
 
-		    let name = "You";
-		    let avatar = Some(Picture::Grapheme("Y".into()));
+                    let name = "You";
+                    let avatar = Some(Picture::Grapheme("Y".into()));
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);
@@ -275,6 +275,9 @@ impl Messages {
                         if !message.citations.is_empty() {
                             let mut citations_ref = item.citations(id!(citations));
                             citations_ref.set_citations(cx, &message.citations);
+
+                            let citations = item.citation_list(id!(citationss));
+                            citations.borrow_mut().unwrap().urls = message.citations.clone();
                         }
                         item
                     };
