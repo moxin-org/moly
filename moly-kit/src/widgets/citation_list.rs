@@ -62,7 +62,7 @@ impl CitationList {
             item.as_citation()
                 .borrow_mut()
                 .unwrap()
-                .set_url_once(cx, &self.urls[index]);
+                .set_url_once(cx, self.urls[index].clone());
             item.draw_all(cx, &mut Scope::empty());
         }
     }
