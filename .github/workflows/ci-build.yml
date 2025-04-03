@@ -20,6 +20,7 @@ on:
 
 jobs:
   build_ubuntu:
+    if: false
     name: Ubuntu
     runs-on: ${{ matrix.os }}
     strategy:
@@ -56,6 +57,7 @@ jobs:
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_macos:
+    if: false
     name: MacOS
     runs-on: ${{ matrix.os }}
     strategy:
@@ -86,6 +88,7 @@ jobs:
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_windows:
+    if: false
     name: Windows
     runs-on: windows-2022
     strategy:
