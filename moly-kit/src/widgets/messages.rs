@@ -11,8 +11,8 @@ use crate::{
 use makepad_widgets::*;
 
 use super::{
-    citation_list::CitationListWidgetRefExt, citations::CitationsWidgetRefExt,
-    deep_inquire_line::DeepInquireBotLineWidgetRefExt,
+    citation::CitationAction, citation_list::CitationListWidgetRefExt,
+    citations::CitationsWidgetRefExt, deep_inquire_line::DeepInquireBotLineWidgetRefExt,
 };
 
 live_design! {
@@ -142,6 +142,12 @@ impl Widget for Messages {
         if jump_to_bottom.clicked(event.actions()) {
             self.scroll_to_bottom(cx);
             self.redraw(cx);
+        }
+
+        for action in event.widget_actions() {
+            if let CitationAction::Open(url) = action.cast() {
+                let _ = robius_open::Uri::new(url.as_str()).open();
+            }
         }
     }
 
