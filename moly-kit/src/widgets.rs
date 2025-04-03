@@ -6,7 +6,6 @@ mod avatar;
 mod chat_lines;
 mod citation;
 mod citation_list;
-mod citations;
 mod deep_inquire_line;
 mod message_loading;
 mod message_markdown;
@@ -26,7 +25,6 @@ pub use prompt_input::*;
 pub fn live_design(cx: &mut makepad_widgets::Cx) {
     citation::live_design(cx);
     citation_list::live_design(cx);
-    citations::live_design(cx);
     makepad_code_editor::live_design(cx);
     message_markdown::live_design(cx);
     message_loading::live_design(cx);

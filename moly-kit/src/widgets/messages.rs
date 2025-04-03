@@ -12,7 +12,7 @@ use makepad_widgets::*;
 
 use super::{
     citation::CitationAction, citation_list::CitationListWidgetRefExt,
-    citations::CitationsWidgetRefExt, deep_inquire_line::DeepInquireBotLineWidgetRefExt,
+    deep_inquire_line::DeepInquireBotLineWidgetRefExt,
 };
 
 live_design! {
@@ -306,11 +306,10 @@ impl Messages {
                             // Set citations from the message
                             let citations = message.sources();
                             if !citations.is_empty() {
-                                let mut citations_ref = item.citations(id!(citations));
-                                citations_ref.set_citations(cx, &citations);
-
-                                let citations_ref = item.citation_list(id!(citationss));
-                                citations_ref.borrow_mut().unwrap().urls = citations;
+                                let citations_ref = item.citation_list(id!(citations));
+                                let mut citations_ref = citations_ref.borrow_mut().unwrap();
+                                citations_ref.urls = citations;
+                                citations_ref.visible = true;
                             }
                             item
                         };

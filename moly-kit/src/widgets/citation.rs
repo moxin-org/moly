@@ -14,6 +14,7 @@ live_design! {
     pub Citation = {{Citation}} <RoundedView> {
         flow: Down,
         height: Fit,
+        cursor: Hand,
         width: 200,
         padding: 6,
         spacing: 4,
@@ -43,7 +44,7 @@ live_design! {
             height: Fit,
             title = <Label> {
                 draw_text: {
-                    text_style: {font_size: 8},
+                    text_style: {font_size: 8.5},
                     color: #000,
                 }
             }

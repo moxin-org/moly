@@ -9,7 +9,6 @@ live_design! {
     use crate::widgets::message_markdown::*;
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
-    use crate::widgets::citations::*;
     use crate::widgets::citation_list::*;
 
     BOLD_FONT = {
@@ -161,8 +160,7 @@ live_design! {
                     markdown = <MessageMarkdown> {}
                 }
                 editor = <Editor> { visible: false }
-                citations = <Citations> { visible: false }
-                citationss = <CitationList> {}
+                citations = <CitationList> { visible: false }
             }
         }
         actions_section = {

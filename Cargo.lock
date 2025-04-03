@@ -2115,7 +2115,6 @@ dependencies = [
  "sha2",
  "tokio",
  "url",
- "url-preview",
  "wasm-bindgen-futures",
 ]
 

@@ -21,7 +21,6 @@ serde_json = { version = "1.0.135", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.43.0", features = ["full"], optional = true }
-url-preview = "0.3.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = { version = "0.4.50", optional = true }
