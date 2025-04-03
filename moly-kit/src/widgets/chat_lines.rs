@@ -153,10 +153,12 @@ live_design! {
                 flow: Down,
                 padding: 0,
                 margin: {left: 32}
+                spacing: 10,
                 text = <View> {
                     flow: Down
                     height: Fit,
-                    thinking_block = <MessageThinkingBlock> {margin: {bottom: 10}}
+                    spacing: 10
+                    thinking_block = <MessageThinkingBlock> {}
                     markdown = <MessageMarkdown> {}
                 }
                 editor = <Editor> { visible: false }
