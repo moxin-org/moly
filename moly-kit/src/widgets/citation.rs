@@ -66,35 +66,35 @@ impl Widget for Citation {
 }
 
 impl Citation {
-    pub fn set_citation_once(&mut self, cx: &mut Cx, citation: &str) {
+    pub fn set_url_once(&mut self, cx: &mut Cx, url: &str) {
         if self.set {
             return;
         }
 
         self.set = true;
-        self.set_citation(cx, citation);
+        self.set_url(cx, url);
     }
 
-    pub fn set_citation(&mut self, cx: &mut Cx, citation: &str) {
+    fn set_url(&mut self, cx: &mut Cx, url: &str) {
         // Step 1 is to set texts to something that will not fail.
-        self.set_initial_info(cx, citation);
+        self.set_initial_info(cx, url);
 
         // Step 2 is to try refining the texts if the URL is valid, without fetching any data.
-        let Ok(()) = self.try_refine_info(cx, citation) else {
+        let Ok(()) = self.try_refine_info(cx, url) else {
             return;
         };
 
         // Step 3 is to try fetching actual title and favicon from the internet and
         // use that. This is async and has a delay. Not possible if step 2 failed.
-        self.try_fetch_info(cx, citation.to_string());
+        self.try_fetch_info(cx, url.to_string());
     }
 
-    fn set_initial_info(&mut self, cx: &mut Cx, citation: &str) {
-        self.set_texts(cx, citation, citation);
+    fn set_initial_info(&mut self, cx: &mut Cx, url: &str) {
+        self.set_texts(cx, url, url);
     }
 
-    fn try_refine_info(&mut self, cx: &mut Cx, citation: &str) -> Result<(), ()> {
-        let url = Url::parse(citation).map_err(|_| ())?;
+    fn try_refine_info(&mut self, cx: &mut Cx, url: &str) -> Result<(), ()> {
+        let url = Url::parse(url).map_err(|_| ())?;
         let host = url.host_str().ok_or(())?;
         let path = url.path();
 
@@ -107,10 +107,10 @@ impl Citation {
         self.label(id!(title)).set_text(cx, title);
     }
 
-    fn try_fetch_info(&mut self, _cx: &mut Cx, citation: String) {
+    fn try_fetch_info(&mut self, _cx: &mut Cx, url: String) {
         let ui = self.ui_runner();
         spawn(async move {
-            let Ok(document) = fetch_html(&citation).await else {
+            let Ok(document) = fetch_html(&url).await else {
                 return;
             };
 
@@ -119,6 +119,11 @@ impl Citation {
                     me.label(id!(title)).set_text(cx, &title);
                 });
             }
+
+            // TODO: Extract favicon
+            // TODO: Support .ico and .svg.
+            // TODO: Support relative and data urls.
+            // TODO: Support jpg, png, and gif (less common favicon types).
         });
     }
 }

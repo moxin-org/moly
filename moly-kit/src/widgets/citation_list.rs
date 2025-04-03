@@ -28,6 +28,9 @@ live_design! {
 pub struct CitationList {
     #[deref]
     deref: View,
+
+    #[rust]
+    pub urls: Vec<String>,
 }
 
 impl Widget for CitationList {
@@ -49,17 +52,17 @@ impl Widget for CitationList {
 
 impl CitationList {
     fn draw_list(&mut self, cx: &mut Cx2d, list: &mut PortalList) {
-        list.set_item_range(cx, 0, 10);
+        list.set_item_range(cx, 0, self.urls.len());
         while let Some(index) = list.next_visible_item(cx) {
-            if index >= 10 {
+            if index >= self.urls.len() {
                 continue;
             }
 
             let item = list.item(cx, index, live_id!(Citation));
-            item.as_citation().borrow_mut().unwrap().set_citation_once(
-                cx,
-                "https://3.basecamp.com/5400951/buckets/39928887/card_tables/cards/8415051747",
-            );
+            item.as_citation()
+                .borrow_mut()
+                .unwrap()
+                .set_url_once(cx, &self.urls[index]);
             item.draw_all(cx, &mut Scope::empty());
         }
     }
