@@ -40,13 +40,10 @@ live_design! {
             }
         }
 
-        <View> {
-            height: Fit,
-            title = <Label> {
-                draw_text: {
-                    text_style: {font_size: 8.5},
-                    color: #000,
-                }
+        title = <Label> {
+            draw_text: {
+                text_style: {font_size: 8.5},
+                color: #000,
             }
         }
     }
