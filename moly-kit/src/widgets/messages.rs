@@ -10,10 +10,7 @@ use crate::{
 };
 use makepad_widgets::*;
 
-use super::{
-    citation::CitationAction, citation_list::CitationListWidgetRefExt,
-    citations::CitationsWidgetRefExt,
-};
+use super::{citation::CitationAction, citation_list::CitationListWidgetRefExt};
 
 live_design! {
     use link::theme::*;
@@ -282,11 +279,10 @@ impl Messages {
                         }
 
                         if !message.citations.is_empty() {
-                            let mut citations_ref = item.citations(id!(citations));
-                            citations_ref.set_citations(cx, &message.citations);
-
-                            let citations = item.citation_list(id!(citationss));
-                            citations.borrow_mut().unwrap().urls = message.citations.clone();
+                            let citations = item.citation_list(id!(citations));
+                            let mut citations = citations.borrow_mut().unwrap();
+                            citations.urls = message.citations.clone();
+                            citations.visible = true;
                         }
                         item
                     };
