@@ -7,6 +7,10 @@ live_design! {
     use link::theme::*;
     use link::widgets::*;
 
+    BOLD_FONT = {
+        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
+    }
+
     pub Citation = {{Citation}} <RoundedView> {
         flow: Down,
         height: Fit,
@@ -14,7 +18,7 @@ live_design! {
         padding: 6,
         spacing: 4,
         draw_bg: {
-            color: #f0f0f0
+            color: #f2f2f2
             radius: 3
         }
 
@@ -29,6 +33,7 @@ live_design! {
 
             site = <Label> {
                 draw_text: {
+                    text_style: <BOLD_FONT>{font_size: 9},
                     color: #555,
                 }
             }
@@ -38,6 +43,7 @@ live_design! {
             height: Fit,
             title = <Label> {
                 draw_text: {
+                    text_style: {font_size: 8},
                     color: #000,
                 }
             }
