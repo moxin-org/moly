@@ -339,22 +339,11 @@ impl Messages {
     }
 
     /// Jump to the end of the list instantly.
-    pub fn scroll_to_bottom(&self, _cx: &mut Cx) {
+    pub fn scroll_to_bottom(&self, cx: &mut Cx) {
         if self.messages.len() > 0 {
-            // This is not the last message, but the marker widget we added to
-            // the list. I'm being explicit with the redundant -1/+1.
-
-            let last_message_index = self.messages.len() - 1;
-            let end_of_chat_index = last_message_index + 1;
-
             let list = self.portal_list(id!(list));
 
-            // TODO: This works for scrolling to the end and works reliably even
-            // while streaming, but the portal list event handling will bug unless
-            // an scroll event ocurrs.
-            list.set_first_id(end_of_chat_index);
-
-            // list.smooth_scroll_to(cx, end_of_chat_index, 100., None);
+	    list.smooth_scroll_to_end(cx, 100.0, None);
         }
     }
 
