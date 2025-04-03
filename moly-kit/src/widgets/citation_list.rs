@@ -15,7 +15,7 @@ live_design! {
             flow: Right,
             width: Fill,
             // Fit doesn't work here.
-            height: 64,
+            height: 48,
             Citation = <Citation> {
                 // spacing on parent doesn't work
                 margin: {right: 8},
