@@ -1,5 +1,6 @@
 use futures::StreamExt;
 use makepad_widgets::LiveValue;
+use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
     fmt,
@@ -7,6 +8,9 @@ use std::{
 };
 
 pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
+
+use sha2::{Sha256, Digest};
+use hex;
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
@@ -20,6 +24,7 @@ pub enum Picture {
 
 /// Indentify the entities that are recognized by this crate, mainly in a chat.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub enum EntityId {
     /// Represents the user operating this app.
     User,
@@ -41,14 +46,36 @@ pub enum EntityId {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Bot {
+    /// Unique internal identifier for the bot across all providers
     pub id: BotId,
+    /// Original model identifier from the provider
+    pub model_id: String,
+    /// Provider URL this bot belongs to
+    pub provider_url: String,
     pub name: String,
     pub avatar: Picture,
 }
 
 /// Indentifies any kind of bot, local or remote, model or agent, whatever.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct BotId(Arc<str>);
+
+impl Serialize for BotId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for BotId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> {
+        let s = String::deserialize(deserializer)?;
+        Ok(BotId::from(s.as_str()))
+    }
+}
 
 impl From<&str> for BotId {
     fn from(id: &str) -> Self {
@@ -60,6 +87,15 @@ impl BotId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Creates a unique bot ID by hashing the provider URL and model ID
+    pub fn new(model_id: &str, provider_url: &str) -> Self {
+        let mut hasher = Sha256::new();
+        hasher.update(format!("{}-{}", model_id, provider_url));
+        let result = hasher.finalize();
+        // Take first 16 bytes of hash for a shorter but still unique identifier
+        BotId::from(hex::encode(&result[..16]).as_str())
+    }
 }
 
 impl fmt::Display for BotId {
@@ -68,33 +104,256 @@ impl fmt::Display for BotId {
     }
 }
 
+/// Content types for messages, supporting different provider formats
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum MessageContent {
+    /// Simple text content with optional citations
+    PlainText {
+        /// The text content
+        text: String,
+        /// Citations/sources associated with this content
+        citations: Vec<String>,
+    },
+    
+    /// Multi-stage content (like DeepInquire)
+    MultiStage {
+        /// Text representation
+        text: String,
+        /// Stages in various states
+        stages: Vec<MessageStage>,
+        /// Citations/sources associated with this content
+        citations: Vec<String>,
+    },
+}
+
 /// A message that is part of a conversation.
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
 
-    /// Content of the message.
-    pub body: String,
-
-    /// If this message is still being written.
-    ///
-    /// This means the message is still going to be modified.
-    ///
-    /// If `false`, it means the message will not change anymore.
+    /// The content of the message (text, stages, etc.)
+    pub content: MessageContent,
+    
+    /// Whether the message is actively being modified. False when no more changes are expected.
     pub is_writing: bool,
+}
 
-    /// Citations for the message.
+impl Default for Message {
+    fn default() -> Self {
+        Message {
+            from: EntityId::default(),
+            content: MessageContent::PlainText { 
+                text: String::new(),
+                citations: Vec::new(),
+            },
+            is_writing: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct MessageStage {
+    /// Stage identifier
+    pub id: usize,
+    /// Thinking block content
+    pub thinking: Option<MessageBlockContent>,
+    /// Writing block content
+    pub writing: Option<MessageBlockContent>,
+    /// Completed block content
+    pub completed: Option<MessageBlockContent>,
+}
+
+impl MessageStage {
+    /// Check if this stage has completed content
+    pub fn is_completed(&self) -> bool {
+        self.completed.is_some()
+    }
+    
+    /// Get the text content of the most advanced stage (completed > writing > thinking)
+    pub fn latest_content(&self) -> Option<&str> {
+        if let Some(completed) = &self.completed {
+            Some(&completed.content)
+        } else if let Some(writing) = &self.writing {
+            Some(&writing.content)
+        } else if let Some(thinking) = &self.thinking {
+            Some(&thinking.content)
+        } else {
+            None
+        }
+    }
+}
+
+/// Content for a specific stage
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct MessageBlockContent {
+    /// Text content of the block
+    pub content: String,
+    /// Citations associated with this block
     pub citations: Vec<String>,
 }
 
-/// A delta response for an existing [Message].
-#[derive(Clone, Debug, Default)]
+/// Delta for streaming responses
+#[derive(Clone, Debug, PartialEq)]
 pub struct MessageDelta {
-    /// Delta for the [Message::body] field.
-    pub body: String,
-    /// Delta for the [Message::citations] field.
-    pub citations: Vec<String>,
+    /// The content delta
+    pub content: MessageContent,
+}
+
+impl Message {
+    /// Update the message with a delta
+    pub fn apply_delta(&mut self, delta: MessageDelta) {
+        match (&mut self.content, &delta.content) {
+            // PlainText + PlainText -> append text and add citations
+            (MessageContent::PlainText { text, citations }, 
+             MessageContent::PlainText { text: delta_text, citations: delta_citations }) => {
+                text.push_str(delta_text);
+                for citation in delta_citations {
+                    if !citations.contains(citation) {
+                        citations.push(citation.clone());
+                    }
+                }
+            },
+            
+            // MultiStage + MultiStage -> update stages and append text
+            (MessageContent::MultiStage { text, stages, citations }, 
+             MessageContent::MultiStage { text: delta_text, stages: delta_stages, citations: delta_citations }) => {
+                // Append text if not empty
+                if !delta_text.is_empty() {
+                    text.push_str(delta_text);
+                }
+                
+                // Merge stages from delta into existing stages
+                for new_stage in delta_stages {
+                    if let Some(existing_stage) = stages.iter_mut().find(|s| s.id == new_stage.id) {
+                        // Update existing stage
+                        if new_stage.thinking.is_some() {
+                            existing_stage.thinking = new_stage.thinking.clone();
+                        }
+                        if new_stage.writing.is_some() {
+                            existing_stage.writing = new_stage.writing.clone();
+                        }
+                        if new_stage.completed.is_some() {
+                            existing_stage.completed = new_stage.completed.clone();
+                            // Mark message as completed when we get a completed stage
+                            self.is_writing = false;
+                        }
+                    } else {
+                        // Add new stage
+                        stages.push(new_stage.clone());
+                    }
+                }
+                
+                // Add new citations
+                for citation in delta_citations {
+                    if !citations.contains(citation) {
+                        citations.push(citation.clone());
+                    }
+                }
+            },
+            
+            // PlainText + MultiStage -> convert to MultiStage and update
+            (MessageContent::PlainText { text: existing_text, citations: existing_citations },
+             MessageContent::MultiStage { text: delta_text, stages: delta_stages, citations: delta_citations }) => {
+                let mut combined_text = existing_text.clone();
+                if !delta_text.is_empty() {
+                    combined_text.push_str(delta_text);
+                }
+                
+                let mut combined_citations = existing_citations.clone();
+                for citation in delta_citations {
+                    if !combined_citations.contains(citation) {
+                        combined_citations.push(citation.clone());
+                    }
+                }
+                
+                // Convert to MultiStage
+                self.content = MessageContent::MultiStage {
+                    text: combined_text,
+                    stages: delta_stages.clone(),
+                    citations: combined_citations,
+                };
+            },
+            
+            // MultiStage + PlainText -> just append text and citations
+            (MessageContent::MultiStage { text, citations, .. },
+             MessageContent::PlainText { text: delta_text, citations: delta_citations }) => {
+                text.push_str(delta_text);
+                
+                for citation in delta_citations {
+                    if !citations.contains(citation) {
+                        citations.push(citation.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    /// Gets the visible text content to display, regardless of the content type
+    pub fn visible_text(&self) -> String {
+        match &self.content {
+            MessageContent::PlainText { text, .. } => text.clone(),
+            MessageContent::MultiStage { text, .. } => text.clone(),
+        }
+    }
+    
+    /// Gets the citations/sources regardless of the content type
+    pub fn sources(&self) -> Vec<String> {
+        match &self.content {
+            MessageContent::PlainText { citations, .. } => citations.clone(),
+            MessageContent::MultiStage { citations, .. } => citations.clone(),
+        }
+    }
+    
+    /// Checks if this message has multi-stage content
+    pub fn has_stages(&self) -> bool {
+        match &self.content {
+            MessageContent::PlainText { .. } => false,
+            MessageContent::MultiStage { stages, .. } => !stages.is_empty(),
+        }
+    }
+    
+    /// Gets the stages if this message has multi-stage content
+    pub fn get_stages(&self) -> Vec<MessageStage> {
+        match &self.content {
+            MessageContent::PlainText { .. } => Vec::new(),
+            MessageContent::MultiStage { stages, .. } => stages.clone(),
+        }
+    }
+}
+
+/// Factory methods for creating properly formatted MessageDelta objects
+pub trait MessageDeltaFactory {
+    /// Create a text-only delta with optional citations
+    fn text_delta(text: String, citations: Vec<String>) -> MessageDelta;
+    
+    /// Create a stage-based delta
+    fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> MessageDelta;
+}
+
+impl MessageDeltaFactory for MessageDelta {
+    fn text_delta(text: String, citations: Vec<String>) -> Self {
+        MessageDelta {
+            content: MessageContent::PlainText {
+                text,
+                citations,
+            },
+        }
+    }
+    
+    fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> Self {
+        MessageDelta {
+            content: MessageContent::MultiStage {
+                text,
+                stages: vec![stage],
+                citations,
+            },
+        }
+    }
 }
 
 /// The standard error kinds a client implementatiin should facilitate.
@@ -321,7 +580,7 @@ pub trait BotClient: Send {
     /// Send a message to a bot expecting a streamed response.
     fn send_stream(
         &mut self,
-        bot: &BotId,
+        bot: &Bot,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageDelta>>;
 
@@ -342,13 +601,13 @@ pub trait BotClient: Send {
     /// Send a message to a bot expecting a full response at once.
     fn send(
         &mut self,
-        bot: &BotId,
+        bot: &Bot,
         messages: &[Message],
     ) -> MolyFuture<'static, ClientResult<MessageDelta>> {
         let stream = self.send_stream(bot, messages);
 
         let future = async move {
-            let mut body = String::new();
+            let mut text = String::new();
             let mut citations = Vec::new();
             let mut errors = Vec::new();
 
@@ -357,8 +616,16 @@ pub trait BotClient: Send {
                 let (v, e) = result.into_value_and_errors();
 
                 if let Some(delta) = v {
-                    body.push_str(&delta.body);
-                    citations.extend(delta.citations);
+                    match &delta.content {
+                        MessageContent::PlainText { text: delta_text, citations: delta_citations } => {
+                            text.push_str(delta_text);
+                            citations.extend(delta_citations.clone());
+                        },
+                        MessageContent::MultiStage { text: delta_text, citations: delta_citations, .. } => {
+                            text.push_str(delta_text);
+                            citations.extend(delta_citations.clone());
+                        }
+                    }
                 }
 
                 if !e.is_empty() {
@@ -368,9 +635,22 @@ pub trait BotClient: Send {
             }
 
             if errors.is_empty() {
-                ClientResult::new_ok(MessageDelta { body, citations })
+                ClientResult::new_ok(MessageDelta {
+                    content: MessageContent::PlainText {
+                        text,
+                        citations,
+                    }
+                })
             } else {
-                ClientResult::new_ok_and_err(MessageDelta { body, citations }, errors)
+                ClientResult::new_ok_and_err(
+                    MessageDelta {
+                        content: MessageContent::PlainText {
+                            text,
+                            citations,
+                        }
+                    },
+                    errors
+                )
             }
         };
 

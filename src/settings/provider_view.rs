@@ -1,6 +1,7 @@
 use makepad_widgets::*;
+use moly_kit::BotId;
 
-use crate::data::{providers::{Provider, RemoteModelId, ProviderConnectionStatus}, store::Store};
+use crate::data::{providers::{Provider, ProviderConnectionStatus}, store::Store};
 
 live_design! {
     use link::theme::*;
@@ -266,8 +267,7 @@ impl Widget for ProviderView {
                             item.view(id!(separator)).set_visible(cx, false);
                         }
 
-                        // Trim the 'models/' prefix from Gemini models
-                        let name = models[item_id].name.trim_start_matches("models/");
+                        let name = models[item_id].human_readable_name();
                         item.label(id!(model_name)).set_text(cx, &name);
                         item.check_box(id!(enabled_switch)).set_selected(cx, models[item_id].enabled);
 
@@ -338,8 +338,8 @@ impl WidgetMatchEvent for ProviderView {
                             .update_model_status(&self.provider.url, model_name, *enabled);
 
                         // Update the model status in the store
-                        if let Some(model) = store.chats.remote_models.get_mut(
-                            &RemoteModelId::from_model_and_server(
+                        if let Some(model) = store.chats.available_bots.get_mut(
+                            &BotId::new(
                                 model_name,
                                 &self.provider.url),
                         ) {

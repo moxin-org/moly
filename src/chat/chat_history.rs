@@ -2,7 +2,7 @@ use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
 use crate::data::chats::AgentsAvailability;
-use crate::data::providers::RemoteModel;
+use crate::data::providers::ProviderBot;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
@@ -114,7 +114,7 @@ impl Widget for ChatHistory {
             ChatsHeader,
             AgentsHeader,
             NoAgentsWarning(&'a str),
-            AgentButton(&'a RemoteModel),
+            AgentButton(&'a ProviderBot),
             ChatButton(&'a ChatID),
         }
 
@@ -171,7 +171,7 @@ impl Widget for ChatHistory {
                         }
                         Item::AgentButton(agent) => {
                             let item = list.item(cx, item_id, live_id!(Agent));
-                            item.as_entity_button().set_agent(cx, agent);
+                            item.as_entity_button().set_bot_id(cx, &agent.id);
                             item.draw_all(cx, scope);
                         }
                         Item::ChatButton(chat_id) => {
@@ -202,12 +202,15 @@ impl WidgetMatchEvent for ChatHistory {
             .find(|eb| eb.clicked(actions));
 
         if let Some(entity_button) = clicked_entity_button {
-            let entity_id = entity_button.get_entity_id().unwrap().clone();
-            cx.action(ChatAction::Start(entity_id));
+            let bot_id = entity_button.get_bot_id();
+            if let Some(bot_id) = bot_id {
+                cx.action(ChatAction::Start(bot_id));
+            }
         }
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
-            store.chats.create_empty_chat();
+            store.chats.create_empty_chat(None);
+            cx.action(ChatAction::StartWithoutEntity);
             self.redraw(cx);
         }
     }

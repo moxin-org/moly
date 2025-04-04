@@ -1,4 +1,3 @@
-use crate::chat::chat_panel::ChatPanelAction;
 use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
@@ -164,7 +163,7 @@ pub struct App {
 impl LiveRegister for App {
     fn live_register(cx: &mut Cx) {
         makepad_widgets::live_design(cx);
-        makepad_code_editor::live_design(cx);
+        moly_kit::live_design(cx);
 
         crate::shared::live_design(cx);
         crate::landing::live_design(cx);
@@ -273,11 +272,6 @@ impl MatchEvent for App {
             if let PopupAction::NavigateToMyModels = action.cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
-            }
-
-            if let ChatPanelAction::NavigateToDiscover = action.cast() {
-                let discover_radio_button = self.ui.radio_button(id!(discover_tab));
-                discover_radio_button.select(cx, &mut Scope::empty());
             }
 
             self.store.handle_provider_connection_action(action.cast());

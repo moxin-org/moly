@@ -1,12 +1,17 @@
 use makepad_widgets::{ActionDefaultRef, DefaultNone};
+use moly_kit::BotId;
 use moly_protocol::data::FileID;
 
-use crate::data::chats::{chat::ChatID, chat_entity::ChatEntityId};
+use crate::data::chats::chat::ChatID;
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ChatAction {
-    Start(ChatEntityId),
-    TitleUpdated(ChatID),
+    // Start a new chat, no entity specified
+    StartWithoutEntity,
+    // Start a new chat with a given entity
+    Start(BotId),
+    // Select a chat from the chat history
+    ChatSelected(ChatID),
     None,
 }
 

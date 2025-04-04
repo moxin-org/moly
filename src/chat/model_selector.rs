@@ -1,15 +1,16 @@
 use crate::{
-    data::{chats::chat_entity::ChatEntityId, store::Store},
+    data::store::Store,
     shared::{
         actions::ChatAction,
-        utils::{format_model_size, hex_rgb_color},
+        utils::format_model_size,
     },
 };
 use makepad_widgets::*;
+use moly_kit::BotId;
 
 use super::{
-    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt,
-    model_selector_loading::ModelSelectorLoadingWidgetExt, shared::ChatAgentAvatarWidgetRefExt,
+    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt, 
+    shared::ChatAgentAvatarWidgetRefExt,
 };
 
 live_design! {
@@ -24,7 +25,6 @@ live_design! {
     use crate::chat::model_selector_loading::ModelSelectorLoading;
 
     ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
-
 
     ModelSelectorButton = <RoundedView> {
         width: Fill,
@@ -202,6 +202,9 @@ pub struct ModelSelector {
 
     #[rust]
     options_list_height: Option<f64>,
+
+    #[rust]
+    currently_selected_model: Option<BotId>,
 }
 
 impl Widget for ModelSelector {
@@ -275,9 +278,7 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        self.update_loading_model_state(cx, store);
-
-        if no_active_model(store) {
+        if self.currently_selected_model.is_none() {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(selected_agent)).set_visible(cx, false);
             self.view(id!(selected_model)).set_visible(cx, false);
@@ -331,12 +332,18 @@ impl WidgetMatchEvent for ModelSelector {
             }
         }
 
+        let mut should_hide_options = false;
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::ModelSelected(_) | ModelSelectorAction::AgentSelected(_) | ModelSelectorAction::RemoteModelSelected(_) => {
-                    self.hide_options(cx);
+                ModelSelectorAction::BotSelected(m) => {
+                    self.currently_selected_model = Some(m.id);
+                    should_hide_options = true;
                 }
                 _ => {}
+            }
+
+            if should_hide_options {
+                self.hide_options(cx);
             }
 
             match action.cast() {
@@ -359,132 +366,113 @@ impl ModelSelector {
         self.redraw(cx);
     }
 
-    fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-        let is_associated_model_loading = store
-            .chats
-            .get_current_chat()
-            .and_then(|c| match &c.borrow().associated_entity {
-                Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
-                _ => None,
-            })
-            .map(|file_id| {
-                let model_loader = &store.chats.model_loader;
-                model_loader.file_id() == Some(file_id) && model_loader.is_loading()
-            })
-            .unwrap_or(false);
+    // fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
+    //     let is_associated_model_loading = store
+    //         .chats
+    //         .get_current_chat()
+    //         .and_then(|c| match &c.borrow().associated_entity {
+    //             Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
+    //             _ => None,
+    //         })
+    //         .map(|file_id| {
+    //             let model_loader = &store.chats.model_loader;
+    //             model_loader.file_id() == Some(file_id) && model_loader.is_loading()
+    //         })
+    //         .unwrap_or(false);
 
-        if is_associated_model_loading {
-            self.model_selector_loading(id!(loading))
-                .show_and_animate(cx);
-        } else {
-            self.model_selector_loading(id!(loading)).hide();
-        }
-    }
+    //     if is_associated_model_loading {
+    //         self.model_selector_loading(id!(loading))
+    //             .show_and_animate(cx);
+    //     } else {
+    //         self.model_selector_loading(id!(loading)).hide();
+    //     }
+    // }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
         self.view(id!(choose)).set_visible(cx, false);
 
-        let is_loading = store.chats.model_loader.is_loading();
-        let loaded_file = store.chats.loaded_model.as_ref();
+        let associated_bot = store.chats.get_current_chat().and_then(|c| c.borrow().associated_bot.clone());
+        
+        if let Some(bot_id) = associated_bot {
+            // Agent-specific styling
+            if store.chats.is_agent(&bot_id) {
+                self.view(id!(selected_model)).set_visible(cx, false);
+                let selected_view = self.view(id!(selected_agent));
+                selected_view.set_visible(cx, true);
 
-        let chat_entity = store
-            .chats
-            .get_current_chat()
-            .and_then(|c| c.borrow().associated_entity.clone());
-
-        // Handle agent
-        if let Some(ChatEntityId::Agent(model_id)) = chat_entity {
-            self.view(id!(selected_model)).set_visible(cx, false);
-            let selected_view = self.view(id!(selected_agent));
-            selected_view.set_visible(cx, true);
-
-            let agent = store.chats.get_remote_model_or_placeholder(&model_id);
-            selected_view.apply_over(
-                cx,
-                live! {
-                    label = { text: (&agent.name) }
-                },
-            );
-            selected_view
-                .chat_agent_avatar(id!(avatar))
-                .set_agent(&agent);
-
-            return;
-        }
-
-        // Handle remote model
-        if let Some(ChatEntityId::RemoteModel(model_id)) = chat_entity {
-            self.view(id!(selected_agent)).set_visible(cx, false);
-            let selected_view = self.view(id!(selected_model));
-            selected_view.set_visible(cx, true);
-    
-            let remote_model = store.chats.get_remote_model_or_placeholder(&model_id);
-            
-            selected_view.apply_over(
-                cx,
-                live! {
-                    label = { text: (&remote_model.name.trim_start_matches("models/")), draw_text: { color: #x0 }}
-                    // Hide size/architecture tags for remote models
-                    architecture_tag = { visible: false }
-                    params_size_tag = { visible: false }
-                    file_size_tag = { visible: false }
-                },
-            );
-            return;
-        }
-
-        // Handle local model
-        let file = match chat_entity {
-            Some(ChatEntityId::ModelFile(file_id)) => store.downloads.get_file(&file_id).cloned(),
-            _ => loaded_file.cloned(),
-        };
-
-        let is_file_in_loader =
-            store.chats.model_loader.file_id().as_ref() == file.as_ref().map(|f| &f.id);
-
-        if let Some(file) = file {
-            self.view(id!(selected_agent)).set_visible(cx, false);
-            let selected_view = self.view(id!(selected_model));
-            selected_view.set_visible(cx, true);
-
-            let text_color = if Some(&file.id) == loaded_file.map(|f| &f.id) {
-                hex_rgb_color(0x000000)
-            } else {
-                hex_rgb_color(0x667085)
-            };
-
-            let caption = if is_loading && is_file_in_loader {
-                format!("Loading {}", file.name.trim())
-            } else {
-                file.name.trim().to_string()
-            };
-
-            let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
-            let is_file_size_visible = !file_size.is_empty() && !is_loading;
-
-            selected_view.apply_over(
-                cx,
-                live! {
-                    label = { text: (caption), draw_text: { color: (text_color) }}
-                    file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size), draw_text: { color: (text_color) }}}
-                },
-            );
-
-            if let Some(model) = store.downloads.get_model_by_file_id(&file.id) {
-                let architecture = model.architecture.trim();
-                let params_size = model.size.trim();
-                let is_architecture_visible = !architecture.is_empty() && !is_loading;
-                let is_params_size_visible = !params_size.is_empty() && !is_loading;
-
+                let agent = store.chats.get_bot_or_placeholder(&bot_id);
                 selected_view.apply_over(
                     cx,
                     live! {
-                        architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture), draw_text: { color: (text_color) }}}
-                        params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size), draw_text: { color: (text_color) }}}
+                        label = { text: (&agent.name) }
                     },
                 );
+                selected_view
+                    .chat_agent_avatar(id!(avatar))
+                    .set_bot(&agent);
+
+            } else if store.chats.is_local_model(&bot_id) {
+                // Local model styling
+                
+                // TODO: Find a better way to map bot ids into file ids, currently relying
+                // on the fact that we use the file id as the name of the bot.
+                let bot = store.chats.get_bot_or_placeholder(&bot_id);
+                let file = store.downloads.get_file(&bot.name).cloned();
+
+                if let Some(file) = file {
+                    self.view(id!(selected_agent)).set_visible(cx, false);
+                    let selected_view = self.view(id!(selected_model));
+                    selected_view.set_visible(cx, true);
+        
+                    let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
+                    let is_file_size_visible = !file_size.is_empty();
+                    let caption = file.name.trim();
+        
+                    selected_view.apply_over(
+                        cx,
+                        live! {
+                            label = { text: (caption) }
+                            file_size_tag = { visible: (is_file_size_visible), caption = { text: (file_size) }}
+                        },
+                    );
+        
+                    if let Some(model) = store.downloads.get_model_by_file_id(&file.id) {
+                        let architecture = model.architecture.trim();
+                        let params_size = model.size.trim();
+                        let is_architecture_visible = !architecture.is_empty();
+                        let is_params_size_visible = !params_size.is_empty();
+        
+                        selected_view.apply_over(
+                            cx,
+                            live! {
+                                architecture_tag = { visible: (is_architecture_visible), caption = { text: (architecture) }}
+                                params_size_tag = { visible: (is_params_size_visible), caption = { text: (params_size) }}
+                            },
+                        );
+                    }
+                }
+
+            } else {
+                // Any other model
+                self.view(id!(selected_agent)).set_visible(cx, false);
+                let selected_view = self.view(id!(selected_model));
+                selected_view.set_visible(cx, true);
+        
+                let bot = store.chats.get_bot_or_placeholder(&bot_id);
+                
+                selected_view.apply_over(
+                    cx,
+                    live! {
+                        label = { text: (&bot.name.trim_start_matches("models/")), draw_text: { color: #x0 }}
+                        // Hide size/architecture tags for remote models
+                        architecture_tag = { visible: false }
+                        params_size_tag = { visible: false }
+                        file_size_tag = { visible: false }
+                    },
+                );
+                return;
             }
-        }
+        }        
 
         self.view(id!(icon_drop)).apply_over(
             cx,
@@ -495,16 +483,10 @@ impl ModelSelector {
     }
 }
 
-fn no_active_model(store: &Store) -> bool {
-    let chat_entity = store
-        .chats
-        .get_current_chat()
-        .and_then(|c| c.borrow().associated_entity.clone());
-
-    match chat_entity {
-        None => store.chats.loaded_model.is_none(),
-        Some(ChatEntityId::ModelFile(_)) => false,
-        Some(ChatEntityId::Agent(_)) => false,
-        Some(ChatEntityId::RemoteModel(_)) => false,
+impl ModelSelectorRef {
+    pub fn set_currently_selected_model(&mut self, model: Option<BotId>) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.currently_selected_model = model;
+        }
     }
 }

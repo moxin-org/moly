@@ -112,7 +112,7 @@ impl ModelSelectorLoading {
 }
 
 impl ModelSelectorLoadingRef {
-    pub fn show_and_animate(&mut self, cx: &mut Cx) {
+    pub fn _show_and_animate(&mut self, cx: &mut Cx) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
@@ -121,7 +121,7 @@ impl ModelSelectorLoadingRef {
         }
     }
 
-    pub fn hide(&mut self) {
+    pub fn _hide(&mut self) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };

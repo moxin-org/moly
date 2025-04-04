@@ -2016,20 +2016,24 @@ dependencies = [
  "anyhow",
  "chrono",
  "directories",
+ "futures",
+ "hex",
  "lipsum",
  "makepad-code-editor",
  "makepad-widgets",
+ "moly-kit",
  "moly-protocol",
  "objc2 0.6.0",
  "objc2-app-kit",
  "objc2-foundation 0.3.0",
  "rand",
- "reqwest 0.11.27",
+ "reqwest 0.12.12",
  "rfd",
  "robius-open",
  "robius-url-handler",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "unicode-segmentation",
  "url",
@@ -2042,12 +2046,14 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "futures",
+ "hex",
  "makepad-code-editor",
  "makepad-widgets",
  "reqwest 0.12.12",
  "robius-open",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "url",
  "url-preview",
@@ -2818,6 +2824,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2 0.4.8",
@@ -3206,6 +3213,17 @@ name = "sha1"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3bf829a2d51ab4a5ddf1352d8470c140cadc8301b2ae1789db023f01cedd6ba"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "793db75ad2bcafc3ffa7c68b215fee268f537982cd901d132f89c6343f3a3dc8"
 dependencies = [
  "cfg-if",
  "cpufeatures",

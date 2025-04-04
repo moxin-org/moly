@@ -165,7 +165,25 @@ impl Chat {
                 MessagesAction::EditSave(index) => {
                     let mut tasks = self.messages_ref().read_with(|m| {
                         let mut message = m.messages[index].clone();
-                        message.body = m.current_editor_text().expect("no editor text");
+                        let new_text = m.current_editor_text().expect("no editor text");
+                        
+                        // Update content with new text from editor
+                        match &message.content {
+                            MessageContent::PlainText { citations, .. } => {
+                                message.content = MessageContent::PlainText {
+                                    text: new_text,
+                                    citations: citations.clone(),
+                                };
+                            },
+                            MessageContent::MultiStage { stages, citations, .. } => {
+                                message.content = MessageContent::MultiStage {
+                                    text: new_text,
+                                    stages: stages.clone(),
+                                    citations: citations.clone(),
+                                };
+                            }
+                        }
+                        
                         ChatTask::UpdateMessage(index, message).into()
                     });
 
@@ -176,9 +194,25 @@ impl Chat {
                         let mut messages = m.messages[0..=index].to_vec();
 
                         let index = m.current_editor_index().expect("no editor index");
-                        let text = m.current_editor_text().expect("no editor text");
+                        let new_text = m.current_editor_text().expect("no editor text");
 
-                        messages[index].body = text;
+                        // Update content with new text from editor
+                        match &messages[index].content {
+                            MessageContent::PlainText { citations, .. } => {
+                                messages[index].content = MessageContent::PlainText {
+                                    text: new_text,
+                                    citations: citations.clone(),
+                                };
+                            },
+                            MessageContent::MultiStage { stages, citations, .. } => {
+                                messages[index].content = MessageContent::MultiStage {
+                                    text: new_text,
+                                    stages: stages.clone(),
+                                    citations: citations.clone(),
+                                };
+                            }
+                        }
+                        
                         vec![ChatTask::SetMessages(messages), ChatTask::Send]
                     });
 
@@ -202,8 +236,11 @@ impl Chat {
                     next_index,
                     Message {
                         from: EntityId::User,
-                        body: text.clone(),
-                        ..Default::default()
+                        content: MessageContent::PlainText {
+                            text: text.clone(),
+                            citations: Vec::new(),
+                        },
+                        is_writing: false,
                     },
                 ));
             }
@@ -234,8 +271,11 @@ impl Chat {
 
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
+                content: MessageContent::PlainText {
+                    text: String::new(),
+                    citations: Vec::new(),
+                },
                 is_writing: true,
-                ..Default::default()
             });
 
             messages
@@ -253,8 +293,9 @@ impl Chat {
         let ui = self.ui_runner();
         let future = async move {
             let mut client = repo.client();
+            let bot = repo.get_bot(&bot_id).expect(format!("No bot found for the given id: {:?}", bot_id).as_str());
 
-            let mut message_stream = client.send_stream(&bot_id, &context);
+            let mut message_stream = client.send_stream(&bot, &context);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes
@@ -346,8 +387,8 @@ impl Chat {
         match task {
             ChatTask::CopyMessage(index) => {
                 self.messages_ref().read_with(|m| {
-                    let text = m.messages[*index].body.as_str();
-                    cx.copy_to_clipboard(text);
+                    let text = m.messages[*index].visible_text();
+                    cx.copy_to_clipboard(&text);
                 });
             }
             ChatTask::DeleteMessage(index) => {
@@ -433,7 +474,13 @@ impl Chat {
         self.prompt_input_ref().write().set_send();
         self.messages_ref().write().messages.retain_mut(|m| {
             m.is_writing = false;
-            !m.body.is_empty()
+            // Only remove messages that are completely empty (no content at all)
+            match &m.content {
+                MessageContent::PlainText { text, .. } => !text.is_empty(),
+                MessageContent::MultiStage { stages, .. } => !stages.is_empty() && stages.iter().any(|s| {
+                    s.thinking.is_some() || s.writing.is_some() || s.completed.is_some()
+                }),
+            }
         });
     }
 
@@ -456,13 +503,7 @@ impl Chat {
                     }
                 }
 
-                message.body.push_str(&delta.body);
-                // Note: Maybe this is a good case for a sorted set, like `BTreeSet`.
-                for citation in delta.citations {
-                    if !message.citations.contains(&citation) {
-                        message.citations.push(citation);
-                    }
-                }
+                message.apply_delta(delta);
 
                 let index = messages.read().messages.len() - 1;
                 let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
@@ -491,8 +532,11 @@ impl Chat {
                             messages.read().messages.len() + i,
                             Message {
                                 from: EntityId::App,
-                                body: e.to_string(),
-                                ..Default::default()
+                                content: MessageContent::PlainText {
+                                    text: e.to_string(),
+                                    citations: Vec::new(),
+                                },
+                                is_writing: false,
                             },
                         )
                     })

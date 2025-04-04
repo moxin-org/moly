@@ -60,7 +60,7 @@ impl TryFrom<Message> for OutcomingMessage {
         }?;
 
         Ok(Self {
-            content: message.body,
+            content: message.visible_text(),
             role,
         })
     }
@@ -148,7 +148,7 @@ impl BotClient for OpenAIClient {
     fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let inner = self.0.read().unwrap().clone();
 
-        let url = format!("{}/v1/models", inner.url);
+        let url = format!("{}/models", inner.url);
         let headers = inner.headers;
 
         let request = inner.client.get(&url).headers(headers);
@@ -210,7 +210,9 @@ impl BotClient for OpenAIClient {
                 .data
                 .iter()
                 .map(|m| Bot {
-                    id: BotId::from(m.id.as_str()),
+                    id: BotId::new(&m.id, &inner.url),
+                    model_id: m.id.clone(),
+                    provider_url: inner.url.clone(),
                     name: m.id.clone(),
                     // TODO: Handle this char as a grapheme.
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
@@ -232,12 +234,12 @@ impl BotClient for OpenAIClient {
     /// Stream pieces of content back as a ChatDelta instead of just a String.
     fn send_stream(
         &mut self,
-        bot: &BotId,
+        bot: &Bot,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageDelta>> {
         let inner = self.0.read().unwrap().clone();
 
-        let url = format!("{}/v1/chat/completions", inner.url);
+        let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
         let moly_messages: Vec<OutcomingMessage> = messages
@@ -250,7 +252,7 @@ impl BotClient for OpenAIClient {
             .post(&url)
             .headers(headers)
             .json(&serde_json::json!({
-                "model": bot.as_str(),
+                "model": bot.model_id.clone(),
                 "messages": moly_messages,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,
@@ -259,7 +261,9 @@ impl BotClient for OpenAIClient {
 
         let stream = stream! {
             let response = match request.send().await {
-                Ok(response) => response,
+                Ok(response) => {
+                    response
+                },
                 Err(error) => {
                     yield ClientError::new_with_source(
                         ClientErrorKind::Network,
@@ -328,8 +332,10 @@ impl BotClient for OpenAIClient {
                     let citations = completion.citations;
 
                     yield ClientResult::new_ok(MessageDelta {
-                        body,
-                        citations,
+                        content: MessageContent::PlainText {
+                            text: body,
+                            citations,
+                        },
                     });
                 }
 

@@ -1,11 +1,6 @@
 use makepad_code_editor::code_view::CodeViewWidgetExt;
 use makepad_widgets::*;
 
-use crate::data::{
-    chats::model_loader::{ModelLoaderStatus, ModelLoaderStatusChanged},
-    store::Store,
-};
-
 live_design! {
     use link::theme::*;
     use link::shaders::*;
@@ -195,9 +190,6 @@ pub struct MolyServerSettings {
 
     #[rust]
     server_port_state: ServerPortState,
-
-    #[rust]
-    override_port: Option<u16>,
 }
 
 impl Widget for MolyServerSettings {
@@ -207,8 +199,6 @@ impl Widget for MolyServerSettings {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
         match self.server_port_state {
             ServerPortState::OnEdit => {
                 self.view.view(id!(port_editable)).set_visible(cx, false);
@@ -220,13 +210,7 @@ impl Widget for MolyServerSettings {
             }
         }
 
-        let port = self.override_port.or_else(|| {
-            if let ModelLoaderStatus::Loaded(info) = store.chats.model_loader.status() {
-                Some(info.listen_port)
-            } else {
-                None
-            }
-        });
+        let port = Some(8765);
 
         if let Some(port) = port {
             self.view
@@ -272,22 +256,20 @@ curl http://localhost:{}/v1/chat/completions \\
 }
 
 impl WidgetMatchEvent for MolyServerSettings {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
-        for action in actions {
-            // Once the modals are reloaded, let's clear the override port
-            if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
-                if store.chats.model_loader.is_loaded() {
-                    self.override_port = None;
-                }
-                if store.chats.model_loader.is_failed() {
-                    self.view(id!(load_error_label)).set_visible(cx, true);
-                } else {
-                    self.view(id!(load_error_label)).set_visible(cx, false);
-                }
-            }
-        }
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        // for action in actions {
+        //     // Once the modals are reloaded, let's clear the override port
+        //     if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
+        //         if store.chats.model_loader.is_loaded() {
+        //             self.override_port = None;
+        //         }
+        //         if store.chats.model_loader.is_failed() {
+        //             self.view(id!(load_error_label)).set_visible(cx, true);
+        //         } else {
+        //             self.view(id!(load_error_label)).set_visible(cx, false);
+        //         }
+        //     }
+        // }
 
         let port_number_input = self.view.text_input(id!(port_number_input));
 
@@ -301,17 +283,17 @@ impl WidgetMatchEvent for MolyServerSettings {
             self.redraw(cx);
         }
 
-        if let Some(port) = port_number_input.returned(actions) {
-            let port = port.parse::<u16>();
+        // if let Some(port) = port_number_input.returned(actions) {
+        //     let port = port.parse::<u16>();
 
-            if let Ok(port) = port {
-                self.override_port = Some(port);
-                store.update_server_port(port);
-            }
+        //     if let Ok(port) = port {
+        //         self.override_port = Some(port);
+        //         store.update_server_port(port);
+        //     }
 
-            self.server_port_state = ServerPortState::Editable;
-            self.redraw(cx);
-        }
+        //     self.server_port_state = ServerPortState::Editable;
+        //     self.redraw(cx);
+        // }
 
         if let TextInputAction::Escape =
             actions.find_widget_action_cast(port_number_input.widget_uid())

@@ -26,7 +26,7 @@ impl MultiClient {
 impl BotClient for MultiClient {
     fn send_stream(
         &mut self,
-        bot: &BotId,
+        bot: &Bot,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageDelta>> {
         let client = self
@@ -35,7 +35,7 @@ impl BotClient for MultiClient {
             .unwrap()
             .iter()
             .find_map(|(client, bots)| {
-                if bots.iter().any(|b| b.id == *bot) {
+                if bots.iter().any(|b| b.id == bot.id) {
                     Some(client.clone())
                 } else {
                     None
@@ -49,7 +49,7 @@ impl BotClient for MultiClient {
                 moly_stream(futures::stream::once(async move {
                     ClientError::new(
                         ClientErrorKind::Unknown,
-                        format!("Can't find a client to communicate with the bot {}", bot),
+                        format!("Can't find a client to communicate with the bot {:?}", bot),
                     )
                     .into()
                 }))

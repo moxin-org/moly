@@ -20,7 +20,7 @@ live_design! {
             draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 0, border_width: 2 }
             stage_text = <Label> {
                 draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 10},
+                    text_style: {font_size: 10},
                     color: #000
                 }
             }
@@ -154,6 +154,16 @@ impl StagesPillList {
             self.redraw(cx);
         }
     }
+
+    fn clear_stage_new_content(&mut self, cx: &mut Cx, stage_id: usize) {
+        let index = self.stages.iter().position(|id| *id == stage_id);
+        if let Some(index) = index {
+            if let Some(pill) = self.stage_pills.get_mut(&index) {
+                pill.has_new_content = false;
+                self.redraw(cx);
+            }
+        }
+    }
 }
 
 impl StagesPillListRef {
@@ -172,6 +182,12 @@ impl StagesPillListRef {
     pub fn set_stage_has_new_content(&mut self, cx: &mut Cx, stage_id: usize) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_stage_has_new_content(cx, stage_id);
+        }
+    }
+
+    pub fn clear_stage_new_content(&mut self, cx: &mut Cx, stage_id: usize) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.clear_stage_new_content(cx, stage_id);
         }
     }
 }
@@ -232,3 +248,4 @@ pub enum StagePillAction {
     None,
     StagePillClicked(usize),
 }
+

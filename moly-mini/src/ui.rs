@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_kit::{BotId, ChatWidgetRefExt, EntityId, Message};
+use moly_kit::{BotId, ChatWidgetRefExt, EntityId, Message, MessageContent};
 
 use crate::demo_chat::DemoChatWidgetExt;
 
@@ -60,15 +60,20 @@ impl Widget for Ui {
             let messages = std::iter::repeat([
                 Message {
                     from: EntityId::User,
-                    body: "Hello".to_string(),
+                    content: MessageContent::PlainText {
+                        text: "Hello".to_string(),
+                        citations: vec![],
+                    },
                     ..Default::default()
                 },
                 Message {
                     from: EntityId::Bot(bot_id),
-                    body: "World".to_string(),
-                    citations: vec![
-                        "https://github.com/ZhangHanDong/url-preview/issues/2".to_string()
-                    ],
+                    content: MessageContent::PlainText {
+                        text: "World".to_string(),
+                        citations: vec![
+                            "https://github.com/ZhangHanDong/url-preview/issues/2".to_string()
+                        ],
+                    },
                     ..Default::default()
                 },
             ])

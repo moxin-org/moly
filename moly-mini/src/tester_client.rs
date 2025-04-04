@@ -7,6 +7,8 @@ impl BotClient for TesterClient {
     fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let future = futures::future::ready(ClientResult::new_ok(vec![Bot {
             id: "tester".into(),
+            model_id: "tester".to_string(),
+            provider_url: "tester".to_string(),
             name: "tester".to_string(),
             avatar: Picture::Grapheme("T".into()),
         }]));
@@ -16,13 +18,13 @@ impl BotClient for TesterClient {
 
     fn send_stream(
         &mut self,
-        _bot: &BotId,
+        _bot: &Bot,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageDelta>> {
         let mut input = messages
             .last()
             .expect("didn't receive any messages")
-            .body
+            .visible_text()
             .split_whitespace()
             .map(|b| b.to_lowercase())
             .collect::<VecDeque<_>>();
@@ -32,8 +34,10 @@ impl BotClient for TesterClient {
                 Some("say") => {
                     let body = input.make_contiguous().join(" ");
                     ClientResult::new_ok(MessageDelta {
-                        body,
-                        ..Default::default()
+                        content: MessageContent::PlainText {
+                            text: body.into(),
+                            citations: vec![],
+                        },
                     })
                 }
                 Some("error") => ClientResult::new_err(
@@ -53,16 +57,22 @@ impl BotClient for TesterClient {
                         .into(),
                 ]),
                 Some("hello") => ClientResult::new_ok(MessageDelta {
-                    body: "world".into(),
-                    ..Default::default()
+                    content: MessageContent::PlainText {
+                        text: "world".into(),
+                        citations: vec![],
+                    },
                 }),
                 Some("ping") => ClientResult::new_ok(MessageDelta {
-                    body: "pong".into(),
-                    ..Default::default()
+                    content: MessageContent::PlainText {
+                        text: "pong".into(),
+                        citations: vec![],
+                    },
                 }),
                 _ => ClientResult::new_ok(MessageDelta {
-                    body: "Yeah...".into(),
-                    ..Default::default()
+                    content: MessageContent::PlainText {
+                        text: "Yeah...".into(),
+                        citations: vec![],
+                    },
                 }),
             }
         });

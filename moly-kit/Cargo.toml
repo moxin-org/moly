@@ -7,6 +7,8 @@ edition = "2021"
 futures = "0.3.31"
 url = "2.4.10"
 robius-open = "0.1.1"
+sha2 = "0.10"
+hex = "0.4"
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }

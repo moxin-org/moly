@@ -1,6 +1,6 @@
 use crate::{
     data::{
-        chats::{chat::ChatID, chat_entity::ChatEntityId},
+        chats::chat::ChatID,
         store::Store,
     },
     shared::{actions::ChatAction, modal::ModalWidgetExt, utils::human_readable_name},
@@ -345,7 +345,8 @@ impl Widget for ChatHistoryCard {
             }
         }
 
-        let caption = store.get_chat_entity_name(self.chat_id);
+        let caption = store.get_chat_associated_bot(self.chat_id)
+            .map(|bot_id| store.chats.available_bots.get(&bot_id).map(|m| m.name.clone()).unwrap_or("Unknown".to_string()));
         self.set_title_text(
             cx,
             chat.borrow_mut().get_title(),
@@ -361,15 +362,15 @@ impl Widget for ChatHistoryCard {
             .to_uppercase()
             .to_string();
 
-        match &chat.borrow().associated_entity {
-            Some(ChatEntityId::Agent(model_id)) => {
-                let agent = store.chats.get_remote_model_or_placeholder(&model_id);
+        match &chat.borrow().associated_bot {
+            Some(bot_id) => {
+                let agent = store.chats.get_bot_or_placeholder(&bot_id);
 
                 self.view(id!(avatar_section.model)).set_visible(cx, false);
                 self.chat_agent_avatar(id!(avatar_section.agent))
                     .set_visible(true);
                 self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_agent(agent);
+                    .set_bot(agent);
             }
             _ => {
                 self.view(id!(avatar_section.model)).set_visible(cx, true);
@@ -418,6 +419,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
             if fe.tap_count == 1 {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(Some(self.chat_id));
+                cx.action(ChatAction::ChatSelected(self.chat_id));
                 self.redraw(cx);
             }
         }
@@ -430,12 +432,6 @@ impl WidgetMatchEvent for ChatHistoryCard {
                     | DeleteChatModalAction::ChatDeleted
             ) {
                 self.modal(id!(delete_chat_modal)).close(cx);
-            }
-
-            if let ChatAction::TitleUpdated(chat_id) = action.cast() {
-                if self.chat_id == chat_id {
-                    self.redraw(cx);
-                }
             }
         }
     }
