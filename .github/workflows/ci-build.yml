@@ -7,19 +7,20 @@ concurrency:
 on:
   push:
     branches:
-      - 'main'
-      - 'dev'
+      - "main"
+      - "dev"
     paths-ignore:
       - "**/*.md"
   pull_request:
     branches:
-      - 'main'
-      - 'dev'
+      - "main"
+      - "dev"
     paths-ignore:
       - "**/*.md"
 
 jobs:
   build_ubuntu:
+    if: false
     name: Ubuntu
     runs-on: ${{ matrix.os }}
     strategy:
@@ -56,6 +57,7 @@ jobs:
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_macos:
+    if: false
     name: MacOS
     runs-on: ${{ matrix.os }}
     strategy:
@@ -86,6 +88,7 @@ jobs:
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_windows:
+    if: false
     name: Windows
     runs-on: windows-2022
     strategy:
@@ -121,7 +124,27 @@ jobs:
       - name: Build
         run: |
           cargo build
-      
+
       - name: Build before-packaging-command
         run: |
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
+
+  build_web_moly_kit:
+    name: Web (moly-kit)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [1.81]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          targets: wasm32-unknown-unknown
+
+      - name: Build
+        run: |
+          cargo build --manifest-path moly-kit/Cargo.toml --target wasm32-unknown-unknown
