@@ -44,7 +44,7 @@ live_design! {
         height: 28,
 
         draw_bg: {
-            radius: 6.5,
+            border_radius: 6.5,
             color: #D0D5DD
         }
         icon_walk: {
@@ -76,17 +76,17 @@ live_design! {
                 padding: {bottom: 12.0, top: 12.0, right: 6.0, left: 6.0},
                 margin: {bottom: 10},
                 draw_bg: {
-                    border_width: 1.0,
-                    border_color: #D0D5DD,
+                    border_size: 1.0,
+                    border_color_1: #D0D5DD,
                     color: #fff,
-                    radius: 5.0
+                    border_radius: 5.0
                 }
                 search_input = <MolyTextInput> {
                     width: Fill,
                     margin: {bottom: 4},
                     empty_message: "Search for a model or agent",
                     draw_bg: {
-                        radius: 5.0,
+                        border_radius: 5.0,
                         color: #fff
                     }
                     draw_text: {
@@ -100,9 +100,9 @@ live_design! {
                 padding: {top: 8, bottom: 6, left: 4, right: 10}
                 draw_bg: {
                     color: #fff,
-                    radius: 10.0,
-                    border_color: #D0D5DD,
-                    border_width: 1.0,
+                    border_radius: 10.0,
+                    border_color_1: #D0D5DD,
+                    border_size: 1.0,
                 }
 
                 top = {
@@ -115,7 +115,7 @@ live_design! {
                         padding: {left: 10, right: 10, top: 8, bottom: 8}
                         draw_bg: {
                             color: #F2F4F7,
-                            radius: 10.0,
+                            border_radius: 10.0,
                         }
                         agent_avatar = <ChatAgentAvatar> {
                             width: Fit,
@@ -161,7 +161,7 @@ live_design! {
                         width: Fill,
                         empty_message: "Start typing",
                         draw_bg: {
-                            radius: 10.0
+                            border_radius: 10.0
                             color: #fff
                         }
                         draw_text: {

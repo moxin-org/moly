@@ -90,8 +90,8 @@ live_design! {
                         height: Fit
 
                         draw_bg: {
-                            border_width: 1,
-                            radius: 3
+                            border_size: 1,
+                            border_radius: 3
                         }
 
                         margin: {bottom: 4}

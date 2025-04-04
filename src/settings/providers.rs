@@ -108,10 +108,10 @@ live_design! {
                     padding: {left: 10, right: 10, bottom: 5, top: 5}
                     margin: {right: 10}
                     draw_bg: {
-                        radius: 5
+                        border_radius: 5
                         color: #81cca1
                         border_color: #357852
-                        border_width: 1.2
+                        border_size: 1.2
                     }
                     status_label = <Label> {
                         text: "ON"
@@ -147,9 +147,9 @@ live_design! {
             padding: {left: 30, right: 30, bottom: 10, top: 10}
             draw_bg: {
                 color: #fff
-                radius: 5
+                border_radius: 5
                 border_color: #ddd
-                border_width: 1
+                border_size: 1
             }
             <Label> {
                 text: "+"

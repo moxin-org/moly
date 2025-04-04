@@ -26,7 +26,7 @@ live_design!(
         cursor: Hand
         show_bg: true,
         draw_bg: {
-            radius: 0,
+            border_radius: 0,
             color: #0000
         }
 

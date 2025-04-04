@@ -36,7 +36,7 @@ live_design! {
         show_bg: true
         draw_bg: {
             color: #e0
-            radius: 5
+            border_radius: 5
         }
 
         thinking_text = <MessageMarkdown> {

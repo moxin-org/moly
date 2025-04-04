@@ -26,7 +26,7 @@ live_design! {
         height: 40
 
         draw_bg: {
-            border_color: #ccc,
+            border_color_1: #ccc,
         }
 
         draw_icon: {

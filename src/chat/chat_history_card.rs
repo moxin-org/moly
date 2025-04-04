@@ -66,7 +66,7 @@ live_design! {
     }
 
     CancelButton = <EditActionButton> {
-        draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
+        draw_bg: { border_color_1: #D0D5DD, border_size: 1.0, color: #fff }
 
         draw_text: {
             text_style: <REGULAR_FONT>{font_size: 9},
@@ -90,8 +90,8 @@ live_design! {
             show_bg: true
             draw_bg: {
                 color: #0000
-                border_width: 0
-                radius: 5
+                border_size: 0
+                border_radius: 5
             }
         }
 
@@ -107,8 +107,8 @@ live_design! {
             draw_bg: {
                 instance down: 0.0,
                 color: #0000
-                border_width: 0
-                radius: 5
+                border_size: 0
+                border_radius: 5
             }
 
             <View> {
@@ -200,7 +200,7 @@ live_design! {
                     padding: { top: 0, right: 4, bottom: 6, left: 4 }
 
                     draw_bg: {
-                        radius: 5
+                        border_radius: 5
                     }
 
                     draw_text:{

@@ -25,9 +25,9 @@ live_design! {
 
             draw_bg: {
                 color: #fff,
-                border_width: 1.0,
+                border_size: 1.0,
                 border_color: #D0D5DD,
-                radius: 2.
+                border_radius: 2.
             }
 
             edit_chat_name = <MolyButton> {
@@ -36,8 +36,8 @@ live_design! {
                 padding: { top: 12, right: 12, bottom: 12, left: 12}
 
                 draw_bg: {
-                    border_width: 0,
-                    radius: 0
+                    border_size: 0,
+                    border_radius: 0
                 }
 
                 icon_walk: {width: 12, height: 12}
@@ -66,8 +66,8 @@ live_design! {
                 align: {x: 0.0, y: 0.5}
 
                 draw_bg: {
-                    border_width: 0,
-                    radius: 0
+                    border_size: 0,
+                    border_radius: 0
                 }
 
                 icon_walk: {width: 12, height: 12}

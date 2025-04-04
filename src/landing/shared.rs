@@ -26,7 +26,7 @@ live_design! {
                             self.hover
                         ),
                         MODEL_LINK_FONT_COLOR,
-                        self.pressed
+                        self.down
                     )
                 }
             }
@@ -48,7 +48,7 @@ live_design! {
 
         spacing: 5,
         draw_bg: {
-            instance radius: 3.0,
+            instance border_radius: 3.0,
         }
 
         attr_name = <Label> {

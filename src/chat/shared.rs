@@ -16,7 +16,7 @@ live_design! {
         show_bg: true,
         draw_bg: {
             color: #444D9A,
-            radius: 6,
+            border_radius: 6,
         }
 
         align: {x: 0.5, y: 0.5},

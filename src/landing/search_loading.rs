@@ -14,7 +14,7 @@ live_design! {
         width: 28
         height: 28
         draw_bg: {
-            radius: 14.0
+            border_radius: 14.0
             fn get_color(self) -> vec4 {
                 let top_color = #E6F2D8;
                 let bottom_color = #A4E0EF;
@@ -55,12 +55,12 @@ live_design! {
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle1 = { draw_bg: {radius: 1.0} }}}
+                    apply: {content = { circle1 = { draw_bg: {border_radius: 1.0} }}}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle1 = { draw_bg: {radius: 14.0} }}}
+                    apply: {content = { circle1 = { draw_bg: {border_radius: 14.0} }}}
                 }
             }
 
@@ -69,12 +69,12 @@ live_design! {
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle2 = { draw_bg: {radius: 1.0} }}}
+                    apply: {content = { circle2 = { draw_bg: {border_radius: 1.0} }}}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle2 = { draw_bg: {radius: 14.0} }}}
+                    apply: {content = { circle2 = { draw_bg: {border_radius: 14.0} }}}
                 }
             }
 
@@ -83,12 +83,12 @@ live_design! {
                 start = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle3 = { draw_bg: {radius: 1.0} }}}
+                    apply: {content = { circle3 = { draw_bg: {border_radius: 1.0} }}}
                 }
                 run = {
                     redraw: true,
                     from: {all: Forward {duration: (ANIMATION_SPEED)}}
-                    apply: {content = { circle3 = { draw_bg: {radius: 14.0} }}}
+                    apply: {content = { circle3 = { draw_bg: {border_radius: 14.0} }}}
                 }
             }
         }

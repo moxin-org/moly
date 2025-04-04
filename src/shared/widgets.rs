@@ -31,7 +31,7 @@ live_design! {
             instance opacity: 1.0
 
             fn pixel(self) -> vec4 {
-                let color = sample2d_rt(self.image, self.pos * self.scale + self.shift) + vec4(self.marked, 0.0, 0.0, 0.0);
+                let color = sample2d_rt(self.image, self.pos * self.scale + self.shift);
                 return Pal::premul(vec4(color.xyz, color.w * self.opacity))
             }
         }
@@ -44,7 +44,7 @@ live_design! {
 
         spacing: 5,
         draw_bg: {
-            instance radius: 2.0,
+            instance border_radius: 2.0,
         }
 
         attr_name = <Label> {
@@ -72,13 +72,13 @@ live_design! {
         icon_walk: {margin: 0, width: 30, height: 30}
         label_walk: {margin: 0}
 
-        draw_radio: {
+        draw_bg: {
             radio_type: Tab,
 
-            instance border_width: 0.0
-            instance border_color: #0000
+            instance border_size: 0.0
+            instance border_color_1: #0000
             instance inset: vec4(0.0, 0.0, 0.0, 0.0)
-            instance radius: 2.5
+            instance border_radius: 2.5
 
             fn get_color(self) -> vec4 {
                 return mix(
@@ -88,62 +88,62 @@ live_design! {
                         self.hover
                     ),
                     (SIDEBAR_BG_COLOR_SELECTED),
-                    self.selected
+                    self.active
                 )
             }
 
             fn get_border_color(self) -> vec4 {
-                return self.border_color
+                return self.border_color_1
             }
 
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size)
                 sdf.box(
-                    self.inset.x + self.border_width,
-                    self.inset.y + self.border_width,
-                    self.rect_size.x - (self.inset.x + self.inset.z + self.border_width * 2.0),
-                    self.rect_size.y - (self.inset.y + self.inset.w + self.border_width * 2.0),
-                    max(1.0, self.radius)
+                    self.inset.x + self.border_size,
+                    self.inset.y + self.border_size,
+                    self.rect_size.x - (self.inset.x + self.inset.z + self.border_size * 2.0),
+                    self.rect_size.y - (self.inset.y + self.inset.w + self.border_size * 2.0),
+                    max(1.0, self.border_radius)
                 )
                 sdf.fill_keep(self.get_color())
-                if self.border_width > 0.0 {
-                    sdf.stroke(self.get_border_color(), self.border_width)
+                if self.border_size > 0.0 {
+                    sdf.stroke(self.get_border_color(), self.border_size)
                 }
                 return sdf.result;
             }
         }
 
         draw_text: {
-            color_unselected: (SIDEBAR_FONT_COLOR)
-            color_unselected_hover: (SIDEBAR_FONT_COLOR_HOVER)
-            color_selected: (SIDEBAR_FONT_COLOR_SELECTED)
+            color: (SIDEBAR_FONT_COLOR)
+            color_hover: (SIDEBAR_FONT_COLOR_HOVER)
+            color_active: (SIDEBAR_FONT_COLOR_SELECTED)
 
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
-                        self.color_unselected,
-                        self.color_unselected_hover,
+                        self.color,
+                        self.color_hover,
                         self.hover
                     ),
-                    self.color_selected,
-                    self.selected
+                    self.color_active,
+                    self.active
                 )
             }
         }
 
         draw_icon: {
-            instance color_unselected: (SIDEBAR_FONT_COLOR)
-            instance color_unselected_hover: (SIDEBAR_FONT_COLOR_HOVER)
-            instance color_selected: (SIDEBAR_FONT_COLOR_SELECTED)
+            instance color: (SIDEBAR_FONT_COLOR)
+            instance color_hover: (SIDEBAR_FONT_COLOR_HOVER)
+            instance color_active: (SIDEBAR_FONT_COLOR_SELECTED)
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
-                        self.color_unselected,
-                        self.color_unselected_hover,
+                        self.color,
+                        self.color_hover,
                         self.hover
                     ),
-                    self.color_selected,
-                    self.selected
+                    self.color_active,
+                    self.active
                 )
             }
         }
@@ -155,31 +155,31 @@ live_design! {
         draw_bg: {
             instance color: #0000
             instance color_hover: #fff
-            instance border_width: 1.0
-            instance border_color: #0000
+            instance border_size: 1.0
+            instance border_color_1: #0000
             instance border_color_hover: #fff
-            instance radius: 2.5
+            instance border_radius: 2.5
 
             fn get_color(self) -> vec4 {
                 return mix(self.color, mix(self.color, self.color_hover, 0.2), self.hover)
             }
 
             fn get_border_color(self) -> vec4 {
-                return mix(self.border_color, mix(self.border_color, self.border_color_hover, 0.2), self.hover)
+                return mix(self.border_color_1, mix(self.border_color_1, self.border_color_hover, 0.2), self.hover)
             }
 
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size)
                 sdf.box(
-                    self.border_width,
-                    self.border_width,
-                    self.rect_size.x - (self.border_width * 2.0),
-                    self.rect_size.y - (self.border_width * 2.0),
-                    max(1.0, self.radius)
+                    self.border_size,
+                    self.border_size,
+                    self.rect_size.x - (self.border_size * 2.0),
+                    self.rect_size.y - (self.border_size * 2.0),
+                    max(1.0, self.border_radius)
                 )
                 sdf.fill_keep(self.get_color())
-                if self.border_width > 0.0 {
-                    sdf.stroke(self.get_border_color(), self.border_width)
+                if self.border_size > 0.0 {
+                    sdf.stroke(self.get_border_color(), self.border_size)
                 }
                 return sdf.result;
             }
@@ -241,28 +241,26 @@ live_design! {
     pub MolyRadioButtonTab = <RadioButtonTab> {
         padding: 10,
 
-        draw_radio: {
-            uniform radius: 3.0
-            uniform border_width: 0.0
-            instance color_unselected: (THEME_COLOR_TEXT_DEFAULT)
-            instance color_unselected_hover: (THEME_COLOR_TEXT_HOVER)
-            instance color_selected: (THEME_COLOR_TEXT_SELECTED)
-            instance border_color: (THEME_COLOR_TEXT_SELECTED)
+        draw_bg: {
+            uniform border_radius: 3.0
+            uniform border_size: 0.0
+            instance color: (THEME_COLOR_TEXT)
+            instance color_hover: (THEME_COLOR_TEXT_HOVER)
 
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
-                        self.color_unselected,
-                        self.color_unselected_hover,
+                        self.color,
+                        self.color_hover,
                         self.hover
                     ),
-                    self.color_selected,
-                    self.selected
+                    self.color_active,
+                    self.active
                 )
             }
 
             fn get_border_color(self) -> vec4 {
-                return self.border_color;
+                return self.border_color_1;
             }
 
             fn pixel(self) -> vec4 {
@@ -270,15 +268,15 @@ live_design! {
                 match self.radio_type {
                     RadioType::Tab => {
                         sdf.box(
-                            self.border_width,
-                            self.border_width,
-                            self.rect_size.x - (self.border_width * 2.0),
-                            self.rect_size.y - (self.border_width * 2.0),
-                            max(1.0, self.radius)
+                            self.border_size,
+                            self.border_size,
+                            self.rect_size.x - (self.border_size * 2.0),
+                            self.rect_size.y - (self.border_size * 2.0),
+                            max(1.0, self.border_radius)
                         )
                         sdf.fill_keep(self.get_color())
-                        if self.border_width > 0.0 {
-                            sdf.stroke(self.get_border_color(), self.border_width)
+                        if self.border_size > 0.0 {
+                            sdf.stroke(self.get_border_color(), self.border_size)
                         }
                     }
                 }
@@ -290,12 +288,12 @@ live_design! {
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
-                        self.color_unselected,
-                        self.color_unselected_hover,
+                        self.color,
+                        self.color_hover,
                         self.hover
                     ),
-                    self.color_selected,
-                    self.selected
+                    self.color_active,
+                    self.active
                 )
             }
         }
@@ -330,7 +328,7 @@ live_design! {
         }
 
         // TODO find a way to override colors
-        draw_selection: {
+        draw_highlight: {
             instance hover: 0.0
             instance focus: 0.0
             uniform border_radius: 2.0
@@ -350,9 +348,9 @@ live_design! {
 
         draw_bg: {
             color: #fff
-            instance radius: 2.0
-            instance border_width: 0.0
-            instance border_color: #3
+            instance border_radius: 2.0
+            instance border_size: 0.0
+            instance border_color_1: #3
             instance inset: vec4(0.0, 0.0, 0.0, 0.0)
 
             fn get_color(self) -> vec4 {
@@ -360,21 +358,21 @@ live_design! {
             }
 
             fn get_border_color(self) -> vec4 {
-                return self.border_color
+                return self.border_color_1
             }
 
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size)
                 sdf.box(
-                    self.inset.x + self.border_width,
-                    self.inset.y + self.border_width,
-                    self.rect_size.x - (self.inset.x + self.inset.z + self.border_width * 2.0),
-                    self.rect_size.y - (self.inset.y + self.inset.w + self.border_width * 2.0),
-                    max(1.0, self.radius)
+                    self.inset.x + self.border_size,
+                    self.inset.y + self.border_size,
+                    self.rect_size.x - (self.inset.x + self.inset.z + self.border_size * 2.0),
+                    self.rect_size.y - (self.inset.y + self.inset.w + self.border_size * 2.0),
+                    max(1.0, self.border_radius)
                 )
                 sdf.fill_keep(self.get_color())
-                if self.border_width > 0.0 {
-                    sdf.stroke(self.get_border_color(), self.border_width)
+                if self.border_size > 0.0 {
+                    sdf.stroke(self.get_border_color(), self.border_size)
                 }
                 return sdf.result;
             }
@@ -435,12 +433,12 @@ live_design! {
         }
     }
 
-    pub MolySwitch = <CheckBoxToggle> {
+    pub MolySwitch = <Toggle> {
         // U+200e as text.
         // Nasty trick cause not setting `text` nor using a simple space works to
         // render the widget without label.
         text:"‎"
-        draw_check: {
+        draw_bg: {
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size)
                 let pill_padding = 2.0;
@@ -452,18 +450,18 @@ live_design! {
 
                 // Left side of the pill
                 sdf.circle(pill_radius, pill_radius, pill_radius);
-                sdf.fill(mix(pill_color_off, pill_color_on, self.selected));
+                sdf.fill(mix(pill_color_off, pill_color_on, self.active));
 
                 // Right side of the pill
                 sdf.circle(self.rect_size.x - pill_radius, pill_radius, pill_radius);
-                sdf.fill(mix(pill_color_off, pill_color_on, self.selected));
+                sdf.fill(mix(pill_color_off, pill_color_on, self.active));
 
                 // The union/middle of the pill
                 sdf.rect(pill_radius, 0.0, self.rect_size.x - 2.0 * pill_radius, self.rect_size.y);
-                sdf.fill(mix(pill_color_off, pill_color_on, self.selected));
+                sdf.fill(mix(pill_color_off, pill_color_on, self.active));
 
                 // The moving ball
-                sdf.circle(pill_padding + ball_radius + self.selected * (self.rect_size.x - 2.0 * ball_radius - 2.0 * pill_padding), pill_radius, ball_radius);
+                sdf.circle(pill_padding + ball_radius + self.active * (self.rect_size.x - 2.0 * ball_radius - 2.0 * pill_padding), pill_radius, ball_radius);
                 sdf.fill(#fff);
 
                 return sdf.result;

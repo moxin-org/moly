@@ -21,8 +21,8 @@ live_design! {
 
     ModalTextInput = <MolyTextInput> {
         draw_bg: {
-            border_width: 1.0
-            border_color: #ddd
+            border_size: 1.0
+            border_color_1: #ddd
         }
         draw_text: {
             text_style: <REGULAR_FONT>{font_size: 12},
@@ -50,7 +50,7 @@ live_design! {
                 return mix(
                     #2,
                     #x0,
-                    self.pressed
+                    self.down
                 )
             }
         }
@@ -65,13 +65,13 @@ live_design! {
                 align: { y: 0.5 }
                 padding: {left: 15, right: 15, top: 10, bottom: 10}
                 
-                draw_name: {
+                draw_text: {
                     fn get_color(self) -> vec4 {
                         return mix(
                             mix(
                                 #3,
                                 #x0,
-                                self.selected
+                                self.active
                             ),
                             #x0,
                             self.hover
@@ -81,20 +81,20 @@ live_design! {
                 
                 draw_bg: {
                     instance color: #f //(THEME_COLOR_FLOATING_BG)
-                    instance color_selected: #f2 //(THEME_COLOR_CTRL_HOVER)
+                    instance color_active: #f2 //(THEME_COLOR_CTRL_HOVER)
                 }
             }
             
             draw_bg: {
                 instance color: #f9 //(THEME_COLOR_FLOATING_BG)
-                border_width: 1.0
+                border_size: 1.0
             }
         }
     }
 
     CustomProviderRadio = <RadioButton> {
         draw_text: {               
-            uniform color_unselected: #x0
+            uniform color: #x0
             text_style: <REGULAR_FONT>{font_size: 12},
         }
     }
@@ -113,7 +113,7 @@ live_design! {
             show_bg: true
             draw_bg: {
                 color: #fff
-                radius: 3
+                border_radius: 3
             }
 
             header =<View> {
@@ -229,7 +229,7 @@ live_design! {
                         height: 40
                         padding: {left: 20, right: 20, top: 0, bottom: 0}
                         text: "Add Provider"
-                        draw_bg: { color: #099250, border_color: #099250 }
+                        draw_bg: { color: #099250, border_color_1: #099250 }
                     }
                 }
             }

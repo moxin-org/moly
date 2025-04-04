@@ -13,7 +13,7 @@ live_design! {
         padding: {top: 6, bottom: 6, left: 10, right: 10}
 
         draw_bg: {
-            instance radius: 2.0,
+            instance border_radius: 2.0,
             color: #E6F1EC,
         }
 

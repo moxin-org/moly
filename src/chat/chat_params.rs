@@ -21,10 +21,10 @@ live_design! {
         width: Fill,
         show_bg: true
         draw_bg: {
-            radius: 5.0
+            border_radius: 5.0
             color: #fff
-            border_width: 1.0,
-            border_color: #D9D9D9,
+            border_size: 1.0,
+            border_color_1: #D9D9D9,
         }
         scrolled_content = <ScrollYView> {
             margin: 1,
@@ -78,9 +78,9 @@ live_design! {
                                 height: Fit,
                                 empty_message: "Enter a system prompt"
                                 draw_bg: {
-                                    radius: 0
+                                    border_radius: 0
                                     color: #0000
-                                    border_width: 0
+                                    border_size: 0
                                 }
                                 draw_text: {
                                     text_style: <REGULAR_FONT>{font_size: 10},
@@ -170,9 +170,9 @@ live_design! {
                                     height: Fit,
                                     empty_message: " "
                                     draw_bg: {
-                                        radius: 0,
+                                        border_radius: 0,
                                         color: #0000,
-                                        border_width: 0,
+                                        border_size: 0,
                                     }
                                     draw_text: {
                                         text_style: <REGULAR_FONT>{font_size: 10},
@@ -280,11 +280,11 @@ impl Widget for ChatParams {
             let system_prompt_value = chat.system_prompt.clone().unwrap_or_default();
             system_prompt.set_text(cx, &system_prompt_value);
 
-            // Currently, `selected` and `set_selected` interact with the animator of
+            // Currently, `active` and `set_active` interact with the animator of
             // the widget to do what they do. To avoid some visual issues, we should not
             // trigger the animator unnecessarily. This is a workaround.
-            if stream.selected(cx) != ip.stream {
-                stream.set_selected(cx, ip.stream);
+            if stream.active(cx) != ip.stream {
+                stream.set_active(cx, ip.stream);
             }
         } else {
             self.visible = false;

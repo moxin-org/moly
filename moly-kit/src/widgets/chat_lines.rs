@@ -35,7 +35,7 @@ live_design! {
         padding: {left: 16, right: 18, top: 18, bottom: 14},
         show_bg: true,
         draw_bg: {
-            radius: 12.0,
+            border_radius: 12.0,
         }
     }
 

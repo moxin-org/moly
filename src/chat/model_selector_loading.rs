@@ -16,7 +16,7 @@ live_design! {
         height: 8,
         show_bg: true,
         draw_bg: {
-            instance radius: 1.0,
+            instance border_radius: 1.0,
             instance dither: 0.9
 
             fn get_color(self) -> vec4 {
@@ -30,15 +30,15 @@ live_design! {
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size)
                 sdf.box(
-                    self.inset.x + self.border_width,
-                    self.inset.y + self.border_width,
-                    self.rect_size.x - (self.inset.x + self.inset.z + self.border_width * 2.0),
-                    self.rect_size.y - (self.inset.y + self.inset.w + self.border_width * 2.0),
-                    max(1.0, self.radius)
+                    self.border_size,
+                    self.border_size,
+                    self.rect_size.x - (self.border_size * 2.0),
+                    self.rect_size.y - (self.border_size * 2.0),
+                    max(1.0, self.border_radius)
                 )
                 sdf.fill_keep(self.get_color())
-                if self.border_width > 0.0 {
-                    sdf.stroke(self.get_border_color(), self.border_width)
+                if self.border_size > 0.0 {
+                    sdf.stroke(self.get_border_color(), self.border_size)
                 }
                 return sdf.result;
             }

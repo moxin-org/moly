@@ -172,7 +172,7 @@ live_design! {
                         height: 30
                         padding: {left: 20, right: 20, top: 0, bottom: 0}
                         text: "Save"
-                        draw_bg: { color: #099250, border_color: #099250 }
+                        draw_bg: { color: #099250, border_color_1: #099250 }
                     }
                 }
                 <View> {
@@ -222,7 +222,7 @@ live_design! {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 10}
                     }
-                    draw_bg: { color: #f00, border_color: #f00 }
+                    draw_bg: { color: #f00, border_color_1: #f00 }
                 }
             }
         }
@@ -269,7 +269,7 @@ impl Widget for ProviderView {
 
                         let name = models[item_id].human_readable_name();
                         item.label(id!(model_name)).set_text(cx, &name);
-                        item.check_box(id!(enabled_switch)).set_selected(cx, models[item_id].enabled);
+                        item.check_box(id!(enabled_switch)).set_active(cx, models[item_id].enabled);
 
                         item.as_model_entry().set_model_name(&models[item_id].name);
                         item.draw_all(cx, scope);
@@ -365,7 +365,7 @@ impl WidgetMatchEvent for ProviderView {
             // Fetch the models from the provider
             store.chats.test_provider_and_fetch_models(&self.provider.url);
             // Update the provider enabled switch
-            self.check_box(id!(provider_enabled_switch)).set_selected(cx, true);
+            self.check_box(id!(provider_enabled_switch)).set_active(cx, true);
             // Update the UI
             self.update_connection_status(cx);
             self.redraw(cx);
@@ -407,7 +407,7 @@ impl ProviderViewRef {
 
             inner.text_input(id!(api_host)).set_text(cx, &provider.url);
             inner.label(id!(name)).set_text(cx, &provider.name);
-            inner.check_box(id!(provider_enabled_switch)).set_selected(cx, provider.enabled);
+            inner.check_box(id!(provider_enabled_switch)).set_active(cx, provider.enabled);
 
             if provider.was_customly_added {
                 inner.view(id!(remove_provider_view)).set_visible(cx, true);

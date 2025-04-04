@@ -24,12 +24,12 @@ live_design! {
         show_bg: true,
         draw_bg: {
             color: #f2f2f2
-            radius: 0
+            border_radius: 0
         }
         align: {y: 0.5}
         image_wrapper = <RoundedView> {
             draw_bg: {
-                radius: 0
+                border_radius: 0
             },
             align: {y: 0.5, x: 0.5},
             width: 75, height: Fill,

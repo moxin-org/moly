@@ -25,7 +25,7 @@ live_design! {
             show_bg: true
             draw_bg: {
                 color: #fff
-                radius: 3
+                border_radius: 3
             }
 
             <View> {
@@ -96,9 +96,9 @@ live_design! {
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
 
                         draw_bg: {
-                            instance radius: 2.0,
-                            border_color: #D0D5DD,
-                            border_width: 1.2,
+                            instance border_radius: 2.0,
+                            border_color_1: #D0D5DD,
+                            border_size: 1.2,
                             color: #fff,
                         }
 
@@ -115,7 +115,7 @@ live_design! {
                         padding: {top: 10, bottom: 10, left: 14, right: 14}
 
                         draw_bg: {
-                            instance radius: 2.0,
+                            instance border_radius: 2.0,
                             color: #D92D20,
                         }
 

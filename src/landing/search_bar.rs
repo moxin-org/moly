@@ -74,9 +74,9 @@ live_design! {
             align: {x: 0.0, y: 0.5},
 
             draw_bg: {
-                radius: 9.0,
+                border_radius: 9.0,
                 border_color: #D0D5DD,
-                border_width: 1.0,
+                border_size: 1.0,
             }
 
             <Icon> {

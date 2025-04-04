@@ -18,7 +18,7 @@ live_design! {
             instance close_pressed_color: #c00
 
             fn get_bg_color(self, base_color: vec4, hover_color: vec4, pressed_color: vec4) -> vec4 {
-                return mix(base_color, mix(hover_color, pressed_color, self.pressed), self.hover);
+                return mix(base_color, mix(hover_color, pressed_color, self.down), self.hover);
             }
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size);
@@ -61,7 +61,7 @@ live_design! {
                         return sdf.result;
                     }
                     DesktopButtonType::XRMode => {
-                        sdf.clear(mix(THEME_COLOR_APP_CAPTION_BAR, mix(#0aa, #077, self.pressed), self.hover));
+                        sdf.clear(mix(THEME_COLOR_APP_CAPTION_BAR, mix(#0aa, #077, self.down), self.hover));
                         let w = 12.;
                         let h = 8.;
                         sdf.box(c.x - w, c.y - h, 2. * w, 2. * h, 2.);
@@ -78,7 +78,7 @@ live_design! {
                     }
                     DesktopButtonType::Fullscreen => {
                         sz = 8.;
-                        sdf.clear(mix(#3, mix(#6, #9, self.pressed), self.hover));
+                        sdf.clear(mix(#3, mix(#6, #9, self.down), self.hover));
                         sdf.rect(c.x - sz, c.y - sz, 2. * sz, 2. * sz);
                         sdf.rect(c.x - sz + 1.5, c.y - sz + 1.5, 2. * (sz - 1.5), 2. * (sz - 1.5));
                         sdf.subtract();
