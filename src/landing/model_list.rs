@@ -22,7 +22,7 @@ live_design! {
         height: 100,
         show_bg: false,
         draw_bg: {
-            radius: 5,
+            border_radius: 5,
             color: #F9FAFB,
         }
         button = <EntityButton> {
@@ -34,7 +34,7 @@ live_design! {
             server_url_visible: true,
 
             draw_bg: {
-                radius: 5,
+                border_radius: 5,
             }
             agent_avatar = {
                 image = {

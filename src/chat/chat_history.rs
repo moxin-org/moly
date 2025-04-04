@@ -40,6 +40,16 @@ live_design! {
 
     pub ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
         open_content = {
+
+            draw_bg: {
+                instance opacity: 1.0
+
+                fn pixel(self) -> vec4 {
+                    let color = sample2d_rt(self.image, self.pos * self.scale + self.shift);
+                    return Pal::premul(vec4(color.xyz, color.w * self.opacity))
+                }
+            }
+
             <View> {
                 width: Fill,
                 height: Fill,

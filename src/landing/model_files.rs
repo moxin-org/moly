@@ -24,17 +24,17 @@ live_design! {
         label_walk: { margin: 0 }
         draw_text: {
             text_style: <BOLD_FONT>{font_size: 9},
-            color_selected: #475467;
-            color_unselected: #475467;
-            color_unselected_hover: #173437;
+            color_active: #475467;
+            color: #475467;
+            color_hover: #173437;
         }
-        draw_radio: {
-            color_unselected: #D0D5DD,
-            color_selected: #fff,
-            color_unselected_hover: #D0D5DD,
-            border_color: #D0D5DD,
-            border_width: 1.0,
-            radius: 7.0
+        draw_bg: {
+            color: #D0D5DD,
+            color_active: #fff,
+            color_hover: #D0D5DD,
+            border_color_1: #D0D5DD,
+            border_size: 1.0,
+            border_radius: 7.0
         }
     }
 
@@ -61,7 +61,7 @@ live_design! {
 
             draw_bg: {
                 color: #D0D5DD
-                radius: 7.0
+                border_radius: 7.0
             }
 
             show_all_button =  <ActionToggleButton> {
@@ -75,7 +75,7 @@ live_design! {
         show_bg: true,
         draw_bg: {
             color: #F2F4F7
-            radius: vec2(3.0, 0.5)
+            border_radius: vec2(3.0, 0.5)
         }
 
         cell1 = {

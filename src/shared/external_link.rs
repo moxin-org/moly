@@ -25,7 +25,7 @@ live_design! {
                             self.hover
                         ),
                         MODEL_LINK_FONT_COLOR,
-                        self.pressed
+                        self.down
                     )
                 }
             }

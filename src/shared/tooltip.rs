@@ -34,9 +34,9 @@ live_design! {
 
                 draw_bg: {
                     color: #fff,
-                    border_width: 1.0,
-                    border_color: #D0D5DD,
-                    radius: 2.
+                    border_size: 1.0,
+                    border_color_1: #D0D5DD,
+                    border_radius: 2.
                 }
 
                 tooltip_label = <Label> {

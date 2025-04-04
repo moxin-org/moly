@@ -60,7 +60,7 @@ live_design! {
                 draw_bg: {
                     color: #0000,
                     border_color: #98A2B3,
-                    border_width: 1.0,
+                    border_size: 1.0,
                 },
                 attr_name = <Icon> {
                     draw_icon: {
@@ -90,7 +90,7 @@ live_design! {
                 draw_bg: {
                     color: #0000,
                     border_color: #98A2B3,
-                    border_width: 1.0,
+                    border_size: 1.0,
                 },
                 attr_name = <Icon> {
                     draw_icon: {
@@ -122,7 +122,7 @@ live_design! {
                     draw_bg: {
                         color: #0000,
                         border_color: #98A2B3,
-                        border_width: 1.0,
+                        border_size: 1.0,
                     },
                     attr_name = {
                         draw_text: { color: #000 }
@@ -230,7 +230,7 @@ live_design! {
             show_bg: true
             draw_bg: {
                 color: #fff
-                radius: 3
+                border_radius: 3
             }
 
             <View> {
@@ -303,10 +303,10 @@ live_design! {
             height: Fit,
 
             draw_bg: {
-                instance radius: 3.0,
+                instance border_radius: 3.0,
                 color: #F9FAFB,
                 border_color: #DFDFDF,
-                border_width: 1.0,
+                border_size: 1.0,
             }
 
             flow: Down,

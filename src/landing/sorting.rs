@@ -19,13 +19,9 @@ live_design! {
             text_style: <BOLD_FONT> { font_size: 9 },
             fn get_color(self) -> vec4 {
                 return mix(
-                    mix(
-                        #000,
-                        #000,
-                        self.focus
-                    ),
                     #000,
-                    self.pressed
+                    #000,
+                    self.focus
                 )
             }
         }
@@ -35,10 +31,9 @@ live_design! {
 
             draw_bg: {
                 color: #fff,
-                border_width: 1.5,
-                //border_color: #EAECF0,
-                radius: 4.0
-                blur: 0.0
+                border_size: 1.5,
+                //border_color_1: #EAECF0,
+                border_radius: 4.0
             }
 
             menu_item: {
@@ -49,14 +44,14 @@ live_design! {
 
                 draw_bg: {
                     color: #fff,
-                    color_selected: #eee9,
+                    color_active: #eee9,
 
                     fn pixel(self) -> vec4 {
                         let sdf = Sdf2d::viewport(self.pos * self.rect_size);
 
                         sdf.clear(mix(
                             self.color,
-                            self.color_selected,
+                            self.color_active,
                             self.hover
                         ))
 
@@ -66,15 +61,15 @@ live_design! {
                         sdf.move_to(c.x - sz + dx * 0.5, c.y - sz + dx);
                         sdf.line_to(c.x, c.y + sz);
                         sdf.line_to(c.x + sz * 2.0, c.y - sz * 2.0);
-                        sdf.stroke(mix(#0000, #0, self.selected), 1.0);
+                        sdf.stroke(mix(#0000, #0, self.active), 1.0);
 
                         return sdf.result;
                     }
                 }
 
-                draw_name: {
+                draw_text: {
                     text_style: <BOLD_FONT> { font_size: 9 }
-                    instance selected: 0.0
+                    instance active: 0.0
                     instance hover: 0.0
                     fn get_color(self) -> vec4 {
                         return #000;

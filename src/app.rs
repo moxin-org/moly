@@ -74,9 +74,9 @@ live_design! {
                         show_bg: true,
                         draw_bg: {
                             color: (SIDEBAR_BG_COLOR),
-                            instance radius: 0.0,
+                            instance border_radius: 0.0,
                             border_color: #EAECF0,
-                            border_width: 1.2,
+                            border_size: 1.2,
                         }
 
                         discover_tab = <SidebarMenuButton> {

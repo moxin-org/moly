@@ -23,7 +23,7 @@ live_design! {
         padding: {top: 6, bottom: 6, left: 14, right: 14}
 
         draw_bg: {
-            radius: 2.0,
+            border_radius: 2.0,
             color: #FEFEFE,
         }
 
@@ -48,7 +48,7 @@ live_design! {
         padding: {top: 6, bottom: 6, left: 14, right: 14}
 
         draw_bg: {
-            radius: 2.0,
+            border_radius: 2.0,
             color: #FEFEFE,
             color_hover: #999,
         }
@@ -81,9 +81,9 @@ live_design! {
         align: {x: 0.0, y: 0.5},
 
         draw_bg: {
-            radius: 9.0,
+            border_radius: 9.0,
             border_color: #D0D5DD,
-            border_width: 1.0,
+            border_size: 1.0,
         }
 
         <Icon> {

@@ -38,7 +38,7 @@ live_design! {
         }
 
         draw_bg: {
-            instance radius: 3.0,
+            instance border_radius: 3.0,
             color: #F9FAFB,
         }
 
@@ -131,10 +131,10 @@ live_design! {
         padding: 5,
 
         draw_bg: {
-            instance radius: 3.0,
+            instance border_radius: 3.0,
             color: #fff,
             border_color: #D0D5DD,
-            border_width: 1.0,
+            border_size: 1.0,
         }
 
         list_container = <View> {

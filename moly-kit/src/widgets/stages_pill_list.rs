@@ -17,7 +17,7 @@ live_design! {
             flow: Right, spacing: 4
             width: Fit, height: Fit
             padding: {left: 10, right: 10, top: 7, bottom: 7}
-            draw_bg: { color: #f2f2f2, border_color: #f2f2f2, radius: 0, border_width: 2 }
+            draw_bg: { color: #f2f2f2, border_color_1: #f2f2f2, border_radius: 0, border_size: 2 }
             stage_text = <Label> {
                 draw_text: {
                     text_style: {font_size: 10},
@@ -31,7 +31,7 @@ live_design! {
                 draw_bg: {
                     // color: #b33939,
                     color: #c23616
-                    radius: 3,
+                    border_radius: 3,
                 }
             }
         }
@@ -90,7 +90,7 @@ impl Widget for StagesPillList {
                     let darker_color = vec4(0.882, 0.882, 0.882, 1.0);
                     stage_pill.view(id!(wrapper_view)).apply_over(cx, live!{
                         draw_bg: {
-                            border_color: (darker_color)
+                            border_color_1: (darker_color)
                         }
                     });
                 } else {
@@ -98,7 +98,7 @@ impl Widget for StagesPillList {
                     let normal_color = vec4(0.949, 0.949, 0.949, 1.0);
                     stage_pill.view(id!(wrapper_view)).apply_over(cx, live!{
                         draw_bg: {
-                            border_color: (normal_color)
+                            border_color_1: (normal_color)
                         }
                     });
                 }

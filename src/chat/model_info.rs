@@ -17,7 +17,7 @@ live_design! {
 
         spacing: 5,
         draw_bg: {
-            radius: 2.0,
+            border_radius: 2.0,
         }
 
         caption = <Label> {
@@ -64,7 +64,7 @@ live_design! {
             draw_bg: {
                 color: #fff,
                 border_color: #B4B4B4,
-                border_width: 1.0,
+                border_size: 1.0,
             }
         }
 

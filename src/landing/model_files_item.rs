@@ -37,7 +37,7 @@ live_design! {
         show_bg: true,
         draw_bg: {
             color: #00f
-            radius: vec2(1.0, 1.0)
+            border_radius: vec2(1.0, 1.0)
         }
 
         cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
@@ -52,7 +52,7 @@ live_design! {
     }
 
     DownloadButton = <ModelCardButton> {
-        draw_bg: { color: #099250, border_color: #099250 }
+        draw_bg: { color: #099250, border_color_1: #099250 }
         text: "Download"
         draw_icon: {
             svg_file: (ICON_DOWNLOAD),
@@ -60,7 +60,7 @@ live_design! {
     }
 
     StartChatButton = <ModelCardButton> {
-        draw_bg: { color: #fff, color_hover: #09925033, border_color: #d0d5dd }
+        draw_bg: { color: #fff, color_hover: #09925033, border_color_1: #d0d5dd }
         text: "Chat with Model"
         draw_text: {
             color: #087443;
@@ -94,7 +94,7 @@ live_design! {
                 height: Fill,
                 draw_bg: {
                     color: #D9D9D9,
-                    radius: 2.5,
+                    border_radius: 2.5,
                 }
             }
 
@@ -102,7 +102,7 @@ live_design! {
                 width: 0,
                 height: Fill,
                 draw_bg: {
-                    radius: 2.5,
+                    border_radius: 2.5,
                 }
             }
         }
@@ -174,9 +174,9 @@ live_design! {
                 padding: {top: 6, bottom: 6, left: 10, right: 10}
 
                 draw_bg: {
-                    instance radius: 2.0,
+                    instance border_radius: 2.0,
                     border_color: #B4B4B4,
-                    border_width: 0.5,
+                    border_size: 0.5,
                     color: #FFF,
                 }
 
