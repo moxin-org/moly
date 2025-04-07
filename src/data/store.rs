@@ -1,4 +1,5 @@
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
@@ -56,8 +57,7 @@ pub struct Store {
     pub chats: Chats,
     pub preferences: Preferences,
     pub bot_repo: Option<BotRepo>,
-    pub moly_client: MolyClient,
-    pub is_moly_server_connected: bool,
+    moly_client: Arc<MolyClient>,
 }
 
 impl Default for Store {
@@ -75,28 +75,30 @@ impl Store {
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8765);
 
-        let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
+        let moly_client = Arc::new(MolyClient::new(format!("http://localhost:{}", server_port)));
 
         register_capture_manager();
 
         let mut store = Self {
-            search: Search::new(moly_client.clone()),
-            downloads: Downloads::new(moly_client.clone()),
-            chats: Chats::new(moly_client.clone()),
+            search: Search::new(Arc::clone(&moly_client)),
+            downloads: Downloads::new(Arc::clone(&moly_client)),
+            chats: Chats::new(Arc::clone(&moly_client)),
             moly_client,
             preferences,
             bot_repo: None,
-            is_moly_server_connected: false,
         };
 
         store.chats.load_chats();
         store.init_current_chat();
         
         store.sync_with_moly_server();
-
         store.load_preference_connections();
 
         store
+    }
+
+    pub fn is_moly_server_connected(&self) -> bool {
+        self.moly_client.is_connected()
     }
 
     pub fn sync_with_moly_server(&mut self) {
@@ -108,7 +110,6 @@ impl Store {
                     self.downloads.load_downloaded_files();
                     self.downloads.load_pending_downloads();
                     self.search.load_featured_models();
-                    self.is_moly_server_connected = true;
                 }
                 Err(_err) => {},
             }

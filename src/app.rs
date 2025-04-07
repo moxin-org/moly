@@ -1,12 +1,14 @@
 use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
+use crate::data::moly_client::MolyClientAction;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult
 };
+use crate::shared::moly_server_popup::MolyServerPopupAction;
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use moly_protocol::data::{File, FileID};
 
@@ -23,6 +25,7 @@ live_design! {
     use crate::shared::popup_notification::*;
     use crate::shared::widgets::SidebarMenuButton;
     use crate::shared::download_notification_popup::DownloadNotificationPopup;
+    use crate::shared::moly_server_popup::MolyServerPopup;
     use crate::shared::desktop_buttons::MolyDesktopButton;
 
     use crate::landing::model_card::ModelCardViewAllModal;
@@ -122,9 +125,15 @@ live_design! {
                     }
                 }
 
-                popup_notification = <PopupNotification> {
+                download_popup = <PopupNotification> {
                     content: {
                         popup_download_notification = <DownloadNotificationPopup> {}
+                    }
+                }
+
+                moly_server_popup = <PopupNotification> {
+                    content: {
+                        popup_moly_server = <MolyServerPopup> {}
                     }
                 }
             }
@@ -277,8 +286,16 @@ impl MatchEvent for App {
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
                 self.ui
-                    .popup_notification(id!(popup_notification))
+                    .popup_notification(id!(download_popup))
                     .close(cx);
+            }
+
+            if let MolyClientAction::ServerUnreachable = action.cast() {
+                self.ui.popup_notification(id!(moly_server_popup)).open(cx);
+            }
+
+            if let MolyServerPopupAction::CloseButtonClicked = action.cast() {
+                self.ui.popup_notification(id!(moly_server_popup)).close(cx);
             }
         }
     }
@@ -302,7 +319,7 @@ impl App {
                 }
             }
 
-            self.ui.popup_notification(id!(popup_notification)).open(cx);
+            self.ui.popup_notification(id!(download_popup)).open(cx);
         }
     }
 

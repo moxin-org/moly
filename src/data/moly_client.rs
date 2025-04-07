@@ -3,14 +3,17 @@ use moly_protocol::{
     protocol::FileDownloadResponse,
 };
 use url::Url;
-use std::sync::mpsc::Sender;
+use std::sync::{mpsc::Sender, Arc, Mutex};
 use futures::TryStreamExt;
+use makepad_widgets::*;
 
 #[derive(Clone, Debug)]
 pub struct MolyClient {
     address: String,
     client: reqwest::Client,
+    pub is_connected: Arc<Mutex<bool>>,
 }
+
 
 #[allow(dead_code)]
 impl MolyClient {
@@ -22,7 +25,16 @@ impl MolyClient {
 
         Self {
             address,
-            client
+            client,
+            is_connected: Arc::new(Mutex::new(false))
+        }
+    }
+
+    pub fn is_connected(&self) -> bool {
+        if let Ok(is_connected) = self.is_connected.lock() {
+            *is_connected
+        } else {
+            false
         }
     }
 
@@ -30,18 +42,28 @@ impl MolyClient {
         let url = format!("{}/ping", self.address);
         let client = self.client.clone();
 
+        let is_connected = self.is_connected.clone();
         tokio::spawn(async move {
             let resp = client.get(&url).send().await;
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
                         let _ = tx.send(Ok(()));
+                        if let Ok(mut is_connected) = is_connected.lock() {
+                            *is_connected = true;
+                        }
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        if let Ok(mut is_connected) = is_connected.lock() {
+                            *is_connected = false;
+                            Cx::post_action(MolyClientAction::ServerUnreachable);
+                        }
                     }
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                    }
                 }
             }
         });
@@ -50,6 +72,7 @@ impl MolyClient {
     pub fn get_featured_models(&self, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/featured", self.address);
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
             let resp = client.get(&url).send().await;
@@ -70,6 +93,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -77,8 +104,9 @@ impl MolyClient {
 
     pub fn search_models(&self, query: String, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/search?q={}", self.address, query);
-
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
         tokio::spawn(async move {
             let resp = client.get(&url).send().await;
             match resp {
@@ -98,6 +126,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -106,6 +138,8 @@ impl MolyClient {
     pub fn get_downloaded_files(&self, tx: Sender<Result<Vec<DownloadedFile>, anyhow::Error>>) {
         let url = format!("{}/files", self.address);
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
         tokio::spawn(async move {
             let resp = client.get(&url).send().await;
             match resp {
@@ -126,6 +160,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -134,6 +172,7 @@ impl MolyClient {
     pub fn get_current_downloads(&self, tx: Sender<Result<Vec<PendingDownload>, anyhow::Error>>) {
         let url = format!("{}/downloads", self.address);
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
             let resp = client.get(&url).send().await;
@@ -154,6 +193,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -162,6 +205,7 @@ impl MolyClient {
     pub fn download_file(&self, file: File, tx: tokio::sync::mpsc::Sender<Result<(), anyhow::Error>>) {
         let url = format!("{}/downloads", self.address);
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
             let resp = client.post(&url)
@@ -180,6 +224,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e))).await;
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -194,7 +242,9 @@ impl MolyClient {
             .push("progress");
 
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
         let response = client.get(url).send().await;
+
         match response {
             Ok(res) => {
                 let mut bytes = res.bytes_stream();
@@ -246,6 +296,10 @@ impl MolyClient {
             }
             Err(e) => {
                 let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e))).await;
+                if let Ok(mut is_connected) = is_connected.lock() {
+                    *is_connected = false;
+                    Cx::post_action(MolyClientAction::ServerUnreachable);
+                }
             }
         }
     }
@@ -260,6 +314,8 @@ impl MolyClient {
             .push(&file_id);
 
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
         tokio::spawn(async move {
             let resp = client.post(url)
                 .json(&serde_json::json!({
@@ -277,6 +333,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -292,6 +352,8 @@ impl MolyClient {
             .push(&file_id);
 
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
         tokio::spawn(async move {
             let resp = client.delete(url)
                 .json(&serde_json::json!({
@@ -309,6 +371,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -324,6 +390,8 @@ impl MolyClient {
             .push(&file_id);
 
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
         tokio::spawn(async move {
             let resp = client.delete(url)
                 .send().await;
@@ -338,6 +406,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -383,6 +455,7 @@ impl MolyClient {
     pub fn eject_model(&self, tx: Sender<Result<(), anyhow::Error>>) {
         let url = format!("{}/models/eject", self.address);
         let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
             let resp = client.post(&url).send().await;
@@ -396,8 +469,19 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
     }
+}
+
+#[derive(Clone, Debug, DefaultNone)]
+
+pub enum MolyClientAction {
+    None,
+    ServerUnreachable,
 }

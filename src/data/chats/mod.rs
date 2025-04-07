@@ -7,6 +7,7 @@ use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::{cell::RefCell, path::PathBuf};
 
 use super::filesystem::setup_chats_folder;
@@ -15,7 +16,7 @@ use super::preferences::Preferences;
 use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, ProviderBot, ProviderConnectionStatus};
 
 pub struct Chats {
-    pub moly_client: MolyClient,
+    pub moly_client: Arc<MolyClient>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub available_bots: HashMap<BotId, ProviderBot>,
@@ -34,7 +35,7 @@ pub struct Chats {
 }
 
 impl Chats {
-    pub fn new(moly_client: MolyClient) -> Self {
+    pub fn new(moly_client: Arc<MolyClient>) -> Self {
         Self {
             moly_client,
             saved_chats: Vec::new(),

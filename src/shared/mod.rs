@@ -1,12 +1,13 @@
 use makepad_widgets::Cx;
 
 pub mod actions;
-pub mod list;
 pub mod desktop_buttons;
 pub mod download_notification_popup;
 pub mod external_link;
+pub mod list;
 pub mod meta;
 pub mod modal;
+pub mod moly_server_popup;
 pub mod popup_notification;
 pub mod resource_imports;
 pub mod styles;
@@ -26,4 +27,5 @@ pub fn live_design(cx: &mut Cx) {
     download_notification_popup::live_design(cx);
     tooltip::live_design(cx);
     desktop_buttons::live_design(cx);
+    moly_server_popup::live_design(cx);
 }

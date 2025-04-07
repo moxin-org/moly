@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use makepad_widgets::Cx;
 use moly_protocol::data::*;
 use moly_protocol::protocol::FileDownloadResponse;
@@ -33,9 +35,9 @@ pub struct Download {
 }
 
 impl Download {
-    pub fn new(file: File, progress: f64, moly_client: MolyClient) -> Self {
+    pub fn new(file: File, progress: f64, moly_client: Arc<MolyClient>) -> Self {
         let mut download = Self {
-            file: file,
+            file,
             state: DownloadState::Initializing(progress),
             notification_pending: false,
         };
@@ -44,7 +46,7 @@ impl Download {
         download
     }
 
-    pub fn start(&mut self, moly_client: MolyClient) {
+    pub fn start(&mut self, moly_client: Arc<MolyClient>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(8);
         let file_id = self.file.id.clone();
         let moly_client_clone = moly_client.clone();
