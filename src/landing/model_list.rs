@@ -1,5 +1,4 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
-use crate::data::chats::AgentsAvailability;
 use crate::data::providers::ProviderBot;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
@@ -89,13 +88,6 @@ live_design! {
                     second = <AgentCard> {}
                     third = <AgentCard> {}
                 }
-                NoAgentsWarning = <Label> {
-                    draw_text:{
-                        wrap: Word
-                        text_style: {font_size: 10},
-                        color: #3
-                    }
-                }
                 Header = <Label> {
                     margin: {bottom: 10, top: 35}
                     draw_text:{
@@ -166,7 +158,6 @@ impl Widget for ModelList {
                 agents: &'a [ProviderBot],
                 margin_bottom: f32,
             },
-            NoAgentsWarning(&'static str),
             Header(&'static str),
             Model(&'a Model),
         }
@@ -174,28 +165,19 @@ impl Widget for ModelList {
         let mut items = Vec::new();
 
         if store.search.keyword.is_none() {
-            items.push(Item::Header("Featured Agents"));
-            let agents_availability = store.chats.agents_availability();
-            match agents_availability {
-                AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(
-                    agents_availability.to_human_readable(),
-                )),
-                AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
-                    agents_availability.to_human_readable(),
-                )),
-                AgentsAvailability::Available => {
-                    items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
-                        agents: chunk,
-                        margin_bottom: 8.0,
-                    }));
-                    if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
-                        *margin_bottom = 0.0;
-                    }
+            if !agents.is_empty() {
+                items.push(Item::Header("Featured Agents"));
+                items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
+                    agents: chunk,
+                    margin_bottom: 8.0,
+                }));
+                if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
+                    *margin_bottom = 0.0;
                 }
             }
-            items.push(Item::Header("Models"));
         }
 
+        items.push(Item::Header("Models"));
         items.extend(store.search.models.iter().map(Item::Model));
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
@@ -241,11 +223,6 @@ impl Widget for ModelList {
                                     });
 
                                 row.draw_all(cx, &mut Scope::empty());
-                            }
-                            Item::NoAgentsWarning(text) => {
-                                let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                                item.set_text(cx, text);
-                                item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::Model(model) => {
                                 let item = list.item(cx, item_id, live_id!(Model));

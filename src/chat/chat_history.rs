@@ -1,7 +1,6 @@
 use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
-use crate::data::chats::AgentsAvailability;
 use crate::data::providers::ProviderBot;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
@@ -131,22 +130,17 @@ impl Widget for ChatHistory {
         enum Item<'a> {
             ChatsHeader,
             AgentsHeader,
-            NoAgentsWarning(&'a str),
+            // NoAgentsWarning(&'a str),
             AgentButton(&'a ProviderBot),
             ChatButton(&'a ChatID),
         }
 
         let mut items: Vec<Item> = Vec::new();
 
-        items.push(Item::AgentsHeader);
-        let agents_availability = store.chats.agents_availability();
-        match agents_availability {
-            AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
-            AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
-            AgentsAvailability::Available => {
-                for agent in &agents {
-                    items.push(Item::AgentButton(agent));
-                }
+        if !agents.is_empty() {
+            items.push(Item::AgentsHeader);
+            for agent in &agents {
+                items.push(Item::AgentButton(agent));
             }
         }
 
@@ -180,11 +174,6 @@ impl Widget for ChatHistory {
                         }
                         Item::AgentsHeader => {
                             let item = list.item(cx, item_id, live_id!(AgentHeading));
-                            item.draw_all(cx, scope);
-                        }
-                        Item::NoAgentsWarning(text) => {
-                            let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                            item.set_text(cx, text);
                             item.draw_all(cx, scope);
                         }
                         Item::AgentButton(agent) => {
