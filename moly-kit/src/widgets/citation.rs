@@ -20,7 +20,7 @@ live_design! {
         spacing: 4,
         draw_bg: {
             color: #f2f2f2
-            radius: 3
+            border_radius: 3
         }
 
         <View> {
