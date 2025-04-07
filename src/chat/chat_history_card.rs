@@ -358,29 +358,30 @@ impl Widget for ChatHistoryCard {
         self.update_title_visibility(cx);
 
         let initial_letter = caption
-            .unwrap_or("A".to_string())
+            .unwrap_or("a".to_string())
             .chars()
             .next()
             .unwrap()
-            .to_uppercase()
+            .to_lowercase()
             .to_string();
 
         match &chat.borrow().associated_bot {
             Some(bot_id) => {
-                let agent = store.chats.get_bot_or_placeholder(&bot_id);
+                let bot = store.chats.get_bot_or_placeholder(&bot_id);
 
-                self.view(id!(avatar_section.model)).set_visible(cx, false);
-                self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_visible(true);
-                self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_bot(agent);
+                if store.chats.is_agent(bot_id) { 
+                    let mut chat_agent_avatar = self.chat_agent_avatar(id!(avatar_section.agent));
+                    self.view(id!(avatar_section.model)).set_visible(cx, false);
+                    chat_agent_avatar.set_visible(true);
+                    chat_agent_avatar.set_bot(bot);
+                } else {
+                    self.view(id!(avatar_section.model)).set_visible(cx, true);
+                    self.chat_agent_avatar(id!(avatar_section.agent))
+                        .set_visible(false);
+                    self.view.label(id!(avatar_label)).set_text(cx, &initial_letter);
+                }
             }
-            _ => {
-                self.view(id!(avatar_section.model)).set_visible(cx, true);
-                self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_visible(false);
-                self.view.label(id!(avatar_label)).set_text(cx, &initial_letter);
-            }
+            _ => {}
         }
 
         self.view.draw_walk(cx, scope, walk)
