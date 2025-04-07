@@ -304,12 +304,12 @@ impl Messages {
                             }
 
                             // Set citations from the message
-                            let citations = message.sources();
-                            if !citations.is_empty() {
-                                let citations_ref = item.citation_list(id!(citations));
-                                let mut citations_ref = citations_ref.borrow_mut().unwrap();
-                                citations_ref.urls = citations;
-                                citations_ref.visible = true;
+                            let sources = message.sources();
+                            if !sources.is_empty() {
+                                let citations = item.citation_list(id!(citations));
+                                let mut citations = citations.borrow_mut().unwrap();
+                                citations.urls = sources;
+                                citations.visible = true;
                             }
                             item
                         };
