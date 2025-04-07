@@ -36,7 +36,7 @@ live_design! {
 
     ModelFile = <View> {
         flow: Down
-        width: 600
+        width: 500
 
         h_wrapper = <View> {
             flow: Right

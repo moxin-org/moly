@@ -82,16 +82,19 @@ live_design! {
         width: Fill,
         height: 52,
 
-        selected_bg = <RoundedView> {
+        selected_bg = <RoundedInnerShadowView> {
             width: Fill
             height: Fill
             padding: {left: 4, right: 4}
 
             show_bg: true
+
             draw_bg: {
-                color: #0000
-                border_size: 0
-                border_radius: 5
+                border_radius: 5.0,
+                shadow_color: #47546722
+                shadow_radius: 25.0
+                shadow_offset: vec2(-2.0, 1.0)
+                border_color: #D0D5DD
             }
         }
 
@@ -332,7 +335,7 @@ impl Widget for ChatHistoryCard {
                 content_view_highlight.apply_over(
                     cx,
                     live! {
-                        draw_bg: {color: #EAECEF}
+                        draw_bg: {color: #ebedee}
                     },
                 );
             } else {

@@ -42,7 +42,7 @@ live_design! {
             color: #F2F4F7;
         }
 
-        <RowHeaderLabel> { width: 600, label = {text: "Model File"} }
+        <RowHeaderLabel> { width: 500, label = {text: "Model File"} }
         <RowHeaderLabel> { width: 100, label = {text: "File Size"} }
         <RowHeaderLabel> { width: 100, label = {text: "Added Date"} }
         <RowHeaderLabel> { width: 250, label = {text: ""} }

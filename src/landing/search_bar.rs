@@ -26,8 +26,8 @@ live_design! {
         show_bg: true,
 
         draw_bg: {
-            color: #EBFCFF,
-            instance color2: #CBE3E8,
+            color: (MAIN_BG_COLOR_DARK),
+            instance color2: #a6bec6,
             fn get_color(self) -> vec4 {
                 let coef = self.rect_size.y / self.rect_size.x;
 
@@ -58,13 +58,17 @@ live_design! {
             }
         }
 
-        input_container = <RoundedView> {
+        input_container = <RoundedShadowView> {
             width: 800,
             height: Fit,
 
             show_bg: true,
             draw_bg: {
-                color: #fff
+                color: (MAIN_BG_COLOR),
+                border_radius: 8.5,
+                uniform shadow_color: #0001
+                shadow_radius: 8.0,
+                shadow_offset: vec2(0.0,-2.0)
             }
 
             padding: {top: 3, bottom: 3, left: 20, right: 20}
@@ -72,12 +76,6 @@ live_design! {
 
             spacing: 4,
             align: {x: 0.0, y: 0.5},
-
-            draw_bg: {
-                border_radius: 9.0,
-                border_color: #D0D5DD,
-                border_size: 1.0,
-            }
 
             <Icon> {
                 draw_icon: {
@@ -92,7 +90,10 @@ live_design! {
             input = <MolyTextInput> {
                 width: Fill,
                 height: Fit,
-                empty_message: "Search Model by Keyword"
+                empty_message: "Search Model by Keyword",
+                draw_bg: {
+                    color: (MAIN_BG_COLOR),
+                }
             }
 
             clear_text_button = <MolyButton> {

@@ -55,7 +55,7 @@ live_design! {
                 height: Fill,
                 show_bg: true
                 draw_bg: {
-                    color: #F2F4F7
+                    color: (MAIN_BG_COLOR)
                 }
 
                 <View> {
@@ -78,6 +78,14 @@ live_design! {
                             cursor: Default
                         }
                     }
+                }
+            }
+            right_border = <View> {
+                width: 1.6, height: Fill
+                margin: {top: 15, bottom: 15}
+                show_bg: true,
+                draw_bg: {
+                    color: #eaeaea
                 }
             }
         }

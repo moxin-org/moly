@@ -57,19 +57,19 @@ live_design! {
     }
 
     pub SIDEBAR_FONT_COLOR = #344054
-    pub SIDEBAR_FONT_COLOR_HOVER = #344054
-    pub SIDEBAR_FONT_COLOR_SELECTED = #127487
+    pub SIDEBAR_FONT_COLOR_HOVER = (MAIN_BG_COLOR)
+    pub SIDEBAR_FONT_COLOR_SELECTED = (MAIN_BG_COLOR)
 
-    pub SIDEBAR_BG_COLOR_HOVER = #E2F1F199
-    pub SIDEBAR_BG_COLOR_SELECTED = #E2F1F199
+    pub SIDEBAR_BG_COLOR_HOVER = #4
+    pub SIDEBAR_BG_COLOR_SELECTED = #4
 
     pub SidebarMenuButton = <RadioButton> {
-        width: 80,
-        height: 70,
-        padding: 0, margin: 0,
+        width: 70,
+        height: Fit,
+        padding: 8, margin: 0,
         flow: Down, spacing: 8.0, align: {x: 0.5, y: 0.5}
 
-        icon_walk: {margin: 0, width: 30, height: 30}
+        icon_walk: {margin: 0, width: 25, height: 25}
         label_walk: {margin: 0}
 
         draw_bg: {
@@ -78,12 +78,12 @@ live_design! {
             instance border_size: 0.0
             instance border_color_1: #0000
             instance inset: vec4(0.0, 0.0, 0.0, 0.0)
-            instance border_radius: 2.5
+            instance border_radius: 3.5
 
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
-                        (SIDEBAR_BG_COLOR),
+                        (MAIN_BG_COLOR_DARK), // TODO(Julian): change to MAIN_BG_COLOR and add shadow
                         (SIDEBAR_BG_COLOR_HOVER),
                         self.hover
                     ),
@@ -117,6 +117,8 @@ live_design! {
             color: (SIDEBAR_FONT_COLOR)
             color_hover: (SIDEBAR_FONT_COLOR_HOVER)
             color_active: (SIDEBAR_FONT_COLOR_SELECTED)
+
+            text_style: <BOLD_FONT>{font_size: 9}
 
             fn get_color(self) -> vec4 {
                 return mix(

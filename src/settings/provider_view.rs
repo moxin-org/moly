@@ -66,12 +66,18 @@ live_design! {
         }
     }
 
-    pub ProviderView = {{ProviderView}} {
+    pub ProviderView = {{ProviderView}}<RoundedShadowView> {
         width: Fill, height: Fill
         // align: {x: 0.0, y: 0.0}
         padding: {left: 30, right: 30, top: 30, bottom: 30}
         show_bg: true
-        draw_bg: { color: (SIDEBAR_BG_COLOR) }
+        draw_bg: { 
+            color: (MAIN_BG_COLOR_DARK)
+            border_radius: 4.5,
+            uniform shadow_color: #0002
+            shadow_radius: 8.0,
+            shadow_offset: vec2(0.0,-1.5)
+        }
 
         content = <View> {
             flow: Down, spacing: 20
