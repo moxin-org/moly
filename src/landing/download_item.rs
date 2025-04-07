@@ -19,7 +19,7 @@ live_design! {
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
     ICON_PLAY = dep("crate://self/resources/icons/play_download.svg")
-    ICON_RETRY = dep("crate://self/resources/icons/retry_download.svg")
+    ICON_RETRY = dep("crate://self/resources/icons/retry.svg")
 
     ModelAttributeTag = <RoundedView> {
         width: Fit,

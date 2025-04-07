@@ -5,7 +5,7 @@ use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
+    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult
 };
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use moly_protocol::data::{File, FileID};
@@ -257,9 +257,14 @@ impl MatchEvent for App {
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let PopupAction::NavigateToMyModels = action.cast() {
+            if let NavigationAction::NavigateToMyModels = action.cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
+            }
+
+            if let NavigationAction::NavigateToProviders = action.cast() {
+                let providers_radio_button = self.ui.radio_button(id!(providers_tab));
+                providers_radio_button.select(cx, &mut Scope::empty());
             }
 
             self.store.handle_provider_connection_action(action.cast());
@@ -324,4 +329,12 @@ impl App {
             }
         }
     }
+}
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum NavigationAction {
+    // TODO: Implement a proper navigation system that supports NavigateTo(some_id), NavigateBack, etc.
+    NavigateToProviders,
+    NavigateToMyModels,
+    None,
 }

@@ -1,3 +1,5 @@
+use std::sync::mpsc::channel;
+
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
@@ -54,6 +56,8 @@ pub struct Store {
     pub chats: Chats,
     pub preferences: Preferences,
     pub bot_repo: Option<BotRepo>,
+    pub moly_client: MolyClient,
+    pub is_moly_server_connected: bool,
 }
 
 impl Default for Store {
@@ -78,25 +82,37 @@ impl Store {
         let mut store = Self {
             search: Search::new(moly_client.clone()),
             downloads: Downloads::new(moly_client.clone()),
-            chats: Chats::new(moly_client),
+            chats: Chats::new(moly_client.clone()),
+            moly_client,
             preferences,
             bot_repo: None,
+            is_moly_server_connected: false,
         };
-
-        store.downloads.load_downloaded_files();
-        store.downloads.load_pending_downloads();
 
         store.chats.load_chats();
         store.init_current_chat();
-
-        store.search.load_featured_models();
-        // store
-        //     .chats
-        //     .register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
+        
+        store.sync_with_moly_server();
 
         store.load_preference_connections();
 
         store
+    }
+
+    pub fn sync_with_moly_server(&mut self) {
+        let (tx, rx) = channel();
+        self.moly_client.test_connection(tx);
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(()) => {
+                    self.downloads.load_downloaded_files();
+                    self.downloads.load_pending_downloads();
+                    self.search.load_featured_models();
+                    self.is_moly_server_connected = true;
+                }
+                Err(_err) => {},
+            }
+        };
     }
 
     pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {

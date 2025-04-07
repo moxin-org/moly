@@ -26,6 +26,27 @@ impl MolyClient {
         }
     }
 
+    pub fn test_connection(&self, tx: Sender<Result<(), anyhow::Error>>) {
+        let url = format!("{}/ping", self.address);
+        let client = self.client.clone();
+
+        tokio::spawn(async move {
+            let resp = client.get(&url).send().await;
+            match resp {
+                Ok(r) => {
+                    if r.status().is_success() {
+                        let _ = tx.send(Ok(()));
+                    } else {
+                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                    }
+                }
+                Err(e) => {
+                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                }
+            }
+        });
+    }
+
     pub fn get_featured_models(&self, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/featured", self.address);
         let client = self.client.clone();

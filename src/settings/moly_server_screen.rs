@@ -1,5 +1,7 @@
 use makepad_widgets::*;
 
+use crate::{app::NavigationAction, data::store::Store};
+
 live_design! {
     use link::theme::*;
     use link::shaders::*;
@@ -14,6 +16,8 @@ live_design! {
 
     ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
     ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
+    ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
+    ICON_RETRY = dep("crate://self/resources/icons/retry.svg")
 
     SUBSIDEBAR_BG_COLOR = (MAIN_BG_COLOR)
     SUBSIDEBAR_BG_COLOR_HOVER = #ebedee
@@ -67,47 +71,119 @@ live_design! {
         }
     }
 
+    MolyServerNotAccesible = <View> {
+        visible: false
+        padding: {left: 30, top: 40}
+        spacing: 50
+        flow: Down
+
+        header = <View> {
+            height: Fit
+            flow: Down, spacing: 40
+            <Label> {
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 25}
+                    color: #000
+                }
+                text: "MolyServer (disconnected)"
+            }
+    
+            <Label> {
+                width: Fill, height: Fit
+                draw_text:{
+                    text_style: {font_size: 12}
+                    color: #000
+                }
+                text: "MolyServer is a local HTTP server that powers the Moly app by providing capabilities for searching, downloading, and running local LLMs).\nYou can install MolyServer by following the instructions in https://github.com/moxin-org/moly-server."
+            }
+        }
+
+        <View> {
+            height: Fit, width: Fill
+            spacing: 20
+            flow: Down
+            <Label> {
+                width: Fit, height: Fit
+                draw_text:{
+                    text_style: <BOLD_FONT>{font_size: 12}
+                    color: #000
+                }
+                text: "Could not reach MolyServer.\nPlease check if its running, and verify your provider settings."
+            }
+
+            <View> {
+                width: Fill, height: Fit
+                spacing: 8
+                go_to_providers = <MolyButton> {
+                    draw_bg: { color: #099250, border_size: 0}
+                    draw_icon: {
+                        svg_file: (ICON_CLOUD),
+                    }
+                    draw_text: {
+                        text_style: <BOLD_FONT>{ font_size: 10}
+                    }
+                    text: "Go to Providers"
+                }
+                refresh = <MolyButton> {
+                    draw_bg: { color: #099250, border_size: 0}
+                    draw_icon: {
+                        svg_file: (ICON_RETRY),
+                    }
+                    draw_text: {
+                        text_style: <BOLD_FONT>{ font_size: 10}
+                    }
+                    text: "refresh"
+                }
+            }
+        }
+    }
+
     pub MolyServerScreen = {{MolyServerScreen}} {
         show_bg: true,
-        menu = <RoundedView> {
-            width: 130, height: Fill,
-            flow: Down,
-            padding: { top: 50, bottom: 20, left: 5, right: 8 },
-
-            show_bg: true,
-            draw_bg: {
-                color: (SUBSIDEBAR_BG_COLOR),
-                instance border_radius: 0.0,
-            }
-
-            discover_tab = <SubSidebarMenuButton> {
-                animator: {active = {default: on}}
-                text: "Discover",
-                draw_icon: {
-                    svg_file: (ICON_DISCOVER),
+        main_content = <View> {
+            visible: false
+            menu = <RoundedView> {
+                width: 130, height: Fill,
+                flow: Down,
+                padding: { top: 50, bottom: 20, left: 5, right: 8 },
+    
+                show_bg: true,
+                draw_bg: {
+                    color: (SUBSIDEBAR_BG_COLOR),
+                    instance border_radius: 0.0,
+                }
+    
+                discover_tab = <SubSidebarMenuButton> {
+                    animator: {active = {default: on}}
+                    text: "Discover",
+                    draw_icon: {
+                        svg_file: (ICON_DISCOVER),
+                    }
+                }
+                my_models_tab = <SubSidebarMenuButton> {
+                    text: "My Models",
+                    draw_icon: {
+                        svg_file: (ICON_MY_MODELS),
+                    }
                 }
             }
-            my_models_tab = <SubSidebarMenuButton> {
-                text: "My Models",
-                draw_icon: {
-                    svg_file: (ICON_MY_MODELS),
+    
+            right_border = <View> {
+                width: 1.6, height: Fill
+                margin: {top: 15, bottom: 15}
+                show_bg: true,
+                draw_bg: {
+                    color: #eaeaea
                 }
             }
-        }
-
-        right_border = <View> {
-            width: 1.6, height: Fill
-            margin: {top: 15, bottom: 15}
-            show_bg: true,
-            draw_bg: {
-                color: #eaeaea
+    
+            pages = <View> {
+                discover_frame = <View> { visible: true, <LandingScreen> {} }
+                my_models_frame = <View> { visible: false, <MyModelsScreen> {} }
             }
         }
 
-        pages = <View> {
-            discover_frame = <View> { visible: true, <LandingScreen> {} }
-            my_models_frame = <View> { visible: false, <MyModelsScreen> {} }
-        }
+        server_not_accessible = <MolyServerNotAccesible> {}
     }
 }
 
@@ -124,12 +200,21 @@ impl Widget for MolyServerScreen {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        let store = scope.data.get_mut::<Store>().unwrap();
+        if store.is_moly_server_connected {
+            self.view(id!(server_not_accessible)).set_visible(cx, false);
+            self.view(id!(main_content)).set_visible(cx, true);
+        } else {
+            self.view(id!(server_not_accessible)).set_visible(cx, true);
+            self.view(id!(main_content)).set_visible(cx, false);
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
 
 impl WidgetMatchEvent for MolyServerScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         // RadioButton's selected_to_visible does not seem to work at this level
         // So we're manually checking the selected index and setting the visibility of the pages manually
         let selected_index = self.radio_button_set(ids!(menu.discover_tab, menu.my_models_tab)).selected(cx, actions);
@@ -149,6 +234,15 @@ impl WidgetMatchEvent for MolyServerScreen {
                 self.redraw(cx);
             }
             _ => (),
+        }
+
+
+        if self.button(id!(go_to_providers)).clicked(actions) {
+            cx.action(NavigationAction::NavigateToProviders);
+        }
+        if self.button(id!(refresh)).clicked(actions) {
+            let store = scope.data.get_mut::<Store>().unwrap();
+            store.sync_with_moly_server();
         }
     }
 }
