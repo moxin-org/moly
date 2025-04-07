@@ -1,6 +1,8 @@
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 
+use crate::shared::actions::ChatAction;
+
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
@@ -18,6 +20,7 @@ use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
 use moly_kit::*;
+use makepad_widgets::*;
 
 #[allow(dead_code)]
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
@@ -202,6 +205,7 @@ impl Store {
     fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
             self.chats.set_current_chat(Some(chat_id));
+            Cx::post_action(ChatAction::ChatSelected(chat_id));
         } else {
             self.chats.create_empty_chat(None);
         }
