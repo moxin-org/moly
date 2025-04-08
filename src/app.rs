@@ -1,12 +1,14 @@
 use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
+use crate::data::moly_client::MolyClientAction;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult, PopupAction
+    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult
 };
+use crate::shared::moly_server_popup::MolyServerPopupAction;
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use moly_protocol::data::{File, FileID};
 
@@ -23,18 +25,15 @@ live_design! {
     use crate::shared::popup_notification::*;
     use crate::shared::widgets::SidebarMenuButton;
     use crate::shared::download_notification_popup::DownloadNotificationPopup;
+    use crate::shared::moly_server_popup::MolyServerPopup;
     use crate::shared::desktop_buttons::MolyDesktopButton;
 
-    use crate::landing::landing_screen::LandingScreen;
     use crate::landing::model_card::ModelCardViewAllModal;
     use crate::chat::chat_screen::ChatScreen;
-    use crate::my_models::my_models_screen::MyModelsScreen;
-    use crate::settings::moly_server_settings::MolyServerSettings;
+    use crate::settings::moly_server_screen::MolyServerScreen;
     use crate::settings::providers_screen::ProvidersScreen;
-
-    ICON_DISCOVER = dep("crate://self/resources/icons/discover.svg")
+    
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
-    ICON_MY_MODELS = dep("crate://self/resources/icons/my_models.svg")
     ICON_LOCAL = dep("crate://self/resources/icons/local.svg")
     ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
 
@@ -62,12 +61,15 @@ live_design! {
                 root = <View> {
                     width: Fill,
                     height: Fill,
+                    show_bg: true,
+                    draw_bg: {
+                        color: (MAIN_BG_COLOR_DARK),
+                    }
 
                     sidebar_menu = <RoundedView> {
-                        width: 100,
-                        height: Fill,
-                        flow: Down, spacing: 20.0,
-                        padding: { top: 80, bottom: 20 },
+                        width: 90, height: Fill,
+                        flow: Down, spacing: 15.0,
+                        padding: { top: 50, bottom: 20, left: 0, right: 0 },
 
                         align: {x: 0.5, y: 0.0},
 
@@ -75,27 +77,19 @@ live_design! {
                         draw_bg: {
                             color: (SIDEBAR_BG_COLOR),
                             instance border_radius: 0.0,
-                            border_color: #EAECF0,
-                            border_size: 1.2,
                         }
 
-                        discover_tab = <SidebarMenuButton> {
-                            animator: {selected = {default: on}}
-                            text: "Discover",
-                            draw_icon: {
-                                svg_file: (ICON_DISCOVER),
-                            }
-                        }
                         chat_tab = <SidebarMenuButton> {
+                            animator: {active = {default: on}}
                             text: "Chat",
                             draw_icon: {
                                 svg_file: (ICON_CHAT),
                             }
                         }
-                        my_models_tab = <SidebarMenuButton> {
-                            text: "My Models",
+                        moly_server_tab = <SidebarMenuButton> {
+                            text: "MolyServer",
                             draw_icon: {
-                                svg_file: (ICON_MY_MODELS),
+                                svg_file: (ICON_LOCAL),
                             }
                         }
                         <HorizontalFiller> {}
@@ -105,34 +99,41 @@ live_design! {
                                 svg_file: (ICON_CLOUD),
                             }
                         }
-                        moly_server_settings_tab = <SidebarMenuButton> {
-                            text: "Moly Server",
-                            draw_icon: {
-                                svg_file: (ICON_LOCAL),
-                            }
-                        }
                     }
 
-                    application_pages = <View> {
-                        margin: 0.0,
-                        padding: 0.0,
+                    application_pages = <RoundedShadowView> {
+                        show_bg: true,
+                        draw_bg: {
+                            color: (MAIN_BG_COLOR),
+                            border_radius: 4.5,
+                            uniform shadow_color: #0003
+                            shadow_radius: 15.0,
+                            shadow_offset: vec2(0.0,-1.5)
+                        }
+
+                        margin: {top: 7, right: 7, bottom: 7}
+                        padding: 3
 
                         flow: Overlay,
 
                         width: Fill,
                         height: Fill,
 
-                        discover_frame = <LandingScreen> {visible: true}
-                        chat_frame = <ChatScreen> {visible: false}
-                        my_models_frame = <MyModelsScreen> {visible: false}
-                        moly_server_settings_frame = <MolyServerSettings> {visible: false}
+                        chat_frame = <ChatScreen> {visible: true}
+                        moly_server_frame = <MolyServerScreen> {visible: false}
                         providers_frame = <ProvidersScreen> {visible: false}
                     }
                 }
 
-                popup_notification = <PopupNotification> {
+                download_popup = <PopupNotification> {
                     content: {
                         popup_download_notification = <DownloadNotificationPopup> {}
+                    }
+                }
+
+                moly_server_popup = <PopupNotification> {
+                    content: {
+                        popup_moly_server = <MolyServerPopup> {}
                     }
                 }
             }
@@ -195,10 +196,8 @@ impl MatchEvent for App {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
         self.ui
             .radio_button_set(ids!(
-                sidebar_menu.discover_tab,
                 sidebar_menu.chat_tab,
-                sidebar_menu.my_models_tab,
-                sidebar_menu.moly_server_settings_tab,
+                sidebar_menu.moly_server_tab,
                 sidebar_menu.providers_tab,
             ))
             .selected_to_visible(
@@ -206,10 +205,8 @@ impl MatchEvent for App {
                 &self.ui,
                 actions,
                 ids!(
-                    application_pages.discover_frame,
                     application_pages.chat_frame,
-                    application_pages.my_models_frame,
-                    application_pages.moly_server_settings_frame,
+                    application_pages.moly_server_frame,
                     application_pages.providers_frame,
                 ),
             );
@@ -269,9 +266,14 @@ impl MatchEvent for App {
                 chat_radio_button.select(cx, &mut Scope::empty());
             }
 
-            if let PopupAction::NavigateToMyModels = action.cast() {
+            if let NavigationAction::NavigateToMyModels = action.cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
+            }
+
+            if let NavigationAction::NavigateToProviders = action.cast() {
+                let providers_radio_button = self.ui.radio_button(id!(providers_tab));
+                providers_radio_button.select(cx, &mut Scope::empty());
             }
 
             self.store.handle_provider_connection_action(action.cast());
@@ -284,8 +286,16 @@ impl MatchEvent for App {
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
                 self.ui
-                    .popup_notification(id!(popup_notification))
+                    .popup_notification(id!(download_popup))
                     .close(cx);
+            }
+
+            if let MolyClientAction::ServerUnreachable = action.cast() {
+                self.ui.popup_notification(id!(moly_server_popup)).open(cx);
+            }
+
+            if let MolyServerPopupAction::CloseButtonClicked = action.cast() {
+                self.ui.popup_notification(id!(moly_server_popup)).close(cx);
             }
         }
     }
@@ -309,7 +319,7 @@ impl App {
                 }
             }
 
-            self.ui.popup_notification(id!(popup_notification)).open(cx);
+            self.ui.popup_notification(id!(download_popup)).open(cx);
         }
     }
 
@@ -336,4 +346,12 @@ impl App {
             }
         }
     }
+}
+
+#[derive(Clone, DefaultNone, Debug)]
+pub enum NavigationAction {
+    // TODO: Implement a proper navigation system that supports NavigateTo(some_id), NavigateBack, etc.
+    NavigateToProviders,
+    NavigateToMyModels,
+    None,
 }

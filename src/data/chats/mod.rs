@@ -7,6 +7,7 @@ use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::{cell::RefCell, path::PathBuf};
 
 use super::filesystem::setup_chats_folder;
@@ -15,7 +16,7 @@ use super::preferences::Preferences;
 use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, ProviderBot, ProviderConnectionStatus};
 
 pub struct Chats {
-    pub moly_client: MolyClient,
+    pub moly_client: Arc<MolyClient>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
     pub available_bots: HashMap<BotId, ProviderBot>,
@@ -34,7 +35,7 @@ pub struct Chats {
 }
 
 impl Chats {
-    pub fn new(moly_client: MolyClient) -> Self {
+    pub fn new(moly_client: Arc<MolyClient>) -> Self {
         Self {
             moly_client,
             saved_chats: Vec::new(),
@@ -280,29 +281,6 @@ impl Chats {
         }
     }
 
-    pub fn agents_availability(&self) -> AgentsAvailability {
-        let mut has_mofa_provider = false;
-        let mut has_available_agent = false;
-        
-        for (_, p) in &self.providers {
-            if p.provider_type == ProviderType::MoFa {
-                has_mofa_provider = true;
-                if !p.models.is_empty() {
-                    has_available_agent = true;
-                    break; // No need to continue once we've found an available agent
-                }
-            }
-        }
-        
-        if has_available_agent {
-            AgentsAvailability::Available
-        } else if !has_mofa_provider {
-            AgentsAvailability::NoServers
-        } else {
-            AgentsAvailability::ServersNotConnected
-        }
-    }
-
     /// Returns a reference to a remote model by ID, falling back to an unknown remote model placeholder
     /// if the remote model is not found in the available remote models list.
     /// 
@@ -349,21 +327,5 @@ impl Chats {
 
     pub fn get_bot_id_by_file_id(&self, file_id: &FileID) -> Option<BotId> {
         self.available_bots.values().find(|m| m.name == file_id.as_str()).map(|m| m.id.clone())
-    }
-}
-
-pub enum AgentsAvailability {
-    Available,
-    NoServers,
-    ServersNotConnected,
-}
-
-impl AgentsAvailability {
-    pub fn to_human_readable(&self) -> &'static str {
-        match self {
-            AgentsAvailability::Available => "Agents available",
-            AgentsAvailability::NoServers => "Not connected to any MoFa servers.",
-            AgentsAvailability::ServersNotConnected => "Could not connect to some servers. Check your MoFa settings.",
-        }
     }
 }

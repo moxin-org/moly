@@ -242,7 +242,7 @@ impl Messages {
                     let item = list.item(cx, index, live_id!(UserLine));
 
                     let name = "You";
-                    let avatar = Some(Picture::Grapheme("Y".into()));
+                    let avatar = Some(Picture::Grapheme("y".into()));
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);

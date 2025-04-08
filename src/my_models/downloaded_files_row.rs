@@ -20,7 +20,7 @@ live_design! {
     ICON_START_CHAT = dep("crate://self/resources/icons/start_chat.svg")
     ICON_INFO = dep("crate://self/resources/icons/info.svg")
     ICON_DELETE = dep("crate://self/resources/icons/delete.svg")
-    MODEL_CTA_COLOR = #127487
+    MODEL_CTA_COLOR = (CTA_BUTTON_COLOR)
 
     DownloadedFilesRowButton = <MolyButton> {
         height: 40
@@ -30,13 +30,17 @@ live_design! {
         }
 
         draw_icon: {
-            color: #087443;
+            color: (CTA_BUTTON_COLOR);
+        }
+
+        draw_text: {
+            text_style: <BOLD_FONT> { font_size: 9}
         }
     }
 
     ModelFile = <View> {
         flow: Down
-        width: 600
+        width: 500
 
         h_wrapper = <View> {
             flow: Right
@@ -103,9 +107,9 @@ live_design! {
         start_chat_button = <DownloadedFilesRowButton> {
             width: 140
             text: "Chat with Model",
+            draw_bg: { color_hover: #09925033 }
             draw_text: {
                 color: (MODEL_CTA_COLOR)
-                text_style: <REGULAR_FONT>{font_size: 9}
             }
             draw_icon: {
                 svg_file: (ICON_START_CHAT)
@@ -117,17 +121,19 @@ live_design! {
 
         info_button = <DownloadedFilesRowButton> {
             width: 40
+            draw_bg: { color_hover: #2654C033 }
             draw_icon: {
                 svg_file: (ICON_INFO),
-                color: #0099FF
+                color: #2654C0
             }
         }
 
         delete_button = <DownloadedFilesRowButton> {
             width: 40
+            draw_bg: { color_hover: #B4605A33 }
             draw_icon: {
                 svg_file: (ICON_DELETE),
-                color: #B42318
+                color: #B4605A
             }
         }
     }
@@ -146,10 +152,6 @@ live_design! {
             width: Fill
             align: {x: 0.0, y: 0.5}
 
-            show_bg: true
-            draw_bg: {
-                color: #FFF;
-            }
 
             separator_line = <Line> {}
             h_wrapper = <View> {
@@ -157,10 +159,6 @@ live_design! {
                 width: Fit
                 padding: {top: 10, bottom: 10, left: 20, right: 20}
                 spacing: 30
-                show_bg: true
-                draw_bg: {
-                    color: #FFF;
-                }
 
                 model_file = <ModelFile> {}
                 file_size_tag = <DownloadedFilesTag> {}

@@ -1,3 +1,8 @@
+use std::sync::mpsc::channel;
+use std::sync::Arc;
+
+use crate::shared::actions::ChatAction;
+
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
@@ -15,6 +20,7 @@ use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
 use moly_kit::*;
+use makepad_widgets::*;
 
 #[allow(dead_code)]
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
@@ -54,6 +60,7 @@ pub struct Store {
     pub chats: Chats,
     pub preferences: Preferences,
     pub bot_repo: Option<BotRepo>,
+    moly_client: Arc<MolyClient>,
 }
 
 impl Default for Store {
@@ -71,32 +78,45 @@ impl Store {
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8765);
 
-        let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
+        let moly_client = Arc::new(MolyClient::new(format!("http://localhost:{}", server_port)));
 
         register_capture_manager();
 
         let mut store = Self {
-            search: Search::new(moly_client.clone()),
-            downloads: Downloads::new(moly_client.clone()),
-            chats: Chats::new(moly_client),
+            search: Search::new(Arc::clone(&moly_client)),
+            downloads: Downloads::new(Arc::clone(&moly_client)),
+            chats: Chats::new(Arc::clone(&moly_client)),
+            moly_client,
             preferences,
             bot_repo: None,
         };
 
-        store.downloads.load_downloaded_files();
-        store.downloads.load_pending_downloads();
-
         store.chats.load_chats();
         store.init_current_chat();
-
-        store.search.load_featured_models();
-        // store
-        //     .chats
-        //     .register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
-
+        
+        store.sync_with_moly_server();
         store.load_preference_connections();
 
         store
+    }
+
+    pub fn is_moly_server_connected(&self) -> bool {
+        self.moly_client.is_connected()
+    }
+
+    pub fn sync_with_moly_server(&mut self) {
+        let (tx, rx) = channel();
+        self.moly_client.test_connection(tx);
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(()) => {
+                    self.downloads.load_downloaded_files();
+                    self.downloads.load_pending_downloads();
+                    self.search.load_featured_models();
+                }
+                Err(_err) => {},
+            }
+        };
     }
 
     pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {
@@ -185,6 +205,7 @@ impl Store {
     fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
             self.chats.set_current_chat(Some(chat_id));
+            Cx::post_action(ChatAction::ChatSelected(chat_id));
         } else {
             self.chats.create_empty_chat(None);
         }

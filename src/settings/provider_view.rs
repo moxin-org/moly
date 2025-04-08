@@ -66,12 +66,18 @@ live_design! {
         }
     }
 
-    pub ProviderView = {{ProviderView}} {
+    pub ProviderView = {{ProviderView}}<RoundedShadowView> {
         width: Fill, height: Fill
         // align: {x: 0.0, y: 0.0}
         padding: {left: 30, right: 30, top: 30, bottom: 30}
         show_bg: true
-        draw_bg: { color: (SIDEBAR_BG_COLOR) }
+        draw_bg: { 
+            color: (MAIN_BG_COLOR_DARK)
+            border_radius: 4.5,
+            uniform shadow_color: #0002
+            shadow_radius: 8.0,
+            shadow_offset: vec2(0.0,-1.5)
+        }
 
         content = <View> {
             flow: Down, spacing: 20
@@ -172,7 +178,7 @@ live_design! {
                         height: 30
                         padding: {left: 20, right: 20, top: 0, bottom: 0}
                         text: "Save"
-                        draw_bg: { color: #099250, border_color_1: #099250 }
+                        draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
                     }
                 }
                 <View> {
@@ -222,7 +228,7 @@ live_design! {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 10}
                     }
-                    draw_bg: { color: #f00, border_color_1: #f00 }
+                    draw_bg: { color: #B4605A, border_size: 0 }
                 }
             }
         }

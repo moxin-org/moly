@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moly_protocol::data::{File, FileID};
 
-use crate::shared::actions::DownloadAction;
+use crate::{app::NavigationAction, shared::actions::DownloadAction};
 
 live_design! {
     use link::theme::*;
@@ -193,12 +193,6 @@ live_design! {
 
 }
 
-#[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
-pub enum PopupAction {
-    None,
-    NavigateToMyModels,
-}
-
 #[derive(Clone, Debug, DefaultNone)]
 pub enum DownloadNotificationPopupAction {
     None,
@@ -257,8 +251,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
             .link_label(id!(view_in_my_models_link))
             .clicked(actions)
         {
-            // TODO: Abstract the navigation actions on a single enum for the whole app.
-            cx.action(PopupAction::NavigateToMyModels);
+            cx.action(NavigationAction::NavigateToMyModels);
             cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
 

@@ -26,40 +26,39 @@ live_design! {
 
     ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
 
-    ModelSelectorButton = <RoundedView> {
+    ModelSelectorButton = <View> {
         width: Fill,
         height: 54,
         flow: Overlay,
 
+        align: {x: 0.5, y: 0.5}
         loading = <ModelSelectorLoading> {
             width: Fill,
             height: Fill,
             visible: false,
         }
 
-        draw_bg: {
-            instance border_radius: 3.0,
-            color: #F9FAFB,
-        }
 
         <View> {
             width: Fill,
             height: Fill,
             flow: Right,
 
-            align: {x: 0.0, y: 0.5},
+            align: {x: 0.5, y: 0.5},
             padding: {left: 16, right: 16, top: 0, bottom: 0},
 
             cursor: Hand,
 
             content = <View> {
-                width: Fill,
+                width: Fit,
                 height: Fit,
                 flow: Overlay,
                 padding: {left: 16, top: 0, bottom: 0, right: 0},
 
+                align: {x: 0.0, y: 0.5},
+
                 choose = <View> {
-                    width: Fill,
+                    width: Fit,
                     height: Fit,
 
                     align: {x: 0.0, y: 0.5},
@@ -109,7 +108,7 @@ live_design! {
                 width: Fit,
                 height: Fit,
                 align: {x: 1.0, y: 0.5},
-                margin: {left: 10, right: 6},
+                margin: {left: 6, right: 6},
 
                 icon = <RotatedImage> {
                     height: 14,
@@ -127,14 +126,12 @@ live_design! {
         width: Fill,
         height: 0,
 
-        margin: { top: 5 },
         padding: 5,
 
         draw_bg: {
             instance border_radius: 3.0,
             color: #fff,
             border_color: #D0D5DD,
-            border_size: 1.0,
         }
 
         list_container = <View> {
@@ -149,11 +146,18 @@ live_design! {
         }
     }
 
-    pub ModelSelector = {{ModelSelector}} {
-        width: Fill,
-        height: Fit,
-
+    pub ModelSelector = {{ModelSelector}}<RoundedShadowView> {
+        width: 500, height: Fit,
         flow: Down,
+
+        show_bg: true,
+        draw_bg: {
+            color: (MAIN_BG_COLOR_DARK),
+            border_radius: 4.5,
+            uniform shadow_color: #0001
+            shadow_radius: 8.0,
+            shadow_offset: vec2(0.0,-2.0)
+        }
 
         button = <ModelSelectorButton> {}
         options = <ModelSelectorOptions> {}

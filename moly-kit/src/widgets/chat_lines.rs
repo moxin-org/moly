@@ -113,15 +113,15 @@ live_design! {
         flow: Down,
         height: Fit,
         message_section = {
-        sender = {
-        avatar = {
-            grapheme = {
-            draw_bg: {
-                color: #32a868,
+            sender = {
+                avatar = {
+                    grapheme = {
+                        draw_bg: {
+                            color: #008F7E
+                        }
+                    }
+                }
             }
-            }
-        }
-        }
 
             bubble = <Bubble> {
                 flow: Down,
@@ -130,12 +130,12 @@ live_design! {
                 text = <View> {
                     flow: Down
                     height: Fit,
-            label = <Label> {
-            width: Fill,
-            draw_text: {
-                color: #000
-            }
-            }
+                    label = <Label> {
+                        width: Fill,
+                        draw_text: {
+                            color: #000
+                        }
+                    }
                 }
                 editor = <Editor> { visible: false }
             }

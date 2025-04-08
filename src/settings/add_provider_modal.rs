@@ -229,7 +229,7 @@ live_design! {
                         height: 40
                         padding: {left: 20, right: 20, top: 0, bottom: 0}
                         text: "Add Provider"
-                        draw_bg: { color: #099250, border_color_1: #099250 }
+                        draw_bg: { color: (CTA_BUTTON_COLOR), border_color_1: (CTA_BUTTON_COLOR) }
                     }
                 }
             }

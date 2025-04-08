@@ -2,6 +2,7 @@ use makepad_widgets::*;
 use moly_kit::*;
 use moly_kit::utils::asynchronous::spawn;
 
+use crate::data::capture::CaptureAction;
 use crate::data::providers::ProviderType;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
@@ -20,6 +21,78 @@ live_design! {
     use crate::chat::chat_params::ChatParams;
     use crate::chat::model_selector::ModelSelector;
     use moly_kit::widgets::chat::Chat;
+    use moly_kit::widgets::prompt_input::PromptInput;
+
+    PromptInputWithShadow = <PromptInput> {
+        padding: {left: 10, right: 10, top: 8, bottom: 8}
+        persistent = {
+            // Shader to make the original RoundedView into a RoundedShadowView
+            // (can't simply override the type of `persistent` because that removes the original children)
+            clip_x:false, clip_y:false,
+                                
+            show_bg: true,
+            draw_bg: {
+                color: #f
+                uniform border_radius: 5.0
+                uniform border_size: 0.0
+                uniform border_color: #0000
+                uniform shadow_color: #0001
+                uniform shadow_radius: 9.0,
+                uniform shadow_offset: vec2(0.0,-2.5)
+                                                
+                varying rect_size2: vec2,
+                varying rect_size3: vec2,
+                varying rect_pos2: vec2,     
+                varying rect_shift: vec2,    
+                varying sdf_rect_pos: vec2,
+                varying sdf_rect_size: vec2,
+                                                
+                fn get_color(self) -> vec4 {
+                    return self.color
+                }
+                                                
+                fn vertex(self) -> vec4 {
+                    let min_offset = min(self.shadow_offset,vec2(0));
+                    self.rect_size2 = self.rect_size + 2.0*vec2(self.shadow_radius);
+                    self.rect_size3 = self.rect_size2 + abs(self.shadow_offset);
+                    self.rect_pos2 = self.rect_pos - vec2(self.shadow_radius) + min_offset;
+                    self.sdf_rect_size = self.rect_size2 - vec2(self.shadow_radius * 2.0 + self.border_size * 2.0)
+                    self.sdf_rect_pos = -min_offset + vec2(self.border_size + self.shadow_radius);
+                    self.rect_shift = -min_offset;
+                                                                
+                    return self.clip_and_transform_vertex(self.rect_pos2, self.rect_size3)
+                }
+                                                            
+                fn get_border_color(self) -> vec4 {
+                    return self.border_color
+                }
+                                                    
+                fn pixel(self) -> vec4 {
+                                                                    
+                    let sdf = Sdf2d::viewport(self.pos * self.rect_size3)
+                    sdf.box(
+                        self.sdf_rect_pos.x,
+                        self.sdf_rect_pos.y,
+                        self.sdf_rect_size.x,
+                        self.sdf_rect_size.y, 
+                        max(1.0, self.border_radius)
+                    )
+                    if sdf.shape > -1.0{
+                        let m = self.shadow_radius;
+                        let o = self.shadow_offset + self.rect_shift;
+                        let v = GaussShadow::rounded_box_shadow(vec2(m) + o, self.rect_size2+o, self.pos * (self.rect_size3+vec2(m)), self.shadow_radius*0.5, self.border_radius*2.0);
+                        sdf.clear(self.shadow_color*v)
+                    }
+                                                                        
+                    sdf.fill_keep(self.get_color())
+                    if self.border_size > 0.0 {
+                        sdf.stroke(self.get_border_color(), self.border_size)
+                    }
+                    return sdf.result
+                }
+            }
+        }
+    }
 
     pub ChatScreen = {{ChatScreen}} {
         width: Fill,
@@ -34,14 +107,16 @@ live_design! {
         }
 
         <View> {
-            width: Fill,
-            height: Fill,
+            width: Fill, height: Fill,
             align: {x: 0.5},
-            padding: {top: 48, bottom: 48, right: 48, left: 48},
+            padding: {top: 38, bottom: 10, right: 28, left: 28},
             flow: Down,
+            spacing: 20
 
             model_selector = <ModelSelector> {}
-            chat = <Chat> {}
+            chat = <Chat> {
+                prompt = <PromptInputWithShadow> {}
+            }
         }
 
         // TODO: Add chat params back in, only when the model is a local model (MolyServer)
@@ -226,6 +301,11 @@ impl WidgetMatchEvent for ChatScreen {
                     }
                 }
                 _ => {}
+            }
+
+            // Handle Context Capture
+            if let CaptureAction::Capture { event } = action.cast(){
+                self.prompt_input(id!(prompt)).write().set_text(cx, event.contents());
             }
         }
     }

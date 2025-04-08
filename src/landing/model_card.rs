@@ -60,7 +60,7 @@ live_design! {
                 draw_bg: {
                     color: #0000,
                     border_color: #98A2B3,
-                    border_size: 1.0,
+                    border_size: 0.8,
                 },
                 attr_name = <Icon> {
                     draw_icon: {
@@ -90,7 +90,7 @@ live_design! {
                 draw_bg: {
                     color: #0000,
                     border_color: #98A2B3,
-                    border_size: 1.0,
+                    border_size: 0.8,
                 },
                 attr_name = <Icon> {
                     draw_icon: {
@@ -122,7 +122,7 @@ live_design! {
                     draw_bg: {
                         color: #0000,
                         border_color: #98A2B3,
-                        border_size: 1.0,
+                        border_size: 0.8,
                     },
                     attr_name = {
                         draw_text: { color: #000 }
@@ -297,16 +297,18 @@ live_design! {
         flow: Overlay,
 
         cursor: Default,
+        padding: {left: 10, top: 8, right: 10, bottom: 8}
 
-        <RoundedView> {
+        <RoundedShadowView> {
             width: Fill,
             height: Fit,
 
             draw_bg: {
-                instance border_radius: 3.0,
-                color: #F9FAFB,
-                border_color: #DFDFDF,
-                border_size: 1.0,
+                color: (MAIN_BG_COLOR_DARK),
+                border_radius: 4.5,
+                uniform shadow_color: #0002
+                shadow_radius: 9.0,
+                shadow_offset: vec2(0.0,-2.0)
             }
 
             flow: Down,
