@@ -2,6 +2,7 @@ use makepad_widgets::*;
 use moly_kit::*;
 use moly_kit::utils::asynchronous::spawn;
 
+use crate::data::capture::CaptureAction;
 use crate::data::providers::ProviderType;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
@@ -300,6 +301,11 @@ impl WidgetMatchEvent for ChatScreen {
                     }
                 }
                 _ => {}
+            }
+
+            // Handle Context Capture
+            if let CaptureAction::Capture { event } = action.cast(){
+                self.prompt_input(id!(prompt)).write().set_text(cx, event.contents());
             }
         }
     }
