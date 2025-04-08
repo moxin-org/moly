@@ -14,15 +14,15 @@ live_design! {
 
     Bar = <View> {
         width: Fill,
-        height: 16,
+        height: 17,
         show_bg: true,
         draw_bg: {
-            instance dither: 0.3
+            instance dither: 0.1
 
             fn get_color(self) -> vec4 {
                 return mix(
-                    #F3FFA2,
-                    #E3FBFF,
+                    #9CADBC,
+                    #B0CBC6,
                     self.pos.x + self.dither
                 )
             }
