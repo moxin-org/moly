@@ -49,25 +49,32 @@ live_design! {
     ModelCardButton = <MolyButton> {
         width: 140,
         height: 32,
+        draw_text: {
+            color: #5B6B7D
+            text_style: <BOLD_FONT> { font_size: 9}
+        }
     }
 
     DownloadButton = <ModelCardButton> {
-        draw_bg: { color: #099250, border_color_1: #099250 }
+        draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0.0 }
         text: "Download"
+        draw_text: {
+            color: (MAIN_BG_COLOR)
+        }
         draw_icon: {
             svg_file: (ICON_DOWNLOAD),
         }
     }
 
     StartChatButton = <ModelCardButton> {
-        draw_bg: { color: #fff, color_hover: #09925033, border_color_1: #d0d5dd }
+        draw_bg: { color: #fff, color_hover: #7697E4, border_color_1: (CTA_BUTTON_COLOR), border_size: 1 }
         text: "Chat with Model"
         draw_text: {
-            color: #087443;
+            color: (CTA_BUTTON_COLOR);
         }
         draw_icon: {
             svg_file: (START_CHAT),
-            color: #087443
+            color: (CTA_BUTTON_COLOR)
         }
     }
 
@@ -144,7 +151,7 @@ live_design! {
     pub ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {
         show_bg: true,
         draw_bg: {
-            color: #fff
+            color: #f
         }
 
         cell1 = {

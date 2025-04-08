@@ -48,10 +48,20 @@ live_design! {
         <RowHeaderLabel> { width: 250, label = {text: ""} }
     }
 
-    pub DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedView> {
+    pub DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedShadowView> {
         width: Fill,
         height: Fill,
         align: {x: 0.5, y: 0.5}
+        // TODO: This causes the invisible space taken by the PortalList to be visible, 
+        // perhaps we can make PortalList height: Fit
+        show_bg: true
+        draw_bg: { 
+            color: (MAIN_BG_COLOR)
+            border_radius: 5
+            uniform shadow_color: #0001
+            shadow_radius: 12.0,
+            shadow_offset: vec2(0.0,-1.5)
+        }
 
         list = <PortalList> {
             drag_scrolling: false

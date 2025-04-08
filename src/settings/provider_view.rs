@@ -178,7 +178,7 @@ live_design! {
                         height: 30
                         padding: {left: 20, right: 20, top: 0, bottom: 0}
                         text: "Save"
-                        draw_bg: { color: #099250, border_color_1: #099250 }
+                        draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
                     }
                 }
                 <View> {
@@ -228,7 +228,7 @@ live_design! {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 10}
                     }
-                    draw_bg: { color: #f00, border_color_1: #f00 }
+                    draw_bg: { color: #B4605A, border_size: 0 }
                 }
             }
         }

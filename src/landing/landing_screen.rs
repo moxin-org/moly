@@ -26,7 +26,7 @@ live_design! {
             height: Fill,
             flow: Down,
             spacing: 30,
-            margin: { left: 50, right: 50},
+            padding: {left: 30, right: 30}
 
             heading_with_filters = <View> {
                 width: Fit,

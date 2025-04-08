@@ -115,7 +115,7 @@ live_design! {
                 width: Fill, height: Fit
                 spacing: 8
                 go_to_providers = <MolyButton> {
-                    draw_bg: { color: #099250, border_size: 0}
+                    draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0}
                     draw_icon: {
                         svg_file: (ICON_CLOUD),
                     }
@@ -125,14 +125,14 @@ live_design! {
                     text: "Go to Providers"
                 }
                 refresh = <MolyButton> {
-                    draw_bg: { color: #099250, border_size: 0}
+                    draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0}
                     draw_icon: {
                         svg_file: (ICON_RETRY),
                     }
                     draw_text: {
                         text_style: <BOLD_FONT>{ font_size: 10}
                     }
-                    text: "refresh"
+                    text: "Refresh"
                 }
             }
         }

@@ -109,7 +109,7 @@ live_design! {
                     margin: {right: 10}
                     draw_bg: {
                         border_radius: 5
-                        color: #81cca1
+                        color: #9FD5C7
                         border_color: #357852
                         border_size: 1.2
                     }

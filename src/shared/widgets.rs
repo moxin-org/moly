@@ -56,13 +56,13 @@ live_design! {
         }
     }
 
-    pub SIDEBAR_FONT_COLOR = #344054
+    pub SIDEBAR_FONT_COLOR = #1A2533
     pub SIDEBAR_FONT_COLOR_HOVER = (MAIN_BG_COLOR)
     pub SIDEBAR_FONT_COLOR_SELECTED = (MAIN_BG_COLOR)
 
-    pub SIDEBAR_BG_COLOR_HOVER = #4
-    pub SIDEBAR_BG_COLOR_SELECTED = #4
-
+    pub SIDEBAR_BG_COLOR_HOVER = #344054
+    pub SIDEBAR_BG_COLOR_SELECTED = #344054
+    
     pub SidebarMenuButton = <RadioButton> {
         width: 70,
         height: Fit,
@@ -445,7 +445,7 @@ live_design! {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size)
                 let pill_padding = 2.0;
                 let pill_color_off = #D9D9D9;
-                let pill_color_on = #15859A;
+                let pill_color_on = #429E92
 
                 let pill_radius = self.rect_size.y * 0.5;
                 let ball_radius = pill_radius - pill_padding;

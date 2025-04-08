@@ -9,6 +9,7 @@ live_design! {
     pub SIDEBAR_BG_COLOR = #f2f2f2
     pub MAIN_BG_COLOR = #f9f9f9
     pub MAIN_BG_COLOR_DARK = #f2f2f2
+    pub CTA_BUTTON_COLOR = #3A7CA5
 
     pub REGULAR_FONT = <THEME_FONT_REGULAR>{
         font_size: (12)

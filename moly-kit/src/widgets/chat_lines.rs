@@ -117,7 +117,7 @@ live_design! {
 		avatar = {
 		    grapheme = {
 			draw_bg: {
-			    color: #344054,
+                color: #008F7E
 			}
 		    }
 		}

@@ -12,7 +12,6 @@ live_design! {
     use crate::shared::widgets::*;
     use crate::my_models::downloaded_files_table::DownloadedFilesTable;
 
-    BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT_FOLDER = dep("crate://self/resources/icons/edit_folder.svg")
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_SHOW_IN_FILES = dep("crate://self/resources/icons/visibility.svg")
@@ -113,11 +112,6 @@ live_design! {
         height: Fill
         flow: Overlay
 
-        <Image> {
-            source: (BG_IMAGE),
-            width: Fill,
-            height: Fill,
-        }
 
         <View> {
             width: Fill, height: Fill

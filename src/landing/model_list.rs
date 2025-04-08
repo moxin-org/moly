@@ -90,6 +90,7 @@ live_design! {
                 }
                 Header = <Label> {
                     margin: {bottom: 10, top: 35}
+                    padding: {left: 10}
                     draw_text:{
                         text_style: <BOLD_FONT>{font_size: 16},
                         color: #000
