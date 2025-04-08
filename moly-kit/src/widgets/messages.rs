@@ -148,6 +148,11 @@ impl Widget for Messages {
             if let CitationAction::Open(url) = action.cast() {
                 let _ = robius_open::Uri::new(url.as_str()).open();
             }
+	}
+	
+        let list = self.portal_list(id!(list));
+        if list.smooth_scroll_reached(event.actions()) {
+            list.set_first_id(self.messages.len());
         }
     }
 
