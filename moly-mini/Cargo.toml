@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 futures = "0.3.31"
 futures-core = "0.3.31"
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+makepad-widgets = { git = "https://github.com/fmzbl/makepad", branch = "scroll_to_end" }
 moly-kit = { path = "../moly-kit", features = ["full"] }
 reqwest = { version = "0.12.12", features = ["json", "stream"] }
 serde = { version = "1.0.217", features = ["derive"] }
