@@ -10,7 +10,10 @@ use crate::{
 };
 use makepad_widgets::*;
 
-use super::{citations::CitationsWidgetRefExt, deep_inquire_line::DeepInquireBotLineWidgetRefExt};
+use super::{
+    citation::CitationAction, citation_list::CitationListWidgetRefExt,
+    deep_inquire_line::DeepInquireBotLineWidgetRefExt,
+};
 
 live_design! {
     use link::theme::*;
@@ -140,6 +143,12 @@ impl Widget for Messages {
             self.scroll_to_bottom(cx);
             self.redraw(cx);
         }
+
+        for action in event.widget_actions() {
+            if let CitationAction::Open(url) = action.cast() {
+                let _ = robius_open::Uri::new(url.as_str()).open();
+            }
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -238,7 +247,8 @@ impl Messages {
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);
 
-                    item.label(id!(text.label)).set_text(cx, &message.visible_text());
+                    item.label(id!(text.label))
+                        .set_text(cx, &message.visible_text());
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -256,46 +266,53 @@ impl Messages {
 
                     // If the message is empty and still writing, display a loading animation
                     let body_text = message.visible_text();
-                    let item = if message.is_writing && body_text.is_empty() && !message.has_stages() {
-                        let item = list.item(cx, index, live_id!(LoadingLine));
-                        item.message_loading(id!(text.loading)).animate(cx);
-                        item
-                    } else if message.has_stages() {
-                        // Use specialized DeepInquireBotLine for messages with stages
-                        let item = list.item(cx, index, live_id!(DeepInquireBotLine));
-                        
-                        // Update the DeepInquireBotLine with the message content
-                        item.as_deep_inquire_bot_line().set_message(cx, message, message.is_writing);
-                        
-                        item
-                    } else {
-                        let item = list.item(cx, index, live_id!(BotLine));
-                        // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
-                        // we need to add a "blank" line as a workaround.
-                        //
-                        // Warning: If you ever read the text from this widget and not
-                        // from the list, you should remove the unicode character.
-                        // TODO: Remove this workaround once the markdown widget is fixed.
+                    let item =
+                        if message.is_writing && body_text.is_empty() && !message.has_stages() {
+                            let item = list.item(cx, index, live_id!(LoadingLine));
+                            item.message_loading(id!(text.loading)).animate(cx);
+                            item
+                        } else if message.has_stages() {
+                            // Use specialized DeepInquireBotLine for messages with stages
+                            let item = list.item(cx, index, live_id!(DeepInquireBotLine));
 
-                        let (thinking_block, message_body) =
-                            extract_and_remove_think_tag(&body_text);
+                            // Update the DeepInquireBotLine with the message content
+                            item.as_deep_inquire_bot_line().set_message(
+                                cx,
+                                message,
+                                message.is_writing,
+                            );
 
-                        item.message_thinking_block(id!(text.thinking_block))
-                            .set_thinking_text(thinking_block);
+                            item
+                        } else {
+                            let item = list.item(cx, index, live_id!(BotLine));
+                            // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
+                            // we need to add a "blank" line as a workaround.
+                            //
+                            // Warning: If you ever read the text from this widget and not
+                            // from the list, you should remove the unicode character.
+                            // TODO: Remove this workaround once the markdown widget is fixed.
 
-                        if let Some(body) = message_body {
-                            item.label(id!(text.markdown))
-                                .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
-                        }
+                            let (thinking_block, message_body) =
+                                extract_and_remove_think_tag(&body_text);
 
-                        // Set citations from the message
-                        let citations = message.sources();
-                        if !citations.is_empty() {
-                            let mut citations_ref = item.citations(id!(citations));
-                            citations_ref.set_citations(cx, &citations);
-                        }
-                        item
-                    };
+                            item.message_thinking_block(id!(text.thinking_block))
+                                .set_thinking_text(thinking_block);
+
+                            if let Some(body) = message_body {
+                                item.label(id!(text.markdown))
+                                    .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                            }
+
+                            // Set citations from the message
+                            let sources = message.sources();
+                            if !sources.is_empty() {
+                                let citations = item.citation_list(id!(citations));
+                                let mut citations = citations.borrow_mut().unwrap();
+                                citations.urls = sources;
+                                citations.visible = true;
+                            }
+                            item
+                        };
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);

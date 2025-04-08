@@ -18,7 +18,7 @@ live_design! {
         clip = <CachedRoundedView> {
             draw_bg: {
                 border_size: 1.0,
-                border_color_1: #D0D5DD,
+                border_color: #D0D5DD,
                 border_radius: 5.0
             },
             <View> {

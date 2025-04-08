@@ -9,8 +9,8 @@ live_design! {
     use crate::widgets::message_markdown::*;
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
-    use crate::widgets::citations::*;
-    
+    use crate::widgets::citation_list::*;
+
     BOLD_FONT = {
         font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
     }
@@ -113,15 +113,15 @@ live_design! {
         flow: Down,
         height: Fit,
         message_section = {
-	    sender = {
-		avatar = {
-		    grapheme = {
-			draw_bg: {
-			    color: #32a868,
-			}
-		    }
-		}
-	    }
+        sender = {
+        avatar = {
+            grapheme = {
+            draw_bg: {
+                color: #32a868,
+            }
+            }
+        }
+        }
 
             bubble = <Bubble> {
                 flow: Down,
@@ -130,12 +130,12 @@ live_design! {
                 text = <View> {
                     flow: Down
                     height: Fit,
-		    label = <Label> {
-			width: Fill,
-			draw_text: {
-			    color: #000
-			}
-		    }
+            label = <Label> {
+            width: Fill,
+            draw_text: {
+                color: #000
+            }
+            }
                 }
                 editor = <Editor> { visible: false }
             }
@@ -153,14 +153,16 @@ live_design! {
                 flow: Down,
                 padding: 0,
                 margin: {left: 32}
+                spacing: 10,
                 text = <View> {
                     flow: Down
                     height: Fit,
-                    thinking_block = <MessageThinkingBlock> {margin: {bottom: 10}}
+                    spacing: 10
+                    thinking_block = <MessageThinkingBlock> {}
                     markdown = <MessageMarkdown> {}
                 }
                 editor = <Editor> { visible: false }
-                citations = <Citations> { visible: false }
+                citations = <CitationList> { visible: false }
             }
         }
         actions_section = {
@@ -211,4 +213,3 @@ live_design! {
         }
     }
 }
-

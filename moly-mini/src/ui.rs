@@ -71,7 +71,10 @@ impl Widget for Ui {
                     content: MessageContent::PlainText {
                         text: "World".to_string(),
                         citations: vec![
-                            "https://github.com/ZhangHanDong/url-preview/issues/2".to_string()
+                            "https://github.com/ZhangHanDong/url-preview/issues/2".to_string(),
+                            "https://3.basecamp.com/5400951/buckets/28531977/messages/8467029657"
+                                .to_string(),
+                            "https://en.wikipedia.org/wiki/ICO_(file_format)".to_string(),
                         ],
                     },
                     ..Default::default()
