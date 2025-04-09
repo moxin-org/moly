@@ -2104,7 +2104,6 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "futures",
- "hex",
  "makepad-code-editor",
  "makepad-widgets",
  "reqwest 0.12.12",
@@ -2112,7 +2111,6 @@ dependencies = [
  "scraper 0.23.1",
  "serde",
  "serde_json",
- "sha2",
  "tokio",
  "url",
  "wasm-bindgen-futures",

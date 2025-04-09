@@ -9,9 +9,6 @@ use std::{
 
 pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
 
-use sha2::{Sha256, Digest};
-use hex;
-
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Picture {
@@ -63,7 +60,8 @@ pub struct BotId(Arc<str>);
 impl Serialize for BotId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
+        S: serde::Serializer,
+    {
         serializer.serialize_str(self.as_str())
     }
 }
@@ -71,7 +69,8 @@ impl Serialize for BotId {
 impl<'de> Deserialize<'de> for BotId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
+        D: serde::Deserializer<'de>,
+    {
         let s = String::deserialize(deserializer)?;
         Ok(BotId::from(s.as_str()))
     }
@@ -88,13 +87,10 @@ impl BotId {
         &self.0
     }
 
-    /// Creates a unique bot ID by hashing the provider URL and model ID
+    /// Creates a unique bot ID.
     pub fn new(model_id: &str, provider_url: &str) -> Self {
-        let mut hasher = Sha256::new();
-        hasher.update(format!("{}-{}", model_id, provider_url));
-        let result = hasher.finalize();
-        // Take first 16 bytes of hash for a shorter but still unique identifier
-        BotId::from(hex::encode(&result[..16]).as_str())
+        let id = format!("{}-{}", model_id, provider_url);
+        BotId(id.into())
     }
 }
 
@@ -115,7 +111,7 @@ pub enum MessageContent {
         /// Citations/sources associated with this content
         citations: Vec<String>,
     },
-    
+
     /// Multi-stage content (like DeepInquire)
     MultiStage {
         /// Text representation
@@ -136,7 +132,7 @@ pub struct Message {
 
     /// The content of the message (text, stages, etc.)
     pub content: MessageContent,
-    
+
     /// Whether the message is actively being modified. False when no more changes are expected.
     pub is_writing: bool,
 }
@@ -145,7 +141,7 @@ impl Default for Message {
     fn default() -> Self {
         Message {
             from: EntityId::default(),
-            content: MessageContent::PlainText { 
+            content: MessageContent::PlainText {
                 text: String::new(),
                 citations: Vec::new(),
             },
@@ -172,7 +168,7 @@ impl MessageStage {
     pub fn is_completed(&self) -> bool {
         self.completed.is_some()
     }
-    
+
     /// Get the text content of the most advanced stage (completed > writing > thinking)
     pub fn latest_content(&self) -> Option<&str> {
         if let Some(completed) = &self.completed {
@@ -209,24 +205,39 @@ impl Message {
     pub fn apply_delta(&mut self, delta: MessageDelta) {
         match (&mut self.content, &delta.content) {
             // PlainText + PlainText -> append text and add citations
-            (MessageContent::PlainText { text, citations }, 
-             MessageContent::PlainText { text: delta_text, citations: delta_citations }) => {
+            (
+                MessageContent::PlainText { text, citations },
+                MessageContent::PlainText {
+                    text: delta_text,
+                    citations: delta_citations,
+                },
+            ) => {
                 text.push_str(delta_text);
                 for citation in delta_citations {
                     if !citations.contains(citation) {
                         citations.push(citation.clone());
                     }
                 }
-            },
-            
+            }
+
             // MultiStage + MultiStage -> update stages and append text
-            (MessageContent::MultiStage { text, stages, citations }, 
-             MessageContent::MultiStage { text: delta_text, stages: delta_stages, citations: delta_citations }) => {
+            (
+                MessageContent::MultiStage {
+                    text,
+                    stages,
+                    citations,
+                },
+                MessageContent::MultiStage {
+                    text: delta_text,
+                    stages: delta_stages,
+                    citations: delta_citations,
+                },
+            ) => {
                 // Append text if not empty
                 if !delta_text.is_empty() {
                     text.push_str(delta_text);
                 }
-                
+
                 // Merge stages from delta into existing stages
                 for new_stage in delta_stages {
                     if let Some(existing_stage) = stages.iter_mut().find(|s| s.id == new_stage.id) {
@@ -247,43 +258,59 @@ impl Message {
                         stages.push(new_stage.clone());
                     }
                 }
-                
+
                 // Add new citations
                 for citation in delta_citations {
                     if !citations.contains(citation) {
                         citations.push(citation.clone());
                     }
                 }
-            },
-            
+            }
+
             // PlainText + MultiStage -> convert to MultiStage and update
-            (MessageContent::PlainText { text: existing_text, citations: existing_citations },
-             MessageContent::MultiStage { text: delta_text, stages: delta_stages, citations: delta_citations }) => {
+            (
+                MessageContent::PlainText {
+                    text: existing_text,
+                    citations: existing_citations,
+                },
+                MessageContent::MultiStage {
+                    text: delta_text,
+                    stages: delta_stages,
+                    citations: delta_citations,
+                },
+            ) => {
                 let mut combined_text = existing_text.clone();
                 if !delta_text.is_empty() {
                     combined_text.push_str(delta_text);
                 }
-                
+
                 let mut combined_citations = existing_citations.clone();
                 for citation in delta_citations {
                     if !combined_citations.contains(citation) {
                         combined_citations.push(citation.clone());
                     }
                 }
-                
+
                 // Convert to MultiStage
                 self.content = MessageContent::MultiStage {
                     text: combined_text,
                     stages: delta_stages.clone(),
                     citations: combined_citations,
                 };
-            },
-            
+            }
+
             // MultiStage + PlainText -> just append text and citations
-            (MessageContent::MultiStage { text, citations, .. },
-             MessageContent::PlainText { text: delta_text, citations: delta_citations }) => {
+            (
+                MessageContent::MultiStage {
+                    text, citations, ..
+                },
+                MessageContent::PlainText {
+                    text: delta_text,
+                    citations: delta_citations,
+                },
+            ) => {
                 text.push_str(delta_text);
-                
+
                 for citation in delta_citations {
                     if !citations.contains(citation) {
                         citations.push(citation.clone());
@@ -300,7 +327,7 @@ impl Message {
             MessageContent::MultiStage { text, .. } => text.clone(),
         }
     }
-    
+
     /// Gets the citations/sources regardless of the content type
     pub fn sources(&self) -> Vec<String> {
         match &self.content {
@@ -308,7 +335,7 @@ impl Message {
             MessageContent::MultiStage { citations, .. } => citations.clone(),
         }
     }
-    
+
     /// Checks if this message has multi-stage content
     pub fn has_stages(&self) -> bool {
         match &self.content {
@@ -316,7 +343,7 @@ impl Message {
             MessageContent::MultiStage { stages, .. } => !stages.is_empty(),
         }
     }
-    
+
     /// Gets the stages if this message has multi-stage content
     pub fn get_stages(&self) -> Vec<MessageStage> {
         match &self.content {
@@ -330,7 +357,7 @@ impl Message {
 pub trait MessageDeltaFactory {
     /// Create a text-only delta with optional citations
     fn text_delta(text: String, citations: Vec<String>) -> MessageDelta;
-    
+
     /// Create a stage-based delta
     fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> MessageDelta;
 }
@@ -338,13 +365,10 @@ pub trait MessageDeltaFactory {
 impl MessageDeltaFactory for MessageDelta {
     fn text_delta(text: String, citations: Vec<String>) -> Self {
         MessageDelta {
-            content: MessageContent::PlainText {
-                text,
-                citations,
-            },
+            content: MessageContent::PlainText { text, citations },
         }
     }
-    
+
     fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> Self {
         MessageDelta {
             content: MessageContent::MultiStage {
@@ -617,11 +641,18 @@ pub trait BotClient: Send {
 
                 if let Some(delta) = v {
                     match &delta.content {
-                        MessageContent::PlainText { text: delta_text, citations: delta_citations } => {
+                        MessageContent::PlainText {
+                            text: delta_text,
+                            citations: delta_citations,
+                        } => {
                             text.push_str(delta_text);
                             citations.extend(delta_citations.clone());
-                        },
-                        MessageContent::MultiStage { text: delta_text, citations: delta_citations, .. } => {
+                        }
+                        MessageContent::MultiStage {
+                            text: delta_text,
+                            citations: delta_citations,
+                            ..
+                        } => {
                             text.push_str(delta_text);
                             citations.extend(delta_citations.clone());
                         }
@@ -636,20 +667,14 @@ pub trait BotClient: Send {
 
             if errors.is_empty() {
                 ClientResult::new_ok(MessageDelta {
-                    content: MessageContent::PlainText {
-                        text,
-                        citations,
-                    }
+                    content: MessageContent::PlainText { text, citations },
                 })
             } else {
                 ClientResult::new_ok_and_err(
                     MessageDelta {
-                        content: MessageContent::PlainText {
-                            text,
-                            citations,
-                        }
+                        content: MessageContent::PlainText { text, citations },
                     },
-                    errors
+                    errors,
                 )
             }
         };
