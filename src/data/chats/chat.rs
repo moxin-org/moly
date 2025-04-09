@@ -8,7 +8,6 @@ use crate::data::filesystem::{read_from_file, write_to_file};
 
 pub type ChatID = u128;
 
-
 #[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
 enum TitleState {
     #[default]
@@ -103,8 +102,9 @@ impl Chat {
                 // Fallback to last_used_file_id if last_used_entity is None.
                 // Until this field is removed, we need to keep this logic.
                 let associated_bot = data.associated_bot.or_else(|| {
+                    // TODO: What's the provider here?
                     data.last_used_file_id
-                        .map(|file_id| BotId::from(file_id.as_str()))
+                        .map(|file_id| BotId::new(file_id.as_str(), ""))
                 });
 
                 let chat = Chat {

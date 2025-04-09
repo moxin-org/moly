@@ -53,44 +53,50 @@ pub struct Bot {
     pub avatar: Picture,
 }
 
-/// Indentifies any kind of bot, local or remote, model or agent, whatever.
+/// Identifies any kind of bot, local or remote, model or agent, whatever.
+///
+/// It MUST be globally unique and stable. It should be generated from a provider
+/// local id and the domain or url of that provider.
+///
+/// For serialization, this is encoded as a single string.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct BotId(Arc<str>);
-
-impl Serialize for BotId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(self.as_str())
-    }
-}
-
-impl<'de> Deserialize<'de> for BotId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Ok(BotId::from(s.as_str()))
-    }
-}
-
-impl From<&str> for BotId {
-    fn from(id: &str) -> Self {
-        BotId(id.into())
-    }
-}
 
 impl BotId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
-    /// Creates a unique bot ID.
-    pub fn new(model_id: &str, provider_url: &str) -> Self {
-        let id = format!("{}-{}", model_id, provider_url);
+    /// Creates a new bot id from a provider local id and a provider domain or url.
+    pub fn new(id: &str, provider: &str) -> Self {
+        // The id is encoded as: <id_len>;<id>@<provider>.
+        // `@` is simply a semantic separator, meaning (literally) "at".
+        // The length is what is actually used for separating components allowing
+        // these to include `@` characters.
+        let id = format!("{};{}@{}", id.len(), id, provider);
         BotId(id.into())
+    }
+
+    fn deconstruct(&self) -> (usize, &str) {
+        let (id_length, raw) = self.0.split_once(';').expect("malformed bot id");
+        let id_length = id_length.parse::<usize>().expect("malformed bot id");
+        (id_length, raw)
+    }
+
+    /// The id of the bot as it is known by its provider.
+    ///
+    /// This may not be globally unique.
+    pub fn id(&self) -> &str {
+        let (id_length, raw) = self.deconstruct();
+        &raw[..id_length]
+    }
+
+    /// The provider component of this bot id.
+    pub fn provider(&self) -> &str {
+        let (id_length, raw) = self.deconstruct();
+        // + 1 skips the semantic `@` separator
+        &raw[id_length + 1..]
     }
 }
 
@@ -764,5 +770,31 @@ impl<T: BotClient + 'static> From<T> for BotRepo {
             client: Box::new(client),
             bots: Vec::new(),
         })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bot_id() {
+        // Simple
+        let id = BotId::new("123", "example.com");
+        assert_eq!(id.as_str(), "3;123@example.com");
+        assert_eq!(id.id(), "123");
+        assert_eq!(id.provider(), "example.com");
+
+        // Dirty
+        let id = BotId::new("a;b@c", "https://ex@a@m;ple.co@m");
+        assert_eq!(id.as_str(), "5;a;b@c@https://ex@a@m;ple.co@m");
+        assert_eq!(id.id(), "a;b@c");
+        assert_eq!(id.provider(), "https://ex@a@m;ple.co@m");
+
+        // Similar yet different
+        let id1 = BotId::new("a@", "b");
+        let id2 = BotId::new("a", "@b");
+        assert_ne!(id1.as_str(), id2.as_str());
+        assert_ne!(id1, id2);
     }
 }

@@ -14,7 +14,7 @@ makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "ri
 
 reqwest = { version = "0.12.12", features = ["json", "stream"], optional = true }
 scraper = { version = "0.23.1", optional = true }
-serde = { version = "1.0.217", features = ["derive"], optional = true }
+serde = { version = "1.0.217", features = ["derive", "rc"], optional = true }
 serde_json = { version = "1.0.135", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
