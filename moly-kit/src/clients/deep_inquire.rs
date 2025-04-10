@@ -153,15 +153,11 @@ impl BotClient for DeepInquireClient {
         // For now we return a hardcoded bot because DeepInquire does not support a /models endpoint
         let bot = Bot {
             id: BotId::new("DeepInquire", &inner.url),
-            model_id: "DeepInquire".to_string(),
-            provider_url: inner.url,
             name: "DeepInquire".to_string(),
             avatar: Picture::Grapheme("D".into()),
         };
 
-        let future = async move {
-            ClientResult::new_ok(vec![bot])
-        };
+        let future = async move { ClientResult::new_ok(vec![bot]) };
 
         moly_future(future)
     }
@@ -191,7 +187,7 @@ impl BotClient for DeepInquireClient {
             .headers(headers)
             .timeout(Duration::from_secs(120))
             .json(&serde_json::json!({
-                "model": bot.model_id.clone(),
+                "model": bot.id.id(),
                 "messages": moly_messages,
                 "stream": true
             }));
@@ -268,7 +264,7 @@ impl BotClient for DeepInquireClient {
                     // Process each choice in the response
                     for choice in &response.choices {
                         let delta = &choice.delta;
-                        
+
                         // Determine the stage type based on the delta's type field
                         let message_delta = if let Some(stage_type) = &delta.r#type {
                             let stage_id = delta.id;
@@ -276,7 +272,7 @@ impl BotClient for DeepInquireClient {
                             let stage_citations = delta.articles.iter()
                                 .map(|article| article.url.clone())
                                 .collect::<Vec<_>>();
-                            
+
                             // Create appropriate MessageStage based on type
                             let mut stage = MessageStage {
                                 id: stage_id,
@@ -284,14 +280,14 @@ impl BotClient for DeepInquireClient {
                                 writing: None,
                                 completed: None,
                             };
-                            
+
                             match stage_type.as_str() {
                                 "thinking" => {
                                     stage.thinking = Some(MessageBlockContent {
                                         content: content.clone(),
                                         citations: stage_citations.clone(),
                                     });
-                                    
+
                                     // Use the MessageContent approach
                                     MessageDelta {
                                         content: MessageContent::MultiStage {
@@ -306,7 +302,7 @@ impl BotClient for DeepInquireClient {
                                         content: content.clone(),
                                         citations: stage_citations.clone(),
                                     });
-                                    
+
                                     // Use the MessageContent approach
                                     MessageDelta {
                                         content: MessageContent::MultiStage {
@@ -321,7 +317,7 @@ impl BotClient for DeepInquireClient {
                                         content: content.clone(),
                                         citations: stage_citations.clone(),
                                     });
-                                    
+
                                     // Use the MessageContent approach
                                     MessageDelta {
                                         content: MessageContent::MultiStage {
@@ -346,7 +342,7 @@ impl BotClient for DeepInquireClient {
                             let citations = delta.articles.iter()
                                 .map(|article| article.url.clone())
                                 .collect::<Vec<_>>();
-                                
+
                             MessageDelta {
                                 content: MessageContent::PlainText {
                                     text: delta.content.clone(),
@@ -354,7 +350,7 @@ impl BotClient for DeepInquireClient {
                                 },
                             }
                         };
-                        
+
                         yield ClientResult::new_ok(message_delta);
                     }
                 }

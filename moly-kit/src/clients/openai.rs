@@ -211,8 +211,6 @@ impl BotClient for OpenAIClient {
                 .iter()
                 .map(|m| Bot {
                     id: BotId::new(&m.id, &inner.url),
-                    model_id: m.id.clone(),
-                    provider_url: inner.url.clone(),
                     name: m.id.clone(),
                     // TODO: Handle this char as a grapheme.
                     avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
@@ -252,7 +250,7 @@ impl BotClient for OpenAIClient {
             .post(&url)
             .headers(headers)
             .json(&serde_json::json!({
-                "model": bot.model_id.clone(),
+                "model": bot.id.id(),
                 "messages": moly_messages,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,

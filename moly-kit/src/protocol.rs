@@ -45,10 +45,6 @@ pub enum EntityId {
 pub struct Bot {
     /// Unique internal identifier for the bot across all providers
     pub id: BotId,
-    /// Original model identifier from the provider
-    pub model_id: String,
-    /// Provider URL this bot belongs to
-    pub provider_url: String,
     pub name: String,
     pub avatar: Picture,
 }

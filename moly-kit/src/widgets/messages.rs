@@ -259,9 +259,6 @@ impl Messages {
                         .expect("no bot client set")
                         .get_bot(id);
 
-                    dbg!(&bot);
-                    dbg!(id);
-
                     let (name, avatar) = bot
                         .as_ref()
                         .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
