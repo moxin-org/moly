@@ -10,7 +10,7 @@ mod deep_inquire_line;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
-mod stages_pill_list;
+mod stages;
 
 #[cfg(any(feature = "async-rt", feature = "async-web"))]
 pub mod chat;
@@ -30,7 +30,7 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     message_loading::live_design(cx);
     avatar::live_design(cx);
     chat_lines::live_design(cx);
-    stages_pill_list::live_design(cx);
+    stages::live_design(cx);
     deep_inquire_line::live_design(cx);
     messages::live_design(cx);
     prompt_input::live_design(cx);
