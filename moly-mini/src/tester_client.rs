@@ -6,7 +6,7 @@ pub struct TesterClient;
 impl BotClient for TesterClient {
     fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let future = futures::future::ready(ClientResult::new_ok(vec![Bot {
-            id: "tester".into(),
+            id: BotId::new("tester", "tester"),
             model_id: "tester".to_string(),
             provider_url: "tester".to_string(),
             name: "tester".to_string(),

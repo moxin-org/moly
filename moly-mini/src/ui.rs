@@ -55,7 +55,7 @@ impl Widget for Ui {
         self.deref.handle_event(cx, event, scope);
 
         if let Event::Startup = event {
-            let bot_id = BotId::from("idk");
+            let bot_id = BotId::new("unknown_bot", "unknown_provider");
 
             let messages = std::iter::repeat([
                 Message {

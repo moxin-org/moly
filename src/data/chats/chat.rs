@@ -8,7 +8,6 @@ use crate::data::filesystem::{read_from_file, write_to_file};
 
 pub type ChatID = u128;
 
-
 #[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
 enum TitleState {
     #[default]
@@ -100,16 +99,9 @@ impl Chat {
             Ok(json) => {
                 let data: ChatData = serde_json::from_str(&json)?;
 
-                // Fallback to last_used_file_id if last_used_entity is None.
-                // Until this field is removed, we need to keep this logic.
-                let associated_bot = data.associated_bot.or_else(|| {
-                    data.last_used_file_id
-                        .map(|file_id| BotId::from(file_id.as_str()))
-                });
-
                 let chat = Chat {
                     id: data.id,
-                    associated_bot,
+                    associated_bot: data.associated_bot,
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
