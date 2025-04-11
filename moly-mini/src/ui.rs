@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_kit::{BotId, ChatWidgetRefExt, EntityId, Message};
+use moly_kit::{BotId, ChatWidgetRefExt, EntityId, Message, MessageContent};
 
 use crate::demo_chat::DemoChatWidgetExt;
 
@@ -55,20 +55,29 @@ impl Widget for Ui {
         self.deref.handle_event(cx, event, scope);
 
         if let Event::Startup = event {
-            let bot_id = BotId::from("idk");
+            let bot_id = BotId::new("unknown_bot", "unknown_provider");
 
             let messages = std::iter::repeat([
                 Message {
-                    is_writing: false,
-                    body: "Hello".to_string(),
                     from: EntityId::User,
-                    citations: vec![],
+                    content: MessageContent::PlainText {
+                        text: "Hello".to_string(),
+                        citations: vec![],
+                    },
+                    ..Default::default()
                 },
                 Message {
-                    is_writing: false,
-                    body: "World".to_string(),
                     from: EntityId::Bot(bot_id),
-                    citations: vec!["https://github.com/ZhangHanDong/url-preview/issues/2".to_string()],
+                    content: MessageContent::PlainText {
+                        text: "World".to_string(),
+                        citations: vec![
+                            "https://github.com/ZhangHanDong/url-preview/issues/2".to_string(),
+                            "https://3.basecamp.com/5400951/buckets/28531977/messages/8467029657"
+                                .to_string(),
+                            "https://en.wikipedia.org/wiki/ICO_(file_format)".to_string(),
+                        ],
+                    },
+                    ..Default::default()
                 },
             ])
             .take(1)

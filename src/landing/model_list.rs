@@ -1,6 +1,5 @@
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
-use crate::data::chats::AgentsAvailability;
-use crate::data::providers::RemoteModel;
+use crate::data::providers::ProviderBot;
 use crate::data::search::SearchAction;
 use crate::data::store::{Store, StoreAction};
 use crate::landing::search_loading::SearchLoadingWidgetExt;
@@ -22,7 +21,7 @@ live_design! {
         height: 100,
         show_bg: false,
         draw_bg: {
-            radius: 5,
+            border_radius: 5,
             color: #F9FAFB,
         }
         button = <EntityButton> {
@@ -34,7 +33,7 @@ live_design! {
             server_url_visible: true,
 
             draw_bg: {
-                radius: 5,
+                border_radius: 5,
             }
             agent_avatar = {
                 image = {
@@ -89,15 +88,9 @@ live_design! {
                     second = <AgentCard> {}
                     third = <AgentCard> {}
                 }
-                NoAgentsWarning = <Label> {
-                    draw_text:{
-                        wrap: Word
-                        text_style: {font_size: 10},
-                        color: #3
-                    }
-                }
                 Header = <Label> {
                     margin: {bottom: 10, top: 35}
+                    padding: {left: 10}
                     draw_text:{
                         text_style: <BOLD_FONT>{font_size: 16},
                         color: #000
@@ -163,10 +156,9 @@ impl Widget for ModelList {
 
         enum Item<'a> {
             AgentRow {
-                agents: &'a [RemoteModel],
+                agents: &'a [ProviderBot],
                 margin_bottom: f32,
             },
-            NoAgentsWarning(&'static str),
             Header(&'static str),
             Model(&'a Model),
         }
@@ -174,28 +166,19 @@ impl Widget for ModelList {
         let mut items = Vec::new();
 
         if store.search.keyword.is_none() {
-            items.push(Item::Header("Featured Agents"));
-            let agents_availability = store.chats.agents_availability();
-            match agents_availability {
-                AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(
-                    agents_availability.to_human_readable(),
-                )),
-                AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(
-                    agents_availability.to_human_readable(),
-                )),
-                AgentsAvailability::Available => {
-                    items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
-                        agents: chunk,
-                        margin_bottom: 8.0,
-                    }));
-                    if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
-                        *margin_bottom = 0.0;
-                    }
+            if !agents.is_empty() {
+                items.push(Item::Header("Featured Agents"));
+                items.extend(agents.chunks(3).map(|chunk| Item::AgentRow {
+                    agents: chunk,
+                    margin_bottom: 8.0,
+                }));
+                if let Some(Item::AgentRow { margin_bottom, .. }) = items.last_mut() {
+                    *margin_bottom = 0.0;
                 }
             }
-            items.push(Item::Header("Models"));
         }
 
+        items.push(Item::Header("Models"));
         items.extend(store.search.models.iter().map(Item::Model));
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
@@ -235,17 +218,12 @@ impl Widget for ModelList {
                                                 },
                                             );
                                             let mut button = cell.entity_button(id!(button));
-                                            button.set_agent(cx, agent);
+                                            button.set_bot_id(cx, &agent.id);
                                             button.set_description_visible(cx, true);
                                         }
                                     });
 
                                 row.draw_all(cx, &mut Scope::empty());
-                            }
-                            Item::NoAgentsWarning(text) => {
-                                let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                                item.set_text(cx, text);
-                                item.draw_all(cx, &mut Scope::empty());
                             }
                             Item::Model(model) => {
                                 let item = list.item(cx, item_id, live_id!(Model));
@@ -286,8 +264,10 @@ impl WidgetMatchEvent for ModelList {
             .find(|button| button.clicked(actions));
 
         if let Some(entity_button) = clicked_entity_button {
-            let entity_id = entity_button.get_entity_id().unwrap().clone();
-            cx.action(ChatAction::Start(entity_id));
+            let bot_id = entity_button.get_bot_id();
+            if let Some(bot_id) = bot_id {
+                cx.action(ChatAction::Start(bot_id));
+            }
         }
 
         for action in actions.iter() {

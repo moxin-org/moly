@@ -4,8 +4,8 @@ use moly_protocol::data::{File, FileID, PendingDownloadsStatus};
 use super::model_files_tags::ModelFilesTagsWidgetExt;
 use crate::{
     data::{
-        chats::chat_entity::ChatEntityId, downloads::download::DownloadFileAction,
-        store::FileWithDownloadInfo,
+        downloads::download::DownloadFileAction,
+        store::{FileWithDownloadInfo, Store},
     },
     shared::{
         actions::{ChatAction, DownloadAction},
@@ -28,7 +28,7 @@ live_design! {
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
     ICON_PLAY = dep("crate://self/resources/icons/play_download.svg")
-    ICON_RETRY = dep("crate://self/resources/icons/retry_download.svg")
+    ICON_RETRY = dep("crate://self/resources/icons/retry.svg")
 
     pub ModelFilesRow = <RoundedYView> {
         width: Fill,
@@ -37,7 +37,7 @@ live_design! {
         show_bg: true,
         draw_bg: {
             color: #00f
-            radius: vec2(1.0, 1.0)
+            border_radius: vec2(1.0, 1.0)
         }
 
         cell1 = <View> { width: Fill, height: 56, padding: 10, align: {x: 0.0, y: 0.5} }
@@ -49,25 +49,32 @@ live_design! {
     ModelCardButton = <MolyButton> {
         width: 140,
         height: 32,
+        draw_text: {
+            color: #5B6B7D
+            text_style: <BOLD_FONT> { font_size: 9}
+        }
     }
 
     DownloadButton = <ModelCardButton> {
-        draw_bg: { color: #099250, border_color: #099250 }
+        draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0.0 }
         text: "Download"
+        draw_text: {
+            color: (MAIN_BG_COLOR)
+        }
         draw_icon: {
             svg_file: (ICON_DOWNLOAD),
         }
     }
 
     StartChatButton = <ModelCardButton> {
-        draw_bg: { color: #fff, color_hover: #09925033, border_color: #d0d5dd }
+        draw_bg: { color: #fff, color_hover: #7697E4, border_color_1: (CTA_BUTTON_COLOR), border_size: 1 }
         text: "Chat with Model"
         draw_text: {
-            color: #087443;
+            color: (CTA_BUTTON_COLOR);
         }
         draw_icon: {
             svg_file: (START_CHAT),
-            color: #087443
+            color: (CTA_BUTTON_COLOR)
         }
     }
 
@@ -94,7 +101,7 @@ live_design! {
                 height: Fill,
                 draw_bg: {
                     color: #D9D9D9,
-                    radius: 2.5,
+                    border_radius: 2.5,
                 }
             }
 
@@ -102,7 +109,7 @@ live_design! {
                 width: 0,
                 height: Fill,
                 draw_bg: {
-                    radius: 2.5,
+                    border_radius: 2.5,
                 }
             }
         }
@@ -144,7 +151,7 @@ live_design! {
     pub ModelFilesItem = {{ModelFilesItem}}<ModelFilesRow> {
         show_bg: true,
         draw_bg: {
-            color: #fff
+            color: #f
         }
 
         cell1 = {
@@ -174,9 +181,9 @@ live_design! {
                 padding: {top: 6, bottom: 6, left: 10, right: 10}
 
                 draw_bg: {
-                    instance radius: 2.0,
+                    instance border_radius: 2.0,
                     border_color: #B4B4B4,
-                    border_width: 0.5,
+                    border_size: 0.5,
                     color: #FFF,
                 }
 
@@ -322,7 +329,7 @@ impl Widget for ModelFilesItem {
 }
 
 impl WidgetMatchEvent for ModelFilesItem {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         for actions in actions {
             if let Some(action) = actions.downcast_ref::<DownloadFileAction>() {
                 if self.file_id.as_ref() == Some(&action.file_id) {
@@ -340,7 +347,11 @@ impl WidgetMatchEvent for ModelFilesItem {
         }
 
         if self.button(id!(start_chat_button)).clicked(&actions) {
-            cx.action(ChatAction::Start(ChatEntityId::ModelFile(file_id.clone())));
+            let store = scope.data.get_mut::<Store>().unwrap();
+            let bot_id = store.chats.get_bot_id_by_file_id(&file_id);
+            if let Some(bot_id) = bot_id {
+                cx.action(ChatAction::Start(bot_id));
+            }
         }
 
         if [id!(resume_download_button), id!(retry_download_button)]

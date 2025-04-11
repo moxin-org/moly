@@ -25,7 +25,7 @@ path = "src/main.rs"
 [dependencies]
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 url-preview = "0.3.0"
-#moly-protocol = { path = "../moly-server/moly-protocol" }
+moly-kit = { path = "./moly-kit", features = ["full"] }
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
@@ -41,10 +41,11 @@ serde_json = "1.0"
 serde = { version = "1.0.197", features = ["derive"] }
 lipsum = "0.9"
 rand = "0.8.5"
-reqwest = { version = "0.11", features = ["json", "blocking"] }
+reqwest = { version = "0.12.12", features = ["json", "blocking", "stream"] }
 url = "2.5.4"
 rfd = "0.14.1"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.43.0", features = ["full"] }
+futures = "0.3.31"
 
 [target.'cfg(target_os = "macos")'.dependencies.objc2]
 version = "0.6.0"

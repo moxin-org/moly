@@ -6,16 +6,16 @@ edition = "2021"
 [dependencies]
 futures = "0.3.31"
 url = "2.4.10"
-url-preview = "0.3.0"
 robius-open = "0.1.1"
+async-stream = "0.3.6"
 
 makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
 makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
 
 reqwest = { version = "0.12.12", features = ["json", "stream"], optional = true }
-serde = { version = "1.0.217", features = ["derive"], optional = true }
+scraper = { version = "0.23.1", optional = true }
+serde = { version = "1.0.217", features = ["derive", "rc"], optional = true }
 serde_json = { version = "1.0.135", optional = true }
-async-stream = "0.3.6"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.43.0", features = ["full"], optional = true }
@@ -27,7 +27,7 @@ wasm-bindgen-futures = { version = "0.4.50", optional = true }
 default = []
 # default = ["full"]
 json = ["dep:serde", "dep:serde_json"]
-http = ["dep:reqwest"]
+http = ["dep:reqwest", "dep:scraper"]
 async-rt = ["dep:tokio"]
 async-web = ["dep:wasm-bindgen-futures"]
 full = ["default", "json", "async-rt", "async-web", "http"]

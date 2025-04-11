@@ -589,6 +589,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cssparser"
+version = "0.34.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7c66d1cd8ed61bf80b38432613a7a2f09401ab8d0501110655f8b341484a3e3"
+dependencies = [
+ "cssparser-macros",
+ "dtoa-short",
+ "itoa",
+ "phf 0.11.3",
+ "smallvec",
+]
+
+[[package]]
 name = "cssparser-macros"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -716,6 +729,12 @@ name = "ego-tree"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12a0bb14ac04a9fcf170d0bbbef949b44cc492f4452bd20c095636956f653642"
+
+[[package]]
+name = "ego-tree"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2972feb8dffe7bc8c5463b1dacda1b0dfbed3710e50f977d965429692d74cd8"
 
 [[package]]
 name = "either"
@@ -1141,10 +1160,22 @@ checksum = "bea68cab48b8459f17cf1c944c67ddc572d272d9f2b274140f223ecb1da4a3b7"
 dependencies = [
  "log",
  "mac",
- "markup5ever",
+ "markup5ever 0.11.0",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "html5ever"
+version = "0.29.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b7410cae13cbc75623c98ac4cbfd1f0bedddf3227afc24f370cf0f50a44a11c"
+dependencies = [
+ "log",
+ "mac",
+ "markup5ever 0.14.1",
+ "match_token",
 ]
 
 [[package]]
@@ -1702,7 +1733,7 @@ dependencies = [
 [[package]]
 name = "makepad-code-editor"
 version = "0.6.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-widgets",
 ]
@@ -1710,7 +1741,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-live"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1719,7 +1750,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1727,7 +1758,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-widget"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1736,7 +1767,7 @@ dependencies = [
 [[package]]
 name = "makepad-draw"
 version = "0.6.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "ab_glyph_rasterizer",
  "fxhash",
@@ -1744,7 +1775,9 @@ dependencies = [
  "makepad-platform",
  "makepad-rustybuzz",
  "makepad-vector",
+ "png",
  "sdfer",
+ "ttf-parser 0.25.1",
  "unicode-bidi",
  "unicode-linebreak",
  "unicode-segmentation",
@@ -1753,17 +1786,17 @@ dependencies = [
 [[package]]
 name = "makepad-futures"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 
 [[package]]
 name = "makepad-futures-legacy"
 version = "0.7.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 
 [[package]]
 name = "makepad-html"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-live-id",
 ]
@@ -1771,7 +1804,7 @@ dependencies = [
 [[package]]
 name = "makepad-http"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 
 [[package]]
 name = "makepad-jni-sys"
@@ -1782,7 +1815,7 @@ checksum = "9775cbec5fa0647500c3e5de7c850280a88335d1d2d770e5aa2332b801ba7064"
 [[package]]
 name = "makepad-live-compiler"
 version = "0.5.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -1792,7 +1825,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-live-id-macros",
 ]
@@ -1800,7 +1833,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id-macros"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1808,7 +1841,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-tokenizer"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -1818,17 +1851,17 @@ dependencies = [
 [[package]]
 name = "makepad-math"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 
 [[package]]
 name = "makepad-micro-serde"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-serde-derive",
@@ -1837,7 +1870,7 @@ dependencies = [
 [[package]]
 name = "makepad-micro-serde-derive"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1845,12 +1878,12 @@ dependencies = [
 [[package]]
 name = "makepad-objc-sys"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 
 [[package]]
 name = "makepad-platform"
 version = "0.6.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "bitflags 2.9.0",
  "hilog-sys",
@@ -1874,12 +1907,12 @@ dependencies = [
 [[package]]
 name = "makepad-rustybuzz"
 version = "0.8.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "bitflags 1.3.2",
  "bytemuck",
  "smallvec",
- "ttf-parser",
+ "ttf-parser 0.21.1",
  "unicode-bidi-mirroring",
  "unicode-ccc",
  "unicode-properties",
@@ -1889,7 +1922,7 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "0.5.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-live-compiler",
 ]
@@ -1897,16 +1930,16 @@ dependencies = [
 [[package]]
 name = "makepad-vector"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "resvg",
- "ttf-parser",
+ "ttf-parser 0.21.1",
 ]
 
 [[package]]
 name = "makepad-wasm-bridge"
 version = "0.4.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -1915,7 +1948,7 @@ dependencies = [
 [[package]]
 name = "makepad-widgets"
 version = "0.6.0"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
@@ -1929,7 +1962,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.4.10"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
 dependencies = [
  "zune-core",
  "zune-inflate",
@@ -1952,10 +1985,35 @@ checksum = "7a2629bb1404f3d34c2e921f21fd34ba00b206124c81f65c50b43b6aaefeb016"
 dependencies = [
  "log",
  "phf 0.10.1",
- "phf_codegen",
+ "phf_codegen 0.10.0",
  "string_cache",
  "string_cache_codegen",
  "tendril",
+]
+
+[[package]]
+name = "markup5ever"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7a7213d12e1864c0f002f52c2923d4556935a43dec5e71355c2760e0f6e7a18"
+dependencies = [
+ "log",
+ "phf 0.11.3",
+ "phf_codegen 0.11.3",
+ "string_cache",
+ "string_cache_codegen",
+ "tendril",
+]
+
+[[package]]
+name = "match_token"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88a9689d8d44bf9964484516275f5cd4c9b59457a6940c1d5d0ecbb94510a36b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.99",
 ]
 
 [[package]]
@@ -2016,15 +2074,17 @@ dependencies = [
  "anyhow",
  "chrono",
  "directories",
+ "futures",
  "lipsum",
  "makepad-code-editor",
  "makepad-widgets",
+ "moly-kit",
  "moly-protocol",
  "objc2 0.6.0",
  "objc2-app-kit",
  "objc2-foundation 0.3.0",
  "rand",
- "reqwest 0.11.27",
+ "reqwest 0.12.12",
  "rfd",
  "robius-open",
  "robius-url-handler",
@@ -2046,11 +2106,11 @@ dependencies = [
  "makepad-widgets",
  "reqwest 0.12.12",
  "robius-open",
+ "scraper 0.23.1",
  "serde",
  "serde_json",
  "tokio",
  "url",
- "url-preview",
  "wasm-bindgen-futures",
 ]
 
@@ -2449,6 +2509,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "phf_codegen"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aef8048c789fa5e851558d709946d6d79a8ff88c0440c587967f8e94bfb1216a"
+dependencies = [
+ "phf_generator 0.11.3",
+ "phf_shared 0.11.3",
+]
+
+[[package]]
 name = "phf_generator"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2818,6 +2888,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2 0.4.8",
@@ -3079,13 +3150,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c95a930e03325234c18c7071fd2b60118307e025d6fff3e12745ffbf63a3d29c"
 dependencies = [
  "ahash",
- "cssparser",
- "ego-tree",
+ "cssparser 0.31.2",
+ "ego-tree 0.6.3",
  "getopts",
- "html5ever",
+ "html5ever 0.26.0",
  "once_cell",
- "selectors",
+ "selectors 0.25.0",
  "smallvec",
+ "tendril",
+]
+
+[[package]]
+name = "scraper"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "527e65d9d888567588db4c12da1087598d0f6f8b346cc2c5abc91f05fc2dffe2"
+dependencies = [
+ "cssparser 0.34.0",
+ "ego-tree 0.10.0",
+ "getopts",
+ "html5ever 0.29.1",
+ "precomputed-hash",
+ "selectors 0.26.0",
  "tendril",
 ]
 
@@ -3125,15 +3211,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4eb30575f3638fc8f6815f448d50cb1a2e255b0897985c8c59f4d37b72a07b06"
 dependencies = [
  "bitflags 2.9.0",
- "cssparser",
+ "cssparser 0.31.2",
  "derive_more",
  "fxhash",
  "log",
  "new_debug_unreachable",
  "phf 0.10.1",
- "phf_codegen",
+ "phf_codegen 0.10.0",
  "precomputed-hash",
- "servo_arc",
+ "servo_arc 0.3.0",
+ "smallvec",
+]
+
+[[package]]
+name = "selectors"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd568a4c9bb598e291a08244a5c1f5a8a6650bee243b5b0f8dbb3d9cc1d87fe8"
+dependencies = [
+ "bitflags 2.9.0",
+ "cssparser 0.34.0",
+ "derive_more",
+ "fxhash",
+ "log",
+ "new_debug_unreachable",
+ "phf 0.11.3",
+ "phf_codegen 0.11.3",
+ "precomputed-hash",
+ "servo_arc 0.4.0",
  "smallvec",
 ]
 
@@ -3197,6 +3302,15 @@ name = "servo_arc"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d036d71a959e00c77a63538b90a6c2390969f9772b096ea837205c6bd0491a44"
+dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "servo_arc"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae65c4249478a2647db249fb43e23cec56a2c8974a427e7bd8cb5a1d0964921a"
 dependencies = [
  "stable_deref_trait",
 ]
@@ -3761,7 +3875,13 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "ttf-parser"
 version = "0.21.1"
-source = "git+https://github.com/makepad/makepad?branch=rik#9a2e03a11848d1a6e9ad7e4a9623bf6bfcb1ceb2"
+source = "git+https://github.com/makepad/makepad?branch=rik#cd17b1e45fca64bcbfc31c3116c8c45638fb5708"
+
+[[package]]
+name = "ttf-parser"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 
 [[package]]
 name = "typenum"
@@ -3870,7 +3990,7 @@ dependencies = [
  "image",
  "lru",
  "reqwest 0.11.27",
- "scraper",
+ "scraper 0.17.1",
  "serde",
  "serde_json",
  "thiserror",

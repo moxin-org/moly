@@ -1,6 +1,6 @@
 use crate::{
     data::{
-        chats::{chat::ChatID, chat_entity::ChatEntityId},
+        chats::chat::ChatID,
         store::Store,
     },
     shared::{actions::ChatAction, modal::ModalWidgetExt, utils::human_readable_name},
@@ -66,7 +66,7 @@ live_design! {
     }
 
     CancelButton = <EditActionButton> {
-        draw_bg: { border_color: #D0D5DD, border_width: 1.0, color: #fff }
+        draw_bg: { border_color_1: #D0D5DD, border_size: 1.0, color: #fff }
 
         draw_text: {
             text_style: <REGULAR_FONT>{font_size: 9},
@@ -82,16 +82,19 @@ live_design! {
         width: Fill,
         height: 52,
 
-        selected_bg = <RoundedView> {
+        selected_bg = <RoundedInnerShadowView> {
             width: Fill
             height: Fill
             padding: {left: 4, right: 4}
 
             show_bg: true
+
             draw_bg: {
-                color: #0000
-                border_width: 0
-                radius: 5
+                border_radius: 5.0,
+                shadow_color: #47546722
+                shadow_radius: 25.0
+                shadow_offset: vec2(-2.0, 1.0)
+                border_color: #D0D5DD
             }
         }
 
@@ -107,8 +110,8 @@ live_design! {
             draw_bg: {
                 instance down: 0.0,
                 color: #0000
-                border_width: 0
-                radius: 5
+                border_size: 0
+                border_radius: 5
             }
 
             <View> {
@@ -200,7 +203,7 @@ live_design! {
                     padding: { top: 0, right: 4, bottom: 6, left: 4 }
 
                     draw_bg: {
-                        radius: 5
+                        border_radius: 5
                     }
 
                     draw_text:{
@@ -332,7 +335,7 @@ impl Widget for ChatHistoryCard {
                 content_view_highlight.apply_over(
                     cx,
                     live! {
-                        draw_bg: {color: #EAECEF}
+                        draw_bg: {color: #ebedee}
                     },
                 );
             } else {
@@ -345,7 +348,8 @@ impl Widget for ChatHistoryCard {
             }
         }
 
-        let caption = store.get_chat_entity_name(self.chat_id);
+        let caption = store.get_chat_associated_bot(self.chat_id)
+            .map(|bot_id| store.chats.available_bots.get(&bot_id).map(|m| m.name.clone()).unwrap_or("Unknown".to_string()));
         self.set_title_text(
             cx,
             chat.borrow_mut().get_title(),
@@ -354,29 +358,30 @@ impl Widget for ChatHistoryCard {
         self.update_title_visibility(cx);
 
         let initial_letter = caption
-            .unwrap_or("A".to_string())
+            .unwrap_or("a".to_string())
             .chars()
             .next()
             .unwrap()
-            .to_uppercase()
+            .to_lowercase()
             .to_string();
 
-        match &chat.borrow().associated_entity {
-            Some(ChatEntityId::Agent(model_id)) => {
-                let agent = store.chats.get_remote_model_or_placeholder(&model_id);
+        match &chat.borrow().associated_bot {
+            Some(bot_id) => {
+                let bot = store.chats.get_bot_or_placeholder(&bot_id);
 
-                self.view(id!(avatar_section.model)).set_visible(cx, false);
-                self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_visible(true);
-                self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_agent(agent);
+                if store.chats.is_agent(bot_id) { 
+                    let mut chat_agent_avatar = self.chat_agent_avatar(id!(avatar_section.agent));
+                    self.view(id!(avatar_section.model)).set_visible(cx, false);
+                    chat_agent_avatar.set_visible(true);
+                    chat_agent_avatar.set_bot(bot);
+                } else {
+                    self.view(id!(avatar_section.model)).set_visible(cx, true);
+                    self.chat_agent_avatar(id!(avatar_section.agent))
+                        .set_visible(false);
+                    self.view.label(id!(avatar_label)).set_text(cx, &initial_letter);
+                }
             }
-            _ => {
-                self.view(id!(avatar_section.model)).set_visible(cx, true);
-                self.chat_agent_avatar(id!(avatar_section.agent))
-                    .set_visible(false);
-                self.view.label(id!(avatar_label)).set_text(cx, &initial_letter);
-            }
+            _ => {}
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -418,6 +423,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
             if fe.tap_count == 1 {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(Some(self.chat_id));
+                cx.action(ChatAction::ChatSelected(self.chat_id));
                 self.redraw(cx);
             }
         }
@@ -430,12 +436,6 @@ impl WidgetMatchEvent for ChatHistoryCard {
                     | DeleteChatModalAction::ChatDeleted
             ) {
                 self.modal(id!(delete_chat_modal)).close(cx);
-            }
-
-            if let ChatAction::TitleUpdated(chat_id) = action.cast() {
-                if self.chat_id == chat_id {
-                    self.redraw(cx);
-                }
             }
         }
     }

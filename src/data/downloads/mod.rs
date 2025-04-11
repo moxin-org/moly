@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use download::{Download, DownloadFileAction, DownloadState};
 use makepad_widgets::Action;
 use moly_protocol::data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus};
-use std::{collections::HashMap, sync::mpsc::channel};
+use std::{collections::HashMap, sync::{mpsc::channel, Arc}};
 
 use super::moly_client::MolyClient;
 
@@ -14,7 +14,7 @@ pub enum DownloadPendingNotification {
     DownloadErrored(File),
 }
 pub struct Downloads {
-    pub moly_client: MolyClient,
+    pub moly_client: Arc<MolyClient>,
     pub downloaded_files: Vec<DownloadedFile>,
     pub pending_downloads: Vec<PendingDownload>,
     pub current_downloads: HashMap<FileID, Download>,
@@ -22,7 +22,7 @@ pub struct Downloads {
 }
 
 impl Downloads {
-    pub fn new(moly_client: MolyClient) -> Self {
+    pub fn new(moly_client: Arc<MolyClient>) -> Self {
         Self {
             moly_client,
             downloaded_files: Vec::new(),

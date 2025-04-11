@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::providers::RemoteModel;
+use crate::data::providers::ProviderBot;
 
 live_design! {
     use link::theme::*;
@@ -15,8 +15,8 @@ live_design! {
 
         show_bg: true,
         draw_bg: {
-            color: #444D9A,
-            radius: 6,
+            color: #37567d,
+            border_radius: 6,
         }
 
         align: {x: 0.5, y: 0.5},
@@ -34,9 +34,6 @@ live_design! {
 
     pub ChatAgentAvatar = {{ChatAgentAvatar}} {
         reasoner_agent_icon: dep("crate://self/resources/images/reasoner_agent_icon.png")
-        research_scholar_icon: dep("crate://self/resources/images/research_scholar_agent_icon.png")
-        search_assistant_icon: dep("crate://self/resources/images/search_assistant_agent_icon.png")
-        makepad_expert_icon: dep("crate://self/resources/images/makepad_expert_agent_icon.png")
         width: Fit,
         height: Fit,
         image = <Image> { width: 24, height: 24 }
@@ -50,15 +47,6 @@ pub struct ChatAgentAvatar {
 
     #[live]
     reasoner_agent_icon: LiveValue,
-
-    #[live]
-    research_scholar_icon: LiveValue,
-
-    #[live]
-    search_assistant_icon: LiveValue,
-
-    #[live]
-    makepad_expert_icon: LiveValue,
 
     // To avoid requesting `cx` on `set_agent`, which would cause a lot of changes in chain.
     #[rust]
@@ -87,15 +75,7 @@ impl Widget for ChatAgentAvatar {
 }
 
 impl ChatAgentAvatar {
-    pub fn set_agent(&mut self, _agent: &RemoteModel) {
-        // TODO: cleanup, currently mofa servers do not return an actual agent name or any other information
-        // that would help us identify the agent.
-        // let dep = match agent.agent_type {
-        //     AgentType::Reasoner => self.reasoner_agent_icon.clone(),
-        //     AgentType::ResearchScholar => self.research_scholar_icon.clone(),
-        //     AgentType::SearchAssistant => self.search_assistant_icon.clone(),
-        //     AgentType::MakepadExpert => self.makepad_expert_icon.clone(),
-        // };
+    pub fn set_bot(&mut self, _agent: &ProviderBot) {
         let dep = self.reasoner_agent_icon.clone();
 
         self.pending_image_update = Some(dep);
@@ -103,9 +83,9 @@ impl ChatAgentAvatar {
 }
 
 impl ChatAgentAvatarRef {
-    pub fn set_agent(&mut self, agent: &RemoteModel) {
+    pub fn set_bot(&mut self, agent: &ProviderBot) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_agent(agent);
+            inner.set_bot(agent);
         }
     }
 

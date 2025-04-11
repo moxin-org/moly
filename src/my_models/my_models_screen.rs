@@ -12,7 +12,6 @@ live_design! {
     use crate::shared::widgets::*;
     use crate::my_models::downloaded_files_table::DownloadedFilesTable;
 
-    BG_IMAGE = dep("crate://self/resources/images/my_models_bg_image.png")
     ICON_EDIT_FOLDER = dep("crate://self/resources/icons/edit_folder.svg")
     ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_SHOW_IN_FILES = dep("crate://self/resources/icons/visibility.svg")
@@ -23,7 +22,7 @@ live_design! {
         padding: {top: 6, bottom: 6, left: 14, right: 14}
 
         draw_bg: {
-            radius: 2.0,
+            border_radius: 2.0,
             color: #FEFEFE,
         }
 
@@ -48,7 +47,7 @@ live_design! {
         padding: {top: 6, bottom: 6, left: 14, right: 14}
 
         draw_bg: {
-            radius: 2.0,
+            border_radius: 2.0,
             color: #FEFEFE,
             color_hover: #999,
         }
@@ -81,9 +80,9 @@ live_design! {
         align: {x: 0.0, y: 0.5},
 
         draw_bg: {
-            radius: 9.0,
+            border_radius: 9.0,
             border_color: #D0D5DD,
-            border_width: 1.0,
+            border_size: 1.0,
         }
 
         <Icon> {
@@ -113,11 +112,6 @@ live_design! {
         height: Fill
         flow: Overlay
 
-        <Image> {
-            source: (BG_IMAGE),
-            width: Fill,
-            height: Fill,
-        }
 
         <View> {
             width: Fill, height: Fill

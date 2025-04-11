@@ -19,7 +19,7 @@ live_design! {
     ICON_PAUSE = dep("crate://self/resources/icons/pause_download.svg")
     ICON_CANCEL = dep("crate://self/resources/icons/cancel_download.svg")
     ICON_PLAY = dep("crate://self/resources/icons/play_download.svg")
-    ICON_RETRY = dep("crate://self/resources/icons/retry_download.svg")
+    ICON_RETRY = dep("crate://self/resources/icons/retry.svg")
 
     ModelAttributeTag = <RoundedView> {
         width: Fit,
@@ -28,7 +28,7 @@ live_design! {
 
         spacing: 5,
         draw_bg: {
-            radius: 2.0,
+            border_radius: 2.0,
         }
 
         caption = <Label> {
@@ -116,7 +116,7 @@ live_design! {
                 height: Fill,
                 draw_bg: {
                     color: #D9D9D9,
-                    radius: 2.0,
+                    border_radius: 2.0,
                 }
             }
 
@@ -125,7 +125,7 @@ live_design! {
                 height: Fill,
                 draw_bg: {
                     color: #099250,
-                    radius: 2.0,
+                    border_radius: 2.0,
                 }
             }
         }
@@ -136,11 +136,11 @@ live_design! {
         height: 40,
 
         draw_bg: {
-            border_color: #EAECF0,
-            border_width: 1.0,
+            border_color_1: #EAECF0,
+            border_size: 1.0,
             color: #fff,
             color_hover: #E2F1F1,
-            radius: 2.0,
+            border_radius: 2.0,
         }
 
         draw_icon: {
@@ -197,7 +197,7 @@ live_design! {
 
         draw_bg: {
             border_color: #EAECF0,
-            border_width: 1.0,
+            border_size: 1.0,
             color: #fff,
         }
 

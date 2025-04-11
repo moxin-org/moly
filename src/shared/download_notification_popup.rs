@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 use moly_protocol::data::{File, FileID};
 
-use crate::shared::actions::DownloadAction;
+use crate::{app::NavigationAction, shared::actions::DownloadAction};
 
 live_design! {
     use link::theme::*;
@@ -32,7 +32,7 @@ live_design! {
                         self.hover
                     ),
                     PRIMARY_LINK_FONT_COLOR,
-                    self.pressed
+                    self.down
                 )
             }
         }
@@ -51,7 +51,7 @@ live_design! {
                         self.hover
                     ),
                     SECONDARY_LINK_FONT_COLOR,
-                    self.pressed
+                    self.down
                 )
             }
         }
@@ -70,7 +70,7 @@ live_design! {
             instance border_radius: 4.0
             fn pixel(self) -> vec4 {
                 let border_color = #d4;
-                let border_width = 1;
+                let border_size = 1;
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size);
                 let body = #fff
 
@@ -85,7 +85,7 @@ live_design! {
 
                 sdf.stroke(
                     border_color,
-                    border_width
+                    border_size
                 )
                 return sdf.result
             }
@@ -193,12 +193,6 @@ live_design! {
 
 }
 
-#[derive(Clone, DefaultNone, Eq, Hash, PartialEq, Debug)]
-pub enum PopupAction {
-    None,
-    NavigateToMyModels,
-}
-
 #[derive(Clone, Debug, DefaultNone)]
 pub enum DownloadNotificationPopupAction {
     None,
@@ -257,8 +251,7 @@ impl WidgetMatchEvent for DownloadNotificationPopup {
             .link_label(id!(view_in_my_models_link))
             .clicked(actions)
         {
-            // TODO: Abstract the navigation actions on a single enum for the whole app.
-            cx.action(PopupAction::NavigateToMyModels);
+            cx.action(NavigationAction::NavigateToMyModels);
             cx.action(DownloadNotificationPopupAction::ActionLinkClicked);
         }
 

@@ -1,31 +1,25 @@
 pub mod chat;
-pub mod chat_entity;
-pub mod model_loader;
 
 use anyhow::{Context, Result};
-use chat::{Chat, ChatEntityAction, ChatID};
-use chat_entity::ChatEntityId;
-use makepad_widgets::ActionTrait;
-use model_loader::ModelLoader;
+use chat::{Chat, ChatID};
+use moly_kit::BotId;
 use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::{cell::RefCell, path::PathBuf};
 
 use super::filesystem::setup_chats_folder;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
-use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, RemoteModel, RemoteModelId, ProviderConnectionStatus};
+use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, ProviderBot, ProviderConnectionStatus};
 
 pub struct Chats {
-    pub moly_client: MolyClient,
+    pub moly_client: Arc<MolyClient>,
     pub saved_chats: Vec<RefCell<Chat>>,
 
-    pub loaded_model: Option<File>,
-    pub model_loader: ModelLoader,
-
-    pub remote_models: HashMap<RemoteModelId, RemoteModel>,
+    pub available_bots: HashMap<BotId, ProviderBot>,
 
     pub provider_clients: HashMap<String, Box<dyn ProviderClient>>,
 
@@ -35,27 +29,22 @@ pub struct Chats {
     current_chat_id: Option<ChatID>,
     chats_dir: PathBuf,
 
-    override_port: Option<u16>,
-
     /// Placeholder remote model used when a remote model is not available
     /// This is used to avoid recreating it on each call and make borrowing simpler.
-    unknown_remote_model: RemoteModel,
+    unknown_bot: ProviderBot,
 }
 
 impl Chats {
-    pub fn new(moly_client: MolyClient) -> Self {
+    pub fn new(moly_client: Arc<MolyClient>) -> Self {
         Self {
             moly_client,
             saved_chats: Vec::new(),
             current_chat_id: None,
-            loaded_model: None,
-            model_loader: ModelLoader::new(),
             chats_dir: setup_chats_folder(),
-            override_port: None,
-            remote_models: HashMap::new(),
+            available_bots: HashMap::new(),
             provider_clients: HashMap::new(),
             providers: HashMap::new(),
-            unknown_remote_model: RemoteModel::unknown(),
+            unknown_bot: ProviderBot::unknown(),
         }
     }
 
@@ -80,21 +69,6 @@ impl Chats {
             .map(|c| c.borrow().id)
     }
 
-    pub fn load_model(&mut self, file: &File, override_port: Option<u16>) {
-        self.cancel_chat_streaming();
-
-        if self.model_loader.is_loading() {
-            return;
-        }
-
-        self.override_port = override_port;
-        self.model_loader.load_async(
-            file.id.clone(),
-            self.moly_client.clone(),
-            override_port,
-        );
-    }
-
     pub fn get_current_chat_id(&self) -> Option<ChatID> {
         self.current_chat_id
     }
@@ -114,38 +88,12 @@ impl Chats {
     }
 
     pub fn set_current_chat(&mut self, chat_id: Option<ChatID>) {
-        self.cancel_chat_streaming();
         self.current_chat_id = chat_id;
 
         if let Some(chat) = self.get_current_chat() {
             let mut chat = chat.borrow_mut();
             chat.update_accessed_at();
             chat.save();
-        }
-    }
-
-    pub fn cancel_chat_streaming(&mut self) {
-        if let Some(chat) = self.get_current_chat() {
-            let mut chat = chat.borrow_mut();
-            match &chat.associated_entity {
-                Some(ChatEntityId::ModelFile(_)) => {
-                    chat.cancel_streaming();
-                }
-                Some(ChatEntityId::Agent(agent_id)) => {
-                    if let Some(provider_client) = self.get_client_for_provider(&agent_id.0) {
-                        chat.cancel_interaction(provider_client.as_ref());
-                    } 
-                    // If the client was not found we don't need to cancel
-                }
-                Some(ChatEntityId::RemoteModel(model_id)) => {
-                    if let Some(provider_client) = self.get_client_for_provider(&model_id.0) {
-                        chat.cancel_interaction(provider_client.as_ref());
-                    }
-                    // If the client was not found we don't need to cancel
-
-                }
-                _ => {}
-            }
         }
     }
 
@@ -165,75 +113,23 @@ impl Chats {
             .context("Failed to receive eject model response")?
             .context("Eject model operation failed");
 
-        self.loaded_model = None;
         Ok(())
     }
 
-    pub fn remove_file_from_associated_entity(&mut self, file_id: &FileID) {
-        for chat in &self.saved_chats {
-            let mut chat = chat.borrow_mut();
-            if let Some(ChatEntityId::ModelFile(chat_file_id)) = &chat.associated_entity {
-                if chat_file_id == file_id {
-                    chat.associated_entity = None;
-                    chat.save();
-                }
-            }
-        }
-    }
-
-    /// Get the file id to use with this chat, or the loaded file id as a fallback.
-    /// The fallback is used if the chat does not have a file id set, or, if it has
-    /// one but references a no longer existing (deleted) file.
-    #[allow(dead_code)]
-    pub fn get_chat_file_id(&self, chat: &mut Chat) -> Option<FileID> {
-        match &chat.associated_entity {
-            Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
-            _ => {
-                let file_id = self.loaded_model.as_ref().map(|m| m.id.clone())?;
-                Some(file_id)
-            }
-        }
-    }
-
-    pub fn create_empty_chat(&mut self) {
+    pub fn create_empty_chat(&mut self, bot_id: Option<BotId>) {
         let mut new_chat = Chat::new(self.chats_dir.clone());
         let id = new_chat.id;
-        new_chat.associated_entity = self
-            .loaded_model
-            .as_ref()
-            .map(|m| ChatEntityId::ModelFile(m.id.clone()));
+
+        // TODO: A better default bot id, for now we just use the first available one
+        new_chat.associated_bot = if bot_id.is_some() {
+            bot_id
+        } else {
+            self.available_bots.keys().next().map(|id| id.clone())
+        };
 
         new_chat.save();
         self.saved_chats.push(RefCell::new(new_chat));
         self.set_current_chat(Some(id));
-    }
-
-    pub fn create_empty_chat_with_agent(&mut self, agent_id: &RemoteModelId) {
-        self.create_empty_chat();
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntityId::Agent(agent_id.clone()));
-            chat.save();
-        }
-    }
-
-    pub fn create_empty_chat_with_remote_model(&mut self, model_id: &RemoteModelId) {
-        self.create_empty_chat();
-        if let Some(mut chat) = self.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.associated_entity = Some(ChatEntityId::RemoteModel(model_id.clone()));
-            chat.save();
-        }
-    }
-
-    pub fn create_empty_chat_and_load_file(&mut self, file: &File) {
-        let mut new_chat = Chat::new(self.chats_dir.clone());
-        let id = new_chat.id;
-        new_chat.associated_entity = Some(ChatEntityId::ModelFile(file.id.clone()));
-        new_chat.save();
-
-        self.saved_chats.push(RefCell::new(new_chat));
-        self.set_current_chat(Some(id));
-
-        self.load_model(file, None);
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
@@ -249,16 +145,6 @@ impl Chats {
 
         let chat = self.saved_chats.remove(pos);
         chat.borrow().remove_saved_file();
-    }
-
-    pub fn handle_action(&mut self, action: &Box<dyn ActionTrait>) {
-        if let Some(action) = action.downcast_ref::<ChatEntityAction>() {
-            if let Some(chat) = self.get_chat_by_id(action.chat_id) {
-                if chat.borrow().id == action.chat_id {
-                    chat.borrow_mut().handle_action(action);
-                }
-            }
-        }
     }
 
     pub fn register_provider(&mut self, provider: Provider) {
@@ -309,7 +195,7 @@ impl Chats {
                 }
 
                 // Insert the fetched models in memory, respecting preference "enabled" if it exists
-                for mut remote_model in fetched_models {
+                for mut provider_bot in fetched_models {
                     if let Some(pref_entry) = preferences.providers_preferences
                         .iter()
                         .find(|pp| pp.url == address)
@@ -317,22 +203,22 @@ impl Chats {
                         // if there's a matching "(model_name, enabled)" in preferences, apply it
                         if let Some((_m, enabled_val)) = pref_entry.models
                             .iter()
-                            .find(|(m, _)| *m == remote_model.name)
+                            .find(|(m, _)| *m == provider_bot.name)
                         {
-                            remote_model.enabled = *enabled_val;
+                            provider_bot.enabled = *enabled_val;
                         }
                     }
 
                     // Add it to the provider record, only if it's not already in there
-                    if !self.providers.get(&address).unwrap().models.contains(&remote_model.id) {
+                    if !self.providers.get(&address).unwrap().models.contains(&provider_bot.id) {
                         self.providers.get_mut(&address)
                             .unwrap()
-                            .models.push(remote_model.id.clone());
+                            .models.push(provider_bot.id.clone());
                     }
 
-                    // Add to the global remote_models only if it's not already in there
-                    if !self.remote_models.contains_key(&remote_model.id) {
-                        self.remote_models.insert(remote_model.id.clone(), remote_model);
+                    // Add to the global available_bots only if it's not already in there
+                    if !self.available_bots.contains_key(&provider_bot.id) {
+                        self.available_bots.insert(provider_bot.id.clone(), provider_bot);
                     }
                 }
 
@@ -372,7 +258,7 @@ impl Chats {
 
     pub fn remove_provider(&mut self, address: &str) {
         self.provider_clients.remove(address);
-        self.remote_models.retain(|_, model| model.provider_url != address);
+        self.available_bots.retain(|_, model| model.provider_url != address);
         self.providers.remove(address);
     }
 
@@ -382,43 +268,16 @@ impl Chats {
     pub fn remove_mofa_server(&mut self, address: &str) {
         // self.mofa_servers.remove(&MofaServerId(address.to_string()));
         self.provider_clients.remove(address);
-        self.remote_models.retain(|_, model| model.provider_url != address);
+        self.available_bots.retain(|_, model| model.provider_url != address);
         self.providers.remove(address);
     }
 
-    pub fn get_client_for_provider(&self, provider_url: &str) -> Option<&Box<dyn ProviderClient>> {
-        self.provider_clients.get(provider_url)
-    }
-
     /// Returns a list of remote models for a given server address.
-    pub fn get_provider_models(&self, server_url: &str) -> Vec<RemoteModel> {
+    pub fn get_provider_models(&self, server_url: &str) -> Vec<ProviderBot> {
         if let Some(provider) = self.providers.get(server_url) {
-            provider.models.iter().map(|id| self.remote_models.get(id).unwrap().clone()).collect()
+            provider.models.iter().map(|id| self.available_bots.get(id).unwrap().clone()).collect()
         } else {
             vec![]
-        }
-    }
-
-    pub fn agents_availability(&self) -> AgentsAvailability {
-        let mut has_mofa_provider = false;
-        let mut has_available_agent = false;
-        
-        for (_, p) in &self.providers {
-            if p.provider_type == ProviderType::MoFa {
-                has_mofa_provider = true;
-                if !p.models.is_empty() {
-                    has_available_agent = true;
-                    break; // No need to continue once we've found an available agent
-                }
-            }
-        }
-        
-        if has_available_agent {
-            AgentsAvailability::Available
-        } else if !has_mofa_provider {
-            AgentsAvailability::NoServers
-        } else {
-            AgentsAvailability::ServersNotConnected
         }
     }
 
@@ -430,35 +289,43 @@ impl Chats {
     /// 
     /// In the future, we'll want a more sophisticated solution, by potentially storing 
     /// remote model information locally and updating it when a server is connected.
-    pub fn get_remote_model_or_placeholder(&self, model_id: &RemoteModelId) -> &RemoteModel {
-        self.remote_models.get(model_id).unwrap_or(&self.unknown_remote_model)
+    pub fn get_bot_or_placeholder(&self, bot_id: &BotId) -> &ProviderBot {
+        self.available_bots.get(bot_id).unwrap_or(&self.unknown_bot)
     }
 
-    pub fn get_mofa_agents_list(&self, enabled_only: bool) -> Vec<RemoteModel> {
-        self.remote_models.values().filter(|m| self.is_agent(m) && (!enabled_only || m.enabled)).cloned().collect()
+    pub fn get_mofa_agents_list(&self, enabled_only: bool) -> Vec<ProviderBot> {
+        self.available_bots.values().filter(|m| self.is_agent(&m.id) && (!enabled_only || m.enabled)).cloned().collect()
     }
 
-    pub fn get_non_mofa_models_list(&self, enabled_only: bool) -> Vec<RemoteModel> {
-        self.remote_models.values().filter(|m| !self.is_agent(m) && (!enabled_only || m.enabled)).cloned().collect()
+    pub fn get_non_mofa_models_list(&self, enabled_only: bool) -> Vec<ProviderBot> {
+        self.available_bots.values().filter(|m| !self.is_agent(&m.id) && (!enabled_only || m.enabled)).cloned().collect()
     }
 
-    pub fn is_agent(&self, model: &RemoteModel) -> bool {
-        self.providers.get(&model.provider_url).map_or(false, |p| p.provider_type == ProviderType::MoFa)
-    }
-}
-
-pub enum AgentsAvailability {
-    Available,
-    NoServers,
-    ServersNotConnected,
-}
-
-impl AgentsAvailability {
-    pub fn to_human_readable(&self) -> &'static str {
-        match self {
-            AgentsAvailability::Available => "Agents available",
-            AgentsAvailability::NoServers => "Not connected to any MoFa servers.",
-            AgentsAvailability::ServersNotConnected => "Could not connect to some servers. Check your MoFa settings.",
+    pub fn is_agent(&self, bot_id: &BotId) -> bool {
+       if let Some(provider_bot) = self.available_bots.get(bot_id) {
+            if let Some(provider) = self.providers.get(&provider_bot.provider_url) {
+                provider.provider_type == ProviderType::MoFa
+            } else {
+                false
+            }
+        } else {
+            false
         }
+    }
+
+    pub fn is_local_model(&self, bot_id: &BotId) -> bool {
+        if let Some(provider_bot) = self.available_bots.get(bot_id) {
+            if let Some(provider) = self.providers.get(&provider_bot.provider_url) {
+                provider.provider_type == ProviderType::MolyServer
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    pub fn get_bot_id_by_file_id(&self, file_id: &FileID) -> Option<BotId> {
+        self.available_bots.values().find(|m| m.name == file_id.as_str()).map(|m| m.id.clone())
     }
 }

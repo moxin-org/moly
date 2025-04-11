@@ -8,7 +8,7 @@ Moly is an AI LLM client written in Rust, that demonstrates the power of the [Ma
 
 The Moly app supports different types of AI providers:
 1. **OpenAI-compatible AI providers**: configured through the Providers Dashboard
-2. **Moly Server**: a local LLM backend that allows exploring, downloading and running OSS LLMs locally. This requires installing Moly Server and running it before opening the Moly application, for instructions see: [moly-server](https://github.com/moxin-org/moly-server).
+2. **Moly Server**: a local LLM backend that allows exploring, downloading and running OSS LLMs locally. For usage and installation see [instructions here](#running-moly-with-moly-server)
 3. **MoFa Servers**: MoFa is a framework for building AI agents. Using MoFa, AI agents can be constructed via templates, and then exposed via a Dora server that is OpenAI-compatible. MoFa servers can be added to the application through the Providers Dashboard. See [instructions here](#running-moly-with-mofa).
 
 ## Building and Running
@@ -58,6 +58,15 @@ cargo run --release
 > If your CPU does not support AVX512, then you should append the `--noavx` option onto the above command.
 > If you use [`moly-runner`](#tip-use-moly-runner-for-easy-setup), it will handle this for you.
 
+---
+
+## Running Moly with Moly Server
+[Moly Server](https://github.com/moxin-org/moly-server) is a local HTTP server which provides capabilities for searching, downloading, and running local LLMs over an OpenAI-compatible API. While not required for use of Moly, it can be run alongside and connected to by the main Moly application.
+After following the [setup guide](https://github.com/moxin-org/moly-server?tab=readme-ov-file#building-and-running) in its README, the server can be run with:
+```bash
+cd moly-server/
+cargo run -p moly-server
+```
 ---
 
 ## Running Moly with MoFa
@@ -118,12 +127,6 @@ curl http://localhost:8000/v1/chat/completions \
 ```
 This should return a JSON response with the completion.
 
-## Connect Moly to MoFa
+### Connect Moly to MoFa
 
-Go to the Providers Dashboard and enable the MoFa entry (or add a new one if needed)
-
-> [!NOTE]
-> For development, if you want to avoid running the MoFa server, you can fake it by setting the `MOFA_BACKEND` environment variable to `fake` (default is `real`):
-> ```
-> MOFA_BACKEND=fake cargo run
-> ```
+Go to the Providers Dashboard and enable the MoFa entry (or add new ones if needed)

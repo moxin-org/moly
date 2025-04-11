@@ -3,6 +3,7 @@ mod faked_models;
 use makepad_widgets::{Action, Cx};
 use moly_protocol::data::*;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
 
 use super::moly_client::MolyClient;
@@ -36,7 +37,7 @@ pub enum SearchState {
     Errored,
 }
 pub struct Search {
-    pub moly_client: MolyClient,
+    pub moly_client: Arc<MolyClient>,
     pub models: Vec<Model>,
     pub sorted_by: SortCriteria,
     pub keyword: Option<String>,
@@ -44,7 +45,7 @@ pub struct Search {
 }
 
 impl Search {
-    pub fn new(moly_client: MolyClient) -> Self {
+    pub fn new(moly_client: Arc<MolyClient>) -> Self {
         let search = Self {
             moly_client,
             models: Vec::new(),

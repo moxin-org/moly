@@ -7,16 +7,16 @@ live_design! {
     use link::shaders::*;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
-        send_icon: dep("crate://self/assets/send.svg"),
-        stop_icon: dep("crate://self/assets/stop.svg"),
+        send_icon: dep("crate://self/resources/send.svg"),
+        stop_icon: dep("crate://self/resources/stop.svg"),
 
         persistent = {
             padding: {top: 8, bottom: 6, left: 4, right: 10}
             draw_bg: {
                 color: #fff,
-                radius: 10.0,
+                border_radius: 10.0,
                 border_color: #D0D5DD,
-                border_width: 1.0,
+                border_size: 1.0,
             }
             center = {
                 text_input = {
@@ -34,7 +34,7 @@ live_design! {
                             return mix(#98A2B3, #000, self.prompt_enabled)
                         }
                     }
-                    draw_selection: {
+                    draw_highlight: {
                         fn pixel(self) -> vec4 {
                             return #bbb;
                         }

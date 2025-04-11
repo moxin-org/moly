@@ -3,6 +3,7 @@ use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
 use crate::bot_selector::BotSelectorWidgetExt;
+use crate::tester_client::TesterClient;
 
 const OPEN_AI_KEY: Option<&str> = option_env!("OPEN_AI_KEY");
 const OPEN_ROUTER_KEY: Option<&str> = option_env!("OPEN_ROUTER_KEY");
@@ -110,12 +111,15 @@ impl DemoChat {
                     "Qwen/Qwen2-7B-Instruct",
                 ];
 
+                let tester_whitelist = ["tester"];
+
                 openai_whitelist
                     .iter()
                     .chain(openrouter_whitelist.iter())
                     .chain(ollama_whitelist.iter())
                     .chain(siliconflow_whitelist.iter())
-                    .any(|s| *s == b.id.as_str())
+                    .chain(tester_whitelist.iter())
+                    .any(|s| *s == b.name.as_str())
             })
             .collect::<Vec<_>>();
 
@@ -138,7 +142,7 @@ impl DemoChat {
                         abort = true;
 
                         let text = chat.messages_ref().read_with(|messages| {
-                            let text = messages.messages[*index].body.as_str();
+                            let text = messages.messages[*index].visible_text();
                             format!("You copied the following text from Moly (mini): {}", text)
                         });
 
@@ -146,9 +150,12 @@ impl DemoChat {
                     }
 
                     if let ChatTask::UpdateMessage(_index, message) = task {
-                        message.body = message.body.replace("ello", "3110 (hooked)");
+                        message.content = MessageContent::PlainText {
+                            text: message.visible_text().replace("ello", "3110 (hooked)"),
+                            citations: vec![],
+                        };
 
-                        if message.body.contains("bad word") {
+                        if message.visible_text().contains("bad word") {
                             abort = true;
                         }
                     }
@@ -162,7 +169,7 @@ impl DemoChat {
             chat.set_hook_after(|group, _, _| {
                 for task in group.iter() {
                     if let ChatTask::UpdateMessage(_index, message) = task {
-                        log!("Message updated after hook: {}", message.body);
+                        log!("Message updated after hook: {:?}", message.content);
                     }
                 }
             });
@@ -171,16 +178,17 @@ impl DemoChat {
 
     fn setup_chat_repo(&self) {
         let client = {
-            // let moly = MolyClient::new("http://localhost:8085".into());
-            let ollama = OpenAIClient::new("http://localhost:11434".into());
-
             let mut client = MultiClient::new();
-            // client.add_client(Box::new(moly));
+
+            let tester = TesterClient;
+            client.add_client(Box::new(tester));
+
+            let ollama = OpenAIClient::new("http://localhost:11434".into());
             client.add_client(Box::new(ollama));
 
             // Only add OpenAI client if API key is present
             if let Some(key) = OPEN_AI_KEY {
-                let openai_url = "https://api.openai.com";
+                let openai_url = "https://api.openai.com/api/v1";
                 let mut openai = OpenAIClient::new(openai_url.into());
                 openai.set_key(key);
                 client.add_client(Box::new(openai));
@@ -188,7 +196,7 @@ impl DemoChat {
 
             // Only add OpenRouter client if API key is present
             if let Some(key) = OPEN_ROUTER_KEY {
-                let open_router_url = "https://openrouter.ai/api";
+                let open_router_url = "https://openrouter.ai/api/v1";
                 let mut open_router = OpenAIClient::new(open_router_url.into());
                 open_router.set_key(key);
                 client.add_client(Box::new(open_router));
@@ -196,7 +204,7 @@ impl DemoChat {
 
             // Only add SiliconFlow client if API key is present
             if let Some(key) = SILICON_FLOW_KEY {
-                let siliconflow_url = "https://api.siliconflow.cn";
+                let siliconflow_url = "https://api.siliconflow.cn/api/v1";
                 let mut siliconflow = OpenAIClient::new(siliconflow_url.into());
                 siliconflow.set_key(key);
                 client.add_client(Box::new(siliconflow));
@@ -210,10 +218,25 @@ impl DemoChat {
 
         let ui = self.ui_runner();
         spawn(async move {
-            repo.load().await.expect("TODO: Handle loading better");
+            let errors = repo.load().await.into_errors();
+
             ui.defer_with_redraw(move |me, _cx, _scope| {
+                let mut chat = me.chat(id!(chat));
+                let mut messages = chat.read().messages_ref();
+
                 me.fill_selector(repo.bots());
-                me.chat(id!(chat)).write().visible = true;
+                chat.write().visible = true;
+
+                for error in errors {
+                    messages.write().messages.push(Message {
+                        from: EntityId::App,
+                        content: MessageContent::PlainText {
+                            text: error.to_string(),
+                            citations: vec![],
+                        },
+                        ..Default::default()
+                    });
+                }
             });
         });
     }

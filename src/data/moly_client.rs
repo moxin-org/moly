@@ -1,41 +1,85 @@
 use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
-    open_ai::{ChatRequestData, ChatResponse, ChatResponseChunkData, ChatResponseData, ChunkChoiceData, MessageData, Role, StopReason},
-    protocol::{FileDownloadResponse, LoadModelOptions, LoadModelResponse},
+    protocol::FileDownloadResponse,
 };
 use url::Url;
-use std::sync::mpsc::Sender;
-use std::io::BufRead;
+use std::sync::{mpsc::Sender, Arc, Mutex};
+use futures::TryStreamExt;
+use makepad_widgets::*;
 
 #[derive(Clone, Debug)]
 pub struct MolyClient {
     address: String,
-    blocking_client: reqwest::blocking::Client,
+    client: reqwest::Client,
+    pub is_connected: Arc<Mutex<bool>>,
 }
 
+
+#[allow(dead_code)]
 impl MolyClient {
     pub fn new(address: String) -> Self {
-        let blocking_client = reqwest::blocking::Client::builder()
+        let client = reqwest::Client::builder()
             .no_proxy()
             .build()
             .expect("Failed to build reqwest client");
 
         Self {
             address,
-            blocking_client
+            client,
+            is_connected: Arc::new(Mutex::new(false))
         }
+    }
+
+    pub fn is_connected(&self) -> bool {
+        if let Ok(is_connected) = self.is_connected.lock() {
+            *is_connected
+        } else {
+            false
+        }
+    }
+
+    pub fn test_connection(&self, tx: Sender<Result<(), anyhow::Error>>) {
+        let url = format!("{}/ping", self.address);
+        let client = self.client.clone();
+
+        let is_connected = self.is_connected.clone();
+        tokio::spawn(async move {
+            let resp = client.get(&url).send().await;
+            match resp {
+                Ok(r) => {
+                    if r.status().is_success() {
+                        let _ = tx.send(Ok(()));
+                        if let Ok(mut is_connected) = is_connected.lock() {
+                            *is_connected = true;
+                        }
+                    } else {
+                        if let Ok(mut is_connected) = is_connected.lock() {
+                            *is_connected = false;
+                            Cx::post_action(MolyClientAction::ServerUnreachable);
+                        }
+                    }
+                }
+                Err(e) => {
+                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                    }
+                }
+            }
+        });
     }
 
     pub fn get_featured_models(&self, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/featured", self.address);
-        let blocking_client = self.blocking_client.clone();
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
-        std::thread::spawn(move || {
-            let resp = blocking_client.get(&url).send();
+        tokio::spawn(async move {
+            let resp = client.get(&url).send().await;
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        match r.json::<Vec<Model>>() {
+                        match r.json::<Vec<Model>>().await {
                             Ok(models) => {
                                 let _ = tx.send(Ok(models));
                             }
@@ -49,6 +93,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -56,14 +104,15 @@ impl MolyClient {
 
     pub fn search_models(&self, query: String, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/search?q={}", self.address, query);
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
-        let blocking_client = self.blocking_client.clone();
-        std::thread::spawn(move || {
-            let resp = blocking_client.get(&url).send();
+        tokio::spawn(async move {
+            let resp = client.get(&url).send().await;
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        match r.json::<Vec<Model>>() {
+                        match r.json::<Vec<Model>>().await {
                             Ok(models) => {
                                 let _ = tx.send(Ok(models));
                             }
@@ -77,6 +126,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -84,18 +137,20 @@ impl MolyClient {
 
     pub fn get_downloaded_files(&self, tx: Sender<Result<Vec<DownloadedFile>, anyhow::Error>>) {
         let url = format!("{}/files", self.address);
-        let blocking_client = self.blocking_client.clone();
-        std::thread::spawn(move || {
-            let resp = blocking_client.get(&url).send();
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
+        tokio::spawn(async move {
+            let resp = client.get(&url).send().await;
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        match r.json::<Vec<DownloadedFile>>() {
+                        match r.json::<Vec<DownloadedFile>>().await {
                             Ok(files) => {
                                 let _ = tx.send(Ok(files));
                             }
                             Err(e) => {
-                                println!("Error parsing files: {}", e);
+                                eprintln!("Error parsing files: {}", e);
                                 let _ = tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
                             }
                         }
@@ -105,6 +160,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -112,14 +171,15 @@ impl MolyClient {
 
     pub fn get_current_downloads(&self, tx: Sender<Result<Vec<PendingDownload>, anyhow::Error>>) {
         let url = format!("{}/downloads", self.address);
-        let blocking_client = self.blocking_client.clone();
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
-        std::thread::spawn(move || {
-            let resp = blocking_client.get(&url).send();
+        tokio::spawn(async move {
+            let resp = client.get(&url).send().await;
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        match r.json::<Vec<PendingDownload>>() {
+                        match r.json::<Vec<PendingDownload>>().await {
                             Ok(files) => {
                                 let _ = tx.send(Ok(files));
                             }
@@ -133,38 +193,47 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
     }
 
-    pub fn download_file(&self, file: File, tx: Sender<Result<(), anyhow::Error>>) {
+    pub fn download_file(&self, file: File, tx: tokio::sync::mpsc::Sender<Result<(), anyhow::Error>>) {
         let url = format!("{}/downloads", self.address);
-        let blocking_client = self.blocking_client.clone();
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
-        std::thread::spawn(move || {
-            let resp = blocking_client.post(&url)
+        tokio::spawn(async move {
+            let resp = client.post(&url)
                 .json(&serde_json::json!({
                     "file_id": file.id
                 }))
-                .send();
+                .send().await;
 
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        let _ = tx.send(Ok(()));
+                        let _ = tx.send(Ok(())).await;
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status()))).await;
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e))).await;
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
     }
 
-    pub fn track_download_progress(&self, file_id: FileID, tx: Sender<Result<FileDownloadResponse, anyhow::Error>>) {
+    pub async fn track_download_progress(&self, file_id: FileID, tx: tokio::sync::mpsc::Sender<Result<FileDownloadResponse, anyhow::Error>>) {
         let mut url = Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
         url.path_segments_mut()
             .expect("Cannot modify path segments")
@@ -172,47 +241,67 @@ impl MolyClient {
             .push(&file_id)
             .push("progress");
 
-        let client = self.blocking_client.clone();
-        std::thread::spawn(move || {
-            let response = client.get(url).send();
-            match response {
-                Ok(res) => {
-                    let mut reader = std::io::BufReader::new(res);
-                    let mut line = String::new();
-                    let mut current_event = String::new();
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+        let response = client.get(url).send().await;
 
-                    while reader.read_line(&mut line).unwrap() > 0 {
-                        if line.starts_with("event: ") {
-                            current_event = line.trim_start_matches("event: ").trim().to_string();
-                        } else if line.starts_with("data: ") {
-                            let event_data = line.trim_start_matches("data: ").trim();
-                            match current_event.as_str() {
-                                "complete" => {
-                                    let _ = tx.send(Ok(FileDownloadResponse::Completed(
-                                        moly_protocol::data::DownloadedFile::default()
-                                    )));
-                                    break;
-                                }
-                                "error" => {
-                                    let _ = tx.send(Err(anyhow::anyhow!("Download failed")));
-                                    break;
-                                }
-                                "progress" => {
-                                    if let Ok(value) = event_data.parse::<f32>() {
-                                        let _ = tx.send(Ok(FileDownloadResponse::Progress(file_id.clone(), value)));
+        match response {
+            Ok(res) => {
+                let mut bytes = res.bytes_stream();
+                let mut buffer = String::new();
+                let mut current_event = String::new();
+
+                while let Ok(Some(chunk)) = bytes.try_next().await {
+                    if let Ok(text) = String::from_utf8(chunk.to_vec()) {
+                        buffer.push_str(&text);
+                        
+                        while let Some(pos) = buffer.find('\n') {
+                            let line = buffer[..pos].trim().to_string();
+                            buffer = buffer[pos + 1..].to_string();
+
+                            if line.starts_with("event: ") {
+                                current_event = line.trim_start_matches("event: ").trim().to_string();
+                            } else if line.starts_with("data: ") {
+                                let event_data = line.trim_start_matches("data: ").trim();
+                                match current_event.as_str() {
+                                    "complete" => {
+                                        if let Err(e) = tx.send(Ok(FileDownloadResponse::Completed(
+                                            moly_protocol::data::DownloadedFile::default()
+                                        ))).await {
+                                            eprintln!("Failed to send completion message: {}", e);
+                                        }
+                                        break;
                                     }
+                                    "error" => {
+                                        if let Err(e) = tx.send(Err(anyhow::anyhow!("Download failed"))).await {
+                                            eprintln!("Failed to send error message: {}", e);
+                                        }
+                                        break;
+                                    }
+                                    "progress" => {
+                                        if let Ok(value) = event_data.parse::<f32>() {
+                                            let _ = tx.send(Ok(FileDownloadResponse::Progress(file_id.clone(), value))).await;
+                                        }
+                                    }
+                                    _ => {}
                                 }
-                                _ => {}
                             }
                         }
-                        line.clear();
+                        
+                        if current_event == "complete" || current_event == "error" {
+                            break;
+                        }
                     }
                 }
-                Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+            }
+            Err(e) => {
+                let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e))).await;
+                if let Ok(mut is_connected) = is_connected.lock() {
+                    *is_connected = false;
+                    Cx::post_action(MolyClientAction::ServerUnreachable);
                 }
             }
-        });
+        }
     }
 
     pub fn pause_download_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
@@ -224,13 +313,15 @@ impl MolyClient {
             .pop_if_empty() // Remove the trailing slash, if any
             .push(&file_id);
 
-        let blocking_client = self.blocking_client.clone();
-        std::thread::spawn(move || {
-            let resp = blocking_client.post(url)
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
+        tokio::spawn(async move {
+            let resp = client.post(url)
                 .json(&serde_json::json!({
                     "file_id": file_id
                 }))
-                .send();
+                .send().await;
 
             match resp {
                 Ok(r) => {
@@ -242,6 +333,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -256,13 +351,15 @@ impl MolyClient {
             .pop_if_empty() // Remove the trailing slash, if any
             .push(&file_id);
 
-        let blocking_client = self.blocking_client.clone();
-        std::thread::spawn(move || {
-            let resp = blocking_client.delete(url)
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
+        tokio::spawn(async move {
+            let resp = client.delete(url)
                 .json(&serde_json::json!({
                     "file_id": file_id
                 }))
-                .send();
+                .send().await;
 
             match resp {
                 Ok(r) => {
@@ -274,6 +371,10 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
+                    }
                 }
             }
         });
@@ -288,10 +389,12 @@ impl MolyClient {
             .pop_if_empty() // Remove the trailing slash, if any
             .push(&file_id);
 
-        let blocking_client = self.blocking_client.clone();
-        std::thread::spawn(move || {
-            let resp = blocking_client.delete(url)
-                .send();
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
+
+        tokio::spawn(async move {
+            let resp = client.delete(url)
+                .send().await;
 
             match resp {
                 Ok(r) => {
@@ -303,54 +406,59 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
-                }
-            }
-        });
-    }
-
-    /// Loads a model. Should only be called from a background thread to avoid blocking the UI.
-    pub fn load_model(&self, file_id: FileID, options: LoadModelOptions,
-        tx: Sender<Result<LoadModelResponse, anyhow::Error>>) {
-        let url = format!("{}/models/load", self.address);
-        let request = serde_json::json!({
-            "file_id": file_id,
-            "options": options,
-        });
-
-        let blocking_client = self.blocking_client.clone();
-        std::thread::spawn(move || {
-            let resp = blocking_client.post(&url)
-                .json(&request)
-                .send();
-
-            match resp {
-                Ok(r) => {
-                    if r.status().is_success() {
-                        match r.json::<LoadModelResponse>() {
-                            Ok(response) => {
-                                let _ = tx.send(Ok(response));
-                            }
-                            Err(e) => {
-                                let _ = tx.send(Err(anyhow::anyhow!("Failed to parse response: {}", e)));
-                            }
-                        }
-                    } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
                     }
-                },
-                Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
                 }
             }
         });
     }
+
+    // /// Loads a model. Should only be called from a background thread to avoid blocking the UI.
+    // pub fn load_model(&self, file_id: FileID, options: LoadModelOptions,
+    //     tx: Sender<Result<LoadModelResponse, anyhow::Error>>) {
+    //     let url = format!("{}/models/load", self.address);
+    //     let request = serde_json::json!({
+    //         "file_id": file_id,
+    //         "options": options,
+    //     });
+
+    //     let client = self.client.clone();
+    //     tokio::spawn(async move {
+    //         let resp = client.post(&url)
+    //             .json(&request)
+    //             .send().await;
+
+    //         match resp {
+    //             Ok(r) => {
+    //                 if r.status().is_success() {
+    //                     match r.json::<LoadModelResponse>().await {
+    //                         Ok(response) => {
+    //                             let _ = tx.send(Ok(response));
+    //                         }
+    //                         Err(e) => {
+    //                             let _ = tx.send(Err(anyhow::anyhow!("Failed to parse response: {}", e)));
+    //                         }
+    //                     }
+    //                 } else {
+    //                     let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+    //                 }
+    //             },
+    //             Err(e) => {
+    //                 let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+    //             }
+    //         }
+    //     });
+    // }
 
     pub fn eject_model(&self, tx: Sender<Result<(), anyhow::Error>>) {
         let url = format!("{}/models/eject", self.address);
-        let blocking_client = self.blocking_client.clone();
+        let client = self.client.clone();
+        let is_connected = self.is_connected.clone();
 
-        std::thread::spawn(move || {
-            let resp = blocking_client.post(&url).send();
+        tokio::spawn(async move {
+            let resp = client.post(&url).send().await;
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
@@ -361,85 +469,19 @@ impl MolyClient {
                 }
                 Err(e) => {
                     let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
-                }
-            }
-        });
-    }
-
-    pub fn send_chat_message(
-        &self,
-        request: ChatRequestData,
-        tx: Sender<Result<ChatResponse, anyhow::Error>>,
-    ) {
-        let client = reqwest::blocking::Client::builder()
-                .no_proxy()
-                .build()
-                .expect("Failed to build reqwest client");
-        let url = format!("{}/models/v1/chat/completions", self.address);
-
-        std::thread::spawn(move || {
-            let response = client
-                .post(&url)
-                .json(&request)
-                .send();
-
-            match response {
-                Ok(res) => {
-                    if request.stream.unwrap_or(false) {
-                        let mut reader = std::io::BufReader::new(res);
-                        let mut line = String::new();
-                        while reader.read_line(&mut line).unwrap() > 0 {
-                            if line.starts_with("data: [DONE]") {
-                                let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(ChatResponseChunkData {
-                                    id: String::new(),
-                                    choices: vec![ChunkChoiceData {
-                                        finish_reason: Some(StopReason::Stop),
-                                        index: 0,
-                                        delta: MessageData {
-                                            content: String::new(),
-                                            role: Role::Assistant,
-                                        },
-                                        logprobs: None,
-                                    }],
-                                    created: 0,
-                                    model: String::new(),
-                                    system_fingerprint: String::new(),
-                                    object: "chat.completion.chunk".to_string(),
-                                })));
-                                break;
-                            }
-                            if line.starts_with("data: ") {
-                                // Skip "data: " prefix (6 bytes)
-                                let resp: Result<ChatResponseChunkData, _> =
-                                    serde_json::from_slice(line[6..].as_bytes());
-
-                                match resp {
-                                    Ok(chunk_data) => {
-                                        let _ = tx.send(Ok(ChatResponse::ChatResponseChunk(chunk_data)));
-                                    }
-                                    Err(e) => {
-                                        let _ = tx.send(Err(anyhow::anyhow!("Failed to parse chunk: {}", e)));
-                                        break;
-                                    }
-                                }
-                            }
-                            line.clear();
-                        }
-                    } else {
-                        match res.json::<ChatResponseData>() {
-                            Ok(data) => {
-                                let _ = tx.send(Ok(ChatResponse::ChatFinalResponseData(data)));
-                            }
-                            Err(e) => {
-                                let _ = tx.send(Err(anyhow::anyhow!("Failed to parse response: {}", e)));
-                            }
-                        }
+                    if let Ok(mut is_connected) = is_connected.lock() {
+                        *is_connected = false;
+                        Cx::post_action(MolyClientAction::ServerUnreachable);
                     }
                 }
-                Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
-                }
             }
         });
     }
+}
+
+#[derive(Clone, Debug, DefaultNone)]
+
+pub enum MolyClientAction {
+    None,
+    ServerUnreachable,
 }

@@ -1,7 +1,10 @@
+use std::sync::mpsc::channel;
+use std::sync::Arc;
+
+use crate::shared::actions::ChatAction;
+
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
-use super::chats::chat_entity::ChatEntityId;
-use super::chats::model_loader::ModelLoaderStatusChanged;
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
@@ -14,7 +17,10 @@ use chrono::{DateTime, Utc};
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 
 use super::providers::{Provider, ProviderConnectionStatus};
-use moly_protocol::data::{Author, DownloadedFile, File, FileID, Model, ModelID, PendingDownload};
+use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
+
+use moly_kit::*;
+use makepad_widgets::*;
 
 #[allow(dead_code)]
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
@@ -49,15 +55,12 @@ pub struct ModelWithDownloadInfo {
 }
 
 pub struct Store {
-    /// This is the backend representation, including the sender and receiver ends of the channels to
-    /// communicate with the backend thread.
-    // pub backend: Rc<Backend>,
-    pub moly_client: MolyClient,
-
     pub search: Search,
     pub downloads: Downloads,
     pub chats: Chats,
     pub preferences: Preferences,
+    pub bot_repo: Option<BotRepo>,
+    moly_client: Arc<MolyClient>,
 }
 
 impl Default for Store {
@@ -75,187 +78,49 @@ impl Store {
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8765);
 
-        let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
+        let moly_client = Arc::new(MolyClient::new(format!("http://localhost:{}", server_port)));
 
         register_capture_manager();
 
         let mut store = Self {
-            moly_client: moly_client.clone(),
-            search: Search::new(moly_client.clone()),
-            downloads: Downloads::new(moly_client.clone()),
-            chats: Chats::new(moly_client.clone()),
+            search: Search::new(Arc::clone(&moly_client)),
+            downloads: Downloads::new(Arc::clone(&moly_client)),
+            chats: Chats::new(Arc::clone(&moly_client)),
+            moly_client,
             preferences,
+            bot_repo: None,
         };
-
-        store.downloads.load_downloaded_files();
-        store.downloads.load_pending_downloads();
 
         store.chats.load_chats();
         store.init_current_chat();
-
-        store.search.load_featured_models();
-        // store
-        //     .chats
-        //     .register_mofa_server(DEFAULT_MOFA_ADDRESS.to_string());
-
+        
+        store.sync_with_moly_server();
         store.load_preference_connections();
 
         store
     }
 
-    pub fn load_model(&mut self, file: &File) {
-        self.chats.load_model(file, None);
+    pub fn is_moly_server_connected(&self) -> bool {
+        self.moly_client.is_connected()
     }
 
-    pub fn update_server_port(&mut self, server_port: u16) {
-        if let Some(file) = &self.chats.loaded_model {
-            if !self.chats.model_loader.is_loading() {
-                self.chats.load_model(&file.clone(), Some(server_port));
-            }
-        }
-    }
-
-    fn update_load_model(&mut self) {
-        if self.chats.model_loader.is_loaded() {
-            self.chats.loaded_model = self
-                .chats
-                .model_loader
-                .file_id()
-                .map(|id| self.downloads.get_file(&id))
-                .flatten()
-                .cloned();
-        }
-
-        if let Some(file) = &self.chats.loaded_model {
-            self.preferences.set_current_chat_model(file.id.clone());
-
-            // If there is no chat, create an empty one
-            if self.chats.get_current_chat().is_none() {
-                self.chats.create_empty_chat();
-            }
-        }
-    }
-
-    pub fn send_message_to_current_entity(
-        &mut self,
-        prompt: String,
-        regenerate_from: Option<usize>,
-    ) {
-        let entity_id = self
-            .chats
-            .get_current_chat()
-            .and_then(|c| c.borrow().associated_entity.clone());
-
-        if let Some(entity_id) = entity_id {
-            self.send_entity_message(&entity_id, prompt, regenerate_from);
-        }
-    }
-
-    pub fn send_entity_message(
-        &mut self,
-        entity_id: &ChatEntityId,
-        prompt: String,
-        regenerate_from: Option<usize>,
-    ) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            if let Some(message_id) = regenerate_from {
-                chat.remove_messages_from(message_id);
-            }
-
-            match entity_id {
-                ChatEntityId::Agent(model_id) => {
-                    let model = self.chats.remote_models.get(model_id);
-                    if let Some(model) = model {
-                        let client = self.chats.get_client_for_provider(&model.provider_url);
-                        if let Some(client) = client {
-                            chat.send_message_to_agent(model, prompt, client.as_ref());
-                        } else {
-                            eprintln!("client not found for provider: {:?}", model.provider_url);
-                        }
-                    } else {
-                        eprintln!("model not found: {:?}", model_id);
-                    }
+    pub fn sync_with_moly_server(&mut self) {
+        let (tx, rx) = channel();
+        self.moly_client.test_connection(tx);
+        if let Ok(response) = rx.recv() {
+            match response {
+                Ok(()) => {
+                    self.downloads.load_downloaded_files();
+                    self.downloads.load_pending_downloads();
+                    self.search.load_featured_models();
                 }
-                ChatEntityId::ModelFile(file_id) => {
-                    if let Some(file) = self.downloads.get_file(&file_id) {
-                        chat.send_message_to_model(
-                            prompt,
-                            file,
-                            self.chats.model_loader.clone(),
-                            &self.moly_client,
-                        );
-                    }
-                }
-                ChatEntityId::RemoteModel(model_id) => {
-                    let model = self.chats.remote_models.get(model_id);
-                    if let Some(model) = model {
-                        let client = self.chats.get_client_for_provider(&model.provider_url);
-                        if let Some(client) = client {
-                            chat.send_message_to_remote_model(prompt, model, client.as_ref());
-                        } else {
-                            eprintln!("client not found for provider: {:?}", model.provider_url);
-                        }
-                    } else {
-                        eprintln!("model not found: {:?}", model_id);
-                    }
-                }
+                Err(_err) => {},
             }
-        }
-    }
-
-    pub fn edit_chat_message(&mut self, message_id: usize, updated_message: String) {
-        if let Some(mut chat) = self.chats.get_current_chat().map(|c| c.borrow_mut()) {
-            chat.edit_message(message_id, updated_message);
-        }
-    }
-
-    pub fn _get_loading_file(&self) -> Option<&File> {
-        self.chats
-            .model_loader
-            .get_loading_file_id()
-            .map(|file_id| self.downloads.get_file(&file_id))
-            .flatten()
-    }
-
-    pub fn _get_loaded_downloaded_file(&self) -> Option<DownloadedFile> {
-        if let Some(file) = &self.chats.loaded_model {
-            self.downloads
-                .downloaded_files
-                .iter()
-                .find(|d| d.file.id == file.id)
-                .cloned()
-        } else {
-            None
-        }
-    }
-
-    pub fn get_chat_entity_name(&self, chat_id: ChatID) -> Option<String> {
-        let Some(chat) = self.chats.get_chat_by_id(chat_id) else {
-            return None;
         };
+    }
 
-        match &chat.borrow().associated_entity {
-            Some(ChatEntityId::ModelFile(ref file_id)) => self
-                .downloads
-                .downloaded_files
-                .iter()
-                .find(|df| df.file.id == *file_id)
-                .map(|df| Some(df.file.name.clone()))?,
-            Some(ChatEntityId::Agent(model_id)) => self
-                .chats
-                .remote_models
-                .get(model_id)
-                .map(|m| m.name.clone()),
-            Some(ChatEntityId::RemoteModel(model_id)) => self
-                .chats
-                .remote_models
-                .get(&model_id)
-                .map(|m| m.name.clone()),
-            None => {
-                // Fallback to loaded model if exists
-                self.chats.loaded_model.as_ref().map(|m| m.name.clone())
-            }
-        }
+    pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {
+        self.chats.get_chat_by_id(chat_id).and_then(|chat| chat.borrow().associated_bot.clone())
     }
 
     /// This function combines the search results information for a given model
@@ -308,16 +173,8 @@ impl Store {
     }
 
     pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
-        if self
-            .chats
-            .loaded_model
-            .as_ref()
-            .map_or(false, |file| file.id == file_id)
-        {
-            self.chats.eject_model().expect("Failed to eject model");
-        }
+        self.chats.eject_model().expect("Failed to eject model");
 
-        self.chats.remove_file_from_associated_entity(&file_id);
         self.downloads.delete_file(file_id.clone())?;
         self.search
             .update_downloaded_file_in_search_results(&file_id, false);
@@ -326,13 +183,8 @@ impl Store {
     }
 
     pub fn handle_action(&mut self, action: &Action) {
-        self.chats.handle_action(action);
         self.search.handle_action(action);
         self.downloads.handle_action(action);
-
-        if let Some(_) = action.downcast_ref::<ModelLoaderStatusChanged>() {
-            self.update_load_model();
-        }
 
         if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
             self.update_downloads();
@@ -353,23 +205,9 @@ impl Store {
     fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
             self.chats.set_current_chat(Some(chat_id));
+            Cx::post_action(ChatAction::ChatSelected(chat_id));
         } else {
-            self.chats.create_empty_chat();
-        }
-
-        // If there is no load model, let's try to load the one from preferences
-        if self.chats.loaded_model.is_none() {
-            if let Some(ref file_id) = self.preferences.current_chat_model {
-                if let Some(file) = self
-                    .downloads
-                    .downloaded_files
-                    .iter()
-                    .find(|d| d.file.id == *file_id)
-                    .map(|d| d.file.clone())
-                {
-                    self.load_model(&file);
-                }
-            }
+            self.chats.create_empty_chat(None);
         }
     }
 
@@ -450,7 +288,8 @@ impl Store {
         // Automatically fetch providers that are enabled and have an API key or are MoFa servers
         let urls_to_fetch: Vec<String> = self.preferences.providers_preferences
             .iter()
-            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.url.starts_with("http://localhost")))
+            // TODO: If the provider requires an API key, we should fetch only if the API key is set
+            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.provider_type == ProviderType::DeepInquire || pp.url.starts_with("http://localhost")))
             .map(|pp| pp.url.clone())
             .collect();
 
@@ -463,8 +302,16 @@ impl Store {
     }
 
     pub fn insert_or_update_provider(&mut self, provider: &Provider) {
+        // Update in memory
         self.chats.insert_or_update_provider(provider);
+        // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
+        // Update in MolyKit (to update the API key used by the client, if needed)
+        if let Some(_bot_repo) = &self.bot_repo {
+            // Because MolyKit does not currently expose an API to update the clients, we'll remove and recreate the entire bot repo
+            // TODO(MolyKit): Find a better way to do this
+            self.bot_repo = None;
+        }
     }
 
     pub fn remove_provider(&mut self, url: &str) {

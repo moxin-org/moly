@@ -1,6 +1,5 @@
-use std::sync::mpsc::Sender;
-
 use makepad_widgets::*;
+use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 
 use super::{mofa::MofaClient, openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
@@ -16,7 +15,7 @@ pub struct Provider {
     pub provider_type: ProviderType,
     pub connection_status: ProviderConnectionStatus,
     pub enabled: bool,
-    pub models: Vec<RemoteModelId>,
+    pub models: Vec<BotId>,
     /// Whether the provider was added by the user or not
     pub was_customly_added: bool,
 }
@@ -24,45 +23,39 @@ pub struct Provider {
 /// Creates a client for the provider based on the provider type
 pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {
     match &provider.provider_type {
-        ProviderType::OpenAI => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
+        ProviderType::OpenAI | ProviderType::MolyServer => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
         ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
         ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone(), provider.api_key.clone())),
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
-pub struct RemoteModelId(pub String);
-
-impl RemoteModelId {
-    pub fn from_model_and_server(agent_name: &str, server_address: &str) -> Self {
-        RemoteModelId(format!("{}-{}", agent_name, server_address))
-    }
-}
-
-#[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RemoteServerId(pub String);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RemoteModel {
-    pub id: RemoteModelId,
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ProviderBot {
+    pub id: BotId,
     pub name: String,
     pub description: String,
     pub provider_url: String,
     pub enabled: bool,
 }
 
-impl RemoteModel {
-    /// Returns a dummy agent whenever the corresponding Agent cannot be found
-    /// (due to the server not being available, the server no longer providing the agent, etc.).
+impl ProviderBot {
+    /// Returns a dummy provider bot whenever the corresponding provider bot cannot be found
+    /// (due to the server not being available, the server no longer providing the provider bot, etc.).
     pub fn unknown() -> Self {
-        RemoteModel {
-            id: RemoteModelId("unknown".to_string()),
+        ProviderBot {
+            id: BotId::new("unknown", "unknown"),
             name: "Inaccesible model - check your connections".to_string(),
             description: "This model is not currently reachable, its information is not available"
                 .to_string(),
             provider_url: "unknown".to_string(),
             enabled: true,
         }
+    }
+
+    pub fn human_readable_name(&self) -> &str {
+        // Trim the 'models/' prefix from Gemini models
+        // TODO: also trim and cleanup naming for filenames
+        self.name.trim_start_matches("models/")
     }
 }
 
@@ -90,7 +83,7 @@ impl ProviderConnectionStatus {
 
 #[derive(Debug, DefaultNone, Clone)]
 pub enum ProviderFetchModelsResult {
-    Success(String, Vec<RemoteModel>),
+    Success(String, Vec<ProviderBot>),
     Failure(String, ProviderClientError),
     None,
 }
@@ -119,62 +112,9 @@ impl ProviderClientError {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum ChatResponse {
-    ChatFinalResponseData(MolyChatResponse, bool),
-    DeepnInquireResponse(DeepInquireMessage),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum DeepInquireMessage {
-    Thinking(usize, DeepInquireStageContent),
-    Writing(usize, DeepInquireStageContent),
-    Completed(usize, DeepInquireStageContent),
-}
-
-impl DeepInquireMessage {
-    pub fn id(&self) -> usize {
-        match self {
-            DeepInquireMessage::Thinking(id, _) => *id,
-            DeepInquireMessage::Writing(id, _) => *id,
-            DeepInquireMessage::Completed(id, _) => *id,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct DeepInquireStage {
-    pub id: usize,
-    pub thinking: Option<DeepInquireStageContent>, 
-    pub writing: Option<DeepInquireStageContent>,
-    pub completed: Option<DeepInquireStageContent>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct DeepInquireStageContent {
-    pub content: String,
-    pub articles: Vec<Article>,
-}
-
-#[derive(Clone, Debug)]
-pub struct MolyChatResponse {
-    pub content: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Article {
-    pub title: String,
-    pub url: String,
-    pub snippet: String,
-    pub source: String,
-    pub relevance: u32,
-}
-
 /// The behaviour that must be implemented by the provider clients.
 pub trait ProviderClient: Send + Sync {
-    fn cancel_task(&self);
     fn fetch_models(&self);
-    fn send_message(&self, model: &RemoteModel, prompt: &String, tx: Sender<ChatResponse>);
 }
 
 #[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
@@ -183,6 +123,7 @@ pub enum ProviderType {
     OpenAI,
     MoFa,
     DeepInquire,
+    MolyServer
 }
 
 impl Default for ProviderType {
@@ -194,7 +135,5 @@ impl Default for ProviderType {
 /// Commands for the provider client to interact with their background thread.
 /// Used internally by the provider clients, not exposed used by the rest of the app.
 pub enum ProviderCommand {
-    SendMessage(String, RemoteModel, Sender<ChatResponse>),
-    CancelTask,
     FetchModels(),
 }

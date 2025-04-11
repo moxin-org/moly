@@ -55,6 +55,8 @@ live_design! {
         }
 
         <View> {
+            spacing: 10
+            padding: {top: 10}
             providers = <Providers> {}
             provider_view = <ProviderView> {}
         }

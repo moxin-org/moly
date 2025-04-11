@@ -28,6 +28,7 @@ pub fn hugging_face_model_url(model_id: &str) -> String {
     format!("{}/{}", HUGGING_FACE_BASE_URL, model_id)
 }
 
+#[allow(dead_code)]
 /// Convert from hex color notation to makepad's Vec4 color.
 /// Ex: Converts `0xff33cc` into `vec4(1.0, 0.2, 0.8, 1.0)`.
 pub fn hex_rgb_color(hex: u32) -> Vec4 {

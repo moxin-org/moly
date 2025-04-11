@@ -31,6 +31,7 @@ live_design! {
     ICON_SILICONFLOW = dep("crate://self/resources/images/providers/siliconflow.png")
     ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
     ICON_DEEPINQUIRE = dep("crate://self/resources/images/providers/deepinquire.png")
+    ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
     ICON_CUSTOM_PROVIDER = dep("crate://self/resources/images/providers/custom.png")
 
     // Not making this based on <Icon> because button does not support images
@@ -59,19 +60,19 @@ live_design! {
         }
     }
 
-    ProviderItem = {{ProviderItem}} {
-        width: Fill, height: 45
+    ProviderItem = {{ProviderItem}}<RoundedView> {
+        width: Fill, height: 40
         flow: Overlay
         show_bg: true
         draw_bg: {
-            color: #f
+            border_radius: 5
         }
         padding: {left: 30}
         align: {x: 0.0, y: 0.5}
 
         main_view = <View> {
             cursor: Hand
-            padding: 10
+            padding: 8
             align: {x: 0.0, y: 0.5}
             spacing: 20
             flow: Right
@@ -93,7 +94,7 @@ live_design! {
 
                 provider_name_label = <Label> {
                     draw_text:{
-                        text_style: <REGULAR_FONT>{font_size: 12}
+                        text_style: <REGULAR_FONT>{font_size: 11}
                         color: #000
                     }
                 }
@@ -104,18 +105,18 @@ live_design! {
                     align: {x: 0.5, y: 0.5}
                     show_bg: true
                     width: Fit, height: Fit
-                    padding: {left: 10, right: 10, bottom: 5, top: 5}
+                    padding: {left: 8, right: 8, bottom: 5, top: 5}
                     margin: {right: 10}
                     draw_bg: {
-                        radius: 5
-                        color: #81cca1
+                        border_radius: 5
+                        color: #9FD5C7
                         border_color: #357852
-                        border_width: 1.2
+                        border_size: 1.2
                     }
                     status_label = <Label> {
                         text: "ON"
                         draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 7.5},
+                            text_style: <BOLD_FONT>{font_size: 7},
                             color: #043b1c
                         }
                     }
@@ -129,6 +130,7 @@ live_design! {
     pub Providers = {{Providers}} {
         width: 300, height: Fill
         flow: Down, spacing: 20
+        padding: {left: 10, right: 10}
         providers_list = <PortalList> {
             width: Fill, height: Fill
             provider_item = <ProviderItem> {}
@@ -138,17 +140,18 @@ live_design! {
             height: Fill, width: 1
         }
 
-        add_provider_button = <RoundedView> {
+        add_provider_button = <RoundedShadowView> {
             cursor: Hand
             margin: {left: 10, right: 10, bottom: 5, top: 10}
             width: Fill, height: Fit
             align: {x: 0.5, y: 0.5}
             padding: {left: 30, right: 30, bottom: 10, top: 10}
-            draw_bg: {
-                color: #fff
-                radius: 5
-                border_color: #ddd
-                border_width: 1
+            draw_bg: { 
+                color: (MAIN_BG_COLOR)
+                border_radius: 4.5,
+                uniform shadow_color: #0002
+                shadow_radius: 8.0,
+                shadow_offset: vec2(0.0,-1.5)
             }
             <Label> {
                 text: "+"
@@ -167,6 +170,7 @@ live_design! {
             (ICON_SILICONFLOW),
             (ICON_OPENROUTER),
             (ICON_DEEPINQUIRE),
+            (ICON_MOLYSERVER),
         ]
 
         <View> {
@@ -351,11 +355,11 @@ impl ProviderItemRef {
 
         if is_selected {
             inner.view.apply_over(cx, live! {
-                draw_bg: { color: #F8F8F8 }
+                draw_bg: { color: #EAECEF }
             });
         } else {
             inner.view.apply_over(cx, live! {
-                draw_bg: { color: #fff }
+                draw_bg: { color: #f9f9f9 }
             });
         }
     }

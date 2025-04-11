@@ -1,8 +1,7 @@
 use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
-use crate::data::chats::AgentsAvailability;
-use crate::data::providers::RemoteModel;
+use crate::data::providers::ProviderBot;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;
@@ -40,12 +39,22 @@ live_design! {
 
     pub ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
         open_content = {
+
+            draw_bg: {
+                instance opacity: 1.0
+
+                fn pixel(self) -> vec4 {
+                    let color = sample2d_rt(self.image, self.pos * self.scale + self.shift);
+                    return Pal::premul(vec4(color.xyz, color.w * self.opacity))
+                }
+            }
+
             <View> {
                 width: Fill,
                 height: Fill,
                 show_bg: true
                 draw_bg: {
-                    color: #F2F4F7
+                    color: (MAIN_BG_COLOR)
                 }
 
                 <View> {
@@ -68,6 +77,14 @@ live_design! {
                             cursor: Default
                         }
                     }
+                }
+            }
+            right_border = <View> {
+                width: 1.6, height: Fill
+                margin: {top: 15, bottom: 15}
+                show_bg: true,
+                draw_bg: {
+                    color: #eaeaea
                 }
             }
         }
@@ -113,22 +130,17 @@ impl Widget for ChatHistory {
         enum Item<'a> {
             ChatsHeader,
             AgentsHeader,
-            NoAgentsWarning(&'a str),
-            AgentButton(&'a RemoteModel),
+            // NoAgentsWarning(&'a str),
+            AgentButton(&'a ProviderBot),
             ChatButton(&'a ChatID),
         }
 
         let mut items: Vec<Item> = Vec::new();
 
-        items.push(Item::AgentsHeader);
-        let agents_availability = store.chats.agents_availability();
-        match agents_availability {
-            AgentsAvailability::NoServers => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
-            AgentsAvailability::ServersNotConnected => items.push(Item::NoAgentsWarning(agents_availability.to_human_readable())),
-            AgentsAvailability::Available => {
-                for agent in &agents {
-                    items.push(Item::AgentButton(agent));
-                }
+        if !agents.is_empty() {
+            items.push(Item::AgentsHeader);
+            for agent in &agents {
+                items.push(Item::AgentButton(agent));
             }
         }
 
@@ -164,14 +176,9 @@ impl Widget for ChatHistory {
                             let item = list.item(cx, item_id, live_id!(AgentHeading));
                             item.draw_all(cx, scope);
                         }
-                        Item::NoAgentsWarning(text) => {
-                            let item = list.item(cx, item_id, live_id!(NoAgentsWarning));
-                            item.set_text(cx, text);
-                            item.draw_all(cx, scope);
-                        }
                         Item::AgentButton(agent) => {
                             let item = list.item(cx, item_id, live_id!(Agent));
-                            item.as_entity_button().set_agent(cx, agent);
+                            item.as_entity_button().set_bot_id(cx, &agent.id);
                             item.draw_all(cx, scope);
                         }
                         Item::ChatButton(chat_id) => {
@@ -202,12 +209,15 @@ impl WidgetMatchEvent for ChatHistory {
             .find(|eb| eb.clicked(actions));
 
         if let Some(entity_button) = clicked_entity_button {
-            let entity_id = entity_button.get_entity_id().unwrap().clone();
-            cx.action(ChatAction::Start(entity_id));
+            let bot_id = entity_button.get_bot_id();
+            if let Some(bot_id) = bot_id {
+                cx.action(ChatAction::Start(bot_id));
+            }
         }
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
-            store.chats.create_empty_chat();
+            store.chats.create_empty_chat(None);
+            cx.action(ChatAction::StartWithoutEntity);
             self.redraw(cx);
         }
     }

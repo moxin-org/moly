@@ -1,6 +1,7 @@
 use makepad_widgets::*;
+use moly_kit::BotId;
 
-use crate::data::{providers::{Provider, RemoteModelId, ProviderConnectionStatus}, store::Store};
+use crate::data::{providers::{Provider, ProviderConnectionStatus}, store::Store};
 
 live_design! {
     use link::theme::*;
@@ -65,12 +66,18 @@ live_design! {
         }
     }
 
-    pub ProviderView = {{ProviderView}} {
+    pub ProviderView = {{ProviderView}}<RoundedShadowView> {
         width: Fill, height: Fill
         // align: {x: 0.0, y: 0.0}
         padding: {left: 30, right: 30, top: 30, bottom: 30}
         show_bg: true
-        draw_bg: { color: (SIDEBAR_BG_COLOR) }
+        draw_bg: { 
+            color: (MAIN_BG_COLOR_DARK)
+            border_radius: 4.5,
+            uniform shadow_color: #0002
+            shadow_radius: 8.0,
+            shadow_offset: vec2(0.0,-1.5)
+        }
 
         content = <View> {
             flow: Down, spacing: 20
@@ -171,7 +178,7 @@ live_design! {
                         height: 30
                         padding: {left: 20, right: 20, top: 0, bottom: 0}
                         text: "Save"
-                        draw_bg: { color: #099250, border_color: #099250 }
+                        draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
                     }
                 }
                 <View> {
@@ -221,7 +228,7 @@ live_design! {
                     draw_text: {
                         text_style: <BOLD_FONT>{font_size: 10}
                     }
-                    draw_bg: { color: #f00, border_color: #f00 }
+                    draw_bg: { color: #B4605A, border_size: 0 }
                 }
             }
         }
@@ -266,10 +273,9 @@ impl Widget for ProviderView {
                             item.view(id!(separator)).set_visible(cx, false);
                         }
 
-                        // Trim the 'models/' prefix from Gemini models
-                        let name = models[item_id].name.trim_start_matches("models/");
+                        let name = models[item_id].human_readable_name();
                         item.label(id!(model_name)).set_text(cx, &name);
-                        item.check_box(id!(enabled_switch)).set_selected(cx, models[item_id].enabled);
+                        item.check_box(id!(enabled_switch)).set_active(cx, models[item_id].enabled);
 
                         item.as_model_entry().set_model_name(&models[item_id].name);
                         item.draw_all(cx, scope);
@@ -338,8 +344,8 @@ impl WidgetMatchEvent for ProviderView {
                             .update_model_status(&self.provider.url, model_name, *enabled);
 
                         // Update the model status in the store
-                        if let Some(model) = store.chats.remote_models.get_mut(
-                            &RemoteModelId::from_model_and_server(
+                        if let Some(model) = store.chats.available_bots.get_mut(
+                            &BotId::new(
                                 model_name,
                                 &self.provider.url),
                         ) {
@@ -354,7 +360,7 @@ impl WidgetMatchEvent for ProviderView {
 
         // Handle API Key save
         if self.button(id!(save_api_key)).clicked(actions) {
-            self.provider.api_key = Some(self.view.text_input(id!(api_key)).text());
+            self.provider.api_key = Some(self.view.text_input(id!(api_key)).text().trim().to_string());
 
             // Because the provider is being updated, we assume the user wants to use it.
             // This allows the app to fetch the models from the provider and give feedback to the user.
@@ -365,7 +371,7 @@ impl WidgetMatchEvent for ProviderView {
             // Fetch the models from the provider
             store.chats.test_provider_and_fetch_models(&self.provider.url);
             // Update the provider enabled switch
-            self.check_box(id!(provider_enabled_switch)).set_selected(cx, true);
+            self.check_box(id!(provider_enabled_switch)).set_active(cx, true);
             // Update the UI
             self.update_connection_status(cx);
             self.redraw(cx);
@@ -407,7 +413,7 @@ impl ProviderViewRef {
 
             inner.text_input(id!(api_host)).set_text(cx, &provider.url);
             inner.label(id!(name)).set_text(cx, &provider.name);
-            inner.check_box(id!(provider_enabled_switch)).set_selected(cx, provider.enabled);
+            inner.check_box(id!(provider_enabled_switch)).set_active(cx, provider.enabled);
 
             if provider.was_customly_added {
                 inner.view(id!(remove_provider_view)).set_visible(cx, true);

@@ -42,16 +42,26 @@ live_design! {
             color: #F2F4F7;
         }
 
-        <RowHeaderLabel> { width: 600, label = {text: "Model File"} }
+        <RowHeaderLabel> { width: 500, label = {text: "Model File"} }
         <RowHeaderLabel> { width: 100, label = {text: "File Size"} }
         <RowHeaderLabel> { width: 100, label = {text: "Added Date"} }
         <RowHeaderLabel> { width: 250, label = {text: ""} }
     }
 
-    pub DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedView> {
+    pub DownloadedFilesTable = {{DownloadedFilesTable}} <RoundedShadowView> {
         width: Fill,
         height: Fill,
         align: {x: 0.5, y: 0.5}
+        // TODO: This causes the invisible space taken by the PortalList to be visible, 
+        // perhaps we can make PortalList height: Fit
+        show_bg: true
+        draw_bg: { 
+            color: (MAIN_BG_COLOR)
+            border_radius: 5
+            uniform shadow_color: #0001
+            shadow_radius: 12.0,
+            shadow_offset: vec2(0.0,-1.5)
+        }
 
         list = <PortalList> {
             drag_scrolling: false

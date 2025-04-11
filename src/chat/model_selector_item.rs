@@ -1,9 +1,6 @@
 use makepad_widgets::*;
-use moly_protocol::data::DownloadedFile;
 
-use crate::data::providers::RemoteModel;
-
-use super::shared::ChatAgentAvatarWidgetExt;
+use crate::data::providers::ProviderBot;
 
 live_design! {
     use link::theme::*;
@@ -71,18 +68,8 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelSelectorAction {
-    ModelSelected(DownloadedFile),
-    AgentSelected(RemoteModel),
-    RemoteModelSelected(RemoteModel),
+    BotSelected(ProviderBot),
     None,
-}
-
-#[derive(Clone, DefaultNone, Debug)]
-enum ModelSelectorEntity {
-    Model(DownloadedFile),
-    Agent(RemoteModel),
-    RemoteModel(RemoteModel),
-    None
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -91,7 +78,7 @@ pub struct ModelSelectorItem {
     view: View,
 
     #[rust]
-    entity: ModelSelectorEntity,
+    model: ProviderBot,
 }
 
 impl Widget for ModelSelectorItem {
@@ -109,42 +96,17 @@ impl WidgetMatchEvent for ModelSelectorItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(fd) = self.view(id!(content)).finger_down(&actions) {
             if fd.tap_count == 1 {
-                match &self.entity {
-                    ModelSelectorEntity::Model(df) => {
-                        cx.action(ModelSelectorAction::ModelSelected(df.clone()));
-                    }
-                    ModelSelectorEntity::Agent(agent) => {
-                        cx.action(ModelSelectorAction::AgentSelected(agent.clone()));
-                    }
-                    ModelSelectorEntity::RemoteModel(remote_model) => {
-                        cx.action(ModelSelectorAction::RemoteModelSelected(remote_model.clone()));
-                    }
-                    ModelSelectorEntity::None => {}
-                }
+                cx.action(ModelSelectorAction::BotSelected(self.model.clone()));
             }
         }
     }
 }
 
 impl ModelSelectorItemRef {
-    pub fn set_model(&mut self, model: DownloadedFile) {
-        let Some(mut inner) = self.borrow_mut() else { return };
-        inner.entity = ModelSelectorEntity::Model(model);
-    }
-
-    pub fn set_agent(&mut self, agent: RemoteModel) {
+    pub fn set_bot(&mut self, bot: ProviderBot) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.chat_agent_avatar(id!(avatar)).set_agent(&agent);
-        inner.entity = ModelSelectorEntity::Agent(agent);
-    }
-
-    pub fn set_remote_model(&mut self, remote_model: RemoteModel) {
-        let Some(mut inner) = self.borrow_mut() else {
-            return;
-        };
-        inner.entity = ModelSelectorEntity::RemoteModel(remote_model);
+        inner.model = bot;
     }
 }
-
