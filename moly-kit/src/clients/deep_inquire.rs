@@ -133,16 +133,24 @@ impl DeepInquireClient {
         .into()
     }
 
-    pub fn set_header(&mut self, key: &str, value: &str) {
+    pub fn set_header(&mut self, key: &str, value: &str) -> Result<(), &'static str> {
+        let header_name = HeaderName::from_str(key)
+            .map_err(|_| "Invalid header name")?;
+        
+        let header_value = value.parse()
+            .map_err(|_| "Invalid header value")?;
+        
         self.0
             .write()
             .unwrap()
             .headers
-            .insert(HeaderName::from_str(key).unwrap(), value.parse().unwrap());
+            .insert(header_name, header_value);
+        
+        Ok(())
     }
 
-    pub fn set_key(&mut self, key: &str) {
-        self.set_header("Authorization", &format!("Bearer {}", key));
+    pub fn set_key(&mut self, key: &str) -> Result<(), &'static str> {
+        self.set_header("Authorization", &format!("Bearer {}", key))
     }
 }
 
