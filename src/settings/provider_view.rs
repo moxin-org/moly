@@ -360,7 +360,7 @@ impl WidgetMatchEvent for ProviderView {
 
         // Handle API Key save
         if self.button(id!(save_api_key)).clicked(actions) {
-            self.provider.api_key = Some(self.view.text_input(id!(api_key)).text());
+            self.provider.api_key = Some(self.view.text_input(id!(api_key)).text().trim().to_string());
 
             // Because the provider is being updated, we assume the user wants to use it.
             // This allows the app to fetch the models from the provider and give feedback to the user.

@@ -325,7 +325,7 @@ impl ChatScreen {
                         if provider.1.enabled && (provider.1.api_key.is_some() || provider.1.url.starts_with("http://localhost")) {
                             let mut new_client = OpenAIClient::new(provider.1.url.clone());
                             if let Some(key) = provider.1.api_key.as_ref() {
-                                new_client.set_key(&key);
+                                let _ = new_client.set_key(&key);
                             }
                             multi_client.add_client(Box::new(new_client));
                         }
@@ -335,7 +335,7 @@ impl ChatScreen {
                         if provider.1.enabled {
                             let mut new_client = OpenAIClient::new(provider.1.url.clone());
                             if let Some(key) = provider.1.api_key.as_ref() {
-                                new_client.set_key(&key);
+                                let _ = new_client.set_key(&key);
                             }
                             multi_client.add_client(Box::new(new_client));
                         }
@@ -343,7 +343,7 @@ impl ChatScreen {
                     ProviderType::DeepInquire => {
                         let mut new_client = DeepInquireClient::new(provider.1.url.clone());
                         if let Some(key) = provider.1.api_key.as_ref() {
-                            new_client.set_key(&key);
+                            let _ = new_client.set_key(&key);
                         }
                         multi_client.add_client(Box::new(new_client));
                     }
