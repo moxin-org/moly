@@ -7,7 +7,9 @@ Moly is an AI LLM client written in Rust, that demonstrates the power of the [Ma
 ## AI Providers
 
 The Moly app supports different types of AI providers:
-1. **OpenAI-compatible AI providers**: configured through the Providers Dashboard
+1. **OpenAI-compatible AI providers**: configured through the Providers Dashboard.
+   - Support for other clients will be added to MolyKit. To create your own custom clients, checkout the MolyKit documentation.
+   - If you want to contribute providers, or extend the list of supported models for a given provider, see [instructions here](#contributing)
 2. **Moly Server**: a local LLM backend that allows exploring, downloading and running OSS LLMs locally. For usage and installation see [instructions here](#running-moly-with-moly-server)
 3. **MoFa Servers**: MoFa is a framework for building AI agents. Using MoFa, AI agents can be constructed via templates, and then exposed via a Dora server that is OpenAI-compatible. MoFa servers can be added to the application through the Providers Dashboard. See [instructions here](#running-moly-with-mofa).
 
@@ -130,3 +132,31 @@ This should return a JSON response with the completion.
 ### Connect Moly to MoFa
 
 Go to the Providers Dashboard and enable the MoFa entry (or add new ones if needed)
+
+## Contributing
+
+### Extending the default supported providers
+
+One of the easiest ways to contribute to Moly is by extending the list of predefined supported providers and their models.
+
+#### How to add a new provider:
+1.	Add the provider information to [supported_providers.json](src/data/supported_providers.json).
+   - `name`: The name to display in the UI
+   - `url`: The full API endpoint for this provider, including versioning, e.g. "https://api.openai.com/v1"
+   - `provider_type`: The type of API format that the provider uses, e.g. the `"provider_type": "OpenAI"` will use the `OpenAIClient` from MolyKit. In Moly, the mapping between supported provider types and MolyKit clients can be found in [src/chat/chat_screen.rs](src/chat/chat_screen.rs) (if you were to add a custom MolyKit client and default supported provider, you would need to extend the mapping here).
+   - `supported_models`: A list of model ids to be used as the whitelist of allowed/supported models in Moly for this provider.
+
+2.	Add a new icon for the provider under [/resources/images/providers](/resources/images/providers) (in PNG format), using the **same name** as the provider you registered in the previous step.
+
+3.	Update the providers view, importing the new image and referencing the import:
+   - At the top of the live_design!{} block, add your import, e.g.:
+   ```rs
+   ICON_GEMINI = dep("crate://self/resources/images/providers/gemini.png")
+   ```
+   - Add the icon to the list of provider_icons:
+   ```rs
+   provider_icons: [
+      ...
+      (ICON_GEMINI), // Add this line to reference the imported file.
+   ]
+   ```
