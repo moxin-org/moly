@@ -360,22 +360,11 @@ impl ChatScreen {
 
         let ui = self.ui_runner();
             spawn(async move {
-                let errors = repo.load().await.into_errors();
+                repo.load().await;
 
                 ui.defer_with_redraw(move |me, _cx, _scope| {
                 me.should_load_repo_to_store = true;
                 me.creating_bot_repo = false;
-
-                for error in errors {
-                    me.messages(id!(chat.messages)).write().messages.push(Message {
-                        from: EntityId::App,
-                        content: MessageContent::PlainText {
-                            text: error.to_string(),
-                            citations: Vec::new(),
-                        },
-                        is_writing: false,
-                    });
-                }
             });
         });
     }
