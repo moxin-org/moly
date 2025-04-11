@@ -190,7 +190,7 @@ impl DemoChat {
             if let Some(key) = OPEN_AI_KEY {
                 let openai_url = "https://api.openai.com/api/v1";
                 let mut openai = OpenAIClient::new(openai_url.into());
-                openai.set_key(key);
+                let _ = openai.set_key(key);
                 client.add_client(Box::new(openai));
             }
 
@@ -198,7 +198,7 @@ impl DemoChat {
             if let Some(key) = OPEN_ROUTER_KEY {
                 let open_router_url = "https://openrouter.ai/api/v1";
                 let mut open_router = OpenAIClient::new(open_router_url.into());
-                open_router.set_key(key);
+                let _  = open_router.set_key(key);
                 client.add_client(Box::new(open_router));
             }
 
@@ -206,7 +206,7 @@ impl DemoChat {
             if let Some(key) = SILICON_FLOW_KEY {
                 let siliconflow_url = "https://api.siliconflow.cn/api/v1";
                 let mut siliconflow = OpenAIClient::new(siliconflow_url.into());
-                siliconflow.set_key(key);
+                let _ = siliconflow.set_key(key);
                 client.add_client(Box::new(siliconflow));
             }
 
