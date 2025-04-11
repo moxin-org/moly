@@ -12,7 +12,8 @@ pub struct SupportedProvidersFile {
 pub struct SupportedProvider {
     pub name: String,
     pub url: String,
-    pub provider_type: ProviderType
+    pub provider_type: ProviderType,
+    pub supported_models: Option<Vec<String>>,
 }
 
 /// Utility to load from the JSON file

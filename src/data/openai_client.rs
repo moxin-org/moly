@@ -7,39 +7,7 @@ use crate::data::providers::ProviderClientError;
 
 use super::providers::*;
 
-const ALLOWED_OPENAI_MODELS: &[&str] = &[
-    "gpt-4-turbo",
-    "gpt-3.5",
-    "gpt-4o",
-    "gpt-4o-mini",
-    "o1",
-    "o1-mini",
-    "o3-mini",
-    "o1-preview",
-];
-
-const ALLOWED_GEMINI_MODELS: &[&str] = &[
-    "models/gemini-1.5-flash",
-    "models/gemini-1.5-pro",
-    "models/gemini-2.0-flash",
-    "models/gemini-2.0-pro",
-];
-
-const ALLOWED_SILICONFLOW_MODELS: &[&str] = &[
-    "Qwen/Qwen2-72B-Instruct",
-    "Pro/Qwen/Qwen2-7B-Instruct",
-    "meta-llama/Meta-Llama-3.1-8B-Instruct",
-    "deepseek-ai/DeepSeek-V2.5",
-    "Pro/deepseek-ai/DeepSeek-V3",
-];
-
-const ALLOWED_OPENROUTER_MODELS: &[&str] = &[
-    "anthropic/claude-3.7-sonnet",
-    "perplexity/sonar",
-    "deepseek/deepseek-r1",
-];
-
-fn should_include_model(url: &str, model_id: &str) -> bool {
+fn should_include_model(model_id: &str) -> bool {
     // First, filter out non-chat models
     if model_id.contains("dall-e") || 
        model_id.contains("whisper") || 
@@ -47,33 +15,9 @@ fn should_include_model(url: &str, model_id: &str) -> bool {
        model_id.contains("davinci") ||
        model_id.contains("audio") ||
        model_id.contains("babbage") ||
-       model_id.contains("2024") || // Filtering out specific variants of popular models
        model_id.contains("moderation") ||
-       model_id.contains("latest") ||
-       model_id.contains("16k") ||
-       model_id.contains("instruct") ||
        model_id.contains("embedding") {
         return false;
-    }
-
-    // For OpenAI specifically, only include our allowed list
-    if url.contains("openai.com") {
-        return ALLOWED_OPENAI_MODELS.iter().any(|&allowed| model_id.eq(allowed))
-    }
-
-    // Gemini
-    if url.contains("googleapis.com") {
-        return ALLOWED_GEMINI_MODELS.iter().any(|&allowed| model_id.eq(allowed))
-    }
-
-    // SiliconFlow
-    if url.contains("siliconflow.cn") {
-        return ALLOWED_SILICONFLOW_MODELS.iter().any(|&allowed| model_id.eq(allowed))
-    }
-
-    // OpenRouter
-    if url.contains("openrouter.ai") {
-        return ALLOWED_OPENROUTER_MODELS.iter().any(|&allowed| model_id.eq(allowed))
     }
 
     true
@@ -155,7 +99,7 @@ impl OpenAIClient {
                                     match r.json::<ModelsResponse>() {
                                         Ok(models) => {
                                             let models: Vec<ProviderBot> = models.data.into_iter()
-                                                .filter(|model| should_include_model(&url, &model.id))
+                                                .filter(|model| should_include_model(&model.id))
                                                 .map(|model| ProviderBot {
                                                     id: BotId::new(&model.id, &url),
                                                     name: model.id.clone(),

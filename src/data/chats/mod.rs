@@ -171,7 +171,22 @@ impl Chats {
         preferences: &mut Preferences
     ) {
         match result {
-            ProviderFetchModelsResult::Success(address, fetched_models) => {
+            ProviderFetchModelsResult::Success(address, mut fetched_models) => {
+
+                // If the provider is part of the predefined list of supported providers,
+                // filter the fetched models to only include those that are in the supported models list
+                if let Some(supported_provider) = super::supported_providers::load_supported_providers()
+                    .iter()
+                    .find(|sp| sp.url == address)
+                {
+
+                    if let Some(supported_models) = &supported_provider.supported_models {
+                        fetched_models.retain(|model| {
+                            supported_models.contains(&model.name)
+                        });
+                    }
+                }
+
                 // Update user's preferences for the provider (adding new models if needed)
                 if let Some(pref_entry) = preferences.providers_preferences
                     .iter_mut()
