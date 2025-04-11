@@ -3,12 +3,29 @@
         {
             "name": "OpenAI",
             "url": "https://api.openai.com/v1",
-            "provider_type": "OpenAI"
+            "provider_type": "OpenAI",
+            "supported_models": [
+                "gpt-4.5-preview-2025-02-27",
+                "gpt-4.5-preview",
+                "gpt-4o",
+                "gpt-4o-mini",
+                "o1",
+                "o1-mini",
+                "o3-mini",
+                "o1-preview"
+            ]
         },
         {
             "name": "Gemini",
             "url": "https://generativelanguage.googleapis.com/v1beta/openai",
-            "provider_type": "OpenAI"
+            "provider_type": "OpenAI",
+            "supported_models": [
+                "models/gemini-1.5-flash",
+                "models/gemini-1.5-pro",
+                "models/gemini-2.0-flash",
+                "models/gemini-2.0-pro",
+                "models/gemini-2.5-pro-preview-03-25"
+            ]
         },
         {
             "name": "MoFa",
@@ -23,12 +40,28 @@
         {
             "name": "SiliconFlow",
             "url": "https://api.siliconflow.cn/v1",
-            "provider_type": "OpenAI"
+            "provider_type": "OpenAI",
+            "supported_models": [
+                "Qwen/Qwen2-72B-Instruct",
+                "Pro/Qwen/Qwen2-7B-Instruct",
+                "Qwen/QwQ-32B",
+                "Qwen/Qwen2.5-Coder-7B-Instruct",
+                "meta-llama/Meta-Llama-3.1-8B-Instruct",
+                "deepseek-ai/DeepSeek-V2.5",
+                "Pro/deepseek-ai/DeepSeek-V3"
+            ]
         },
         {
             "name": "OpenRouter",
             "url": "https://openrouter.ai/api/v1",
-            "provider_type": "OpenAI"
+            "provider_type": "OpenAI",
+            "supported_models": [
+                "anthropic/claude-3.7-sonnet",
+                "anthropic/claude-3-opus",
+                "anthropic/claude-3.5-haiku",
+                "perplexity/sonar",
+                "deepseek/deepseek-r1"
+            ]
         },
         {
             "name": "MolyServer",
