@@ -280,9 +280,9 @@ impl BotClient for OpenAIClient {
 
             let event_terminator_str = std::str::from_utf8(EVENT_TERMINATOR).unwrap();
             let mut buffer: Vec<u8> = Vec::new();
-            let bytes = response.bytes_stream();
+            let mut content = MessageContent::default();
 
-            for await chunk in bytes {
+            for await chunk in response.bytes_stream() {
                 let chunk = match chunk {
                     Ok(chunk) => chunk,
                     Err(error) => {
@@ -333,13 +333,15 @@ impl BotClient for OpenAIClient {
                         .map(|c| c.delta.content.as_str())
                         .collect::<String>();
 
-                    let citations = completion.citations;
+                    content.text.push_str(&body);
 
-                    yield ClientResult::new_ok(MessageContent {
-                        text: body,
-                        citations,
-                        ..Default::default()
-                    });
+                    for citation in completion.citations {
+                        if !content.citations.contains(&citation) {
+                            content.citations.push(citation.clone());
+                        }
+                    }
+
+                    yield ClientResult::new_ok(content.clone());
                 }
 
                 buffer = incomplete_message.to_vec();
