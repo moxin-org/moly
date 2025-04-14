@@ -76,7 +76,7 @@ live_design! {
                             system_prompt = <MolyTextInput> {
                                 width: Fill,
                                 height: Fit,
-                                empty_message: "Enter a system prompt"
+                                empty_text: "Enter a system prompt"
                                 draw_bg: {
                                     border_radius: 0
                                     color: #0000
@@ -168,7 +168,7 @@ live_design! {
                                 stop = <MolyTextInput> {
                                     width: Fill,
                                     height: Fit,
-                                    empty_message: " "
+                                    empty_text: " "
                                     draw_bg: {
                                         border_radius: 0,
                                         color: #0000,
@@ -275,10 +275,10 @@ impl Widget for ChatParams {
             max_tokens.set_value(cx, ip.max_tokens.into());
             frequency_penalty.set_value(cx, ip.frequency_penalty.into());
             presence_penalty.set_value(cx, ip.presence_penalty.into());
-            stop.set_text(cx, &ip.stop);
+            stop.set_text(cx, ip.stop.clone());
 
             let system_prompt_value = chat.system_prompt.clone().unwrap_or_default();
-            system_prompt.set_text(cx, &system_prompt_value);
+            system_prompt.set_text(cx, system_prompt_value.clone());
 
             // Currently, `active` and `set_active` interact with the animator of
             // the widget to do what they do. To avoid some visual issues, we should not

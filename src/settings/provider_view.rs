@@ -163,12 +163,12 @@ live_design! {
                     spacing: 10
                     width: Fill, height: 30
                     api_key = <MolyTextInput> {
-                        empty_message: ""
+                        empty_text: ""
                         width: Fill, height: 30
+                        is_password: true
                         draw_text: {
                             text_style: <REGULAR_FONT>{
                                 font_size: 12
-                                is_secret: true
                             }
                             color: #000 
                         }
@@ -405,12 +405,12 @@ impl ProviderViewRef {
             // Update the text inputs
             let api_key_input = inner.text_input(id!(api_key));
             if let Some(api_key) = &provider.api_key {
-                api_key_input.set_text(cx, api_key);
+                api_key_input.set_text(cx, api_key.clone());
             } else {
-                api_key_input.set_text(cx, "");
+                api_key_input.set_text(cx, "".to_string());
             }
 
-            inner.text_input(id!(api_host)).set_text(cx, &provider.url);
+            inner.text_input(id!(api_host)).set_text(cx, provider.url.clone());
             inner.label(id!(name)).set_text(cx, &provider.name);
             inner.check_box(id!(provider_enabled_switch)).set_active(cx, provider.enabled);
 

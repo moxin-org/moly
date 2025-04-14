@@ -90,7 +90,7 @@ live_design! {
             input = <MolyTextInput> {
                 width: Fill,
                 height: Fit,
-                empty_message: "Search Model by Keyword",
+                empty_text: "Search Model by Keyword",
                 draw_bg: {
                     color: (MAIN_BG_COLOR),
                 }
@@ -202,7 +202,7 @@ impl WidgetMatchEvent for SearchBar {
         }
 
         if self.button(id!(clear_text_button)).clicked(actions) {
-            input.set_text(cx, "");
+            input.set_text(cx, "".to_string());
             clear_text_button.set_visible(cx, false);
             input.set_key_focus(cx);
 

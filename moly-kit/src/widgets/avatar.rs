@@ -8,10 +8,6 @@ live_design! {
     use link::shaders::*;
     use link::widgets::*;
 
-    BOLD_FONT = {
-        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
-    }
-
     pub Avatar = {{Avatar}} <View> {
         height: Fit,
         width: Fit,
@@ -32,7 +28,7 @@ live_design! {
                 width: Fit,
                 height: Fit,
                 draw_text:{
-                    text_style: <BOLD_FONT>{font_size: 10},
+                    text_style: <THEME_FONT_BOLD>{font_size: 10},
                     color: #fff,
                 }
                 text: "P"
