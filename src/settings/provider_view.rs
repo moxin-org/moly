@@ -330,8 +330,7 @@ impl WidgetMatchEvent for ProviderView {
             self.provider.enabled = enabled;
             // Update the provider in store and preferences
             store.insert_or_update_provider(&self.provider);
-            // TODO: this is a hack to force a redraw of the chat panel, this will be replaced by integration with MolyKit
-            cx.redraw_all();
+            self.redraw(cx);
         }
 
         for action in actions {

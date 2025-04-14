@@ -312,12 +312,30 @@ impl Chats {
         self.available_bots.get(bot_id)
     }
 
+    /// Returns a list of all available agents.
+    /// 
+    /// If [enabled_only] is set to true, then only enabled agents from enabled providers are returned.
     pub fn get_mofa_agents_list(&self, enabled_only: bool) -> Vec<ProviderBot> {
-        self.available_bots.values().filter(|m| self.is_agent(&m.id) && (!enabled_only || m.enabled)).cloned().collect()
+        self.available_bots.values()
+            .filter(|m| {
+                self.is_agent(&m.id) && 
+                (!enabled_only || (m.enabled && self.providers.get(&m.provider_url).map_or(false, |p| p.enabled)))
+            })
+            .cloned()
+            .collect()
     }
 
+    /// Returns a list of all available non-MoFa/Agent bots
+    /// 
+    /// If [enabled_only] is set to true, then only enabled bots from enabled providers are returned.
     pub fn get_non_mofa_models_list(&self, enabled_only: bool) -> Vec<ProviderBot> {
-        self.available_bots.values().filter(|m| !self.is_agent(&m.id) && (!enabled_only || m.enabled)).cloned().collect()
+        self.available_bots.values()
+            .filter(|m| {
+                !self.is_agent(&m.id) && 
+                (!enabled_only || (m.enabled && self.providers.get(&m.provider_url).map_or(false, |p| p.enabled)))
+            })
+            .cloned()
+            .collect()
     }
 
     pub fn is_agent(&self, bot_id: &BotId) -> bool {
