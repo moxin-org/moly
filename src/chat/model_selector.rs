@@ -215,11 +215,12 @@ impl Widget for ModelSelector {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+        let store = scope.data.get::<Store>().unwrap();
 
         if let Hit::FingerDown(fd) =
             event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
         {
-            if fd.tap_count == 1 {
+            if fd.tap_count == 1 && !store.chats.available_bots.is_empty() {
                 self.open = !self.open;
 
                 if self.open {
@@ -398,31 +399,34 @@ impl ModelSelector {
         let associated_bot = store.chats.get_current_chat().and_then(|c| c.borrow().associated_bot.clone());
         
         if let Some(bot_id) = associated_bot {
+
+            let Some(bot) = store.chats.get_bot(&bot_id) else { 
+                self.currently_selected_model = None;
+                return;
+            };
+
             // Agent-specific styling
             if store.chats.is_agent(&bot_id) {
                 self.view(id!(selected_model)).set_visible(cx, false);
                 let selected_view = self.view(id!(selected_agent));
                 selected_view.set_visible(cx, true);
 
-                let agent = store.chats.get_bot_or_placeholder(&bot_id);
                 selected_view.apply_over(
                     cx,
                     live! {
-                        label = { text: (&agent.name) }
+                        label = { text: (&bot.name) }
                     },
                 );
                 selected_view
                     .chat_agent_avatar(id!(avatar))
-                    .set_bot(&agent);
+                    .set_bot(&bot);
 
             } else if store.chats.is_local_model(&bot_id) {
                 // Local model styling
                 
                 // TODO: Find a better way to map bot ids into file ids, currently relying
                 // on the fact that we use the file id as the name of the bot.
-                let bot = store.chats.get_bot_or_placeholder(&bot_id);
                 let file = store.downloads.get_file(&bot.name).cloned();
-
                 if let Some(file) = file {
                     self.view(id!(selected_agent)).set_visible(cx, false);
                     let selected_view = self.view(id!(selected_model));
@@ -461,8 +465,6 @@ impl ModelSelector {
                 self.view(id!(selected_agent)).set_visible(cx, false);
                 let selected_view = self.view(id!(selected_model));
                 selected_view.set_visible(cx, true);
-        
-                let bot = store.chats.get_bot_or_placeholder(&bot_id);
                 
                 selected_view.apply_over(
                     cx,
