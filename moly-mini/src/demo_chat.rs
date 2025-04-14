@@ -142,7 +142,7 @@ impl DemoChat {
                         abort = true;
 
                         let text = chat.messages_ref().read_with(|messages| {
-                            let text = messages.messages[*index].visible_text();
+                            let text = &messages.messages[*index].content.text;
                             format!("You copied the following text from Moly (mini): {}", text)
                         });
 
@@ -150,12 +150,10 @@ impl DemoChat {
                     }
 
                     if let ChatTask::UpdateMessage(_index, message) = task {
-                        message.content = MessageContent::PlainText {
-                            text: message.visible_text().replace("ello", "3110 (hooked)"),
-                            citations: vec![],
-                        };
+                        message.content.text =
+                            message.content.text.replace("ello", "3110 (hooked)");
 
-                        if message.visible_text().contains("bad word") {
+                        if message.content.text.contains("bad word") {
                             abort = true;
                         }
                     }
@@ -183,7 +181,7 @@ impl DemoChat {
             let tester = TesterClient;
             client.add_client(Box::new(tester));
 
-            let ollama = OpenAIClient::new("http://localhost:11434".into());
+            let ollama = OpenAIClient::new("http://localhost:11434/v1".into());
             client.add_client(Box::new(ollama));
 
             // Only add OpenAI client if API key is present
@@ -198,7 +196,7 @@ impl DemoChat {
             if let Some(key) = OPEN_ROUTER_KEY {
                 let open_router_url = "https://openrouter.ai/api/v1";
                 let mut open_router = OpenAIClient::new(open_router_url.into());
-                let _  = open_router.set_key(key);
+                let _ = open_router.set_key(key);
                 client.add_client(Box::new(open_router));
             }
 
@@ -230,9 +228,9 @@ impl DemoChat {
                 for error in errors {
                     messages.write().messages.push(Message {
                         from: EntityId::App,
-                        content: MessageContent::PlainText {
+                        content: MessageContent {
                             text: error.to_string(),
-                            citations: vec![],
+                            ..Default::default()
                         },
                         ..Default::default()
                     });

@@ -10,6 +10,9 @@ use std::{
 use crate::protocol::*;
 use crate::utils::sse::{rsplit_once_terminator, EVENT_TERMINATOR};
 
+mod protocol;
+mod widgets;
+
 /// Article reference in a DeepInquire response
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Article {
@@ -134,18 +137,16 @@ impl DeepInquireClient {
     }
 
     pub fn set_header(&mut self, key: &str, value: &str) -> Result<(), &'static str> {
-        let header_name = HeaderName::from_str(key)
-            .map_err(|_| "Invalid header name")?;
-        
-        let header_value = value.parse()
-            .map_err(|_| "Invalid header value")?;
-        
+        let header_name = HeaderName::from_str(key).map_err(|_| "Invalid header name")?;
+
+        let header_value = value.parse().map_err(|_| "Invalid header value")?;
+
         self.0
             .write()
             .unwrap()
             .headers
             .insert(header_name, header_value);
-        
+
         Ok(())
     }
 

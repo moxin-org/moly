@@ -60,7 +60,7 @@ impl TryFrom<Message> for OutcomingMessage {
         }?;
 
         Ok(Self {
-            content: message.visible_text(),
+            content: message.content.text,
             role,
         })
     }
@@ -132,18 +132,16 @@ impl OpenAIClient {
     }
 
     pub fn set_header(&mut self, key: &str, value: &str) -> Result<(), &'static str> {
-        let header_name = HeaderName::from_str(key)
-            .map_err(|_| "Invalid header name")?;
-        
-        let header_value = value.parse()
-            .map_err(|_| "Invalid header value")?;
-        
+        let header_name = HeaderName::from_str(key).map_err(|_| "Invalid header name")?;
+
+        let header_value = value.parse().map_err(|_| "Invalid header value")?;
+
         self.0
             .write()
             .unwrap()
             .headers
             .insert(header_name, header_value);
-        
+
         Ok(())
     }
 
@@ -242,7 +240,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot: &Bot,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageDelta>> {
+    ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
 
         let url = format!("{}/chat/completions", inner.url);
@@ -337,11 +335,10 @@ impl BotClient for OpenAIClient {
 
                     let citations = completion.citations;
 
-                    yield ClientResult::new_ok(MessageDelta {
-                        content: MessageContent::PlainText {
-                            text: body,
-                            citations,
-                        },
+                    yield ClientResult::new_ok(MessageContent {
+                        text: body,
+                        citations,
+                        ..Default::default()
                     });
                 }
 

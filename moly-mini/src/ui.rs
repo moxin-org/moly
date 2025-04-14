@@ -60,15 +60,16 @@ impl Widget for Ui {
             let messages = std::iter::repeat([
                 Message {
                     from: EntityId::User,
-                    content: MessageContent::PlainText {
+                    content: MessageContent {
                         text: "Hello".to_string(),
                         citations: vec![],
+                        ..Default::default()
                     },
                     ..Default::default()
                 },
                 Message {
                     from: EntityId::Bot(bot_id),
-                    content: MessageContent::PlainText {
+                    content: MessageContent {
                         text: "World".to_string(),
                         citations: vec![
                             "https://github.com/ZhangHanDong/url-preview/issues/2".to_string(),
@@ -76,6 +77,7 @@ impl Widget for Ui {
                                 .to_string(),
                             "https://en.wikipedia.org/wiki/ICO_(file_format)".to_string(),
                         ],
+                        ..Default::default()
                     },
                     ..Default::default()
                 },
