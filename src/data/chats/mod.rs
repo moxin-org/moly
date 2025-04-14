@@ -308,6 +308,10 @@ impl Chats {
         self.available_bots.get(bot_id).unwrap_or(&self.unknown_bot)
     }
 
+    pub fn get_bot(&self, bot_id: &BotId) -> Option<&ProviderBot> {
+        self.available_bots.get(bot_id)
+    }
+
     pub fn get_mofa_agents_list(&self, enabled_only: bool) -> Vec<ProviderBot> {
         self.available_bots.values().filter(|m| self.is_agent(&m.id) && (!enabled_only || m.enabled)).cloned().collect()
     }
