@@ -2,7 +2,7 @@ use makepad_widgets::*;
 use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 
-use super::{mofa::MofaClient, openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
+use super::{openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
 
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -23,8 +23,7 @@ pub struct Provider {
 /// Creates a client for the provider based on the provider type
 pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {
     match &provider.provider_type {
-        ProviderType::OpenAI | ProviderType::MolyServer => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
-        ProviderType::MoFa => Box::new(MofaClient::new(provider.url.clone())),
+        ProviderType::OpenAI | ProviderType::MolyServer | ProviderType::MoFa => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
         ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone(), provider.api_key.clone())),
     }
 }
