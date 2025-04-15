@@ -354,7 +354,7 @@ impl BotClient for OpenAIClient {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn default_client() -> reqwest::Client {
-    // On native, there are no default timeouts. Connection may hand if we don't
+    // On native, there are no default timeouts. Connection may hang if we don't
     // configure them.
     reqwest::Client::builder()
         // Only considered while establishing the connection.

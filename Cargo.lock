@@ -2101,6 +2101,7 @@ name = "moly-kit"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "cfg-if",
  "futures",
  "makepad-code-editor",
  "makepad-widgets",
