@@ -325,6 +325,18 @@ impl Chats {
             .collect()
     }
 
+    /// Returns a list of all available bots
+    /// 
+    /// If [enabled_only] is set to true, then only enabled bots from enabled providers are returned.
+    pub fn get_all_bots(&self, enabled_only: bool) -> Vec<ProviderBot> {
+        self.available_bots.values()
+            .filter(|m| {
+                !enabled_only || (m.enabled && self.providers.get(&m.provider_url).map_or(false, |p| p.enabled))
+            })
+            .cloned()
+            .collect()
+    }
+
     /// Returns a list of all available non-MoFa/Agent bots
     /// 
     /// If [enabled_only] is set to true, then only enabled bots from enabled providers are returned.

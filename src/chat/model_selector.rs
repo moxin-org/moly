@@ -9,8 +9,7 @@ use makepad_widgets::*;
 use moly_kit::BotId;
 
 use super::{
-    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt, 
-    shared::ChatAgentAvatarWidgetRefExt,
+    model_selector_item::ModelSelectorAction, model_selector_list::ModelSelectorListWidgetExt
 };
 
 live_design! {
@@ -73,22 +72,7 @@ live_design! {
                     }
                 }
 
-                selected_model = <ModelInfo> {
-                    width: Fit,
-                    height: Fit,
-                    show_bg: false,
-                    visible: false,
-
-                    padding: 0,
-
-                    label = {
-                        draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 11},
-                        }
-                    }
-                }
-
-                selected_agent = <AgentInfo> {
+                selected_bot = <ModelInfo> {
                     width: Fit,
                     height: Fit,
                     show_bg: false,
@@ -285,9 +269,8 @@ impl Widget for ModelSelector {
 
         if self.currently_selected_model.is_none() {
             self.view(id!(choose)).set_visible(cx, true);
-            self.view(id!(selected_agent)).set_visible(cx, false);
-            self.view(id!(selected_model)).set_visible(cx, false);
-            choose_label.set_text(cx, "Choose a Model or Agent");
+            self.view(id!(selected_bot)).set_visible(cx, false);
+            choose_label.set_text(cx, "Choose your AI assistant");
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,
@@ -405,31 +388,13 @@ impl ModelSelector {
                 return;
             };
 
-            // Agent-specific styling
-            if store.chats.is_agent(&bot_id) {
-                self.view(id!(selected_model)).set_visible(cx, false);
-                let selected_view = self.view(id!(selected_agent));
-                selected_view.set_visible(cx, true);
-
-                selected_view.apply_over(
-                    cx,
-                    live! {
-                        label = { text: (&bot.name) }
-                    },
-                );
-                selected_view
-                    .chat_agent_avatar(id!(avatar))
-                    .set_bot(&bot);
-
-            } else if store.chats.is_local_model(&bot_id) {
-                // Local model styling
-                
+            // Local model styling
+            if store.chats.is_local_model(&bot_id) {
                 // TODO: Find a better way to map bot ids into file ids, currently relying
                 // on the fact that we use the file id as the name of the bot.
                 let file = store.downloads.get_file(&bot.name).cloned();
                 if let Some(file) = file {
-                    self.view(id!(selected_agent)).set_visible(cx, false);
-                    let selected_view = self.view(id!(selected_model));
+                    let selected_view = self.view(id!(selected_bot));
                     selected_view.set_visible(cx, true);
         
                     let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
@@ -459,11 +424,9 @@ impl ModelSelector {
                         );
                     }
                 }
-
             } else {
                 // Any other model
-                self.view(id!(selected_agent)).set_visible(cx, false);
-                let selected_view = self.view(id!(selected_model));
+                let selected_view = self.view(id!(selected_bot));
                 selected_view.set_visible(cx, true);
                 
                 selected_view.apply_over(

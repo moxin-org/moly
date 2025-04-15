@@ -22,7 +22,7 @@ live_design! {
     pub ModelSelectorList = {{ModelSelectorList}} {
         flow: Down,
         model_template: <ModelSelectorItem> { content = <ModelInfo> {} }
-        agent_template: <ModelSelectorItem> { content = <AgentInfo> {} }
+
         section_label_template: <Label> {
             padding: {left: 4, top: 4., bottom: 4.}
             draw_text: {
@@ -53,8 +53,7 @@ pub struct ModelSelectorList {
 
     #[live]
     model_template: Option<LivePtr>,
-    #[live]
-    agent_template: Option<LivePtr>,
+
     #[live]
     section_label_template: Option<LivePtr>,
 
@@ -113,9 +112,6 @@ impl ModelSelectorList {
 
         self.map_to_downloaded_files = HashMap::new();
         let mut total_height = 0.0;
-        
-        // Keep track of the current item index for LiveId generation
-        let mut current_index = 0;
 
         let current_bot_id = store
             .chats
@@ -123,18 +119,17 @@ impl ModelSelectorList {
             .and_then(|c| c.borrow().associated_bot.clone());
 
         // Get non-agent models
-        let non_agent_models = store.chats.get_non_mofa_models_list(true);
+        let all_bots = store.chats.get_all_bots(true);
 
         // Group models by provider
         let mut models_by_provider: HashMap<String, (String, Vec<ProviderBot>)> = HashMap::new();
-        
-        for model in non_agent_models.iter() {
+        for model in all_bots.iter() {
             // Get provider name from the providers map
             let provider_name = store.chats.providers
                 .get(&model.provider_url)
                 .map(|p| p.name.clone())
                 .unwrap_or_else(|| "Unknown Provider".to_string());
-                
+
             models_by_provider
                 .entry(model.provider_url.clone())
                 .or_insert_with(|| (provider_name, Vec::new()))
@@ -142,17 +137,16 @@ impl ModelSelectorList {
                 .push(model.clone());
         }
 
-        // Convert to a vector and sort by provider name for consistent ordering
         let mut providers: Vec<(String, String, Vec<ProviderBot>)> = models_by_provider
             .into_iter()
             .map(|(url, (name, models))| (url, name, models))
             .collect();
-        
+
         // Sort providers alphabetically by name
         providers.sort_by(|a, b| a.1.cmp(&b.1));
 
         // Add models grouped by provider
-        for (_provider_url, provider_name, mut provider_bots) in providers {
+        for (provider_url, provider_name, mut provider_bots) in providers {
             if provider_bots.is_empty() {
                 continue;
             }
@@ -161,8 +155,7 @@ impl ModelSelectorList {
             provider_bots.sort_by(|a, b| a.name.cmp(&b.name));
 
             // Add provider section label
-            let section_id = LiveId(current_index as u64).into();
-            current_index += 1;
+            let section_id = LiveId::from_str(&provider_url);
             
             let section_label = self.items.get_or_insert(cx, section_id, |cx| {
                 WidgetRef::new_from_ptr(cx, self.section_label_template)
@@ -173,10 +166,9 @@ impl ModelSelectorList {
 
             // Add models for this provider
             for provider_bot in provider_bots.iter() {
-                let item_id = LiveId(current_index as u64).into();
-                current_index += 1;
-                
-                let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
+                let bot_item_id = LiveId::from_str(format!("{}{}", provider_url, provider_bot.id).as_str());
+
+                let item_widget = self.items.get_or_insert(cx, bot_item_id, |cx| {
                     WidgetRef::new_from_ptr(cx, self.model_template)
                 });
 
@@ -230,56 +222,6 @@ impl ModelSelectorList {
                 let _ = item_widget.draw_all(cx, &mut Scope::empty());
                 total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
             }
-        }
-
-        // Add agents section if we have any
-        let mut agents = store.chats.get_mofa_agents_list(true);
-        // Sort agents by name for consistent ordering
-        agents.sort_by(|a, b| a.name.cmp(&b.name));
-        
-        if !agents.is_empty() {
-            let section_id = LiveId(current_index as u64).into();
-            current_index += 1;
-            
-            let section_label = self.items.get_or_insert(cx, section_id, |cx| {
-                WidgetRef::new_from_ptr(cx, self.section_label_template)
-            });
-            section_label.set_text(cx, "Agents");
-            let _ = section_label.draw_all(cx, &mut Scope::empty());
-            total_height += section_label.as_view().area().rect(cx).size.y;
-        }
-
-        // Add agents
-        for agent in agents.iter() {
-            let item_id = LiveId(current_index as u64).into();
-            current_index += 1;
-            
-            let item_widget = self.items.get_or_insert(cx, item_id, |cx| {
-                WidgetRef::new_from_ptr(cx, self.agent_template)
-            });
-
-            let agent_name = &agent.name;
-            let icon_tick_visible = match &current_bot_id {
-                Some(bot_id) => bot_id == &agent.id,
-                _ => false,
-            };
-
-            item_widget.apply_over(
-                cx,
-                live! {
-                    content = {
-                        label = { text: (agent_name) }
-                        icon_tick_tag = { visible: (icon_tick_visible) }
-                    }
-                },
-            );
-            
-            item_widget
-                .as_model_selector_item()
-                .set_bot(agent.clone());
-
-            let _ = item_widget.draw_all(cx, &mut Scope::empty());
-            total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
         }
 
         self.total_height = Some(total_height);
