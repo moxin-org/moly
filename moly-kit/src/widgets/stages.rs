@@ -15,9 +15,6 @@ live_design! {
     use crate::widgets::citation_list::*;
     use crate::widgets::message_markdown::*;
 
-    BOLD_FONT = {
-        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
-    }
 
     // A workaround for RoundedShadowView having the border_size defined as a uniform,
     // which breaks whenever updated through apply_over. This custom version replaces the properties with `instance` fields instead.
@@ -128,7 +125,7 @@ live_design! {
             width: Fill
             draw_text: {
                 wrap: Word
-                text_style: <BOLD_FONT>{font_size: 11},
+                text_style: <THEME_FONT_BOLD>{font_size: 11},
                 color: #003E62
             }
         }
@@ -179,14 +176,14 @@ live_design! {
                     stage_bubble_text = <Label> {
                         text: "1"
                         draw_text: {
-                            text_style: <BOLD_FONT>{font_size: 10},
+                            text_style: <THEME_FONT_BOLD>{font_size: 10},
                             color: #000
                         }
                     }
                 }
                 stage_title = <Label> {
                     draw_text: {
-                        text_style: <BOLD_FONT>{font_size: 10},
+                        text_style: <THEME_FONT_BOLD>{font_size: 10},
                         color: #000
                     }
                 }

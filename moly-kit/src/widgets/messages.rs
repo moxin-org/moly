@@ -467,7 +467,7 @@ impl Messages {
         if is_current_editor {
             editor
                 .text_input(id!(input))
-                .set_text(cx, &self.current_editor.as_ref().unwrap().buffer);
+                .set_text(cx, self.current_editor.as_ref().unwrap().buffer.clone());
         }
     }
 }

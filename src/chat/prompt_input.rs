@@ -84,7 +84,7 @@ live_design! {
                 search_input = <MolyTextInput> {
                     width: Fill,
                     margin: {bottom: 4},
-                    empty_message: "Search for a model or agent",
+                    empty_text: "Search for a model or agent",
                     draw_bg: {
                         border_radius: 5.0,
                         color: #fff
@@ -159,7 +159,7 @@ live_design! {
                 center = {
                     text_input = <MolyTextInput> {
                         width: Fill,
-                        empty_message: "Start typing",
+                        empty_text: "Start typing",
                         draw_bg: {
                             border_radius: 10.0
                             color: #fff
@@ -335,7 +335,7 @@ impl WidgetMatchEvent for PromptInput {
             }
         }
 
-        if prompt.text_input_ref().escape(actions) {
+        if prompt.text_input_ref().escaped(actions) {
             self.on_deselected(cx);
         }
 
@@ -396,7 +396,7 @@ impl LiveHook for PromptInput {
         prompt.text_input_ref().apply_over(
         cx,
             live! {
-                empty_message: "Start typing or tag @model or @agent"
+                empty_text: "Start typing or tag @model or @agent"
             },
         );
     }

@@ -165,7 +165,7 @@ live_design! {
                         text: "Name"
                     }
                     name = <ModalTextInput> {
-                        empty_message: "OpenAI"
+                        empty_text: "OpenAI"
                     }
                 }
 
@@ -174,7 +174,7 @@ live_design! {
                         text: "API Host"
                     }
                     api_host = <ModalTextInput> {
-                        empty_message: "e.g. https://api.openai.com/v1"
+                        empty_text: "e.g. https://api.openai.com/v1"
                     }
                 }
                 
@@ -183,7 +183,7 @@ live_design! {
                         text: "API Key (optional)"
                     }
                     api_key = <ModalTextInput> {
-                        empty_message: "sk-..."
+                        empty_text: "sk-..."
                     }
                 }
         
@@ -385,8 +385,8 @@ impl AddProviderModal {
     }
 
     fn clear_form(&mut self, cx: &mut Cx) {
-        self.text_input(id!(api_host)).set_text(cx, "");
-        self.text_input(id!(api_key)).set_text(cx, "");
+        self.text_input(id!(api_host)).set_text(cx, "".to_string());
+        self.text_input(id!(api_key)).set_text(cx, "".to_string());
         self.clear_error_message(cx);
         self.selected_provider = None;
     }

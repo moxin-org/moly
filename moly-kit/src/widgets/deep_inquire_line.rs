@@ -13,9 +13,6 @@ live_design! {
     use crate::widgets::stages::*;
     use crate::widgets::message_markdown::*;
     
-    BOLD_FONT = {
-        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
-    }
 
     // A specialized bot line that supports DeepInquire's multi-stage messages
     pub DeepInquireBotLine = {{DeepInquireBotLine}}<BotLine> {
@@ -26,7 +23,7 @@ live_design! {
                     text: "Steps"
                     draw_text: {
                         color: #x0,
-                        text_style: <BOLD_FONT>{font_size: 12},
+                        text_style: <THEME_FONT_BOLD>{font_size: 12},
                     }
                 }
                 // Add stages pill list at the top of the bubble

@@ -330,7 +330,7 @@ live_design! {
         }
 
         // TODO find a way to override colors
-        draw_highlight: {
+        draw_selection: {
             instance hover: 0.0
             instance focus: 0.0
             uniform border_radius: 2.0

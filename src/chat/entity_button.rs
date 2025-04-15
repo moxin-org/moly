@@ -51,7 +51,7 @@ live_design!(
                 height: Fit,
                 label = <Label> {
                     draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 9, height_factor: 1.1},
+                        text_style: <REGULAR_FONT>{font_size: 9},
                         color: #667085,
                     }
                 }
@@ -65,7 +65,7 @@ live_design!(
                     height: Fit,
                     draw_text: {
                         wrap: Ellipsis,
-                        text_style: <REGULAR_FONT>{font_size: 9, height_factor: 1.1},
+                        text_style: <REGULAR_FONT>{font_size: 9},
                         color: #667085,
                     }
                 }

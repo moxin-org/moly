@@ -11,9 +11,6 @@ live_design! {
     use crate::widgets::avatar::*;
     use crate::widgets::citation_list::*;
 
-    BOLD_FONT = {
-        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
-    }
 
     Sender = <View> {
         height: Fit,
@@ -23,7 +20,7 @@ live_design! {
         avatar = <Avatar> {}
         name = <Label> {
             draw_text:{
-                text_style: <BOLD_FONT>{font_size: 10},
+                text_style: <THEME_FONT_BOLD>{font_size: 10},
                 color: #000
             }
         }
@@ -85,7 +82,7 @@ live_design! {
         height: Fit,
         input = <TextInput> {
             width: Fill,
-            empty_message: "\n",
+            empty_text: "\n",
             draw_text: {
                 color: #000
             }

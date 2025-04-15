@@ -20,7 +20,7 @@ live_design! {
             }
             center = {
                 text_input = {
-                    empty_message: "Start typing",
+                    empty_text: "Start typing",
                     draw_bg: {
                         fn pixel(self) -> vec4 {
                             return vec4(0.);
@@ -34,7 +34,7 @@ live_design! {
                             return mix(#98A2B3, #000, self.prompt_enabled)
                         }
                     }
-                    draw_highlight: {
+                    draw_selection: {
                         fn pixel(self) -> vec4 {
                             return #bbb;
                         }

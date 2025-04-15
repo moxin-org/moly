@@ -7,9 +7,6 @@ live_design! {
     use link::theme::*;
     use link::widgets::*;
 
-    BOLD_FONT = {
-        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
-    }
 
     pub Citation = {{Citation}} <RoundedView> {
         flow: Down,
@@ -34,7 +31,7 @@ live_design! {
 
             site = <Label> {
                 draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 9},
+                    text_style: <THEME_FONT_BOLD>{font_size: 9},
                     color: #555,
                 }
             }
