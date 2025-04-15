@@ -156,16 +156,6 @@ pub struct Message {
     pub is_writing: bool,
 }
 
-/// Content for a specific stage
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct MessageBlockContent {
-    /// Text content of the block
-    pub content: String,
-    /// Citations associated with this block
-    pub citations: Vec<String>,
-}
-
 /// The standard error kinds a client implementatiin should facilitate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ClientErrorKind {
