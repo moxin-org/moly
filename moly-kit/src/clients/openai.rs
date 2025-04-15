@@ -8,10 +8,7 @@ use std::{
 };
 
 use crate::protocol::*;
-use crate::utils::{
-    serde::deserialize_null_default,
-    sse::{rsplit_once_terminator, EVENT_TERMINATOR},
-};
+use crate::utils::{serde::deserialize_null_default, sse::parse_sse};
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -278,13 +275,12 @@ impl BotClient for OpenAIClient {
                 }
             };
 
-            let event_terminator_str = std::str::from_utf8(EVENT_TERMINATOR).unwrap();
-            let mut buffer: Vec<u8> = Vec::new();
             let mut content = MessageContent::default();
+            let events = parse_sse(response.bytes_stream());
 
-            for await chunk in response.bytes_stream() {
-                let chunk = match chunk {
-                    Ok(chunk) => chunk,
+            for await event in events {
+                let event = match event {
+                    Ok(event) => event,
                     Err(error) => {
                         yield ClientError::new_with_source(
                             ClientErrorKind::Network,
@@ -295,56 +291,33 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
-                buffer.extend_from_slice(&chunk);
-
-                let Some((completed_messages, incomplete_message)) =
-                    rsplit_once_terminator(&buffer)
-                else {
-                    continue;
+                let completion: Completion = match serde_json::from_str(&event) {
+                    Ok(c) => c,
+                    Err(error) => {
+                        yield ClientError::new_with_source(
+                            ClientErrorKind::Format,
+                            format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
+                            Some(error),
+                        ).into();
+                        return;
+                    }
                 };
 
-                // Silently drop any invalid utf8 bytes from the completed messages.
-                let completed_messages = String::from_utf8_lossy(completed_messages);
+                let body = completion
+                    .choices
+                    .iter()
+                    .map(|c| c.delta.content.as_str())
+                    .collect::<String>();
 
-                let messages =
-                    completed_messages
-                    .split(event_terminator_str)
-                    .filter(|m| !m.starts_with(":"))
-                    // TODO: Return a format error instead of unwraping.
-                    .map(|m| m.trim_start().split("data:").nth(1).unwrap())
-                    .filter(|m| m.trim() != "[DONE]");
+                content.text.push_str(&body);
 
-                for m in messages {
-                    let completion: Completion = match serde_json::from_str(m) {
-                        Ok(c) => c,
-                        Err(error) => {
-                            yield ClientError::new_with_source(
-                                ClientErrorKind::Format,
-                                format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
-                                Some(error),
-                            ).into();
-                            return;
-                        }
-                    };
-
-                    let body = completion
-                        .choices
-                        .iter()
-                        .map(|c| c.delta.content.as_str())
-                        .collect::<String>();
-
-                    content.text.push_str(&body);
-
-                    for citation in completion.citations {
-                        if !content.citations.contains(&citation) {
-                            content.citations.push(citation.clone());
-                        }
+                for citation in completion.citations {
+                    if !content.citations.contains(&citation) {
+                        content.citations.push(citation.clone());
                     }
-
-                    yield ClientResult::new_ok(content.clone());
                 }
 
-                buffer = incomplete_message.to_vec();
+                yield ClientResult::new_ok(content.clone());
             }
         };
 
