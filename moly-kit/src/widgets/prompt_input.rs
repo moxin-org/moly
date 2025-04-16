@@ -71,7 +71,7 @@ live_design! {
                         icon_walk: {
                             width: 12,
                             height: 12
-                            margin: {top: 0, left: -4},
+                            margin: {top: 0, left: 2},
                         }
                     }
                 }

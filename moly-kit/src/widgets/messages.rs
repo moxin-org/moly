@@ -48,10 +48,14 @@ live_design! {
                 height: 34,
                 margin: 2,
                 padding: {bottom: 2},
-                icon_walk: {width: 12, height: 12}
+                icon_walk: {
+                    width: 12, height: 12
+                    margin: {left: 4.5},
+                }
                 draw_icon: {
                     svg_file: dep("crate://self/resources/jump_to_bottom.svg")
                     color: #1C1B1F,
+                    color_hover: #x0
                 }
                 draw_bg: {
                     fn pixel(self) -> vec4 {

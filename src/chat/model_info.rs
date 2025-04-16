@@ -62,9 +62,8 @@ live_design! {
                 }
             }
             draw_bg: {
-                color: #fff,
-                border_color: #B4B4B4,
-                border_size: 1.0,
+                color: #f9f9f9,
+                border_size: 0.0,
             }
         }
 
