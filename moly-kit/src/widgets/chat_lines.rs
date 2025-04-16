@@ -43,6 +43,9 @@ live_design! {
         padding: 0,
         draw_icon: {
             color: #BDBDBD,
+            color_hover: #x0
+            color_down: #ff00
+            color_focus: #BDBDBD
         }
         draw_bg: {
             fn pixel() -> vec4 {
@@ -71,20 +74,46 @@ live_design! {
         }
     }
 
+    EditActionButton = <Button> {
+        padding: {left: 10, right: 10, top: 4, bottom: 4},
+        draw_text: {
+            color: #000
+            color_hover: #000
+            color_focus: #000
+        }
+    }
+
     EditActions = <View> {
         align: {y: 0.5},
-        save = <Button> { text: "save", draw_text: {color: #000} }
-        save_and_regenerate = <Button> { text: "save and regenerate", draw_text: {color: #000} }
-        cancel = <Button> { text: "cancel", draw_text: {color: #000} }
+        spacing: 5
+        save = <EditActionButton> { text: "save" }
+        save_and_regenerate = <EditActionButton> { text: "save and regenerate" }
+        cancel = <EditActionButton> { text: "cancel" }
     }
 
     Editor = <View> {
         height: Fit,
         input = <TextInput> {
+            padding: {top: 8, bottom: 8, left: 10, right: 10}
             width: Fill,
             empty_text: "\n",
+            draw_bg: {
+                color: #fff,
+                border_radius: 5.0,
+                border_size: 0.0,
+                color_focus: #fff
+            }
+
+            draw_selection: {
+                uniform color: #eee
+                uniform color_hover: #ddd
+                uniform color_focus: #ddd
+            }
+
             draw_text: {
-                color: #000
+                color: #x0
+                uniform color_hover: #x0
+                uniform color_focus: #x0
             }
         }
     }
@@ -99,8 +128,8 @@ live_design! {
             bubble = <Bubble> {}
         }
         actions_section = <View> {
-            margin: {top: 8, bottom: 8},
-            height: 16,
+            margin: {top: 4, bottom: 10},
+            height: 25,
             actions = <Actions> { visible: false }
             edit_actions = <EditActions> { visible: false }
         }
