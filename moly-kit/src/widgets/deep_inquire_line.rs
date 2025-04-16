@@ -45,6 +45,14 @@ live_design! {
                 }
             }
         }
+        actions_section = {
+            actions = {
+                // Disable the edit action for now, DeepInquire does not really use previous messages as context
+                edit = {
+                    visible: false
+                }
+            }
+        }
     }
 }
 
