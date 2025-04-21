@@ -32,7 +32,7 @@ live_design! {
                                 
             show_bg: true,
             draw_bg: {
-                color: #f
+                color: #fefefe
                 uniform border_radius: 5.0
                 uniform border_size: 0.0
                 uniform border_color: #0000
