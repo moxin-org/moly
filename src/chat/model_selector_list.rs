@@ -26,7 +26,7 @@ live_design! {
         section_label_template: <Label> {
             padding: {left: 4, top: 4., bottom: 4.}
             draw_text: {
-                text_style: <REGULAR_FONT>{font_size: 10.0},
+                text_style: <BOLD_FONT>{font_size: 10.0},
                 color: #98A2B3
             }
         }

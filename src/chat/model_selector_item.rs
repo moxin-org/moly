@@ -15,7 +15,6 @@ live_design! {
         draw_bg: {
             instance hover: 0.0,
             instance down: 0.0,
-            color: #fff,
             instance color_hover: #F9FAFB,
 
             fn pixel(self) -> vec4 {

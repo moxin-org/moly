@@ -1,8 +1,7 @@
 use crate::{
     data::store::Store,
     shared::{
-        actions::ChatAction,
-        utils::format_model_size,
+        actions::ChatAction, modal::ModalWidgetExt, utils::format_model_size
     },
 };
 use makepad_widgets::*;
@@ -20,6 +19,7 @@ live_design! {
     use crate::shared::styles::*;
     use crate::chat::model_info::ModelInfo;
     use crate::chat::model_info::AgentInfo;
+    use crate::shared::modal::*;
     use crate::chat::model_selector_list::ModelSelectorList;
     use crate::chat::model_selector_loading::ModelSelectorLoading;
 
@@ -106,23 +106,22 @@ live_design! {
         }
     }
 
-    ModelSelectorOptions = <RoundedView> {
-        width: Fill,
-        height: 0,
-
+    ModelSelectorOptions = <RoundedShadowView> {
+        width: Fill, height: Fit,
         padding: 5,
 
         draw_bg: {
-            instance border_radius: 3.0,
-            color: #fff,
-            border_color: #D0D5DD,
+            color: (MAIN_BG_COLOR_DARK),
+            border_radius: 4.5,
+            uniform shadow_color: #0002
+            shadow_radius: 9.0,
+            shadow_offset: vec2(0.0,-2.0)
         }
 
         list_container = <View> {
             width: Fill,
-            height: 0,
+            height: 400,
             scroll_bars: <ScrollBars> {}
-
             list = <ModelSelectorList> {
                 width: Fill,
                 height: Fit,
@@ -144,7 +143,18 @@ live_design! {
         }
 
         button = <ModelSelectorButton> {}
-        options = <ModelSelectorOptions> {}
+        bot_options_modal = <Modal> {
+            align: {x: 0.0, y: 0.0}
+            bg_view: {
+                visible: false
+            }
+            content: {
+                padding: {top: 20, left: 10, right: 10, bottom: 20}
+                width: 510
+                height: 500
+                options = <ModelSelectorOptions> {}
+            }
+        }
 
         open_animation_progress: 0.0,
         rotate_animation_progress: 0.0
@@ -208,11 +218,26 @@ impl Widget for ModelSelector {
                 self.open = !self.open;
 
                 if self.open {
-                    let list = self.model_selector_list(id!(options.list_container.list));
+                    let button_rect = self.view(id!(button)).area().rect(cx);
+                    let coords = dvec2(
+                        button_rect.pos.x - 5.0,
+                        button_rect.pos.y + button_rect.size.y,
+                    );
+
+                    let modal = self.modal(id!(bot_options_modal));
+                    modal.apply_over(
+                        cx,
+                        live! {
+                            content: { margin: { left: (coords.x), top: (coords.y) } }
+                        },
+                    );
+                    modal.open(cx);
+
+                    let list = self.model_selector_list(id!(list_container.list));
                     let height = list.get_height();
                     if height > MAX_OPTIONS_HEIGHT {
                         self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
-                    } else {
+                    } else if height != 0.0  {
                         self.options_list_height = Some(height);
                     }
 
@@ -241,7 +266,7 @@ impl Widget for ModelSelector {
             if let Some(total_height) = self.options_list_height {
                 let height = self.open_animation_progress * total_height;
                 self.view(id!(options.list_container))
-                    .apply_over(cx, live! {height: (height)});
+                .apply_over(cx, live! {height: (height)});
 
                 let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
                 self.view(id!(icon_drop.icon))
@@ -292,34 +317,6 @@ const MAX_OPTIONS_HEIGHT: f64 = 400.0;
 
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(button)).finger_down(&actions) {
-            if fd.tap_count == 1 {
-                self.open = !self.open;
-
-                if self.open {
-                    let list = self.model_selector_list(id!(options.list_container.list));
-                    let height = list.get_height();
-                    if height > MAX_OPTIONS_HEIGHT {
-                        self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
-                    } else {
-                        self.options_list_height = Some(height);
-                    }
-
-                    self.view(id!(options)).apply_over(
-                        cx,
-                        live! {
-                            height: Fit,
-                        },
-                    );
-
-                    self.animator_play(cx, id!(open.show));
-                } else {
-                    self.hide_animation_timer = cx.start_timeout(0.3);
-                    self.animator_play(cx, id!(open.hide));
-                }
-            }
-        }
-
         let mut should_hide_options = false;
         for action in actions {
             match action.cast() {
@@ -340,6 +337,11 @@ impl WidgetMatchEvent for ModelSelector {
                 }
                 _ => {}
             }
+
+            let modal = self.modal(id!(bot_options_modal));
+            if modal.dismissed(actions) {
+                self.hide_options(cx);
+            }
         }
     }
 }
@@ -351,6 +353,8 @@ impl ModelSelector {
         self.view(id!(icon_drop.icon))
             .apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
         self.animator_cut(cx, id!(open.hide));
+        let modal = self.modal(id!(bot_options_modal));
+        modal.close(cx);
         self.redraw(cx);
     }
 
@@ -432,7 +436,7 @@ impl ModelSelector {
                 selected_view.apply_over(
                     cx,
                     live! {
-                        label = { text: (&bot.name.trim_start_matches("models/")), draw_text: { color: #x0 }}
+                        label = { text: (&bot.human_readable_name()), draw_text: { color: #x0 }}
                         // Hide size/architecture tags for remote models
                         architecture_tag = { visible: false }
                         params_size_tag = { visible: false }
