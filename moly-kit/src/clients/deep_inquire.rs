@@ -10,8 +10,7 @@ use std::{
 };
 use widgets::deep_inquire_content::DeepInquireContent;
 
-use crate::protocol::*;
-use crate::utils::sse::{rsplit_once_terminator, EVENT_TERMINATOR};
+use crate::{protocol::*, utils::sse::parse_sse};
 
 pub(crate) mod widgets;
 
@@ -211,12 +210,11 @@ impl BotClient for DeepInquireClient {
                 }
             };
 
-            let event_terminator_str = std::str::from_utf8(EVENT_TERMINATOR).unwrap();
-            let mut buffer: Vec<u8> = Vec::new();
+            let events = parse_sse(response.bytes_stream());
             let mut content = MessageContent::default();
 
-            for await chunk in response.bytes_stream() {
-                let chunk = match chunk {
+            for await event in events {
+                let event = match event {
                     Ok(chunk) => chunk,
                     Err(error) => {
                         if error.is_timeout() {
@@ -233,43 +231,20 @@ impl BotClient for DeepInquireClient {
                     }
                 };
 
-                buffer.extend_from_slice(&chunk);
-
-                let Some((completed_messages, incomplete_message)) =
-                    rsplit_once_terminator(&buffer)
-                else {
-                    continue;
+                let response: DeepInquireResponse = match serde_json::from_str(&event) {
+                    Ok(c) => c,
+                    Err(error) => {
+                        yield ClientError::new_with_source(
+                            ClientErrorKind::Format,
+                            format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
+                            Some(error),
+                        ).into();
+                        return;
+                    }
                 };
 
-                // Silently drop any invalid utf8 bytes from the completed messages
-                let completed_messages = String::from_utf8_lossy(completed_messages);
-
-                let messages =
-                    completed_messages
-                    .split(event_terminator_str)
-                    .filter(|m| !m.starts_with(":"))
-                    // TODO: Return a format error instead of unwrapping
-                    .map(|m| m.trim_start().split("data:").nth(1).unwrap())
-                    .filter(|m| m.trim() != "[DONE]");
-
-                for m in messages {
-                    let response: DeepInquireResponse = match serde_json::from_str(m) {
-                        Ok(c) => c,
-                        Err(error) => {
-                            yield ClientError::new_with_source(
-                                ClientErrorKind::Format,
-                                format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
-                                Some(error),
-                            ).into();
-                            return;
-                        }
-                    };
-
-                    apply_response_to_content(response, &mut content);
-                    yield ClientResult::new_ok(content.clone());
-                }
-
-                buffer = incomplete_message.to_vec();
+                apply_response_to_content(response, &mut content);
+                yield ClientResult::new_ok(content.clone());
             }
         };
 
