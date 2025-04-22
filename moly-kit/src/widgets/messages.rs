@@ -1,6 +1,9 @@
 use std::cell::{Ref, RefMut};
 
 use crate::{
+    clients::deep_inquire::{
+        parse_deep_inquire_data, widgets::deep_inquire_bot_line::DeepInquireBotLineWidgetRefExt,
+    },
     protocol::*,
     utils::{events::EventExt, portal_list::ItemsRangeIter},
     widgets::{
@@ -18,6 +21,7 @@ live_design! {
     use link::shaders::*;
 
     use crate::widgets::chat_lines::*;
+    use crate::clients::deep_inquire::widgets::deep_inquire_bot_line::*;
 
     pub Messages = {{Messages}} {
         flow: Overlay,
@@ -30,6 +34,7 @@ live_design! {
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
+            DeepInquireBotLine = <DeepInquireBotLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -257,11 +262,8 @@ impl Messages {
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
-                    let bot = self
-                        .bot_repo
-                        .as_ref()
-                        .expect("no bot client set")
-                        .get_bot(id);
+                    let repo = self.bot_repo.as_ref().expect("no bot client set");
+                    let bot = repo.get_bot(id);
 
                     let (name, avatar) = bot
                         .as_ref()
@@ -272,14 +274,20 @@ impl Messages {
                         let item = list.item(cx, index, live_id!(LoadingLine));
                         item.message_loading(id!(text.loading)).animate(cx);
                         item
+                    } else if let Some(_) = message
+                        .content
+                        .data
+                        .as_deref()
+                        .and_then(|data| parse_deep_inquire_data(data))
+                    {
+                        let item = list.item(cx, index, live_id!(DeepInquireBotLine));
+                        item.as_deep_inquire_bot_line()
+                            .borrow_mut()
+                            .unwrap()
+                            .set_content(cx, &message.content);
+                        item
                     } else {
                         let item = list.item(cx, index, live_id!(BotLine));
-                        // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
-                        // we need to add a "blank" line as a workaround.
-                        //
-                        // Warning: If you ever read the text from this widget and not
-                        // from the list, you should remove the unicode character.
-                        // TODO: Remove this workaround once the markdown widget is fixed.
 
                         let (thinking_block, message_body) =
                             extract_and_remove_think_tag(&message.content.text);
@@ -287,6 +295,12 @@ impl Messages {
                         item.message_thinking_block(id!(text.thinking_block))
                             .set_thinking_text(thinking_block);
 
+                        // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
+                        // we need to add a "blank" line as a workaround.
+                        //
+                        // Warning: If you ever read the text from this widget and not
+                        // from the list, you should remove the unicode character.
+                        // TODO: Remove this workaround once the markdown widget is fixed.
                         if let Some(body) = message_body {
                             item.label(id!(text.markdown))
                                 .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
@@ -299,6 +313,7 @@ impl Messages {
                             citations.urls = sources.clone();
                             citations.visible = true;
                         }
+
                         item
                     };
 
@@ -306,7 +321,6 @@ impl Messages {
                     item.label(id!(name)).set_text(cx, name);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
-
                     item.draw_all(cx, &mut Scope::empty());
                 }
             }

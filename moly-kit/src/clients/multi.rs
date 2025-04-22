@@ -1,3 +1,5 @@
+use makepad_widgets::{Cx, WidgetRef};
+
 use crate::protocol::*;
 pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
 use std::sync::{Arc, Mutex};
@@ -106,5 +108,13 @@ impl BotClient for MultiClient {
         };
 
         moly_future(future)
+    }
+
+    fn content_widget(&mut self, cx: &mut Cx, content: &MessageContent) -> Option<WidgetRef> {
+        self.clients_with_bots
+            .lock()
+            .unwrap()
+            .iter_mut()
+            .find_map(|(client, _)| client.content_widget(cx, content))
     }
 }

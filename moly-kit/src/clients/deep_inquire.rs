@@ -1,43 +1,25 @@
 use async_stream::stream;
+use makepad_widgets::{warning, Cx, LiveNew, WidgetRef};
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
     str::FromStr,
+    sync::Once,
     sync::{Arc, RwLock},
     time::Duration,
 };
+use widgets::deep_inquire_content::DeepInquireContent;
 
 use crate::protocol::*;
 use crate::utils::sse::{rsplit_once_terminator, EVENT_TERMINATOR};
 
-mod protocol;
-mod widgets;
+pub(crate) mod widgets;
 
 /// Article reference in a DeepInquire response
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Article {
     pub title: String,
     pub url: String,
-}
-
-/// Content of a stage in a DeepInquire response
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-struct StageContent {
-    pub content: String,
-    #[serde(default)]
-    pub articles: Vec<Article>,
-}
-
-/// Type of delta received from DeepInquire API
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(tag = "type")]
-enum DeltaType {
-    #[serde(rename = "thinking")]
-    Thinking { id: usize, content: StageContent },
-    #[serde(rename = "writing")]
-    Writing { id: usize, content: StageContent },
-    #[serde(rename = "completed")]
-    Completed { id: usize, content: StageContent },
 }
 
 /// A message being sent to the DeepInquire API
@@ -59,7 +41,7 @@ impl TryFrom<Message> for OutcomingMessage {
         }?;
 
         Ok(Self {
-            content: message.visible_text(),
+            content: message.content.text,
             role,
         })
     }
@@ -97,6 +79,19 @@ struct DeltaChoice {
 #[derive(Clone, Debug, Deserialize)]
 struct DeepInquireResponse {
     choices: Vec<DeltaChoice>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct Stage {
+    id: usize,
+    thinking: Option<MessageContent>,
+    writing: Option<MessageContent>,
+    completed: Option<MessageContent>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct Data {
+    stages: Vec<Stage>,
 }
 
 #[derive(Clone, Debug)]
@@ -179,7 +174,7 @@ impl BotClient for DeepInquireClient {
         &mut self,
         bot: &Bot,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageDelta>> {
+    ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
 
         let url = format!("{}/chat/completions", inner.url);
@@ -218,9 +213,9 @@ impl BotClient for DeepInquireClient {
 
             let event_terminator_str = std::str::from_utf8(EVENT_TERMINATOR).unwrap();
             let mut buffer: Vec<u8> = Vec::new();
-            let bytes = response.bytes_stream();
+            let mut content = MessageContent::default();
 
-            for await chunk in bytes {
+            for await chunk in response.bytes_stream() {
                 let chunk = match chunk {
                     Ok(chunk) => chunk,
                     Err(error) => {
@@ -270,98 +265,8 @@ impl BotClient for DeepInquireClient {
                         }
                     };
 
-                    // Process each choice in the response
-                    for choice in &response.choices {
-                        let delta = &choice.delta;
-
-                        // Determine the stage type based on the delta's type field
-                        let message_delta = if let Some(stage_type) = &delta.r#type {
-                            let stage_id = delta.id;
-                            let content = delta.content.clone();
-                            let stage_citations = delta.articles.iter()
-                                .map(|article| article.url.clone())
-                                .collect::<Vec<_>>();
-
-                            // Create appropriate MessageStage based on type
-                            let mut stage = MessageStage {
-                                id: stage_id,
-                                thinking: None,
-                                writing: None,
-                                completed: None,
-                            };
-
-                            match stage_type.as_str() {
-                                "thinking" => {
-                                    stage.thinking = Some(MessageBlockContent {
-                                        content: content.clone(),
-                                        citations: stage_citations.clone(),
-                                    });
-
-                                    // Use the MessageContent approach
-                                    MessageDelta {
-                                        content: MessageContent::MultiStage {
-                                            text: String::new(),
-                                            stages: vec![stage],
-                                            citations: stage_citations,
-                                        },
-                                    }
-                                },
-                                "content" => {
-                                    stage.writing = Some(MessageBlockContent {
-                                        content: content.clone(),
-                                        citations: stage_citations.clone(),
-                                    });
-
-                                    // Use the MessageContent approach
-                                    MessageDelta {
-                                        content: MessageContent::MultiStage {
-                                            text: String::new(),
-                                            stages: vec![stage],
-                                            citations: stage_citations,
-                                        },
-                                    }
-                                },
-                                "completion" => {
-                                    stage.completed = Some(MessageBlockContent {
-                                        content: content.clone(),
-                                        citations: stage_citations.clone(),
-                                    });
-
-                                    // Use the MessageContent approach
-                                    MessageDelta {
-                                        content: MessageContent::MultiStage {
-                                            text: String::new(),
-                                            stages: vec![stage],
-                                            citations: stage_citations,
-                                        },
-                                    }
-                                },
-                                _ => {
-                                    // Fallback to text-only delta for unknown types
-                                    MessageDelta {
-                                        content: MessageContent::PlainText {
-                                            text: delta.content.clone(),
-                                            citations: stage_citations,
-                                        },
-                                    }
-                                }
-                            }
-                        } else {
-                            // Text-only delta (no stage info)
-                            let citations = delta.articles.iter()
-                                .map(|article| article.url.clone())
-                                .collect::<Vec<_>>();
-
-                            MessageDelta {
-                                content: MessageContent::PlainText {
-                                    text: delta.content.clone(),
-                                    citations,
-                                },
-                            }
-                        };
-
-                        yield ClientResult::new_ok(message_delta);
-                    }
+                    apply_response_to_content(response, &mut content);
+                    yield ClientResult::new_ok(content.clone());
                 }
 
                 buffer = incomplete_message.to_vec();
@@ -370,6 +275,96 @@ impl BotClient for DeepInquireClient {
 
         moly_stream(stream)
     }
+
+    fn content_widget(&mut self, cx: &mut Cx, content: &MessageContent) -> Option<WidgetRef> {
+        static CONTENT_REGISTER: Once = Once::new();
+
+        CONTENT_REGISTER.call_once(|| {
+            widgets::deep_inquire_content::live_design(cx);
+            widgets::stages::live_design(cx);
+        });
+
+        content
+            .data
+            .as_ref()
+            .and_then(|data| serde_json::from_str::<Data>(data).ok())
+            .map(|_| {
+                let mut widget = DeepInquireContent::new(cx);
+                widget.set_content(cx, content);
+                WidgetRef::new_with_inner(Box::new(widget))
+            })
+    }
+}
+
+fn apply_response_to_content(response: DeepInquireResponse, content: &mut MessageContent) {
+    for choice in response.choices {
+        let delta = choice.delta;
+
+        let stage_id = delta.id;
+        let stage_type = delta.r#type;
+        let stage_content = MessageContent {
+            text: delta.content,
+            citations: delta.articles.into_iter().map(|a| a.url).collect(),
+            ..Default::default()
+        };
+
+        match stage_type.as_deref() {
+            Some("thinking") => {
+                create_or_update_stage(content, stage_id, move |stage| {
+                    stage.thinking = Some(stage_content);
+                });
+            }
+            Some("content") => {
+                create_or_update_stage(content, stage_id, move |stage| {
+                    stage.writing = Some(stage_content);
+                });
+            }
+            Some("completion") => {
+                create_or_update_stage(content, stage_id, move |stage| {
+                    stage.completed = Some(stage_content);
+                });
+            }
+            Some(stage_type) => {
+                warning!("Unsupported DeepInquire stage type: {stage_type}. Ignoring.");
+            }
+            None => {
+                *content = MessageContent {
+                    data: content.data.take(),
+                    ..stage_content
+                }
+            }
+        }
+    }
+}
+
+fn create_or_update_stage(
+    content: &mut MessageContent,
+    stage_id: usize,
+    update_fn: impl FnOnce(&mut Stage),
+) {
+    let mut data: Data = content
+        .data
+        .as_ref()
+        .and_then(|d| serde_json::from_str(d).ok())
+        .unwrap_or_default();
+
+    if let Some(existing_stage) = data.stages.iter_mut().find(|s| s.id == stage_id) {
+        update_fn(existing_stage);
+    } else {
+        let mut new_stage = Stage {
+            id: stage_id,
+            ..Default::default()
+        };
+
+        update_fn(&mut new_stage);
+        data.stages.push(new_stage);
+    }
+
+    content.data = Some(serde_json::to_string(&data).unwrap());
+}
+
+pub(crate) fn parse_deep_inquire_data(data: &str) -> Option<Data> {
+    serde_json::from_str(data).ok()
 }
 
 #[cfg(not(target_arch = "wasm32"))]

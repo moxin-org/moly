@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use makepad_widgets::{LiveValue, WidgetRef};
+use makepad_widgets::{Cx, LiveValue, WidgetRef};
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -443,7 +443,7 @@ pub trait BotClient: Send {
     /// Not expected to be implemented by most clients, however if this client
     /// interfaces with a service that gives content in non-standard formats,
     /// this can be used to extend moly-kit to support it.
-    fn content_widget(&mut self, _content: &MessageContent) -> Option<WidgetRef> {
+    fn content_widget(&mut self, _cx: &mut Cx, _content: &MessageContent) -> Option<WidgetRef> {
         None
     }
 }
