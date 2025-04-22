@@ -160,9 +160,10 @@ impl Chat {
                 let max_char_length = 25;
                 let ellipsis = "...";
 
-                let title = if message.visible_text().len() > max_char_length {
+                let title = if message.content.text.len() > max_char_length {
                     let mut truncated = message
-                        .visible_text()
+                        .content
+                        .text
                         .chars()
                         .take(max_char_length)
                         .collect::<String>()
@@ -170,7 +171,7 @@ impl Chat {
                     truncated.push_str(ellipsis);
                     truncated
                 } else {
-                    message.visible_text()
+                    message.content.text.clone()
                 };
 
                 self.set_title(title);

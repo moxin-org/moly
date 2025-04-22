@@ -1,6 +1,9 @@
 use std::cell::{Ref, RefMut};
 
 use crate::{
+    clients::deep_inquire::{
+        parse_deep_inquire_data, widgets::deep_inquire_bot_line::DeepInquireBotLineWidgetRefExt,
+    },
     protocol::*,
     utils::{events::EventExt, portal_list::ItemsRangeIter},
     widgets::{
@@ -10,10 +13,7 @@ use crate::{
 };
 use makepad_widgets::*;
 
-use super::{
-    citation::CitationAction, citation_list::CitationListWidgetRefExt,
-    deep_inquire_line::DeepInquireBotLineWidgetRefExt,
-};
+use super::{citation::CitationAction, citation_list::CitationListWidgetRefExt};
 
 live_design! {
     use link::theme::*;
@@ -21,7 +21,7 @@ live_design! {
     use link::shaders::*;
 
     use crate::widgets::chat_lines::*;
-    use crate::widgets::deep_inquire_line::*;
+    use crate::clients::deep_inquire::widgets::deep_inquire_bot_line::*;
 
     pub Messages = {{Messages}} {
         flow: Overlay,
@@ -31,10 +31,10 @@ live_design! {
             }
             UserLine = <UserLine> {}
             BotLine = <BotLine> {}
-            DeepInquireBotLine = <DeepInquireBotLine> {}
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
+            DeepInquireBotLine = <DeepInquireBotLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -152,8 +152,8 @@ impl Widget for Messages {
             if let CitationAction::Open(url) = action.cast() {
                 let _ = robius_open::Uri::new(url.as_str()).open();
             }
-	}
-	
+        }
+
         let list = self.portal_list(id!(list));
         if list.smooth_scroll_reached(event.actions()) {
             list.set_first_id(self.messages.len());
@@ -183,9 +183,9 @@ impl Messages {
         self.messages.push(Message {
             from: EntityId::App,
             // End-of-chat marker
-            content: MessageContent::PlainText {
+            content: MessageContent {
                 text: "EOC".into(),
-                citations: Vec::new(),
+                ..Default::default()
             },
             is_writing: false,
         });
@@ -212,8 +212,7 @@ impl Messages {
                 }
                 EntityId::App => {
                     // Handle EOC marker
-                    let body_text = message.visible_text();
-                    if body_text == "EOC" {
+                    if message.content.text == "EOC" {
                         let item = list.item(cx, index, live_id!(EndOfChat));
                         item.draw_all(cx, &mut Scope::empty());
                         self.is_list_end_drawn = true;
@@ -221,7 +220,7 @@ impl Messages {
                     }
 
                     // Handle error messages
-                    if let Some((left, right)) = body_text.split_once(':') {
+                    if let Some((left, right)) = message.content.text.split_once(':') {
                         if let Some("error") = left
                             .split_whitespace()
                             .last()
@@ -243,7 +242,8 @@ impl Messages {
                     let item = list.item(cx, index, live_id!(AppLine));
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("A".into()));
-                    item.label(id!(text.markdown)).set_text(cx, &body_text);
+                    item.label(id!(text.markdown))
+                        .set_text(cx, &message.content.text);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -257,77 +257,70 @@ impl Messages {
                     item.label(id!(name)).set_text(cx, name);
 
                     item.label(id!(text.label))
-                        .set_text(cx, &message.visible_text());
+                        .set_text(cx, &message.content.text);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
-                    let bot = self
-                        .bot_repo
-                        .as_ref()
-                        .expect("no bot client set")
-                        .get_bot(id);
+                    let repo = self.bot_repo.as_ref().expect("no bot client set");
+                    let bot = repo.get_bot(id);
 
                     let (name, avatar) = bot
                         .as_ref()
                         .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
                         .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
 
-                    // If the message is empty and still writing, display a loading animation
-                    let body_text = message.visible_text();
-                    let item =
-                        if message.is_writing && body_text.is_empty() && !message.has_stages() {
-                            let item = list.item(cx, index, live_id!(LoadingLine));
-                            item.message_loading(id!(text.loading)).animate(cx);
-                            item
-                        } else if message.has_stages() {
-                            // Use specialized DeepInquireBotLine for messages with stages
-                            let item = list.item(cx, index, live_id!(DeepInquireBotLine));
+                    let item = if message.is_writing && message.content.is_empty() {
+                        let item = list.item(cx, index, live_id!(LoadingLine));
+                        item.message_loading(id!(text.loading)).animate(cx);
+                        item
+                    } else if let Some(_) = message
+                        .content
+                        .data
+                        .as_deref()
+                        .and_then(|data| parse_deep_inquire_data(data))
+                    {
+                        let item = list.item(cx, index, live_id!(DeepInquireBotLine));
+                        item.as_deep_inquire_bot_line()
+                            .borrow_mut()
+                            .unwrap()
+                            .set_content(cx, &message.content);
+                        item
+                    } else {
+                        let item = list.item(cx, index, live_id!(BotLine));
 
-                            // Update the DeepInquireBotLine with the message content
-                            item.as_deep_inquire_bot_line().set_message(
-                                cx,
-                                message,
-                                message.is_writing,
-                            );
+                        let (thinking_block, message_body) =
+                            extract_and_remove_think_tag(&message.content.text);
 
-                            item
-                        } else {
-                            let item = list.item(cx, index, live_id!(BotLine));
-                            // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
-                            // we need to add a "blank" line as a workaround.
-                            //
-                            // Warning: If you ever read the text from this widget and not
-                            // from the list, you should remove the unicode character.
-                            // TODO: Remove this workaround once the markdown widget is fixed.
+                        item.message_thinking_block(id!(text.thinking_block))
+                            .set_thinking_text(thinking_block);
 
-                            let (thinking_block, message_body) =
-                                extract_and_remove_think_tag(&body_text);
+                        // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
+                        // we need to add a "blank" line as a workaround.
+                        //
+                        // Warning: If you ever read the text from this widget and not
+                        // from the list, you should remove the unicode character.
+                        // TODO: Remove this workaround once the markdown widget is fixed.
+                        if let Some(body) = message_body {
+                            item.label(id!(text.markdown))
+                                .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                        }
 
-                            item.message_thinking_block(id!(text.thinking_block))
-                                .set_thinking_text(thinking_block);
+                        let sources = &message.content.citations;
+                        if !sources.is_empty() {
+                            let citations = item.citation_list(id!(citations));
+                            let mut citations = citations.borrow_mut().unwrap();
+                            citations.urls = sources.clone();
+                            citations.visible = true;
+                        }
 
-                            if let Some(body) = message_body {
-                                item.label(id!(text.markdown))
-                                    .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
-                            }
-
-                            // Set citations from the message
-                            let sources = message.sources();
-                            if !sources.is_empty() {
-                                let citations = item.citation_list(id!(citations));
-                                let mut citations = citations.borrow_mut().unwrap();
-                                citations.urls = sources;
-                                citations.visible = true;
-                            }
-                            item
-                        };
+                        item
+                    };
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
-
                     item.draw_all(cx, &mut Scope::empty());
                 }
             }
@@ -335,7 +328,7 @@ impl Messages {
 
         if let Some(message) = self.messages.pop() {
             assert!(message.from == EntityId::App);
-            assert!(message.visible_text() == "EOC");
+            assert!(message.content.text == "EOC");
         }
 
         self.button(id!(jump_to_bottom))
@@ -352,7 +345,7 @@ impl Messages {
         if self.messages.len() > 0 {
             let list = self.portal_list(id!(list));
 
-	    list.smooth_scroll_to_end(cx, 100.0, None);
+            list.smooth_scroll_to_end(cx, 100.0, None);
         }
     }
 
@@ -367,7 +360,7 @@ impl Messages {
         }
 
         if visible {
-            let buffer = self.messages[index].visible_text();
+            let buffer = self.messages[index].content.text.clone();
             self.current_editor = Some(Editor { index, buffer });
         } else if self.current_editor.as_ref().map(|e| e.index) == Some(index) {
             self.current_editor = None;

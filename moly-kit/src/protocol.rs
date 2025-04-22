@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use makepad_widgets::LiveValue;
+use makepad_widgets::{Cx, LiveValue, WidgetRef};
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -102,284 +102,58 @@ impl fmt::Display for BotId {
     }
 }
 
-/// Content types for messages, supporting different provider formats
-#[derive(Clone, Debug, PartialEq)]
+/// Standard message content format.
+#[derive(Clone, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub enum MessageContent {
-    /// Simple text content with optional citations
-    PlainText {
-        /// The text content
-        text: String,
-        /// Citations/sources associated with this content
-        citations: Vec<String>,
-    },
+pub struct MessageContent {
+    /// The main body/document of this message.
+    ///
+    /// This would normally be written in somekind of document format like
+    /// markdown, html, plain text, etc. Only markdown is expected by default.
+    pub text: String,
 
-    /// Multi-stage content (like DeepInquire)
-    MultiStage {
-        /// Text representation
-        text: String,
-        /// Stages in various states
-        stages: Vec<MessageStage>,
-        /// Citations/sources associated with this content
-        citations: Vec<String>,
-    },
+    /// List of citations/sources (urls) associated with this message.
+    pub citations: Vec<String>,
+
+    /// Non-standard data contained by this message.
+    ///
+    /// May be used by clients for tracking purposes or to represent unsupported
+    /// content.
+    ///
+    /// This is not expected to be used by most clients.
+    // TODO: Using `String` for now because:
+    //
+    // - `Box<dyn Trait>` can't be `Deserialize`.
+    // - `serde_json::Value` would force `serde_json` usage.
+    // - `Vec<u8>` has unefficient serialization format and doesn't have many
+    //   advantages over `String`.
+    //
+    // A wrapper type over Value and Box exposing a unified interface could be
+    // a solution for later.
+    pub data: Option<String>,
+}
+
+impl MessageContent {
+    /// Checks if the content is absolutely empty (contains no data at all).
+    pub fn is_empty(&self) -> bool {
+        self.text.is_empty() && self.citations.is_empty() && self.data.is_none()
+    }
 }
 
 /// A message that is part of a conversation.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
 
-    /// The content of the message (text, stages, etc.)
+    /// The parsed content of this message ready to present.
     pub content: MessageContent,
 
-    /// Whether the message is actively being modified. False when no more changes are expected.
+    /// Whether the message is actively being modified.
+    ///
+    /// False when no more changes are expected.
     pub is_writing: bool,
-}
-
-impl Default for Message {
-    fn default() -> Self {
-        Message {
-            from: EntityId::default(),
-            content: MessageContent::PlainText {
-                text: String::new(),
-                citations: Vec::new(),
-            },
-            is_writing: false,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct MessageStage {
-    /// Stage identifier
-    pub id: usize,
-    /// Thinking block content
-    pub thinking: Option<MessageBlockContent>,
-    /// Writing block content
-    pub writing: Option<MessageBlockContent>,
-    /// Completed block content
-    pub completed: Option<MessageBlockContent>,
-}
-
-impl MessageStage {
-    /// Check if this stage has completed content
-    pub fn is_completed(&self) -> bool {
-        self.completed.is_some()
-    }
-
-    /// Get the text content of the most advanced stage (completed > writing > thinking)
-    pub fn latest_content(&self) -> Option<&str> {
-        if let Some(completed) = &self.completed {
-            Some(&completed.content)
-        } else if let Some(writing) = &self.writing {
-            Some(&writing.content)
-        } else if let Some(thinking) = &self.thinking {
-            Some(&thinking.content)
-        } else {
-            None
-        }
-    }
-}
-
-/// Content for a specific stage
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct MessageBlockContent {
-    /// Text content of the block
-    pub content: String,
-    /// Citations associated with this block
-    pub citations: Vec<String>,
-}
-
-/// Delta for streaming responses
-#[derive(Clone, Debug, PartialEq)]
-pub struct MessageDelta {
-    /// The content delta
-    pub content: MessageContent,
-}
-
-impl Message {
-    /// Update the message with a delta
-    pub fn apply_delta(&mut self, delta: MessageDelta) {
-        match (&mut self.content, &delta.content) {
-            // PlainText + PlainText -> append text and add citations
-            (
-                MessageContent::PlainText { text, citations },
-                MessageContent::PlainText {
-                    text: delta_text,
-                    citations: delta_citations,
-                },
-            ) => {
-                text.push_str(delta_text);
-                for citation in delta_citations {
-                    if !citations.contains(citation) {
-                        citations.push(citation.clone());
-                    }
-                }
-            }
-
-            // MultiStage + MultiStage -> update stages and append text
-            (
-                MessageContent::MultiStage {
-                    text,
-                    stages,
-                    citations,
-                },
-                MessageContent::MultiStage {
-                    text: delta_text,
-                    stages: delta_stages,
-                    citations: delta_citations,
-                },
-            ) => {
-                // Append text if not empty
-                if !delta_text.is_empty() {
-                    text.push_str(delta_text);
-                }
-
-                // Merge stages from delta into existing stages
-                for new_stage in delta_stages {
-                    if let Some(existing_stage) = stages.iter_mut().find(|s| s.id == new_stage.id) {
-                        // Update existing stage
-                        if new_stage.thinking.is_some() {
-                            existing_stage.thinking = new_stage.thinking.clone();
-                        }
-                        if new_stage.writing.is_some() {
-                            existing_stage.writing = new_stage.writing.clone();
-                        }
-                        if new_stage.completed.is_some() {
-                            existing_stage.completed = new_stage.completed.clone();
-                            // Mark message as completed when we get a completed stage
-                            self.is_writing = false;
-                        }
-                    } else {
-                        // Add new stage
-                        stages.push(new_stage.clone());
-                    }
-                }
-
-                // Add new citations
-                for citation in delta_citations {
-                    if !citations.contains(citation) {
-                        citations.push(citation.clone());
-                    }
-                }
-            }
-
-            // PlainText + MultiStage -> convert to MultiStage and update
-            (
-                MessageContent::PlainText {
-                    text: existing_text,
-                    citations: existing_citations,
-                },
-                MessageContent::MultiStage {
-                    text: delta_text,
-                    stages: delta_stages,
-                    citations: delta_citations,
-                },
-            ) => {
-                let mut combined_text = existing_text.clone();
-                if !delta_text.is_empty() {
-                    combined_text.push_str(delta_text);
-                }
-
-                let mut combined_citations = existing_citations.clone();
-                for citation in delta_citations {
-                    if !combined_citations.contains(citation) {
-                        combined_citations.push(citation.clone());
-                    }
-                }
-
-                // Convert to MultiStage
-                self.content = MessageContent::MultiStage {
-                    text: combined_text,
-                    stages: delta_stages.clone(),
-                    citations: combined_citations,
-                };
-            }
-
-            // MultiStage + PlainText -> just append text and citations
-            (
-                MessageContent::MultiStage {
-                    text, citations, ..
-                },
-                MessageContent::PlainText {
-                    text: delta_text,
-                    citations: delta_citations,
-                },
-            ) => {
-                text.push_str(delta_text);
-
-                for citation in delta_citations {
-                    if !citations.contains(citation) {
-                        citations.push(citation.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    /// Gets the visible text content to display, regardless of the content type
-    pub fn visible_text(&self) -> String {
-        match &self.content {
-            MessageContent::PlainText { text, .. } => text.clone(),
-            MessageContent::MultiStage { text, .. } => text.clone(),
-        }
-    }
-
-    /// Gets the citations/sources regardless of the content type
-    pub fn sources(&self) -> Vec<String> {
-        match &self.content {
-            MessageContent::PlainText { citations, .. } => citations.clone(),
-            MessageContent::MultiStage { citations, .. } => citations.clone(),
-        }
-    }
-
-    /// Checks if this message has multi-stage content
-    pub fn has_stages(&self) -> bool {
-        match &self.content {
-            MessageContent::PlainText { .. } => false,
-            MessageContent::MultiStage { stages, .. } => !stages.is_empty(),
-        }
-    }
-
-    /// Gets the stages if this message has multi-stage content
-    pub fn get_stages(&self) -> Vec<MessageStage> {
-        match &self.content {
-            MessageContent::PlainText { .. } => Vec::new(),
-            MessageContent::MultiStage { stages, .. } => stages.clone(),
-        }
-    }
-}
-
-/// Factory methods for creating properly formatted MessageDelta objects
-pub trait MessageDeltaFactory {
-    /// Create a text-only delta with optional citations
-    fn text_delta(text: String, citations: Vec<String>) -> MessageDelta;
-
-    /// Create a stage-based delta
-    fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> MessageDelta;
-}
-
-impl MessageDeltaFactory for MessageDelta {
-    fn text_delta(text: String, citations: Vec<String>) -> Self {
-        MessageDelta {
-            content: MessageContent::PlainText { text, citations },
-        }
-    }
-
-    fn stage_delta(text: String, stage: MessageStage, citations: Vec<String>) -> Self {
-        MessageDelta {
-            content: MessageContent::MultiStage {
-                text,
-                stages: vec![stage],
-                citations,
-            },
-        }
-    }
 }
 
 /// The standard error kinds a client implementatiin should facilitate.
@@ -604,11 +378,16 @@ impl<T> ClientResult<T> {
 /// on dynamic dispatch (with its limitations).
 pub trait BotClient: Send {
     /// Send a message to a bot expecting a streamed response.
+    ///
+    /// Each message yielded by the stream should be a snapshot of the full
+    /// message as it is being built.
+    ///
+    /// You are free to add, modify or remove content on-the-go.
     fn send_stream(
         &mut self,
         bot: &Bot,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageDelta>>;
+    ) -> MolyStream<'static, ClientResult<MessageContent>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -629,59 +408,43 @@ pub trait BotClient: Send {
         &mut self,
         bot: &Bot,
         messages: &[Message],
-    ) -> MolyFuture<'static, ClientResult<MessageDelta>> {
-        let stream = self.send_stream(bot, messages);
+    ) -> MolyFuture<'static, ClientResult<MessageContent>> {
+        let mut stream = self.send_stream(bot, messages);
 
         let future = async move {
-            let mut text = String::new();
-            let mut citations = Vec::new();
+            let mut content = MessageContent::default();
             let mut errors = Vec::new();
 
-            let mut stream = stream;
             while let Some(result) = stream.next().await {
-                let (v, e) = result.into_value_and_errors();
+                let (c, e) = result.into_value_and_errors();
 
-                if let Some(delta) = v {
-                    match &delta.content {
-                        MessageContent::PlainText {
-                            text: delta_text,
-                            citations: delta_citations,
-                        } => {
-                            text.push_str(delta_text);
-                            citations.extend(delta_citations.clone());
-                        }
-                        MessageContent::MultiStage {
-                            text: delta_text,
-                            citations: delta_citations,
-                            ..
-                        } => {
-                            text.push_str(delta_text);
-                            citations.extend(delta_citations.clone());
-                        }
-                    }
+                if let Some(c) = c {
+                    content = c;
                 }
 
                 if !e.is_empty() {
-                    errors.extend(e);
+                    errors = e;
                     break;
                 }
             }
 
             if errors.is_empty() {
-                ClientResult::new_ok(MessageDelta {
-                    content: MessageContent::PlainText { text, citations },
-                })
+                ClientResult::new_ok(content)
             } else {
-                ClientResult::new_ok_and_err(
-                    MessageDelta {
-                        content: MessageContent::PlainText { text, citations },
-                    },
-                    errors,
-                )
+                ClientResult::new_ok_and_err(content, errors)
             }
         };
 
         moly_future(future)
+    }
+
+    /// Optionally override how the content of a message is rendered by Makepad.
+    ///
+    /// Not expected to be implemented by most clients, however if this client
+    /// interfaces with a service that gives content in non-standard formats,
+    /// this can be used to extend moly-kit to support it.
+    fn content_widget(&mut self, _cx: &mut Cx, _content: &MessageContent) -> Option<WidgetRef> {
+        None
     }
 }
 

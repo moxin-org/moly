@@ -8,10 +8,7 @@ use std::{
 };
 
 use crate::protocol::*;
-use crate::utils::{
-    serde::deserialize_null_default,
-    sse::{rsplit_once_terminator, EVENT_TERMINATOR},
-};
+use crate::utils::{serde::deserialize_null_default, sse::parse_sse};
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -60,7 +57,7 @@ impl TryFrom<Message> for OutcomingMessage {
         }?;
 
         Ok(Self {
-            content: message.visible_text(),
+            content: message.content.text,
             role,
         })
     }
@@ -132,18 +129,16 @@ impl OpenAIClient {
     }
 
     pub fn set_header(&mut self, key: &str, value: &str) -> Result<(), &'static str> {
-        let header_name = HeaderName::from_str(key)
-            .map_err(|_| "Invalid header name")?;
-        
-        let header_value = value.parse()
-            .map_err(|_| "Invalid header value")?;
-        
+        let header_name = HeaderName::from_str(key).map_err(|_| "Invalid header name")?;
+
+        let header_value = value.parse().map_err(|_| "Invalid header value")?;
+
         self.0
             .write()
             .unwrap()
             .headers
             .insert(header_name, header_value);
-        
+
         Ok(())
     }
 
@@ -242,7 +237,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot: &Bot,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageDelta>> {
+    ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
 
         let url = format!("{}/chat/completions", inner.url);
@@ -280,13 +275,12 @@ impl BotClient for OpenAIClient {
                 }
             };
 
-            let event_terminator_str = std::str::from_utf8(EVENT_TERMINATOR).unwrap();
-            let mut buffer: Vec<u8> = Vec::new();
-            let bytes = response.bytes_stream();
+            let mut content = MessageContent::default();
+            let events = parse_sse(response.bytes_stream());
 
-            for await chunk in bytes {
-                let chunk = match chunk {
-                    Ok(chunk) => chunk,
+            for await event in events {
+                let event = match event {
+                    Ok(event) => event,
                     Err(error) => {
                         yield ClientError::new_with_source(
                             ClientErrorKind::Network,
@@ -297,55 +291,33 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
-                buffer.extend_from_slice(&chunk);
-
-                let Some((completed_messages, incomplete_message)) =
-                    rsplit_once_terminator(&buffer)
-                else {
-                    continue;
+                let completion: Completion = match serde_json::from_str(&event) {
+                    Ok(c) => c,
+                    Err(error) => {
+                        yield ClientError::new_with_source(
+                            ClientErrorKind::Format,
+                            format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
+                            Some(error),
+                        ).into();
+                        return;
+                    }
                 };
 
-                // Silently drop any invalid utf8 bytes from the completed messages.
-                let completed_messages = String::from_utf8_lossy(completed_messages);
+                let body = completion
+                    .choices
+                    .iter()
+                    .map(|c| c.delta.content.as_str())
+                    .collect::<String>();
 
-                let messages =
-                    completed_messages
-                    .split(event_terminator_str)
-                    .filter(|m| !m.starts_with(":"))
-                    // TODO: Return a format error instead of unwraping.
-                    .map(|m| m.trim_start().split("data:").nth(1).unwrap())
-                    .filter(|m| m.trim() != "[DONE]");
+                content.text.push_str(&body);
 
-                for m in messages {
-                    let completion: Completion = match serde_json::from_str(m) {
-                        Ok(c) => c,
-                        Err(error) => {
-                            yield ClientError::new_with_source(
-                                ClientErrorKind::Format,
-                                format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
-                                Some(error),
-                            ).into();
-                            return;
-                        }
-                    };
-
-                    let body = completion
-                        .choices
-                        .iter()
-                        .map(|c| c.delta.content.as_str())
-                        .collect::<String>();
-
-                    let citations = completion.citations;
-
-                    yield ClientResult::new_ok(MessageDelta {
-                        content: MessageContent::PlainText {
-                            text: body,
-                            citations,
-                        },
-                    });
+                for citation in completion.citations {
+                    if !content.citations.contains(&citation) {
+                        content.citations.push(citation.clone());
+                    }
                 }
 
-                buffer = incomplete_message.to_vec();
+                yield ClientResult::new_ok(content.clone());
             }
         };
 
@@ -355,7 +327,7 @@ impl BotClient for OpenAIClient {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn default_client() -> reqwest::Client {
-    // On native, there are no default timeouts. Connection may hand if we don't
+    // On native, there are no default timeouts. Connection may hang if we don't
     // configure them.
     reqwest::Client::builder()
         // Only considered while establishing the connection.

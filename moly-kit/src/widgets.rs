@@ -5,12 +5,10 @@
 mod avatar;
 mod chat_lines;
 mod citation;
-mod citation_list;
-mod deep_inquire_line;
+pub(crate) mod citation_list;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
-mod stages;
 
 #[cfg(any(feature = "async-rt", feature = "async-web"))]
 pub mod chat;
@@ -22,6 +20,8 @@ pub use chat::*;
 pub use messages::*;
 pub use prompt_input::*;
 
+use crate::deep_inquire;
+
 pub fn live_design(cx: &mut makepad_widgets::Cx) {
     citation::live_design(cx);
     citation_list::live_design(cx);
@@ -30,8 +30,7 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     message_loading::live_design(cx);
     avatar::live_design(cx);
     chat_lines::live_design(cx);
-    stages::live_design(cx);
-    deep_inquire_line::live_design(cx);
+    deep_inquire::widgets::live_design(cx);
     messages::live_design(cx);
     prompt_input::live_design(cx);
     chat::live_design(cx);
