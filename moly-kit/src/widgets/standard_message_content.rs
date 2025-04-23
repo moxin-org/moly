@@ -13,7 +13,7 @@ live_design! {
     use crate::widgets::message_markdown::*;
     use crate::widgets::citation_list::*;
 
-    pub MessageContentView = {{MessageContentView}} {
+    pub StandardMessageContent = {{StandardMessageContent}} {
         flow: Down
         height: Fit,
         spacing: 10
@@ -24,12 +24,12 @@ live_design! {
 }
 
 #[derive(Live, Widget, LiveHook)]
-pub struct MessageContentView {
+pub struct StandardMessageContent {
     #[deref]
     deref: View,
 }
 
-impl Widget for MessageContentView {
+impl Widget for StandardMessageContent {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.deref.draw_walk(cx, scope, walk)
     }
@@ -39,7 +39,7 @@ impl Widget for MessageContentView {
     }
 }
 
-impl MessageContentView {
+impl StandardMessageContent {
     pub fn set_content(&mut self, cx: &mut Cx, content: &MessageContent) {
         let citation_list = self.citation_list(id!(citations));
         citation_list.borrow_mut().unwrap().urls = content.citations.clone();

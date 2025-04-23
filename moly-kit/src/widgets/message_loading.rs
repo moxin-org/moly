@@ -161,6 +161,7 @@ impl MessageLoadingRef {
         }
     }
 
+    #[allow(dead_code)]
     pub fn stop_animation(&mut self) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
