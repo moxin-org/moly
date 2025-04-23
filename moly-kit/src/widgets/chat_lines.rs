@@ -5,6 +5,7 @@ live_design! {
     use link::widgets::*;
     use link::shaders::*;
 
+    use crate::widgets::wrap::*;
     use crate::widgets::standard_message_content::*;
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
@@ -116,7 +117,7 @@ live_design! {
             content_section = <View> {
                 height: Fit,
                 margin: { left: 32 }
-                content = <StandardMessageContent> {}
+                content = <Wrap> { wrap: <StandardMessageContent> {} }
             }
             editor = <Editor> { margin: { left: 32 }, visible: false }
         }

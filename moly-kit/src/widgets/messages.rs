@@ -12,6 +12,7 @@ use makepad_widgets::*;
 
 use super::{
     citation::CitationAction, standard_message_content::StandardMessageContentWidgetRefExt,
+    wrap::WrapWidgetRefExt,
 };
 
 live_design! {
@@ -253,7 +254,11 @@ impl Messages {
                         Some(Picture::Grapheme("y".into()));
                     item.label(id!(name)).set_text(cx, "You");
 
-                    item.standard_message_content(id!(content))
+                    item.wrap(id!(content))
+                        .borrow_mut()
+                        .unwrap()
+                        .wrap
+                        .as_standard_message_content()
                         .borrow_mut()
                         .unwrap()
                         .set_content(cx, &message.content);
@@ -289,7 +294,11 @@ impl Messages {
                     } else {
                         let item = list.item(cx, index, live_id!(BotLine));
 
-                        item.standard_message_content(id!(content))
+                        item.wrap(id!(content))
+                            .borrow_mut()
+                            .unwrap()
+                            .wrap
+                            .as_standard_message_content()
                             .borrow_mut()
                             .unwrap()
                             .set_content(cx, &message.content);
