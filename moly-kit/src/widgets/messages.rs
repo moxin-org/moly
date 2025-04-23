@@ -11,7 +11,9 @@ use crate::{
 use makepad_code_editor::code_view::CodeViewWidgetRefExt;
 use makepad_widgets::*;
 
-use super::{citation::CitationAction, message_content_view::MessageContentViewWidgetRefExt};
+use super::{
+    citation::CitationAction, standard_message_content::StandardMessageContentWidgetRefExt,
+};
 
 live_design! {
     use link::theme::*;
@@ -268,7 +270,7 @@ impl Messages {
                         Some(Picture::Grapheme("Y".into()));
                     item.label(id!(name)).set_text(cx, "You");
 
-                    item.message_content_view(id!(content))
+                    item.standard_message_content(id!(content))
                         .borrow_mut()
                         .unwrap()
                         .set_content(cx, &message.content);
@@ -304,7 +306,7 @@ impl Messages {
                     } else {
                         let item = list.item(cx, index, live_id!(BotLine));
 
-                        item.message_content_view(id!(content))
+                        item.standard_message_content(id!(content))
                             .borrow_mut()
                             .unwrap()
                             .set_content(cx, &message.content);
