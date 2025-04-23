@@ -273,7 +273,7 @@ impl Messages {
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);
 
-                    item.label(id!(text.label))
+                    item.label(id!(text.markdown))
                         .set_text(cx, &message.content.text);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());

@@ -26,16 +26,6 @@ live_design! {
         }
     }
 
-
-    Bubble = <RoundedView> {
-        height: Fit,
-        padding: {left: 16, right: 18, top: 18, bottom: 14},
-        show_bg: true,
-        draw_bg: {
-            border_radius: 12.0,
-        }
-    }
-
     ActionButton = <Button> {
         width: 14
         height: 14
@@ -125,10 +115,19 @@ live_design! {
             flow: Down,
             height: Fit,
             sender = <Sender> {}
-            bubble = <Bubble> {}
+            text = <View> {
+                flow: Down
+                height: Fit,
+                spacing: 10
+                margin: { left: 32 }
+                thinking_block = <MessageThinkingBlock> {}
+                markdown = <MessageMarkdown> {}
+                citations = <CitationList> { visible: false }
+            }
+            editor = <Editor> { margin: { left: 32 }, visible: false }
         }
         actions_section = <View> {
-            margin: {top: 4, bottom: 10},
+            margin: {left: 32, top: 4, bottom: 10},
             height: 25,
             actions = <Actions> { visible: false }
             edit_actions = <EditActions> { visible: false }
@@ -136,8 +135,6 @@ live_design! {
     }
 
     pub UserLine = <ChatLine> {
-        flow: Down,
-        height: Fit,
         message_section = {
             sender = {
                 avatar = {
@@ -148,53 +145,10 @@ live_design! {
                     }
                 }
             }
-
-            bubble = <Bubble> {
-                flow: Down,
-                padding: 0,
-                margin: {left: 32}
-                text = <View> {
-                    flow: Down
-                    height: Fit,
-                    label = <Label> {
-                        width: Fill,
-                        draw_text: {
-                            color: #000
-                        }
-                    }
-                }
-                editor = <Editor> { visible: false }
-            }
-        }
-        actions_section = {
-            margin: {left: 32}
         }
     }
 
-    pub BotLine = <ChatLine> {
-        flow: Down,
-        height: Fit,
-        message_section = {
-            bubble = <Bubble> {
-                flow: Down,
-                padding: 0,
-                margin: {left: 32}
-                spacing: 10,
-                text = <View> {
-                    flow: Down
-                    height: Fit,
-                    spacing: 10
-                    thinking_block = <MessageThinkingBlock> {}
-                    markdown = <MessageMarkdown> {}
-                }
-                editor = <Editor> { visible: false }
-                citations = <CitationList> { visible: false }
-            }
-        }
-        actions_section = {
-            margin: {left: 32}
-        }
-    }
+    pub BotLine = <ChatLine> {}
 
     pub LoadingLine = <BotLine> {
         message_section = {
