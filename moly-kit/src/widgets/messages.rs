@@ -6,14 +6,11 @@ use crate::{
     },
     protocol::*,
     utils::{events::EventExt, portal_list::ItemsRangeIter},
-    widgets::{
-        avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt,
-        message_thinking_block::MessageThinkingBlockWidgetRefExt,
-    },
+    widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
 use makepad_widgets::*;
 
-use super::{citation::CitationAction, citation_list::CitationListWidgetRefExt};
+use super::{citation::CitationAction, message_content_view::MessageContentViewWidgetRefExt};
 
 live_design! {
     use link::theme::*;
@@ -250,14 +247,15 @@ impl Messages {
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
 
-                    let name = "You";
-                    let avatar = Some(Picture::Grapheme("y".into()));
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                        Some(Picture::Grapheme("y".into()));
+                    item.label(id!(name)).set_text(cx, "You");
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
-                    item.label(id!(name)).set_text(cx, name);
+                    item.message_content_view(id!(content))
+                        .borrow_mut()
+                        .unwrap()
+                        .set_content(cx, &message.content);
 
-                    item.label(id!(text.markdown))
-                        .set_text(cx, &message.content.text);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -289,30 +287,10 @@ impl Messages {
                     } else {
                         let item = list.item(cx, index, live_id!(BotLine));
 
-                        let (thinking_block, message_body) =
-                            extract_and_remove_think_tag(&message.content.text);
-
-                        item.message_thinking_block(id!(text.thinking_block))
-                            .set_thinking_text(thinking_block);
-
-                        // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
-                        // we need to add a "blank" line as a workaround.
-                        //
-                        // Warning: If you ever read the text from this widget and not
-                        // from the list, you should remove the unicode character.
-                        // TODO: Remove this workaround once the markdown widget is fixed.
-                        if let Some(body) = message_body {
-                            item.label(id!(text.markdown))
-                                .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
-                        }
-
-                        let sources = &message.content.citations;
-                        if !sources.is_empty() {
-                            let citations = item.citation_list(id!(citations));
-                            let mut citations = citations.borrow_mut().unwrap();
-                            citations.urls = sources.clone();
-                            citations.visible = true;
-                        }
+                        item.message_content_view(id!(content))
+                            .borrow_mut()
+                            .unwrap()
+                            .set_content(cx, &message.content);
 
                         item
                     };
@@ -451,7 +429,7 @@ impl Messages {
         let editor = widget.view(id!(editor));
         let actions = widget.view(id!(actions));
         let edit_actions = widget.view(id!(edit_actions));
-        let text = widget.view(id!(text));
+        let content_section = widget.view(id!(content_section));
 
         let is_hovered = self.hovered_index == Some(index);
         let is_current_editor = self.current_editor.as_ref().map(|e| e.index) == Some(index);
@@ -459,7 +437,7 @@ impl Messages {
         edit_actions.set_visible(cx, is_current_editor);
         editor.set_visible(cx, is_current_editor);
         actions.set_visible(cx, !is_current_editor && is_hovered);
-        text.set_visible(cx, !is_current_editor);
+        content_section.set_visible(cx, !is_current_editor);
 
         if is_current_editor {
             editor
@@ -497,36 +475,4 @@ impl MessagesRef {
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Messages) -> R) -> R {
         f(&mut *self.write())
     }
-}
-
-fn extract_and_remove_think_tag(text: &str) -> (Option<String>, Option<String>) {
-    let (start_tag, end_tag) = ("<think>", "</think>");
-
-    let start_search = text.find(start_tag);
-    let end_search = text.find(end_tag);
-
-    let Some(start) = start_search else {
-        return (None, Some(text.to_string()));
-    };
-
-    let thinking_content = if let Some(end) = end_search {
-        text[start + start_tag.len()..end].trim().to_string()
-    } else {
-        text[start + start_tag.len()..].trim().to_string()
-    };
-
-    let thinking = if thinking_content.len() > 0 {
-        Some(thinking_content)
-    } else {
-        None
-    };
-
-    let body = if let Some(end) = end_search {
-        let body = text[end + end_tag.len()..].trim().to_string();
-        Some(body)
-    } else {
-        None
-    };
-
-    (thinking, body)
 }

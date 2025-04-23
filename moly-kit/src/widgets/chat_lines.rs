@@ -5,11 +5,9 @@ live_design! {
     use link::widgets::*;
     use link::shaders::*;
 
-    use crate::widgets::message_thinking_block::*;
-    use crate::widgets::message_markdown::*;
+    use crate::widgets::message_content_view::*;
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
-    use crate::widgets::citation_list::*;
 
 
     Sender = <View> {
@@ -115,14 +113,10 @@ live_design! {
             flow: Down,
             height: Fit,
             sender = <Sender> {}
-            text = <View> {
-                flow: Down
+            content_section = <View> {
                 height: Fit,
-                spacing: 10
                 margin: { left: 32 }
-                thinking_block = <MessageThinkingBlock> {}
-                markdown = <MessageMarkdown> {}
-                citations = <CitationList> { visible: false }
+                content = <MessageContentView> {}
             }
             editor = <Editor> { margin: { left: 32 }, visible: false }
         }
@@ -153,7 +147,7 @@ live_design! {
     pub LoadingLine = <BotLine> {
         message_section = {
             bubble = {
-                text = <View> {
+                content_section = <View> {
                     height: Fit,
                     loading = <MessageLoading> {}
                 }

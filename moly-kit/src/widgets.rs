@@ -6,21 +6,23 @@ mod avatar;
 mod chat_lines;
 mod citation;
 pub(crate) mod citation_list;
+mod message_content_view;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
 
-#[cfg(any(feature = "async-rt", feature = "async-web"))]
-pub mod chat;
 pub mod messages;
-pub mod prompt_input;
-
-#[cfg(any(feature = "async-rt", feature = "async-web"))]
-pub use chat::*;
 pub use messages::*;
+
+pub mod prompt_input;
 pub use prompt_input::*;
 
-use crate::deep_inquire;
+cfg_if::cfg_if! {
+    if #[cfg(any(feature = "async-rt", feature = "async-web"))] {
+        pub mod chat;
+        pub use chat::*;
+    }
+}
 
 pub fn live_design(cx: &mut makepad_widgets::Cx) {
     citation::live_design(cx);
@@ -29,8 +31,9 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     message_markdown::live_design(cx);
     message_loading::live_design(cx);
     avatar::live_design(cx);
+    message_content_view::live_design(cx);
     chat_lines::live_design(cx);
-    deep_inquire::widgets::live_design(cx);
+    crate::deep_inquire::widgets::live_design(cx);
     messages::live_design(cx);
     prompt_input::live_design(cx);
     chat::live_design(cx);
