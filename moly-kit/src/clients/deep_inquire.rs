@@ -1,5 +1,5 @@
 use async_stream::stream;
-use makepad_widgets::{warning, Cx, LiveNew, WidgetRef};
+use makepad_widgets::{Cx, LiveNew, WidgetRef};
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 use widgets::deep_inquire_content::DeepInquireContent;
-
+use makepad_widgets::*;
 use crate::{protocol::*, utils::sse::parse_sse};
 
 pub(crate) mod widgets;
@@ -19,6 +19,9 @@ pub(crate) mod widgets;
 pub struct Article {
     pub title: String,
     pub url: String,
+    pub snippet: String,
+    pub source: String,
+    pub relevance: usize,
 }
 
 /// A message being sent to the DeepInquire API
@@ -63,15 +66,24 @@ struct DeltaContent {
     content: String,
     #[serde(default)]
     articles: Vec<Article>,
+    metadata: Metadata,
     #[serde(default)]
-    r#type: Option<String>,
-    id: usize,
+    r#type: String,
+    id: String,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+struct Metadata {
+    #[serde(default)]
+    stage: String,
+}
 /// The Choice object in a streaming response
 #[derive(Clone, Debug, Deserialize)]
+#[allow(dead_code)]
 struct DeltaChoice {
-    delta: DeltaContent,
+    pub delta: DeltaContent,
+    index: usize,
+    finish_reason: Option<String>,
 }
 
 /// Response from the DeepInquire API
@@ -80,17 +92,46 @@ struct DeepInquireResponse {
     choices: Vec<DeltaChoice>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Stage {
-    id: usize,
-    thinking: Option<MessageContent>,
-    writing: Option<MessageContent>,
-    completed: Option<MessageContent>,
+    pub id: String,
+    pub citations: Vec<Article>,
+    pub substages: Vec<SubStage>,
+    pub stage_type: StageType
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default, Live, LiveHook, LiveRead)]
+pub enum StageType {
+    #[default]
+    Thinking,
+    #[pick]
+    Content,
+    Completion,
+}
+
+impl FromStr for StageType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "thinking" => Ok(StageType::Thinking),
+            "content" => Ok(StageType::Content),
+            "completion" => Ok(StageType::Completion),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct Data {
     stages: Vec<Stage>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct SubStage {
+    pub id: String,
+    pub text: String,
+    pub name: String,
 }
 
 #[derive(Clone, Debug)]
@@ -275,46 +316,49 @@ fn apply_response_to_content(response: DeepInquireResponse, content: &mut Messag
     for choice in response.choices {
         let delta = choice.delta;
 
-        let stage_id = delta.id;
-        let stage_type = delta.r#type;
-        let stage_content = MessageContent {
-            text: delta.content,
-            citations: delta.articles.into_iter().map(|a| a.url).collect(),
-            ..Default::default()
-        };
+        // The id from the server follows the format <substage_id>.<stream_chunk_id>, which is not useful for tracking
+        // the substages. Thefore we use the metadata 'stage' (a name for the substage) as the id to use for keeping track and upadting each substage.
+        // For the stage_id we use the id from the delta without the stream_chunk_id.
+        let stage_id = delta.id.split('.').next().unwrap_or(&delta.id).to_string();
+        let substage_id = delta.metadata.stage.clone();
+        let stage_type =  StageType::from_str(&delta.r#type).unwrap(); // TODO(Julian): handle errors
 
-        match stage_type.as_deref() {
-            Some("thinking") => {
-                create_or_update_stage(content, stage_id, move |stage| {
-                    stage.thinking = Some(stage_content);
-                });
+        create_or_update_stage(content, stage_type, stage_id, move |existing_stage| {            
+            // Check if the substage arriving in the response is already present in the accumulated content
+            let existing_substage = existing_stage.substages.iter_mut().find(|s| s.name == delta.metadata.stage);
+            if let Some(existing_substage) = existing_substage{
+                // SubStage exists, apply delta
+                existing_substage.text.push_str(&delta.content);
+            } else {
+                // SubStage does not exist, create a new one
+                existing_stage.substages.push(
+                    SubStage {
+                        id: substage_id,
+                        name: delta.metadata.stage,
+                        text: delta.content,
+                    }
+                )
             }
-            Some("content") => {
-                create_or_update_stage(content, stage_id, move |stage| {
-                    stage.writing = Some(stage_content);
-                });
-            }
-            Some("completion") => {
-                create_or_update_stage(content, stage_id, move |stage| {
-                    stage.completed = Some(stage_content);
-                });
-            }
-            Some(stage_type) => {
-                warning!("Unsupported DeepInquire stage type: {stage_type}. Ignoring.");
-            }
-            None => {
-                *content = MessageContent {
-                    data: content.data.take(),
-                    ..stage_content
-                }
-            }
-        }
+
+            // Citations are at the Stage level, extend without duplicating
+            let new_citations: Vec<_> = delta.articles
+                .into_iter()
+                .filter(|citation| !existing_stage.citations.contains(citation))
+                .collect();
+            
+            existing_stage.citations.extend(new_citations);
+
+            return;
+        });
+
+
     }
 }
 
 fn create_or_update_stage(
     content: &mut MessageContent,
-    stage_id: usize,
+    stage_type: StageType,
+    stage_id: String,
     update_fn: impl FnOnce(&mut Stage),
 ) {
     let mut data: Data = content
@@ -323,12 +367,17 @@ fn create_or_update_stage(
         .and_then(|d| serde_json::from_str(d).ok())
         .unwrap_or_default();
 
-    if let Some(existing_stage) = data.stages.iter_mut().find(|s| s.id == stage_id) {
-        update_fn(existing_stage);
+    // Find the existing stage by matching the enum variant
+    if let Some(mut existing_stage) = data.stages.iter_mut().find(|s|
+        s.stage_type == stage_type
+    ) {
+        update_fn(&mut existing_stage);
     } else {
         let mut new_stage = Stage {
             id: stage_id,
-            ..Default::default()
+            substages: vec![],
+            citations: vec![],
+            stage_type
         };
 
         update_fn(&mut new_stage);

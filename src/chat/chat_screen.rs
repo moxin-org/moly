@@ -290,7 +290,8 @@ impl WidgetMatchEvent for ChatScreen {
 
                         // Load messages from history into the messages widget
                         self.messages(id!(chat.messages)).write().messages = chat.borrow().messages.clone();
-                        self.messages(id!(chat.messages)).write().scroll_to_bottom(cx);
+                        // TODO: This is commented out because it causes the portal list to constantly redraw
+                        // self.messages(id!(chat.messages)).write().scroll_to_bottom(cx);
 
                         // Set the chat's associated model in the model selector
                         if let Some(bot_id) = &chat.borrow().associated_bot {
