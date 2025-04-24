@@ -1,5 +1,5 @@
 use super::stages::StagesWidgetExt;
-use crate::deep_inquire::Data;
+use crate::deep_inquire::{Data, StageType};
 use crate::protocol::*;
 use makepad_widgets::*;
 
@@ -68,16 +68,14 @@ impl DeepInquireContent {
         stages_ui.update_stages(cx, &stages);
 
         // Check if there is a completion block in any of the stages
-        let stage_with_completion = stages.iter().find(|stage| stage.completed.is_some());
-        if let Some(competion_block) = stage_with_completion {
+        let completion_stage = stages.iter().find(|stage| stage.stage_type == StageType::Completion);
+        if let Some(stage) = completion_stage {
+            // Iterate over the text of all substages and present them as one
+            let final_text = stage.substages.iter().map(|s| s.text.clone()).collect::<String>();
             self.markdown(id!(completed_block.completed_markdown))
                 .set_text(
                     cx,
-                    &competion_block
-                        .completed
-                        .as_ref()
-                        .unwrap()
-                        .text
+                    &final_text
                         .replace("\n\n", "\n\n\u{00A0}\n\n"),
                 );
         }

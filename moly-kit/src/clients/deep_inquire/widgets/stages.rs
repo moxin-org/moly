@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use makepad_widgets::*;
 
-use crate::deep_inquire::Stage;
-use crate::widgets::citation_list::CitationListWidgetRefExt;
+use crate::citation_list::CitationListWidgetExt;
+use crate::deep_inquire::{Stage, StageType, SubStage};
 
 live_design! {
     use link::theme::*;
@@ -13,7 +13,6 @@ live_design! {
     use makepad_code_editor::code_view::CodeView;
     use crate::widgets::citation_list::*;
     use crate::widgets::message_markdown::*;
-
 
     // A workaround for RoundedShadowView having the border_size defined as a uniform,
     // which breaks whenever updated through apply_over. This custom version replaces the properties with `instance` fields instead.
@@ -112,14 +111,13 @@ live_design! {
         }
     }
 
-    StageContentBlock = <StageBlockBase> {
-        visible: false
+    SubStage = <StageBlockBase> {
         width: Fill, height: Fit
         padding: {left: 30}
         margin: {left: 30}
 
         flow: Down
-        spacing: 8
+        spacing: 10
         content_heading_label = <Label> {
             width: Fill
             draw_text: {
@@ -129,23 +127,19 @@ live_design! {
             }
         }
         content_block_markdown = <MessageMarkdown> {}
+    }
 
-        citations_view = <View> {
-            visible: false
-            height: Fit
-            flow: Down, spacing: 10
-            <Label> {
-                draw_text: {
-                    color: #000
-                    text_style: {font_size: 10},
-                }
-                text: "Sources"
-            }
-            citations_list = <CitationList> {}
-        }
+    SubStages = {{SubStages}} {
+        flow: Down
+        width: Fill, height: Fit,
+        padding: {right: 200}
+        spacing: 20
+
+        substage_template: <SubStage> {}
     }
 
     StageView = {{StageView}}<View> {
+        visible: false
         width: Fill, height: Fit,
         wrapper = <View> {
             width: Fill, height: Fit,
@@ -202,13 +196,25 @@ live_design! {
                 }
             }
 
-            stage_content = <View> {
+            expanded_stage_content = <View> {
                 visible: false
-                width: Fill, height: Fit
-                spacing: 20
-                flow: Down
-                thinking_content_block = <StageContentBlock> { content_heading_label = { text: "Thinking" } }
-                writing_content_block = <StageContentBlock> { content_heading_label = { text: "Content" } }
+                flow: Down,
+                spacing: 25
+                height: Fit
+                substages = <SubStages> {}
+                citations_view = <StageBlockBase> {
+                    visible: false
+                    height: Fit
+                    flow: Down, spacing: 10
+                    <Label> {
+                        draw_text: {
+                            color: #000
+                            text_style: <THEME_FONT_BOLD> {font_size: 10},
+                        }
+                        text: "Sources"
+                    }
+                    citations_list = <CitationList> {}
+                }
             }
         }
     }
@@ -217,9 +223,30 @@ live_design! {
         flow: Down
         visible: false,
         width: Fill, height: Fit,
-        padding: {right: 200}
 
-        stage_view_template: <StageView> {}
+        thinking_stage = <StageView> {
+            stage_type: Thinking
+            wrapper = {
+                header = {
+                    stage_title = { text: "Thinking" }
+                    stage_toggle = {
+                        stage_bubble_text = { text: "🧠" }
+                    }
+                }
+            }
+        }
+
+        content_stage = <StageView> {
+            stage_type: Content
+            wrapper = {
+                header = {
+                    stage_title = { text: "Detailed Anaylsis" }
+                    stage_toggle = {
+                        stage_bubble_text = { text: "🔬" }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -228,42 +255,19 @@ pub struct Stages {
     #[deref]
     view: View,
 
-    /// The template for the citation views.
-    #[live]
-    stage_view_template: Option<LivePtr>,
-
     #[rust]
-    stage_ids: Vec<usize>,
-
-    #[rust]
-    stage_views: HashMap<usize, StageView>,
-
-    #[rust]
-    active_stage: usize,
+    stage_ids: Vec<String>,
 }
 
 impl Widget for Stages {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
 
-        for pill in self.stage_views.values_mut() {
-            pill.handle_event(cx, event, scope);
-        }
-
         self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        cx.begin_turtle(walk, self.layout);
-
-        for stage_id in self.stage_ids.iter() {
-            if let Some(stage_pill) = self.stage_views.get_mut(&stage_id) {
-                let _ = stage_pill.draw(cx, scope);
-            }
-        }
-
-        cx.end_turtle();
-        DrawStep::done()
+        self.view.draw_walk(cx, scope, walk)
     }
 }
 
@@ -271,16 +275,16 @@ impl WidgetMatchEvent for Stages {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         for action in actions {
             match action.cast() {
-                StageViewAction::StageViewClicked(stage_id) => {
-                    self.active_stage = stage_id;
-                    for (id, pill) in self.stage_views.iter_mut() {
-                        if *id == stage_id {
-                        } else {
-                            pill.is_active = false;
+                StageViewAction::StageViewClicked(clicked_stage) => {
+                    match clicked_stage {
+                        StageType::Thinking => {
+                            self.stage_view(id!(content_stage)).set_active(cx, false);
                         }
-                        pill.redraw(cx);
+                        StageType::Content => {
+                            self.stage_view(id!(thinking_stage)).set_active(cx, false);
+                        }
+                        _ => {}
                     }
-
                     self.redraw(cx);
                 }
                 _ => {}
@@ -292,19 +296,19 @@ impl WidgetMatchEvent for Stages {
 impl Stages {
     fn update_stages(&mut self, cx: &mut Cx, stages: &[Stage]) {
         self.visible = true;
-        self.stage_ids = stages.iter().map(|stage| stage.id).collect();
-        self.visible = true;
+        self.stage_ids = stages.iter().map(|stage| stage.id.clone()).collect();
 
         for stage in stages.iter() {
-            // If the stage widget exists, update it
-            if let Some(stage_view) = self.stage_views.get_mut(&stage.id) {
-                stage_view.set_stage(cx, &stage);
-            } else {
-                // Othwerise, create a new stage widget
-                let mut stage_view = StageView::new_from_ptr(cx, self.stage_view_template);
-                stage_view.set_stage(cx, &stage);
-
-                self.stage_views.insert(stage.id, stage_view);
+            match stage.stage_type {
+                StageType::Thinking => {
+                    let mut thinking_stage = self.stage_view(id!(thinking_stage));
+                    thinking_stage.set_stage(cx, &stage);
+                },
+                StageType::Content => {
+                    let mut content_stage = self.stage_view(id!(content_stage));
+                    content_stage.set_stage(cx, &stage);
+                },
+                _ => {}
             }
         }
 
@@ -326,7 +330,10 @@ pub struct StageView {
     view: View,
 
     #[rust]
-    id: usize,
+    id: String,
+
+    #[live]
+    stage_type: StageType,
 
     #[rust]
     is_active: bool,
@@ -356,8 +363,10 @@ impl Widget for StageView {
                     draw_bg: { border_size: 0 }
                 },
             );
-            self.view(id!(content)).set_visible(cx, false);
         }
+
+        self.view(id!(expanded_stage_content)).set_visible(cx, self.is_active);
+        self.view(id!(stage_content_preview)).set_visible(cx, !self.is_active);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -368,60 +377,40 @@ impl WidgetMatchEvent for StageView {
         if let Some(_fe) = self.view(id!(wrapper)).finger_down(actions) {
             self.is_active = !self.is_active;
             self.has_new_content = false;
-            self.view(id!(stage_content))
-                .set_visible(cx, self.is_active);
-            self.view(id!(stage_content_preview))
-                .set_visible(cx, !self.is_active);
-            cx.action(StageViewAction::StageViewClicked(self.id));
+            
+            cx.action(StageViewAction::StageViewClicked(self.stage_type.clone()));
+            self.redraw(cx);
         }
     }
 }
 
 impl StageView {
     fn set_stage(&mut self, cx: &mut Cx, stage: &Stage) {
-        self.id = stage.id;
-        self.label(id!(stage_title))
-            .set_text(cx, &format!("Stage {}", stage.id + 1));
-        self.label(id!(stage_bubble_text))
-            .set_text(cx, &format!("{}", stage.id + 1));
+        self.id = stage.id.clone();
+        self.stage_type = stage.stage_type.clone();
+        self.visible = true;
 
-        // Roughly the first 10 words of the thinking block of the stage
-        // TODO: this will be replaced in the future by an AI-provided summary
-        let mut stage_preview_text = None;
+        self.sub_stages(id!(substages)).set_substages(cx, &stage.substages);
 
-        if let Some(thinking) = &stage.thinking {
-            let thinking_content_block = self.view(id!(thinking_content_block));
-            thinking_content_block.set_visible(cx, true);
-            thinking_content_block
-                .markdown(id!(content_block_markdown))
-                .set_text(cx, &thinking.text.replace("\n\n", "\n\n\u{00A0}\n\n"));
-            stage_preview_text = Some(
-                thinking
-                    .text
-                    .split_whitespace()
-                    .take(10)
-                    .collect::<Vec<_>>()
-                    .join(" "),
-            );
+        if !stage.citations.is_empty() {
+            self.view(id!(citations_view)).set_visible(cx, true);
+            let citations = self.citation_list(id!(citations_list));
+            let mut citations = citations.borrow_mut().unwrap(); 
+            citations.urls = stage.citations.iter().map(|a| a.url.clone()).collect();
+        } else {
+            self.view(id!(citations_view)).set_visible(cx, false);
         }
 
-        if let Some(writing) = &stage.writing {
-            let writing_content_block = self.view(id!(writing_content_block));
-            writing_content_block.set_visible(cx, true);
-            writing_content_block
-                .markdown(id!(content_block_markdown))
-                .set_text(cx, &writing.text.replace("\n\n", "\n\n\u{00A0}\n\n"));
-
-            // Set citations from the message
-            if !writing.citations.is_empty() {
-                writing_content_block
-                    .view(id!(citations_view))
-                    .set_visible(cx, true);
-                let citations = writing_content_block.citation_list(id!(citations_list));
-                let mut citations = citations.borrow_mut().unwrap();
-                citations.urls = writing.citations.clone();
+        // TODO: this should be replaced in the future by an AI-provided summary
+        // Roughly grab the first 10 words of the first substage text to display as a preview
+        let stage_preview_text: Option<String> = stage.substages.get(0).and_then(|substage| {
+            let words: Vec<&str> = substage.text.split_whitespace().collect();
+            if words.len() > 10 {
+                Some(words[0..10].join(" "))
+            } else {
+                Some(substage.text.clone())
             }
-        }
+        });
 
         if let Some(stage_preview_text) = stage_preview_text {
             self.label(id!(stage_preview_label))
@@ -435,8 +424,109 @@ impl StageView {
     }
 }
 
+impl StageViewRef {
+    pub fn set_stage(&mut self, cx: &mut Cx, stage: &Stage) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_stage(cx, stage);
+        }
+    }
+
+    pub fn set_active(&mut self, cx: &mut Cx, is_active: bool) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_active = is_active;
+            inner.redraw(cx);
+        }
+    }
+}
+
 #[derive(Clone, Debug, DefaultNone)]
 pub enum StageViewAction {
     None,
-    StageViewClicked(usize),
+    StageViewClicked(StageType),
+}
+
+#[derive(Widget, Live, LiveHook)]
+pub struct SubStages {
+    #[deref]
+    view: View,
+
+    #[live]
+    substage_template: Option<LivePtr>,
+
+    #[rust]
+    substage_ids: Vec<String>,
+
+    #[rust]
+    substage_views: HashMap<String, View>,
+}
+
+impl Widget for SubStages {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if !self.visible { return DrawStep::done() }
+        cx.begin_turtle(walk, self.layout);
+
+        for stage_id in self.substage_ids.iter() {
+            if let Some(substage_view) = self.substage_views.get_mut(stage_id) {
+                let _ = substage_view.draw(cx, scope);
+            }
+        }
+
+        cx.end_turtle();
+        DrawStep::done()
+    }
+}
+
+impl SubStages {
+    pub fn update_substages(&mut self, cx: &mut Cx, substages: &[SubStage]) {
+        self.substage_ids = substages.iter().map(|substage| substage.id.clone()).collect();
+        self.visible = true;
+        for substage in substages.iter() {
+            // If the substage widget exists, update it
+            let substage_view = if let Some(substage_view) = self.substage_views.get_mut(&substage.id) {
+                substage_view
+            } else {
+                // Otherwise, create a new substage widget
+                let substage_view = View::new_from_ptr(cx, self.substage_template);
+                // substage_view.set_stage(cx, &substage);
+                self.substage_views.insert(substage.id.clone(), substage_view);
+                self.substage_views.get_mut(&substage.id).unwrap()
+            };
+
+            substage_view
+                .label(id!(content_heading_label))
+                .set_text(cx, &get_human_readable_stage_name(&substage.name));
+            substage_view
+                .view(id!(citations_view))
+                .set_visible(cx, false);
+            substage_view
+                .markdown(id!(content_block_markdown))
+                .set_text(cx, &substage.text.replace("\n\n", "\n\n\u{00A0}\n\n"));
+        }
+    }
+}
+
+impl SubStagesRef {
+    pub fn set_substages(&mut self, cx: &mut Cx, substages: &[SubStage]) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.update_substages(cx, substages);
+        }
+    }
+}
+
+// Replaces underscores with spaces, and capitalizes the first letter of each word
+pub fn get_human_readable_stage_name(name: &str) -> String {
+    name.split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().to_string() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
