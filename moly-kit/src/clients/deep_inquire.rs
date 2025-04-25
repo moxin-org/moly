@@ -1,4 +1,6 @@
+use crate::{protocol::*, utils::sse::parse_sse};
 use async_stream::stream;
+use makepad_widgets::*;
 use makepad_widgets::{Cx, LiveNew, WidgetRef};
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
@@ -9,8 +11,6 @@ use std::{
     time::Duration,
 };
 use widgets::deep_inquire_content::DeepInquireContent;
-use makepad_widgets::*;
-use crate::{protocol::*, utils::sse::parse_sse};
 
 pub(crate) mod widgets;
 
@@ -97,7 +97,7 @@ pub struct Stage {
     pub id: String,
     pub citations: Vec<Article>,
     pub substages: Vec<SubStage>,
-    pub stage_type: StageType
+    pub stage_type: StageType,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Default, Live, LiveHook, LiveRead)]
@@ -239,6 +239,15 @@ impl BotClient for DeepInquireClient {
         let stream = stream! {
             let response = match request.send().await {
                 Ok(response) => {
+                    if !response.status().is_success() {
+                        let status = response.status();
+                        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error response".to_string());
+                        yield ClientError::new(
+                            ClientErrorKind::Remote,
+                            format!("Server returned error status: {} - {}", status, error_text),
+                        ).into();
+                        return;
+                    }
                     response
                 },
                 Err(error) => {
@@ -253,15 +262,35 @@ impl BotClient for DeepInquireClient {
 
             let events = parse_sse(response.bytes_stream());
             let mut content = MessageContent::default();
+            let mut consecutive_timeouts = 0;
+            let max_consecutive_timeouts = 3;
+            let mut message_count = 0;
+            // Only yield to UI every 10 messages to reduce back-pressure
+            let yield_frequency = 10;
 
             for await event in events {
                 let event = match event {
-                    Ok(chunk) => chunk,
+                    Ok(chunk) => {
+                        consecutive_timeouts = 0; // Reset timeout counter on success
+                        message_count += 1;
+                        chunk
+                    },
                     Err(error) => {
                         if error.is_timeout() {
-                            eprintln!("Timeout waiting for chunk, continuing to wait... Error: {}", error);
+                            consecutive_timeouts += 1;
+
+                            if consecutive_timeouts >= max_consecutive_timeouts {
+                                yield ClientError::new_with_source(
+                                    ClientErrorKind::Network,
+                                    format!("Too many consecutive timeouts ({}) while reading from {url}. Giving up.", consecutive_timeouts),
+                                    Some(error),
+                                ).into();
+                                return;
+                            }
+
                             continue;
                         } else {
+                            println!("Error {:?}", error);
                             yield ClientError::new_with_source(
                                 ClientErrorKind::Network,
                                 format!("Response streaming got interrupted while reading from {url}. This may be a problem with your connection or the server."),
@@ -285,8 +314,16 @@ impl BotClient for DeepInquireClient {
                 };
 
                 apply_response_to_content(response, &mut content);
-                yield ClientResult::new_ok(content.clone());
+
+                // Only yield to UI periodically to reduce back-pressure
+                // The first 20 messages are yielded immediately to ensure the UI is updated
+                if message_count % yield_frequency == 0 || message_count < 20 {
+                    yield ClientResult::new_ok(content.clone());
+                }
             }
+
+            // Final yield to ensure the last state is captured
+            yield ClientResult::new_ok(content.clone());
         };
 
         moly_stream(stream)
@@ -321,37 +358,37 @@ fn apply_response_to_content(response: DeepInquireResponse, content: &mut Messag
         // For the stage_id we use the id from the delta without the stream_chunk_id.
         let stage_id = delta.id.split('.').next().unwrap_or(&delta.id).to_string();
         let substage_id = delta.metadata.stage.clone();
-        let stage_type =  StageType::from_str(&delta.r#type).unwrap(); // TODO(Julian): handle errors
+        let stage_type = StageType::from_str(&delta.r#type).unwrap(); // TODO(Julian): handle errors
 
-        create_or_update_stage(content, stage_type, stage_id, move |existing_stage| {            
+        create_or_update_stage(content, stage_type, stage_id, move |existing_stage| {
             // Check if the substage arriving in the response is already present in the accumulated content
-            let existing_substage = existing_stage.substages.iter_mut().find(|s| s.name == delta.metadata.stage);
-            if let Some(existing_substage) = existing_substage{
+            let existing_substage = existing_stage
+                .substages
+                .iter_mut()
+                .find(|s| s.name == delta.metadata.stage);
+            if let Some(existing_substage) = existing_substage {
                 // SubStage exists, apply delta
                 existing_substage.text.push_str(&delta.content);
             } else {
                 // SubStage does not exist, create a new one
-                existing_stage.substages.push(
-                    SubStage {
-                        id: substage_id,
-                        name: delta.metadata.stage,
-                        text: delta.content,
-                    }
-                )
+                existing_stage.substages.push(SubStage {
+                    id: substage_id,
+                    name: delta.metadata.stage,
+                    text: delta.content,
+                })
             }
 
             // Citations are at the Stage level, extend without duplicating
-            let new_citations: Vec<_> = delta.articles
+            let new_citations: Vec<_> = delta
+                .articles
                 .into_iter()
                 .filter(|citation| !existing_stage.citations.contains(citation))
                 .collect();
-            
+
             existing_stage.citations.extend(new_citations);
 
             return;
         });
-
-
     }
 }
 
@@ -368,16 +405,14 @@ fn create_or_update_stage(
         .unwrap_or_default();
 
     // Find the existing stage by matching the enum variant
-    if let Some(mut existing_stage) = data.stages.iter_mut().find(|s|
-        s.stage_type == stage_type
-    ) {
+    if let Some(mut existing_stage) = data.stages.iter_mut().find(|s| s.stage_type == stage_type) {
         update_fn(&mut existing_stage);
     } else {
         let mut new_stage = Stage {
             id: stage_id,
             substages: vec![],
             citations: vec![],
-            stage_type
+            stage_type,
         };
 
         update_fn(&mut new_stage);
@@ -393,14 +428,11 @@ pub(crate) fn parse_deep_inquire_data(data: &str) -> Option<Data> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn default_client() -> reqwest::Client {
-    // On native, there are no default timeouts. Connection may hang if we don't
-    // configure them.
     reqwest::Client::builder()
-        // Only considered while establishing the connection.
+        // Only considered while establishing the connection
         .connect_timeout(Duration::from_secs(15))
-        // Increase the read timeout considerably for DeepInquire's slow responses
-        // DeepInquire might be slower than OpenAI because of the multi-stage processing
-        .read_timeout(Duration::from_secs(60)) // Increased from 15s to 60s
+        // Keep high read timeout for word-by-word streaming
+        .read_timeout(Duration::from_secs(300))
         .build()
         .unwrap()
 }
