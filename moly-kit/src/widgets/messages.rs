@@ -132,6 +132,10 @@ pub struct Messages {
     #[rust]
     visible_range: Option<(usize, usize)>,
 
+    /// Used to trigger a defered scroll to bottom after the message list has been replaced.
+    #[rust]
+    should_defer_scroll_to_bottom: bool,
+
     #[rust]
     hovered_index: Option<usize>,
 }
@@ -153,11 +157,6 @@ impl Widget for Messages {
                 let _ = robius_open::Uri::new(url.as_str()).open();
             }
         }
-
-        let list = self.portal_list(id!(list));
-        if list.smooth_scroll_reached(event.actions()) {
-            list.set_first_id(self.messages.len());
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -174,7 +173,7 @@ impl Widget for Messages {
 }
 
 impl Messages {
-    fn draw_list(&mut self, cx: &mut Cx2d, list: PortalListRef) {
+    fn draw_list(&mut self, cx: &mut Cx2d, list_ref: PortalListRef) {
         self.is_list_end_drawn = false;
         self.visible_range = None;
 
@@ -190,7 +189,14 @@ impl Messages {
             is_writing: false,
         });
 
-        let mut list = list.borrow_mut().unwrap();
+        if self.should_defer_scroll_to_bottom {
+            // Note: Not using `smooth_scroll_to_end` because it makes asumptions about the list range and the items
+            // that are only true after we've updated the list through itreation on next_visible_item.
+            list_ref.set_first_id(self.messages.len().saturating_sub(1));
+            self.should_defer_scroll_to_bottom = false;
+        }
+
+        let mut list = list_ref.borrow_mut().unwrap();
         list.set_item_range(cx, 0, self.messages.len());
 
         while let Some(index) = list.next_visible_item(cx) {
@@ -332,7 +338,7 @@ impl Messages {
         }
 
         self.button(id!(jump_to_bottom))
-            .set_visible(cx, !self.is_list_end_drawn);
+            .set_visible(cx, !self.is_at_bottom());
     }
 
     /// Check if we're at the end of the messages list.
@@ -345,7 +351,7 @@ impl Messages {
         if self.messages.len() > 0 {
             let list = self.portal_list(id!(list));
 
-            list.smooth_scroll_to_end(cx, 100.0, None);
+            list.smooth_scroll_to_end(cx, 60.0, None);
         }
     }
 
@@ -466,6 +472,12 @@ impl Messages {
                 .text_input(id!(input))
                 .set_text(cx, self.current_editor.as_ref().unwrap().buffer.clone());
         }
+    }
+
+    /// Set the messages and defer a scroll to bottom if requested.
+    pub fn set_messages(&mut self, messages: Vec<Message>, scroll_to_bottom: bool) {
+        self.messages = messages;
+        self.should_defer_scroll_to_bottom = scroll_to_bottom;
     }
 }
 
