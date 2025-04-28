@@ -468,7 +468,7 @@ impl Chat {
                 let index = messages.read().messages.len() - 1;
                 let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
 
-                if messages.read().is_at_bottom() {
+                if !messages.read().is_at_bottom() {
                     tasks.push(ChatTask::ScrollToBottom);
                 }
 
@@ -502,7 +502,7 @@ impl Chat {
                     })
                     .collect::<Vec<_>>();
 
-                if messages.read().is_at_bottom() {
+                if !messages.read().is_at_bottom() {
                     tasks.push(ChatTask::ScrollToBottom);
                 }
 
