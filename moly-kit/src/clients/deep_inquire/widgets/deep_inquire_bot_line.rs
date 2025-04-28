@@ -1,6 +1,7 @@
 use super::stages::StagesWidgetExt;
 use crate::deep_inquire::Data;
 use crate::protocol::*;
+use crate::standard_message_content::StandardMessageContentWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
@@ -9,12 +10,13 @@ live_design! {
     use link::shaders::*;
 
     use crate::clients::deep_inquire::widgets::stages::*;
-    use crate::widgets::message_markdown::*;
+    use crate::widgets::standard_message_content::*;
     use crate::widgets::chat_lines::*;
 
     pub DeepInquireBotLine = {{DeepInquireBotLine}} <BotLine> {
         message_section = {
-            bubble = {
+            content_section = {
+                flow: Down,
                 <Label> {
                     text: "Steps"
                     draw_text: {
@@ -28,7 +30,7 @@ live_design! {
                 completed_block = <View> {
                     width: Fill, height: Fit,
                     padding: {right: 18, top: 18, bottom: 14},
-                    completed_markdown = <MessageMarkdown> {}
+                    completed_content = <StandardMessageContent> {}
                 }
             }
         }
@@ -78,16 +80,10 @@ impl DeepInquireBotLine {
         // Check if there is a completion block in any of the stages
         let stage_with_completion = stages.iter().find(|stage| stage.completed.is_some());
         if let Some(competion_block) = stage_with_completion {
-            self.markdown(id!(completed_block.completed_markdown))
-                .set_text(
-                    cx,
-                    &competion_block
-                        .completed
-                        .as_ref()
-                        .unwrap()
-                        .text
-                        .replace("\n\n", "\n\n\u{00A0}\n\n"),
-                );
+            self.standard_message_content(id!(completed_block.completed_content))
+                .borrow_mut()
+                .unwrap()
+                .set_content(cx, competion_block.completed.as_ref().unwrap());
         }
     }
 }

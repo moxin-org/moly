@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use makepad_widgets::*;
 
 use crate::deep_inquire::Stage;
-use crate::widgets::citation_list::CitationListWidgetRefExt;
+use crate::standard_message_content::StandardMessageContentWidgetRefExt;
 
 live_design! {
     use link::theme::*;
@@ -11,8 +11,7 @@ live_design! {
     use link::widgets::*;
 
     use makepad_code_editor::code_view::CodeView;
-    use crate::widgets::citation_list::*;
-    use crate::widgets::message_markdown::*;
+    use crate::widgets::standard_message_content::*;
 
 
     // A workaround for RoundedShadowView having the border_size defined as a uniform,
@@ -128,21 +127,7 @@ live_design! {
                 color: #003E62
             }
         }
-        content_block_markdown = <MessageMarkdown> {}
-
-        citations_view = <View> {
-            visible: false
-            height: Fit
-            flow: Down, spacing: 10
-            <Label> {
-                draw_text: {
-                    color: #000
-                    text_style: {font_size: 10},
-                }
-                text: "Sources"
-            }
-            citations_list = <CitationList> {}
-        }
+        content_block_content = <StandardMessageContent> {}
     }
 
     StageView = {{StageView}}<View> {
@@ -187,6 +172,7 @@ live_design! {
                     }
                 }
             }
+
             stage_content_preview = <StageBlockBase> {
                 padding: {left: 30}
                 margin: {left: 30}
@@ -409,18 +395,10 @@ impl StageView {
             let writing_content_block = self.view(id!(writing_content_block));
             writing_content_block.set_visible(cx, true);
             writing_content_block
-                .markdown(id!(content_block_markdown))
-                .set_text(cx, &writing.text.replace("\n\n", "\n\n\u{00A0}\n\n"));
-
-            // Set citations from the message
-            if !writing.citations.is_empty() {
-                writing_content_block
-                    .view(id!(citations_view))
-                    .set_visible(cx, true);
-                let citations = writing_content_block.citation_list(id!(citations_list));
-                let mut citations = citations.borrow_mut().unwrap();
-                citations.urls = writing.citations.clone();
-            }
+                .standard_message_content(id!(content_block_content))
+                .borrow_mut()
+                .unwrap()
+                .set_content(cx, writing);
         }
 
         if let Some(stage_preview_text) = stage_preview_text {

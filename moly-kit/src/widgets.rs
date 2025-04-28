@@ -5,11 +5,11 @@
 mod avatar;
 mod chat_lines;
 mod citation;
-pub(crate) mod citation_list;
+mod citation_list;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
-mod standard_message_content;
+pub(crate) mod standard_message_content;
 
 pub mod messages;
 pub use messages::*;
