@@ -396,8 +396,6 @@ impl StageView {
             writing_content_block.set_visible(cx, true);
             writing_content_block
                 .standard_message_content(id!(content_block_content))
-                .borrow_mut()
-                .unwrap()
                 .set_content(cx, writing);
         }
 

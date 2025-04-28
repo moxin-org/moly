@@ -254,8 +254,6 @@ impl Messages {
                     item.label(id!(name)).set_text(cx, "You");
 
                     item.standard_message_content(id!(content))
-                        .borrow_mut()
-                        .unwrap()
                         .set_content(cx, &message.content);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
@@ -290,8 +288,6 @@ impl Messages {
                         let item = list.item(cx, index, live_id!(BotLine));
 
                         item.standard_message_content(id!(content))
-                            .borrow_mut()
-                            .unwrap()
                             .set_content(cx, &message.content);
 
                         item

@@ -81,8 +81,6 @@ impl DeepInquireBotLine {
         let stage_with_completion = stages.iter().find(|stage| stage.completed.is_some());
         if let Some(competion_block) = stage_with_completion {
             self.standard_message_content(id!(completed_block.completed_content))
-                .borrow_mut()
-                .unwrap()
                 .set_content(cx, competion_block.completed.as_ref().unwrap());
         }
     }
