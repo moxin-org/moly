@@ -264,7 +264,9 @@ impl BotClient for DeepInquireClient {
             .as_ref()
             .and_then(|data| serde_json::from_str::<Data>(data).ok())
             .map(|_| {
-                let mut widget = DeepInquireContent::new(cx);
+                let lti = DeepInquireContent::live_type_info(cx);
+                let mut widget =
+                    DeepInquireContent::new_from_module(cx, lti.module_id, lti.type_name).unwrap();
                 widget.set_content(cx, content);
                 WidgetRef::new_with_inner(Box::new(widget))
             })

@@ -1,3 +1,4 @@
+use makepad_widgets::*;
 use moly_kit::protocol::*;
 use std::collections::VecDeque;
 
@@ -37,6 +38,14 @@ impl BotClient for TesterClient {
                         ..Default::default()
                     })
                 }
+                Some("data") => {
+                    let data = input.make_contiguous().join(" ");
+                    ClientResult::new_ok(MessageContent {
+                        text: format!("This message has the data: {data}."),
+                        data: Some(data),
+                        ..Default::default()
+                    })
+                }
                 Some("error") => ClientResult::new_err(
                     ClientError::new(
                         ClientErrorKind::Unknown,
@@ -73,5 +82,38 @@ impl BotClient for TesterClient {
 
     fn clone_box(&self) -> Box<dyn BotClient> {
         Box::new(TesterClient)
+    }
+
+    fn content_widget(&mut self, cx: &mut Cx, content: &MessageContent) -> Option<WidgetRef> {
+        let data = content.data.as_deref()?;
+
+        let color = match data {
+            "red" => Vec4 {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
+            _ => Vec4 {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
+        };
+
+        let mut view = View::new(cx);
+
+        view.apply_over(
+            cx,
+            live! {
+                show_bg: true,
+                draw_bg: {
+                    color: (color)
+                }
+            },
+        );
+
+        Some(WidgetRef::new_with_inner(Box::new(view)))
     }
 }

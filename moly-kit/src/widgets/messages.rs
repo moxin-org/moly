@@ -1,9 +1,6 @@
 use std::cell::{Ref, RefMut};
 
 use crate::{
-    clients::deep_inquire::{
-        parse_deep_inquire_data, widgets::deep_inquire_bot_line::DeepInquireBotLineWidgetRefExt,
-    },
     protocol::*,
     utils::{events::EventExt, portal_list::ItemsRangeIter},
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
@@ -11,8 +8,8 @@ use crate::{
 use makepad_widgets::*;
 
 use super::{
-    citation::CitationAction, standard_message_content::StandardMessageContentWidgetRefExt,
-    wrap::WrapWidgetRefExt,
+    citation::CitationAction, slot::SlotWidgetRefExt,
+    standard_message_content::StandardMessageContentWidgetRefExt,
 };
 
 live_design! {
@@ -21,7 +18,6 @@ live_design! {
     use link::shaders::*;
 
     use crate::widgets::chat_lines::*;
-    use crate::clients::deep_inquire::widgets::deep_inquire_bot_line::*;
 
     pub Messages = {{Messages}} {
         flow: Overlay,
@@ -34,7 +30,6 @@ live_design! {
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
-            DeepInquireBotLine = <DeepInquireBotLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -254,10 +249,8 @@ impl Messages {
                         Some(Picture::Grapheme("y".into()));
                     item.label(id!(name)).set_text(cx, "You");
 
-                    item.wrap(id!(content))
-                        .borrow_mut()
-                        .unwrap()
-                        .wrap
+                    item.slot(id!(content))
+                        .default()
                         .as_standard_message_content()
                         .borrow_mut()
                         .unwrap()
@@ -279,29 +272,23 @@ impl Messages {
                         let item = list.item(cx, index, live_id!(LoadingLine));
                         item.message_loading(id!(text.loading)).animate(cx);
                         item
-                    } else if let Some(_) = message
-                        .content
-                        .data
-                        .as_deref()
-                        .and_then(|data| parse_deep_inquire_data(data))
-                    {
-                        let item = list.item(cx, index, live_id!(DeepInquireBotLine));
-                        item.as_deep_inquire_bot_line()
-                            .borrow_mut()
-                            .unwrap()
-                            .set_content(cx, &message.content);
-                        item
                     } else {
                         let item = list.item(cx, index, live_id!(BotLine));
+                        let mut slot = item.slot(id!(content));
 
-                        item.wrap(id!(content))
-                            .borrow_mut()
-                            .unwrap()
-                            .wrap
-                            .as_standard_message_content()
-                            .borrow_mut()
-                            .unwrap()
-                            .set_content(cx, &message.content);
+                        if let Some(custom_content) =
+                            repo.client().content_widget(cx, &message.content)
+                        {
+                            slot.replace(custom_content);
+                        } else {
+                            slot.default()
+                                .as_standard_message_content()
+                                .borrow_mut()
+                                .unwrap()
+                                .set_content(cx, &message.content);
+
+                            slot.restore();
+                        }
 
                         item
                     };

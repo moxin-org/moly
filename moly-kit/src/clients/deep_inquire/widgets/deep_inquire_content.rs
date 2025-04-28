@@ -8,31 +8,31 @@ live_design! {
     use link::widgets::*;
     use link::shaders::*;
 
-    use crate::widgets::stages::*;
-    use crate::widgets::message_markdown::*;
-
-    BOLD_FONT = {
-        font: {path: dep("crate://makepad-widgets/resources/IBMPlexSans-SemiBold.ttf")}
-    }
+    // use crate::widgets::stages::*;
+    // use crate::widgets::message_markdown::*;
 
     pub DeepInquireContent = {{DeepInquireContent}} {
-        flow: Down,
-        height: Fit,
-        <Label> {
-            text: "Steps"
-            draw_text: {
-                color: #x0,
-                text_style: <BOLD_FONT>{font_size: 12},
-            }
-        }
+        width: 100,
+        height: 100,
+        show_bg: true,
+        draw_bg: { color: #f00},
+        // flow: Down,
+        // height: Fit,
+        // <Label> {
+        //     text: "Steps"
+        //     draw_text: {
+        //         color: #x0,
+        //         text_style: <THEME_FONT_BOLD>{font_size: 12},
+        //     }
+        // }
 
-        stages = <Stages> {}
+        // stages = <Stages> {}
 
-        completed_block = <View> {
-            width: Fill, height: Fit,
-            padding: {right: 18, top: 18, bottom: 14},
-            completed_markdown = <MessageMarkdown> {}
-        }
+        // completed_block = <View> {
+        //     width: Fill, height: Fit,
+        //     padding: {right: 18, top: 18, bottom: 14},
+        //     completed_markdown = <MessageMarkdown> {}
+        // }
     }
 }
 
@@ -48,6 +48,7 @@ impl Widget for DeepInquireContent {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        println!("DeepInquireContent draw_walk");
         self.view.draw_walk(cx, scope, walk)
     }
 }

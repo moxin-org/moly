@@ -9,8 +9,8 @@ pub(crate) mod citation_list;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
+mod slot;
 mod standard_message_content;
-mod wrap;
 
 pub mod messages;
 pub use messages::*;
@@ -32,10 +32,9 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     message_markdown::live_design(cx);
     message_loading::live_design(cx);
     avatar::live_design(cx);
-    wrap::live_design(cx);
+    slot::live_design(cx);
     standard_message_content::live_design(cx);
     chat_lines::live_design(cx);
-    crate::deep_inquire::widgets::live_design(cx);
     messages::live_design(cx);
     prompt_input::live_design(cx);
     chat::live_design(cx);
