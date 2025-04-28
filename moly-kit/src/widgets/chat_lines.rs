@@ -146,11 +146,10 @@ live_design! {
 
     pub LoadingLine = <BotLine> {
         message_section = {
-            bubble = {
-                content_section = <View> {
-                    height: Fit,
-                    loading = <MessageLoading> {}
-                }
+            content_section = <View> {
+                height: Fit,
+                padding: {left: 32}
+                loading = <MessageLoading> {}
             }
         }
     }
