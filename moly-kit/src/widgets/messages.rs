@@ -270,7 +270,8 @@ impl Messages {
 
                     let item = if message.is_writing && message.content.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
-                        item.message_loading(id!(text.loading)).animate(cx);
+                        item.message_loading(id!(content_section.loading))
+                            .animate(cx);
                         item
                     } else if let Some(_) = message
                         .content
