@@ -37,6 +37,10 @@ impl MolyClient {
         }
     }
 
+    pub fn address(&self) -> &str {
+        self.address.as_str()
+    }
+
     pub fn test_connection(&self, tx: Sender<Result<(), anyhow::Error>>) {
         let url = format!("{}/ping", self.address);
         let client = self.client.clone();
