@@ -48,7 +48,7 @@ live_design! {
             color_focus: #BDBDBD
         }
         draw_bg: {
-            fn pixel() -> vec4 {
+            fn pixel(self) -> vec4 {
                 return #0000
             }
         }
