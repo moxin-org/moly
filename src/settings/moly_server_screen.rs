@@ -22,7 +22,7 @@ live_design! {
     SUBSIDEBAR_BG_COLOR = (MAIN_BG_COLOR)
     SUBSIDEBAR_BG_COLOR_HOVER = #ebedee
     SUBSIDEBAR_BG_COLOR_SELECTED = #ebedee
-    
+
     SUBSIDEBAR_FONT_COLOR = #2C3E50
     SUBSIDEBAR_FONT_COLOR_HOVER = #2C3E50
     SUBSIDEBAR_FONT_COLOR_SELECTED = #344054
@@ -87,7 +87,7 @@ live_design! {
                 }
                 text: "MolyServer (disconnected)"
             }
-    
+
             <Label> {
                 width: Fill, height: Fit
                 draw_text:{
@@ -146,13 +146,13 @@ live_design! {
                 width: 130, height: Fill,
                 flow: Down,
                 padding: { top: 50, bottom: 20, left: 5, right: 8 },
-    
+
                 show_bg: true,
                 draw_bg: {
                     color: (SUBSIDEBAR_BG_COLOR),
                     instance border_radius: 0.0,
                 }
-    
+
                 discover_tab = <SubSidebarMenuButton> {
                     animator: {active = {default: on}}
                     text: "Discover",
@@ -167,7 +167,7 @@ live_design! {
                     }
                 }
             }
-    
+
             right_border = <View> {
                 width: 1.6, height: Fill
                 margin: {top: 15, bottom: 15}
@@ -176,7 +176,7 @@ live_design! {
                     color: #eaeaea
                 }
             }
-    
+
             pages = <View> {
                 discover_frame = <View> { visible: true, <LandingScreen> {} }
                 my_models_frame = <View> { visible: false, <MyModelsScreen> {} }
@@ -221,7 +221,9 @@ impl WidgetMatchEvent for MolyServerScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         // RadioButton's selected_to_visible does not seem to work at this level
         // So we're manually checking the selected index and setting the visibility of the pages manually
-        let selected_index = self.radio_button_set(ids!(menu.discover_tab, menu.my_models_tab)).selected(cx, actions);
+        let selected_index = self
+            .radio_button_set(ids!(menu.discover_tab, menu.my_models_tab))
+            .selected(cx, actions);
 
         let discover_frame = self.view(id!(pages.discover_frame));
         let my_models_frame = self.view(id!(pages.my_models_frame));
@@ -239,7 +241,6 @@ impl WidgetMatchEvent for MolyServerScreen {
             }
             _ => (),
         }
-
 
         if self.button(id!(go_to_providers)).clicked(actions) {
             cx.action(NavigationAction::NavigateToProviders);

@@ -44,7 +44,7 @@ live_design! {
                 }
                 text: "Provider Settings"
             }
-    
+
             <Label> {
                 draw_text:{
                     text_style: <BOLD_FONT>{font_size: 12}
@@ -85,9 +85,18 @@ impl WidgetMatchEvent for ProvidersScreen {
         for action in actions {
             if let ConnectionSettingsAction::ProviderSelected(address) = action.cast() {
                 // fetch provider from store
-                let provider = scope.data.get_mut::<Store>().unwrap().chats.providers.get(&address);
+                let provider = scope
+                    .data
+                    .get_mut::<Store>()
+                    .unwrap()
+                    .chats
+                    .providers
+                    .get(&address);
+
                 if let Some(provider) = provider {
-                    self.view.provider_view(id!(provider_view)).set_provider(cx, provider);
+                    self.view
+                        .provider_view(id!(provider_view))
+                        .set_provider(cx, provider);
                 } else {
                     eprintln!("Provider not found: {}", address);
                 }

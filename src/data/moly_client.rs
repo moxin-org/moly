@@ -1,11 +1,11 @@
+use futures::TryStreamExt;
+use makepad_widgets::*;
 use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
     protocol::FileDownloadResponse,
 };
-use url::Url;
 use std::sync::{mpsc::Sender, Arc, Mutex};
-use futures::TryStreamExt;
-use makepad_widgets::*;
+use url::Url;
 
 #[derive(Clone, Debug)]
 pub struct MolyClient {
@@ -13,7 +13,6 @@ pub struct MolyClient {
     client: reqwest::Client,
     pub is_connected: Arc<Mutex<bool>>,
 }
-
 
 #[allow(dead_code)]
 impl MolyClient {
@@ -26,7 +25,7 @@ impl MolyClient {
         Self {
             address,
             client,
-            is_connected: Arc::new(Mutex::new(false))
+            is_connected: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -84,7 +83,8 @@ impl MolyClient {
                                 let _ = tx.send(Ok(models));
                             }
                             Err(e) => {
-                                let _ = tx.send(Err(anyhow::anyhow!("Failed to parse models: {}", e)));
+                                let _ =
+                                    tx.send(Err(anyhow::anyhow!("Failed to parse models: {}", e)));
                             }
                         }
                     } else {
@@ -117,7 +117,8 @@ impl MolyClient {
                                 let _ = tx.send(Ok(models));
                             }
                             Err(e) => {
-                                let _ = tx.send(Err(anyhow::anyhow!("Failed to parse models: {}", e)));
+                                let _ =
+                                    tx.send(Err(anyhow::anyhow!("Failed to parse models: {}", e)));
                             }
                         }
                     } else {
@@ -151,7 +152,8 @@ impl MolyClient {
                             }
                             Err(e) => {
                                 eprintln!("Error parsing files: {}", e);
-                                let _ = tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
+                                let _ =
+                                    tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
                             }
                         }
                     } else {
@@ -184,7 +186,8 @@ impl MolyClient {
                                 let _ = tx.send(Ok(files));
                             }
                             Err(e) => {
-                                let _ = tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
+                                let _ =
+                                    tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
                             }
                         }
                     } else {
@@ -202,24 +205,32 @@ impl MolyClient {
         });
     }
 
-    pub fn download_file(&self, file: File, tx: tokio::sync::mpsc::Sender<Result<(), anyhow::Error>>) {
+    pub fn download_file(
+        &self,
+        file: File,
+        tx: tokio::sync::mpsc::Sender<Result<(), anyhow::Error>>,
+    ) {
         let url = format!("{}/downloads", self.address);
         let client = self.client.clone();
         let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
-            let resp = client.post(&url)
+            let resp = client
+                .post(&url)
                 .json(&serde_json::json!({
                     "file_id": file.id
                 }))
-                .send().await;
+                .send()
+                .await;
 
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
                         let _ = tx.send(Ok(())).await;
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status()))).await;
+                        let _ = tx
+                            .send(Err(anyhow::anyhow!("Server error: {}", r.status())))
+                            .await;
                     }
                 }
                 Err(e) => {
@@ -233,8 +244,13 @@ impl MolyClient {
         });
     }
 
-    pub async fn track_download_progress(&self, file_id: FileID, tx: tokio::sync::mpsc::Sender<Result<FileDownloadResponse, anyhow::Error>>) {
-        let mut url = Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
+    pub async fn track_download_progress(
+        &self,
+        file_id: FileID,
+        tx: tokio::sync::mpsc::Sender<Result<FileDownloadResponse, anyhow::Error>>,
+    ) {
+        let mut url =
+            Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
         url.path_segments_mut()
             .expect("Cannot modify path segments")
             .pop_if_empty()
@@ -254,40 +270,51 @@ impl MolyClient {
                 while let Ok(Some(chunk)) = bytes.try_next().await {
                     if let Ok(text) = String::from_utf8(chunk.to_vec()) {
                         buffer.push_str(&text);
-                        
+
                         while let Some(pos) = buffer.find('\n') {
                             let line = buffer[..pos].trim().to_string();
                             buffer = buffer[pos + 1..].to_string();
 
                             if line.starts_with("event: ") {
-                                current_event = line.trim_start_matches("event: ").trim().to_string();
+                                current_event =
+                                    line.trim_start_matches("event: ").trim().to_string();
                             } else if line.starts_with("data: ") {
                                 let event_data = line.trim_start_matches("data: ").trim();
                                 match current_event.as_str() {
                                     "complete" => {
-                                        if let Err(e) = tx.send(Ok(FileDownloadResponse::Completed(
-                                            moly_protocol::data::DownloadedFile::default()
-                                        ))).await {
+                                        if let Err(e) = tx
+                                            .send(Ok(FileDownloadResponse::Completed(
+                                                moly_protocol::data::DownloadedFile::default(),
+                                            )))
+                                            .await
+                                        {
                                             eprintln!("Failed to send completion message: {}", e);
                                         }
                                         break;
                                     }
                                     "error" => {
-                                        if let Err(e) = tx.send(Err(anyhow::anyhow!("Download failed"))).await {
+                                        if let Err(e) =
+                                            tx.send(Err(anyhow::anyhow!("Download failed"))).await
+                                        {
                                             eprintln!("Failed to send error message: {}", e);
                                         }
                                         break;
                                     }
                                     "progress" => {
                                         if let Ok(value) = event_data.parse::<f32>() {
-                                            let _ = tx.send(Ok(FileDownloadResponse::Progress(file_id.clone(), value))).await;
+                                            let _ = tx
+                                                .send(Ok(FileDownloadResponse::Progress(
+                                                    file_id.clone(),
+                                                    value,
+                                                )))
+                                                .await;
                                         }
                                     }
                                     _ => {}
                                 }
                             }
                         }
-                        
+
                         if current_event == "complete" || current_event == "error" {
                             break;
                         }
@@ -305,7 +332,8 @@ impl MolyClient {
     }
 
     pub fn pause_download_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
-        let mut url = Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
+        let mut url =
+            Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
 
         // Add the ID as a path segment (auto-encodes special characters)
         url.path_segments_mut()
@@ -317,11 +345,13 @@ impl MolyClient {
         let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
-            let resp = client.post(url)
+            let resp = client
+                .post(url)
                 .json(&serde_json::json!({
                     "file_id": file_id
                 }))
-                .send().await;
+                .send()
+                .await;
 
             match resp {
                 Ok(r) => {
@@ -343,7 +373,8 @@ impl MolyClient {
     }
 
     pub fn cancel_download_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
-        let mut url = Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
+        let mut url =
+            Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
 
         // Add the ID as a path segment (auto-encodes special characters)
         url.path_segments_mut()
@@ -355,11 +386,13 @@ impl MolyClient {
         let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
-            let resp = client.delete(url)
+            let resp = client
+                .delete(url)
                 .json(&serde_json::json!({
                     "file_id": file_id
                 }))
-                .send().await;
+                .send()
+                .await;
 
             match resp {
                 Ok(r) => {
@@ -381,7 +414,8 @@ impl MolyClient {
     }
 
     pub fn delete_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
-        let mut url = Url::parse(&format!("{}/files", self.address)).expect("Invalid Moly server URL");
+        let mut url =
+            Url::parse(&format!("{}/files", self.address)).expect("Invalid Moly server URL");
 
         // Add the ID as a path segment (auto-encodes special characters)
         url.path_segments_mut()
@@ -393,8 +427,7 @@ impl MolyClient {
         let is_connected = self.is_connected.clone();
 
         tokio::spawn(async move {
-            let resp = client.delete(url)
-                .send().await;
+            let resp = client.delete(url).send().await;
 
             match resp {
                 Ok(r) => {

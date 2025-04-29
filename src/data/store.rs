@@ -19,8 +19,8 @@ use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
-use moly_kit::*;
 use makepad_widgets::*;
+use moly_kit::*;
 
 #[allow(dead_code)]
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
@@ -93,7 +93,7 @@ impl Store {
 
         store.chats.load_chats();
         store.init_current_chat();
-        
+
         store.sync_with_moly_server();
         store.load_preference_connections();
 
@@ -114,13 +114,15 @@ impl Store {
                     self.downloads.load_pending_downloads();
                     self.search.load_featured_models();
                 }
-                Err(_err) => {},
+                Err(_err) => {}
             }
         };
     }
 
     pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {
-        self.chats.get_chat_by_id(chat_id).and_then(|chat| chat.borrow().associated_bot.clone())
+        self.chats
+            .get_chat_by_id(chat_id)
+            .and_then(|chat| chat.borrow().associated_bot.clone())
     }
 
     /// This function combines the search results information for a given model
@@ -221,7 +223,8 @@ impl Store {
     }
 
     pub fn handle_provider_connection_action(&mut self, result: ProviderFetchModelsResult) {
-        self.chats.handle_provider_connection_result(result, &mut self.preferences);
+        self.chats
+            .handle_provider_connection_result(result, &mut self.preferences);
     }
 
     /// Loads the preference connections from the preferences and registers them in the chats.
@@ -230,7 +233,9 @@ impl Store {
         let mut final_list = Vec::new();
 
         for s in &supported {
-            let maybe_prefs = self.preferences.providers_preferences
+            let maybe_prefs = self
+                .preferences
+                .providers_preferences
                 .iter()
                 .find(|pp| pp.url == s.url);
 
@@ -286,10 +291,18 @@ impl Store {
 
     fn auto_fetch_for_enabled_providers(&mut self) {
         // Automatically fetch providers that are enabled and have an API key or are MoFa servers
-        let urls_to_fetch: Vec<String> = self.preferences.providers_preferences
+        let urls_to_fetch: Vec<String> = self
+            .preferences
+            .providers_preferences
             .iter()
             // TODO: If the provider requires an API key, we should fetch only if the API key is set
-            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.provider_type == ProviderType::DeepInquire || pp.url.starts_with("http://localhost")))
+            .filter(|pp| {
+                pp.enabled
+                    && (pp.api_key.is_some()
+                        || pp.provider_type == ProviderType::MoFa
+                        || pp.provider_type == ProviderType::DeepInquire
+                        || pp.url.starts_with("http://localhost"))
+            })
             .map(|pp| pp.url.clone())
             .collect();
 
