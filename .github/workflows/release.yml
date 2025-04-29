@@ -32,17 +32,11 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         rust: [1.81]
-    env:
-      LD_LIBRARY_PATH: ~\.wasmedge\lib
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install WasmEdge
-        run: |
-          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
-          source $HOME/.wasmedge/env
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -59,7 +53,6 @@ jobs:
 
       - name: Build
         run: |
-          source $HOME/.wasmedge/env
           cargo packager --release --verbose
           ls dist/
 
@@ -84,11 +77,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-
-      - name: Install WasmEdge
-        run: |
-          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install_v2.sh | bash -s -- --version=0.14.1
-          source $HOME/.wasmedge/env
 
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
@@ -118,27 +106,9 @@ jobs:
     strategy:
       matrix:
         rust: [1.81]
-    env:
-      WASMEDGE_DIR: ${{ github.workspace }}\WasmEdge-0.14.1-Windows
     steps:
-      - name: Display ENV
-        run: |
-          echo $env:WASMEDGE_DIR
-
       - name: Checkout sources
         uses: actions/checkout@v3
-
-      - name: Download WasmEdge
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-0.14.1-windows.zip" -OutFile "WasmEdge-0.14.1-windows.zip"
-          Expand-Archive -LiteralPath "WasmEdge-0.14.1-windows.zip" -DestinationPath ${{ github.workspace }}
-          tree /F ${{ github.workspace }}\WasmEdge
-
-      - name: Set up Windows 10 SDK
-        uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
-        with:
-          sdk-version: 20348
 
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
