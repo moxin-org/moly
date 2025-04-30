@@ -102,7 +102,6 @@ fn main() -> std::io::Result<()> {
 ///    of the directory created in step 1, which is currently `./dist/resources/makepad_widgets/`.
 ///    The location of the `makepad-widgets` crate is determined using `cargo-metadata`.
 /// 3. Recursively copies the Moly-specific `./resources` directory to `./dist/resources/moly/`.
-/// 4. (If macOS) Downloads WasmEdge and sets up the plugins into the `./wasmedge/` directory.
 fn before_packaging(host_os: &str) -> std::io::Result<()> {
     let cwd = std::env::current_dir()?;
     let dist_resources_dir = cwd.join("dist").join("resources");
@@ -149,101 +148,6 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
     println!("Copying moly resources...\n  --> From {}\n      to:   {}", moly_resources_src.display(), moly_resources_dest.display());
     copy_recursively(&moly_resources_src, &moly_resources_dest)?;
     println!("  --> Done!");
-
-    if host_os == "macos" {
-       download_wasmedge_macos("0.14.1")?;
-    }
-
-    Ok(())
-}
-
-
-/// Downloads WasmEdge and extracts it to the `./wasmedge/` directory.
-///
-/// This function effectively runs the following shell commands:
-/// ```sh
-///    mkdir -p ./wasmedge \
-///    && curl -sfL --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-0.14.1-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge \
-///    && mkdir -p ./wasmedge/WasmEdge-0.14.1-Darwin/plugin \
-///    && curl -sf --location --progress-bar --show-error https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-plugin-wasi_nn-ggml-0.14.1-darwin_arm64.tar.gz | bsdtar -xf- -C ./wasmedge/WasmEdge-0.14.1-Darwin/plugin; \
-/// ```
-fn download_wasmedge_macos(version: &str) -> std::io::Result<()> {
-    // Command 1: Create the destination directory.
-    let dest_dir = std::env::current_dir()?.join("wasmedge");
-    fs::create_dir_all(&dest_dir)?;
-    #[cfg(target_arch = "x86_64")]
-    let suffix = "x86_64";
-    #[cfg(target_arch = "aarch64")]
-    let suffix = "arm64";
-    let (wasmedge_download_url, wasi_nn_download_url) = (
-    format!(
-        "https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-{}-darwin_{}.tar.gz",
-        version, version, suffix
-    ),
-    format!(
-        "https://github.com/WasmEdge/WasmEdge/releases/download/{}/WasmEdge-plugin-wasi_nn-ggml-{}-darwin_{}.tar.gz",
-        version, version, suffix
-    ),
-    );
-    // Command 2: Download and extract WasmEdge.
-    {
-        println!("Downloading wasmedge v{version} to: {}", dest_dir.display());
-        let curl_script_cmd = Command::new("curl")
-            .arg("-sSfL")
-            .arg(wasmedge_download_url)
-            .stdout(Stdio::piped())
-            .spawn()?;
-
-        let bsdtar_cmd = Command::new("bsdtar")
-            .arg("-xf-")
-            .arg("-C")
-            .arg(&dest_dir)
-            .stdin(Stdio::from(curl_script_cmd.stdout.expect("failed to pipe curl stdout into bsdtar stdin")))
-            .spawn()?;
-
-        let output = bsdtar_cmd.wait_with_output()?;
-        if !output.status.success() {
-            eprintln!("Failed to install WasmEdge: {}
-                ------------------------- stderr: -------------------------
-                {:?}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr),
-            );
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "The wasmedge install_v2.sh script failed."));
-        }
-    }
-
-    // Command 3: Create the plugin destination directory.
-    let plugin_dest_dir = dest_dir.join("WasmEdge-0.14.1-Darwin").join("plugin");
-    fs::create_dir_all(&plugin_dest_dir)?;
-    
-    // Command 4: Download and extract the Wasi-NN plugin.
-    {
-        println!("Downloading wasmedge v{version} WASI-NN plugin to: {}", plugin_dest_dir.display());
-        let curl_script_cmd = Command::new("curl")
-            .arg("-sSfL")
-            .arg(wasi_nn_download_url)
-            .stdout(Stdio::piped())
-            .spawn()?;
-
-        let bsdtar_cmd = Command::new("bsdtar")
-            .arg("-xf-")
-            .arg("-C")
-            .arg(&plugin_dest_dir)
-            .stdin(Stdio::from(curl_script_cmd.stdout.expect("failed to pipe curl stdout into bsdtar stdin")))
-            .spawn()?;
-
-        let output = bsdtar_cmd.wait_with_output()?;
-        if !output.status.success() {
-            eprintln!("Failed to install WasmEdge Wasi-NN plugin: {}
-                ------------------------- stderr: -------------------------
-                {:?}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr),
-            );
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "The wasmedge install_v2.sh script failed."));
-        }
-    }
 
     Ok(())
 }

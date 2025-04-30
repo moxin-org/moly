@@ -107,9 +107,6 @@ binaries = [
 ## (see the below `resources = [...]` block below),
 ## so we need to copy the resources to a known fixed (static) path before packaging,
 ## such that cargo-packager can locate them and include them in the final package.
-##
-## In addition, on macOS only, we must download the WasmEdge plugins in order to include them
-## in the macOS app bundle. This is because macOS apps must include all dependencies in order to pass notarization.
 before-packaging-command = """
 cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-packaging
 """
@@ -148,17 +145,9 @@ depends = "./dist/depends_deb.txt"
 desktop_template = "./packaging/moly.desktop"
 section = "utils"
 
-[package.metadata.packager.appimage]
-## `curl` is needed for `moly-runner` to auto-install wasmedge.
-bins = ["/usr/bin/curl"]
-
 [package.metadata.packager.macos]
 minimum_system_version = "11.0"
 infoPlistPath = "./packaging/Info.plist"
-frameworks = [
-    "./wasmedge/WasmEdge-0.14.1-Darwin/lib/libwasmedge.0.dylib",
-    "./wasmedge/WasmEdge-0.14.1-Darwin/plugin/libwasmedgePluginWasiNN.dylib",
-]
 
 
 ## Configuration for `cargo packager`'s generation of a macOS `.dmg`.
