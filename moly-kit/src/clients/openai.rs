@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use crate::protocol::*;
+use crate::{protocol::*, utils::errors::enrich_http_error};
 use crate::utils::{serde::deserialize_null_default, sse::parse_sse};
 
 /// A model from the models endpoint.
@@ -263,8 +263,23 @@ impl BotClient for OpenAIClient {
         let stream = stream! {
             let response = match request.send().await {
                 Ok(response) => {
-                    response
-                },
+                    if response.status().is_success() {
+                        response
+                    } else {
+                        let status_code = response.status();
+                        if let Err(error) = response.error_for_status() {
+                            let original = format!("Request failed: {error}");
+                            let enriched = enrich_http_error(status_code, &original);
+
+                            yield ClientError::new_with_source(
+                                ClientErrorKind::Remote,
+                                enriched,
+                                Some(error),
+                            ).into();
+                        }
+                        return;
+                    }
+                }
                 Err(error) => {
                     yield ClientError::new_with_source(
                         ClientErrorKind::Network,
