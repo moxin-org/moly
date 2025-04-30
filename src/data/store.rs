@@ -54,6 +54,19 @@ pub struct ModelWithDownloadInfo {
     pub files: Vec<FileWithDownloadInfo>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum ProviderSyncingStatus {
+    NotSyncing,
+    Syncing(ProviderSyncing),
+    Synced,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProviderSyncing {
+    pub current: u32,
+    pub total: u32,
+}
+
 pub struct Store {
     pub search: Search,
     pub downloads: Downloads,
@@ -61,6 +74,7 @@ pub struct Store {
     pub preferences: Preferences,
     pub bot_repo: Option<BotRepo>,
     moly_client: Arc<MolyClient>,
+    pub provider_syncing_status: ProviderSyncingStatus,
 }
 
 impl Default for Store {
@@ -89,6 +103,7 @@ impl Store {
             moly_client,
             preferences,
             bot_repo: None,
+            provider_syncing_status: ProviderSyncingStatus::NotSyncing,
         };
 
         store.chats.load_chats();
@@ -236,7 +251,8 @@ impl Store {
     }
 
     pub fn handle_provider_connection_action(&mut self, result: ProviderFetchModelsResult) {
-        self.chats.handle_provider_connection_result(result, &mut self.preferences);
+        if let ProviderFetchModelsResult::None = result { return; }
+        self.chats.handle_provider_connection_result(result, &mut self.preferences, &mut self.provider_syncing_status);
     }
 
     /// Loads the preference connections from the preferences and registers them in the chats.
@@ -307,6 +323,11 @@ impl Store {
             .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.provider_type == ProviderType::DeepInquire || pp.url.starts_with("http://localhost")))
             .map(|pp| pp.url.clone())
             .collect();
+
+        self.provider_syncing_status = ProviderSyncingStatus::Syncing(ProviderSyncing {
+            current: 0,
+            total: urls_to_fetch.len() as u32,
+        });
 
         for url in urls_to_fetch {
             if let Some(provider) = self.chats.providers.get(&url) {

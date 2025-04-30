@@ -1,8 +1,7 @@
 use crate::{
-    data::store::Store,
-    shared::{
+    chat::model_selector_loading::ModelSelectorLoadingWidgetExt, data::store::{ProviderSyncingStatus, Store}, shared::{
         actions::ChatAction, modal::ModalWidgetExt, utils::format_model_size
-    },
+    }
 };
 use makepad_widgets::*;
 use moly_kit::BotId;
@@ -92,11 +91,11 @@ live_design! {
                 width: Fit,
                 height: Fit,
                 align: {x: 1.0, y: 0.5},
-                margin: {left: 6, right: 6},
+                margin: {left: 8, right: 8, top: 2},
 
                 icon = <RotatedImage> {
-                    height: 14,
-                    width: 14,
+                    height: 12,
+                    width: 12,
                     source: (ICON_DROP),
                     draw_bg: {
                         rotation: 0.0
@@ -214,7 +213,8 @@ impl Widget for ModelSelector {
         if let Hit::FingerDown(fd) =
             event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
         {
-            if fd.tap_count == 1 && !store.chats.available_bots.is_empty() {
+            let is_syncing = matches!(store.provider_syncing_status, ProviderSyncingStatus::Syncing(_));
+            if fd.tap_count == 1 && !store.chats.available_bots.is_empty() && !is_syncing {
                 self.open = !self.open;
 
                 if self.open {
@@ -286,6 +286,14 @@ impl Widget for ModelSelector {
                 }
             }
         }
+
+        // Trigger a redraw if the provider syncing status has changed
+        if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
+            // TODO: use the syncing info to show a progress bar instead.
+            self.model_selector_loading(id!(loading)).show_and_animate(cx);
+        } else {
+            self.model_selector_loading(id!(loading)).hide();
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -295,7 +303,22 @@ impl Widget for ModelSelector {
         if self.currently_selected_model.is_none() {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(selected_bot)).set_visible(cx, false);
+            self.view(id!(icon_drop)).set_visible(cx, true);
             choose_label.set_text(cx, "Choose your AI assistant");
+            let color = vec3(0.0, 0.0, 0.0);
+            choose_label.apply_over(
+                cx,
+                live! {
+                    draw_text: {
+                        color: (color)
+                    }
+                },
+            );
+        } else if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
+            self.view(id!(choose)).set_visible(cx, true);
+            self.view(id!(icon_drop)).set_visible(cx, false);
+            self.view(id!(selected_bot)).set_visible(cx, false);
+            choose_label.set_text(cx, "Syncing assistants...");
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,
@@ -358,39 +381,16 @@ impl ModelSelector {
         self.redraw(cx);
     }
 
-    // fn update_loading_model_state(&mut self, cx: &mut Cx, store: &Store) {
-    //     let is_associated_model_loading = store
-    //         .chats
-    //         .get_current_chat()
-    //         .and_then(|c| match &c.borrow().associated_entity {
-    //             Some(ChatEntityId::ModelFile(file_id)) => Some(file_id.clone()),
-    //             _ => None,
-    //         })
-    //         .map(|file_id| {
-    //             let model_loader = &store.chats.model_loader;
-    //             model_loader.file_id() == Some(file_id) && model_loader.is_loading()
-    //         })
-    //         .unwrap_or(false);
-
-    //     if is_associated_model_loading {
-    //         self.model_selector_loading(id!(loading))
-    //             .show_and_animate(cx);
-    //     } else {
-    //         self.model_selector_loading(id!(loading)).hide();
-    //     }
-    // }
-
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
         self.view(id!(choose)).set_visible(cx, false);
 
         let associated_bot = store.chats.get_current_chat().and_then(|c| c.borrow().associated_bot.clone());
-        
         if let Some(bot_id) = associated_bot {
 
             let Some(bot) = store.chats.get_bot(&bot_id) else { 
-                self.currently_selected_model = None;
                 return;
             };
+            self.view(id!(icon_drop)).set_visible(cx, true);
 
             // Local model styling
             if store.chats.is_local_model(&bot_id) {
@@ -457,9 +457,10 @@ impl ModelSelector {
 }
 
 impl ModelSelectorRef {
-    pub fn set_currently_selected_model(&mut self, model: Option<BotId>) {
+    pub fn set_currently_selected_model(&mut self, cx: &mut Cx, model: Option<BotId>) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.currently_selected_model = model;
+            inner.redraw(cx);
         }
     }
 }
