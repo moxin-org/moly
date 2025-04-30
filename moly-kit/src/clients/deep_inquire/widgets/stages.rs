@@ -228,7 +228,7 @@ live_design! {
                             header = {
                                 stage_toggle = { draw_bg: {
                                     shadow_offset: vec2(0.0, -2.0),
-                                    shadow_color: #x0007
+                                    shadow_color: #x0001
                                 } }
                             }
                         }
