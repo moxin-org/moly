@@ -200,13 +200,13 @@ impl WidgetMatchEvent for ChatScreen {
             match action.cast() {
                 ChatAction::Start(bot_id) => {
                     store.chats.create_empty_chat(Some(bot_id.clone()));
-                    self.messages(id!(chat.messages)).write().messages = vec![];
+                    self.messages(id!(chat.messages)).write().set_messages(vec![], true);
                     self.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
-                    self.model_selector(id!(model_selector)).set_currently_selected_model(Some(bot_id));
+                    self.model_selector(id!(model_selector)).set_currently_selected_model(cx, Some(bot_id));
                     // self.focus_on_prompt_input_pending = true;
                 }
                 ChatAction::StartWithoutEntity => {
-                    self.messages(id!(chat.messages)).write().messages = vec![];
+                    self.messages(id!(chat.messages)).write().set_messages(vec![], true);
                     // self.focus_on_prompt_input_pending = true;
                 }
                 _ => {}
@@ -293,7 +293,7 @@ impl WidgetMatchEvent for ChatScreen {
 
                         // Set the chat's associated model in the model selector
                         if let Some(bot_id) = &chat.borrow().associated_bot {
-                            self.model_selector(id!(model_selector)).set_currently_selected_model(Some(bot_id.clone()));
+                            self.model_selector(id!(model_selector)).set_currently_selected_model(cx, Some(bot_id.clone()));
                             self.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
                         }
 
