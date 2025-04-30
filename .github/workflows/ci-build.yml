@@ -7,14 +7,14 @@ concurrency:
 on:
   push:
     branches:
-      - 'main'
-      - 'dev'
+      - "main"
+      - "dev"
     paths-ignore:
       - "**/*.md"
   pull_request:
     branches:
-      - 'main'
-      - 'dev'
+      - "main"
+      - "dev"
     paths-ignore:
       - "**/*.md"
 
@@ -24,7 +24,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04]
+        os: [ubuntu-22.04]
         rust: [1.81]
     env:
       LD_LIBRARY_PATH: ~\.wasmedge\lib
@@ -121,7 +121,7 @@ jobs:
       - name: Build
         run: |
           cargo build
-      
+
       - name: Build before-packaging-command
         run: |
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
