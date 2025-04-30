@@ -1,3 +1,4 @@
+use crate::utils::errors::enrich_http_error;
 use crate::{protocol::*, utils::sse::parse_sse};
 use async_stream::stream;
 use makepad_widgets::*;
@@ -239,17 +240,23 @@ impl BotClient for DeepInquireClient {
         let stream = stream! {
             let response = match request.send().await {
                 Ok(response) => {
-                    if !response.status().is_success() {
-                        let status = response.status();
-                        let error_text = response.text().await.unwrap_or_else(|_| "Could not read error response".to_string());
-                        yield ClientError::new(
-                            ClientErrorKind::Remote,
-                            format!("Server returned error status: {} - {}", status, error_text),
-                        ).into();
+                    if response.status().is_success() {
+                        response
+                    } else {
+                        let status_code = response.status();
+                        if let Err(error) = response.error_for_status() {
+                            let original = format!("Request failed: {error}");
+                            let enriched = enrich_http_error(status_code, &original);
+
+                            yield ClientError::new_with_source(
+                                ClientErrorKind::Remote,
+                                enriched,
+                                Some(error),
+                            ).into();
+                        }
                         return;
                     }
-                    response
-                },
+                }
                 Err(error) => {
                     yield ClientError::new_with_source(
                         ClientErrorKind::Network,
