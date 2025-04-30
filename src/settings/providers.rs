@@ -136,10 +136,6 @@ live_design! {
             provider_item = <ProviderItem> {}
         }
 
-        filler = <View> {
-            height: Fill, width: 1
-        }
-
         add_provider_button = <RoundedShadowView> {
             cursor: Hand
             margin: {left: 10, right: 10, bottom: 5, top: 10}

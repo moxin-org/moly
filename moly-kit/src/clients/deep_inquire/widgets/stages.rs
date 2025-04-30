@@ -201,19 +201,94 @@ live_design! {
                 flow: Down,
                 spacing: 25
                 height: Fit
-                substages = <SubStages> {}
                 citations_view = <StageBlockBase> {
                     visible: false
                     height: Fit
                     flow: Down, spacing: 10
                     <Label> {
                         draw_text: {
-                            color: #000
-                            text_style: <THEME_FONT_BOLD> {font_size: 10},
+                            color: #003E62
+                            text_style: <THEME_FONT_BOLD> {font_size: 11},
                         }
                         text: "Sources"
                     }
                     citations_list = <CitationList> {}
+                }
+                substages = <SubStages> {}
+            }
+        }
+        
+        animator: {
+            streaming = {
+                default: off,
+                off = {
+                    from: {all: Snap}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(0.0, -2.0),
+                                    shadow_color: #x0001
+                                } }
+                            }
+                        }
+                    }
+                }
+                move_up = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.4 }}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(0.0, -4.0),
+                                    shadow_color: #x0002
+                                } }
+                            }
+                        }
+                    }
+                }
+                move_right = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.4 }}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(3.0, -2.0),
+                                    shadow_color: #x0002
+                                } }
+                            }
+                        }
+                    }
+                }
+                move_down = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.4 }}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(0.0, 1.0),
+                                    shadow_color: #x0002
+                                } }
+                            }
+                        }
+                    }
+                }
+                move_left = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.4 }}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(-3.0, -2.0),
+                                    shadow_color: #x0002
+                                } }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -298,15 +373,22 @@ impl Stages {
         self.visible = true;
         self.stage_ids = stages.iter().map(|stage| stage.id.clone()).collect();
 
+        let has_content_stage = stages.iter().any(|s| s.stage_type == StageType::Content);
+        let has_completion_stage = stages.iter().any(|s| s.stage_type == StageType::Completion);
+
         for stage in stages.iter() {
             match stage.stage_type {
                 StageType::Thinking => {
                     let mut thinking_stage = self.stage_view(id!(thinking_stage));
                     thinking_stage.set_stage(cx, &stage);
+                    // Thinking streams if content stage doesn't exist yet
+                    thinking_stage.set_streaming_state(cx, !has_content_stage);
                 },
                 StageType::Content => {
                     let mut content_stage = self.stage_view(id!(content_stage));
                     content_stage.set_stage(cx, &stage);
+                    // Content streams if completion stage doesn't exist yet
+                    content_stage.set_streaming_state(cx, !has_completion_stage);
                 },
                 _ => {}
             }
@@ -329,6 +411,12 @@ pub struct StageView {
     #[deref]
     view: View,
 
+    #[animator]
+    animator: Animator,
+
+    #[rust]
+    timer: Timer,
+
     #[rust]
     id: String,
 
@@ -339,11 +427,40 @@ pub struct StageView {
     is_active: bool,
 
     #[rust]
-    has_new_content: bool,
+    is_streaming: bool,
 }
 
 impl Widget for StageView {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // Handle timer events for looping animation
+        if self.timer.is_event(event).is_some() {
+            if self.is_streaming {
+                // Cycle through animation states
+                if self.animator_in_state(cx, id!(streaming.move_up)) {
+                    self.animator_play(cx, id!(streaming.move_right));
+                } else if self.animator_in_state(cx, id!(streaming.move_right)) {
+                    self.animator_play(cx, id!(streaming.move_down));
+                } else if self.animator_in_state(cx, id!(streaming.move_down)) {
+                    self.animator_play(cx, id!(streaming.move_left));
+                } else { // Assumes it's in move_left or just started
+                    self.animator_play(cx, id!(streaming.move_up));
+                }
+                // Restart the timer for the next step
+                self.timer = cx.start_timeout(0.4); // Match state duration
+            } else {
+                 // If streaming stopped while timer was pending, ensure animation is off
+                 self.animator_cut(cx, id!(streaming.off));
+                 if !self.timer.is_empty() {
+                     cx.stop_timer(self.timer);
+                     self.timer = Timer::empty(); // Clear timer
+                 }
+            }
+        }
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+             self.redraw(cx);
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
@@ -376,7 +493,6 @@ impl WidgetMatchEvent for StageView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(_fe) = self.view(id!(wrapper)).finger_down(actions) {
             self.is_active = !self.is_active;
-            self.has_new_content = false;
             
             cx.action(StageViewAction::StageViewClicked(self.stage_type.clone()));
             self.redraw(cx);
@@ -404,11 +520,23 @@ impl StageView {
         // TODO: this should be replaced in the future by an AI-provided summary
         // Roughly grab the first 10 words of the first substage text to display as a preview
         let stage_preview_text: Option<String> = stage.substages.get(0).and_then(|substage| {
-            let words: Vec<&str> = substage.text.split_whitespace().collect();
+            // Since we're using plain text for summary, remove common markdown characters
+            let cleaned_text = substage.text
+                .replace("*", "")
+                .replace("_", "")
+                .replace("#", "")
+                .replace("`", "")
+                .replace("[", "")
+                .replace("]", "")
+                .replace("(", "")
+                .replace(")", "")
+                .replace(">", "");
+            
+            let words: Vec<&str> = cleaned_text.split_whitespace().collect();
             if words.len() > 10 {
                 Some(words[0..10].join(" "))
             } else {
-                Some(substage.text.clone())
+                Some(cleaned_text)
             }
         });
 
@@ -420,6 +548,30 @@ impl StageView {
                 .set_text(cx, "Loading...");
         }
 
+        self.redraw(cx);
+    }
+
+    fn set_streaming_state(&mut self, cx: &mut Cx, is_streaming: bool) {
+        if is_streaming == self.is_streaming {
+            return;
+        }
+        self.is_streaming = is_streaming;
+
+        if self.is_streaming {
+            // Start animation only if timer isn't already running
+            if self.timer.is_empty() {
+                // Start the animation cycle
+                self.animator_play(cx, id!(streaming.move_up));
+                self.timer = cx.start_timeout(0.01); // Start timer almost immediately
+            }
+        } else {
+            // Stop animation and reset state
+            self.animator_cut(cx, id!(streaming.off)); // Go directly to off state
+            if !self.timer.is_empty() {
+                cx.stop_timer(self.timer);
+                self.timer = Timer::empty();
+            }
+        }
         self.redraw(cx);
     }
 }
@@ -435,6 +587,12 @@ impl StageViewRef {
         if let Some(mut inner) = self.borrow_mut() {
             inner.is_active = is_active;
             inner.redraw(cx);
+        }
+    }
+
+    pub fn set_streaming_state(&mut self, cx: &mut Cx, is_streaming: bool) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_streaming_state(cx, is_streaming);
         }
     }
 }
