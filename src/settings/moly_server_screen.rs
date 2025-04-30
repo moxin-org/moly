@@ -108,7 +108,7 @@ live_design! {
                     text_style: <BOLD_FONT>{font_size: 12}
                     color: #000
                 }
-                text: "Could not reach MolyServer.\nPlease check if its running, and verify your provider settings."
+                text: "We could not reach the server.\nPlease make sure it is running and that MolyServer is enabled in the provider settings."
             }
 
             <View> {
