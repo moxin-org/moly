@@ -108,7 +108,7 @@ live_design! {
                     text_style: <BOLD_FONT>{font_size: 12}
                     color: #000
                 }
-                text: "Could not reach MolyServer.\nPlease check if its running, and verify your provider settings."
+                text: "We could not reach the server.\nPlease make sure it is running and that MolyServer is enabled in the provider settings."
             }
 
             <View> {
@@ -191,9 +191,6 @@ live_design! {
 pub struct MolyServerScreen {
     #[deref]
     view: View,
-
-    #[rust]
-    has_server_been_accessible: bool,
 }
 
 impl Widget for MolyServerScreen {
@@ -205,10 +202,9 @@ impl Widget for MolyServerScreen {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
         if store.is_moly_server_connected() {
-            self.has_server_been_accessible = true;
             self.view(id!(server_not_accessible)).set_visible(cx, false);
             self.view(id!(main_content)).set_visible(cx, true);
-        } else if !self.has_server_been_accessible {
+        } else {
             self.view(id!(server_not_accessible)).set_visible(cx, true);
             self.view(id!(main_content)).set_visible(cx, false);
         }

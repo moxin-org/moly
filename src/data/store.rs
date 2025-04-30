@@ -100,11 +100,26 @@ impl Store {
         store
     }
 
-    pub fn is_moly_server_connected(&self) -> bool {
-        self.moly_client.is_connected()
+    /// Check if the main moly server provider is enabled in settings.
+    pub fn is_moly_server_enabled(&self) -> bool {
+        self.preferences.providers_preferences.iter().any(|p| {
+            p.provider_type == ProviderType::MolyServer
+                && p.enabled
+                && p.url.starts_with(self.moly_client.address())
+        })
     }
 
+    /// Check if the connection to moly server was successful.
+    pub fn is_moly_server_connected(&self) -> bool {
+        self.moly_client.is_connected() && self.is_moly_server_enabled()
+    }
+
+    /// Pull the latest data from moly server.
     pub fn sync_with_moly_server(&mut self) {
+        if !self.is_moly_server_enabled() {
+            return;
+        }
+
         let (tx, rx) = channel();
         self.moly_client.test_connection(tx);
         if let Ok(response) = rx.recv() {
