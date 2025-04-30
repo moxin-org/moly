@@ -1,7 +1,6 @@
 use super::chat_history_card::ChatHistoryCardWidgetRefExt;
 use crate::chat::entity_button::EntityButtonWidgetRefExt;
 use crate::data::chats::chat::ChatID;
-use crate::data::providers::ProviderBot;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 use makepad_widgets::*;

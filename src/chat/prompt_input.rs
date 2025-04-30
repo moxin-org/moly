@@ -401,15 +401,3 @@ impl LiveHook for PromptInput {
         );
     }
 }
-
-impl PromptInputRef {
-    pub fn reset_text(&mut self, cx: &mut Cx, set_key_focus: bool) {
-        let prompt = self.command_text_input(id!(prompt));
-
-        if set_key_focus {
-            prompt.request_text_input_focus();
-        }
-
-        prompt.reset(cx);
-    }
-}

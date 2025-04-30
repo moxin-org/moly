@@ -201,20 +201,20 @@ live_design! {
                 flow: Down,
                 spacing: 25
                 height: Fit
-                substages = <SubStages> {}
                 citations_view = <StageBlockBase> {
                     visible: false
                     height: Fit
                     flow: Down, spacing: 10
                     <Label> {
                         draw_text: {
-                            color: #000
-                            text_style: <THEME_FONT_BOLD> {font_size: 10},
+                            color: #003E62
+                            text_style: <THEME_FONT_BOLD> {font_size: 11},
                         }
                         text: "Sources"
                     }
                     citations_list = <CitationList> {}
                 }
+                substages = <SubStages> {}
             }
         }
     }
@@ -337,9 +337,6 @@ pub struct StageView {
 
     #[rust]
     is_active: bool,
-
-    #[rust]
-    has_new_content: bool,
 }
 
 impl Widget for StageView {
@@ -376,7 +373,6 @@ impl WidgetMatchEvent for StageView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(_fe) = self.view(id!(wrapper)).finger_down(actions) {
             self.is_active = !self.is_active;
-            self.has_new_content = false;
             
             cx.action(StageViewAction::StageViewClicked(self.stage_type.clone()));
             self.redraw(cx);
@@ -404,11 +400,23 @@ impl StageView {
         // TODO: this should be replaced in the future by an AI-provided summary
         // Roughly grab the first 10 words of the first substage text to display as a preview
         let stage_preview_text: Option<String> = stage.substages.get(0).and_then(|substage| {
-            let words: Vec<&str> = substage.text.split_whitespace().collect();
+            // Since we're using plain text for summary, remove common markdown characters
+            let cleaned_text = substage.text
+                .replace("*", "")
+                .replace("_", "")
+                .replace("#", "")
+                .replace("`", "")
+                .replace("[", "")
+                .replace("]", "")
+                .replace("(", "")
+                .replace(")", "")
+                .replace(">", "");
+            
+            let words: Vec<&str> = cleaned_text.split_whitespace().collect();
             if words.len() > 10 {
                 Some(words[0..10].join(" "))
             } else {
-                Some(substage.text.clone())
+                Some(cleaned_text)
             }
         });
 
