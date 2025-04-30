@@ -217,6 +217,45 @@ live_design! {
                 substages = <SubStages> {}
             }
         }
+        animator: {
+            streaming = {
+                default: off,
+                off = {
+                    from: {all: Snap}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: { shadow_color: #x0007 } }
+                            }
+                        }
+                    }
+                }
+                pulse_on = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.7 }}
+                    apply: {
+                        // Slightly more opaque shadow
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: { shadow_color: #x000A } }
+                            }
+                        }
+                    }
+                }
+                pulse_off = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.7 }}
+                    apply: {
+                         // Back to default shadow
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: { shadow_color: #x0007 } }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub Stages = {{Stages}} {
@@ -298,15 +337,22 @@ impl Stages {
         self.visible = true;
         self.stage_ids = stages.iter().map(|stage| stage.id.clone()).collect();
 
+        let has_content_stage = stages.iter().any(|s| s.stage_type == StageType::Content);
+        let has_completion_stage = stages.iter().any(|s| s.stage_type == StageType::Completion);
+
         for stage in stages.iter() {
             match stage.stage_type {
                 StageType::Thinking => {
                     let mut thinking_stage = self.stage_view(id!(thinking_stage));
                     thinking_stage.set_stage(cx, &stage);
+                    // Thinking streams if content stage doesn't exist yet
+                    thinking_stage.set_streaming_state(cx, !has_content_stage);
                 },
                 StageType::Content => {
                     let mut content_stage = self.stage_view(id!(content_stage));
                     content_stage.set_stage(cx, &stage);
+                    // Content streams if completion stage doesn't exist yet
+                    content_stage.set_streaming_state(cx, !has_completion_stage);
                 },
                 _ => {}
             }
@@ -329,6 +375,12 @@ pub struct StageView {
     #[deref]
     view: View,
 
+    #[animator]
+    animator: Animator,
+
+    #[rust]
+    timer: Timer,
+
     #[rust]
     id: String,
 
@@ -337,10 +389,34 @@ pub struct StageView {
 
     #[rust]
     is_active: bool,
+
+    #[rust]
+    is_streaming: bool,
 }
 
 impl Widget for StageView {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // Handle timer events for looping animation
+        if self.timer.is_event(event).is_some() {
+            if self.is_streaming {
+                if self.animator_in_state(cx, id!(streaming.pulse_on)) {
+                    self.animator_play(cx, id!(streaming.pulse_off));
+                } else { // Assumes it's in pulse_off or just started
+                    self.animator_play(cx, id!(streaming.pulse_on));
+                }
+                // Restart the timer for the next half cycle
+                self.timer = cx.start_timeout(0.7);
+            } else {
+                 // If streaming stopped while timer was pending, ensure animation is off
+                 self.animator_cut(cx, id!(streaming.off));
+                 self.timer = Timer::empty();
+            }
+        }
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+             self.redraw(cx);
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
@@ -430,6 +506,29 @@ impl StageView {
 
         self.redraw(cx);
     }
+
+    fn set_streaming_state(&mut self, cx: &mut Cx, is_streaming: bool) {
+        if is_streaming == self.is_streaming {
+            return; // No change
+        }
+        self.is_streaming = is_streaming;
+
+        if self.is_streaming {
+            // Start animation only if timer isn't already running
+            if self.timer.is_empty() {
+                self.animator_play(cx, id!(streaming.pulse_on));
+                self.timer = cx.start_timeout(0.01); // Start timer almost immediately
+            }
+        } else {
+            // Stop animation
+            self.animator_cut(cx, id!(streaming.off)); // Go directly to off state
+            if !self.timer.is_empty() {
+                cx.stop_timer(self.timer);
+                self.timer = Timer::empty();
+            }
+        }
+        self.redraw(cx);
+    }
 }
 
 impl StageViewRef {
@@ -443,6 +542,12 @@ impl StageViewRef {
         if let Some(mut inner) = self.borrow_mut() {
             inner.is_active = is_active;
             inner.redraw(cx);
+        }
+    }
+
+    pub fn set_streaming_state(&mut self, cx: &mut Cx, is_streaming: bool) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_streaming_state(cx, is_streaming);
         }
     }
 }
