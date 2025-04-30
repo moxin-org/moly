@@ -125,24 +125,28 @@ impl Widget for ChatHistory {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let agents = store.chats.get_mofa_agents_list(true);
+        // let agents = store.chats.get_mofa_agents_list(true);
 
         enum Item<'a> {
             ChatsHeader,
-            AgentsHeader,
+            // AgentsHeader,
             // NoAgentsWarning(&'a str),
-            AgentButton(&'a ProviderBot),
+            // AgentButton(&'a ProviderBot),
             ChatButton(&'a ChatID),
         }
 
         let mut items: Vec<Item> = Vec::new();
 
-        if !agents.is_empty() {
-            items.push(Item::AgentsHeader);
-            for agent in &agents {
-                items.push(Item::AgentButton(agent));
-            }
-        }
+        // TODO: Temporarily disabling the agents section in the chat history.
+        // Reusing portal list items ids for different templates (e.g. a ChatsHeader becomes an AgentsHeader when agents are loaded after chats)
+        // causes drawlist issues: Drawlist id generation wrong index: 13 current gen:1 in pointer:0 / Drawlist id generation wrong 13 1 0
+
+        // if !agents.is_empty() {
+        //     items.push(Item::AgentsHeader);
+        //     for agent in &agents {
+        //         items.push(Item::AgentButton(agent));
+        //     }
+        // }
 
         items.push(Item::ChatsHeader);
 
@@ -172,15 +176,15 @@ impl Widget for ChatHistory {
                             let item = list.item(cx, item_id, live_id!(ChatsHeading));
                             item.draw_all(cx, scope);
                         }
-                        Item::AgentsHeader => {
-                            let item = list.item(cx, item_id, live_id!(AgentHeading));
-                            item.draw_all(cx, scope);
-                        }
-                        Item::AgentButton(agent) => {
-                            let item = list.item(cx, item_id, live_id!(Agent));
-                            item.as_entity_button().set_bot_id(cx, &agent.id);
-                            item.draw_all(cx, scope);
-                        }
+                        // Item::AgentsHeader => {
+                        //     let item = list.item(cx, item_id, live_id!(AgentHeading));
+                        //     item.draw_all(cx, scope);
+                        // }
+                        // Item::AgentButton(agent) => {
+                        //     let item = list.item(cx, item_id, live_id!(Agent));
+                        //     item.as_entity_button().set_bot_id(cx, &agent.id);
+                        //     item.draw_all(cx, scope);
+                        // }
                         Item::ChatButton(chat_id) => {
                             let mut item = list
                                 .item(cx, item_id, live_id!(ChatHistoryCard))

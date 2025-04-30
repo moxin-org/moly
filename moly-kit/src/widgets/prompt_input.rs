@@ -27,17 +27,16 @@ live_design! {
                         }
                     }
                     draw_text: {
-                        // text_style:<REGULAR_FONT>{font_size: 10},
-                        instance prompt_enabled: 1.0
-
-                        fn get_color(self) -> vec4 {
-                            return mix(#98A2B3, #000, self.prompt_enabled)
-                        }
+                        color: #000
+                        color_hover: #000
+                        color_focus: #000
+                        color_empty: #98A2B3
+                        color_empty_focus: #98A2B3
                     }
                     draw_selection: {
-                        fn pixel(self) -> vec4 {
-                            return #bbb;
-                        }
+                        color: #d9e7e9
+                        color_hover: #d9e7e9
+                        color_focus: #d9e7e9
                     }
                     draw_cursor: {
                         fn pixel(self) -> vec4 {
