@@ -217,6 +217,7 @@ live_design! {
                 substages = <SubStages> {}
             }
         }
+        
         animator: {
             streaming = {
                 default: off,
@@ -225,31 +226,66 @@ live_design! {
                     apply: {
                         wrapper = {
                             header = {
-                                stage_toggle = { draw_bg: { shadow_color: #x0007 } }
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(0.0, -2.0),
+                                    shadow_color: #x0007
+                                } }
                             }
                         }
                     }
                 }
-                pulse_on = {
+                move_up = {
                     redraw: true,
-                    from: {all: Forward { duration: 0.7 }}
+                    from: {all: Forward { duration: 0.4 }}
                     apply: {
-                        // Slightly more opaque shadow
                         wrapper = {
                             header = {
-                                stage_toggle = { draw_bg: { shadow_color: #x000A } }
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(0.0, -4.0),
+                                    shadow_color: #x0002
+                                } }
                             }
                         }
                     }
                 }
-                pulse_off = {
+                move_right = {
                     redraw: true,
-                    from: {all: Forward { duration: 0.7 }}
+                    from: {all: Forward { duration: 0.4 }}
                     apply: {
-                         // Back to default shadow
                         wrapper = {
                             header = {
-                                stage_toggle = { draw_bg: { shadow_color: #x0007 } }
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(3.0, -2.0),
+                                    shadow_color: #x0002
+                                } }
+                            }
+                        }
+                    }
+                }
+                move_down = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.4 }}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(0.0, 1.0),
+                                    shadow_color: #x0002
+                                } }
+                            }
+                        }
+                    }
+                }
+                move_left = {
+                    redraw: true,
+                    from: {all: Forward { duration: 0.4 }}
+                    apply: {
+                        wrapper = {
+                            header = {
+                                stage_toggle = { draw_bg: {
+                                    shadow_offset: vec2(-3.0, -2.0),
+                                    shadow_color: #x0002
+                                } }
                             }
                         }
                     }
@@ -399,17 +435,25 @@ impl Widget for StageView {
         // Handle timer events for looping animation
         if self.timer.is_event(event).is_some() {
             if self.is_streaming {
-                if self.animator_in_state(cx, id!(streaming.pulse_on)) {
-                    self.animator_play(cx, id!(streaming.pulse_off));
-                } else { // Assumes it's in pulse_off or just started
-                    self.animator_play(cx, id!(streaming.pulse_on));
+                // Cycle through animation states
+                if self.animator_in_state(cx, id!(streaming.move_up)) {
+                    self.animator_play(cx, id!(streaming.move_right));
+                } else if self.animator_in_state(cx, id!(streaming.move_right)) {
+                    self.animator_play(cx, id!(streaming.move_down));
+                } else if self.animator_in_state(cx, id!(streaming.move_down)) {
+                    self.animator_play(cx, id!(streaming.move_left));
+                } else { // Assumes it's in move_left or just started
+                    self.animator_play(cx, id!(streaming.move_up));
                 }
-                // Restart the timer for the next half cycle
-                self.timer = cx.start_timeout(0.7);
+                // Restart the timer for the next step
+                self.timer = cx.start_timeout(0.4); // Match state duration
             } else {
                  // If streaming stopped while timer was pending, ensure animation is off
                  self.animator_cut(cx, id!(streaming.off));
-                 self.timer = Timer::empty();
+                 if !self.timer.is_empty() {
+                     cx.stop_timer(self.timer);
+                     self.timer = Timer::empty(); // Clear timer
+                 }
             }
         }
 
@@ -509,18 +553,19 @@ impl StageView {
 
     fn set_streaming_state(&mut self, cx: &mut Cx, is_streaming: bool) {
         if is_streaming == self.is_streaming {
-            return; // No change
+            return;
         }
         self.is_streaming = is_streaming;
 
         if self.is_streaming {
             // Start animation only if timer isn't already running
             if self.timer.is_empty() {
-                self.animator_play(cx, id!(streaming.pulse_on));
+                // Start the animation cycle
+                self.animator_play(cx, id!(streaming.move_up));
                 self.timer = cx.start_timeout(0.01); // Start timer almost immediately
             }
         } else {
-            // Stop animation
+            // Stop animation and reset state
             self.animator_cut(cx, id!(streaming.off)); // Go directly to off state
             if !self.timer.is_empty() {
                 cx.stop_timer(self.timer);
