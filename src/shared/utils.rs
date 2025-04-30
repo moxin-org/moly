@@ -64,3 +64,27 @@ pub fn human_readable_name(model_filename: &str) -> String {
 
     name
 }
+
+/// Glue that spawns a future giving back a sync channel receiver to wait for
+/// the result.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn spawn_rx<R: Send + 'static>(
+    fut: impl std::future::Future<Output = R> + Send + 'static,
+) -> std::sync::mpsc::Receiver<R> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    tokio::task::spawn(async move {
+        let result = fut.await;
+        tx.send(result).unwrap();
+    });
+    rx
+}
+
+/// Glue that spawns a future giving back its result synchronously.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn block_on<R: Send + 'static>(
+    fut: impl std::future::Future<Output = R> + Send + 'static,
+) -> R {
+    let rx = spawn_rx(fut);
+    rx.recv()
+        .expect("Failed to receive result from spawned future")
+}

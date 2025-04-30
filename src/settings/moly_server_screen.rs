@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use moly_kit::utils::asynchronous::spawn;
 
 use crate::{app::NavigationAction, data::store::Store};
 
@@ -187,21 +188,24 @@ live_design! {
     }
 }
 
-#[derive(Widget, LiveHook, Live)]
+#[derive(Widget, Live)]
 pub struct MolyServerScreen {
     #[deref]
     view: View,
+
+    #[rust]
+    is_connected: bool,
 }
 
 impl Widget for MolyServerScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.ui_runner().handle(cx, event, scope, self);
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let store = scope.data.get_mut::<Store>().unwrap();
-        if store.is_moly_server_connected() {
+        if self.is_connected {
             self.view(id!(server_not_accessible)).set_visible(cx, false);
             self.view(id!(main_content)).set_visible(cx, true);
         } else {
@@ -215,6 +219,8 @@ impl Widget for MolyServerScreen {
 
 impl WidgetMatchEvent for MolyServerScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        if let NavigationAction::
+
         // RadioButton's selected_to_visible does not seem to work at this level
         // So we're manually checking the selected index and setting the visibility of the pages manually
         let selected_index = self
@@ -245,5 +251,32 @@ impl WidgetMatchEvent for MolyServerScreen {
             let store = scope.data.get_mut::<Store>().unwrap();
             store.sync_with_moly_server();
         }
+    }
+}
+
+impl MolyServerScreen {
+    fn verify_connection(&self, scope: &mut Scope) {
+        let store = scope.data.get::<Store>().unwrap();
+
+        if !store.is_moly_server_enabled() {
+            return;
+        }
+
+        let moly_client = store.moly_client();
+        let ui = self.ui_runner();
+        spawn(async move {
+            let available = moly_client.test_connection().await.is_ok();
+            ui.defer_with_redraw(move |me, _, _| {
+                me.is_connected = available;
+            });
+        });
+    }
+}
+
+impl LiveHook for MolyServerScreen {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        self.ui_runner().defer(|me, _cx, scope| {
+            me.verify_connection(scope);
+        });
     }
 }

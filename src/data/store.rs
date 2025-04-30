@@ -2,6 +2,7 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use crate::shared::actions::ChatAction;
+use crate::shared::utils::block_on;
 
 use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
@@ -100,6 +101,10 @@ impl Store {
         store
     }
 
+    pub fn moly_client(&self) -> Arc<MolyClient> {
+        Arc::clone(&self.moly_client)
+    }
+
     /// Check if the main moly server provider is enabled in settings.
     pub fn is_moly_server_enabled(&self) -> bool {
         self.preferences.providers_preferences.iter().any(|p| {
@@ -109,29 +114,20 @@ impl Store {
         })
     }
 
-    /// Check if the connection to moly server was successful.
-    pub fn is_moly_server_connected(&self) -> bool {
-        self.moly_client.is_connected() && self.is_moly_server_enabled()
-    }
-
     /// Pull the latest data from moly server.
     pub fn sync_with_moly_server(&mut self) {
         if !self.is_moly_server_enabled() {
             return;
         }
 
-        let (tx, rx) = channel();
-        self.moly_client.test_connection(tx);
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(()) => {
-                    self.downloads.load_downloaded_files();
-                    self.downloads.load_pending_downloads();
-                    self.search.load_featured_models();
-                }
-                Err(_err) => {}
-            }
-        };
+        let moly_client = self.moly_client.clone();
+        if block_on(async move { moly_client.test_connection().await.is_err() }) {
+            return;
+        }
+
+        self.downloads.load_downloaded_files();
+        self.downloads.load_pending_downloads();
+        self.search.load_featured_models();
     }
 
     pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {
