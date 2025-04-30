@@ -1,5 +1,8 @@
 use crate::{
-    data::{chats::chat::ChatID, store::Store},
+    data::{
+        chats::chat::ChatID,
+        store::Store,
+    },
     shared::{actions::ChatAction, modal::ModalWidgetExt, utils::human_readable_name},
 };
 
@@ -77,7 +80,7 @@ live_design! {
     pub ChatHistoryCard = {{ChatHistoryCard}} {
         flow: Overlay,
         width: Fill,
-        height: Fit,
+        height: 52,
 
         selected_bg = <RoundedInnerShadowView> {
             width: Fill
@@ -265,6 +268,24 @@ live_design! {
                 delete_chat_modal_inner = <DeleteChatModal> {}
             }
         }
+
+        animator: {
+            edit = {
+                default: hide
+                show = {
+                    from: {all: Forward {duration: 0.15}}
+                    apply: {
+                        height: 108
+                    }
+                }
+                hide = {
+                    from: {all: Forward {duration: 0.15}}
+                    apply: {
+                        height: 52
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -284,11 +305,17 @@ pub struct ChatHistoryCard {
 
     #[rust]
     title_edition_state: TitleState,
+
+    #[animator]
+    animator: Animator,
 }
 
 impl Widget for ChatHistoryCard {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
         self.widget_match_event(cx, event, scope);
     }
 
@@ -321,14 +348,8 @@ impl Widget for ChatHistoryCard {
             }
         }
 
-        let caption = store.get_chat_associated_bot(self.chat_id).map(|bot_id| {
-            store
-                .chats
-                .available_bots
-                .get(&bot_id)
-                .map(|m| m.name.clone())
-                .unwrap_or("Unknown".to_string())
-        });
+        let caption = store.get_chat_associated_bot(self.chat_id)
+            .map(|bot_id| store.chats.available_bots.get(&bot_id).map(|m| m.name.clone()).unwrap_or("Unknown".to_string()));
         self.set_title_text(
             cx,
             chat.borrow_mut().get_title(),
@@ -348,7 +369,7 @@ impl Widget for ChatHistoryCard {
             Some(bot_id) => {
                 let bot = store.chats.get_bot_or_placeholder(&bot_id);
 
-                if store.chats.is_agent(bot_id) {
+                if store.chats.is_agent(bot_id) { 
                     let mut chat_agent_avatar = self.chat_agent_avatar(id!(avatar_section.agent));
                     self.view(id!(avatar_section.model)).set_visible(cx, false);
                     chat_agent_avatar.set_visible(true);
@@ -357,9 +378,7 @@ impl Widget for ChatHistoryCard {
                     self.view(id!(avatar_section.model)).set_visible(cx, true);
                     self.chat_agent_avatar(id!(avatar_section.agent))
                         .set_visible(false);
-                    self.view
-                        .label(id!(avatar_label))
-                        .set_text(cx, &initial_letter);
+                    self.view.label(id!(avatar_label)).set_text(cx, &initial_letter);
                 }
             }
             _ => {}
@@ -433,9 +452,7 @@ impl ChatHistoryCard {
     fn set_title_text(&mut self, cx: &mut Cx, text: &str, caption: &str) {
         self.view.label(id!(title_label)).set_text(cx, text.trim());
         if let TitleState::Editable = self.title_edition_state {
-            self.view
-                .text_input(id!(title_input))
-                .set_text(cx, text.trim().to_owned());
+            self.view.text_input(id!(title_input)).set_text(cx, text.trim().to_owned());
         }
         self.label(id!(model_or_agent_name_label))
             .set_text(cx, &human_readable_name(caption));
@@ -444,13 +461,11 @@ impl ChatHistoryCard {
     fn update_title_visibility(&mut self, cx: &mut Cx) {
         let on_edit = matches!(self.title_edition_state, TitleState::OnEdit);
         self.view(id!(edit_buttons)).set_visible(cx, on_edit);
-        self.view(id!(title_input_container))
-            .set_visible(cx, on_edit);
+        self.view(id!(title_input_container)).set_visible(cx, on_edit);
         self.button(id!(chat_options)).set_visible(cx, !on_edit);
 
         let editable = matches!(self.title_edition_state, TitleState::Editable);
-        self.view(id!(title_label_container))
-            .set_visible(cx, editable);
+        self.view(id!(title_label_container)).set_visible(cx, editable);
     }
 
     fn transition_title_state(&mut self, cx: &mut Cx) {
@@ -461,6 +476,15 @@ impl ChatHistoryCard {
 
         self.update_title_visibility(cx);
         self.redraw(cx);
+
+        match self.title_edition_state {
+            TitleState::OnEdit => {
+                self.animator_play(cx, id!(edit.show));
+            }
+            TitleState::Editable => {
+                self.animator_play(cx, id!(edit.hide));
+            }
+        }
     }
 
     pub fn handle_title_editable_actions(
