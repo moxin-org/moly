@@ -14,6 +14,7 @@ use super::filesystem::setup_chats_folder;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, ProviderBot, ProviderConnectionStatus};
+use super::store::ProviderSyncingStatus;
 
 pub struct Chats {
     pub moly_client: Arc<MolyClient>,
@@ -168,7 +169,8 @@ impl Chats {
     pub fn handle_provider_connection_result(
         &mut self,
         result: ProviderFetchModelsResult,
-        preferences: &mut Preferences
+        preferences: &mut Preferences,
+        provider_syncing_status: &mut ProviderSyncingStatus
     ) {
         match result {
             ProviderFetchModelsResult::Success(address, mut fetched_models) => {
@@ -246,6 +248,20 @@ impl Chats {
                     provider.connection_status = ProviderConnectionStatus::Error(error);
                 }
             },
+            _ => {}
+        }
+
+        match provider_syncing_status {
+            // Increase the current count of providers being synced, regardless of the result
+            // We just care to know that we've already got a response for each provider
+            ProviderSyncingStatus::Syncing(syncing) => {
+                let new_current = syncing.current + 1;
+                if new_current < syncing.total  {
+                    syncing.current = new_current;
+                } else {
+                    *provider_syncing_status = ProviderSyncingStatus::Synced;
+                }
+            }
             _ => {}
         }
     }
