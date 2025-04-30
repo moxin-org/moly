@@ -25,7 +25,7 @@ live_design! {
             width: Fit,
             height: Fit,
             draw_text:{
-                text_style: <BOLD_FONT>{font_size: 10},
+                text_style: <BOLD_FONT>{font_size: 8},
                 color: #fff,
             }
             text: "P"

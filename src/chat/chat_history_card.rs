@@ -362,7 +362,7 @@ impl Widget for ChatHistoryCard {
             .chars()
             .next()
             .unwrap()
-            .to_lowercase()
+            .to_uppercase()
             .to_string();
 
         match &chat.borrow().associated_bot {

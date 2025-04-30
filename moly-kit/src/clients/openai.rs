@@ -216,7 +216,7 @@ impl BotClient for OpenAIClient {
                     id: BotId::new(&m.id, &inner.url),
                     name: m.id.clone(),
                     // TODO: Handle this char as a grapheme.
-                    avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string()),
+                    avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string().to_uppercase()),
                 })
                 .collect();
 
