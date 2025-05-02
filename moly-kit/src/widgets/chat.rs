@@ -58,7 +58,9 @@ pub enum ChatTask {
     ClearPrompt,
 
     /// When received back, the chat will scroll to the bottom.
-    ScrollToBottom,
+    /// 
+    /// The boolean indicates if the scroll was triggered by a stream or not.
+    ScrollToBottom(bool),
 }
 
 impl From<ChatTask> for Vec<ChatTask> {
@@ -106,6 +108,10 @@ pub struct Chat {
 
     #[rust]
     is_hooking: bool,
+
+    /// Wether the user has scrolled during the stream of the current message.
+    #[rust]
+    user_scrolled_during_stream: bool,
 }
 
 impl Widget for Chat {
@@ -121,6 +127,7 @@ impl Widget for Chat {
         self.deref.handle_event(cx, event, scope);
         self.handle_messages(cx, event);
         self.handle_prompt_input(cx, event);
+        self.handle_scrolling();
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -142,6 +149,13 @@ impl Chat {
     fn handle_prompt_input(&mut self, cx: &mut Cx, event: &Event) {
         if self.prompt_input_ref().read().submitted(event.actions()) {
             self.handle_submit(cx);
+        }
+    }
+
+    fn handle_scrolling(&mut self) {
+        // If we are waiting for a message, update wether the user has scrolled during the stream.
+        if self.expected_message.is_some() {
+            self.user_scrolled_during_stream = self.messages_ref().read().user_scrolled();
         }
     }
 
@@ -250,7 +264,7 @@ impl Chat {
                 .collect()
         });
 
-        self.dispatch(cx, &mut ChatTask::ScrollToBottom.into());
+        self.dispatch(cx, &mut ChatTask::ScrollToBottom(false).into());
         self.prompt_input_ref().write().set_stop();
         self.redraw(cx);
 
@@ -396,8 +410,8 @@ impl Chat {
             ChatTask::ClearPrompt => {
                 self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
             }
-            ChatTask::ScrollToBottom => {
-                self.messages_ref().write().scroll_to_bottom(cx);
+            ChatTask::ScrollToBottom(triggered_by_stream) => {
+                self.messages_ref().write().scroll_to_bottom(cx, *triggered_by_stream);
             }
         }
     }
@@ -437,6 +451,8 @@ impl Chat {
     fn clean_streaming_artifacts(&mut self) {
         self.abort_handle = None;
         self.expected_message = None;
+        self.user_scrolled_during_stream = false;
+        self.messages_ref().write().reset_scroll_state();
         self.prompt_input_ref().write().set_send();
         self.messages_ref().write().messages.retain_mut(|m| {
             m.is_writing = false;
@@ -468,8 +484,9 @@ impl Chat {
                 let index = messages.read().messages.len() - 1;
                 let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
 
-                if !messages.read().is_at_bottom() {
-                    tasks.push(ChatTask::ScrollToBottom);
+                // Stick the chat to the bottom if the user didn't manually scroll.
+                if !self.user_scrolled_during_stream {
+                    tasks.push(ChatTask::ScrollToBottom(true));
                 }
 
                 self.dispatch(cx, &mut tasks);
@@ -502,8 +519,9 @@ impl Chat {
                     })
                     .collect::<Vec<_>>();
 
-                if !messages.read().is_at_bottom() {
-                    tasks.push(ChatTask::ScrollToBottom);
+                // Stick the chat to the bottom if the user didn't manually scroll.
+                if !self.user_scrolled_during_stream {
+                    tasks.push(ChatTask::ScrollToBottom(true));
                 }
 
                 self.dispatch(cx, &mut tasks);

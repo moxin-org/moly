@@ -138,6 +138,12 @@ pub struct Messages {
 
     #[rust]
     hovered_index: Option<usize>,
+
+    #[rust]
+    user_scrolled: bool,
+
+    #[rust]
+    sticking_to_bottom: bool,
 }
 
 impl Widget for Messages {
@@ -148,7 +154,11 @@ impl Widget for Messages {
         let jump_to_bottom = self.button(id!(jump_to_bottom));
 
         if jump_to_bottom.clicked(event.actions()) {
-            self.scroll_to_bottom(cx);
+            self.scroll_to_bottom(cx, false);
+            // Reset the scrolling state, so that if the user clicks the button during a stream,
+            // we forget they scrolled, and assume they want to stick to the bottom.
+            self.user_scrolled = false;
+            self.sticking_to_bottom = false;
             self.redraw(cx);
         }
 
@@ -338,7 +348,7 @@ impl Messages {
         }
 
         self.button(id!(jump_to_bottom))
-            .set_visible(cx, !self.is_at_bottom());
+            .set_visible(cx, !self.is_at_bottom() && !self.sticking_to_bottom);
     }
 
     /// Check if we're at the end of the messages list.
@@ -346,12 +356,17 @@ impl Messages {
         self.is_list_end_drawn
     }
 
+    pub fn user_scrolled(&self) -> bool {
+        self.user_scrolled
+    }
+
     /// Jump to the end of the list instantly.
-    pub fn scroll_to_bottom(&self, cx: &mut Cx) {
+    pub fn scroll_to_bottom(&mut self, cx: &mut Cx, triggered_by_stream: bool) {
         if self.messages.len() > 0 {
             let list = self.portal_list(id!(list));
 
-            list.smooth_scroll_to_end(cx, 60.0, None);
+            list.smooth_scroll_to_end(cx, 100.0, None);
+            self.sticking_to_bottom = triggered_by_stream;
         }
     }
 
@@ -394,6 +409,7 @@ impl Messages {
         let list = self.portal_list(id!(list));
         let range = range.0..=range.1;
 
+        // Handle item actions
         for (index, item) in ItemsRangeIter::new(list, range) {
             if let Event::MouseMove(event) = event {
                 if item.area().rect(cx).contains(event.abs) {
@@ -446,6 +462,16 @@ impl Messages {
                 self.current_editor.as_mut().unwrap().buffer = change;
             }
         }
+
+        // Detect if the user has manually scrolled the list.
+        // Ideally we should use `PortalList::was_scrolled` or `PortalList::scrolled` but they aren't reliable.
+        match event.hits(cx, self.area()) {
+            Hit::FingerScroll(_e) => {
+                self.user_scrolled = true;
+                self.sticking_to_bottom = false;
+            },
+            _ => {}
+        } 
     }
 
     fn apply_actions_and_editor_visibility(
@@ -478,6 +504,11 @@ impl Messages {
     pub fn set_messages(&mut self, messages: Vec<Message>, scroll_to_bottom: bool) {
         self.messages = messages;
         self.should_defer_scroll_to_bottom = scroll_to_bottom;
+    }
+
+    pub fn reset_scroll_state(&mut self) {
+        self.user_scrolled = false;
+        self.sticking_to_bottom = false;
     }
 }
 
