@@ -56,13 +56,21 @@ live_design! {
                         }
 
                         draw_bg: {
+                            fn get_color(self) -> vec4 {
+                                if self.enabled == 0.0 {
+                                    return #D0D5DD;
+                                }
+
+                                return #000;
+                            }
+
                             fn pixel(self) -> vec4 {
                                 let sdf = Sdf2d::viewport(self.pos * self.rect_size);
                                 let center = self.rect_size * 0.5;
                                 let radius = min(self.rect_size.x, self.rect_size.y) * 0.5;
 
                                 sdf.circle(center.x, center.y, radius);
-                                sdf.fill_keep(#000);
+                                sdf.fill_keep(self.get_color());
 
                                 return sdf.result
                             }
@@ -159,9 +167,19 @@ impl Widget for PromptInput {
 
         match self.interactivity {
             Interactivity::Enabled => {
+                button.apply_over(cx, live! {
+                    draw_bg: {
+                        enabled: 1.0
+                    }
+                });
                 button.set_enabled(cx, true);
             }
             Interactivity::Disabled => {
+                button.apply_over(cx, live! {
+                    draw_bg: {
+                        enabled: 0.0
+                    }
+                });
                 button.set_enabled(cx, false);
             }
         }

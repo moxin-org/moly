@@ -131,7 +131,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Live, Widget)]
 pub struct ChatScreen {
     #[deref]
     view: View,
@@ -144,6 +144,12 @@ pub struct ChatScreen {
 
     #[rust]
     creating_bot_repo: bool,
+}
+
+impl LiveHook for ChatScreen {
+    fn after_new_from_doc(&mut self, _cx:&mut Cx) {
+        self.prompt_input(id!(chat.prompt)).write().disable();
+    }
 }
 
 impl Widget for ChatScreen {
@@ -164,6 +170,7 @@ impl Widget for ChatScreen {
 
         if self.should_load_repo_to_store {
             store.bot_repo = self.chat(id!(chat)).read().bot_repo.clone();
+            self.prompt_input(id!(chat.prompt)).write().enable();
             self.should_load_repo_to_store = false;
         } else if (self.first_render || should_recreate_bot_repo) && !self.creating_bot_repo {
             self.create_bot_repo(cx, scope);
