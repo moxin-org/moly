@@ -97,45 +97,35 @@ live_design! {
 
     CustomProviderRadio = <RadioButton> {
         draw_text: {
-            uniform color: #000
-            uniform color_hover: #000
-            uniform color_active: #000
-            uniform color_focus: #000
+            color: #000
+            color_hover: #000
+            color_active: #000
+            color_focus: #000
             text_style: <REGULAR_FONT>{font_size: 12},
         }
 
         draw_bg: {
-            uniform color: #000
-            uniform color_hover: #000
-            uniform color_active: #000
-            uniform color_focus: #000
+            border_size: 0.0
 
-            uniform color_1: #000
-            uniform color_1_hover: #000
-            uniform color_1_active: #000
-            uniform color_1_focus: #000
+            color_1: #000
+            color_1_hover: #000
+            color_1_active: #000
+            color_1_focus: #000
 
-            uniform color_2: #000
-            uniform color_2_hover: #000
-            uniform color_2_active: #000
-            uniform color_2_focus: #000
+            color_2: #000
+            color_2_hover: #000
+            color_2_active: #000
+            color_2_focus: #000
 
-            uniform border_color_1: #000
-            uniform border_color_1_hover: #000
-            uniform border_color_1_active: #000
-            uniform border_color_1_focus: #000
-
-            uniform border_color_2: #000
-            uniform border_color_2_hover: #000
-            uniform border_color_2_active: #000
-            uniform border_color_2_focus: #000
-
-            uniform mark_color: #000
-            uniform mark_color_hover: #000
-            uniform mark_color_active: #fff
-            uniform mark_color_focus: #fff
-            uniform mark_color_active_focus: #fff
-            uniform mark_color_active_hover: #fff
+            mark_color: #000
+            mark_color_hover: #000
+            mark_color_active: #fff
+            // This is the color of the tab focus, however there seem to be a bug
+            // cause if you select and hover-out, this color is used until you
+            // press tab. So for now let's just match the active color.
+            mark_color_focus: #fff
+            mark_color_active_focus: #fff
+            mark_color_active_hover: #fff
         }
     }
 
