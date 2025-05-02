@@ -9,7 +9,7 @@ live_design! {
     use crate::shared::widgets::*;
     use crate::landing::model_card::ModelCard;
 
-    ANIMATION_SPEED = 1.5;
+    ANIMATION_SPEED = 1.2;
 
     Bar = <RoundedView> {
         width: Fill,
@@ -22,7 +22,7 @@ live_design! {
             fn get_color(self) -> vec4 {
                 return mix(
                     #F3FFA2,
-                    #E3FBFF,
+                    #B0CBC6,
                     self.pos.x + self.dither
                 )
             }
