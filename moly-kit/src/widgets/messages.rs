@@ -320,7 +320,7 @@ impl Messages {
                         // TODO: Remove this workaround once the markdown widget is fixed.
                         if let Some(body) = message_body {
                             item.label(id!(text.markdown))
-                                .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                                .set_text(cx, &body);
                         }
 
                         let sources = &message.content.citations;

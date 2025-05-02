@@ -76,7 +76,6 @@ impl DeepInquireContent {
                 .set_text(
                     cx,
                     &final_text
-                        .replace("\n\n", "\n\n\u{00A0}\n\n"),
                 );
         }
     }
