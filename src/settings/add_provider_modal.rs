@@ -103,6 +103,40 @@ live_design! {
             uniform color_focus: #000
             text_style: <REGULAR_FONT>{font_size: 12},
         }
+
+        draw_bg: {
+            uniform color: #000
+            uniform color_hover: #000
+            uniform color_active: #000
+            uniform color_focus: #000
+
+            uniform color_1: #000
+            uniform color_1_hover: #000
+            uniform color_1_active: #000
+            uniform color_1_focus: #000
+
+            uniform color_2: #000
+            uniform color_2_hover: #000
+            uniform color_2_active: #000
+            uniform color_2_focus: #000
+
+            uniform border_color_1: #000
+            uniform border_color_1_hover: #000
+            uniform border_color_1_active: #000
+            uniform border_color_1_focus: #000
+
+            uniform border_color_2: #000
+            uniform border_color_2_hover: #000
+            uniform border_color_2_active: #000
+            uniform border_color_2_focus: #000
+
+            uniform mark_color: #000
+            uniform mark_color_hover: #000
+            uniform mark_color_active: #fff
+            uniform mark_color_focus: #fff
+            uniform mark_color_active_focus: #fff
+            uniform mark_color_active_hover: #fff
+        }
     }
 
     pub AddProviderModal = {{AddProviderModal}} {
@@ -366,6 +400,8 @@ impl WidgetMatchEvent for AddProviderModal {
                 1 => Some(ProviderType::MoFa),
                 _ => Some(ProviderType::OpenAI),
             };
+
+            dbg!(&self.selected_provider);
         }
     }
 }
