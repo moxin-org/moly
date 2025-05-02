@@ -1,6 +1,9 @@
 use makepad_widgets::*;
 
-use crate::data::{providers::{Provider, ProviderConnectionStatus, ProviderType}, store::Store};
+use crate::data::{
+    providers::{Provider, ProviderConnectionStatus, ProviderType},
+    store::Store,
+};
 
 live_design! {
     use link::theme::*;
@@ -59,12 +62,12 @@ live_design! {
             width: 300, height: Fit,
             flow: Down,
             padding: <THEME_MSPACE_1> {}
-            
+
             menu_item: <PopupMenuItem> {
                 width: Fill, height: Fit,
                 align: { y: 0.5 }
                 padding: {left: 15, right: 15, top: 10, bottom: 10}
-                
+
                 draw_text: {
                     fn get_color(self) -> vec4 {
                         return mix(
@@ -78,13 +81,13 @@ live_design! {
                         )
                     }
                 }
-                
+
                 draw_bg: {
                     instance color: #f //(THEME_COLOR_FLOATING_BG)
                     instance color_active: #f2 //(THEME_COLOR_CTRL_HOVER)
                 }
             }
-            
+
             draw_bg: {
                 instance color: #f9 //(THEME_COLOR_FLOATING_BG)
                 border_size: 1.0
@@ -93,8 +96,11 @@ live_design! {
     }
 
     CustomProviderRadio = <RadioButton> {
-        draw_text: {               
-            uniform color: #x0
+        draw_text: {
+            uniform color: #000
+            uniform color_hover: #000
+            uniform color_active: #000
+            uniform color_focus: #000
             text_style: <REGULAR_FONT>{font_size: 12},
         }
     }
@@ -177,7 +183,7 @@ live_design! {
                         empty_text: "e.g. https://api.openai.com/v1"
                     }
                 }
-                
+
                 <FormGroup> {
                     <ModalLabel> {
                         text: "API Key (optional)"
@@ -186,12 +192,12 @@ live_design! {
                         empty_text: "sk-..."
                     }
                 }
-        
+
                 <FormGroup> {
                     <ModalLabel> {
                         text: "Provider Type"
                     }
-                    
+
                     // TODO: we should replace the radio buttons with a dropdown
                     // currently the dropdown popup is not working inside the modal
                     // provider_type = <ProviderDropDown> {
@@ -220,7 +226,7 @@ live_design! {
                         }
                     }
                 }
-        
+
                 <View> {
                     width: Fill, height: Fit
                     align: {x: 1.0, y: 0.5}
@@ -243,7 +249,6 @@ pub enum AddProviderModalAction {
     ModalDismissed,
 }
 
-
 #[derive(Live, LiveHook, Widget)]
 pub struct AddProviderModal {
     #[deref]
@@ -252,7 +257,6 @@ pub struct AddProviderModal {
     #[rust]
     selected_provider: Option<ProviderType>,
 }
-
 
 impl Widget for AddProviderModal {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
@@ -304,54 +308,46 @@ impl WidgetMatchEvent for AddProviderModal {
 
             let api_key = self.text_input(id!(api_key)).text();
             let provider = match self.selected_provider.as_ref().unwrap() {
-                ProviderType::OpenAI => {
-                    Provider {
-                        name: name.clone(),
-                        url: api_host.clone(),
-                        api_key: Some(api_key.clone()),
-                        provider_type: ProviderType::OpenAI,
-                        connection_status: ProviderConnectionStatus::Disconnected,
-                        enabled: true,
-                        models: vec![],
-                        was_customly_added: true,
-                    }
-                }
-                ProviderType::MolyServer => {
-                    Provider {
-                        name: name.clone(),
-                        url: api_host.clone(),
-                        api_key: Some(api_key.clone()),
-                        provider_type: ProviderType::MolyServer,
-                        connection_status: ProviderConnectionStatus::Disconnected,
-                        enabled: true,
-                        models: vec![],
-                        was_customly_added: true,
-                    }
-                }
-                ProviderType::MoFa => {
-                    Provider {
-                        name: name.clone(),
-                        url: api_host.clone(),
-                        api_key: Some(api_key.clone()),
-                        provider_type: ProviderType::MoFa,
-                        connection_status: ProviderConnectionStatus::Disconnected,
-                        enabled: true,
-                        models: vec![],
-                        was_customly_added: true,
-                    }
-                }
-                ProviderType::DeepInquire => {
-                    Provider {
-                        name: name.clone(),
-                        url: api_host.clone(),
-                        api_key: Some(api_key.clone()),
-                        provider_type: ProviderType::DeepInquire,
-                        connection_status: ProviderConnectionStatus::Disconnected,
-                        enabled: true,
-                        models: vec![],
-                        was_customly_added: true,
-                    }
-                }
+                ProviderType::OpenAI => Provider {
+                    name: name.clone(),
+                    url: api_host.clone(),
+                    api_key: Some(api_key.clone()),
+                    provider_type: ProviderType::OpenAI,
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: true,
+                    models: vec![],
+                    was_customly_added: true,
+                },
+                ProviderType::MolyServer => Provider {
+                    name: name.clone(),
+                    url: api_host.clone(),
+                    api_key: Some(api_key.clone()),
+                    provider_type: ProviderType::MolyServer,
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: true,
+                    models: vec![],
+                    was_customly_added: true,
+                },
+                ProviderType::MoFa => Provider {
+                    name: name.clone(),
+                    url: api_host.clone(),
+                    api_key: Some(api_key.clone()),
+                    provider_type: ProviderType::MoFa,
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: true,
+                    models: vec![],
+                    was_customly_added: true,
+                },
+                ProviderType::DeepInquire => Provider {
+                    name: name.clone(),
+                    url: api_host.clone(),
+                    api_key: Some(api_key.clone()),
+                    provider_type: ProviderType::DeepInquire,
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: true,
+                    models: vec![],
+                    was_customly_added: true,
+                },
             };
 
             store.insert_or_update_provider(&provider);
@@ -361,7 +357,9 @@ impl WidgetMatchEvent for AddProviderModal {
             self.clear_form(cx);
         }
 
-        let selected = self.radio_button_set(ids!(radios.radio_openai, radios.radio_mofa)).selected(cx, actions);
+        let selected = self
+            .radio_button_set(ids!(radios.radio_openai, radios.radio_mofa))
+            .selected(cx, actions);
         if let Some(selected) = selected {
             self.selected_provider = match selected {
                 0 => Some(ProviderType::OpenAI),
@@ -371,7 +369,6 @@ impl WidgetMatchEvent for AddProviderModal {
         }
     }
 }
-
 
 impl AddProviderModal {
     fn set_error_message(&mut self, cx: &mut Cx, message: &str) {
