@@ -1649,7 +1649,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -2072,7 +2072,7 @@ dependencies = [
 
 [[package]]
 name = "moly"
-version = "0.1.0"
+version = "0.2.0-rc1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2101,7 +2101,7 @@ dependencies = [
 
 [[package]]
 name = "moly-kit"
-version = "0.1.0"
+version = "0.2.0-rc1"
 dependencies = [
  "async-stream",
  "cfg-if",
@@ -2120,7 +2120,7 @@ dependencies = [
 
 [[package]]
 name = "moly-mini"
-version = "0.1.0"
+version = "0.2.0-rc1"
 dependencies = [
  "futures",
  "futures-core",
@@ -2135,8 +2135,8 @@ dependencies = [
 
 [[package]]
 name = "moly-protocol"
-version = "0.1.0"
-source = "git+https://github.com/moxin-org/moly-server#48bd1057f0be23e63205f547a65646cedc3b709b"
+version = "0.2.0-rc1"
+source = "git+https://github.com/moxin-org/moly-server#27dd43feddb194c44103eba2501726da91948b48"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2145,7 +2145,7 @@ dependencies = [
 
 [[package]]
 name = "moly-runner"
-version = "0.1.0"
+version = "0.2.0-rc1"
 dependencies = [
  "directories",
  "powershell_script",
