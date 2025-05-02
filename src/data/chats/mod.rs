@@ -121,12 +121,17 @@ impl Chats {
         let mut new_chat = Chat::new(self.chats_dir.clone());
         let id = new_chat.id;
 
-        // TODO: A better default bot id, for now we just use the first available one
-        new_chat.associated_bot = if bot_id.is_some() {
-            bot_id
+
+        if let Some(bot_id) = bot_id {
+            new_chat.associated_bot = Some(bot_id);
         } else {
-            self.available_bots.keys().next().map(|id| id.clone())
-        };
+            // Default to the most recently used bot
+            if let Some(last_chat_id) = self.get_last_selected_chat_id() {
+                if let Some(last_chat) = self.get_chat_by_id(last_chat_id) {
+                    new_chat.associated_bot = last_chat.borrow().associated_bot.clone();
+                }
+            }
+        }
 
         new_chat.save();
         self.saved_chats.push(RefCell::new(new_chat));
