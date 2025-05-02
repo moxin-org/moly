@@ -2108,6 +2108,7 @@ dependencies = [
  "futures",
  "makepad-code-editor",
  "makepad-widgets",
+ "pulldown-cmark",
  "reqwest 0.12.12",
  "robius-open",
  "scraper 0.23.1",

@@ -13,7 +13,6 @@ use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
 use moly_protocol::data::{File, FileID};
 
 use makepad_widgets::*;
-use markdown::MarkdownAction;
 
 live_design! {
     use link::theme::*;
@@ -212,9 +211,10 @@ impl MatchEvent for App {
             );
 
         for action in actions.iter() {
-            if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
-                let _ = robius_open::Uri::new(&url).open();
-            }
+            // TODO: Re-implement this once these actions are available in Markdown
+            // if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
+            //     let _ = robius_open::Uri::new(&url).open();
+            // }
 
             self.store.handle_action(action);
 

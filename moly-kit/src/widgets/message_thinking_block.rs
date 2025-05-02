@@ -1,5 +1,7 @@
 use makepad_widgets::*;
 
+use super::custom_markdown::CustomMarkdownWidgetExt;
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -80,8 +82,7 @@ impl Widget for MessageThinkingBlock {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         if let Some(text) = &self.thinking_text {
             // Use message_markdown widget to render the thinking text
-            dbg!(self.markdown(id!(thinking_text)), text);
-            self.markdown(id!(thinking_text)).set_text(cx, text);
+            self.custom_markdown(id!(thinking_text)).set_text(cx, text);
             self.view.draw_walk(cx, scope, walk)
         } else {
             DrawStep::done()

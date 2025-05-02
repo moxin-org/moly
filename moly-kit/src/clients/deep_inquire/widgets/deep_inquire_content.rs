@@ -1,4 +1,5 @@
 use super::stages::StagesWidgetExt;
+use crate::custom_markdown::CustomMarkdownWidgetExt;
 use crate::deep_inquire::{Data, StageType};
 use crate::protocol::*;
 use makepad_widgets::*;
@@ -72,11 +73,10 @@ impl DeepInquireContent {
         if let Some(stage) = completion_stage {
             // Iterate over the text of all substages and present them as one
             let final_text = stage.substages.iter().map(|s| s.text.clone()).collect::<String>();
-            self.markdown(id!(completed_block.completed_markdown))
+            self.custom_markdown(id!(completed_block.completed_markdown))
                 .set_text(
                     cx,
-                    &final_text
-                        .replace("\n\n", "\n\n\u{00A0}\n\n"),
+                    &final_text,
                 );
         }
     }

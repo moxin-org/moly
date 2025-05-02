@@ -311,15 +311,9 @@ impl Messages {
                         item.message_thinking_block(id!(text.thinking_block))
                             .set_thinking_text(thinking_block);
 
-                        // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
-                        // we need to add a "blank" line as a workaround.
-                        //
-                        // Warning: If you ever read the text from this widget and not
-                        // from the list, you should remove the unicode character.
-                        // TODO: Remove this workaround once the markdown widget is fixed.
                         if let Some(body) = message_body {
                             item.label(id!(text.markdown))
-                                .set_text(cx, &body.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                                .set_text(cx, &body);
                         }
 
                         let sources = &message.content.citations;
