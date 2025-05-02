@@ -170,11 +170,17 @@ impl Widget for ChatScreen {
 
         if self.should_load_repo_to_store {
             store.bot_repo = self.chat(id!(chat)).read().bot_repo.clone();
-            self.prompt_input(id!(chat.prompt)).write().enable();
             self.should_load_repo_to_store = false;
         } else if (self.first_render || should_recreate_bot_repo) && !self.creating_bot_repo {
             self.create_bot_repo(cx, scope);
             self.first_render = false;
+        }
+
+        // If there is not selected bot, disable the prompt input
+        if self.chat(id!(chat)).read().bot_id.is_none() {
+            self.prompt_input(id!(chat.prompt)).write().disable();
+        } else if !self.creating_bot_repo {
+            self.prompt_input(id!(chat.prompt)).write().enable();
         }
     }
 
