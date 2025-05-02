@@ -105,27 +105,35 @@ live_design! {
         }
 
         draw_bg: {
-            border_size: 0.0
+            color_1: (TRANSPARENT)
+            color_1_hover: (TRANSPARENT)
+            color_1_active: (TRANSPARENT)
+            color_1_focus: (TRANSPARENT)
 
-            color_1: #000
-            color_1_hover: #000
-            color_1_active: #000
-            color_1_focus: #000
+            color_2: (TRANSPARENT)
+            color_2_hover: (TRANSPARENT)
+            color_2_active: (TRANSPARENT)
+            color_2_focus: (TRANSPARENT)
 
-            color_2: #000
-            color_2_hover: #000
-            color_2_active: #000
-            color_2_focus: #000
+            border_color_1: #ddd
+            border_color_1_hover: #ddd
+            border_color_1_active: #ddd
+            border_color_1_focus: #ddd
 
-            mark_color: #000
-            mark_color_hover: #000
-            mark_color_active: #fff
+            border_color_2: #ddd
+            border_color_2_hover: #ddd
+            border_color_2_active: #ddd
+            border_color_2_focus: #ddd
+
+            mark_color: (TRANSPARENT)
+            mark_color_hover: (TRANSPARENT)
+            mark_color_active: (PRIMARY_COLOR)
             // This is the color of the tab focus, however there seem to be a bug
             // cause if you select and hover-out, this color is used until you
             // press tab. So for now let's just match the active color.
-            mark_color_focus: #fff
-            mark_color_active_focus: #fff
-            mark_color_active_hover: #fff
+            mark_color_focus: (PRIMARY_COLOR)
+            mark_color_active_focus: (PRIMARY_COLOR)
+            mark_color_active_hover: (PRIMARY_COLOR)
         }
     }
 
