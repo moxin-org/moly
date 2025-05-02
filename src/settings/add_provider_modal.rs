@@ -392,12 +392,19 @@ impl WidgetMatchEvent for AddProviderModal {
         }
 
         let selected = self
-            .radio_button_set(ids!(radios.radio_openai, radios.radio_mofa))
+            .radio_button_set(ids!(
+                radios.radio_openai,
+                radios.radio_mofa,
+                radios.radio_deepinquire,
+                radios.radio_moly_server
+            ))
             .selected(cx, actions);
         if let Some(selected) = selected {
             self.selected_provider = match selected {
                 0 => Some(ProviderType::OpenAI),
                 1 => Some(ProviderType::MoFa),
+                2 => Some(ProviderType::DeepInquire),
+                3 => Some(ProviderType::MolyServer),
                 _ => Some(ProviderType::OpenAI),
             };
 
