@@ -7,6 +7,7 @@ mod chat_lines;
 mod citation;
 pub(crate) mod citation_list;
 mod message_loading;
+pub(crate) mod custom_markdown;
 mod message_markdown;
 mod message_thinking_block;
 
@@ -31,6 +32,7 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     avatar::live_design(cx);
     chat_lines::live_design(cx);
     deep_inquire::widgets::live_design(cx);
+    custom_markdown::live_design(cx);
     messages::live_design(cx);
     prompt_input::live_design(cx);
     chat::live_design(cx);

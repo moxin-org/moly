@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use makepad_widgets::*;
 
 use crate::citation_list::CitationListWidgetExt;
+use crate::widgets::custom_markdown::CustomMarkdownWidgetExt;
 use crate::deep_inquire::{Stage, StageType, SubStage};
 
 live_design! {
@@ -661,8 +662,8 @@ impl SubStages {
                 .view(id!(citations_view))
                 .set_visible(cx, false);
             substage_view
-                .markdown(id!(content_block_markdown))
-                .set_text(cx, &substage.text.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                .custom_markdown(id!(content_block_markdown))
+                .set_text(cx, &substage.text);
         }
     }
 }
