@@ -405,8 +405,6 @@ impl WidgetMatchEvent for AddProviderModal {
                 3 => Some(ProviderType::MolyServer),
                 _ => Some(ProviderType::OpenAI),
             };
-
-            dbg!(&self.selected_provider);
         }
     }
 }
