@@ -101,7 +101,7 @@ binaries = [
 
 ## The below command uses cargo-metadata to determine the path of the `makepad_widgets` crate on the host build system,
 ## and copies the `makepad-widgets/resources` directory to the `./dist/resources/makepad_widgets` directory.
-## We also copy the Moly project's `resources/` directory to the `./dist/resources/moly` directory.
+## We also copy the Moly and MolyKit's `resources/` directories to `./dist/resources/moly` and `./dist/resources/moly_kit respectively`.
 ##
 ## This is necessary because the `cargo packager` command only supports defining resources at a known path
 ## (see the below `resources = [...]` block below),
@@ -115,6 +115,7 @@ cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-p
 resources = [
     { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
     { src = "./dist/resources/moly", target = "moly" },
+    { src = "./dist/resources/moly_kit", target = "moly_kit" },
 ]
 
 ## We then build the entire Moly project and set the `MAKEPAD_PACKAGE_DIR` env var to the proper value.

@@ -102,6 +102,7 @@ fn main() -> std::io::Result<()> {
 ///    of the directory created in step 1, which is currently `./dist/resources/makepad_widgets/`.
 ///    The location of the `makepad-widgets` crate is determined using `cargo-metadata`.
 /// 3. Recursively copies the Moly-specific `./resources` directory to `./dist/resources/moly/`.
+/// 4. Recursively copies the moly-kit-specific `./moly-kit/resources` directory to `./dist/resources/moly_kit/`.
 fn before_packaging(host_os: &str) -> std::io::Result<()> {
     let cwd = std::env::current_dir()?;
     let dist_resources_dir = cwd.join("dist").join("resources");
@@ -109,12 +110,14 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
 
     let moly_resources_dest = dist_resources_dir.join("moly").join("resources");
     let moly_resources_src = cwd.join("resources");
+
+    // Find paths using cargo metadata
+    let cargo_metadata = MetadataCommand::new()
+        .exec()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
     let makepad_widgets_resources_dest = dist_resources_dir.join("makepad_widgets").join("resources");
     let makepad_widgets_resources_src = {
-        let cargo_metadata = MetadataCommand::new()
-            .exec()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-
         let makepad_widgets_package = cargo_metadata
             .packages
             .iter()
@@ -127,8 +130,32 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
             .join("resources")
     };
 
+    let moly_kit_resources_dest = dist_resources_dir.join("moly_kit").join("resources");
+    let moly_kit_resources_src = {
+        let moly_kit_package = cargo_metadata
+            .packages
+            .iter()
+            .find(|package| package.name == "moly-kit")
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "moly-kit package not found"))?;
+
+        moly_kit_package.manifest_path
+            .parent()
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "moly-kit package manifest path not found"))?
+            .join("resources")
+    };
+
+
     /// Copy files from source to destination recursively.
     fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> std::io::Result<()> {
+        if !source.as_ref().exists() {
+            println!("  --> Source directory does not exist, skipping copy: {}", source.as_ref().display());
+            return Ok(());
+        }
+        if !source.as_ref().is_dir() {
+             println!("  --> Source is not a directory, skipping copy: {}", source.as_ref().display());
+            return Ok(());
+        }
+
         fs::create_dir_all(&destination)?;
         for entry in fs::read_dir(source)? {
             let entry = entry?;
@@ -145,9 +172,15 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
     println!("Copying makepad-widgets resources...\n  --> From: {}\n      to:   {}", makepad_widgets_resources_src.as_std_path().display(), makepad_widgets_resources_dest.display());
     copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
     println!("  --> Done!");
+
     println!("Copying moly resources...\n  --> From {}\n      to:   {}", moly_resources_src.display(), moly_resources_dest.display());
     copy_recursively(&moly_resources_src, &moly_resources_dest)?;
     println!("  --> Done!");
+
+    println!("Copying moly-kit resources...\n  --> From {}\n      to:   {}", moly_kit_resources_src.as_std_path().display(), moly_kit_resources_dest.display());
+    copy_recursively(&moly_kit_resources_src, &moly_kit_resources_dest)?;
+    println!("  --> Done!");
+
 
     Ok(())
 }
