@@ -40,6 +40,7 @@ impl Widget for StandardMessageContent {
 }
 
 impl StandardMessageContent {
+    /// Set a message content to display it.
     pub fn set_content(&mut self, cx: &mut Cx, content: &MessageContent) {
         let citation_list = self.citation_list(id!(citations));
         citation_list.borrow_mut().unwrap().urls = content.citations.clone();
@@ -58,6 +59,17 @@ impl StandardMessageContent {
         if let Some(body) = message_body {
             self.label(id!(markdown)).set_text(cx, &body);
         }
+    }
+}
+
+impl StandardMessageContentRef {
+    /// See [StandardMessageContent::set_content].
+    pub fn set_content(&mut self, cx: &mut Cx, content: &MessageContent) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+
+        inner.set_content(cx, content);
     }
 }
 
