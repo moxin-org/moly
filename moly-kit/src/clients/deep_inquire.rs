@@ -437,9 +437,9 @@ pub(crate) fn parse_deep_inquire_data(data: &str) -> Option<Data> {
 fn default_client() -> reqwest::Client {
     reqwest::Client::builder()
         // Only considered while establishing the connection
-        .connect_timeout(Duration::from_secs(90))
+        .connect_timeout(Duration::from_secs(360))
         // Keep high read timeout for word-by-word streaming
-        .read_timeout(Duration::from_secs(300))
+        .read_timeout(Duration::from_secs(360))
         .build()
         .unwrap()
 }
