@@ -11,6 +11,7 @@ use crate::{
         message_thinking_block::MessageThinkingBlockWidgetRefExt,
     },
 };
+use makepad_code_editor::code_view::CodeViewWidgetRefExt;
 use makepad_widgets::*;
 
 use super::{citation::CitationAction, citation_list::CitationListWidgetRefExt};
@@ -460,6 +461,17 @@ impl Messages {
 
             if let Some(change) = item.text_input(id!(input)).changed(actions) {
                 self.current_editor.as_mut().unwrap().buffer = change;
+            }
+        }
+
+        // Handle code copy
+        // Since the Markdown widget could have multiple code blocks, we need the widget that triggered the action
+        if let Some(wa) = event.actions().widget_action(id!(copy_code_button)){
+            if wa.widget().as_button().pressed(event.actions()){
+                // nth(2) refers to the code view in the MessageMarkdown widget
+                let code_view = wa.widget_nth(2).widget(id!(code_view));
+                let text_to_copy = code_view.as_code_view().text();
+                cx.copy_to_clipboard(&text_to_copy);
             }
         }
 
