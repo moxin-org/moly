@@ -1,4 +1,5 @@
 use async_stream::stream;
+use log::{error, warn};
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -271,6 +272,7 @@ impl BotClient for OpenAIClient {
                             let original = format!("Request failed: {error}");
                             let enriched = enrich_http_error(status_code, &original);
 
+                            error!("Error sending request to {}: {:?}", url, error);
                             yield ClientError::new_with_source(
                                 ClientErrorKind::Remote,
                                 enriched,
@@ -281,6 +283,7 @@ impl BotClient for OpenAIClient {
                     }
                 }
                 Err(error) => {
+                    error!("Error sending request to {}: {:?}", url, error);
                     yield ClientError::new_with_source(
                         ClientErrorKind::Network,
                         format!("Could not send request to {url}. Verify your connection and the server status."),
@@ -297,6 +300,7 @@ impl BotClient for OpenAIClient {
                 let event = match event {
                     Ok(event) => event,
                     Err(error) => {
+                        error!("Response streaming got interrupted while reading from {}: {:?}", url, error);
                         yield ClientError::new_with_source(
                             ClientErrorKind::Network,
                             format!("Response streaming got interrupted while reading from {url}. This may be a problem with your connection or the server."),
@@ -309,6 +313,7 @@ impl BotClient for OpenAIClient {
                 let completion: Completion = match serde_json::from_str(&event) {
                     Ok(c) => c,
                     Err(error) => {
+                        error!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format. {}", error);
                         yield ClientError::new_with_source(
                             ClientErrorKind::Format,
                             format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
@@ -346,13 +351,13 @@ fn default_client() -> reqwest::Client {
     // configure them.
     reqwest::Client::builder()
         // Only considered while establishing the connection.
-        .connect_timeout(Duration::from_secs(15))
+        .connect_timeout(Duration::from_secs(90))
         // Considered while reading the response and reset on every chunk
         // received.
         //
         // Warning: Do not use normal `timeout` method as it doesn't consider
         // this.
-        .read_timeout(Duration::from_secs(15))
+        .read_timeout(Duration::from_secs(90))
         .build()
         .unwrap()
 }
