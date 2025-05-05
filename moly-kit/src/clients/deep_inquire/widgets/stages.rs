@@ -662,7 +662,7 @@ impl SubStages {
                 .set_visible(cx, false);
             substage_view
                 .markdown(id!(content_block_markdown))
-                .set_text(cx, &substage.text.replace("\n\n", "\n\n\u{00A0}\n\n"));
+                .set_text(cx, &substage.text);
         }
     }
 }

@@ -14,8 +14,8 @@ url = "2.4.10"
 robius-open = "0.1.1"
 async-stream = "0.3.6"
 
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
-makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
+makepad-widgets = { git = "https://github.com/joulei/makepad", branch = "patches-for-moly-release-0.2.0" }
+makepad-code-editor = { git = "https://github.com/joulei/makepad", branch = "patches-for-moly-release-0.2.0" }
 cfg-if = "1.0.0"
 
 log = "0.4"

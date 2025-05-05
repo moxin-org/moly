@@ -27,8 +27,8 @@ moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "m
 url-preview = "0.3.0"
 moly-kit = { path = "./moly-kit", features = ["full"] }
 
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
-makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "rik" }
+makepad-widgets = { git = "https://github.com/joulei/makepad", branch = "patches-for-moly-release-0.2.0" }
+makepad-code-editor = { git = "https://github.com/joulei/makepad", branch = "patches-for-moly-release-0.2.0" }
 
 robius-open = "0.1.1"
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
