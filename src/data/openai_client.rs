@@ -1,6 +1,7 @@
 use moly_kit::BotId;
 use serde::Deserialize;
 use std::sync::mpsc::{self, channel, Sender};
+use log::error;
 
 use makepad_widgets::Cx;
 use crate::data::providers::ProviderClientError;
@@ -111,23 +112,23 @@ impl OpenAIClient {
                                             Cx::post_action(ProviderFetchModelsResult::Success(url, models));
                                         }
                                         Err(e) => {
-                                            eprintln!("Failed to parse models from server: {:?}", e);
+                                            error!("Failed to parse models response from {}: {:?}", url, e);
                                             Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                                         }
                                     }
                                 }
                                 reqwest::StatusCode::UNAUTHORIZED => {
-                                    eprintln!("Unauthorized to fetch models from: {}, your API key might be missing or invalid", url);
+                                    error!("Unauthorized (401) fetching models from {}: API key missing/invalid?", url);
                                     Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::Unauthorized));
                                 }
                                 status => {
-                                    eprintln!("Failed to fetch models from: {}, with status: {:?}", url, status);
+                                    error!("Failed to fetch models from {} - Status: {:?}", url, status);
                                     Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                                 }
                             }
                         },
                         Err(e) => {
-                            eprintln!("Failed to fetch models from server: {e}");
+                            error!("Network/Request error fetching models from {}: {}", url, e);
                             Cx::post_action(ProviderFetchModelsResult::Failure(url, ProviderClientError::UnexpectedResponse));
                         }
                     }

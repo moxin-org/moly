@@ -230,7 +230,6 @@ impl BotClient for DeepInquireClient {
             .client
             .post(&url)
             .headers(headers)
-            .timeout(Duration::from_secs(120))
             .json(&serde_json::json!({
                 "model": bot.id.id(),
                 "messages": moly_messages,
@@ -258,9 +257,10 @@ impl BotClient for DeepInquireClient {
                     }
                 }
                 Err(error) => {
+                    ::log::error!("SSE stream unexpectedly interrupted while reading from {}: {:?}", url, error);
                     yield ClientError::new_with_source(
                         ClientErrorKind::Network,
-                        format!("Could not send request to {url}. Verify your connection and the server status."),
+                        format!("The connection was unexpectedly closed while streaming the response from {url}. This could be due to network issues, server problems, or timeouts."),
                         Some(error),
                     ).into();
                     return;
@@ -287,6 +287,7 @@ impl BotClient for DeepInquireClient {
                             consecutive_timeouts += 1;
 
                             if consecutive_timeouts >= max_consecutive_timeouts {
+                                ::log::error!("SSE stream error while reading from {}: {:?}", url, error);
                                 yield ClientError::new_with_source(
                                     ClientErrorKind::Network,
                                     format!("Too many consecutive timeouts ({}) while reading from {url}. Giving up.", consecutive_timeouts),
@@ -297,10 +298,10 @@ impl BotClient for DeepInquireClient {
 
                             continue;
                         } else {
-                            println!("Error {:?}", error);
+                            ::log::error!("SSE stream error while reading from {}: {:?}", url, error);
                             yield ClientError::new_with_source(
                                 ClientErrorKind::Network,
-                                format!("Response streaming got interrupted while reading from {url}. This may be a problem with your connection or the server."),
+                                format!("The connection was unexpectedly closed while streaming the response from {url}. This could be due to network issues, server problems, or timeouts."),
                                 Some(error),
                             ).into();
                             return;
@@ -311,6 +312,7 @@ impl BotClient for DeepInquireClient {
                 let response: DeepInquireResponse = match serde_json::from_str(&event) {
                     Ok(c) => c,
                     Err(error) => {
+                        ::log::error!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format. {}", error);
                         yield ClientError::new_with_source(
                             ClientErrorKind::Format,
                             format!("Could not parse the SSE message from {url} as JSON or its structure does not match the expected format."),
