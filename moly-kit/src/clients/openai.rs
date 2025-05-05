@@ -1,5 +1,5 @@
 use async_stream::stream;
-use log::{error, warn};
+use log::error;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{

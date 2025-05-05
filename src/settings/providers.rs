@@ -32,7 +32,6 @@ live_design! {
     ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
     ICON_DEEPINQUIRE = dep("crate://self/resources/images/providers/deepinquire.png")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
-    ICON_CUSTOM_PROVIDER = dep("crate://self/resources/images/providers/custom.png")
 
     // Not making this based on <Icon> because button does not support images
     // (and these SVGs are too complex for Makepad's SVG support)
@@ -79,9 +78,30 @@ live_design! {
 
             provider_icon = <View> {
                 width: Fit, height: Fit
-                visible: true
-                provider_icon_image = <Image> {
+                image_wrapper = <View> {
+                    width: Fit, height: Fit
+                    provider_icon_image = <Image> {
+                        width: 25, height: 25
+                    }
+                    visible: true
+                }
+                
+                label_wrapper = <RoundedView> {
                     width: 25, height: 25
+                    visible: false
+                    show_bg: true
+                    draw_bg: {
+                        color: #344054
+                        border_radius: 6
+                    }
+                    align: {x: 0.5, y: 0.5}
+                    
+                    initial_label = <Label> {
+                        draw_text:{
+                            text_style: <BOLD_FONT>{font_size: 12}
+                            color: #f
+                        }
+                    }
                 }
             }
 
@@ -159,7 +179,6 @@ live_design! {
         }
 
         provider_icons: [
-            (ICON_CUSTOM_PROVIDER),
             (ICON_OPENAI),
             (ICON_GEMINI),
             (ICON_MOFA),
@@ -242,11 +261,12 @@ impl Widget for Providers {
 }
 
 impl Providers {
-    fn get_provider_icon(&self, provider: &Provider) -> LiveDependency {
+    fn get_provider_icon(&self, provider: &Provider) -> Option<LiveDependency> {
         // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
         // Find a path that contains the provider name
-        self.provider_icons.iter().find(|icon| icon.as_str().to_lowercase().contains(&provider.name.to_lowercase()))
-        .unwrap_or(&self.provider_icons[0]).clone()
+        self.provider_icons.iter()
+            .find(|icon| icon.as_str().to_lowercase().contains(&provider.name.to_lowercase()))
+            .cloned()
     }
 }
 
@@ -341,13 +361,37 @@ impl ProviderItem {
 }
 
 impl ProviderItemRef {
-    fn set_provider(&mut self, cx: &mut Cx, provider: Provider, icon_path: LiveDependency, is_selected: bool) {
+    fn set_provider(&mut self, cx: &mut Cx, provider: Provider, icon_path: Option<LiveDependency>, is_selected: bool) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
-        inner.provider = provider;
-        let _ = inner.image(id!(provider_icon_image))
-        .load_image_dep_by_path(cx, icon_path.as_str());
+        inner.provider = provider.clone();
+        
+        // Determine whether to show image or label
+        if let Some(icon) = icon_path {
+            // Show the image
+            inner.view(id!(image_wrapper)).set_visible(cx, true);
+            let image = inner.image(id!(provider_icon_image));
+            let _ = image.load_image_dep_by_path(cx, icon.as_str());
+            
+            // Hide the label
+            let label_view = inner.view(id!(provider_icon_label));
+            label_view.set_visible(cx, false);
+        } else {
+            // Hide the image
+            inner.view(id!(image_wrapper)).set_visible(cx, false);
+            
+            // Show the label
+            let label_view = inner.view(id!(label_wrapper));
+            label_view.set_visible(cx, true);
+            
+            // Get first character of the provider name
+            let first_char = provider.name.chars().next()
+                .map(|c| c.to_uppercase().to_string())
+                .unwrap_or_default();
+                
+            label_view.label(id!(initial_label)).set_text(cx, &first_char);
+        }
 
         if is_selected {
             inner.view.apply_over(cx, live! {
