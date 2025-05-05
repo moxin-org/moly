@@ -161,11 +161,4 @@ impl MessageLoadingRef {
             inner.timer = cx.start_timeout(0.2);
         }
     }
-
-    pub fn stop_animation(&mut self) {
-        let Some(mut inner) = self.borrow_mut() else {
-            return;
-        };
-        inner.timer = Timer::default();
-    }
 }
