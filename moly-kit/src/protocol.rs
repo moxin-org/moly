@@ -444,6 +444,10 @@ pub trait BotClient: Send {
     /// Not expected to be implemented by most clients, however if this client
     /// interfaces with a service that gives content in non-standard formats,
     /// this can be used to extend moly-kit to support it.
+    ///
+    /// Prefer reusing previous widget if matches the expected type instead of
+    /// creating a new one on every call to preserve state and avoid perfomance
+    /// issues.
     fn content_widget(
         &mut self,
         _cx: &mut Cx,

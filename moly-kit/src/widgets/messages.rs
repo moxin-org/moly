@@ -27,6 +27,8 @@ live_design! {
     pub Messages = {{Messages}} {
         flow: Overlay,
 
+        // TODO: Consider moving this out to it's own crate now that custom content
+        // is supported.
         deep_inquire_content: <DeepInquireContent> {}
 
         list = <PortalList> {
@@ -126,12 +128,10 @@ pub struct Messages {
     ///
     /// This is exposed as it is for easy manipulation and it's passed to
     /// [BotClient::content_widget] method allowing it to create widgets with
-    /// `new_from_ptr(cx)`.
+    /// [WidgetRef::new_from_ptr].
     #[rust]
     pub templates: HashMap<LiveId, LivePtr>,
 
-    // TODO: Consider moving this out to it's own crate now that custom content
-    // is supported.
     #[live]
     deep_inquire_content: LivePtr,
 
