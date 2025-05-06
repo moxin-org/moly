@@ -1,9 +1,9 @@
-use std::cell::{Ref, RefMut};
+use std::{
+    cell::{Ref, RefMut},
+    collections::HashMap,
+};
 
 use crate::{
-    clients::deep_inquire::{
-        parse_deep_inquire_data, widgets::deep_inquire_bot_line::DeepInquireBotLineWidgetRefExt,
-    },
     protocol::*,
     utils::{events::EventExt, portal_list::ItemsRangeIter},
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
@@ -12,7 +12,8 @@ use makepad_code_editor::code_view::CodeViewWidgetRefExt;
 use makepad_widgets::*;
 
 use super::{
-    citation::CitationAction, standard_message_content::StandardMessageContentWidgetRefExt,
+    citation::CitationAction, slot::SlotWidgetRefExt,
+    standard_message_content::StandardMessageContentWidgetRefExt,
 };
 
 live_design! {
@@ -21,10 +22,15 @@ live_design! {
     use link::shaders::*;
 
     use crate::widgets::chat_lines::*;
-    use crate::clients::deep_inquire::widgets::deep_inquire_bot_line::*;
+    use crate::clients::deep_inquire::widgets::deep_inquire_content::*;
 
     pub Messages = {{Messages}} {
         flow: Overlay,
+
+        // TODO: Consider moving this out to it's own crate now that custom content
+        // is supported.
+        deep_inquire_content: <DeepInquireContent> {}
+
         list = <PortalList> {
             scroll_bar: {
                 bar_size: 0.0,
@@ -34,7 +40,6 @@ live_design! {
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
-            DeepInquireBotLine = <DeepInquireBotLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -106,7 +111,7 @@ struct Editor {
 /// View over a conversation with messages.
 ///
 /// This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
-#[derive(Live, LiveHook, Widget)]
+#[derive(Live, Widget)]
 pub struct Messages {
     #[deref]
     deref: View,
@@ -118,6 +123,17 @@ pub struct Messages {
     /// Bot repository to get bot information.
     #[rust]
     pub bot_repo: Option<BotRepo>,
+
+    /// Registry of DSL templates used by custom content widgets.
+    ///
+    /// This is exposed as it is for easy manipulation and it's passed to
+    /// [BotClient::content_widget] method allowing it to create widgets with
+    /// [WidgetRef::new_from_ptr].
+    #[rust]
+    pub templates: HashMap<LiveId, LivePtr>,
+
+    #[live]
+    deep_inquire_content: LivePtr,
 
     #[rust]
     current_editor: Option<Editor>,
@@ -206,6 +222,9 @@ impl Messages {
             self.should_defer_scroll_to_bottom = false;
         }
 
+        let repo = self.bot_repo.clone().expect("no bot client set");
+        let mut client = repo.client();
+
         let mut list = list_ref.borrow_mut().unwrap();
         list.set_item_range(cx, 0, self.messages.len());
 
@@ -270,14 +289,15 @@ impl Messages {
                         Some(Picture::Grapheme("Y".into()));
                     item.label(id!(name)).set_text(cx, "You");
 
-                    item.standard_message_content(id!(content))
+                    item.slot(id!(content))
+                        .current()
+                        .as_standard_message_content()
                         .set_content(cx, &message.content);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
-                    let repo = self.bot_repo.as_ref().expect("no bot client set");
                     let bot = repo.get_bot(id);
 
                     let (name, avatar) = bot
@@ -290,29 +310,29 @@ impl Messages {
                         item.message_loading(id!(content_section.loading))
                             .animate(cx);
                         item
-                    } else if let Some(_) = message
-                        .content
-                        .data
-                        .as_deref()
-                        .and_then(|data| parse_deep_inquire_data(data))
-                    {
-                        let item = list.item(cx, index, live_id!(DeepInquireBotLine));
-                        item.as_deep_inquire_bot_line()
-                            .borrow_mut()
-                            .unwrap()
-                            .set_content(cx, &message.content);
-                        item
                     } else {
-                        let item = list.item(cx, index, live_id!(BotLine));
-
-                        item.standard_message_content(id!(content))
-                            .set_content(cx, &message.content);
-
-                        item
+                        list.item(cx, index, live_id!(BotLine))
                     };
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);
+
+                    let mut slot = item.slot(id!(content));
+                    if let Some(custom_content) = client.content_widget(
+                        cx,
+                        slot.current().clone(),
+                        &self.templates,
+                        &message.content,
+                    ) {
+                        slot.replace(custom_content);
+                    } else {
+                        // Since portal list may reuse widgets, we must restore
+                        // the default widget just in case.
+                        slot.restore();
+                        slot.default()
+                            .as_standard_message_content()
+                            .set_content(cx, &message.content);
+                    }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
@@ -528,5 +548,12 @@ impl MessagesRef {
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Messages) -> R) -> R {
         f(&mut *self.write())
+    }
+}
+
+impl LiveHook for Messages {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        self.templates
+            .insert(live_id!(DeepInquireContent), self.deep_inquire_content);
     }
 }
