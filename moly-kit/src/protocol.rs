@@ -447,8 +447,9 @@ pub trait BotClient: Send {
     fn content_widget(
         &mut self,
         _cx: &mut Cx,
-        _content: &MessageContent,
+        _previous_widget: WidgetRef,
         _templates: &HashMap<LiveId, LivePtr>,
+        _content: &MessageContent,
     ) -> Option<WidgetRef> {
         None
     }

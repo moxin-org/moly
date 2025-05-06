@@ -116,13 +116,16 @@ impl BotClient for MultiClient {
     fn content_widget(
         &mut self,
         cx: &mut Cx,
-        content: &MessageContent,
+        previous_widget: WidgetRef,
         templates: &HashMap<LiveId, LivePtr>,
+        content: &MessageContent,
     ) -> Option<WidgetRef> {
         self.clients_with_bots
             .lock()
             .unwrap()
             .iter_mut()
-            .find_map(|(client, _)| client.content_widget(cx, content, templates))
+            .find_map(|(client, _)| {
+                client.content_widget(cx, previous_widget.clone(), templates, content)
+            })
     }
 }

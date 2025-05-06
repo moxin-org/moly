@@ -316,10 +316,12 @@ impl Messages {
                     item.label(id!(name)).set_text(cx, name);
 
                     let mut slot = item.slot(id!(content));
-                    if let Some(custom_content) =
-                        repo.client()
-                            .content_widget(cx, &message.content, &self.templates)
-                    {
+                    if let Some(custom_content) = repo.client().content_widget(
+                        cx,
+                        slot.current().clone(),
+                        &self.templates,
+                        &message.content,
+                    ) {
                         slot.replace(custom_content);
                     } else {
                         // Since portal list may reuse widgets, we must restore

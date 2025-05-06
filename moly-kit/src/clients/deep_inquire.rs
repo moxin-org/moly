@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, RwLock},
     time::Duration,
 };
-use widgets::deep_inquire_content::DeepInquireContent;
+use widgets::deep_inquire_content::DeepInquireContentWidgetRefExt;
 
 pub(crate) mod widgets;
 
@@ -341,8 +341,9 @@ impl BotClient for DeepInquireClient {
     fn content_widget(
         &mut self,
         cx: &mut Cx,
-        content: &MessageContent,
+        previous_widget: WidgetRef,
         templates: &HashMap<LiveId, LivePtr>,
+        content: &MessageContent,
     ) -> Option<WidgetRef> {
         let Some(template) = templates.get(&live_id!(DeepInquireContent)).copied() else {
             return None;
@@ -356,9 +357,19 @@ impl BotClient for DeepInquireClient {
             return None;
         };
 
-        let mut widget = DeepInquireContent::new_from_ptr(cx, Some(template));
-        widget.set_content(cx, content);
-        Some(WidgetRef::new_with_inner(Box::new(widget)))
+        let widget = if previous_widget.as_deep_inquire_content().borrow().is_some() {
+            previous_widget
+        } else {
+            WidgetRef::new_from_ptr(cx, Some(template))
+        };
+
+        widget
+            .as_deep_inquire_content()
+            .borrow_mut()
+            .unwrap()
+            .set_content(cx, content);
+
+        Some(widget)
     }
 }
 
