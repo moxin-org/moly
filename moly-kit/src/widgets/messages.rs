@@ -1,4 +1,7 @@
-use std::cell::{Ref, RefMut};
+use std::{
+    cell::{Ref, RefMut},
+    collections::HashMap,
+};
 
 use crate::{
     clients::deep_inquire::{
@@ -119,6 +122,14 @@ pub struct Messages {
     /// Bot repository to get bot information.
     #[rust]
     pub bot_repo: Option<BotRepo>,
+
+    /// Registry of DSL templates used by custom content widgets.
+    ///
+    /// This is exposed as it is for easy manipulation and it's passed to
+    /// [BotClient::content_widget] method allowing it to create widgets with
+    /// `new_from_ptr(cx)`.
+    #[rust]
+    pub templates: HashMap<LiveId, LivePtr>,
 
     #[rust]
     current_editor: Option<Editor>,

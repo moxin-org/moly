@@ -1,8 +1,11 @@
-use makepad_widgets::{Cx, WidgetRef};
+use makepad_widgets::{Cx, LiveId, LivePtr, WidgetRef};
 
 use crate::protocol::*;
 pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 /// A client that can be composed from multiple subclients to interact with all of them as one.
 #[derive(Clone)]
@@ -110,11 +113,16 @@ impl BotClient for MultiClient {
         moly_future(future)
     }
 
-    fn content_widget(&mut self, cx: &mut Cx, content: &MessageContent) -> Option<WidgetRef> {
+    fn content_widget(
+        &mut self,
+        cx: &mut Cx,
+        content: &MessageContent,
+        templates: &HashMap<LiveId, LivePtr>,
+    ) -> Option<WidgetRef> {
         self.clients_with_bots
             .lock()
             .unwrap()
             .iter_mut()
-            .find_map(|(client, _)| client.content_widget(cx, content))
+            .find_map(|(client, _)| client.content_widget(cx, content, templates))
     }
 }
