@@ -405,12 +405,12 @@ impl ProviderViewRef {
             // Update the text inputs
             let api_key_input = inner.text_input(id!(api_key));
             if let Some(api_key) = &provider.api_key {
-                api_key_input.set_text(cx, api_key.clone());
+                api_key_input.set_text(cx, &api_key);
             } else {
-                api_key_input.set_text(cx, "".to_string());
+                api_key_input.set_text(cx, "");
             }
 
-            inner.text_input(id!(api_host)).set_text(cx, provider.url.clone());
+            inner.text_input(id!(api_host)).set_text(cx, &provider.url);
             inner.label(id!(name)).set_text(cx, &provider.name);
             inner.check_box(id!(provider_enabled_switch)).set_active(cx, provider.enabled);
 

@@ -142,7 +142,7 @@ live_design! {
                     mix(
                         self.color,
                         self.color_hover,
-                        self.hover
+                        self.focus
                     ),
                     self.color_active,
                     self.active

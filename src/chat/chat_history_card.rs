@@ -435,7 +435,7 @@ impl ChatHistoryCard {
         if let TitleState::Editable = self.title_edition_state {
             self.view
                 .text_input(id!(title_input))
-                .set_text(cx, text.trim().to_owned());
+                .set_text(cx, &text.trim());
         }
         self.label(id!(model_or_agent_name_label))
             .set_text(cx, &human_readable_name(caption));
