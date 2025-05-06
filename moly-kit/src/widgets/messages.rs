@@ -12,7 +12,8 @@ use makepad_code_editor::code_view::CodeViewWidgetRefExt;
 use makepad_widgets::*;
 
 use super::{
-    citation::CitationAction, standard_message_content::StandardMessageContentWidgetRefExt,
+    citation::CitationAction, slot::SlotWidgetRefExt,
+    standard_message_content::StandardMessageContentWidgetRefExt,
 };
 
 live_design! {
@@ -270,7 +271,9 @@ impl Messages {
                         Some(Picture::Grapheme("Y".into()));
                     item.label(id!(name)).set_text(cx, "You");
 
-                    item.standard_message_content(id!(content))
+                    item.slot(id!(content))
+                        .current()
+                        .as_standard_message_content()
                         .set_content(cx, &message.content);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
@@ -305,7 +308,9 @@ impl Messages {
                     } else {
                         let item = list.item(cx, index, live_id!(BotLine));
 
-                        item.standard_message_content(id!(content))
+                        item.slot(id!(content))
+                            .current()
+                            .as_standard_message_content()
                             .set_content(cx, &message.content);
 
                         item
