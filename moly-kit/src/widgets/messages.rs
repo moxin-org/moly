@@ -222,6 +222,9 @@ impl Messages {
             self.should_defer_scroll_to_bottom = false;
         }
 
+        let repo = self.bot_repo.clone().expect("no bot client set");
+        let mut client = repo.client();
+
         let mut list = list_ref.borrow_mut().unwrap();
         list.set_item_range(cx, 0, self.messages.len());
 
@@ -295,7 +298,6 @@ impl Messages {
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
-                    let repo = self.bot_repo.as_ref().expect("no bot client set");
                     let bot = repo.get_bot(id);
 
                     let (name, avatar) = bot
@@ -316,7 +318,7 @@ impl Messages {
                     item.label(id!(name)).set_text(cx, name);
 
                     let mut slot = item.slot(id!(content));
-                    if let Some(custom_content) = repo.client().content_widget(
+                    if let Some(custom_content) = client.content_widget(
                         cx,
                         slot.current().clone(),
                         &self.templates,
