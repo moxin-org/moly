@@ -80,7 +80,6 @@ impl SlotRef {
     }
 
     /// See [Slot::current].
-    #[allow(dead_code)]
     pub fn current(&self) -> WidgetRef {
         let Some(inner) = self.borrow() else {
             return WidgetRef::empty();
