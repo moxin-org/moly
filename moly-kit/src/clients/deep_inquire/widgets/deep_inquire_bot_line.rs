@@ -14,7 +14,8 @@ live_design! {
 
     pub DeepInquireBotLine = {{DeepInquireBotLine}} <BotLine> {
         message_section = {
-            bubble = {
+            content_section = {
+                flow: Down,
                 <Label> {
                     text: "Steps"
                     draw_text: {
@@ -76,15 +77,18 @@ impl DeepInquireBotLine {
         stages_ui.update_stages(cx, stages);
 
         // Check if there is a completion block in any of the stages
-        let completion_stage = stages.iter().find(|stage| stage.stage_type == StageType::Completion);
+        let completion_stage = stages
+            .iter()
+            .find(|stage| stage.stage_type == StageType::Completion);
         if let Some(stage) = completion_stage {
             // Iterate over the text of all substages and present them as one
-            let final_text = stage.substages.iter().map(|s| s.text.clone()).collect::<String>();
+            let final_text = stage
+                .substages
+                .iter()
+                .map(|s| s.text.clone())
+                .collect::<String>();
             self.markdown(id!(completed_block.completed_markdown))
-                .set_text(
-                    cx,
-                    &final_text
-                );
+                .set_text(cx, &final_text);
         }
     }
 }
