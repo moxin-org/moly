@@ -435,10 +435,6 @@ fn create_or_update_stage(
     content.data = Some(serde_json::to_string(&data).unwrap());
 }
 
-pub(crate) fn parse_deep_inquire_data(data: &str) -> Option<Data> {
-    serde_json::from_str(data).ok()
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 fn default_client() -> reqwest::Client {
     reqwest::Client::builder()
