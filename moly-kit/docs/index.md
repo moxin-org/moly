@@ -1,7 +1,7 @@
 # Moly Kit Documentation
 ## Basics
 - [Quickstart](quickstart.md)
-- Use more than one provider
+- [Use multiple providers](multiple-providers.md)
 - Integrate and customize behavior
 - Web support
 

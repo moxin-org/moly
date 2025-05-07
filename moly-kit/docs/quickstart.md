@@ -31,10 +31,8 @@ async fn main() {
 
 ## Register widgets
 
-As with any Makepad app, we need to register the widgets we want to use.
-
-To do so, call `moly_kit::live_design(cx);` in the `live_register` of
-your app before any widget that uses Moly Kit.
+As with any Makepad app, we need to register the widgets we want to use in the `live_register`
+of your app before any widget that uses Moly Kit.
 
 ```rust
 impl LiveRegister for App {
@@ -106,7 +104,3 @@ impl LiveHook for YourAmazingWidget {
     }
 }
 ```
-
-## References
-
-## Next steps
