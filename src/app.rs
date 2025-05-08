@@ -57,6 +57,7 @@ live_design! {
                 flow: Overlay
                 width: Fill,
                 height: Fill,
+                padding: 0
 
                 root = <View> {
                     width: Fill,
