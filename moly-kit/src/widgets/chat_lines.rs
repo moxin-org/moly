@@ -8,7 +8,7 @@ live_design! {
     use crate::widgets::standard_message_content::*;
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
-
+    use crate::widgets::slot::*;
 
     Sender = <View> {
         height: Fit,
@@ -117,7 +117,7 @@ live_design! {
             content_section = <View> {
                 height: Fit,
                 margin: { left: 32 }
-                content = <StandardMessageContent> {}
+                content = <Slot> { default: <StandardMessageContent> {} }
             }
             editor = <Editor> { margin: { left: 32 }, visible: false }
         }
