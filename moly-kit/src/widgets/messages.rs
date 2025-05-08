@@ -266,7 +266,16 @@ impl Messages {
                             item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                                 Some(Picture::Grapheme("X".into()));
                             item.label(id!(name)).set_text(cx, left);
-                            item.label(id!(text.markdown)).set_text(cx, right);
+                            
+                            let error_content = MessageContent {
+                                text: right.to_string(),
+                                ..Default::default()
+                            };
+                            item.slot(id!(content))
+                                .current()
+                                .as_standard_message_content()
+                                .set_content(cx, &error_content);
+                            
                             self.apply_actions_and_editor_visibility(cx, &item, index);
                             item.draw_all(cx, &mut Scope::empty());
                             continue;
@@ -277,8 +286,12 @@ impl Messages {
                     let item = list.item(cx, index, live_id!(AppLine));
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("A".into()));
-                    item.label(id!(text.markdown))
-                        .set_text(cx, &message.content.text);
+                    
+                    item.slot(id!(content))
+                        .current()
+                        .as_standard_message_content()
+                        .set_content(cx, &message.content);
+                    
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
