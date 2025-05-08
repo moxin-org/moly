@@ -17,6 +17,7 @@ live_design! {
         align: {y: 0.5}
         avatar = <Avatar> {}
         name = <Label> {
+            padding: 0
             draw_text:{
                 text_style: <THEME_FONT_BOLD>{font_size: 10},
                 color: #000

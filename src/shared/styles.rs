@@ -22,6 +22,14 @@ live_design! {
         font_size: (12)
     }
 
+    // Override the default label with no default padding
+    // Ideally we'd repalce THEME_MSPACE_1 or THEME_MSPACE_FACTOR, but it causes issues elsewhere.
+    // TODO: Introduce a proper theme in Moly that overrides default values to match our general styling,
+    // instead of patching individual widgets everywhere.
+    pub Label = <Label> {
+        padding: 0
+    }
+
     pub RoundedInnerShadowView = <View> {
         show_bg: true,
         draw_bg: {
