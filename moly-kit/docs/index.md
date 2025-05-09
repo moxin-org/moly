@@ -8,5 +8,5 @@
 
 ## Advanced
 
-- [Implement your own client](clients.md)
-- Handle provider-specific content format
+- [Implement your own client](custom-client.md)
+- [Handle provider-specific content format](custom-content.md)
