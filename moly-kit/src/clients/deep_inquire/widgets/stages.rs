@@ -120,7 +120,6 @@ live_design! {
         flow: Down
         spacing: 10
         content_heading_label = <Label> {
-            padding: 0
             width: Fill
             draw_text: {
                 wrap: Word
