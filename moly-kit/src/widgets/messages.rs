@@ -275,7 +275,7 @@ impl Messages {
                             item.slot(id!(content))
                                 .current()
                                 .as_standard_message_content()
-                                .set_content(cx, &error_content);
+                                .set_content(cx, &error_content, false);
                             
                             self.apply_actions_and_editor_visibility(cx, &item, index);
                             item.draw_all(cx, &mut Scope::empty());
@@ -291,7 +291,7 @@ impl Messages {
                     item.slot(id!(content))
                         .current()
                         .as_standard_message_content()
-                        .set_content(cx, &message.content);
+                        .set_content(cx, &message.content, false);
                     
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
@@ -345,7 +345,7 @@ impl Messages {
                         slot.restore();
                         slot.default()
                             .as_standard_message_content()
-                            .set_content(cx, &message.content);
+                            .set_content(cx, &message.content, message.is_writing);
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
