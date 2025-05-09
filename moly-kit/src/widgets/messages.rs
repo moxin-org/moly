@@ -52,13 +52,12 @@ live_design! {
         <View> {
             align: {x: 1.0, y: 1.0},
             jump_to_bottom = <Button> {
-                width: 34,
-                height: 34,
-                margin: 2,
-                padding: {bottom: 2},
+                width: 36,
+                height: 36,
+                margin: {left: 2, right: 2, top: 2, bottom: 10},
                 icon_walk: {
-                    width: 12, height: 12
-                    margin: {left: 4.5, top: 2.5},
+                    width: 16, height: 16
+                    margin: {left: 4.5, top: 6.5},
                 }
                 draw_icon: {
                     svg_file: dep("crate://self/resources/jump_to_bottom.svg")
@@ -73,7 +72,7 @@ live_design! {
 
                         sdf.circle(center.x, center.y, radius - 1.0);
                         sdf.fill_keep(#fff);
-                        sdf.stroke(#EAECF0, 1.0);
+                        sdf.stroke(#EAECF0, 1.5);
 
                         return sdf.result
                     }
