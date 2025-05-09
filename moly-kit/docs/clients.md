@@ -4,29 +4,29 @@ This guide assumes you have already read the [Quickstart](quickstart.md).
 
 ## Introduction
 
-As we mentioned before, a "client" is something that allows as to interact with
+As we mentioned before, a "client" is something that allows us to interact with
 models/agents from providers like OpenAI, Ollama, etc., asynchronously.
 
-In general, as long as Moly Kit have a client compatible with the provider you want
+In general, as long as Moly Kit has a client compatible with the provider you want
 to connect to, you don't need to implement your own client. For example, you may
 recall from the [Quickstart](quickstart.md) that there is a built-in `OpenAIClient`
 that you can use with any OpenAI-compatible API.
 
-You also have the `MultiClient` we mentioned on [Use multiple providers](multiple-providers.md)
-which is an utility client to compose clients into one.
+You also have the `MultiClient` we mentioned in [Use multiple providers](multiple-providers.md),
+which is a utility client to compose multiple clients into one.
 
-All this clients are clients because they implement the `BotClient` trait. This
+All these clients are clients because they implement the `BotClient` trait. This
 trait defines a set of (mostly) asynchronous methods to fetch and send data to providers.
 
-If we want to build ours own client, either to support some unsupported provider,
-or to make an utility, or whatever, you simply need to implement that trait.
+If we want to build our own client, either to support an unsupported provider,
+to make a utility, or for any other reason, you simply need to implement that trait.
 
 ## Implementing the `BotClient` trait
 
-Some of the methods in this trait have default implementations, so we donn't need
+Some of the methods in this trait have default implementations, so we don't need
 to implement them, and they may not be relevant for us.
 
-The ones that are very important to implement are the following ones:
+The ones that are very important to implement are the following:
 
 ```rust
 struct MyCustomClient {
@@ -37,7 +37,7 @@ struct MyCustomClient {
 impl BotClient for MyCustomClient {
     fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
         let future = async move {
-          // ... fetch our list of available models/agenets ...
+          // ... fetch our list of available models/agents ...
         };
 
         moly_future(future)
@@ -61,46 +61,46 @@ impl BotClient for MyCustomClient {
 }
 ```
 
-We can see from this implementation templates a lot of details. First of all, the async
-methods return `MolyFuture` and `MolyStream` respectivly. These are basically boxed
-dynamic futures/streams with some cross-platform stuff taken into consideration.
+We can see from these implementation template a lot of details. First of all, the async
+methods return `MolyFuture` and `MolyStream` respectively. These are basically boxed
+dynamic futures/streams with some cross-platform considerations.
 
 > **Note:** Boxed dynamic futures/streams are one of the things that can make async
 > code in Rust difficult to write. This is because this kind of box erases important
-> type information that Rust would normally use to make our lifes 10 times easier.
+> type information that Rust would normally use to make our lives 10 times easier.
 >
 > However, since generics will not play well with Makepad widgets when they reach the
-> UI, dynamic dispatching is a necesarly eveil.
+> UI, dynamic dispatching is a necessary evil.
 
 
-The next thing to notice is that we can very easly create those kinds of futures/streams
-from compile-time known futures by simply wrapping them with `moly_future(...)` and
+The next thing to notice is that we can very easily create those kinds of futures/streams
+from compile-time known futures by simply wrapping them with the `moly_future(...)` and
 `moly_stream(...)` functions.
 
-We can also see these methods normally return a `ClientResult` which is slightly different
-from Rust's standard `Result` as it can contain both, success recovered data and multiple
-errors inside. However, the contructor methods of `ClientResult` enforces some semantics
-similar to `Result`. If you use `new_ok(...)` it will contain just a sucess value. If you use
-`new_err(...)` it will contain just an error. And if you use `new_ok_and_err` you are expected
-to pass a non-empty list of errors along side your success data, otherwise a default error will
-be inserted into the list and you probably don't want that.
+We can also see these methods normally return a `ClientResult`, which is slightly different
+from Rust's standard `Result` as it can contain both successfully recovered data and multiple
+errors. However, the constructor methods of `ClientResult` enforce semantics
+similar to `Result`. If you use `new_ok(...)`, it will contain just a success value. If you use
+`new_err(...)`, it will contain just an error. And if you use `new_ok_and_err`, you are expected
+to pass a non-empty list of errors alongside your success data; otherwise, a default error will
+be inserted into the list, and you probably don't want that.
 
-Let's talk a little more about what the methods do. The `bots` methods simply returns
-a list of available models/agents. It's pretty simple to implement, you could use
+Let's talk a little more about what the methods do. The `bots` method simply returns
+a list of available models/agents. It's pretty simple to implement; you could use
 something like `reqwest` to fetch some JSON from your provider with the list of models,
-parse than, and return it.
+parse that, and return it.
 
 `send_stream` is the method that sends a message to a model/agent. It returns a
-stream which allows you to just push chunks of content in real-time. Although, you
+stream which allows you to push chunks of content in real-time. Although, you
 could also yield a single chunk from it if you don't support streaming.
 
-Different than `Future`s in Rust, `Stream`s are a little less mature, so creating them
+Different from `Future`s in Rust, `Stream`s are a little less mature, so creating them
 with the `async_stream` crate is advised for simplicity.
 
 Note that the exact implementation of a client greatly depends on the provider you
 are trying to support, so it's difficult to make a generic guide on how to build it
 step by step. I recommend checking how `OpenAIClient` and `MultiClient` are implemented
-as an example to do your own.
+as examples to create your own.
 
 But to avoid leaving this section without a working client, let's finish the implementation
 with some dummy methods for a client that simply repeats the last message.
@@ -142,13 +142,12 @@ impl BotClient for EchoClient {
 }
 ```
 
-## Warnings
+## Try not to use `tokio`-specific code
 
-### DO NOT `spawn` inside async methods
+Most relevant Tokio utilities are present in the `futures` crate, which is the base
+for most async crates out there (including Tokio).
 
-### Try not to use `tokio` specific code
+Using Tokio inside your client would make it unusable on the web.
 
-
-
-## Reference
-
+Of course, if your custom client deals with native-specific stuff like the filesystem,
+stdio, etc., then it may be reasonable.
