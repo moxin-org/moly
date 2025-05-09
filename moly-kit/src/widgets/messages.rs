@@ -13,7 +13,7 @@ use makepad_widgets::*;
 
 use super::{
     citation::CitationAction, slot::SlotWidgetRefExt,
-    standard_message_content::StandardMessageContentWidgetRefExt,
+    standard_message_content::{MessageAnimationAction, StandardMessageContentWidgetRefExt},
 };
 
 live_design! {
@@ -163,6 +163,13 @@ pub struct Messages {
 
     #[rust]
     sticking_to_bottom: bool,
+
+    /// Tracks if any messages are still being animated
+    /// 
+    /// If the message is still animating, we should keep sticking to the bottom
+    /// since more text might be added to the screen even after is_writing is false for the given message.
+    #[rust]
+    is_last_message_animating: bool,
 }
 
 impl Widget for Messages {
@@ -184,6 +191,41 @@ impl Widget for Messages {
         for action in event.widget_actions() {
             if let CitationAction::Open(url) = action.cast() {
                 let _ = robius_open::Uri::new(url.as_str()).open();
+            }
+
+            // Track animation state of the messages.
+            // Note: ideally we'd query the state of the item during draw_list function
+            // (e.g. slot.default().as_standard_message_content().is_animating())
+            // but that wasn't possible due to some widgetref borrowing issues during runtime.
+
+            // TODO: Clean up this mechanism as it is slightly redundant, 
+            // Chat already emits an action that results in a scroll after each stream message,
+            // but that is not enough if we want to keep scrolling even after the streaming has ended. 
+            // Perhaps we should make streaming request sticking to bottom instead of manually scrolling.
+            // Then this widget would take care of sticking to bottom entirely by itself.
+            if let MessageAnimationAction::Started = action.cast() {
+                self.is_last_message_animating = true;
+                
+                // If we're sticking to bottom, scroll now that animation has started
+                if self.sticking_to_bottom && !self.user_scrolled {
+                    self.scroll_to_bottom(cx, true);
+                }
+            }   
+
+            if let MessageAnimationAction::Ended = action.cast() {
+                self.is_last_message_animating = false;
+                
+                // One final scroll at the end of animation
+                if self.sticking_to_bottom && !self.user_scrolled {
+                    self.scroll_to_bottom(cx, true);
+                }
+            }
+        }
+
+        // Only scroll if animation is active and we should stick to bottom
+        if self.is_last_message_animating && self.sticking_to_bottom && !self.user_scrolled {
+            if let Event::NextFrame(_) = event {
+                self.scroll_to_bottom(cx, true);
             }
         }
     }
@@ -533,7 +575,12 @@ impl Messages {
 
     pub fn reset_scroll_state(&mut self) {
         self.user_scrolled = false;
-        self.sticking_to_bottom = false;
+        // Keep sticking_to_bottom true if message is still animating
+        if self.is_last_message_animating {
+            self.sticking_to_bottom = true;
+        } else {
+            self.sticking_to_bottom = false;
+        }
     }
 }
 

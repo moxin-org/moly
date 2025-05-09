@@ -43,9 +43,11 @@ struct SmoothTyping {
     pub typing_speed_chars_sec: usize,
     pub last_update: f64,
     pub next_frame: NextFrame,
+    /// Flag to track if an Ended action has already been dispatched for this animation cycle
+    pub ended_action_dispatched: bool,
 }
 
-const DEFAULT_TYPING_SPEED_CHARS_SEC: usize = 300;
+const DEFAULT_TYPING_SPEED_CHARS_SEC: usize = 200;
 const TYPING_ANIMATION_CHAR: &str = "●";
 
 impl Widget for StandardMessageContent {
@@ -82,13 +84,28 @@ impl StandardMessageContent {
 
         if let Some(body) = message_body {
             if is_writing {
+                // Check if we're starting a new message or changing the text
+                let is_new_message = self.smooth_typing.target_text != body;
+                
+                // Track if we need to send animation started
+                let was_empty = self.smooth_typing.target_text.is_empty() || 
+                               self.smooth_typing.current_char_len == 0 ||
+                               is_new_message;
+                
+                if is_new_message {
+                    self.smooth_typing.ended_action_dispatched = false;
+                }
+                
                 self.smooth_typing.target_text = body;
-
+                
                 if self.smooth_typing.typing_speed_chars_sec == 0 {
                     self.smooth_typing.typing_speed_chars_sec = DEFAULT_TYPING_SPEED_CHARS_SEC;
                 }
 
                 if self.smooth_typing.current_char_len < self.smooth_typing.target_text.chars().count() {
+                    if was_empty {
+                        cx.widget_action(self.widget_uid(), &Scope::empty().path, MessageAnimationAction::Started);
+                    }
                     self.smooth_typing.next_frame = cx.new_next_frame();
                 }
             } else {
@@ -99,6 +116,7 @@ impl StandardMessageContent {
                     self.smooth_typing.current_char_len
                 } else {
                     // Otherwise show it completely
+                    self.smooth_typing.ended_action_dispatched = false;
                     body_chars
                 };
                 
@@ -116,10 +134,12 @@ impl StandardMessageContent {
                 }
             }
         } else {
+            // No body text
             self.label(id!(markdown)).set_text(cx, "");
             self.smooth_typing.target_text.clear();
             self.smooth_typing.current_char_len = 0;
             self.smooth_typing.last_update = 0.0;
+            self.smooth_typing.ended_action_dispatched = false;
         }
     }
 
@@ -135,7 +155,7 @@ impl StandardMessageContent {
         }
 
         let current_frame_time = time;
-        if self.smooth_typing.last_update == 0.0 {
+        if self.smooth_typing.last_update == 0.0 { 
             self.smooth_typing.last_update = current_frame_time;
         }
 
@@ -152,6 +172,7 @@ impl StandardMessageContent {
         if chars_to_reveal_float >= 1.0 {
             let num_chars_to_add = chars_to_reveal_float.floor() as usize;
             
+            let prev_len = self.smooth_typing.current_char_len;
             let new_len = self.smooth_typing.current_char_len + num_chars_to_add;
             self.smooth_typing.current_char_len = new_len.min(target_char_count);
 
@@ -159,12 +180,20 @@ impl StandardMessageContent {
                 .chars()
                 .take(self.smooth_typing.current_char_len)
                 .collect::<String>();
-
+            
             // Add a character at the end to simulate typing
             display_text.push_str(format!(" {}", TYPING_ANIMATION_CHAR).as_str());
             
             self.label(id!(markdown)).set_text(cx, &display_text);
             self.smooth_typing.last_update = current_frame_time;
+            
+            // The animation completed naturally
+            if prev_len < target_char_count && 
+               self.smooth_typing.current_char_len >= target_char_count && 
+               !self.smooth_typing.ended_action_dispatched {
+                cx.widget_action(self.widget_uid(), &Scope::empty().path, MessageAnimationAction::Ended);
+                self.smooth_typing.ended_action_dispatched = true;
+            }
         }
 
         if self.smooth_typing.current_char_len < target_char_count {
@@ -214,4 +243,14 @@ fn extract_and_remove_think_tag(text: &str) -> (Option<String>, Option<String>) 
     };
 
     (thinking, body)
+}
+
+/// Action emitted by StandardMessageContent to notify about animation state changes.
+#[derive(Debug, PartialEq, Copy, Clone, DefaultNone)]
+pub enum MessageAnimationAction {
+    /// Animation for smooth typing has started.
+    Started,
+    /// Animation for smooth typing has ended.
+    Ended,
+    None,
 }
