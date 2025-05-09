@@ -1,5 +1,9 @@
 # Web support
 
+## Prerequisites
+
+This guide assumes you have already read the [Quickstart](quickstart.md).
+
 ## How to
 
 Moly Kit has been designed with web support from day one. If you are targeting
