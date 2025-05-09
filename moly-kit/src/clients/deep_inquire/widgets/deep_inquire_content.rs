@@ -13,7 +13,7 @@ live_design! {
     use crate::widgets::message_markdown::*;
 
     pub DeepInquireContent = {{DeepInquireContent}} {
-        flow: Down,
+        flow: Down, spacing: 10
         height: Fit,
         <Label> {
             text: "Steps"

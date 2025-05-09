@@ -13,7 +13,7 @@ use makepad_widgets::*;
 
 use super::{
     citation::CitationAction, slot::SlotWidgetRefExt,
-    standard_message_content::StandardMessageContentWidgetRefExt,
+    standard_message_content::{MessageAnimationAction, StandardMessageContentWidgetRefExt},
 };
 
 live_design! {
@@ -27,12 +27,14 @@ live_design! {
 
     pub Messages = {{Messages}} {
         flow: Overlay,
+        padding: { left: 15, right: 15 }
 
         // TODO: Consider moving this out to it's own crate now that custom content
         // is supported.
         deep_inquire_content: <DeepInquireContent> {}
 
         list = <PortalList> {
+            padding: { left: 10, right: 80 }
             scroll_bar: {
                 bar_size: 0.0,
             }
@@ -50,13 +52,12 @@ live_design! {
         <View> {
             align: {x: 1.0, y: 1.0},
             jump_to_bottom = <Button> {
-                width: 34,
-                height: 34,
-                margin: 2,
-                padding: {bottom: 2},
+                width: 36,
+                height: 36,
+                margin: {left: 2, right: 2, top: 2, bottom: 10},
                 icon_walk: {
-                    width: 12, height: 12
-                    margin: {left: 4.5},
+                    width: 16, height: 16
+                    margin: {left: 4.5, top: 6.5},
                 }
                 draw_icon: {
                     svg_file: dep("crate://self/resources/jump_to_bottom.svg")
@@ -71,7 +72,7 @@ live_design! {
 
                         sdf.circle(center.x, center.y, radius - 1.0);
                         sdf.fill_keep(#fff);
-                        sdf.stroke(#EAECF0, 1.0);
+                        sdf.stroke(#EAECF0, 1.5);
 
                         return sdf.result
                     }
@@ -161,6 +162,13 @@ pub struct Messages {
 
     #[rust]
     sticking_to_bottom: bool,
+
+    /// Tracks if any messages are still being animated
+    /// 
+    /// If the message is still animating, we should keep sticking to the bottom
+    /// since more text might be added to the screen even after is_writing is false for the given message.
+    #[rust]
+    is_last_message_animating: bool,
 }
 
 impl Widget for Messages {
@@ -182,6 +190,41 @@ impl Widget for Messages {
         for action in event.widget_actions() {
             if let CitationAction::Open(url) = action.cast() {
                 let _ = robius_open::Uri::new(url.as_str()).open();
+            }
+
+            // Track animation state of the messages.
+            // Note: ideally we'd query the state of the item during draw_list function
+            // (e.g. slot.default().as_standard_message_content().is_animating())
+            // but that wasn't possible due to some widgetref borrowing issues during runtime.
+
+            // TODO: Clean up this mechanism as it is slightly redundant, 
+            // Chat already emits an action that results in a scroll after each stream message,
+            // but that is not enough if we want to keep scrolling even after the streaming has ended. 
+            // Perhaps we should make streaming request sticking to bottom instead of manually scrolling.
+            // Then this widget would take care of sticking to bottom entirely by itself.
+            if let MessageAnimationAction::Started = action.cast() {
+                self.is_last_message_animating = true;
+                
+                // If we're sticking to bottom, scroll now that animation has started
+                if self.sticking_to_bottom && !self.user_scrolled {
+                    self.scroll_to_bottom(cx, true);
+                }
+            }   
+
+            if let MessageAnimationAction::Ended = action.cast() {
+                self.is_last_message_animating = false;
+                
+                // One final scroll at the end of animation
+                if self.sticking_to_bottom && !self.user_scrolled {
+                    self.scroll_to_bottom(cx, true);
+                }
+            }
+        }
+
+        // Only scroll if animation is active and we should stick to bottom
+        if self.is_last_message_animating && self.sticking_to_bottom && !self.user_scrolled {
+            if let Event::NextFrame(_) = event {
+                self.scroll_to_bottom(cx, true);
             }
         }
     }
@@ -275,7 +318,7 @@ impl Messages {
                             item.slot(id!(content))
                                 .current()
                                 .as_standard_message_content()
-                                .set_content(cx, &error_content);
+                                .set_content(cx, &error_content, false);
                             
                             self.apply_actions_and_editor_visibility(cx, &item, index);
                             item.draw_all(cx, &mut Scope::empty());
@@ -291,7 +334,7 @@ impl Messages {
                     item.slot(id!(content))
                         .current()
                         .as_standard_message_content()
-                        .set_content(cx, &message.content);
+                        .set_content(cx, &message.content, false);
                     
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
@@ -306,7 +349,7 @@ impl Messages {
                     item.slot(id!(content))
                         .current()
                         .as_standard_message_content()
-                        .set_content(cx, &message.content);
+                        .set_content(cx, &message.content, false);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
@@ -345,7 +388,7 @@ impl Messages {
                         slot.restore();
                         slot.default()
                             .as_standard_message_content()
-                            .set_content(cx, &message.content);
+                            .set_content(cx, &message.content, message.is_writing);
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
@@ -531,7 +574,12 @@ impl Messages {
 
     pub fn reset_scroll_state(&mut self) {
         self.user_scrolled = false;
-        self.sticking_to_bottom = false;
+        // Keep sticking_to_bottom true if message is still animating
+        if self.is_last_message_animating {
+            self.sticking_to_bottom = true;
+        } else {
+            self.sticking_to_bottom = false;
+        }
     }
 }
 

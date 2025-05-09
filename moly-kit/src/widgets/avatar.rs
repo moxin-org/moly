@@ -29,7 +29,7 @@ live_design! {
                 width: Fit,
                 height: Fit,
                 draw_text:{
-                    text_style: <THEME_FONT_BOLD>{font_size: 8},
+                    text_style: <THEME_FONT_BOLD>{font_size: 8.5},
                     color: #fff,
                 }
                 text: "P"

@@ -77,12 +77,12 @@ live_design! {
     pub ChatHistoryCard = {{ChatHistoryCard}} {
         flow: Overlay,
         width: Fill,
-        height: 60,
+        height: 56,
 
         selected_bg = <RoundedInnerShadowView> {
             width: Fill
             height: Fill
-            padding: {left: 4, right: 4}
+            padding: {left: 8, right: 8}
 
             show_bg: true
 
@@ -99,8 +99,8 @@ live_design! {
             width: Fill
             height: Fill
             flow: Right
-            padding: {left: 4, right: 4}
-            spacing: 0
+            padding: {left: 8, right: 8}
+            spacing: 6
 
             cursor: Hand
             show_bg: true
@@ -136,7 +136,7 @@ live_design! {
                     height: Fit,
                     padding: 0
                     draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 8},
+                        text_style: <BOLD_FONT>{font_size: 9},
                         color: #475467,
                     }
                 }
@@ -172,7 +172,7 @@ live_design! {
                                 width: Fill,
                                 height: Fit,
                                 draw_text: {
-                                    text_style: <REGULAR_FONT>{font_size: 9.5},
+                                    text_style: <REGULAR_FONT>{font_size: 10},
                                     color: #101828,
                                 }
                                 text: ""

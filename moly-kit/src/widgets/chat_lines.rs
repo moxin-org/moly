@@ -20,7 +20,7 @@ live_design! {
         name = <Label> {
             padding: 0
             draw_text:{
-                text_style: <THEME_FONT_BOLD>{font_size: 10},
+                text_style: <THEME_FONT_BOLD>{font_size: 11},
                 color: #000
             }
         }
