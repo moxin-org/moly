@@ -31,7 +31,7 @@ live_design! {
 
             site = <Label> {
                 draw_text: {
-                    text_style: <THEME_FONT_BOLD>{font_size: 8.5},
+                    text_style: <THEME_FONT_BOLD>{font_size: 9},
                     color: #555,
                 }
             }
@@ -39,7 +39,7 @@ live_design! {
 
         title = <Label> {
             draw_text: {
-                text_style: {font_size: 8},
+                text_style: {font_size: 9},
                 color: #000,
             }
         }

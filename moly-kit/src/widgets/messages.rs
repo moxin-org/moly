@@ -27,12 +27,14 @@ live_design! {
 
     pub Messages = {{Messages}} {
         flow: Overlay,
+        padding: { left: 15, right: 15 }
 
         // TODO: Consider moving this out to it's own crate now that custom content
         // is supported.
         deep_inquire_content: <DeepInquireContent> {}
 
         list = <PortalList> {
+            padding: { left: 10, right: 80 }
             scroll_bar: {
                 bar_size: 0.0,
             }
@@ -56,7 +58,7 @@ live_design! {
                 padding: {bottom: 2},
                 icon_walk: {
                     width: 12, height: 12
-                    margin: {left: 4.5},
+                    margin: {left: 4.5, top: 2.5},
                 }
                 draw_icon: {
                     svg_file: dep("crate://self/resources/jump_to_bottom.svg")
@@ -306,7 +308,7 @@ impl Messages {
                     item.slot(id!(content))
                         .current()
                         .as_standard_message_content()
-                        .set_content(cx, &message.content);
+                        .set_content(cx, &message.content, false);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());

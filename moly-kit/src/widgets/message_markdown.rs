@@ -4,20 +4,23 @@ live_design! {
     use link::theme::*;
     use link::widgets::*;
     use link::moly_kit_theme::*;
-    // import crate::shared::styles::*;
 
     use makepad_code_editor::code_view::CodeView;
 
-    // copied as it is from moly
-    MessageText = <Markdown> {
+    MD_LINE_SPACING = 1.5
+    MD_FONT_COLOR = #000
+
+    pub MessageMarkdown = <Markdown> {
         padding: 0,
-        paragraph_spacing: 20.0,
+        margin: 0,
+        paragraph_spacing: 16,
+        heading_base_scale: 1.6
+
         font_color: #000,
         width: Fill, height: Fit,
-        font_size: 10.0,
+        font_size: 11.0,
         code_block = <View> {
-            margin: {top: -5}
-            width: 900,
+            width: Fill,
             height: Fit,
             flow: Down
             <RoundedView>{
@@ -50,9 +53,9 @@ live_design! {
             }
             code_view = <CodeView>{
                 editor: {
-                    margin: {top: -2}
+                    margin: {top: -2, bottom: 2}
                     pad_left_top: vec2(10.0,10.0)
-                    width: 900,
+                    width: Fill,
                     height: Fit,
                     draw_bg: { color: #1d2330 },
                     draw_text: {
@@ -99,35 +102,39 @@ live_design! {
                 color_hover: #0f0,
             }
         }
-    }
 
-    BaseMarkdown = <MessageText> {
-        padding: 0,
-        margin: 0,
-        // TODO: Fix this empty space issue in Makepad. First paragraph should not have a top margin.
-        // Workaround: This property causes an unintended initial space so let's disable it.
-        paragraph_spacing: 16,
-        heading_base_scale: 1.6
-    }
-
-    pub MessageMarkdown = <BaseMarkdown> {
         draw_normal: {
-            color: (#000),
+            color: (MD_FONT_COLOR),
+            text_style: {
+                line_spacing: (MD_LINE_SPACING)
+            }
         }
         draw_italic: {
-            color: (#000),
+            color: (MD_FONT_COLOR),
+            text_style: {
+                line_spacing: (MD_LINE_SPACING)
+            }
         }
         draw_bold: {
-            color: (#000),
+            color: (MD_FONT_COLOR),
+            text_style: {
+                line_spacing: (MD_LINE_SPACING)
+            }
         }
         draw_bold_italic: {
-            color: (#000),
+            color: (MD_FONT_COLOR),
+            text_style: {
+                line_spacing: (MD_LINE_SPACING)
+            }
         }
         draw_fixed: {
-            color: (#000),
+            color: (MD_FONT_COLOR),
+            text_style: {
+                line_spacing: (MD_LINE_SPACING)
+            }
         }
         draw_block: {
-            line_color: (#000)
+            line_color: (MD_FONT_COLOR)
             sep_color: (#EDEDED)
             quote_bg_color: (#EDEDED)
             quote_fg_color: (#969696)
