@@ -61,7 +61,7 @@ live_design! {
                     height: Fill,
 
                     margin: { top: 120 }
-                    padding: { left: 10, right: 10, bottom: 30 }
+                    padding: { left: 10, right: 10, bottom: 20 }
 
                     list = <PortalList> {
                         drag_scrolling: false,
