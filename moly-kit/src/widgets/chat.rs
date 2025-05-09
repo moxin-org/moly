@@ -9,8 +9,9 @@ use crate::*;
 
 live_design!(
     use link::theme::*;
-    use link::shaders::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
+    use link::shaders::*;
 
     use crate::widgets::messages::*;
     use crate::widgets::prompt_input::*;

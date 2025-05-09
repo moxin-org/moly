@@ -3,6 +3,7 @@ use makepad_widgets::*;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
     use crate::widgets::message_markdown::MessageMarkdown;
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")

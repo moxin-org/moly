@@ -5,8 +5,9 @@ use makepad_widgets::*;
 
 live_design! {
     use link::theme::*;
-    use link::shaders::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
+    use link::shaders::*;
 
     pub Avatar = {{Avatar}} <View> {
         height: Fit,

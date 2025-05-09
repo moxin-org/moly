@@ -4,6 +4,7 @@ use std::cell::{Ref, RefMut};
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
     use link::shaders::*;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {

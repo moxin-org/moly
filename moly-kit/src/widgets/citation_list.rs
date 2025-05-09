@@ -5,6 +5,7 @@ use super::citation::CitationWidgetRefExt;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
 
     use crate::widgets::citation::*;
 
@@ -15,7 +16,7 @@ live_design! {
             flow: Right,
             width: Fill,
             // Fit doesn't work here.
-            height: 48,
+            height: 50,
             Citation = <Citation> {
                 // spacing on parent doesn't work
                 margin: {right: 8},
