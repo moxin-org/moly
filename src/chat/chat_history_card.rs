@@ -115,7 +115,7 @@ live_design! {
                 width: Fit
                 height: Fill
                 align: {y: 0.5}
-                padding: {left: 4, top: 6}
+                padding: {left: 4, top: 10}
 
                 avatar_section = <View> {
                     width: Fit, height: Fill,
@@ -125,11 +125,11 @@ live_design! {
             }
             <View> {
                 width: Fill
-                height: Fit
+                height: Fill
                 flow: Down
                 align: {y: 0.5, x: 0.0}
                 spacing: 3
-                padding: { left: 6, top: 6, bottom: 6 }
+                padding: { left: 6, top: 10, bottom: 6 }
 
                 model_or_agent_name_label = <Label> {
                     width: Fit,
@@ -143,15 +143,17 @@ live_design! {
 
                 <View> {
                     width: Fill
-                    height: Fit
+                    height: Fill
                     flow: Right
                     spacing: 5
                     padding: { top: 2, bottom: 2 }
+                    align: {y: 0.5}
 
                     <View> {
                         width: Fill,
-                        height: Fit,
+                        height: Fill,
                         flow: Down,
+                        align: {y: 0.5}
 
                         title_input_container = <View> {
                             visible: false,
