@@ -23,14 +23,14 @@ texts, copying to clipboard, etc, it will NOT do that without giving you the cha
 to take control.
 
 To do so, those relevant interactions are defined as "tasks", and they are grouped
-and emited to a callback that runs just before `Chat` performs the action.
+and emited to a callback that runs just before `Chat` executes the action.
 
 That callback is what we define as a "hook". A hook not only get's notified
 of what is about to happen, but also get's mutable access to the group of tasks
 meaning it can modify them or abort them as needed.
 
 > So in other words, "tasks" are "units of work" that are about to be performed
-> but we can intercept.
+> but we can "tamper" them.
 
 ## The `set_hook_before` method
 
@@ -109,17 +109,38 @@ Tasks are grouped into groups because not all UI interactions map to a single un
 of work.
 
 For example, the "Save and regenerate" button will trigger two grouped tasks,
-`SetMessages` to override the messages history, and then `Send` to send the history
+`SetMessages` to override the message history, and then `Send` to send the history
 as it is.
 
 > Notice how `Send` doesn't take parameters as it just sends the whole message history.
+> We try to keep task responsabilities decoupled so you don't need to handle many
+> similar tasks to handle some common/intercepted behavior.
 
 If these tasks were emited individually, then would be difficult to inspect this
 kind of details and you may abort a single task that a future task was expecting
 to exist.
 
-## How do I leak data out of the closure?
+## How do I leak data out of the hook closure?
 
-## The...
+Due to a hook being a closure executed by `Chat` at an unknown time for your parent
+widget, and because of Rust's lifetimes, we can't just directly access data from
+the outer scope of the closure.
 
-## More
+So we need to communicate back with our parent widget somehow. We will not cover
+this with detailed examples as you are probably familiarized on how to communicate
+Makepad widgets, but here are some ideas of what you can do.
+
+Since you have access to `cx` inside the closure, one way would be to emit an action
+with `cx.widget_action(...)` and receive it in your parent widget or use `cx.action(...)`
+and handle it globally.
+
+If you don't want to define messages and instead you want to directly execute something
+in the context of your widget, you can use Makepad's `UiRunner` to send instructions
+packed in a closure back to your parent widget.
+
+## What interactions can I intercept with this?
+
+Any interaction listed and documented in the `ChatTask` enum can be worked from
+inside the hook.
+
+You may want to read that enum's specific documentation in the crate documentation.
