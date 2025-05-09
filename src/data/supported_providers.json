@@ -9,7 +9,8 @@
                 "gpt-4.5-preview",
                 "gpt-4o",
                 "gpt-4o-mini",
-                "o1",
+                "gpt-o4-mini",
+                "gpt-4.1",
                 "o1-mini",
                 "o3-mini",
                 "o1-preview"
@@ -24,7 +25,8 @@
                 "models/gemini-1.5-pro",
                 "models/gemini-2.0-flash",
                 "models/gemini-2.0-pro",
-                "models/gemini-2.5-pro-preview-03-25"
+                "models/gemini-2.5-pro-preview-03-25",
+                "models/gemini-2.5-pro-preview-05-06"
             ]
         },
         {
@@ -42,13 +44,22 @@
             "url": "https://api.siliconflow.cn/v1",
             "provider_type": "OpenAI",
             "supported_models": [
-                "Qwen/Qwen2-72B-Instruct",
-                "Pro/Qwen/Qwen2-7B-Instruct",
-                "Qwen/QwQ-32B",
-                "Qwen/Qwen2.5-Coder-7B-Instruct",
                 "meta-llama/Meta-Llama-3.1-8B-Instruct",
-                "deepseek-ai/DeepSeek-V2.5",
-                "Pro/deepseek-ai/DeepSeek-V3"
+                "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                "Pro/meta-llama/Meta-Llama-3.1-8B-Instruct",
+                "deepseek-ai/DeepSeek-V3",
+                "deepseek-ai/DeepSeek-R1",
+                "Pro/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+                "Pro/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+                "Pro/deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+                "Qwen/Qwen3-8B",
+                "Qwen/Qwen3-14B",
+                "Qwen/Qwen3-32B",
+                "Qwen/Qwen2-72B-Instruct",
+                "Qwen/Qwen3-30B-A3B",
+                "Qwen/Qwen3-235B-A22B",
+                "Qwen/Qwen2.5-Coder-7B-Instruct",
+                "Pro/Qwen/Qwen2-7B-Instruct"
             ]
         },
         {
@@ -57,10 +68,14 @@
             "provider_type": "OpenAI",
             "supported_models": [
                 "anthropic/claude-3.7-sonnet",
+                "anthropic/claude-3.7-sonnet:thinking",
                 "anthropic/claude-3-opus",
                 "anthropic/claude-3.5-haiku",
                 "perplexity/sonar",
-                "deepseek/deepseek-r1"
+                "perplexity/sonar-deep-research",
+                "deepseek/deepseek-r1",
+                "deepseek/deepseek-r1:free",
+                "deepseek/deepseek-chat-v3-0324:free"
             ]
         },
         {
