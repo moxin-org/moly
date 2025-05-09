@@ -19,6 +19,7 @@ use super::{
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
     use link::shaders::*;
 
     use crate::widgets::chat_lines::*;

@@ -3,6 +3,7 @@ use makepad_widgets::*;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
 
     pub Slot = {{Slot}} {}
 }

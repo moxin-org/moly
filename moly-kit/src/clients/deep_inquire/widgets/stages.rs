@@ -7,8 +7,9 @@ use crate::deep_inquire::{Stage, StageType, SubStage};
 
 live_design! {
     use link::theme::*;
-    use link::shaders::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
+    use link::shaders::*;
 
     use makepad_code_editor::code_view::CodeView;
     use crate::widgets::citation_list::*;

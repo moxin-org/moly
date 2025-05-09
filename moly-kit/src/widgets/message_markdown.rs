@@ -3,6 +3,7 @@ use makepad_widgets::*;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
     // import crate::shared::styles::*;
 
     use makepad_code_editor::code_view::CodeView;

@@ -2,8 +2,9 @@ use makepad_widgets::*;
 
 live_design! {
     use link::theme::*;
-    use link::shaders::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
+    use link::shaders::*;
 
     ANIMATION_SPEED = 0.33
 
