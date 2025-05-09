@@ -214,7 +214,7 @@ impl Widget for ModelSelector {
             event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
         {
             let is_syncing = matches!(store.provider_syncing_status, ProviderSyncingStatus::Syncing(_));
-            if fd.tap_count == 1 && !store.chats.available_bots.is_empty() && !is_syncing {
+            if fd.tap_count == 1 && !store.chats.get_all_bots(true).is_empty() && !is_syncing {
                 self.open = !self.open;
 
                 if self.open {
@@ -303,8 +303,6 @@ impl Widget for ModelSelector {
         if self.currently_selected_model.is_none() {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(selected_bot)).set_visible(cx, false);
-            self.view(id!(icon_drop)).set_visible(cx, true);
-            choose_label.set_text(cx, "Choose your AI assistant");
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,
@@ -314,6 +312,15 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+
+            // If there are available bots, prompt the user to choose an assistant
+            if !store.chats.get_all_bots(true).is_empty() {  
+                choose_label.set_text(cx, "Choose your AI assistant");
+                self.view(id!(icon_drop)).set_visible(cx, true);
+            } else {
+                choose_label.set_text(cx, "No assistants available, check your provider settings");
+                self.view(id!(icon_drop)).set_visible(cx, false);
+            }
         } else if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(icon_drop)).set_visible(cx, false);
