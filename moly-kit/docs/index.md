@@ -3,7 +3,7 @@
 - [Quickstart](quickstart.md)
 - [Use multiple providers](multiple-providers.md)
 - [Integrate and customize behavior](integrate.md)
-- Web support
+- [Web support](web.md)
 - Exploring the crate
 
 ## Advanced
