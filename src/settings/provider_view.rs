@@ -282,7 +282,7 @@ impl Widget for ProviderView {
 
                         let name = models[item_id].human_readable_name();
                         item.label(id!(model_name)).set_text(cx, &name);
-                        item.check_box(id!(enabled_switch)).set_active(cx, models[item_id].enabled);
+                        item.check_box(id!(enabled_switch)).set_active(cx, models[item_id].enabled && self.provider.enabled);
 
                         item.as_model_entry().set_model_name(&models[item_id].name);
                         item.draw_all(cx, scope);
