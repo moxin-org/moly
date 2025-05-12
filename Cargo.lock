@@ -2197,7 +2197,7 @@ dependencies = [
 
 [[package]]
 name = "moly"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2227,7 +2227,7 @@ dependencies = [
 
 [[package]]
 name = "moly-kit"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-stream",
  "cfg-if",
@@ -2248,7 +2248,7 @@ dependencies = [
 
 [[package]]
 name = "moly-mini"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "futures",
  "futures-core",
