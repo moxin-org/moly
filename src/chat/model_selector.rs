@@ -305,7 +305,21 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        if self.currently_selected_model.is_none() {
+        if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
+            self.view(id!(choose)).set_visible(cx, true);
+            self.view(id!(icon_drop)).set_visible(cx, false);
+            self.view(id!(selected_bot)).set_visible(cx, false);
+            choose_label.set_text(cx, "Syncing assistants...");
+            let color = vec3(0.0, 0.0, 0.0);
+            choose_label.apply_over(
+                cx,
+                live! {
+                    draw_text: {
+                        color: (color)
+                    }
+                },
+            );
+        } else if self.currently_selected_model.is_none() {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(selected_bot)).set_visible(cx, false);
             let color = vec3(0.0, 0.0, 0.0);
@@ -326,20 +340,6 @@ impl Widget for ModelSelector {
                 choose_label.set_text(cx, "No assistants available, check your provider settings");
                 self.view(id!(icon_drop)).set_visible(cx, false);
             }
-        } else if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
-            self.view(id!(choose)).set_visible(cx, true);
-            self.view(id!(icon_drop)).set_visible(cx, false);
-            self.view(id!(selected_bot)).set_visible(cx, false);
-            choose_label.set_text(cx, "Syncing assistants...");
-            let color = vec3(0.0, 0.0, 0.0);
-            choose_label.apply_over(
-                cx,
-                live! {
-                    draw_text: {
-                        color: (color)
-                    }
-                },
-            );
         } else {
             self.update_selected_model_info(cx, store);
         }
