@@ -210,6 +210,11 @@ impl Widget for ModelSelector {
         self.widget_match_event(cx, event, scope);
         let store = scope.data.get::<Store>().unwrap();
 
+        // Check if the currently selected model's provider is still active, otherwise clear the model
+        if self.check_and_clear_unavailable_model(store) {
+            self.redraw(cx);
+        }
+
         if let Hit::FingerDown(fd) =
             event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
         {
@@ -386,6 +391,22 @@ impl ModelSelector {
         let modal = self.modal(id!(bot_options_modal));
         modal.close(cx);
         self.redraw(cx);
+    }
+
+    // Helper method to check if the currently selected model is available
+    // and clear it if not. Returns true if the model was cleared.
+    fn check_and_clear_unavailable_model(&mut self, store: &Store) -> bool {
+        if let Some(bot_id) = &self.currently_selected_model.clone() {
+            let bot_available = store.chats.get_all_bots(true).iter()
+                .any(|bot| &bot.id == bot_id);
+            
+            if !bot_available {
+                self.currently_selected_model = None;
+                // TODO: Unsure if we should clear the current chat's associated bot here (set to None)
+                return true;
+            }
+        }
+        false
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {

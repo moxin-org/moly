@@ -100,6 +100,7 @@ live_design! {
                     width: Fit, height: Fit
                     flow: Right, spacing: 10
                     refresh_button = <View> {
+                        visible: false
                         padding: {top: 4} // TODO: this is a hack to align the image view with the switch
                         cursor: Hand
                         width: 30, height: 30
@@ -258,6 +259,12 @@ impl Widget for ProviderView {
         // Catch up with the latest provider status in the store
         self.provider = store.chats.providers.get(&self.provider.url).unwrap().clone();
         self.update_connection_status(cx);
+
+        if self.provider.enabled {
+            self.view(id!(refresh_button)).set_visible(cx, true);
+        } else {
+            self.view(id!(refresh_button)).set_visible(cx, false);
+        }
 
         let entries_count = models.len();
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {

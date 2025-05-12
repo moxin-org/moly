@@ -171,12 +171,16 @@ impl Chats {
         client.fetch_models();
     }
 
+    /// Handle the result of a provider fetching models operation.
+    /// 
+    /// Returns true if the provider is MolyServer and the fetching was successful.
     pub fn handle_provider_connection_result(
         &mut self,
         result: ProviderFetchModelsResult,
         preferences: &mut Preferences,
         provider_syncing_status: &mut ProviderSyncingStatus
-    ) {
+    ) -> bool {
+        let mut fetched_from_moly_server = false;
         match result {
             ProviderFetchModelsResult::Success(address, mut fetched_models) => {
 
@@ -246,6 +250,10 @@ impl Chats {
 
                 if let Some(provider) = self.providers.get_mut(&address) {
                     provider.connection_status = ProviderConnectionStatus::Connected;
+                    // If the fetching was successful and the provider is MolyServer, sync status
+                    if provider.provider_type == ProviderType::MolyServer {
+                        fetched_from_moly_server = true;
+                    }
                 }
             }
             ProviderFetchModelsResult::Failure(address, error) => {
@@ -269,6 +277,8 @@ impl Chats {
             }
             _ => {}
         }
+
+        fetched_from_moly_server
     }
 
     pub fn insert_or_update_provider(&mut self, provider: &Provider) {
