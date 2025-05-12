@@ -1,0 +1,11 @@
+[book]
+language = "en"
+src = "src"
+title = "Moly"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "light"
+
+[output.html.playground]
+runnable = false
