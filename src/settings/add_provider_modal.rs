@@ -29,12 +29,11 @@ live_design! {
         }
         draw_text: {
             text_style: <REGULAR_FONT>{font_size: 12},
-            fn get_color(self) -> vec4 {
-                if self.is_empty > 0.5 {
-                    return #475467;
-                }
-                return #000;
-            }
+            color: #000
+            color_hover: #000
+            color_focus: #000
+            color_empty: #98A2B3
+            color_empty_focus: #98A2B3
         }
         width: Fill, height: Fit
     }
@@ -105,35 +104,30 @@ live_design! {
         }
 
         draw_bg: {
-            color_1: (TRANSPARENT)
-            color_1_hover: (TRANSPARENT)
-            color_1_active: (TRANSPARENT)
-            color_1_focus: (TRANSPARENT)
-
-            color_2: (TRANSPARENT)
-            color_2_hover: (TRANSPARENT)
-            color_2_active: (TRANSPARENT)
-            color_2_focus: (TRANSPARENT)
+            color: (TRANSPARENT)
+            color_hover: (TRANSPARENT)
+            color_down: (TRANSPARENT)
+            color_active: (TRANSPARENT)
+            color_focus: (TRANSPARENT)
+            color_disabled: (TRANSPARENT)
 
             border_color_1: #ddd
             border_color_1_hover: #ddd
+            border_color_1_down: #ddd
             border_color_1_active: #ddd
             border_color_1_focus: #ddd
+            border_color_1_disabled: #ddd
 
             border_color_2: #ddd
             border_color_2_hover: #ddd
+            border_color_2_down: #ddd
             border_color_2_active: #ddd
             border_color_2_focus: #ddd
+            border_color_2_disabled: #ddd
 
             mark_color: (TRANSPARENT)
-            mark_color_hover: (TRANSPARENT)
             mark_color_active: (PRIMARY_COLOR)
-            // This is the color of the tab focus, however there seem to be a bug
-            // cause if you select and hover-out, this color is used until you
-            // press tab. So for now let's just match the active color.
-            mark_color_focus: (PRIMARY_COLOR)
-            mark_color_active_focus: (PRIMARY_COLOR)
-            mark_color_active_hover: (PRIMARY_COLOR)
+            mark_color_disabled: (TRANSPARENT)
         }
     }
 
@@ -383,7 +377,6 @@ impl WidgetMatchEvent for AddProviderModal {
             };
 
             store.insert_or_update_provider(&provider);
-            store.chats.test_provider_and_fetch_models(&provider.url);
 
             cx.action(AddProviderModalAction::ModalDismissed);
             self.clear_form(cx);
@@ -421,8 +414,8 @@ impl AddProviderModal {
     }
 
     fn clear_form(&mut self, cx: &mut Cx) {
-        self.text_input(id!(api_host)).set_text(cx, "".to_string());
-        self.text_input(id!(api_key)).set_text(cx, "".to_string());
+        self.text_input(id!(api_host)).set_text(cx, "");
+        self.text_input(id!(api_key)).set_text(cx, "");
         self.clear_error_message(cx);
         self.selected_provider = None;
     }

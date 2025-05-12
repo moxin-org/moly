@@ -100,6 +100,7 @@ live_design! {
                     width: Fit, height: Fit
                     flow: Right, spacing: 10
                     refresh_button = <View> {
+                        visible: false
                         padding: {top: 4} // TODO: this is a hack to align the image view with the switch
                         cursor: Hand
                         width: 30, height: 30
@@ -259,6 +260,12 @@ impl Widget for ProviderView {
         self.provider = store.chats.providers.get(&self.provider.url).unwrap().clone();
         self.update_connection_status(cx);
 
+        if self.provider.enabled {
+            self.view(id!(refresh_button)).set_visible(cx, true);
+        } else {
+            self.view(id!(refresh_button)).set_visible(cx, false);
+        }
+
         let entries_count = models.len();
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
@@ -275,7 +282,7 @@ impl Widget for ProviderView {
 
                         let name = models[item_id].human_readable_name();
                         item.label(id!(model_name)).set_text(cx, &name);
-                        item.check_box(id!(enabled_switch)).set_active(cx, models[item_id].enabled);
+                        item.check_box(id!(enabled_switch)).set_active(cx, models[item_id].enabled && self.provider.enabled);
 
                         item.as_model_entry().set_model_name(&models[item_id].name);
                         item.draw_all(cx, scope);
@@ -323,10 +330,6 @@ impl WidgetMatchEvent for ProviderView {
         // Handle provider enabled/disabled
         let provider_enabled_switch = self.check_box(id!(provider_enabled_switch));
         if let Some(enabled) = provider_enabled_switch.changed(actions) {
-            if enabled {
-                store.chats.test_provider_and_fetch_models(&self.provider.url);
-            }
-
             self.provider.enabled = enabled;
             // Update the provider in store and preferences
             store.insert_or_update_provider(&self.provider);
@@ -367,8 +370,7 @@ impl WidgetMatchEvent for ProviderView {
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
             // Update the provider in the store and preferences
             store.insert_or_update_provider(&self.provider);
-            // Fetch the models from the provider
-            store.chats.test_provider_and_fetch_models(&self.provider.url);
+            
             // Update the provider enabled switch
             self.check_box(id!(provider_enabled_switch)).set_active(cx, true);
             // Update the UI
@@ -381,8 +383,7 @@ impl WidgetMatchEvent for ProviderView {
             // Update the provider status in the store
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
             store.insert_or_update_provider(&self.provider);
-            // Fetch the models from the provider
-            store.chats.test_provider_and_fetch_models(&self.provider.url);
+            
             // Update UI
             self.update_connection_status(cx);
             self.redraw(cx);
@@ -405,12 +406,12 @@ impl ProviderViewRef {
             // Update the text inputs
             let api_key_input = inner.text_input(id!(api_key));
             if let Some(api_key) = &provider.api_key {
-                api_key_input.set_text(cx, api_key.clone());
+                api_key_input.set_text(cx, &api_key);
             } else {
-                api_key_input.set_text(cx, "".to_string());
+                api_key_input.set_text(cx, "");
             }
 
-            inner.text_input(id!(api_host)).set_text(cx, provider.url.clone());
+            inner.text_input(id!(api_host)).set_text(cx, &provider.url);
             inner.label(id!(name)).set_text(cx, &provider.name);
             inner.check_box(id!(provider_enabled_switch)).set_active(cx, provider.enabled);
 

@@ -5,8 +5,9 @@ use makepad_widgets::*;
 
 live_design! {
     use link::theme::*;
-    use link::shaders::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
+    use link::shaders::*;
 
     pub Avatar = {{Avatar}} <View> {
         height: Fit,
@@ -28,7 +29,7 @@ live_design! {
                 width: Fit,
                 height: Fit,
                 draw_text:{
-                    text_style: <THEME_FONT_BOLD>{font_size: 8},
+                    text_style: <THEME_FONT_BOLD>{font_size: 8.5},
                     color: #fff,
                 }
                 text: "P"

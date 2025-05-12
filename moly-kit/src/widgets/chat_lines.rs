@@ -3,14 +3,13 @@ use makepad_widgets::*;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
     use link::shaders::*;
 
-    use crate::widgets::message_thinking_block::*;
-    use crate::widgets::message_markdown::*;
+    use crate::widgets::standard_message_content::*;
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
-    use crate::widgets::citation_list::*;
-
+    use crate::widgets::slot::*;
 
     Sender = <View> {
         height: Fit,
@@ -19,20 +18,11 @@ live_design! {
         align: {y: 0.5}
         avatar = <Avatar> {}
         name = <Label> {
+            padding: 0
             draw_text:{
-                text_style: <THEME_FONT_BOLD>{font_size: 10},
+                text_style: <THEME_FONT_BOLD>{font_size: 11},
                 color: #000
             }
-        }
-    }
-
-
-    Bubble = <RoundedView> {
-        height: Fit,
-        padding: {left: 16, right: 18, top: 18, bottom: 14},
-        show_bg: true,
-        draw_bg: {
-            border_radius: 12.0,
         }
     }
 
@@ -125,10 +115,15 @@ live_design! {
             flow: Down,
             height: Fit,
             sender = <Sender> {}
-            bubble = <Bubble> {}
+            content_section = <View> {
+                height: Fit,
+                margin: { left: 32 }
+                content = <Slot> { default: <StandardMessageContent> {} }
+            }
+            editor = <Editor> { margin: { left: 32 }, visible: false }
         }
         actions_section = <View> {
-            margin: {top: 4, bottom: 10},
+            margin: {left: 32, top: 4, bottom: 10},
             height: 25,
             actions = <Actions> { visible: false }
             edit_actions = <EditActions> { visible: false }
@@ -136,8 +131,6 @@ live_design! {
     }
 
     pub UserLine = <ChatLine> {
-        flow: Down,
-        height: Fit,
         message_section = {
             sender = {
                 avatar = {
@@ -148,61 +141,17 @@ live_design! {
                     }
                 }
             }
-
-            bubble = <Bubble> {
-                flow: Down,
-                padding: 0,
-                margin: {left: 32}
-                text = <View> {
-                    flow: Down
-                    height: Fit,
-                    label = <Label> {
-                        width: Fill,
-                        draw_text: {
-                            color: #000
-                        }
-                    }
-                }
-                editor = <Editor> { visible: false }
-            }
-        }
-        actions_section = {
-            margin: {left: 32}
         }
     }
 
-    pub BotLine = <ChatLine> {
-        flow: Down,
-        height: Fit,
-        message_section = {
-            bubble = <Bubble> {
-                flow: Down,
-                padding: 0,
-                margin: {left: 32}
-                spacing: 10,
-                text = <View> {
-                    flow: Down
-                    height: Fit,
-                    spacing: 10
-                    thinking_block = <MessageThinkingBlock> {}
-                    markdown = <MessageMarkdown> {}
-                }
-                editor = <Editor> { visible: false }
-                citations = <CitationList> { visible: false }
-            }
-        }
-        actions_section = {
-            margin: {left: 32}
-        }
-    }
+    pub BotLine = <ChatLine> {}
 
     pub LoadingLine = <BotLine> {
         message_section = {
-            bubble = {
-                text = <View> {
-                    height: Fit,
-                    loading = <MessageLoading> {}
-                }
+            content_section = <View> {
+                height: Fit,
+                padding: {left: 32}
+                loading = <MessageLoading> {}
             }
         }
     }

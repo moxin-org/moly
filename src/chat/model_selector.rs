@@ -30,12 +30,7 @@ live_design! {
         flow: Overlay,
 
         align: {x: 0.5, y: 0.5}
-        loading = <ModelSelectorLoading> {
-            width: Fill,
-            height: Fill,
-            visible: false,
-        }
-
+        loading = <ModelSelectorLoading> {}
 
         <View> {
             width: Fill,
@@ -210,11 +205,16 @@ impl Widget for ModelSelector {
         self.widget_match_event(cx, event, scope);
         let store = scope.data.get::<Store>().unwrap();
 
+        // Check if the currently selected model's provider is still active, otherwise clear the model
+        if self.check_and_clear_unavailable_model(store) {
+            self.redraw(cx);
+        }
+
         if let Hit::FingerDown(fd) =
             event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
         {
             let is_syncing = matches!(store.provider_syncing_status, ProviderSyncingStatus::Syncing(_));
-            if fd.tap_count == 1 && !store.chats.available_bots.is_empty() && !is_syncing {
+            if fd.tap_count == 1 && !store.chats.get_all_bots(true).is_empty() && !is_syncing {
                 self.open = !self.open;
 
                 if self.open {
@@ -289,10 +289,7 @@ impl Widget for ModelSelector {
 
         // Trigger a redraw if the provider syncing status has changed
         if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
-            // TODO: use the syncing info to show a progress bar instead.
             self.model_selector_loading(id!(loading)).show_and_animate(cx);
-        } else {
-            self.model_selector_loading(id!(loading)).hide();
         }
     }
 
@@ -300,25 +297,11 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        if self.currently_selected_model.is_none() {
-            self.view(id!(choose)).set_visible(cx, true);
-            self.view(id!(selected_bot)).set_visible(cx, false);
-            self.view(id!(icon_drop)).set_visible(cx, true);
-            choose_label.set_text(cx, "Choose your AI assistant");
-            let color = vec3(0.0, 0.0, 0.0);
-            choose_label.apply_over(
-                cx,
-                live! {
-                    draw_text: {
-                        color: (color)
-                    }
-                },
-            );
-        } else if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
+        if let ProviderSyncingStatus::Syncing(syncing) = &store.provider_syncing_status {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(icon_drop)).set_visible(cx, false);
             self.view(id!(selected_bot)).set_visible(cx, false);
-            choose_label.set_text(cx, "Syncing assistants...");
+            choose_label.set_text(cx, &format!("Syncing providers... {}/{}", syncing.current, syncing.total));
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,
@@ -328,6 +311,27 @@ impl Widget for ModelSelector {
                     }
                 },
             );
+        } else if self.currently_selected_model.is_none() {
+            self.view(id!(choose)).set_visible(cx, true);
+            self.view(id!(selected_bot)).set_visible(cx, false);
+            let color = vec3(0.0, 0.0, 0.0);
+            choose_label.apply_over(
+                cx,
+                live! {
+                    draw_text: {
+                        color: (color)
+                    }
+                },
+            );
+
+            // If there are available bots, prompt the user to choose an assistant
+            if !store.chats.get_all_bots(true).is_empty() {  
+                choose_label.set_text(cx, "Choose your AI assistant");
+                self.view(id!(icon_drop)).set_visible(cx, true);
+            } else {
+                choose_label.set_text(cx, "No assistants available, check your provider settings");
+                self.view(id!(icon_drop)).set_visible(cx, false);
+            }
         } else {
             self.update_selected_model_info(cx, store);
         }
@@ -379,6 +383,22 @@ impl ModelSelector {
         let modal = self.modal(id!(bot_options_modal));
         modal.close(cx);
         self.redraw(cx);
+    }
+
+    // Helper method to check if the currently selected model is available
+    // and clear it if not. Returns true if the model was cleared.
+    fn check_and_clear_unavailable_model(&mut self, store: &Store) -> bool {
+        if let Some(bot_id) = &self.currently_selected_model.clone() {
+            let bot_available = store.chats.get_all_bots(true).iter()
+                .any(|bot| &bot.id == bot_id);
+            
+            if !bot_available {
+                self.currently_selected_model = None;
+                // TODO: Unsure if we should clear the current chat's associated bot here (set to None)
+                return true;
+            }
+        }
+        false
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {

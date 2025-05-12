@@ -22,7 +22,7 @@ live_design! {
     HeadingLabel = <Label> {
         margin: {left: 4, bottom: 4},
         draw_text:{
-            text_style: <BOLD_FONT>{font_size: 10},
+            text_style: <BOLD_FONT>{font_size: 10.5},
             color: #3
         }
     }
@@ -61,7 +61,7 @@ live_design! {
                     height: Fill,
 
                     margin: { top: 120 }
-                    padding: { left: 14, right: 14, bottom: 58 }
+                    padding: { left: 10, right: 10, bottom: 20 }
 
                     list = <PortalList> {
                         drag_scrolling: false,
@@ -72,7 +72,6 @@ live_design! {
                         }
                         ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
                         ChatHistoryCard = <ChatHistoryCard> {
-                            padding: {top: 4}
                             cursor: Default
                         }
                     }

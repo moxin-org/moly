@@ -19,8 +19,8 @@ use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
-use moly_kit::*;
 use makepad_widgets::*;
+use moly_kit::*;
 
 #[allow(dead_code)]
 const DEFAULT_MOFA_ADDRESS: &str = "http://localhost:8000";
@@ -108,7 +108,7 @@ impl Store {
 
         store.chats.load_chats();
         store.init_current_chat();
-        
+
         store.sync_with_moly_server();
         store.load_preference_connections();
 
@@ -144,13 +144,15 @@ impl Store {
                     self.downloads.load_pending_downloads();
                     self.search.load_featured_models();
                 }
-                Err(_err) => {},
+                Err(_err) => {}
             }
         };
     }
 
     pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {
-        self.chats.get_chat_by_id(chat_id).and_then(|chat| chat.borrow().associated_bot.clone())
+        self.chats
+            .get_chat_by_id(chat_id)
+            .and_then(|chat| chat.borrow().associated_bot.clone())
     }
 
     /// This function combines the search results information for a given model
@@ -251,8 +253,17 @@ impl Store {
     }
 
     pub fn handle_provider_connection_action(&mut self, result: ProviderFetchModelsResult) {
-        if let ProviderFetchModelsResult::None = result { return; }
-        self.chats.handle_provider_connection_result(result, &mut self.preferences, &mut self.provider_syncing_status);
+        if let ProviderFetchModelsResult::None = result {
+            return;
+        }
+        let fetched_from_moly_server = self.chats.handle_provider_connection_result(
+            result,
+            &mut self.preferences,
+            &mut self.provider_syncing_status,
+        );
+        if fetched_from_moly_server && !self.moly_client.is_connected() {
+            self.sync_with_moly_server();
+        }
     }
 
     /// Loads the preference connections from the preferences and registers them in the chats.
@@ -261,7 +272,9 @@ impl Store {
         let mut final_list = Vec::new();
 
         for s in &supported {
-            let maybe_prefs = self.preferences.providers_preferences
+            let maybe_prefs = self
+                .preferences
+                .providers_preferences
                 .iter()
                 .find(|pp| pp.url == s.url);
 
@@ -317,29 +330,35 @@ impl Store {
 
     fn auto_fetch_for_enabled_providers(&mut self) {
         // Automatically fetch providers that are enabled and have an API key or are MoFa servers
-        let urls_to_fetch: Vec<String> = self.preferences.providers_preferences
+        let urls_to_fetch: Vec<String> = self
+            .preferences
+            .providers_preferences
             .iter()
             // TODO: If the provider requires an API key, we should fetch only if the API key is set
-            .filter(|pp| pp.enabled && (pp.api_key.is_some() || pp.provider_type == ProviderType::MoFa || pp.provider_type == ProviderType::DeepInquire || pp.url.starts_with("http://localhost")))
+            .filter(|pp| {
+                pp.enabled
+                    && (pp.api_key.is_some()
+                        || pp.provider_type == ProviderType::MoFa
+                        || pp.provider_type == ProviderType::DeepInquire
+                        || pp.url.starts_with("http://localhost"))
+            })
             .map(|pp| pp.url.clone())
             .collect();
 
-        self.provider_syncing_status = ProviderSyncingStatus::Syncing(ProviderSyncing {
-            current: 0,
-            total: urls_to_fetch.len() as u32,
-        });
-
-        for url in urls_to_fetch {
-            if let Some(provider) = self.chats.providers.get(&url) {
-                // Register the provider client, it triggers test_provider_and_fetch_models internally
-                self.chats.register_provider(provider.clone());
-            }
+        // Collect providers first to avoid borrow issues
+        let providers_to_register: Vec<Provider> = urls_to_fetch
+            .iter()
+            .filter_map(|url| self.chats.providers.get(url).cloned())
+            .collect();
+        
+        for provider in providers_to_register {
+            self.chats.register_provider(provider, &mut self.provider_syncing_status);
         }
     }
 
     pub fn insert_or_update_provider(&mut self, provider: &Provider) {
         // Update in memory
-        self.chats.insert_or_update_provider(provider);
+        self.chats.insert_or_update_provider(provider, &mut self.provider_syncing_status);
         // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
         // Update in MolyKit (to update the API key used by the client, if needed)

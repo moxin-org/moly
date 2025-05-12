@@ -82,7 +82,7 @@ live_design! {
         selected_bg = <RoundedInnerShadowView> {
             width: Fill
             height: Fill
-            padding: {left: 4, right: 4}
+            padding: {left: 8, right: 8}
 
             show_bg: true
 
@@ -97,10 +97,10 @@ live_design! {
 
         content = <RoundedView> {
             width: Fill
-            height: Fit
+            height: Fill
             flow: Right
-            padding: {left: 4, right: 4}
-            spacing: 4
+            padding: {left: 8, right: 8}
+            spacing: 6
 
             cursor: Hand
             show_bg: true
@@ -113,44 +113,47 @@ live_design! {
 
             <View> {
                 width: Fit
-                height: 50
+                height: Fill
                 align: {y: 0.5}
-                padding: {left: 4}
+                padding: {left: 4, top: 10}
 
                 avatar_section = <View> {
-                    width: Fit, height: Fit,
+                    width: Fit, height: Fill,
                     model = <ChatModelAvatar> {}
                     agent = <ChatAgentAvatar> { visible: false }
                 }
             }
             <View> {
                 width: Fill
-                height: Fit
+                height: Fill
                 flow: Down
-                align: {y: 0.5}
-                spacing: 2
-                padding: { left: 8, top: 10, bottom: 10 }
+                align: {y: 0.5, x: 0.0}
+                spacing: 3
+                padding: { left: 6, top: 10, bottom: 6 }
 
                 model_or_agent_name_label = <Label> {
-                    width: Fill,
+                    width: Fit,
                     height: Fit,
+                    padding: 0
                     draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 7.5},
+                        text_style: <BOLD_FONT>{font_size: 9},
                         color: #475467,
                     }
                 }
 
                 <View> {
                     width: Fill
-                    height: Fit
+                    height: Fill
                     flow: Right
-                    spacing: 10
-                    padding: { top: 4, bottom: 4 }
+                    spacing: 5
+                    padding: { top: 2, bottom: 2 }
+                    align: {y: 0.5}
 
                     <View> {
                         width: Fill,
-                        height: Fit,
+                        height: Fill,
                         flow: Down,
+                        align: {y: 0.5}
 
                         title_input_container = <View> {
                             visible: false,
@@ -165,10 +168,11 @@ live_design! {
                             height: Fit,
 
                             title_label = <Label> {
+                                padding: {left: 0}
                                 width: Fill,
                                 height: Fit,
                                 draw_text: {
-                                    text_style: <REGULAR_FONT>{font_size: 9.5},
+                                    text_style: <REGULAR_FONT>{font_size: 10},
                                     color: #101828,
                                 }
                                 text: ""
@@ -196,7 +200,6 @@ live_design! {
                 chat_options = <MolyButton> {
                     width: Fit
                     height: Fit
-                    margin: {top: 10}
                     padding: { top: 0, right: 4, bottom: 6, left: 4 }
 
                     draw_bg: {
@@ -435,7 +438,7 @@ impl ChatHistoryCard {
         if let TitleState::Editable = self.title_edition_state {
             self.view
                 .text_input(id!(title_input))
-                .set_text(cx, text.trim().to_owned());
+                .set_text(cx, &text.trim());
         }
         self.label(id!(model_or_agent_name_label))
             .set_text(cx, &human_readable_name(caption));

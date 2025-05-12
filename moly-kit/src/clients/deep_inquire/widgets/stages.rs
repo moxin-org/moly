@@ -7,8 +7,9 @@ use crate::deep_inquire::{Stage, StageType, SubStage};
 
 live_design! {
     use link::theme::*;
-    use link::shaders::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
+    use link::shaders::*;
 
     use makepad_code_editor::code_view::CodeView;
     use crate::widgets::citation_list::*;
@@ -153,11 +154,11 @@ live_design! {
                 padding: 10
 
                 stage_toggle = <CustomRoundedShadowView> {
-                    width: 40, height: 40
+                    width: 45, height: 45
                     padding: 4
                     draw_bg: {
                         color: #f9f9f9,
-                        border_radius: 10.0,
+                        border_radius: 11.0,
                         uniform shadow_color: #0001
                         shadow_radius: 8.0,
                         shadow_offset: vec2(0.0,-2.0)
@@ -169,14 +170,14 @@ live_design! {
                     stage_bubble_text = <Label> {
                         text: "1"
                         draw_text: {
-                            text_style: <THEME_FONT_BOLD>{font_size: 10},
+                            text_style: <THEME_FONT_BOLD>{font_size: 14},
                             color: #000
                         }
                     }
                 }
                 stage_title = <Label> {
                     draw_text: {
-                        text_style: <THEME_FONT_BOLD>{font_size: 10},
+                        text_style: <THEME_FONT_BOLD>{font_size: 11},
                         color: #000
                     }
                 }
@@ -190,7 +191,7 @@ live_design! {
                     width: Fill
                     draw_text: {
                         wrap: Word
-                        text_style: {font_size: 10},
+                        text_style: {font_size: 11},
                         color: #x0
                     }
                 }

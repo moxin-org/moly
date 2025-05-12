@@ -1,32 +1,40 @@
-use std::cell::{Ref, RefMut};
+use std::{
+    cell::{Ref, RefMut},
+    collections::HashMap,
+};
 
 use crate::{
-    clients::deep_inquire::{
-        parse_deep_inquire_data, widgets::deep_inquire_bot_line::DeepInquireBotLineWidgetRefExt,
-    },
     protocol::*,
     utils::{events::EventExt, portal_list::ItemsRangeIter},
-    widgets::{
-        avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt,
-        message_thinking_block::MessageThinkingBlockWidgetRefExt,
-    },
+    widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
 use makepad_code_editor::code_view::CodeViewWidgetRefExt;
 use makepad_widgets::*;
 
-use super::{citation::CitationAction, citation_list::CitationListWidgetRefExt};
+use super::{
+    citation::CitationAction, slot::SlotWidgetRefExt,
+    standard_message_content::{MessageAnimationAction, StandardMessageContentWidgetRefExt},
+};
 
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
     use link::shaders::*;
 
     use crate::widgets::chat_lines::*;
-    use crate::clients::deep_inquire::widgets::deep_inquire_bot_line::*;
+    use crate::clients::deep_inquire::widgets::deep_inquire_content::*;
 
     pub Messages = {{Messages}} {
         flow: Overlay,
+        padding: { left: 15, right: 15 }
+
+        // TODO: Consider moving this out to it's own crate now that custom content
+        // is supported.
+        deep_inquire_content: <DeepInquireContent> {}
+
         list = <PortalList> {
+            padding: { left: 10, right: 80 }
             scroll_bar: {
                 bar_size: 0.0,
             }
@@ -35,7 +43,6 @@ live_design! {
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
-            DeepInquireBotLine = <DeepInquireBotLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -45,13 +52,12 @@ live_design! {
         <View> {
             align: {x: 1.0, y: 1.0},
             jump_to_bottom = <Button> {
-                width: 34,
-                height: 34,
-                margin: 2,
-                padding: {bottom: 2},
+                width: 36,
+                height: 36,
+                margin: {left: 2, right: 2, top: 2, bottom: 10},
                 icon_walk: {
-                    width: 12, height: 12
-                    margin: {left: 4.5},
+                    width: 16, height: 16
+                    margin: {left: 4.5, top: 6.5},
                 }
                 draw_icon: {
                     svg_file: dep("crate://self/resources/jump_to_bottom.svg")
@@ -66,7 +72,7 @@ live_design! {
 
                         sdf.circle(center.x, center.y, radius - 1.0);
                         sdf.fill_keep(#fff);
-                        sdf.stroke(#EAECF0, 1.0);
+                        sdf.stroke(#EAECF0, 1.5);
 
                         return sdf.result
                     }
@@ -107,7 +113,7 @@ struct Editor {
 /// View over a conversation with messages.
 ///
 /// This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
-#[derive(Live, LiveHook, Widget)]
+#[derive(Live, Widget)]
 pub struct Messages {
     #[deref]
     deref: View,
@@ -119,6 +125,17 @@ pub struct Messages {
     /// Bot repository to get bot information.
     #[rust]
     pub bot_repo: Option<BotRepo>,
+
+    /// Registry of DSL templates used by custom content widgets.
+    ///
+    /// This is exposed as it is for easy manipulation and it's passed to
+    /// [BotClient::content_widget] method allowing it to create widgets with
+    /// [WidgetRef::new_from_ptr].
+    #[rust]
+    pub templates: HashMap<LiveId, LivePtr>,
+
+    #[live]
+    deep_inquire_content: LivePtr,
 
     #[rust]
     current_editor: Option<Editor>,
@@ -145,6 +162,13 @@ pub struct Messages {
 
     #[rust]
     sticking_to_bottom: bool,
+
+    /// Tracks if any messages are still being animated
+    /// 
+    /// If the message is still animating, we should keep sticking to the bottom
+    /// since more text might be added to the screen even after is_writing is false for the given message.
+    #[rust]
+    is_last_message_animating: bool,
 }
 
 impl Widget for Messages {
@@ -166,6 +190,41 @@ impl Widget for Messages {
         for action in event.widget_actions() {
             if let CitationAction::Open(url) = action.cast() {
                 let _ = robius_open::Uri::new(url.as_str()).open();
+            }
+
+            // Track animation state of the messages.
+            // Note: ideally we'd query the state of the item during draw_list function
+            // (e.g. slot.default().as_standard_message_content().is_animating())
+            // but that wasn't possible due to some widgetref borrowing issues during runtime.
+
+            // TODO: Clean up this mechanism as it is slightly redundant, 
+            // Chat already emits an action that results in a scroll after each stream message,
+            // but that is not enough if we want to keep scrolling even after the streaming has ended. 
+            // Perhaps we should make streaming request sticking to bottom instead of manually scrolling.
+            // Then this widget would take care of sticking to bottom entirely by itself.
+            if let MessageAnimationAction::Started = action.cast() {
+                self.is_last_message_animating = true;
+                
+                // If we're sticking to bottom, scroll now that animation has started
+                if self.sticking_to_bottom && !self.user_scrolled {
+                    self.scroll_to_bottom(cx, true);
+                }
+            }   
+
+            if let MessageAnimationAction::Ended = action.cast() {
+                self.is_last_message_animating = false;
+                
+                // One final scroll at the end of animation
+                if self.sticking_to_bottom && !self.user_scrolled {
+                    self.scroll_to_bottom(cx, true);
+                }
+            }
+        }
+
+        // Only scroll if animation is active and we should stick to bottom
+        if self.is_last_message_animating && self.sticking_to_bottom && !self.user_scrolled {
+            if let Event::NextFrame(_) = event {
+                self.scroll_to_bottom(cx, true);
             }
         }
     }
@@ -206,6 +265,9 @@ impl Messages {
             list_ref.set_first_id(self.messages.len().saturating_sub(1));
             self.should_defer_scroll_to_bottom = false;
         }
+
+        let repo = self.bot_repo.clone().expect("no bot client set");
+        let mut client = repo.client();
 
         let mut list = list_ref.borrow_mut().unwrap();
         list.set_item_range(cx, 0, self.messages.len());
@@ -248,7 +310,16 @@ impl Messages {
                             item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                                 Some(Picture::Grapheme("X".into()));
                             item.label(id!(name)).set_text(cx, left);
-                            item.label(id!(text.markdown)).set_text(cx, right);
+                            
+                            let error_content = MessageContent {
+                                text: right.to_string(),
+                                ..Default::default()
+                            };
+                            item.slot(id!(content))
+                                .current()
+                                .as_standard_message_content()
+                                .set_content(cx, &error_content, false);
+                            
                             self.apply_actions_and_editor_visibility(cx, &item, index);
                             item.draw_all(cx, &mut Scope::empty());
                             continue;
@@ -259,27 +330,31 @@ impl Messages {
                     let item = list.item(cx, index, live_id!(AppLine));
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("A".into()));
-                    item.label(id!(text.markdown))
-                        .set_text(cx, &message.content.text);
+                    
+                    item.slot(id!(content))
+                        .current()
+                        .as_standard_message_content()
+                        .set_content(cx, &message.content, false);
+                    
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
 
-                    let name = "You";
-                    let avatar = Some(Picture::Grapheme("Y".into()));
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                        Some(Picture::Grapheme("Y".into()));
+                    item.label(id!(name)).set_text(cx, "You");
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
-                    item.label(id!(name)).set_text(cx, name);
+                    item.slot(id!(content))
+                        .current()
+                        .as_standard_message_content()
+                        .set_content(cx, &message.content, false);
 
-                    item.label(id!(text.label))
-                        .set_text(cx, &message.content.text);
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
-                    let repo = self.bot_repo.as_ref().expect("no bot client set");
                     let bot = repo.get_bot(id);
 
                     let (name, avatar) = bot
@@ -289,53 +364,32 @@ impl Messages {
 
                     let item = if message.is_writing && message.content.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
-                        item.message_loading(id!(text.loading)).animate(cx);
-                        item
-                    } else if let Some(_) = message
-                        .content
-                        .data
-                        .as_deref()
-                        .and_then(|data| parse_deep_inquire_data(data))
-                    {
-                        let item = list.item(cx, index, live_id!(DeepInquireBotLine));
-                        item.as_deep_inquire_bot_line()
-                            .borrow_mut()
-                            .unwrap()
-                            .set_content(cx, &message.content);
+                        item.message_loading(id!(content_section.loading))
+                            .animate(cx);
                         item
                     } else {
-                        let item = list.item(cx, index, live_id!(BotLine));
-
-                        let (thinking_block, message_body) =
-                            extract_and_remove_think_tag(&message.content.text);
-
-                        item.message_thinking_block(id!(text.thinking_block))
-                            .set_thinking_text(thinking_block);
-
-                        // Workaround: Because I had to set `paragraph_spacing` to 0 in `MessageMarkdown`,
-                        // we need to add a "blank" line as a workaround.
-                        //
-                        // Warning: If you ever read the text from this widget and not
-                        // from the list, you should remove the unicode character.
-                        // TODO: Remove this workaround once the markdown widget is fixed.
-                        if let Some(body) = message_body {
-                            item.label(id!(text.markdown))
-                                .set_text(cx, &body);
-                        }
-
-                        let sources = &message.content.citations;
-                        if !sources.is_empty() {
-                            let citations = item.citation_list(id!(citations));
-                            let mut citations = citations.borrow_mut().unwrap();
-                            citations.urls = sources.clone();
-                            citations.visible = true;
-                        }
-
-                        item
+                        list.item(cx, index, live_id!(BotLine))
                     };
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
                     item.label(id!(name)).set_text(cx, name);
+
+                    let mut slot = item.slot(id!(content));
+                    if let Some(custom_content) = client.content_widget(
+                        cx,
+                        slot.current().clone(),
+                        &self.templates,
+                        &message.content,
+                    ) {
+                        slot.replace(custom_content);
+                    } else {
+                        // Since portal list may reuse widgets, we must restore
+                        // the default widget just in case.
+                        slot.restore();
+                        slot.default()
+                            .as_standard_message_content()
+                            .set_content(cx, &message.content, message.is_writing);
+                    }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
@@ -466,8 +520,8 @@ impl Messages {
 
         // Handle code copy
         // Since the Markdown widget could have multiple code blocks, we need the widget that triggered the action
-        if let Some(wa) = event.actions().widget_action(id!(copy_code_button)){
-            if wa.widget().as_button().pressed(event.actions()){
+        if let Some(wa) = event.actions().widget_action(id!(copy_code_button)) {
+            if wa.widget().as_button().pressed(event.actions()) {
                 // nth(2) refers to the code view in the MessageMarkdown widget
                 let code_view = wa.widget_nth(2).widget(id!(code_view));
                 let text_to_copy = code_view.as_code_view().text();
@@ -481,9 +535,9 @@ impl Messages {
             Hit::FingerScroll(_e) => {
                 self.user_scrolled = true;
                 self.sticking_to_bottom = false;
-            },
+            }
             _ => {}
-        } 
+        }
     }
 
     fn apply_actions_and_editor_visibility(
@@ -495,7 +549,7 @@ impl Messages {
         let editor = widget.view(id!(editor));
         let actions = widget.view(id!(actions));
         let edit_actions = widget.view(id!(edit_actions));
-        let text = widget.view(id!(text));
+        let content_section = widget.view(id!(content_section));
 
         let is_hovered = self.hovered_index == Some(index);
         let is_current_editor = self.current_editor.as_ref().map(|e| e.index) == Some(index);
@@ -503,12 +557,12 @@ impl Messages {
         edit_actions.set_visible(cx, is_current_editor);
         editor.set_visible(cx, is_current_editor);
         actions.set_visible(cx, !is_current_editor && is_hovered);
-        text.set_visible(cx, !is_current_editor);
+        content_section.set_visible(cx, !is_current_editor);
 
         if is_current_editor {
             editor
                 .text_input(id!(input))
-                .set_text(cx, self.current_editor.as_ref().unwrap().buffer.clone());
+                .set_text(cx, &self.current_editor.as_ref().unwrap().buffer);
         }
     }
 
@@ -520,7 +574,12 @@ impl Messages {
 
     pub fn reset_scroll_state(&mut self) {
         self.user_scrolled = false;
-        self.sticking_to_bottom = false;
+        // Keep sticking_to_bottom true if message is still animating
+        if self.is_last_message_animating {
+            self.sticking_to_bottom = true;
+        } else {
+            self.sticking_to_bottom = false;
+        }
     }
 }
 
@@ -554,34 +613,9 @@ impl MessagesRef {
     }
 }
 
-fn extract_and_remove_think_tag(text: &str) -> (Option<String>, Option<String>) {
-    let (start_tag, end_tag) = ("<think>", "</think>");
-
-    let start_search = text.find(start_tag);
-    let end_search = text.find(end_tag);
-
-    let Some(start) = start_search else {
-        return (None, Some(text.to_string()));
-    };
-
-    let thinking_content = if let Some(end) = end_search {
-        text[start + start_tag.len()..end].trim().to_string()
-    } else {
-        text[start + start_tag.len()..].trim().to_string()
-    };
-
-    let thinking = if thinking_content.len() > 0 {
-        Some(thinking_content)
-    } else {
-        None
-    };
-
-    let body = if let Some(end) = end_search {
-        let body = text[end + end_tag.len()..].trim().to_string();
-        Some(body)
-    } else {
-        None
-    };
-
-    (thinking, body)
+impl LiveHook for Messages {
+    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+        self.templates
+            .insert(live_id!(DeepInquireContent), self.deep_inquire_content);
+    }
 }

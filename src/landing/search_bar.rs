@@ -202,7 +202,7 @@ impl WidgetMatchEvent for SearchBar {
         }
 
         if self.button(id!(clear_text_button)).clicked(actions) {
-            input.set_text(cx, "".to_string());
+            input.set_text(cx, "");
             clear_text_button.set_visible(cx, false);
             input.set_key_focus(cx);
 

@@ -57,6 +57,7 @@ live_design! {
                 flow: Overlay
                 width: Fill,
                 height: Fill,
+                padding: 0
 
                 root = <View> {
                     width: Fill,
@@ -111,7 +112,7 @@ live_design! {
                             shadow_offset: vec2(0.0,-1.5)
                         }
 
-                        margin: {top: 7, right: 7, bottom: 7}
+                        margin: {top: 12, right: 12, bottom: 12}
                         padding: 3
 
                         flow: Overlay,

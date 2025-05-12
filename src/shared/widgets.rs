@@ -60,8 +60,8 @@ live_design! {
     pub SIDEBAR_FONT_COLOR_HOVER = (MAIN_BG_COLOR)
     pub SIDEBAR_FONT_COLOR_SELECTED = (MAIN_BG_COLOR)
 
-    pub SIDEBAR_BG_COLOR_HOVER = #344054
-    pub SIDEBAR_BG_COLOR_SELECTED = #344054
+    pub SIDEBAR_BG_COLOR_SELECTED = #344054    
+    pub SIDEBAR_BG_COLOR_HOVER = #677483
     
     pub SidebarMenuButton = <RadioButton> {
         width: 70,
@@ -142,7 +142,7 @@ live_design! {
                     mix(
                         self.color,
                         self.color_hover,
-                        self.hover
+                        self.focus
                     ),
                     self.color_active,
                     self.active

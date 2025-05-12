@@ -14,7 +14,7 @@ use super::filesystem::setup_chats_folder;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{create_client_for_provider, Provider, ProviderClient, ProviderFetchModelsResult, ProviderType, ProviderBot, ProviderConnectionStatus};
-use super::store::ProviderSyncingStatus;
+use super::store::{ProviderSyncingStatus, ProviderSyncing};
 
 pub struct Chats {
     pub moly_client: Arc<MolyClient>,
@@ -153,12 +153,28 @@ impl Chats {
         chat.borrow().remove_saved_file();
     }
 
-    pub fn register_provider(&mut self, provider: Provider) {
+    /// Registers a provider to listen to and the provider info.
+    ///
+    /// When calling this function, the provider will be tested for connectivity and
+    /// the models will be fetched.
+    pub fn register_provider(&mut self, provider: Provider, provider_syncing_status: &mut ProviderSyncingStatus) {
         self.providers.insert(provider.url.clone(), provider.clone());
-        self.test_provider_and_fetch_models(&provider.url);
+        self.test_provider_and_fetch_models(&provider.url, provider_syncing_status);
     }
 
-    pub fn test_provider_and_fetch_models(&mut self, address: &str) {
+    pub fn test_provider_and_fetch_models(&mut self, address: &str, provider_syncing_status: &mut ProviderSyncingStatus) {
+        // Update syncing status
+        if let ProviderSyncingStatus::Syncing(syncing) = provider_syncing_status {
+            // If already syncing, increment the total count
+            syncing.total += 1;
+        } else {
+            // Otherwise, start new syncing status with 1 provider
+            *provider_syncing_status = ProviderSyncingStatus::Syncing(ProviderSyncing {
+                current: 0,
+                total: 1,
+            });
+        }
+
         // Use the existing client if found, otherwise create a new one
         let client = if let Some(existing_client) = self.provider_clients.get(address) {
             existing_client
@@ -171,12 +187,16 @@ impl Chats {
         client.fetch_models();
     }
 
+    /// Handle the result of a provider fetching models operation.
+    /// 
+    /// Returns true if the provider is MolyServer and the fetching was successful.
     pub fn handle_provider_connection_result(
         &mut self,
         result: ProviderFetchModelsResult,
         preferences: &mut Preferences,
         provider_syncing_status: &mut ProviderSyncingStatus
-    ) {
+    ) -> bool {
+        let mut fetched_from_moly_server = false;
         match result {
             ProviderFetchModelsResult::Success(address, mut fetched_models) => {
 
@@ -246,6 +266,10 @@ impl Chats {
 
                 if let Some(provider) = self.providers.get_mut(&address) {
                     provider.connection_status = ProviderConnectionStatus::Connected;
+                    // If the fetching was successful and the provider is MolyServer, sync status
+                    if provider.provider_type == ProviderType::MolyServer {
+                        fetched_from_moly_server = true;
+                    }
                 }
             }
             ProviderFetchModelsResult::Failure(address, error) => {
@@ -269,9 +293,17 @@ impl Chats {
             }
             _ => {}
         }
+
+        fetched_from_moly_server
     }
 
-    pub fn insert_or_update_provider(&mut self, provider: &Provider) {
+    /// Inserts or updates a provider in the list of providers.
+    /// 
+    /// If the provider is already in the list, it updates the provider info and the client.
+    /// If the provider is not in the list, it registers the provider and creates a new client.
+    /// 
+    /// Automatically tests the provider and fetches models, both on new providers and on API key changes.
+    pub fn insert_or_update_provider(&mut self, provider: &Provider, provider_syncing_status: &mut ProviderSyncingStatus) {
         // If the provider is already in the list update it, and create a new client if there's a new API key
         if let Some(existing_provider) = self.providers.get_mut(&provider.url) {
             existing_provider.api_key = provider.api_key.clone();
@@ -285,9 +317,14 @@ impl Chats {
                 // skipping that for now as the client will be replaced by MolyKit
                 self.provider_clients.remove(&provider.url);
                 self.provider_clients.insert(provider.url.clone(), create_client_for_provider(provider));
+            
+            }
+
+            if provider.enabled {
+                self.test_provider_and_fetch_models(&provider.url, provider_syncing_status);
             }
         } else {
-            self.providers.insert(provider.url.clone(), provider.clone());
+            self.register_provider(provider.clone(), provider_syncing_status);
             self.provider_clients.insert(provider.url.clone(), create_client_for_provider(provider));
         }
     }

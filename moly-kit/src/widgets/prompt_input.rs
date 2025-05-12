@@ -4,6 +4,7 @@ use std::cell::{Ref, RefMut};
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::moly_kit_theme::*;
     use link::shaders::*;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
@@ -20,7 +21,7 @@ live_design! {
             }
             center = {
                 text_input = {
-                    empty_text: "Start typing",
+                    empty_text: "Start typing...",
                     draw_bg: {
                         fn pixel(self) -> vec4 {
                             return vec4(0.);
@@ -32,6 +33,7 @@ live_design! {
                         color_focus: #000
                         color_empty: #98A2B3
                         color_empty_focus: #98A2B3
+                        text_style: {font_size: 11}
                     }
                     draw_selection: {
                         color: #d9e7e9

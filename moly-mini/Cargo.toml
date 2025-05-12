@@ -1,12 +1,12 @@
 [package]
 name = "moly-mini"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 
 [dependencies]
 futures = "0.3.31"
 futures-core = "0.3.31"
-makepad-widgets = { git = "https://github.com/joulei/makepad", branch = "patches-for-moly-release-0.2.0" }
+makepad-widgets = { git = "https://github.com/joulei/makepad", branch = "moly-release-0.2.0" }
 moly-kit = { path = "../moly-kit", features = ["full"] }
 reqwest = { version = "0.12.12", features = ["json", "stream"] }
 serde = { version = "1.0.217", features = ["derive"] }

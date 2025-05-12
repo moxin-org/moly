@@ -6,7 +6,7 @@ use url::Url;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
-
+    use link::moly_kit_theme::*;
 
     pub Citation = {{Citation}} <RoundedView> {
         flow: Down,
@@ -14,7 +14,7 @@ live_design! {
         cursor: Hand,
         width: 170,
         padding: 6,
-        spacing: 4,
+        spacing: 5,
         draw_bg: {
             color: #f2f2f2
             border_radius: 3
@@ -31,7 +31,7 @@ live_design! {
 
             site = <Label> {
                 draw_text: {
-                    text_style: <THEME_FONT_BOLD>{font_size: 8.5},
+                    text_style: <THEME_FONT_BOLD>{font_size: 9},
                     color: #555,
                 }
             }
@@ -39,7 +39,7 @@ live_design! {
 
         title = <Label> {
             draw_text: {
-                text_style: {font_size: 8},
+                text_style: {font_size: 9},
                 color: #000,
             }
         }

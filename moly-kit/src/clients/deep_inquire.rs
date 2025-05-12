@@ -5,13 +5,13 @@ use makepad_widgets::*;
 use makepad_widgets::{Cx, LiveNew, WidgetRef};
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{
     str::FromStr,
-    sync::Once,
     sync::{Arc, RwLock},
     time::Duration,
 };
-use widgets::deep_inquire_content::DeepInquireContent;
+use widgets::deep_inquire_content::DeepInquireContentWidgetRefExt;
 
 pub(crate) mod widgets;
 
@@ -338,23 +338,38 @@ impl BotClient for DeepInquireClient {
         moly_stream(stream)
     }
 
-    fn content_widget(&mut self, cx: &mut Cx, content: &MessageContent) -> Option<WidgetRef> {
-        static CONTENT_REGISTER: Once = Once::new();
+    fn content_widget(
+        &mut self,
+        cx: &mut Cx,
+        previous_widget: WidgetRef,
+        templates: &HashMap<LiveId, LivePtr>,
+        content: &MessageContent,
+    ) -> Option<WidgetRef> {
+        let Some(template) = templates.get(&live_id!(DeepInquireContent)).copied() else {
+            return None;
+        };
 
-        CONTENT_REGISTER.call_once(|| {
-            widgets::deep_inquire_content::live_design(cx);
-            widgets::stages::live_design(cx);
-        });
+        let Some(data) = content.data.as_deref() else {
+            return None;
+        };
 
-        content
-            .data
-            .as_ref()
-            .and_then(|data| serde_json::from_str::<Data>(data).ok())
-            .map(|_| {
-                let mut widget = DeepInquireContent::new(cx);
-                widget.set_content(cx, content);
-                WidgetRef::new_with_inner(Box::new(widget))
-            })
+        let Ok(_) = serde_json::from_str::<Data>(data) else {
+            return None;
+        };
+
+        let widget = if previous_widget.as_deep_inquire_content().borrow().is_some() {
+            previous_widget
+        } else {
+            WidgetRef::new_from_ptr(cx, Some(template))
+        };
+
+        widget
+            .as_deep_inquire_content()
+            .borrow_mut()
+            .unwrap()
+            .set_content(cx, content);
+
+        Some(widget)
     }
 }
 
@@ -429,10 +444,6 @@ fn create_or_update_stage(
     }
 
     content.data = Some(serde_json::to_string(&data).unwrap());
-}
-
-pub(crate) fn parse_deep_inquire_data(data: &str) -> Option<Data> {
-    serde_json::from_str(data).ok()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
