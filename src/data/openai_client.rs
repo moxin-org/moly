@@ -62,7 +62,7 @@ impl OpenAIClient {
                 ProviderCommand::FetchModels() => {
                     let url = address.clone();
                     let client = reqwest::blocking::ClientBuilder::new()
-                        .timeout(std::time::Duration::from_secs(5))
+                        .timeout(std::time::Duration::from_secs(60))
                         .no_proxy()
                         .build()
                         .unwrap();

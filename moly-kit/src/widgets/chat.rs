@@ -248,6 +248,25 @@ impl Chat {
             .expect("no bot repo provided")
             .clone();
 
+        // First check if the bot exists in the repository
+        if repo.get_bot(&bot_id).is_none() {
+            // Bot not found, add error message
+            let next_index = self.messages_ref().read().messages.len();
+            let error_message = format!("App error: Bot not found. The bot might have been disabled or removed. Bot ID: {}", bot_id);
+            
+            let message = Message {
+                from: EntityId::App,
+                content: MessageContent {
+                    text: error_message,
+                    ..Default::default()
+                },
+                is_writing: false,
+            };
+            
+            self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
+            return;
+        }
+
         let context: Vec<Message> = self.messages_ref().write_with(|messages| {
             messages.bot_repo = Some(repo.clone());
 
@@ -272,9 +291,27 @@ impl Chat {
         let ui = self.ui_runner();
         let future = async move {
             let mut client = repo.client();
-            let bot = repo
-                .get_bot(&bot_id)
-                .expect(format!("No bot found for the given id: {:?}", bot_id).as_str());
+            let bot = match repo.get_bot(&bot_id) {
+                Some(bot) => bot,
+                None => {
+                    // This should never happen as we check above, but handle it gracefully anyway
+                    let bot_id_clone = bot_id.clone(); // Clone the bot_id for the closure
+                    ui.defer_with_redraw(move |me, cx, _| {
+                        let error_message = format!("App error: Bot not found during stream initialization. Bot ID: {}", bot_id_clone);
+                        let next_index = me.messages_ref().read().messages.len();
+                        let message = Message {
+                            from: EntityId::App,
+                            content: MessageContent {
+                                text: error_message,
+                                ..Default::default()
+                            },
+                            is_writing: false,
+                        };
+                        me.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
+                    });
+                    return;
+                }
+            };
 
             let mut message_stream = client.send_stream(&bot, &context);
             while let Some(result) = message_stream.next().await {
