@@ -30,12 +30,7 @@ live_design! {
         flow: Overlay,
 
         align: {x: 0.5, y: 0.5}
-        loading = <ModelSelectorLoading> {
-            width: Fill,
-            height: Fill,
-            visible: false,
-        }
-
+        loading = <ModelSelectorLoading> {}
 
         <View> {
             width: Fill,
@@ -294,10 +289,7 @@ impl Widget for ModelSelector {
 
         // Trigger a redraw if the provider syncing status has changed
         if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
-            // TODO: use the syncing info to show a progress bar instead.
             self.model_selector_loading(id!(loading)).show_and_animate(cx);
-        } else {
-            self.model_selector_loading(id!(loading)).hide();
         }
     }
 
@@ -305,11 +297,11 @@ impl Widget for ModelSelector {
         let store = scope.data.get::<Store>().unwrap();
         let choose_label = self.label(id!(choose.label));
 
-        if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
+        if let ProviderSyncingStatus::Syncing(syncing) = &store.provider_syncing_status {
             self.view(id!(choose)).set_visible(cx, true);
             self.view(id!(icon_drop)).set_visible(cx, false);
             self.view(id!(selected_bot)).set_visible(cx, false);
-            choose_label.set_text(cx, "Syncing assistants...");
+            choose_label.set_text(cx, &format!("Syncing providers... {}/{}", syncing.current, syncing.total));
             let color = vec3(0.0, 0.0, 0.0);
             choose_label.apply_over(
                 cx,
