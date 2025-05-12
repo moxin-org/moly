@@ -266,6 +266,18 @@ impl Store {
         }
     }
 
+    /// Set the provider syncing status to indicate a single provider is being synced
+    pub fn set_syncing_single_provider(&mut self) {
+        // TODO: this is called in multiple places usually besides test_provider_and_fetch_models
+        // we should refactor this to avoid code duplication. Ideally we'd call this function
+        // from test_provider_and_fetch_models and have it increase the syncing count instead of resetting to 1
+        // (if we have more than one provider to sync).
+        self.provider_syncing_status = ProviderSyncingStatus::Syncing(ProviderSyncing {
+            current: 0,
+            total: 1,
+        });
+    }
+
     /// Loads the preference connections from the preferences and registers them in the chats.
     pub fn load_preference_connections(&mut self) {
         let supported = supported_providers::load_supported_providers();

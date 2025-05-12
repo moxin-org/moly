@@ -331,6 +331,8 @@ impl WidgetMatchEvent for ProviderView {
         let provider_enabled_switch = self.check_box(id!(provider_enabled_switch));
         if let Some(enabled) = provider_enabled_switch.changed(actions) {
             if enabled {
+                // Set status to syncing before fetching models
+                store.set_syncing_single_provider();
                 store.chats.test_provider_and_fetch_models(&self.provider.url);
             }
 
@@ -374,8 +376,12 @@ impl WidgetMatchEvent for ProviderView {
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
             // Update the provider in the store and preferences
             store.insert_or_update_provider(&self.provider);
+            
+            // Set status to syncing before fetching models
+            store.set_syncing_single_provider();
             // Fetch the models from the provider
             store.chats.test_provider_and_fetch_models(&self.provider.url);
+            
             // Update the provider enabled switch
             self.check_box(id!(provider_enabled_switch)).set_active(cx, true);
             // Update the UI
@@ -388,8 +394,12 @@ impl WidgetMatchEvent for ProviderView {
             // Update the provider status in the store
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
             store.insert_or_update_provider(&self.provider);
+            
+            // Set status to syncing before fetching models
+            store.set_syncing_single_provider();
             // Fetch the models from the provider
             store.chats.test_provider_and_fetch_models(&self.provider.url);
+            
             // Update UI
             self.update_connection_status(cx);
             self.redraw(cx);
