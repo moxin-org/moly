@@ -377,7 +377,6 @@ impl WidgetMatchEvent for AddProviderModal {
             };
 
             store.insert_or_update_provider(&provider);
-            store.chats.test_provider_and_fetch_models(&provider.url);
 
             cx.action(AddProviderModalAction::ModalDismissed);
             self.clear_form(cx);
