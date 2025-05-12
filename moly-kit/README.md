@@ -3,7 +3,8 @@
 ## Description
 
 Moly Kit is a Rust crate containing widgets and utilities to streamline the development
-of artificial intelligence applications for the [Makepad] framework.
+of artificial intelligence applications for the [Makepad](https://github.com/makepad/makepad)
+framework.
 
 ## Features
 
@@ -15,7 +16,7 @@ of artificial intelligence applications for the [Makepad] framework.
 - 🌎 Web support.
 
 To learn how to use and integrate Moly Kit into your own Makepad app, read the
-[documentation](docs/index.md).
+[documentation](https://moxin-org.github.io/moly/book).
 
 ## License
 
