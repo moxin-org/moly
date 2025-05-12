@@ -198,7 +198,7 @@ impl PromptInput {
     pub fn submitted(&self, actions: &Actions) -> bool {
         let submit = self.button(id!(submit));
         let input = self.text_input_ref();
-        submit.clicked(actions) || input.returned(actions).is_some()
+        (submit.clicked(actions) || input.returned(actions).is_some()) && self.interactivity == Interactivity::Enabled
     }
 
     /// Shorthand to check if [Self::task] is set to [Task::Send].

@@ -205,9 +205,21 @@ impl Widget for ModelSelector {
         self.widget_match_event(cx, event, scope);
         let store = scope.data.get::<Store>().unwrap();
 
-        // Check if the currently selected model's provider is still active, otherwise clear the model
-        if self.check_and_clear_unavailable_model(store) {
-            self.redraw(cx);
+        // Check if we have a model selected, if not but there's an associated bot in the chat, use it
+        if self.currently_selected_model.is_none() {
+            if let Some(chat) = store.chats.get_current_chat() {
+                if let Some(bot_id) = chat.borrow().associated_bot.clone() {
+                    // Make sure the bot is still available
+                    let bot_available = store.chats.get_all_bots(true).iter()
+                        .any(|bot| &bot.id == &bot_id);
+                    
+                    if bot_available {
+                        self.currently_selected_model = Some(bot_id);
+                        self.update_selected_model_info(cx, store);
+                        self.redraw(cx);
+                    }
+                }
+            }
         }
 
         if let Hit::FingerDown(fd) =
@@ -295,45 +307,60 @@ impl Widget for ModelSelector {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get::<Store>().unwrap();
-        let choose_label = self.label(id!(choose.label));
+        let models = store.chats.get_all_bots(true);
 
-        if let ProviderSyncingStatus::Syncing(syncing) = &store.provider_syncing_status {
-            self.view(id!(choose)).set_visible(cx, true);
-            self.view(id!(icon_drop)).set_visible(cx, false);
-            self.view(id!(selected_bot)).set_visible(cx, false);
-            choose_label.set_text(cx, &format!("Syncing providers... {}/{}", syncing.current, syncing.total));
-            let color = vec3(0.0, 0.0, 0.0);
-            choose_label.apply_over(
-                cx,
-                live! {
-                    draw_text: {
-                        color: (color)
-                    }
-                },
-            );
-        } else if self.currently_selected_model.is_none() {
-            self.view(id!(choose)).set_visible(cx, true);
-            self.view(id!(selected_bot)).set_visible(cx, false);
-            let color = vec3(0.0, 0.0, 0.0);
-            choose_label.apply_over(
-                cx,
-                live! {
-                    draw_text: {
-                        color: (color)
-                    }
-                },
-            );
+        let syncing_status = store.provider_syncing_status.clone();
 
-            // If there are available bots, prompt the user to choose an assistant
-            if !store.chats.get_all_bots(true).is_empty() {  
-                choose_label.set_text(cx, "Choose your AI assistant");
-                self.view(id!(icon_drop)).set_visible(cx, true);
-            } else {
-                choose_label.set_text(cx, "No assistants available, check your provider settings");
+        // Check if currently selected model is still available (provider might have been disabled)
+        self.check_and_clear_unavailable_model(store);
+
+        // Handle syncing status
+        match &syncing_status {
+            ProviderSyncingStatus::Syncing(syncing) => {
+                self.model_selector_loading(id!(button.loading)).show_and_animate(cx);
+                self.view(id!(choose)).set_visible(cx, true);
                 self.view(id!(icon_drop)).set_visible(cx, false);
+                self.view(id!(selected_bot)).set_visible(cx, false);
+                self.label(id!(choose.label)).set_text(cx, &format!("Syncing providers... {}/{}", syncing.current, syncing.total));
+                let color = vec3(0.0, 0.0, 0.0);
+                self.label(id!(choose.label)).apply_over(
+                    cx,
+                    live! {
+                        draw_text: {
+                            color: (color)
+                        }
+                    },
+                );
             }
-        } else {
-            self.update_selected_model_info(cx, store);
+            ProviderSyncingStatus::NotSyncing | ProviderSyncingStatus::Synced => {
+                // Just set the loading component to not visible since there's no hide method
+                self.view(id!(button.loading)).set_visible(cx, false);
+                
+                if self.currently_selected_model.is_none() {
+                    self.view(id!(choose)).set_visible(cx, true);
+                    self.view(id!(selected_bot)).set_visible(cx, false);
+                    let color = vec3(0.0, 0.0, 0.0);
+                    self.label(id!(choose.label)).apply_over(
+                        cx,
+                        live! {
+                            draw_text: {
+                                color: (color)
+                            }
+                        },
+                    );
+
+                    // If there are available bots, prompt the user to choose an assistant
+                    if !models.is_empty() {  
+                        self.label(id!(choose.label)).set_text(cx, "Choose your AI assistant");
+                        self.view(id!(icon_drop)).set_visible(cx, true);
+                    } else {
+                        self.label(id!(choose.label)).set_text(cx, "No assistants available, check your provider settings");
+                        self.view(id!(icon_drop)).set_visible(cx, false);
+                    }
+                } else {
+                    self.update_selected_model_info(cx, store);
+                }
+            }
         }
 
         self.view.draw_walk(cx, scope, walk)
