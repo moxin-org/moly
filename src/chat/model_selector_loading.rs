@@ -19,6 +19,7 @@ live_design! {
         align: {x: 0.0, y: 0.5},
 
         background = <RoundedView> {
+            visible: false,
             width: 500,
             height: 10,
             draw_bg: {
@@ -28,8 +29,8 @@ live_design! {
         }
 
         progress_bar = <RoundedView> {
-            width: 0,
-            height: 10,
+            visible: false,
+            width: 0, height: 10,
             draw_bg: {
                 color: #F3FFA2,
                 border_radius: 2.0,

@@ -4,7 +4,7 @@ use moly_kit::*;
 
 use crate::data::capture::CaptureAction;
 use crate::data::providers::ProviderType;
-use crate::data::store::Store;
+use crate::data::store::{ProviderSyncingStatus, Store};
 use crate::shared::actions::ChatAction;
 
 use super::model_selector::ModelSelectorWidgetExt;
@@ -176,12 +176,7 @@ impl Widget for ChatScreen {
             self.first_render = false;
         }
 
-        // If there is not selected bot, disable the prompt input
-        if self.chat(id!(chat)).read().bot_id.is_none() {
-            self.prompt_input(id!(chat.prompt)).write().disable();
-        } else if !self.creating_bot_repo {
-            self.prompt_input(id!(chat.prompt)).write().enable();
-        }
+        self.handle_current_bot(cx, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -400,5 +395,43 @@ impl ChatScreen {
                 me.creating_bot_repo = false;
             });
         });
+    }
+
+    // TODO: Only perform this checks after certain actions like provider sync or provider updates (e.g. disable/enable provider)
+    // Refactor this to be simpler and more unified with the behavior of the model selector
+    fn handle_current_bot(&mut self, cx: &mut Cx, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        // Check if the current chat's associated bot is still available
+        let mut bot_available = false;
+        let mut associiated_bot_id = None;
+        if let Some(chat) = store.chats.get_current_chat() {
+            if let Some(bot_id) = &chat.borrow().associated_bot {
+                associiated_bot_id = Some(bot_id.clone());
+                bot_available = store.chats.get_all_bots(true).iter()
+                    .any(|bot| &bot.id == bot_id)
+            }
+        }
+        
+        // If the bot is not available and we know it won't be available soon, clear the bot_id in the chat widget
+        if !bot_available && store.provider_syncing_status == ProviderSyncingStatus::Synced {
+            self.chat(id!(chat)).write().bot_id = None;
+            
+            self.model_selector(id!(model_selector))
+                .set_currently_selected_model(cx, None);
+            
+            self.redraw(cx);
+        } else if bot_available && self.chat(id!(chat)).read().bot_id.is_none() {
+            // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
+            // This can happen if the bot or provider was re-enabled after being disabled while being selected
+            self.chat(id!(chat)).write().bot_id = associiated_bot_id;
+        }
+
+        // If there is no selected bot, disable the prompt input
+        if self.chat(id!(chat)).read().bot_id.is_none() || !bot_available || store.provider_syncing_status != ProviderSyncingStatus::Synced {
+            self.prompt_input(id!(chat.prompt)).write().disable();
+        } else if !self.creating_bot_repo {
+            self.prompt_input(id!(chat.prompt)).write().enable();
+        }  
     }
 }
