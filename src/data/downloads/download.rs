@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use makepad_widgets::Cx;
 use moly_protocol::data::*;
-use moly_protocol::protocol::FileDownloadResponse;
 
 use crate::data::moly_client::MolyClient;
 
@@ -55,12 +54,14 @@ impl Download {
             if let Some(Ok(_)) = rx.recv().await {
                 // Download started successfully, now track progress
                 let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(8);
-                
+
                 // Create a new task for tracking progress
                 let yamcc = moly_client_clone.clone();
                 let file_id_clone = file_id.clone();
                 let mut progress_handle = tokio::spawn(async move {
-                    yamcc.track_download_progress(file_id_clone, progress_tx).await;
+                    yamcc
+                        .track_download_progress(file_id_clone, progress_tx)
+                        .await;
                 });
 
                 // Wait for progress updates

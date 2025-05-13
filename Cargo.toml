@@ -39,7 +39,6 @@ robius-open = "0.1.1"
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
 
 directories = "5.0.1"
-lipsum = "0.9"
 rfd = "0.14.1"
 log = "0.4"
 env_logger = "0.11"

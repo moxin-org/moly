@@ -1,5 +1,3 @@
-mod faked_models;
-
 use makepad_widgets::{Action, Cx};
 use moly_protocol::data::*;
 use std::sync::mpsc::channel;
@@ -141,27 +139,7 @@ impl Search {
     }
 
     pub fn set_models(&mut self, models: Vec<Model>) {
-        #[cfg(not(debug_assertions))]
-        {
-            self.models = models;
-        }
-        #[cfg(debug_assertions)]
-        'debug_block: {
-            use faked_models::get_faked_models;
-
-            let fill_fake_data = std::env::var("FILL_FAKE_DATA").is_ok_and(|fill_fake_data| {
-                ["true", "t", "1"].iter().any(|&s| s == fill_fake_data)
-            });
-
-            if !fill_fake_data {
-                self.models = models;
-                break 'debug_block;
-            }
-
-            let faked_models: Vec<Model> = get_faked_models(&models);
-            self.models = faked_models;
-        }
-
+        self.models = models;
         self.sort_models(self.sorted_by);
     }
 
