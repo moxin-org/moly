@@ -6,11 +6,14 @@ bare-bones app ready to start integrating Moly Kit while following this guide.
 
 ## Installation
 
-Add Moly Kit to your project dependencies:
+Add Moly Kit to your `Cargo.toml` dependencies:
 
-```shell
-cargo add moly-kit -F full
+```toml
+moly-kit = { git = "https://github.com/moxin-org/moly.git", features = ["full"], branch = "main" }
 ```
+
+> **Tip:** Change `branch = "main"` to (for example) `tag = "v0.2.1"` if you want to
+> stay on a stable version.
 
 If you are targeting native (non-web) platforms, you will also need to add `tokio`
 to your app. Even if you don't use it directly, Moly Kit will.
