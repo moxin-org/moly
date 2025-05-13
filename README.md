@@ -174,12 +174,18 @@ If you'd like to modify the .dmg background, here is the [Google Drawings file u
 ---
 
 ## Running Moly with Moly Server
-[Moly Server](https://github.com/moxin-org/moly-server) is a local HTTP server which provides capabilities for searching, downloading, and running local LLMs over an OpenAI-compatible API. While not required for use of Moly, it can be run alongside and connected to by the main Moly application.
-After following the [setup guide](https://github.com/moxin-org/moly-server?tab=readme-ov-file#building-and-running) in its README, the server can be run with:
+
+[Moly Server](https://github.com/moxin-org/moly-server) is a local HTTP server which provides capabilities for searching, downloading, and running local LLMs over an OpenAI-compatible API.
+While not required in order to use Moly, it can be run alongside the main Moly application for an integrated, local experience.
+
+To get started, simply download and extract the latest version for your platform from the [server releases page](https://github.com/moxin-org/moly-server/releases) and run the executable in a command line from inside the directory.
+
+Alternatively, to compile it from source, follow the [setup guide](https://github.com/moxin-org/moly-server?tab=readme-ov-file#building-and-running) and then run:
 ```bash
 cd moly-server/
 cargo run -p moly-server
 ```
+
 ---
 
 ## Running Moly with MoFa
