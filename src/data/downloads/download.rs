@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use makepad_widgets::Cx;
-use moly_protocol::data::*;
+use moly_protocol::{data::*, protocol::FileDownloadResponse};
 
 use crate::data::moly_client::MolyClient;
 
