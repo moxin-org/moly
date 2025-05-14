@@ -6,20 +6,11 @@ Moly is an AI LLM client written in Rust, that demonstrates the power of the [Ma
 
 > ⚠️ Moly is in early development. Please [file an issue](https://github.com/moxin-org/moly/issues/new) if you encounter bugs or unexpected results.
 
-## AI Providers
+https://github.com/user-attachments/assets/bc50f75d-c82a-49c4-8faa-363afff198a1
 
-The Moly app supports different types of AI providers:
-1. **OpenAI-compatible AI providers**: configured through the Providers Dashboard.
-   - Support for other clients will be added to MolyKit. To create your own custom clients, checkout the MolyKit documentation.
-   - If you want to contribute providers, or extend the list of supported models for a given provider, see [instructions here](#contributing)
-2. **Moly Server**: a local LLM backend that allows exploring, downloading and running OSS LLMs locally. For usage and installation see [instructions here](#running-moly-with-moly-server)
-3. **MoFa Servers**: MoFa is a framework for building AI agents. Using MoFa, AI agents can be constructed via templates, and then exposed via a Dora server that is OpenAI-compatible. MoFa servers can be added to the application through the Providers Dashboard. See [instructions here](#running-moly-with-mofa).
-
-## Download Pre-built Releases
+### Download Pre-built Releases
 
 Want to try Moly without building it from source? You can download the latest stable [pre-built releases of Moly](https://github.com/moxin-org/moly/releases).
-
-## Building and Running
 
 The following table shows which host systems can currently be used to build Moly for which target platforms.
 
@@ -30,6 +21,40 @@ The following table shows which host systems can currently be used to build Moly
 | Linux   | Linux           | ✅      | ✅    | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
 | Windows | Windows (10+)   | ✅      | ✅    | `.exe` (NSIS)                                |
 <!-- prettier-ignore-end -->
+
+## Features
+
+### AI Providers
+
+![Screenshot 2025-05-14 at 11 38 52 AM](https://github.com/user-attachments/assets/7d1ddbff-2872-43fd-8408-1624d8743bd1)
+
+The Moly app supports different types of AI providers:
+1. **OpenAI-compatible AI providers**: configured through the Providers Dashboard.
+   - Support for other clients will be added to MolyKit. To create your own custom clients, checkout the MolyKit documentation.
+   - If you want to contribute providers, or extend the list of supported models for a given provider, see [instructions here](#contributing)
+2. **Moly Server**: a local LLM backend that allows exploring, downloading and running OSS LLMs locally. For usage and installation see [instructions here](#running-moly-with-moly-server)
+3. **MoFa Servers**: MoFa is a framework for building AI agents. Using MoFa, AI agents can be constructed via templates, and then exposed via a Dora server that is OpenAI-compatible. MoFa servers can be added to the application through the Providers Dashboard. See [instructions here](#running-moly-with-mofa).
+
+### Local LLMS via Moly Server
+
+[Moly Server](https://github.com/moxin-org/moly-server) is a local HTTP server which provides capabilities for searching, downloading, and running local LLMs over an OpenAI-compatible API.
+While not required in order to use Moly, it can be run alongside the main Moly application for an integrated, local experience.
+
+![Screenshot 2025-05-14 at 11 40 43 AM](https://github.com/user-attachments/assets/1235cc98-a175-4a8f-89a9-4789d4716189)
+
+
+![Screenshot 2025-05-14 at 11 41 21 AM](https://github.com/user-attachments/assets/22570566-6726-488d-8b92-2282e6be78e8)
+
+
+To get started, simply download and extract the latest version for your platform from the [server releases page](https://github.com/moxin-org/moly-server/releases) and run the executable in a command line from inside the directory.
+
+Alternatively, to compile it from source, follow the [setup guide](https://github.com/moxin-org/moly-server?tab=readme-ov-file#building-and-running) and then run:
+```bash
+cd moly-server/
+cargo run -p moly-server
+```
+
+## Building and Running
 
 1. [Install Rust](https://www.rust-lang.org/tools/install).
 
@@ -171,20 +196,6 @@ If you'd like to modify the .dmg background, here is the [Google Drawings file u
 [`.deb` (Debian dpkg)]: https://www.debian.org/doc/manuals/debian-faq/pkg-basics.en.html#package
 [AppImage]: https://appimage.org/
 [pacman]: https://pacman.archlinux.page/pacman.8.html
----
-
-## Running Moly with Moly Server
-
-[Moly Server](https://github.com/moxin-org/moly-server) is a local HTTP server which provides capabilities for searching, downloading, and running local LLMs over an OpenAI-compatible API.
-While not required in order to use Moly, it can be run alongside the main Moly application for an integrated, local experience.
-
-To get started, simply download and extract the latest version for your platform from the [server releases page](https://github.com/moxin-org/moly-server/releases) and run the executable in a command line from inside the directory.
-
-Alternatively, to compile it from source, follow the [setup guide](https://github.com/moxin-org/moly-server?tab=readme-ov-file#building-and-running) and then run:
-```bash
-cd moly-server/
-cargo run -p moly-server
-```
 
 ---
 
