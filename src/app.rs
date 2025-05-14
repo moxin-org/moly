@@ -6,7 +6,8 @@ use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
-    DownloadNotificationPopupAction, DownloadNotificationPopupRef, DownloadNotificationPopupWidgetRefExt, DownloadResult
+    DownloadNotificationPopupAction, DownloadNotificationPopupRef,
+    DownloadNotificationPopupWidgetRefExt, DownloadResult,
 };
 use crate::shared::moly_server_popup::MolyServerPopupAction;
 use crate::shared::popup_notification::PopupNotificationWidgetRefExt;
@@ -32,7 +33,7 @@ live_design! {
     use crate::chat::chat_screen::ChatScreen;
     use crate::settings::moly_server_screen::MolyServerScreen;
     use crate::settings::providers_screen::ProvidersScreen;
-    
+
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_LOCAL = dep("crate://self/resources/icons/local.svg")
     ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
@@ -150,7 +151,7 @@ pub struct App {
     ui: WidgetRef,
 
     #[rust]
-    store: Store,
+    pub store: Store,
 
     #[rust]
     timer: Timer,
@@ -177,7 +178,9 @@ impl LiveRegister for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        
+        self.ui_runner()
+            .handle(cx, event, &mut Scope::empty(), self);
+
         // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
             if let Some(file_id) = &self.file_id {
@@ -186,7 +189,7 @@ impl AppMain for App {
                 self.ui.redraw(cx);
             }
         }
-      
+
         let scope = &mut Scope::with_data(&mut self.store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
@@ -286,9 +289,7 @@ impl MatchEvent for App {
                 DownloadNotificationPopupAction::ActionLinkClicked
                     | DownloadNotificationPopupAction::CloseButtonClicked
             ) {
-                self.ui
-                    .popup_notification(id!(download_popup))
-                    .close(cx);
+                self.ui.popup_notification(id!(download_popup)).close(cx);
             }
 
             if let MolyClientAction::ServerUnreachable = action.cast() {
@@ -324,23 +325,28 @@ impl App {
         }
     }
 
-    fn start_retry_timeout(&mut self, cx: &mut Cx, mut popup: DownloadNotificationPopupRef, file: File) {
+    fn start_retry_timeout(
+        &mut self,
+        cx: &mut Cx,
+        mut popup: DownloadNotificationPopupRef,
+        file: File,
+    ) {
         match self.download_retry_attempts {
             0 => {
                 self.timer = cx.start_timeout(15.0);
                 self.download_retry_attempts += 1;
                 popup.set_retry_data(cx);
-            },
+            }
             1 => {
                 self.timer = cx.start_timeout(30.0);
                 self.download_retry_attempts += 1;
                 popup.set_retry_data(cx);
-            },
+            }
             2 => {
                 self.timer = cx.start_timeout(60.0);
                 self.download_retry_attempts += 1;
                 popup.set_retry_data(cx);
-            },
+            }
             _ => {
                 popup.set_data(cx, &file, DownloadResult::Failure);
                 self.download_retry_attempts = 0;
@@ -355,4 +361,10 @@ pub enum NavigationAction {
     NavigateToProviders,
     NavigateToMyModels,
     None,
+}
+
+// Ugly workaround to be abale to switch between sync and async code in the `Store`.
+pub fn app_runner() -> UiRunner<App> {
+    // `0` is reserved for whatever implements `AppMain`.
+    UiRunner::new(0)
 }

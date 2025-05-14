@@ -1,10 +1,15 @@
 pub mod download;
 
-use anyhow::{Context, Result};
 use download::{Download, DownloadFileAction, DownloadState};
+use futures::{channel::mpsc::unbounded, StreamExt};
 use makepad_widgets::Action;
-use moly_protocol::data::{DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus};
-use std::{collections::HashMap, sync::{mpsc::channel, Arc}};
+use moly_kit::utils::asynchronous::spawn;
+use moly_protocol::data::{
+    DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
+};
+use std::{collections::HashMap, sync::Arc};
+
+use crate::app::app_runner;
 
 use super::moly_client::MolyClient;
 
@@ -33,46 +38,69 @@ impl Downloads {
     }
 
     pub fn load_downloaded_files(&mut self) {
-        let (tx, rx) = channel();
-        self.moly_client.get_downloaded_files(tx);
+        let moly_client = self.moly_client.clone();
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.get_downloaded_files(tx);
 
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(files) => {
-                    self.downloaded_files = files;
+            let Some(response) = rx.next().await else {
+                return;
+            };
+
+            app_runner().defer(|app, _, _| {
+                let me = &mut app.store.downloads;
+                match response {
+                    Ok(files) => {
+                        me.downloaded_files = files;
+                    }
+                    Err(_err) => {
+                        eprintln!(
+                            "Failed to fetch downloaded files. Couldn't connect to MolyServer."
+                        )
+                    }
                 }
-                Err(_err) => eprintln!("Failed to fetch downloaded files. Couldn't connect to MolyServer."),
-            }
-        };
+            });
+        });
     }
 
     pub fn load_pending_downloads(&mut self) {
-        let (tx, rx) = channel();
-        self.moly_client.get_current_downloads(tx);
+        let moly_client = self.moly_client.clone();
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.get_current_downloads(tx);
+            let Some(response) = rx.next().await else {
+                return;
+            };
 
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(files) => {
-                    self.pending_downloads = files;
+            app_runner().defer(|app, _, _| {
+                let me = &mut app.store.downloads;
+                match response {
+                    Ok(files) => {
+                        me.pending_downloads = files;
 
-                    self.pending_downloads
-                        .sort_by(|a, b| b.file.id.cmp(&a.file.id));
+                        me.pending_downloads
+                            .sort_by(|a, b| b.file.id.cmp(&a.file.id));
 
-                    // There is a issue with the backend response where all pending
-                    // downloads come with status `Paused` even if they are downloading.
-                    self.pending_downloads.iter_mut().for_each(|d| {
-                        if let Some(current) = self.current_downloads.get(&d.file.id) {
-                            if current.is_initializing() {
-                                d.status = PendingDownloadsStatus::Initializing;
-                            } else {
-                                d.status = PendingDownloadsStatus::Downloading;
+                        // There is a issue with the backend response where all pending
+                        // downloads come with status `Paused` even if they are downloading.
+                        me.pending_downloads.iter_mut().for_each(|d| {
+                            if let Some(current) = me.current_downloads.get(&d.file.id) {
+                                if current.is_initializing() {
+                                    d.status = PendingDownloadsStatus::Initializing;
+                                } else {
+                                    d.status = PendingDownloadsStatus::Downloading;
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
+                    Err(_err) => {
+                        eprintln!(
+                            "Failed to fetch pending downloads. Couldn't connect to MolyServer."
+                        )
+                    }
                 }
-                Err(_err) => eprintln!("Failed to fetch pending downloads. Couldn't connect to MolyServer."),
-            }
-        };
+            });
+        });
     }
 
     pub fn download_file(&mut self, model: Model, file: File) {
@@ -142,22 +170,31 @@ impl Downloads {
             return;
         }
 
-        let (tx, rx) = channel();
-        self.moly_client.pause_download_file(file_id.clone(), tx);
+        let file_id = file_id.clone();
+        let moly_client = self.moly_client.clone();
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.pause_download_file(file_id.clone(), tx);
 
-        if let Ok(response) = rx.recv() {
+            let Some(response) = rx.next().await else {
+                return;
+            };
+
             match response {
                 Ok(()) => {
-                    self.current_downloads.remove(file_id);
-                    self.pending_downloads.iter_mut().for_each(|d| {
-                        if d.file.id == *file_id {
-                            d.status = PendingDownloadsStatus::Paused;
-                        }
+                    app_runner().defer(move |app, _, _| {
+                        let me = &mut app.store.downloads;
+                        me.current_downloads.remove(&file_id);
+                        me.pending_downloads.iter_mut().for_each(|d| {
+                            if d.file.id == *file_id {
+                                d.status = PendingDownloadsStatus::Paused;
+                            }
+                        });
                     });
                 }
                 Err(err) => eprintln!("Error pausing download: {:?}", err),
             }
-        };
+        });
     }
 
     pub fn cancel_download_file(&mut self, file_id: &FileID) {
@@ -167,31 +204,28 @@ impl Downloads {
             }
         };
 
-        let (tx, rx) = channel();
-        self.moly_client.cancel_download_file(file_id.clone(), tx);
+        let file_id = file_id.clone();
+        let moly_client = self.moly_client.clone();
 
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(()) => {
-                    self.current_downloads.remove(file_id);
-                    self.pending_downloads.retain(|d| d.file.id != *file_id);
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.cancel_download_file(file_id.clone(), tx);
+
+            let Some(response) = rx.next().await else {
+                return;
+            };
+
+            app_runner().defer(move |app, _, _| {
+                let me = &mut app.store.downloads;
+                match response {
+                    Ok(()) => {
+                        me.current_downloads.remove(&file_id);
+                        me.pending_downloads.retain(|d| d.file.id != *file_id);
+                    }
+                    Err(err) => eprintln!("Error cancelling download: {:?}", err),
                 }
-                Err(err) => eprintln!("Error cancelling download: {:?}", err),
-            }
-        };
-    }
-
-    pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
-        let (tx, rx) = channel();
-        self.moly_client.delete_file(file_id, tx);
-
-        rx.recv()
-            .context("Failed to receive delete file response")?
-            .context("Delete file operation failed")?;
-
-        self.load_downloaded_files();
-        self.load_pending_downloads();
-        Ok(())
+            });
+        });
     }
 
     pub fn next_download_notification(&mut self) -> Option<DownloadPendingNotification> {

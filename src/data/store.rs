@@ -1,6 +1,6 @@
-use std::sync::mpsc::channel;
 use std::sync::Arc;
 
+use crate::app::app_runner;
 use crate::shared::actions::ChatAction;
 
 use super::capture::register_capture_manager;
@@ -12,9 +12,11 @@ use super::providers::{ProviderFetchModelsResult, ProviderType};
 use super::search::SortCriteria;
 use super::supported_providers;
 use super::{chats::Chats, downloads::Downloads, search::Search};
-use anyhow::Result;
 use chrono::{DateTime, Utc};
+use futures::channel::mpsc::unbounded;
+use futures::StreamExt;
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
+use moly_kit::utils::asynchronous::spawn;
 
 use super::providers::{Provider, ProviderConnectionStatus};
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
@@ -135,18 +137,26 @@ impl Store {
             return;
         }
 
-        let (tx, rx) = channel();
-        self.moly_client.test_connection(tx);
-        if let Ok(response) = rx.recv() {
-            match response {
-                Ok(()) => {
-                    self.downloads.load_downloaded_files();
-                    self.downloads.load_pending_downloads();
-                    self.search.load_featured_models();
-                }
-                Err(_err) => {}
-            }
-        };
+        let moly_client = Arc::clone(&self.moly_client);
+
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.test_connection(tx);
+
+            let Some(response) = rx.next().await else {
+                return;
+            };
+
+            let Ok(()) = response else {
+                return;
+            };
+
+            app_runner().defer(|app, _, _| {
+                app.store.downloads.load_downloaded_files();
+                app.store.downloads.load_pending_downloads();
+                app.store.search.load_featured_models();
+            });
+        });
     }
 
     pub fn get_chat_associated_bot(&self, chat_id: ChatID) -> Option<BotId> {
@@ -204,14 +214,42 @@ impl Store {
         }
     }
 
-    pub fn delete_file(&mut self, file_id: FileID) -> Result<()> {
-        self.chats.eject_model().expect("Failed to eject model");
+    pub fn delete_file(&mut self, file_id: FileID) {
+        let moly_client = Arc::clone(&self.moly_client);
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.eject_model(tx);
+            let Some(response) = rx.next().await else {
+                eprintln!("Failed to receive eject model response");
+                return;
+            };
 
-        self.downloads.delete_file(file_id.clone())?;
-        self.search
-            .update_downloaded_file_in_search_results(&file_id, false);
+            let Ok(()) = response else {
+                eprintln!("Eject model operation failed");
+                return;
+            };
 
-        Ok(())
+            let (tx, mut rx) = unbounded();
+            moly_client.delete_file(file_id.clone(), tx);
+
+            let Some(response) = rx.next().await else {
+                eprintln!("Failed to receive delete file response");
+                return;
+            };
+
+            let Ok(()) = response else {
+                eprintln!("Delete file operation failed");
+                return;
+            };
+
+            app_runner().defer(move |app, _, _| {
+                app.store.downloads.load_downloaded_files();
+                app.store.downloads.load_pending_downloads();
+                app.store
+                    .search
+                    .update_downloaded_file_in_search_results(&file_id, false);
+            });
+        });
     }
 
     pub fn handle_action(&mut self, action: &Action) {
@@ -350,15 +388,17 @@ impl Store {
             .iter()
             .filter_map(|url| self.chats.providers.get(url).cloned())
             .collect();
-        
+
         for provider in providers_to_register {
-            self.chats.register_provider(provider, &mut self.provider_syncing_status);
+            self.chats
+                .register_provider(provider, &mut self.provider_syncing_status);
         }
     }
 
     pub fn insert_or_update_provider(&mut self, provider: &Provider) {
         // Update in memory
-        self.chats.insert_or_update_provider(provider, &mut self.provider_syncing_status);
+        self.chats
+            .insert_or_update_provider(provider, &mut self.provider_syncing_status);
         // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
         // Update in MolyKit (to update the API key used by the client, if needed)

@@ -142,7 +142,7 @@ pub enum DeleteModelModalAction {
 pub struct DeleteModelModal {
     #[deref]
     view: View,
-    
+
     #[rust]
     file_id: String,
 }
@@ -173,7 +173,6 @@ impl Widget for DeleteModelModal {
 
 impl WidgetMatchEvent for DeleteModelModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(DeleteModelModalAction::ModalDismissed);
         }
@@ -183,9 +182,7 @@ impl WidgetMatchEvent for DeleteModelModal {
             .clicked(actions)
         {
             let store = scope.data.get_mut::<Store>().unwrap();
-            store
-                .delete_file(self.file_id.clone())
-                .expect("Failed to delete file");
+            store.delete_file(self.file_id.clone());
 
             cx.action(DeleteModelModalAction::ModalDismissed);
             cx.action(ModelSelectorListAction::AddedOrDeletedModel);
