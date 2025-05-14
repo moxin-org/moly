@@ -2,6 +2,7 @@ use async_stream::stream;
 use log::error;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
+use tokio::time::Instant;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},
@@ -37,6 +38,17 @@ struct IncomingMessage {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_null_default")]
     pub content: String,
+    /// The reasoning text, if provided.
+    /// 
+    /// Used by agregators like OpenRouter.
+    #[serde(default)]
+    pub reasoning: Option<String>,
+    /// Wait, another reasoning text? Well, yes.
+    /// Some developers take API definitions as suggestions rather than standards.
+    ///
+    /// Used by providers like Sillicon flow for *some* models.
+    #[serde(default)]
+    pub reasoning_content: Option<String>,
 }
 
 /// A message being sent to the completions endpoint.
@@ -296,6 +308,8 @@ impl BotClient for OpenAIClient {
             let mut content = MessageContent::default();
             let events = parse_sse(response.bytes_stream());
 
+            let mut reasoning_start_time = None;
+
             for await event in events {
                 let event = match event {
                     Ok(event) => event,
@@ -323,13 +337,54 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
-                let body = completion
-                    .choices
-                    .iter()
-                    .map(|c| c.delta.content.as_str())
-                    .collect::<String>();
+                for choice in &completion.choices {
+                    // Append main content delta
+                    if !choice.delta.content.is_empty() {
+                        // Main content arrived, we can assume reasoning is done
+                        if let Some(start_time) = reasoning_start_time {
+                            if let Some(reasoning) = &mut content.reasoning {
+                                if reasoning.time_taken_seconds.is_none() {
+                                    let time_taken = Instant::now().duration_since(start_time).as_secs_f64();
+                                    reasoning.time_taken_seconds = Some(time_taken);
+                                }
+                            }
+                        }
+                        content.text.push_str(&choice.delta.content);
+                    }
 
-                content.text.push_str(&body);
+                    // Extract reasoning text, could be found in "reasoning" or "reasoning_content"
+                    let mut actual_reasoning_delta_text: Option<&str> = None;
+                    if let Some(r_text) = &choice.delta.reasoning {
+                        if !r_text.is_empty() {
+                            if reasoning_start_time.is_none() {
+                                reasoning_start_time = Some(Instant::now());
+                            }
+                            actual_reasoning_delta_text = Some(r_text);
+                        }
+                    }
+                    if actual_reasoning_delta_text.is_none() {
+                        if let Some(rc_text) = &choice.delta.reasoning_content {
+                            if !rc_text.is_empty() {
+                                if reasoning_start_time.is_none() {
+                                    reasoning_start_time = Some(Instant::now());
+                                }
+                                actual_reasoning_delta_text = Some(rc_text);
+                            }
+                        }
+                    }
+
+                    // Append reasoning delta if found
+                    if let Some(reasoning_text_to_append) = actual_reasoning_delta_text {
+                        if let Some(reasoning) = &mut content.reasoning {
+                            reasoning.text.push_str(reasoning_text_to_append);
+                        } else {
+                            content.reasoning = Some(Reasoning {
+                                text: reasoning_text_to_append.to_string(),
+                                time_taken_seconds: None,
+                            });
+                        }
+                    }
+                }
 
                 for citation in completion.citations {
                     if !content.citations.contains(&citation) {

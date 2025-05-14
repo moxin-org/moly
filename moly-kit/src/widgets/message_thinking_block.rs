@@ -1,31 +1,82 @@
 use makepad_widgets::*;
 
+use crate::Reasoning;
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use link::shaders::*;
     use link::moly_kit_theme::*;
     use crate::widgets::message_markdown::MessageMarkdown;
 
     ICON_COLLAPSE = dep("crate://self/resources/icons/collapse.svg")
+    ANIMATION_SPEED = 0.66
+    BALL_MAX_SIZE = 20.0
+    BALL_MIN_SIZE = 10.0
+    BALL_SPACING = 0.0
+    
+    LoadingBall = <CircleView> {
+        width: (BALL_MAX_SIZE)
+        height: (BALL_MAX_SIZE)
+        margin: 0.0
+        padding: 0.0
+        draw_bg: {
+            border_radius: (BALL_MAX_SIZE / 2.0)
+        }    
+    }
 
-    CollapseButton = <Button> {
-        width: Fit,
-        height: Fit,
-        padding: {top: 8, right: 12, bottom: 8, left: 12},
-        margin: 2,
-
-        text: "Thinking >"
-
-        draw_text: {
-            color: #000
+    PulsingBalls = <View> {
+        width: Fit
+        height: Fit
+        align: {x: 0.0, y: 0.5}
+        spacing: (BALL_SPACING)
+        flow: Right
+        padding: 0
+        margin: 0
+        
+        ball1 = <LoadingBall> {
+            margin: 0.0
+            padding: 0.0
+            draw_bg: {
+                color: #E55E50
+            }
         }
-        icon_walk: {
-            width: 12,
-            height: 12
-            margin: {top: 0, left: -4},
+        
+        ball2 = <LoadingBall> {
+            margin: 0.0
+            padding: 0.0
+            draw_bg: {
+                color: #4D9CC0
+            }
         }
     }
 
+    Collapse = <RoundedView> {
+        width: Fill, height: Fit
+        padding: {top: 8, right: 12, bottom: 8, left: 12},
+        margin: 2
+        cursor: Hand
+        flow: Right
+        align: {x: 0.0, y: 0.5}
+
+        draw_bg: {
+            border_radius: 2.5
+            color: #f7f7f7
+        }
+
+        thinking_title = <Label> {
+            text: "Thinking..."
+            draw_text: {
+                text_style: <THEME_FONT_ITALIC> {
+                    font_size: 10.5
+                }
+                color: #000
+            }
+        }
+
+        <View> { width: Fill, height: Fill }
+        balls = <PulsingBalls> {}
+    }
 
     Content = <RoundedView> {
         width: Fill,
@@ -33,15 +84,12 @@ live_design! {
 
         flow: Right,
         spacing: 12,
-
-        show_bg: true
-        draw_bg: {
-            color: #e0
-            border_radius: 5
-        }
+        height: 0,
+        padding: {left: 20, right: 8, top: 10, bottom: 15},
 
         thinking_text = <MessageMarkdown> {
-            width: Fill, height: Fit
+            width: Fill, height: Fit,
+            font_size: 10.5
         }
     }
 
@@ -50,39 +98,99 @@ live_design! {
         height: Fit,
         flow: Down,
         show_bg: true,
-        padding: 5
+        padding: {top: 5, bottom: 5, left: 5, right: 5}
+        
+        inner = <RoundedShadowView> {
+            width: 200, height: Fit,
+            flow: Down
+            padding: 0
+            draw_bg: {
+                color: #f7f7f7,
+                border_radius: 4.5,
+                uniform shadow_color: #0001
+                shadow_radius: 9.0,
+                shadow_offset: vec2(0.0,-1.0)
+            }
+            collapse = <Collapse> {}
+            content = <Content> {}
+        }
 
-        collapse = <CollapseButton> {}
-        content = <Content> {
-            height: 0,
-            padding: {left: 43, right: 43, top: 12, bottom: 12},
+        animator: {
+            ball1 = {
+                default: start,
+                start = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {inner = { collapse = { balls = { ball1 = { width: (BALL_MIN_SIZE), height: (BALL_MIN_SIZE), draw_bg: {border_radius: (BALL_MIN_SIZE / 2.0)} }}}}}
+                }
+                run = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {inner = { collapse = { balls = { ball1 = { width: (BALL_MAX_SIZE), height: (BALL_MAX_SIZE), draw_bg: {border_radius: (BALL_MAX_SIZE / 2.0)} }}}}}
+                }
+            }
+
+            ball2 = {
+                default: start,
+                start = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {inner = { collapse = { balls = { ball2 = { width: (BALL_MIN_SIZE), height: (BALL_MIN_SIZE), draw_bg: {border_radius: (BALL_MIN_SIZE / 2.0)} }}}}}
+                }
+                run = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_SPEED)}}
+                    apply: {inner = { collapse = { balls = { ball2 = { width: (BALL_MAX_SIZE), height: (BALL_MAX_SIZE), draw_bg: {border_radius: (BALL_MAX_SIZE / 2.0)} }}}}}
+                }
+            }
         }
     }
 }
+
+const ANIMATION_SPEED_RUST: f64 = 0.33;
 
 #[derive(Live, LiveHook, Widget)]
 pub struct MessageThinkingBlock {
     #[deref]
     view: View,
 
+    #[animator]
+    animator: Animator,
+
     #[rust]
-    thinking_text: Option<String>,
+    thinking_content: Option<Reasoning>,
+
+    #[rust]
+    timer: Timer,
 
     #[rust]
     is_expanded: bool,
+
+    #[rust]
+    should_animate: bool,
+    
+    #[rust]
+    current_animated_ball: usize,
 }
 
 impl Widget for MessageThinkingBlock {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if self.timer.is_event(event).is_some() {
+            self.update_animation(cx);
+        }
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
+
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        if let Some(text) = &self.thinking_text {
+        if let Some(content) = &self.thinking_content {
             // Use message_markdown widget to render the thinking text
-            dbg!(self.markdown(id!(thinking_text)), text);
-            self.markdown(id!(thinking_text)).set_text(cx, text);
+            self.markdown(id!(thinking_text)).set_text(cx, &content.text);
             self.view.draw_walk(cx, scope, walk)
         } else {
             DrawStep::done()
@@ -92,55 +200,122 @@ impl Widget for MessageThinkingBlock {
 
 impl WidgetMatchEvent for MessageThinkingBlock {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.button(id!(collapse)).clicked(&actions) {
+        if let Some(_evt) = self.view(id!(collapse)).finger_up(&actions) {
             self.toggle_collapse(cx);
         }
     }
 }
 
 impl MessageThinkingBlock {
-    pub fn set_thinking_text(&mut self, text: Option<String>) {
-        self.thinking_text = text;
+    pub fn update_animation(&mut self, cx: &mut Cx) {
+        // Alternate between animating the first and second ball
+        self.current_animated_ball = (self.current_animated_ball + 1) % 2;
+        
+        match self.current_animated_ball {
+            0 => {
+                self.animator_play(cx, id!(ball1.run));
+                self.animator_play(cx, id!(ball2.start));
+            }
+            1 => {
+                self.animator_play(cx, id!(ball1.start));
+                self.animator_play(cx, id!(ball2.run));
+            }
+            _ => unreachable!(),
+        }
+        
+        // Schedule the next animation step
+        self.timer = cx.start_timeout(ANIMATION_SPEED_RUST);
+    }
+
+    pub fn set_thinking_content(&mut self, cx: &mut Cx, content: &Reasoning, is_writing: bool) {
+        self.thinking_content = Some(content.clone());
+
+        let mut should_stop_animation = false;
+        if let Some(reasoning) = &self.thinking_content {
+            if reasoning.time_taken_seconds.is_some() {
+                let title = format!("Thought for {:0.2} seconds", reasoning.time_taken_seconds.unwrap());
+                self.view(id!(thinking_title)).set_text(cx, &title);
+                should_stop_animation = true;
+            }
+        }
+
+        if is_writing {
+            if self.timer.is_empty() {
+                self.should_animate = true;
+                self.view(id!(balls)).set_visible(cx, true);
+                self.update_animation(cx);
+            }
+        } 
+        
+        if should_stop_animation || !is_writing {
+            self.should_animate = false;
+            self.view(id!(balls)).set_visible(cx, false);
+            self.animator_play(cx, id!(ball1.start));
+            self.animator_play(cx, id!(ball2.start));
+        }
     }
 
     fn toggle_collapse(&mut self, cx: &mut Cx) {
         self.is_expanded = !self.is_expanded;
 
         if self.is_expanded {
+            // Expand the content to fit the text
             self.view(id!(content)).apply_over(
                 cx,
                 live! {
                     height: Fit
                 },
             );
-            self.set_collapse_button_open(cx, true);
+            // Expand the inner view to fit the content
+            self.view(id!(inner)).apply_over(
+                cx, 
+                live! {
+                    width: Fill
+                }
+            );
+            // Set a different color to the title background
+            self.view(id!(collapse)).apply_over(
+                cx,
+                live! {
+                    draw_bg: {
+                        color: #f0f0f0
+                    }
+                }
+            );
         } else {
+            // Collapse the content
             self.view(id!(content)).apply_over(
                 cx,
                 live! {
                     height: 0.0
                 },
             );
-            self.set_collapse_button_open(cx, false);
+            // Set the inner view width back to the default
+            self.view(id!(inner)).apply_over(
+                cx,
+                live! {
+                    width: 200
+                }
+            );
+            // Set the title background color back to the default
+            self.view(id!(collapse)).apply_over(
+                cx,
+                live! {
+                    draw_bg: {
+                        color: #f7f7f7
+                    }
+                }
+            );
+            self.should_animate = false;
         }
         self.redraw(cx);
-    }
-
-    fn set_collapse_button_open(&mut self, cx: &mut Cx, is_open: bool) {
-        let rotation_angle = if is_open { 0.0 } else { 180.0 };
-        self.button(id!(collapse)).apply_over(
-            cx,
-            live! {
-                draw_icon: { rotation_angle: (rotation_angle) }
-            },
-        );
     }
 }
 
 impl MessageThinkingBlockRef {
-    pub fn set_thinking_text(&mut self, text: Option<String>) {
+    pub fn set_thinking_content(&mut self, cx: &mut Cx, content: &Reasoning, is_writing: bool) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_thinking_text(text);
+            inner.set_thinking_content(cx, content, is_writing);
         }
     }
 }
