@@ -37,14 +37,14 @@ reqwest = { version = "0.12.12", features = ["json", "stream"] }
 robius-open = "0.1.1"
 
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
-
-directories = "5.0.1"
 rfd = "0.14.1"
 log = "0.4"
 env_logger = "0.11"
+cfg-if = "1.0.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["full"] }
+directories = "5.0.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.100"

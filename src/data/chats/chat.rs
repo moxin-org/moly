@@ -4,7 +4,7 @@ use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use crate::data::filesystem::{read_from_file, write_to_file};
+use crate::data::filesystem::{read_from_file, remove_file, write_to_file};
 
 pub type ChatID = u128;
 
@@ -136,7 +136,7 @@ impl Chat {
 
     pub fn remove_saved_file(&self) {
         let path = self.chats_dir.join(self.file_name());
-        std::fs::remove_file(path).unwrap();
+        remove_file(path).unwrap();
     }
 
     fn file_name(&self) -> String {

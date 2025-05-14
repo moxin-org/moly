@@ -4,11 +4,10 @@ use chat::{Chat, ChatID};
 use moly_kit::BotId;
 use moly_protocol::data::*;
 use std::collections::HashMap;
-use std::fs;
 use std::sync::Arc;
 use std::{cell::RefCell, path::PathBuf};
 
-use super::filesystem::setup_chats_folder;
+use super::filesystem::{read_dir, setup_chats_folder};
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{
@@ -51,9 +50,7 @@ impl Chats {
     }
 
     pub fn load_chats(&mut self) {
-        let paths = fs::read_dir(&self.chats_dir).unwrap();
-
-        for path in paths.map(|p| p.unwrap().path()) {
+        for path in read_dir(self.chats_dir.clone()).map(|p| p.unwrap()) {
             let loaded_chat_result = Chat::load(path, self.chats_dir.clone());
             match loaded_chat_result {
                 Err(e) => {

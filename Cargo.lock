@@ -1857,6 +1857,7 @@ name = "moly"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "cfg-if",
  "chrono",
  "directories",
  "env_logger",
