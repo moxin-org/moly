@@ -352,7 +352,7 @@ impl BotClient for OpenAIClient {
                         content.text.push_str(&choice.delta.content);
                     }
 
-                    // Extract reasoning text, preferring "reasoning" but falling back to "reasoning_content"
+                    // Extract reasoning text, could be found in "reasoning" or "reasoning_content"
                     let mut actual_reasoning_delta_text: Option<&str> = None;
                     if let Some(r_text) = &choice.delta.reasoning {
                         if !r_text.is_empty() {
