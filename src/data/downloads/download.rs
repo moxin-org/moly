@@ -1,9 +1,9 @@
-use std::sync::Arc;
-
-use makepad_widgets::Cx;
-use moly_protocol::{data::*, protocol::FileDownloadResponse};
-
 use crate::data::moly_client::MolyClient;
+use futures::{channel::mpsc::unbounded, StreamExt};
+use makepad_widgets::Cx;
+use moly_kit::utils::asynchronous::spawn;
+use moly_protocol::{data::*, protocol::FileDownloadResponse};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct DownloadFileAction {
@@ -46,68 +46,54 @@ impl Download {
     }
 
     pub fn start(&mut self, moly_client: Arc<MolyClient>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+        let (tx, mut rx) = unbounded();
         let file_id = self.file.id.clone();
         let moly_client_clone = moly_client.clone();
 
-        tokio::spawn(async move {
-            if let Some(Ok(_)) = rx.recv().await {
+        spawn(async move {
+            if let Some(Ok(())) = rx.next().await {
                 // Download started successfully, now track progress
-                let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(8);
+                let (progress_tx, mut progress_rx) = unbounded();
 
                 // Create a new task for tracking progress
                 let yamcc = moly_client_clone.clone();
                 let file_id_clone = file_id.clone();
-                let mut progress_handle = tokio::spawn(async move {
+
+                spawn(async move {
                     yamcc
                         .track_download_progress(file_id_clone, progress_tx)
-                        .await;
+                        .await
                 });
 
                 // Wait for progress updates
                 loop {
-                    tokio::select! {
-                        result = progress_rx.recv() => {
-                            match result {
-                                Some(result) => {
-                                    match result {
-                                        Ok(response) => match response {
-                                            FileDownloadResponse::Completed(_completed) => {
-                                                Cx::post_action(DownloadFileAction {
-                                                    file_id: file_id.clone(),
-                                                    kind: DownloadFileActionKind::StreamingDone,
-                                                });
-                                                break;
-                                            }
-                                            FileDownloadResponse::Progress(_file, value) => {
-                                                Cx::post_action(DownloadFileAction {
-                                                    file_id: file_id.clone(),
-                                                    kind: DownloadFileActionKind::Progress(value as f64),
-                                                })
-                                            }
-                                        },
-                                        Err(err) => {
-                                            Cx::post_action(DownloadFileAction {
-                                                file_id: file_id.clone(),
-                                                kind: DownloadFileActionKind::Error,
-                                            });
-                                            eprintln!("Error downloading file: {:?}", err);
-                                            break;
-                                        }
-                                    }
+                    match progress_rx.next().await {
+                        Some(result) => match result {
+                            Ok(response) => match response {
+                                FileDownloadResponse::Completed(_completed) => {
+                                    Cx::post_action(DownloadFileAction {
+                                        file_id: file_id.clone(),
+                                        kind: DownloadFileActionKind::StreamingDone,
+                                    });
+                                    break;
                                 }
-                                None => break,
+                                FileDownloadResponse::Progress(_file, value) => {
+                                    Cx::post_action(DownloadFileAction {
+                                        file_id: file_id.clone(),
+                                        kind: DownloadFileActionKind::Progress(value as f64),
+                                    })
+                                }
+                            },
+                            Err(err) => {
+                                Cx::post_action(DownloadFileAction {
+                                    file_id: file_id.clone(),
+                                    kind: DownloadFileActionKind::Error,
+                                });
+                                eprintln!("Error downloading file: {:?}", err);
+                                break;
                             }
-                        }
-                        result = &mut progress_handle => {
-                            // The tracking task completed (possibly with an error)
-                            if let Err(e) = result {
-                                eprintln!("Progress tracking task failed: {}", e);
-                            }
-                            // Don't break immediately - let any pending messages be processed
-                            // Just drop the handle and continue the loop
-                            progress_handle = tokio::spawn(async {});
-                        }
+                        },
+                        None => break,
                     }
                 }
             } else {
