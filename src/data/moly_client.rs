@@ -18,10 +18,13 @@ pub struct MolyClient {
 #[allow(dead_code)]
 impl MolyClient {
     pub fn new(address: String) -> Self {
-        let client = reqwest::Client::builder()
-            .no_proxy()
-            .build()
-            .expect("Failed to build reqwest client");
+        let client = reqwest::Client::builder();
+
+        // web doesn't support these
+        #[cfg(not(target_arch = "wasm32"))]
+        let client = client.no_proxy();
+
+        let client = client.build().expect("Failed to build reqwest client");
 
         Self {
             address,

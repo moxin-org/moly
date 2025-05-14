@@ -1877,6 +1877,7 @@ dependencies = [
  "tokio",
  "unicode-segmentation",
  "url",
+ "wasm-bindgen",
 ]
 
 [[package]]

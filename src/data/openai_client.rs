@@ -64,11 +64,15 @@ impl OpenAIClient {
             match command {
                 ProviderCommand::FetchModels() => {
                     let url = address.clone();
-                    let client = reqwest::ClientBuilder::new()
+                    let client = reqwest::ClientBuilder::new();
+
+                    // web doesn't support these
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let client = client
                         .timeout(std::time::Duration::from_secs(60))
-                        .no_proxy()
-                        .build()
-                        .unwrap();
+                        .no_proxy();
+
+                    let client = client.build().unwrap();
 
                     let mut req = client.get(format!("{}/models", url));
 

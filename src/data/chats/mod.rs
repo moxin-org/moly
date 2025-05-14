@@ -1,9 +1,6 @@
 pub mod chat;
 
 use chat::{Chat, ChatID};
-use futures::channel::mpsc::unbounded;
-use futures::StreamExt;
-use moly_kit::utils::asynchronous::spawn;
 use moly_kit::BotId;
 use moly_protocol::data::*;
 use std::collections::HashMap;
