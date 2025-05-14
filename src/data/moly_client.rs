@@ -5,7 +5,7 @@ use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
     protocol::FileDownloadResponse,
 };
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use url::Url;
 
 #[derive(Clone, Debug)]
@@ -42,7 +42,7 @@ impl MolyClient {
         self.address.as_str()
     }
 
-    pub fn test_connection(&self, tx: Sender<Result<(), anyhow::Error>>) {
+    pub fn test_connection(&self, tx: UnboundedSender<Result<(), anyhow::Error>>) {
         let url = format!("{}/ping", self.address);
         let client = self.client.clone();
 
@@ -52,7 +52,7 @@ impl MolyClient {
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        let _ = tx.send(Ok(()));
+                        let _ = tx.unbounded_send(Ok(()));
                         if let Ok(mut is_connected) = is_connected.lock() {
                             *is_connected = true;
                         }
@@ -64,7 +64,7 @@ impl MolyClient {
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                     }
@@ -73,7 +73,7 @@ impl MolyClient {
         });
     }
 
-    pub fn get_featured_models(&self, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
+    pub fn get_featured_models(&self, tx: UnboundedSender<Result<Vec<Model>, anyhow::Error>>) {
         let url = format!("{}/models/featured", self.address);
         let client = self.client.clone();
         let is_connected = self.is_connected.clone();
@@ -85,19 +85,22 @@ impl MolyClient {
                     if r.status().is_success() {
                         match r.json::<Vec<Model>>().await {
                             Ok(models) => {
-                                let _ = tx.send(Ok(models));
+                                let _ = tx.unbounded_send(Ok(models));
                             }
                             Err(e) => {
-                                let _ =
-                                    tx.send(Err(anyhow::anyhow!("Failed to parse models: {}", e)));
+                                let _ = tx.unbounded_send(Err(anyhow::anyhow!(
+                                    "Failed to parse models: {}",
+                                    e
+                                )));
                             }
                         }
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
@@ -107,7 +110,11 @@ impl MolyClient {
         });
     }
 
-    pub fn search_models(&self, query: String, tx: Sender<Result<Vec<Model>, anyhow::Error>>) {
+    pub fn search_models(
+        &self,
+        query: String,
+        tx: UnboundedSender<Result<Vec<Model>, anyhow::Error>>,
+    ) {
         let url = format!("{}/models/search?q={}", self.address, query);
         let client = self.client.clone();
         let is_connected = self.is_connected.clone();
@@ -119,19 +126,22 @@ impl MolyClient {
                     if r.status().is_success() {
                         match r.json::<Vec<Model>>().await {
                             Ok(models) => {
-                                let _ = tx.send(Ok(models));
+                                let _ = tx.unbounded_send(Ok(models));
                             }
                             Err(e) => {
-                                let _ =
-                                    tx.send(Err(anyhow::anyhow!("Failed to parse models: {}", e)));
+                                let _ = tx.unbounded_send(Err(anyhow::anyhow!(
+                                    "Failed to parse models: {}",
+                                    e
+                                )));
                             }
                         }
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
@@ -141,7 +151,10 @@ impl MolyClient {
         });
     }
 
-    pub fn get_downloaded_files(&self, tx: Sender<Result<Vec<DownloadedFile>, anyhow::Error>>) {
+    pub fn get_downloaded_files(
+        &self,
+        tx: UnboundedSender<Result<Vec<DownloadedFile>, anyhow::Error>>,
+    ) {
         let url = format!("{}/files", self.address);
         let client = self.client.clone();
         let is_connected = self.is_connected.clone();
@@ -153,20 +166,23 @@ impl MolyClient {
                     if r.status().is_success() {
                         match r.json::<Vec<DownloadedFile>>().await {
                             Ok(files) => {
-                                let _ = tx.send(Ok(files));
+                                let _ = tx.unbounded_send(Ok(files));
                             }
                             Err(e) => {
                                 eprintln!("Error parsing files: {}", e);
-                                let _ =
-                                    tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
+                                let _ = tx.unbounded_send(Err(anyhow::anyhow!(
+                                    "Failed to parse files: {}",
+                                    e
+                                )));
                             }
                         }
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
@@ -176,7 +192,10 @@ impl MolyClient {
         });
     }
 
-    pub fn get_current_downloads(&self, tx: Sender<Result<Vec<PendingDownload>, anyhow::Error>>) {
+    pub fn get_current_downloads(
+        &self,
+        tx: UnboundedSender<Result<Vec<PendingDownload>, anyhow::Error>>,
+    ) {
         let url = format!("{}/downloads", self.address);
         let client = self.client.clone();
         let is_connected = self.is_connected.clone();
@@ -188,19 +207,22 @@ impl MolyClient {
                     if r.status().is_success() {
                         match r.json::<Vec<PendingDownload>>().await {
                             Ok(files) => {
-                                let _ = tx.send(Ok(files));
+                                let _ = tx.unbounded_send(Ok(files));
                             }
                             Err(e) => {
-                                let _ =
-                                    tx.send(Err(anyhow::anyhow!("Failed to parse files: {}", e)));
+                                let _ = tx.unbounded_send(Err(anyhow::anyhow!(
+                                    "Failed to parse files: {}",
+                                    e
+                                )));
                             }
                         }
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
@@ -332,7 +354,11 @@ impl MolyClient {
         }
     }
 
-    pub fn pause_download_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
+    pub fn pause_download_file(
+        &self,
+        file_id: FileID,
+        tx: UnboundedSender<Result<(), anyhow::Error>>,
+    ) {
         let mut url =
             Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
 
@@ -357,13 +383,14 @@ impl MolyClient {
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        let _ = tx.send(Ok(()));
+                        let _ = tx.unbounded_send(Ok(()));
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
@@ -373,7 +400,11 @@ impl MolyClient {
         });
     }
 
-    pub fn cancel_download_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
+    pub fn cancel_download_file(
+        &self,
+        file_id: FileID,
+        tx: UnboundedSender<Result<(), anyhow::Error>>,
+    ) {
         let mut url =
             Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
 
@@ -398,13 +429,14 @@ impl MolyClient {
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        let _ = tx.send(Ok(()));
+                        let _ = tx.unbounded_send(Ok(()));
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
@@ -414,7 +446,7 @@ impl MolyClient {
         });
     }
 
-    pub fn delete_file(&self, file_id: FileID, tx: Sender<Result<(), anyhow::Error>>) {
+    pub fn delete_file(&self, file_id: FileID, tx: UnboundedSender<Result<(), anyhow::Error>>) {
         let mut url =
             Url::parse(&format!("{}/files", self.address)).expect("Invalid Moly server URL");
 
@@ -433,13 +465,14 @@ impl MolyClient {
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        let _ = tx.send(Ok(()));
+                        let _ = tx.unbounded_send(Ok(()));
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
@@ -486,7 +519,7 @@ impl MolyClient {
     //     });
     // }
 
-    pub fn eject_model(&self, tx: Sender<Result<(), anyhow::Error>>) {
+    pub fn eject_model(&self, tx: UnboundedSender<Result<(), anyhow::Error>>) {
         let url = format!("{}/models/eject", self.address);
         let client = self.client.clone();
         let is_connected = self.is_connected.clone();
@@ -496,13 +529,14 @@ impl MolyClient {
             match resp {
                 Ok(r) => {
                     if r.status().is_success() {
-                        let _ = tx.send(Ok(()));
+                        let _ = tx.unbounded_send(Ok(()));
                     } else {
-                        let _ = tx.send(Err(anyhow::anyhow!("Server error: {}", r.status())));
+                        let _ =
+                            tx.unbounded_send(Err(anyhow::anyhow!("Server error: {}", r.status())));
                     }
                 }
                 Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("Request failed: {}", e)));
+                    let _ = tx.unbounded_send(Err(anyhow::anyhow!("Request failed: {}", e)));
                     if let Ok(mut is_connected) = is_connected.lock() {
                         *is_connected = false;
                         Cx::post_action(MolyClientAction::ServerUnreachable);
