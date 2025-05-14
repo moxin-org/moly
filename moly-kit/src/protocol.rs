@@ -116,8 +116,8 @@ pub struct MessageContent {
     /// List of citations/sources (urls) associated with this message.
     pub citations: Vec<String>,
 
-    /// The reasoning/thinking text provided by the bot for this message.
-    pub reasoning: Option<String>,
+    /// The reasoning/thinking content of this message.
+    pub reasoning: Option<Reasoning>,
 
     /// Non-standard data contained by this message.
     ///
@@ -142,6 +142,13 @@ impl MessageContent {
     pub fn is_empty(&self) -> bool {
         self.text.is_empty() && self.citations.is_empty() && self.data.is_none()
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct Reasoning {
+    pub text: String,
+    pub time_taken_seconds: Option<f64>,
 }
 
 /// A message that is part of a conversation.

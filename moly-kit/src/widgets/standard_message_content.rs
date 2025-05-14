@@ -78,17 +78,10 @@ impl StandardMessageContent {
         citation_list.borrow_mut().unwrap().urls = content.citations.clone();
         citation_list.borrow_mut().unwrap().visible = !content.citations.is_empty();
 
-        let mut final_thinking_text: Option<String> = None;
-
-        // Prioritize content.reasoning if available and not empty
         if let Some(reasoning) = &content.reasoning {
-            if !reasoning.is_empty() {
-                final_thinking_text = Some(reasoning.clone());
-            }
+            self.message_thinking_block(id!(thinking_block))
+                .set_thinking_content(cx, reasoning, is_writing);
         }
-
-        self.message_thinking_block(id!(thinking_block))
-            .set_thinking_text(cx, final_thinking_text, is_writing);
 
         if !content.text.is_empty() {
             if is_writing {
