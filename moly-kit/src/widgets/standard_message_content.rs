@@ -78,14 +78,22 @@ impl StandardMessageContent {
         citation_list.borrow_mut().unwrap().urls = content.citations.clone();
         citation_list.borrow_mut().unwrap().visible = !content.citations.is_empty();
 
-        let (thinking_block, message_body) = extract_and_remove_think_tag(&content.text);
-        self.message_thinking_block(id!(thinking_block))
-            .set_thinking_text(thinking_block);
+        let mut final_thinking_text: Option<String> = None;
 
-        if let Some(body) = message_body {
+        // Prioritize content.reasoning if available and not empty
+        if let Some(reasoning) = &content.reasoning {
+            if !reasoning.is_empty() {
+                final_thinking_text = Some(reasoning.clone());
+            }
+        }
+
+        self.message_thinking_block(id!(thinking_block))
+            .set_thinking_text(cx, final_thinking_text, is_writing);
+
+        if !content.text.is_empty() {
             if is_writing {
                 // Check if we're starting a new message or changing the text
-                let is_new_message = self.smooth_typing.target_text != body;
+                let is_new_message = self.smooth_typing.target_text != content.text;
                 
                 // Track if we need to send animation started
                 let was_empty = self.smooth_typing.target_text.is_empty() || 
@@ -96,7 +104,7 @@ impl StandardMessageContent {
                     self.smooth_typing.ended_action_dispatched = false;
                 }
                 
-                self.smooth_typing.target_text = body;
+                self.smooth_typing.target_text = content.text.clone();
                 
                 if self.smooth_typing.typing_speed_chars_sec == 0 {
                     self.smooth_typing.typing_speed_chars_sec = DEFAULT_TYPING_SPEED_CHARS_SEC;
@@ -110,8 +118,8 @@ impl StandardMessageContent {
                 }
             } else {
                 // For non-writing messages, check if we're in the middle of typing animation
-                let body_chars = body.chars().count();
-                let currently_showing = if self.smooth_typing.target_text == body {
+                let body_chars = content.text.chars().count();
+                let currently_showing = if self.smooth_typing.target_text == content.text {
                     // If target text is already this message, use current_char_len
                     self.smooth_typing.current_char_len
                 } else {
@@ -121,14 +129,14 @@ impl StandardMessageContent {
                 };
                 
                 // If we're in the middle of typing this exact message, continue animation
-                if self.smooth_typing.target_text == body && currently_showing < body_chars {
+                if self.smooth_typing.target_text == content.text && currently_showing < body_chars {
                     // Keep the animation going to completion
                     self.smooth_typing.next_frame = cx.new_next_frame();
                 } else {
                     // Either a different message or already showing completely, 
                     // so display it immediately
-                    self.label(id!(markdown)).set_text(cx, &body);
-                    self.smooth_typing.target_text = body.clone();
+                    self.label(id!(markdown)).set_text(cx, &content.text);
+                    self.smooth_typing.target_text = content.text.clone();
                     self.smooth_typing.current_char_len = body_chars;
                     self.smooth_typing.last_update = 0.0;
                 }
@@ -211,38 +219,6 @@ impl StandardMessageContentRef {
 
         inner.set_content(cx, content, is_writing);
     }
-}
-
-fn extract_and_remove_think_tag(text: &str) -> (Option<String>, Option<String>) {
-    let (start_tag, end_tag) = ("<think>", "</think>");
-
-    let start_search = text.find(start_tag);
-    let end_search = text.find(end_tag);
-
-    let Some(start) = start_search else {
-        return (None, Some(text.to_string()));
-    };
-
-    let thinking_content = if let Some(end) = end_search {
-        text[start + start_tag.len()..end].trim().to_string()
-    } else {
-        text[start + start_tag.len()..].trim().to_string()
-    };
-
-    let thinking = if thinking_content.len() > 0 {
-        Some(thinking_content)
-    } else {
-        None
-    };
-
-    let body = if let Some(end) = end_search {
-        let body = text[end + end_tag.len()..].trim().to_string();
-        Some(body)
-    } else {
-        None
-    };
-
-    (thinking, body)
 }
 
 /// Action emitted by StandardMessageContent to notify about animation state changes.

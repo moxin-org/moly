@@ -116,6 +116,9 @@ pub struct MessageContent {
     /// List of citations/sources (urls) associated with this message.
     pub citations: Vec<String>,
 
+    /// The reasoning/thinking text provided by the bot for this message.
+    pub reasoning: Option<String>,
+
     /// Non-standard data contained by this message.
     ///
     /// May be used by clients for tracking purposes or to represent unsupported

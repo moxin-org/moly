@@ -362,7 +362,8 @@ impl Messages {
                         .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
                         .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
 
-                    let item = if message.is_writing && message.content.is_empty() {
+                    // Show a loading animation if there if the message is being streamed and there's no valuable content to show yet.
+                    let item = if message.is_writing && message.content.is_empty() && message.content.reasoning.is_none() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
                         item.message_loading(id!(content_section.loading))
                             .animate(cx);

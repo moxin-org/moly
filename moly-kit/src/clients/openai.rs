@@ -37,6 +37,17 @@ struct IncomingMessage {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_null_default")]
     pub content: String,
+    /// The reasoning text, if provided.
+    /// 
+    /// Used by agregators like OpenRouter.
+    #[serde(default)]
+    pub reasoning: Option<String>,
+    /// Wait, another reasoning text? Well, yes.
+    /// Some developers take API definitions as suggestions rather than standards.
+    ///
+    /// Used by providers like Sillicon flow for *some* models.
+    #[serde(default)]
+    pub reasoning_content: Option<String>,
 }
 
 /// A message being sent to the completions endpoint.
@@ -323,13 +334,33 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
-                let body = completion
-                    .choices
-                    .iter()
-                    .map(|c| c.delta.content.as_str())
-                    .collect::<String>();
+                for choice in &completion.choices {
+                    // Append main content delta
+                    if !choice.delta.content.is_empty() {
+                        content.text.push_str(&choice.delta.content);
+                    }
 
-                content.text.push_str(&body);
+                    // Extract reasoning text, preferring "reasoning" but falling back to "reasoning_content"
+                    let mut actual_reasoning_delta_text: Option<&str> = None;
+                    if let Some(r_text) = &choice.delta.reasoning {
+                        if !r_text.is_empty() {
+                            actual_reasoning_delta_text = Some(r_text);
+                        }
+                    }
+                    if actual_reasoning_delta_text.is_none() {
+                        if let Some(rc_text) = &choice.delta.reasoning_content {
+                            if !rc_text.is_empty() {
+                                actual_reasoning_delta_text = Some(rc_text);
+                            }
+                        }
+                    }
+
+                    // Append reasoning delta if found
+                    if let Some(reasoning_text_to_append) = actual_reasoning_delta_text {
+                        let current_reasoning = content.reasoning.get_or_insert_with(String::new);
+                        current_reasoning.push_str(reasoning_text_to_append);
+                    }
+                }
 
                 for citation in completion.citations {
                     if !content.citations.contains(&citation) {
