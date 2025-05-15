@@ -17,36 +17,37 @@ description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moly_app` to avoid naming conflicts
 ## with the `moly` binary defined by the `moly-runner` crate.
-[[bin]]
-name = "_moly_app"
-path = "src/main.rs"
+# [[bin]]
+# name = "_moly_app"
+# path = "src/main.rs"
 
 
 [dependencies]
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
-url-preview = "0.3.0"
 moly-kit = { path = "./moly-kit", features = ["full"] }
-
 makepad-widgets = { git = "https://github.com/joulei/makepad", branch = "moly-release-0.2.0" }
-
-robius-open = "0.1.1"
-robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
-
-chrono = "0.4"
-directories = "5.0.1"
 unicode-segmentation = "1.10.1"
 anyhow = "1.0"
 serde_json = "1.0"
 serde = { version = "1.0.197", features = ["derive"] }
-lipsum = "0.9"
-rand = "0.8.5"
-reqwest = { version = "0.12.12", features = ["json", "blocking", "stream"] }
+chrono = "0.4"
 url = "2.5.4"
-rfd = "0.14.1"
-tokio = { version = "1.43.0", features = ["full"] }
 futures = "0.3.31"
+reqwest = { version = "0.12.12", features = ["json", "stream"] }
+robius-open = "0.1.1"
+
+robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
+rfd = "0.14.1"
 log = "0.4"
 env_logger = "0.11"
+cfg-if = "1.0.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1", features = ["full"] }
+directories = "5.0.1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.100"
 
 [target.'cfg(target_os = "macos")'.dependencies.objc2]
 version = "0.6.0"

@@ -6,11 +6,10 @@ use tokio::time::Instant;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 
-use crate::{protocol::*, utils::errors::enrich_http_error};
 use crate::utils::{serde::deserialize_null_default, sse::parse_sse};
+use crate::{protocol::*, utils::errors::enrich_http_error};
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -229,7 +228,9 @@ impl BotClient for OpenAIClient {
                     id: BotId::new(&m.id, &inner.url),
                     name: m.id.clone(),
                     // TODO: Handle this char as a grapheme.
-                    avatar: Picture::Grapheme(m.id.chars().next().unwrap().to_string().to_uppercase()),
+                    avatar: Picture::Grapheme(
+                        m.id.chars().next().unwrap().to_string().to_uppercase(),
+                    ),
                 })
                 .collect();
 
@@ -402,6 +403,8 @@ impl BotClient for OpenAIClient {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn default_client() -> reqwest::Client {
+    use std::time::Duration;
+
     // On native, there are no default timeouts. Connection may hang if we don't
     // configure them.
     reqwest::Client::builder()

@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 use widgets::deep_inquire_content::DeepInquireContentWidgetRefExt;
 
@@ -448,6 +447,8 @@ fn create_or_update_stage(
 
 #[cfg(not(target_arch = "wasm32"))]
 fn default_client() -> reqwest::Client {
+    use std::time::Duration;
+
     reqwest::Client::builder()
         // Only considered while establishing the connection
         .connect_timeout(Duration::from_secs(360))

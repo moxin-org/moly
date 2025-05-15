@@ -1,14 +1,12 @@
-use std::io::Write;
-
 #[cfg(target_arch = "wasm32")]
+#[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
     // Initialize the logger
     env_logger::init();
-
-    moly_mini::app::app_main()
+    moly::app::app_main()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -18,6 +16,8 @@ async fn main() {
     env_logger::init();
 
     robius_url_handler::register_handler(|incoming_url| {
+        use std::io::Write;
+
         // Note: here is where the URL should be acted upon.
         // Currently, we just log it to a temp file to prove that it works.
         let tmp = std::env::temp_dir();
@@ -26,9 +26,11 @@ async fn main() {
             .append(true)
             .create(true)
             .open(tmp.join("moly_incoming_url.txt"))
-            .and_then(|mut f| 
-                f.write_all(format!("[{now:?}] Received incoming URL: {incoming_url:?}\n\n").as_bytes())
-            )
+            .and_then(|mut f| {
+                f.write_all(
+                    format!("[{now:?}] Received incoming URL: {incoming_url:?}\n\n").as_bytes(),
+                )
+            })
             .unwrap();
     });
 

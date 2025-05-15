@@ -1,10 +1,9 @@
-mod faked_models;
-
+use futures::channel::mpsc::unbounded;
+use futures::StreamExt;
 use makepad_widgets::{Action, Cx};
+use moly_kit::utils::asynchronous::spawn;
 use moly_protocol::data::*;
-use std::sync::mpsc::channel;
 use std::sync::Arc;
-use std::thread;
 
 use super::moly_client::MolyClient;
 
@@ -68,19 +67,21 @@ impl Search {
             }
         }
 
-        let (tx, rx) = channel();
+        let moly_client = self.moly_client.clone();
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.get_featured_models(tx);
 
-        self.moly_client.get_featured_models(tx);
+            let Some(response) = rx.next().await else {
+                return;
+            };
 
-        thread::spawn(move || {
-            if let Ok(response) = rx.recv() {
-                match response {
-                    Ok(models) => {
-                        Cx::post_action(SearchAction::Results(models));
-                    }
-                    Err(_err) => {
-                        Cx::post_action(SearchAction::Error);
-                    }
+            match response {
+                Ok(models) => {
+                    Cx::post_action(SearchAction::Results(models));
+                }
+                Err(_err) => {
+                    Cx::post_action(SearchAction::Error);
                 }
             }
         });
@@ -101,20 +102,22 @@ impl Search {
             }
         }
 
-        let (tx, rx) = channel();
+        let moly_client = self.moly_client.clone();
+        spawn(async move {
+            let (tx, mut rx) = unbounded();
+            moly_client.search_models(keyword.clone(), tx);
 
-        self.moly_client.search_models(keyword.clone(), tx);
+            let Some(response) = rx.next().await else {
+                return;
+            };
 
-        thread::spawn(move || {
-            if let Ok(response) = rx.recv() {
-                match response {
-                    Ok(models) => {
-                        Cx::post_action(SearchAction::Results(models));
-                    }
-                    Err(err) => {
-                        eprintln!("Error fetching models: {:?}", err);
-                        Cx::post_action(SearchAction::Error);
-                    }
+            match response {
+                Ok(models) => {
+                    Cx::post_action(SearchAction::Results(models));
+                }
+                Err(err) => {
+                    eprintln!("Error fetching models: {:?}", err);
+                    Cx::post_action(SearchAction::Error);
                 }
             }
         });
@@ -141,27 +144,7 @@ impl Search {
     }
 
     pub fn set_models(&mut self, models: Vec<Model>) {
-        #[cfg(not(debug_assertions))]
-        {
-            self.models = models;
-        }
-        #[cfg(debug_assertions)]
-        'debug_block: {
-            use faked_models::get_faked_models;
-
-            let fill_fake_data = std::env::var("FILL_FAKE_DATA").is_ok_and(|fill_fake_data| {
-                ["true", "t", "1"].iter().any(|&s| s == fill_fake_data)
-            });
-
-            if !fill_fake_data {
-                self.models = models;
-                break 'debug_block;
-            }
-
-            let faked_models: Vec<Model> = get_faked_models(&models);
-            self.models = faked_models;
-        }
-
+        self.models = models;
         self.sort_models(self.sorted_by);
     }
 
