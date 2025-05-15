@@ -17,9 +17,9 @@ description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moly_app` to avoid naming conflicts
 ## with the `moly` binary defined by the `moly-runner` crate.
-[[bin]]
-name = "_moly_app"
-path = "src/main.rs"
+# [[bin]]
+# name = "_moly_app"
+# path = "src/main.rs"
 
 
 [dependencies]
