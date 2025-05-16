@@ -75,7 +75,9 @@
                 "perplexity/sonar-deep-research",
                 "deepseek/deepseek-r1",
                 "deepseek/deepseek-r1:free",
-                "deepseek/deepseek-chat-v3-0324:free"
+                "deepseek/deepseek-chat-v3-0324:free",
+                "openai/gpt-4.1-nano",
+                "openai/o4-mini"
             ]
         },
         {
