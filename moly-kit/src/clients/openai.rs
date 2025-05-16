@@ -1,8 +1,8 @@
 use async_stream::stream;
+use chrono::Utc;
 use log::error;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
-use tokio::time::Instant;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},
@@ -38,7 +38,7 @@ struct IncomingMessage {
     #[serde(deserialize_with = "deserialize_null_default")]
     pub content: String,
     /// The reasoning text, if provided.
-    /// 
+    ///
     /// Used by agregators like OpenRouter.
     #[serde(default)]
     pub reasoning: Option<String>,
@@ -309,7 +309,7 @@ impl BotClient for OpenAIClient {
             let mut content = MessageContent::default();
             let events = parse_sse(response.bytes_stream());
 
-            let mut reasoning_start_time = None;
+            let mut reasoning_start_time: Option<chrono::DateTime<Utc>> = None;
 
             for await event in events {
                 let event = match event {
@@ -345,7 +345,9 @@ impl BotClient for OpenAIClient {
                         if let Some(start_time) = reasoning_start_time {
                             if let Some(reasoning) = &mut content.reasoning {
                                 if reasoning.time_taken_seconds.is_none() {
-                                    let time_taken = Instant::now().duration_since(start_time).as_secs_f64();
+                                    let end_time = Utc::now();
+                                    let time_taken_duration = end_time.signed_duration_since(start_time);
+                                    let time_taken = time_taken_duration.num_milliseconds() as f64 / 1000.0;
                                     reasoning.time_taken_seconds = Some(time_taken);
                                 }
                             }
@@ -358,7 +360,7 @@ impl BotClient for OpenAIClient {
                     if let Some(r_text) = &choice.delta.reasoning {
                         if !r_text.is_empty() {
                             if reasoning_start_time.is_none() {
-                                reasoning_start_time = Some(Instant::now());
+                                reasoning_start_time = Some(Utc::now());
                             }
                             actual_reasoning_delta_text = Some(r_text);
                         }
@@ -367,7 +369,7 @@ impl BotClient for OpenAIClient {
                         if let Some(rc_text) = &choice.delta.reasoning_content {
                             if !rc_text.is_empty() {
                                 if reasoning_start_time.is_none() {
-                                    reasoning_start_time = Some(Instant::now());
+                                    reasoning_start_time = Some(Utc::now());
                                 }
                                 actual_reasoning_delta_text = Some(rc_text);
                             }
