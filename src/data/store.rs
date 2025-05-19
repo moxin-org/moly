@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::app::app_runner;
 use crate::shared::actions::ChatAction;
 
@@ -13,8 +11,6 @@ use super::search::SortCriteria;
 use super::supported_providers;
 use super::{chats::Chats, downloads::Downloads, search::Search};
 use chrono::{DateTime, Utc};
-use futures::channel::mpsc::unbounded;
-use futures::StreamExt;
 use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use moly_kit::utils::asynchronous::spawn;
 
@@ -75,7 +71,7 @@ pub struct Store {
     pub chats: Chats,
     pub preferences: Preferences,
     pub bot_repo: Option<BotRepo>,
-    moly_client: Arc<MolyClient>,
+    moly_client: MolyClient,
     pub provider_syncing_status: ProviderSyncingStatus,
 }
 
@@ -94,14 +90,14 @@ impl Store {
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8765);
 
-        let moly_client = Arc::new(MolyClient::new(format!("http://localhost:{}", server_port)));
+        let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
 
         register_capture_manager();
 
         let mut store = Self {
-            search: Search::new(Arc::clone(&moly_client)),
-            downloads: Downloads::new(Arc::clone(&moly_client)),
-            chats: Chats::new(Arc::clone(&moly_client)),
+            search: Search::new(moly_client.clone()),
+            downloads: Downloads::new(moly_client.clone()),
+            chats: Chats::new(moly_client.clone()),
             moly_client,
             preferences,
             bot_repo: None,
@@ -122,7 +118,7 @@ impl Store {
         self.preferences.providers_preferences.iter().any(|p| {
             p.provider_type == ProviderType::MolyServer
                 && p.enabled
-                && p.url.starts_with(self.moly_client.address())
+                && p.url.starts_with(&self.moly_client.address())
         })
     }
 
@@ -137,17 +133,9 @@ impl Store {
             return;
         }
 
-        let moly_client = Arc::clone(&self.moly_client);
-
+        let moly_client = self.moly_client.clone();
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.test_connection(tx);
-
-            let Some(response) = rx.next().await else {
-                return;
-            };
-
-            let Ok(()) = response else {
+            let Ok(()) = moly_client.test_connection().await else {
                 return;
             };
 
@@ -215,29 +203,14 @@ impl Store {
     }
 
     pub fn delete_file(&mut self, file_id: FileID) {
-        let moly_client = Arc::clone(&self.moly_client);
+        let moly_client = self.moly_client.clone();
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.eject_model(tx);
-            let Some(response) = rx.next().await else {
-                eprintln!("Failed to receive eject model response");
-                return;
-            };
-
-            let Ok(()) = response else {
+            let Ok(()) = moly_client.eject_model().await else {
                 eprintln!("Eject model operation failed");
                 return;
             };
 
-            let (tx, mut rx) = unbounded();
-            moly_client.delete_file(file_id.clone(), tx);
-
-            let Some(response) = rx.next().await else {
-                eprintln!("Failed to receive delete file response");
-                return;
-            };
-
-            let Ok(()) = response else {
+            let Ok(()) = moly_client.delete_file(file_id.clone()).await else {
                 eprintln!("Delete file operation failed");
                 return;
             };
