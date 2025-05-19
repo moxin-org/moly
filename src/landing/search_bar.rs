@@ -187,7 +187,7 @@ impl WidgetMatchEvent for SearchBar {
         let input = self.text_input(id!(input));
         let clear_text_button = self.button(id!(clear_text_button));
 
-        if let Some(keywords) = input.returned(actions) {
+        if let Some((keywords, _)) = input.returned(actions) {
             if keywords.len() > 0 {
                 cx.action(StoreAction::Search(keywords.to_string()));
             } else {

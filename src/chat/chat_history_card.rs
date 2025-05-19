@@ -561,7 +561,7 @@ impl ChatHistoryCard {
             self.transition_title_state(cx)
         }
 
-        if let Some(val) = self.text_input(id!(title_input)).returned(actions) {
+        if let Some((val, _)) = self.text_input(id!(title_input)).returned(actions) {
             let chat = store
                 .chats
                 .saved_chats
