@@ -116,6 +116,12 @@ pub struct ChatView {
 
     #[rust]
     chat_id: ChatID,
+
+    #[rust]
+    focused: bool,
+
+    #[rust]
+    message_updated_while_inactive: bool,
 }
 
 impl LiveHook for ChatView {
@@ -131,6 +137,7 @@ impl Widget for ChatView {
         self.view.handle_event(cx, event, scope);
 
         self.handle_current_bot(cx, scope);
+        self.handle_unread_messages(scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -195,7 +202,7 @@ impl WidgetMatchEvent for ChatView {
                         if let ChatTask::UpdateMessage(index, message) = task {
                             let message = message.clone();
                             let index = index.clone();
-                            ui.defer_with_redraw(move |_me, _cx, scope| {
+                            ui.defer_with_redraw(move |me, _cx, scope| {
                                 let chat_to_update = scope
                                     .data
                                     .get::<Store>()
@@ -215,6 +222,12 @@ impl WidgetMatchEvent for ChatView {
                                         new_message.is_writing = false;
                                         store_chat.messages.push(new_message);
                                     }
+                                
+                                    // Keep track of whether the message was updated while the chat view was inactive
+                                    if !me.focused {
+                                        me.message_updated_while_inactive = true;
+                                    }
+
                                     store_chat.save();
                                 }
                             });
@@ -297,6 +310,20 @@ impl ChatView {
             self.prompt_input(id!(chat.prompt)).write().enable();
         }
     }
+
+    fn handle_unread_messages(&mut self, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+        if self.message_updated_while_inactive {
+            // If the message is done writing, and this chat view is not focused
+            // set the chat as having unread messages (show a badge on the chat history card)
+            if !self.chat(id!(chat)).read().is_streaming() && !self.focused {
+                if let Some(chat) = store.chats.get_chat_by_id(self.chat_id) {
+                    chat.borrow_mut().has_unread_messages = true;
+                    self.message_updated_while_inactive = false;
+                }
+            }
+        }
+    }
 }
 
 impl ChatViewRef {
@@ -306,6 +333,12 @@ impl ChatViewRef {
             inner
                 .model_selector(id!(model_selector))
                 .set_chat_id(chat_id);
+        }
+    }
+
+    pub fn set_focused(&mut self, focused: bool) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.focused = focused;
         }
     }
 }

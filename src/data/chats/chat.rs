@@ -70,6 +70,7 @@ pub struct Chat {
     pub inferences_params: ChatInferenceParams,
     pub system_prompt: Option<String>,
     pub accessed_at: chrono::DateTime<chrono::Utc>,
+    pub has_unread_messages: bool,
 
     title: String,
     title_state: TitleState,
@@ -91,6 +92,7 @@ impl Chat {
             inferences_params: ChatInferenceParams::default(),
             system_prompt: None,
             accessed_at: chrono::Utc::now(),
+            has_unread_messages: false,
         }
     }
 
@@ -109,6 +111,7 @@ impl Chat {
                     inferences_params: ChatInferenceParams::default(),
                     system_prompt: data.system_prompt,
                     accessed_at: data.accessed_at,
+                    has_unread_messages: false,
                 };
                 Ok(chat)
             }

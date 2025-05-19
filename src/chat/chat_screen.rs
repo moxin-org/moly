@@ -294,7 +294,7 @@ impl ChatsDeck {
         chat: &ChatData,
         bot_repo: Option<BotRepo>,
     ) {
-        let chat_view_to_update;
+        let mut chat_view_to_update;
         if let Some(chat_view) = self.chat_view_refs.get_mut(&chat.id) {
             chat_view.set_chat_id(chat.id);
             self.currently_visible_chat_id = Some(chat.id);
@@ -333,6 +333,14 @@ impl ChatsDeck {
                 .model_selector(id!(model_selector))
                 .set_currently_selected_model(cx, Some(bot_id.clone()));
             chat_view_to_update.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
+        }
+
+        // Set this chat view as focused and all other chat views as not focused
+        chat_view_to_update.set_focused(true);
+        for (id, chat_view) in self.chat_view_refs.iter_mut() {
+            if id != &chat.id {
+                chat_view.set_focused(false);
+            }
         }
 
         // Update the access order
