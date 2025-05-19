@@ -2,7 +2,7 @@ use makepad_widgets::*;
 use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 
-use super::{openai_client::OpenAIClient, deep_inquire_client::DeepInquireClient};
+use super::{deep_inquire_client::DeepInquireClient, openai_client::OpenAIClient};
 
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -23,8 +23,10 @@ pub struct Provider {
 /// Creates a client for the provider based on the provider type
 pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {
     match &provider.provider_type {
-        ProviderType::OpenAI | ProviderType::MolyServer | ProviderType::MoFa => Box::new(OpenAIClient::new(provider.url.clone(), provider.api_key.clone())),
-        ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone(), provider.api_key.clone())),
+        ProviderType::OpenAI | ProviderType::MolyServer | ProviderType::MoFa => Box::new(
+            OpenAIClient::new(provider.url.clone(), provider.api_key.clone()),
+        ),
+        ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone())),
     }
 }
 
@@ -73,9 +75,10 @@ impl ProviderConnectionStatus {
         match self {
             ProviderConnectionStatus::Connecting => "Connecting...",
             ProviderConnectionStatus::Connected => "Models synchronized",
-            ProviderConnectionStatus::Disconnected => "Haven't synchronized models since app launch",
+            ProviderConnectionStatus::Disconnected => {
+                "Haven't synchronized models since app launch"
+            }
             ProviderConnectionStatus::Error(error) => error.to_human_readable(),
-            
         }
     }
 }
@@ -102,10 +105,14 @@ impl ProviderClientError {
     pub fn to_human_readable(&self) -> &str {
         match self {
             ProviderClientError::Unauthorized => "Unauthorized, check your API key",
-            ProviderClientError::BadRequest => "Something is wrong in our end, please file an issue if you think this is an error",
+            ProviderClientError::BadRequest => {
+                "Something is wrong in our end, please file an issue if you think this is an error"
+            }
             ProviderClientError::UnexpectedResponse => "Unexpected Response",
             ProviderClientError::InternalServerError => "We have trouble reaching the server",
-            ProviderClientError::Timeout => "The server is taking too long to respond, please try again later",
+            ProviderClientError::Timeout => {
+                "The server is taking too long to respond, please try again later"
+            }
             ProviderClientError::Other(message) => message,
         }
     }
@@ -122,17 +129,11 @@ pub enum ProviderType {
     OpenAI,
     MoFa,
     DeepInquire,
-    MolyServer
+    MolyServer,
 }
 
 impl Default for ProviderType {
     fn default() -> Self {
         ProviderType::OpenAI
     }
-}
-
-/// Commands for the provider client to interact with their background thread.
-/// Used internally by the provider clients, not exposed used by the rest of the app.
-pub enum ProviderCommand {
-    FetchModels(),
 }
