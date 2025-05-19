@@ -69,9 +69,6 @@ pub struct ChatScreen {
     first_render: bool,
 
     #[rust]
-    should_load_repo_to_store: bool,
-
-    #[rust]
     creating_bot_repo: bool,
 }
 
@@ -90,9 +87,7 @@ impl Widget for ChatScreen {
 
         let should_recreate_bot_repo = store.bot_repo.is_none();
 
-        if self.should_load_repo_to_store {
-            self.should_load_repo_to_store = false;
-        } else if (self.first_render || should_recreate_bot_repo) && !self.creating_bot_repo {
+        if (self.first_render || should_recreate_bot_repo) && !self.creating_bot_repo {
             self.create_bot_repo(cx, scope);
             self.first_render = false;
         }
@@ -149,6 +144,7 @@ impl ChatScreen {
 
         let mut repo: BotRepo = multi_client.into();
         store.bot_repo = Some(repo.clone());
+        self.chats_deck(id!(chats_deck)).sync_bot_repos(scope);
 
         self.creating_bot_repo = true;
 
@@ -156,7 +152,6 @@ impl ChatScreen {
         spawn(async move {
             repo.load().await;
             ui.defer_with_redraw(move |me, _cx, _scope| {
-                me.should_load_repo_to_store = true;
                 me.creating_bot_repo = false;
             });
         });
@@ -178,9 +173,16 @@ pub struct ChatsDeck {
     #[rust]
     chat_view_accesed_order: VecDeque<ChatID>,
 
+    /// The currently visible chat id.
     #[rust]
     currently_visible_chat_id: Option<ChatID>,
 
+    /// A list of chat views that need to be synced with the bot repo.
+    /// This is used to avoid interrumpting the chat stream when the bot repo is being updated.
+    #[rust]
+    chats_views_pending_sync: Vec<ChatViewRef>,
+
+    /// The template for creating new chat views.
     #[live]
     chat_view_template: Option<LivePtr>,
 }
@@ -195,6 +197,21 @@ impl Widget for ChatsDeck {
 
         for (_, chat_view) in self.chat_view_refs.iter_mut() {
             chat_view.handle_event(cx, event, scope);
+        }
+
+        // Sync the bot repo for chat views that are not currently streaming
+        let store = scope.data.get_mut::<Store>().unwrap();
+        for chat_view in self.chats_views_pending_sync.iter_mut() {
+            if !chat_view
+                .messages(id!(chat.messages))
+                .read()
+                .messages
+                .last()
+                .unwrap()
+                .is_writing
+            {
+                chat_view.chat(id!(chat)).write().bot_repo = store.bot_repo.clone();
+            }
         }
     }
 
@@ -328,16 +345,8 @@ impl ChatsDeck {
             if let Some(chat_view) = self.chat_view_refs.get_mut(&least_recently_used_chat_id) {
                 let mut should_remove = true;
                 // Check if the latest message is currently being streamed
-                if let Some(latest_message) = chat_view
-                    .messages(id!(chat.messages))
-                    .read()
-                    .messages
-                    .last()
-                {
-                    if latest_message.is_writing {
-                        // If the latest message is being streamed, do not remove the chat view
-                        should_remove = false;
-                    }
+                if chat_view.chat(id!(chat)).read().is_streaming() {
+                    should_remove = false;
                 }
 
                 if should_remove {
@@ -348,5 +357,25 @@ impl ChatsDeck {
         }
 
         // TODO: Focus on prompt input
+    }
+
+    fn sync_bot_repos(&mut self, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+        for (_, chat_view) in self.chat_view_refs.iter_mut() {
+            // Only set the bot repo if the chat is not currently streaming, otherwise it will be interrumpted.
+            if !chat_view.chat(id!(chat)).read().is_streaming() {
+                chat_view.chat(id!(chat)).write().bot_repo = store.bot_repo.clone();
+            } else {
+                self.chats_views_pending_sync.push(chat_view.clone());
+            }
+        }
+    }
+}
+
+impl ChatsDeckRef {
+    pub fn sync_bot_repos(&mut self, scope: &mut Scope) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.sync_bot_repos(scope);
+        }
     }
 }

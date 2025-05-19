@@ -162,7 +162,7 @@ live_design! {
         
                 <View> {
                     spacing: 10
-                    width: Fill, height: 30
+                    width: Fill, height: 35
                     api_key = <MolyTextInput> {
                         empty_text: ""
                         width: Fill, height: 30
