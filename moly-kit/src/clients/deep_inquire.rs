@@ -381,7 +381,7 @@ fn apply_response_to_content(response: DeepInquireResponse, content: &mut Messag
         // For the stage_id we use the id from the delta without the stream_chunk_id.
         let stage_id = delta.id.split('.').next().unwrap_or(&delta.id).to_string();
         let substage_id = delta.metadata.stage.clone();
-        let stage_type = StageType::from_str(&delta.r#type).unwrap(); // TODO(Julian): handle errors
+        let stage_type = StageType::from_str(&delta.r#type).unwrap(); // TODO: Handle this gracefully
 
         create_or_update_stage(content, stage_type, stage_id, move |existing_stage| {
             // Check if the substage arriving in the response is already present in the accumulated content

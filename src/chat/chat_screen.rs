@@ -1,14 +1,19 @@
+use std::collections::{HashMap, VecDeque};
+
 use makepad_widgets::*;
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
+use crate::chat::chat_view::ChatViewWidgetRefExt;
 use crate::data::capture::CaptureAction;
+use crate::data::chats::chat::Chat as ChatData;
+use crate::data::chats::chat::ChatID;
 use crate::data::providers::ProviderType;
-use crate::data::store::{ProviderSyncingStatus, Store};
+use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
 
-use super::model_selector::ModelSelectorWidgetExt;
-use super::model_selector_item::ModelSelectorAction;
+use super::chat_view::ChatViewRef;
+use super::model_selector::ModelSelectorWidgetRefExt;
 
 live_design! {
     use link::theme::*;
@@ -16,82 +21,17 @@ live_design! {
     use link::widgets::*;
 
     use crate::shared::styles::*;
-    use crate::chat::chat_panel::ChatPanel;
     use crate::chat::chat_history::ChatHistory;
-    use crate::chat::chat_params::ChatParams;
-    use crate::chat::model_selector::ModelSelector;
+    use crate::chat::chat_view::ChatView;
     use moly_kit::widgets::chat::Chat;
-    use moly_kit::widgets::prompt_input::PromptInput;
 
-    PromptInputWithShadow = <PromptInput> {
-        padding: {left: 10, right: 10, top: 8, bottom: 8}
-        persistent = {
-            // Shader to make the original RoundedView into a RoundedShadowView
-            // (can't simply override the type of `persistent` because that removes the original children)
-            clip_x:false, clip_y:false,
+    ChatsDeck = {{ChatsDeck}} {
+        width: Fill,
+        height: Fill,
+        spacing: 10,
+        flow: Right
 
-            show_bg: true,
-            draw_bg: {
-                color: #fefefe
-                uniform border_radius: 5.0
-                uniform border_size: 0.0
-                uniform border_color: #0000
-                uniform shadow_color: #0001
-                uniform shadow_radius: 9.0,
-                uniform shadow_offset: vec2(0.0,-2.5)
-
-                varying rect_size2: vec2,
-                varying rect_size3: vec2,
-                varying rect_pos2: vec2,
-                varying rect_shift: vec2,
-                varying sdf_rect_pos: vec2,
-                varying sdf_rect_size: vec2,
-
-                fn get_color(self) -> vec4 {
-                    return self.color
-                }
-
-                fn vertex(self) -> vec4 {
-                    let min_offset = min(self.shadow_offset,vec2(0));
-                    self.rect_size2 = self.rect_size + 2.0*vec2(self.shadow_radius);
-                    self.rect_size3 = self.rect_size2 + abs(self.shadow_offset);
-                    self.rect_pos2 = self.rect_pos - vec2(self.shadow_radius) + min_offset;
-                    self.sdf_rect_size = self.rect_size2 - vec2(self.shadow_radius * 2.0 + self.border_size * 2.0)
-                    self.sdf_rect_pos = -min_offset + vec2(self.border_size + self.shadow_radius);
-                    self.rect_shift = -min_offset;
-
-                    return self.clip_and_transform_vertex(self.rect_pos2, self.rect_size3)
-                }
-
-                fn get_border_color(self) -> vec4 {
-                    return self.border_color
-                }
-
-                fn pixel(self) -> vec4 {
-
-                    let sdf = Sdf2d::viewport(self.pos * self.rect_size3)
-                    sdf.box(
-                        self.sdf_rect_pos.x,
-                        self.sdf_rect_pos.y,
-                        self.sdf_rect_size.x,
-                        self.sdf_rect_size.y,
-                        max(1.0, self.border_radius)
-                    )
-                    if sdf.shape > -1.0{
-                        let m = self.shadow_radius;
-                        let o = self.shadow_offset + self.rect_shift;
-                        let v = GaussShadow::rounded_box_shadow(vec2(m) + o, self.rect_size2+o, self.pos * (self.rect_size3+vec2(m)), self.shadow_radius*0.5, self.border_radius*2.0);
-                        sdf.clear(self.shadow_color*v)
-                    }
-
-                    sdf.fill_keep(self.get_color())
-                    if self.border_size > 0.0 {
-                        sdf.stroke(self.get_border_color(), self.border_size)
-                    }
-                    return sdf.result
-                }
-            }
-        }
+        chat_view_template: <ChatView> {}
     }
 
     pub ChatScreen = {{ChatScreen}} {
@@ -106,18 +46,7 @@ live_design! {
             chat_history = <ChatHistory> {}
         }
 
-        <View> {
-            width: Fill, height: Fill,
-            align: {x: 0.5},
-            padding: {top: 38, bottom: 10, right: 28, left: 28},
-            flow: Down,
-            spacing: 20
-
-            model_selector = <ModelSelector> {}
-            chat = <Chat> {
-                prompt = <PromptInputWithShadow> {}
-            }
-        }
+        chats_deck = <ChatsDeck> {}
 
         // TODO: Add chat params back in, only when the model is a local model (MolyServer)
         // currenlty MolyKit does not support chat params
@@ -131,7 +60,7 @@ live_design! {
     }
 }
 
-#[derive(Live, Widget)]
+#[derive(Live, LiveHook, Widget)]
 pub struct ChatScreen {
     #[deref]
     view: View,
@@ -146,16 +75,9 @@ pub struct ChatScreen {
     creating_bot_repo: bool,
 }
 
-impl LiveHook for ChatScreen {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        self.prompt_input(id!(chat.prompt)).write().disable();
-    }
-}
-
 impl Widget for ChatScreen {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.ui_runner().handle(cx, event, scope, self);
-        self.widget_match_event(cx, event, scope);
 
         // TODO This check is actually copied from Makepad view.rs file
         // It's not clear why it's needed here, but without this line
@@ -169,171 +91,15 @@ impl Widget for ChatScreen {
         let should_recreate_bot_repo = store.bot_repo.is_none();
 
         if self.should_load_repo_to_store {
-            store.bot_repo = self.chat(id!(chat)).read().bot_repo.clone();
             self.should_load_repo_to_store = false;
         } else if (self.first_render || should_recreate_bot_repo) && !self.creating_bot_repo {
             self.create_bot_repo(cx, scope);
             self.first_render = false;
         }
-
-        self.handle_current_bot(cx, scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
-    }
-}
-
-impl WidgetMatchEvent for ChatScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-        let mut chat_widget = self.chat(id!(chat));
-
-        for action in actions {
-            // Handle model selector actions
-            match action.cast() {
-                ModelSelectorAction::BotSelected(bot) => {
-                    chat_widget.write().bot_id = Some(bot.id.clone());
-
-                    if let Some(chat) = store.chats.get_current_chat() {
-                        chat.borrow_mut().associated_bot = Some(bot.id.clone());
-                        chat.borrow().save();
-                    }
-                    // self.focus_on_prompt_input_pending = true;
-                }
-                _ => {}
-            }
-
-            // Handle chat start
-            match action.cast() {
-                ChatAction::Start(bot_id) => {
-                    store.chats.create_empty_chat(Some(bot_id.clone()));
-                    self.messages(id!(chat.messages))
-                        .write()
-                        .set_messages(vec![], true);
-                    self.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
-                    self.model_selector(id!(model_selector))
-                        .set_currently_selected_model(cx, Some(bot_id));
-                    // self.focus_on_prompt_input_pending = true;
-                }
-                ChatAction::StartWithoutEntity => {
-                    self.messages(id!(chat.messages))
-                        .write()
-                        .set_messages(vec![], true);
-                    // self.focus_on_prompt_input_pending = true;
-                }
-                _ => {}
-            }
-
-            // Hook into message updates to update the persisted chat history
-            self.chat(id!(chat)).write_with(|chat| {
-                let ui = self.ui_runner();
-                chat.set_hook_after(move |group, _, _| {
-                    for task in group.iter() {
-                        // Handle new User messsages
-                        if let ChatTask::InsertMessage(_index, message) = task {
-                            let message = message.clone();
-                            ui.defer_with_redraw(move |_me, _cx, scope| {
-                                let current_chat =
-                                    scope.data.get::<Store>().unwrap().chats.get_current_chat();
-                                if let Some(store_chat) = current_chat {
-                                    let mut store_chat = store_chat.borrow_mut();
-                                    let mut new_message = message.clone();
-                                    new_message.is_writing = false;
-                                    store_chat.messages.push(new_message);
-                                    store_chat.update_title_based_on_first_message();
-                                    store_chat.save();
-                                }
-                            });
-                        }
-
-                        // Handle updated Bot messages
-                        // UpdateMessage tasks mean that a bot message has been updated, either a User edit or a Bot message delta from the stream
-                        // We fetch the current chat from the store and update the corresponding message, or insert it if it's not present
-                        // (if it's the first chunk from the bot message)
-                        if let ChatTask::UpdateMessage(index, message) = task {
-                            let message = message.clone();
-                            let index = index.clone();
-                            ui.defer_with_redraw(move |_me, _cx, scope| {
-                                let current_chat =
-                                    scope.data.get::<Store>().unwrap().chats.get_current_chat();
-                                if let Some(store_chat) = current_chat {
-                                    let mut store_chat = store_chat.borrow_mut();
-                                    if let Some(message_to_update) =
-                                        store_chat.messages.get_mut(index)
-                                    {
-                                        message_to_update.content = message.content.clone();
-                                        message_to_update.is_writing = false;
-                                    } else {
-                                        let mut new_message = message.clone();
-                                        new_message.is_writing = false;
-                                        store_chat.messages.push(new_message);
-                                    }
-                                    store_chat.save();
-                                }
-                            });
-                        }
-
-                        if let ChatTask::SetMessages(messages) = task {
-                            let messages = messages.clone();
-                            ui.defer_with_redraw(move |_me, _cx, scope| {
-                                let current_chat =
-                                    scope.data.get::<Store>().unwrap().chats.get_current_chat();
-                                if let Some(store_chat) = current_chat {
-                                    let mut store_chat = store_chat.borrow_mut();
-                                    store_chat.messages = messages;
-                                    store_chat.save();
-                                }
-                            });
-                        }
-
-                        if let ChatTask::DeleteMessage(index) = task {
-                            let index = index.clone();
-                            ui.defer_with_redraw(move |me, cx, scope| {
-                                let store = scope.data.get_mut::<Store>().unwrap();
-                                store.chats.delete_chat_message(index);
-                                me.redraw(cx);
-                            });
-                        }
-                    }
-                });
-            });
-
-            // Handle chat selection (from chat history)
-            match action.cast() {
-                ChatAction::ChatSelected(_chat_id) => {
-                    let current_chat = store.chats.get_current_chat();
-
-                    if let Some(chat) = current_chat {
-                        store
-                            .preferences
-                            .set_current_chat_model(chat.borrow().associated_bot.clone());
-
-                        // Load messages from history into the messages widget
-                        self.messages(id!(chat.messages))
-                            .write()
-                            .set_messages(chat.borrow().messages.clone(), true);
-
-                        // Set the chat's associated model in the model selector
-                        if let Some(bot_id) = &chat.borrow().associated_bot {
-                            self.model_selector(id!(model_selector))
-                                .set_currently_selected_model(cx, Some(bot_id.clone()));
-                            self.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
-                        }
-
-                        self.redraw(cx);
-                    }
-                }
-                _ => {}
-            }
-
-            // Handle Context Capture
-            if let CaptureAction::Capture { event } = action.cast() {
-                self.prompt_input(id!(prompt))
-                    .write()
-                    .set_text(cx, event.contents());
-            }
-        }
     }
 }
 
@@ -382,56 +148,205 @@ impl ChatScreen {
         };
 
         let mut repo: BotRepo = multi_client.into();
-        self.chat(id!(chat)).write().bot_repo = Some(repo.clone());
+        store.bot_repo = Some(repo.clone());
 
         self.creating_bot_repo = true;
 
         let ui = self.ui_runner();
         spawn(async move {
             repo.load().await;
-
             ui.defer_with_redraw(move |me, _cx, _scope| {
                 me.should_load_repo_to_store = true;
                 me.creating_bot_repo = false;
             });
         });
     }
+}
 
-    // TODO: Only perform this checks after certain actions like provider sync or provider updates (e.g. disable/enable provider)
-    // Refactor this to be simpler and more unified with the behavior of the model selector
-    fn handle_current_bot(&mut self, cx: &mut Cx, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
+#[derive(Live, LiveHook, Widget)]
+pub struct ChatsDeck {
+    #[deref]
+    view: View,
 
-        // Check if the current chat's associated bot is still available
-        let mut bot_available = false;
-        let mut associiated_bot_id = None;
-        if let Some(chat) = store.chats.get_current_chat() {
-            if let Some(bot_id) = &chat.borrow().associated_bot {
-                associiated_bot_id = Some(bot_id.clone());
-                bot_available = store.chats.get_all_bots(true).iter()
-                    .any(|bot| &bot.id == bot_id)
+    /// All the currently existing chat views. Keyed by their corresponding ChatID.
+    #[rust]
+    chat_view_refs: HashMap<ChatID, ChatViewRef>,
+
+    /// The order in which the chat views were accessed.
+    /// Used as a simple LRU cache to determine which chat view to remove when the deck is full.
+    /// We only drop a chat view if it's not currently streaming a response from the bot.
+    #[rust]
+    chat_view_accesed_order: VecDeque<ChatID>,
+
+    #[rust]
+    currently_visible_chat_id: Option<ChatID>,
+
+    #[live]
+    chat_view_template: Option<LivePtr>,
+}
+
+/// The maximum number of chat views that can be displayed at once.
+const MAX_CHAT_VIEWS: usize = 10;
+
+impl Widget for ChatsDeck {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+
+        for (_, chat_view) in self.chat_view_refs.iter_mut() {
+            chat_view.handle_event(cx, event, scope);
+        }
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        cx.begin_turtle(walk, self.layout);
+
+        if let Some(chat_id) = self.currently_visible_chat_id {
+            if let Some(chat_view) = self.chat_view_refs.get_mut(&chat_id) {
+                let _ = chat_view.draw(cx, scope);
             }
         }
-        
-        // If the bot is not available and we know it won't be available soon, clear the bot_id in the chat widget
-        if !bot_available && store.provider_syncing_status == ProviderSyncingStatus::Synced {
-            self.chat(id!(chat)).write().bot_id = None;
-            
-            self.model_selector(id!(model_selector))
-                .set_currently_selected_model(cx, None);
-            
-            self.redraw(cx);
-        } else if bot_available && self.chat(id!(chat)).read().bot_id.is_none() {
-            // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
-            // This can happen if the bot or provider was re-enabled after being disabled while being selected
-            self.chat(id!(chat)).write().bot_id = associiated_bot_id;
+
+        cx.end_turtle();
+        DrawStep::done()
+    }
+}
+
+impl WidgetMatchEvent for ChatsDeck {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+        for action in actions {
+            // Handle chat start
+            match action.cast() {
+                ChatAction::Start(bot_id) => {
+                    let chat_id = store.chats.create_empty_chat(Some(bot_id.clone()));
+                    let chat = store.chats.get_chat_by_id(chat_id);
+                    if let Some(chat) = chat {
+                        self.create_or_update_chat_view(cx, &chat.borrow(), store.bot_repo.clone());
+                    }
+                }
+                ChatAction::StartWithoutEntity => {
+                    let chat_id = store.chats.create_empty_chat(None);
+                    let chat = store.chats.get_chat_by_id(chat_id);
+                    if let Some(chat) = chat {
+                        self.create_or_update_chat_view(cx, &chat.borrow(), store.bot_repo.clone());
+                    }
+                }
+                _ => {}
+            }
+
+            // Handle chat selection (from chat history)
+            match action.cast() {
+                ChatAction::ChatSelected(chat_id) => {
+                    let selected_chat = store.chats.get_chat_by_id(chat_id);
+
+                    if let Some(chat) = selected_chat {
+                        store
+                            .preferences
+                            .set_current_chat_model(chat.borrow().associated_bot.clone());
+
+                        self.create_or_update_chat_view(cx, &chat.borrow(), store.bot_repo.clone());
+
+                        self.redraw(cx);
+                    }
+                }
+                _ => {}
+            }
+
+            // Handle Context Capture
+            if let CaptureAction::Capture { event } = action.cast() {
+                // Paste the captured text into the currently selected chat
+                if let Some(chat_view) = self
+                    .chat_view_refs
+                    .get_mut(&self.currently_visible_chat_id.unwrap())
+                {
+                    chat_view
+                        .prompt_input(id!(prompt))
+                        .write()
+                        .set_text(cx, event.contents());
+                }
+            }
+        }
+    }
+}
+
+impl ChatsDeck {
+    pub fn create_or_update_chat_view(
+        &mut self,
+        cx: &mut Cx,
+        chat: &ChatData,
+        bot_repo: Option<BotRepo>,
+    ) {
+        let chat_view_to_update;
+        if let Some(chat_view) = self.chat_view_refs.get_mut(&chat.id) {
+            chat_view.set_chat_id(chat.id);
+            self.currently_visible_chat_id = Some(chat.id);
+
+            chat_view_to_update = chat_view.clone();
+        } else {
+            let chat_view = WidgetRef::new_from_ptr(cx, self.chat_view_template);
+            chat_view.chat(id!(chat)).write().bot_repo = bot_repo;
+            chat_view.as_chat_view().set_chat_id(chat.id);
+
+            self.chat_view_refs
+                .insert(chat.id, chat_view.as_chat_view());
+            self.currently_visible_chat_id = Some(chat.id);
+
+            chat_view_to_update = chat_view.as_chat_view();
         }
 
-        // If there is no selected bot, disable the prompt input
-        if self.chat(id!(chat)).read().bot_id.is_none() || !bot_available || store.provider_syncing_status != ProviderSyncingStatus::Synced {
-            self.prompt_input(id!(chat.prompt)).write().disable();
-        } else if !self.creating_bot_repo {
-            self.prompt_input(id!(chat.prompt)).write().enable();
-        }  
+        // Set messages
+        // If the chat is already loaded do not set the messages again, as it might cause
+        // unwanted side effects, i.e. canceling any ongoing streaming response from the bot
+        if chat_view_to_update
+            .messages(id!(chat.messages))
+            .read()
+            .messages
+            .is_empty()
+        {
+            chat_view_to_update
+                .messages(id!(chat.messages))
+                .write()
+                .set_messages(chat.messages.clone(), true);
+        }
+
+        // Set associated bot
+        if let Some(bot_id) = &chat.associated_bot {
+            chat_view_to_update
+                .model_selector(id!(model_selector))
+                .set_currently_selected_model(cx, Some(bot_id.clone()));
+            chat_view_to_update.chat(id!(chat)).write().bot_id = Some(bot_id.clone());
+        }
+
+        // Update the access order
+        self.chat_view_accesed_order.retain(|id| *id != chat.id);
+        self.chat_view_accesed_order.push_back(chat.id);
+
+        // Remove the least recently used chat view if the deck is full
+        if self.chat_view_accesed_order.len() > MAX_CHAT_VIEWS {
+            let least_recently_used_chat_id = self.chat_view_accesed_order.pop_front().unwrap();
+            if let Some(chat_view) = self.chat_view_refs.get_mut(&least_recently_used_chat_id) {
+                let mut should_remove = true;
+                // Check if the latest message is currently being streamed
+                if let Some(latest_message) = chat_view
+                    .messages(id!(chat.messages))
+                    .read()
+                    .messages
+                    .last()
+                {
+                    if latest_message.is_writing {
+                        // If the latest message is being streamed, do not remove the chat view
+                        should_remove = false;
+                    }
+                }
+
+                if should_remove {
+                    self.chat_view_refs.remove(&least_recently_used_chat_id);
+                    self.chat_view_accesed_order.remove(0);
+                }
+            }
+        }
+
+        // TODO: Focus on prompt input
     }
 }

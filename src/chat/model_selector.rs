@@ -1,5 +1,5 @@
 use crate::{
-    chat::model_selector_loading::ModelSelectorLoadingWidgetExt, data::store::{ProviderSyncingStatus, Store}, shared::{
+    chat::model_selector_loading::ModelSelectorLoadingWidgetExt, data::{chats::chat::ChatID, store::{ProviderSyncingStatus, Store}}, shared::{
         actions::ChatAction, modal::ModalWidgetExt, utils::format_model_size
     }
 };
@@ -197,6 +197,9 @@ pub struct ModelSelector {
 
     #[rust]
     currently_selected_model: Option<BotId>,
+
+    #[rust]
+    chat_id: ChatID,
 }
 
 impl Widget for ModelSelector {
@@ -207,7 +210,7 @@ impl Widget for ModelSelector {
 
         // Check if we have a model selected, if not but there's an associated bot in the chat, use it
         if self.currently_selected_model.is_none() {
-            if let Some(chat) = store.chats.get_current_chat() {
+            if let Some(chat) = store.chats.get_chat_by_id(self.chat_id) {
                 if let Some(bot_id) = chat.borrow().associated_bot.clone() {
                     // Make sure the bot is still available
                     let bot_available = store.chats.get_all_bots(true).iter()
@@ -374,9 +377,11 @@ impl WidgetMatchEvent for ModelSelector {
         let mut should_hide_options = false;
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::BotSelected(m) => {
-                    self.currently_selected_model = Some(m.id);
-                    should_hide_options = true;
+                ModelSelectorAction::BotSelected(chat_id, m) => {
+                    if chat_id == self.chat_id {
+                        self.currently_selected_model = Some(m.id);
+                        should_hide_options = true;
+                    }
                 }
                 _ => {}
             }
@@ -431,7 +436,7 @@ impl ModelSelector {
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
         self.view(id!(choose)).set_visible(cx, false);
 
-        let associated_bot = store.chats.get_current_chat().and_then(|c| c.borrow().associated_bot.clone());
+        let associated_bot = store.chats.get_chat_by_id(self.chat_id).and_then(|c| c.borrow().associated_bot.clone());
         if let Some(bot_id) = associated_bot {
 
             let Some(bot) = store.chats.get_bot(&bot_id) else { 
@@ -508,6 +513,13 @@ impl ModelSelectorRef {
         if let Some(mut inner) = self.borrow_mut() {
             inner.currently_selected_model = model;
             inner.redraw(cx);
+        }
+    }
+
+    pub fn set_chat_id(&mut self, chat_id: ChatID) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.chat_id = chat_id;
+            inner.model_selector_list(id!(list_container.list)).set_chat_id(chat_id);
         }
     }
 }

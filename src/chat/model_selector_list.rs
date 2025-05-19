@@ -1,5 +1,5 @@
 use crate::{
-    data::{providers::ProviderBot, store::Store},
+    data::{chats::chat::ChatID, providers::ProviderBot, store::Store},
     shared::utils::format_model_size,
 };
 use makepad_widgets::*;
@@ -68,6 +68,9 @@ pub struct ModelSelectorList {
 
     #[rust]
     total_height: Option<f64>,
+
+    #[rust]
+    chat_id: ChatID,
 }
 
 impl Widget for ModelSelectorList {
@@ -115,7 +118,7 @@ impl ModelSelectorList {
 
         let current_bot_id = store
             .chats
-            .get_current_chat()
+            .get_chat_by_id(self.chat_id)
             .and_then(|c| c.borrow().associated_bot.clone());
 
         // Get non-agent models
@@ -219,6 +222,10 @@ impl ModelSelectorList {
                     .as_model_selector_item()
                     .set_bot(provider_bot.clone());
                 
+                item_widget
+                    .as_model_selector_item()
+                    .set_chat_id(self.chat_id);
+
                 let _ = item_widget.draw_all(cx, &mut Scope::empty());
                 total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
             }
@@ -234,5 +241,12 @@ impl ModelSelectorListRef {
             return 0.0;
         };
         inner.total_height.unwrap_or(0.0)
+    }
+
+    pub fn set_chat_id(&mut self, chat_id: ChatID) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.chat_id = chat_id;
     }
 }

@@ -210,7 +210,6 @@ impl WidgetMatchEvent for ChatHistory {
         }
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
-            store.chats.create_empty_chat(None);
             cx.action(ChatAction::StartWithoutEntity);
             self.redraw(cx);
         }

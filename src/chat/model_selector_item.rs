@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::data::providers::ProviderBot;
+use crate::data::{chats::chat::ChatID, providers::ProviderBot};
 
 live_design! {
     use link::theme::*;
@@ -67,7 +67,7 @@ live_design! {
 
 #[derive(Clone, DefaultNone, Debug)]
 pub enum ModelSelectorAction {
-    BotSelected(ProviderBot),
+    BotSelected(ChatID, ProviderBot),
     None,
 }
 
@@ -75,6 +75,11 @@ pub enum ModelSelectorAction {
 pub struct ModelSelectorItem {
     #[deref]
     view: View,
+
+    // TODO: We should remove this at the item level and handle the item clicking 
+    // in the parent widget (ModelSelectorList)
+    #[rust]
+    chat_id: ChatID,
 
     #[rust]
     model: ProviderBot,
@@ -95,7 +100,7 @@ impl WidgetMatchEvent for ModelSelectorItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(fd) = self.view(id!(content)).finger_down(&actions) {
             if fd.tap_count == 1 {
-                cx.action(ModelSelectorAction::BotSelected(self.model.clone()));
+                cx.action(ModelSelectorAction::BotSelected(self.chat_id, self.model.clone()));
             }
         }
     }
@@ -107,5 +112,12 @@ impl ModelSelectorItemRef {
             return;
         };
         inner.model = bot;
+    }
+
+    pub fn set_chat_id(&mut self, chat_id: ChatID) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+        inner.chat_id = chat_id;
     }
 }

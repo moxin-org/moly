@@ -345,7 +345,7 @@ impl WidgetMatchEvent for PromptInput {
 
         for action in actions {
             match action.cast() {
-                ModelSelectorAction::BotSelected(_) => {
+                ModelSelectorAction::BotSelected(_, _) => {
                     self.on_deselected(cx);
                 }
                 _ => (),
