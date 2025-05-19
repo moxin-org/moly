@@ -1521,16 +1521,16 @@ dependencies = [
 
 [[package]]
 name = "makepad-code-editor"
-version = "0.6.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-widgets",
 ]
 
 [[package]]
 name = "makepad-derive-live"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1538,16 +1538,16 @@ dependencies = [
 
 [[package]]
 name = "makepad-derive-wasm-bridge"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
 
 [[package]]
 name = "makepad-derive-widget"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1555,8 +1555,8 @@ dependencies = [
 
 [[package]]
 name = "makepad-draw"
-version = "0.6.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "ab_glyph_rasterizer",
  "fxhash",
@@ -1566,34 +1566,74 @@ dependencies = [
  "makepad-vector",
  "png",
  "sdfer",
- "ttf-parser 0.25.1",
+ "ttf-parser",
  "unicode-bidi",
  "unicode-linebreak",
  "unicode-segmentation",
 ]
 
 [[package]]
+name = "makepad-fonts-chinese-bold"
+version = "1.0.1"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
+dependencies = [
+ "makepad-platform",
+]
+
+[[package]]
+name = "makepad-fonts-chinese-bold-2"
+version = "1.0.1"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
+dependencies = [
+ "makepad-platform",
+]
+
+[[package]]
+name = "makepad-fonts-chinese-regular"
+version = "1.0.1"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
+dependencies = [
+ "makepad-platform",
+]
+
+[[package]]
+name = "makepad-fonts-chinese-regular-2"
+version = "1.0.1"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
+dependencies = [
+ "makepad-platform",
+]
+
+[[package]]
+name = "makepad-fonts-emoji"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
+dependencies = [
+ "makepad-platform",
+]
+
+[[package]]
 name = "makepad-futures"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 
 [[package]]
 name = "makepad-futures-legacy"
-version = "0.7.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 
 [[package]]
 name = "makepad-html"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-live-id",
 ]
 
 [[package]]
 name = "makepad-http"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 
 [[package]]
 name = "makepad-jni-sys"
@@ -1603,8 +1643,8 @@ checksum = "9775cbec5fa0647500c3e5de7c850280a88335d1d2d770e5aa2332b801ba7064"
 
 [[package]]
 name = "makepad-live-compiler"
-version = "0.5.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -1613,24 +1653,24 @@ dependencies = [
 
 [[package]]
 name = "makepad-live-id"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-live-id-macros",
 ]
 
 [[package]]
 name = "makepad-live-id-macros"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
 
 [[package]]
 name = "makepad-live-tokenizer"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -1639,21 +1679,21 @@ dependencies = [
 
 [[package]]
 name = "makepad-math"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-micro-serde",
 ]
 
 [[package]]
 name = "makepad-micro-proc-macro"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 
 [[package]]
 name = "makepad-micro-serde"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-serde-derive",
@@ -1661,21 +1701,21 @@ dependencies = [
 
 [[package]]
 name = "makepad-micro-serde-derive"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
 
 [[package]]
 name = "makepad-objc-sys"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 
 [[package]]
 name = "makepad-platform"
-version = "0.6.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "bitflags 2.9.0",
  "hilog-sys",
@@ -1699,12 +1739,12 @@ dependencies = [
 [[package]]
 name = "makepad-rustybuzz"
 version = "0.8.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "bitflags 1.3.2",
  "bytemuck",
+ "makepad-ttf-parser",
  "smallvec",
- "ttf-parser 0.21.1",
  "unicode-bidi-mirroring",
  "unicode-ccc",
  "unicode-properties",
@@ -1713,25 +1753,30 @@ dependencies = [
 
 [[package]]
 name = "makepad-shader-compiler"
-version = "0.5.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-live-compiler",
 ]
 
 [[package]]
+name = "makepad-ttf-parser"
+version = "0.21.1"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
+
+[[package]]
 name = "makepad-vector"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
+ "makepad-ttf-parser",
  "resvg",
- "ttf-parser 0.21.1",
 ]
 
 [[package]]
 name = "makepad-wasm-bridge"
-version = "0.4.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -1739,11 +1784,16 @@ dependencies = [
 
 [[package]]
 name = "makepad-widgets"
-version = "0.6.0"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+version = "1.0.0"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
+ "makepad-fonts-chinese-bold",
+ "makepad-fonts-chinese-bold-2",
+ "makepad-fonts-chinese-regular",
+ "makepad-fonts-chinese-regular-2",
+ "makepad-fonts-emoji",
  "makepad-html",
  "makepad-zune-jpeg",
  "makepad-zune-png",
@@ -1754,7 +1804,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-core"
 version = "0.2.14"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "bitflags 2.9.0",
 ]
@@ -1762,7 +1812,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-jpeg"
 version = "0.3.17"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "makepad-zune-core",
 ]
@@ -1770,7 +1820,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.4.10"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
+source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#576c5e8b250eb8717ce74e17b484a891b84ec352"
 dependencies = [
  "zune-core",
  "zune-inflate",
@@ -3323,11 +3373,6 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "ttf-parser"
-version = "0.21.1"
-source = "git+https://github.com/joulei/makepad?branch=moly-release-0.2.0#45de0b0fe8811b63408e65cc6a9eb5b4281b1a87"
 
 [[package]]
 name = "ttf-parser"
