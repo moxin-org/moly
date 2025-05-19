@@ -1,9 +1,6 @@
-use futures::channel::mpsc::unbounded;
-use futures::StreamExt;
 use makepad_widgets::{Action, Cx};
 use moly_kit::utils::asynchronous::spawn;
 use moly_protocol::data::*;
-use std::sync::Arc;
 
 use super::moly_client::MolyClient;
 
@@ -36,7 +33,7 @@ pub enum SearchState {
     Errored,
 }
 pub struct Search {
-    pub moly_client: Arc<MolyClient>,
+    pub moly_client: MolyClient,
     pub models: Vec<Model>,
     pub sorted_by: SortCriteria,
     pub keyword: Option<String>,
@@ -44,7 +41,7 @@ pub struct Search {
 }
 
 impl Search {
-    pub fn new(moly_client: Arc<MolyClient>) -> Self {
+    pub fn new(moly_client: MolyClient) -> Self {
         let search = Self {
             moly_client,
             models: Vec::new(),
@@ -69,14 +66,7 @@ impl Search {
 
         let moly_client = self.moly_client.clone();
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.get_featured_models(tx);
-
-            let Some(response) = rx.next().await else {
-                return;
-            };
-
-            match response {
+            match moly_client.get_featured_models().await {
                 Ok(models) => {
                     Cx::post_action(SearchAction::Results(models));
                 }
@@ -104,14 +94,7 @@ impl Search {
 
         let moly_client = self.moly_client.clone();
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.search_models(keyword.clone(), tx);
-
-            let Some(response) = rx.next().await else {
-                return;
-            };
-
-            match response {
+            match moly_client.search_models(keyword.clone()).await {
                 Ok(models) => {
                     Cx::post_action(SearchAction::Results(models));
                 }

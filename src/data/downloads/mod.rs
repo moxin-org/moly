@@ -1,13 +1,12 @@
 pub mod download;
 
 use download::{Download, DownloadFileAction, DownloadState};
-use futures::{channel::mpsc::unbounded, StreamExt};
 use makepad_widgets::Action;
 use moly_kit::utils::asynchronous::spawn;
 use moly_protocol::data::{
     DownloadedFile, File, FileID, Model, PendingDownload, PendingDownloadsStatus,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use crate::app::app_runner;
 
@@ -19,7 +18,7 @@ pub enum DownloadPendingNotification {
     DownloadErrored(File),
 }
 pub struct Downloads {
-    pub moly_client: Arc<MolyClient>,
+    pub moly_client: MolyClient,
     pub downloaded_files: Vec<DownloadedFile>,
     pub pending_downloads: Vec<PendingDownload>,
     pub current_downloads: HashMap<FileID, Download>,
@@ -27,7 +26,7 @@ pub struct Downloads {
 }
 
 impl Downloads {
-    pub fn new(moly_client: Arc<MolyClient>) -> Self {
+    pub fn new(moly_client: MolyClient) -> Self {
         Self {
             moly_client,
             downloaded_files: Vec::new(),
@@ -40,13 +39,7 @@ impl Downloads {
     pub fn load_downloaded_files(&mut self) {
         let moly_client = self.moly_client.clone();
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.get_downloaded_files(tx);
-
-            let Some(response) = rx.next().await else {
-                return;
-            };
-
+            let response = moly_client.get_downloaded_files().await;
             app_runner().defer(|app, _, _| {
                 let me = &mut app.store.downloads;
                 match response {
@@ -66,11 +59,7 @@ impl Downloads {
     pub fn load_pending_downloads(&mut self) {
         let moly_client = self.moly_client.clone();
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.get_current_downloads(tx);
-            let Some(response) = rx.next().await else {
-                return;
-            };
+            let response = moly_client.get_current_downloads().await;
 
             app_runner().defer(|app, _, _| {
                 let me = &mut app.store.downloads;
@@ -173,12 +162,7 @@ impl Downloads {
         let file_id = file_id.clone();
         let moly_client = self.moly_client.clone();
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.pause_download_file(file_id.clone(), tx);
-
-            let Some(response) = rx.next().await else {
-                return;
-            };
+            let response = moly_client.pause_download_file(file_id.clone()).await;
 
             match response {
                 Ok(()) => {
@@ -208,13 +192,7 @@ impl Downloads {
         let moly_client = self.moly_client.clone();
 
         spawn(async move {
-            let (tx, mut rx) = unbounded();
-            moly_client.cancel_download_file(file_id.clone(), tx);
-
-            let Some(response) = rx.next().await else {
-                return;
-            };
-
+            let response = moly_client.cancel_download_file(file_id.clone()).await;
             app_runner().defer(move |app, _, _| {
                 let me = &mut app.store.downloads;
                 match response {

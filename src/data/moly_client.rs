@@ -4,13 +4,19 @@ use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
     protocol::FileDownloadResponse,
 };
+use std::sync::{Arc, Mutex};
 use url::Url;
+
+#[derive(Debug)]
+struct Inner {
+    address: String,
+    client: reqwest::Client,
+    is_connected: bool,
+}
 
 #[derive(Clone, Debug)]
 pub struct MolyClient {
-    address: String,
-    client: reqwest::Client,
-    pub is_connected: bool,
+    inner: Arc<Mutex<Inner>>,
 }
 
 #[allow(dead_code)]
@@ -25,40 +31,54 @@ impl MolyClient {
         let client = client.build().expect("Failed to build reqwest client");
 
         Self {
-            address,
-            client,
-            is_connected: false,
+            inner: Arc::new(Mutex::new(Inner {
+                address,
+                client,
+                is_connected: false,
+            })),
         }
     }
 
-    pub fn address(&self) -> &str {
-        self.address.as_str()
+    pub fn address(&self) -> String {
+        self.inner.lock().unwrap().address.clone()
     }
 
-    pub async fn test_connection(&mut self) -> Result<()> {
-        let url = format!("{}/ping", self.address);
-        match self.client.get(&url).send().await {
+    pub fn is_connected(&self) -> bool {
+        self.inner.lock().unwrap().is_connected
+    }
+
+    fn set_is_connected(&self, is_connected: bool) {
+        self.inner.lock().unwrap().is_connected = is_connected;
+    }
+
+    fn client(&self) -> reqwest::Client {
+        self.inner.lock().unwrap().client.clone()
+    }
+
+    pub async fn test_connection(&self) -> Result<()> {
+        let url = format!("{}/ping", self.address());
+        match self.client().get(&url).send().await {
             Ok(r) => {
                 if r.status().is_success() {
-                    self.is_connected = true;
+                    self.set_is_connected(true);
                     Ok(())
                 } else {
-                    self.is_connected = false;
+                    self.set_is_connected(false);
                     Cx::post_action(MolyClientAction::ServerUnreachable);
                     Err(anyhow!("Server error: {}", r.status()))
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn get_featured_models(&mut self) -> Result<Vec<Model>> {
-        let url = format!("{}/models/featured", self.address);
+    pub async fn get_featured_models(&self) -> Result<Vec<Model>> {
+        let url = format!("{}/models/featured", self.address());
 
-        match self.client.get(&url).send().await {
+        match self.client().get(&url).send().await {
             Ok(r) => {
                 if r.status().is_success() {
                     match r.json::<Vec<Model>>().await {
@@ -70,17 +90,17 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn search_models(&mut self, query: String) -> Result<Vec<Model>> {
-        let url = format!("{}/models/search?q={}", self.address, query);
+    pub async fn search_models(&self, query: String) -> Result<Vec<Model>> {
+        let url = format!("{}/models/search?q={}", self.address(), query);
 
-        match self.client.get(&url).send().await {
+        match self.client().get(&url).send().await {
             Ok(r) => {
                 if r.status().is_success() {
                     match r.json::<Vec<Model>>().await {
@@ -92,17 +112,17 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn get_downloaded_files(&mut self) -> Result<Vec<DownloadedFile>> {
-        let url = format!("{}/files", self.address);
+    pub async fn get_downloaded_files(&self) -> Result<Vec<DownloadedFile>> {
+        let url = format!("{}/files", self.address());
 
-        match self.client.get(&url).send().await {
+        match self.client().get(&url).send().await {
             Ok(r) => {
                 if r.status().is_success() {
                     match r.json::<Vec<DownloadedFile>>().await {
@@ -117,17 +137,17 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn get_current_downloads(&mut self) -> Result<Vec<PendingDownload>> {
-        let url = format!("{}/downloads", self.address);
+    pub async fn get_current_downloads(&self) -> Result<Vec<PendingDownload>> {
+        let url = format!("{}/downloads", self.address());
 
-        match self.client.get(&url).send().await {
+        match self.client().get(&url).send().await {
             Ok(r) => {
                 if r.status().is_success() {
                     match r.json::<Vec<PendingDownload>>().await {
@@ -139,18 +159,18 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn download_file(&mut self, file: File) -> Result<()> {
-        let url = format!("{}/downloads", self.address);
+    pub async fn download_file(&self, file: File) -> Result<()> {
+        let url = format!("{}/downloads", self.address());
 
         let resp = self
-            .client
+            .client()
             .post(&url)
             .json(&serde_json::json!({
                 "file_id": file.id
@@ -167,7 +187,7 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
@@ -175,7 +195,7 @@ impl MolyClient {
     }
 
     pub async fn track_download_progress(
-        &mut self,
+        &self,
         file_id: FileID,
         mut tx: futures::channel::mpsc::UnboundedSender<
             Result<FileDownloadResponse, anyhow::Error>,
@@ -184,14 +204,14 @@ impl MolyClient {
         use futures::{stream::TryStreamExt, SinkExt};
 
         let mut url =
-            Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
+            Url::parse(&format!("{}/downloads", self.address())).expect("Invalid Moly server URL");
         url.path_segments_mut()
             .expect("Cannot modify path segments")
             .pop_if_empty()
             .push(&file_id)
             .push("progress");
 
-        match self.client.get(url).send().await {
+        match self.client().get(url).send().await {
             Ok(res) => {
                 let mut bytes = res.bytes_stream();
                 let mut buffer = String::new();
@@ -253,15 +273,15 @@ impl MolyClient {
             }
             Err(e) => {
                 let _ = tx.send(Err(anyhow!("Request failed: {}", e))).await;
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
             }
         }
     }
 
-    pub async fn pause_download_file(&mut self, file_id: FileID) -> Result<()> {
+    pub async fn pause_download_file(&self, file_id: FileID) -> Result<()> {
         let mut url =
-            Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
+            Url::parse(&format!("{}/downloads", self.address())).expect("Invalid Moly server URL");
 
         // Add the ID as a path segment (auto-encodes special characters)
         url.path_segments_mut()
@@ -270,7 +290,7 @@ impl MolyClient {
             .push(&file_id);
 
         let resp = self
-            .client
+            .client()
             .post(url)
             .json(&serde_json::json!({
                 "file_id": file_id
@@ -287,16 +307,16 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn cancel_download_file(&mut self, file_id: FileID) -> Result<()> {
+    pub async fn cancel_download_file(&self, file_id: FileID) -> Result<()> {
         let mut url =
-            Url::parse(&format!("{}/downloads", self.address)).expect("Invalid Moly server URL");
+            Url::parse(&format!("{}/downloads", self.address())).expect("Invalid Moly server URL");
 
         // Add the ID as a path segment (auto-encodes special characters)
         url.path_segments_mut()
@@ -305,7 +325,7 @@ impl MolyClient {
             .push(&file_id);
 
         let resp = self
-            .client
+            .client()
             .delete(url)
             .json(&serde_json::json!({
                 "file_id": file_id
@@ -322,16 +342,16 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn delete_file(&mut self, file_id: FileID) -> Result<()> {
+    pub async fn delete_file(&self, file_id: FileID) -> Result<()> {
         let mut url =
-            Url::parse(&format!("{}/files", self.address)).expect("Invalid Moly server URL");
+            Url::parse(&format!("{}/files", self.address())).expect("Invalid Moly server URL");
 
         // Add the ID as a path segment (auto-encodes special characters)
         url.path_segments_mut()
@@ -339,7 +359,7 @@ impl MolyClient {
             .pop_if_empty() // Remove the trailing slash, if any
             .push(&file_id);
 
-        match self.client.delete(url).send().await {
+        match self.client().delete(url).send().await {
             Ok(r) => {
                 if r.status().is_success() {
                     Ok(())
@@ -348,17 +368,17 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
         }
     }
 
-    pub async fn eject_model(&mut self) -> Result<()> {
-        let url = format!("{}/models/eject", self.address);
+    pub async fn eject_model(&self) -> Result<()> {
+        let url = format!("{}/models/eject", self.address());
 
-        match self.client.post(&url).send().await {
+        match self.client().post(&url).send().await {
             Ok(r) => {
                 if r.status().is_success() {
                     Ok(())
@@ -367,7 +387,7 @@ impl MolyClient {
                 }
             }
             Err(e) => {
-                self.is_connected = false;
+                self.set_is_connected(false);
                 Cx::post_action(MolyClientAction::ServerUnreachable);
                 Err(anyhow!("Request failed: {}", e))
             }
