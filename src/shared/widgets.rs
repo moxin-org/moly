@@ -83,7 +83,7 @@ live_design! {
             fn get_color(self) -> vec4 {
                 return mix(
                     mix(
-                        (MAIN_BG_COLOR_DARK), // TODO(Julian): change to MAIN_BG_COLOR and add shadow
+                        (MAIN_BG_COLOR_DARK),
                         (SIDEBAR_BG_COLOR_HOVER),
                         self.hover
                     ),

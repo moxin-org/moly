@@ -3,6 +3,7 @@ pub mod chat_history_card;
 pub mod chat_history_card_options;
 pub mod chat_params;
 pub mod chat_screen;
+pub mod chat_view;
 pub mod delete_chat_modal;
 pub mod entity_button;
 pub mod model_info;
@@ -21,6 +22,7 @@ pub fn live_design(cx: &mut Cx) {
     chat_history_card::live_design(cx);
     chat_history::live_design(cx);
     chat_params::live_design(cx);
+    chat_view::live_design(cx);
     chat_screen::live_design(cx);
     model_info::live_design(cx);
     model_selector_list::live_design(cx);

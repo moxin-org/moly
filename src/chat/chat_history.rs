@@ -192,9 +192,7 @@ impl Widget for ChatHistory {
 }
 
 impl WidgetMatchEvent for ChatHistory {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let clicked_entity_button = self
             .portal_list(id!(list))
             .items_with_actions(actions)
@@ -210,7 +208,6 @@ impl WidgetMatchEvent for ChatHistory {
         }
 
         if self.button(id!(new_chat_button)).clicked(&actions) {
-            store.chats.create_empty_chat(None);
             cx.action(ChatAction::StartWithoutEntity);
             self.redraw(cx);
         }

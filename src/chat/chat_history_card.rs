@@ -131,13 +131,27 @@ live_design! {
                 spacing: 3
                 padding: { left: 6, top: 10, bottom: 6 }
 
-                model_or_agent_name_label = <Label> {
-                    width: Fit,
-                    height: Fit,
-                    padding: 0
-                    draw_text:{
-                        text_style: <BOLD_FONT>{font_size: 9},
-                        color: #475467,
+                <View> {
+                    width: Fit, height: Fit
+                    spacing: 8
+                    model_or_agent_name_label = <Label> {
+                        width: Fit,
+                        height: Fit,
+                        padding: 0
+                        draw_text:{
+                            text_style: <BOLD_FONT>{font_size: 9},
+                            color: #475467,
+                        }
+                    }
+
+                    unread_message_badge = <RoundedView> {
+                        visible: false,
+                        width: 12, height: 12
+                        show_bg: true
+                        draw_bg: {
+                            border_radius: 3.0
+                            color: #e81313
+                        }
                     }
                 }
 
@@ -315,6 +329,9 @@ impl Widget for ChatHistoryCard {
                     },
                 );
             } else {
+                if chat.borrow().has_unread_messages {
+                    self.view(id!(unread_message_badge)).set_visible(cx, true);
+                }
                 content_view_highlight.apply_over(
                     cx,
                     live! {
@@ -407,6 +424,12 @@ impl WidgetMatchEvent for ChatHistoryCard {
             if fe.tap_count == 1 {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(Some(self.chat_id));
+
+                if let Some(chat) = store.chats.get_chat_by_id(self.chat_id) {
+                    chat.borrow_mut().has_unread_messages = false;
+                    self.view(id!(unread_message_badge)).set_visible(cx, false);
+                }
+
                 cx.action(ChatAction::ChatSelected(self.chat_id));
                 self.redraw(cx);
             }

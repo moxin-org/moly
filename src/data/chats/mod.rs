@@ -103,7 +103,7 @@ impl Chats {
         }
     }
 
-    pub fn create_empty_chat(&mut self, bot_id: Option<BotId>) {
+    pub fn create_empty_chat(&mut self, bot_id: Option<BotId>) -> ChatID {
         let mut new_chat = Chat::new(self.chats_dir.clone());
         let id = new_chat.id;
 
@@ -121,6 +121,7 @@ impl Chats {
         new_chat.save();
         self.saved_chats.push(RefCell::new(new_chat));
         self.set_current_chat(Some(id));
+        id
     }
 
     pub fn remove_chat(&mut self, chat_id: ChatID) {
