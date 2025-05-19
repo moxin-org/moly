@@ -106,7 +106,12 @@ impl Download {
         });
 
         // Start the download
-        moly_client.download_file(self.file.clone(), tx);
+        let file = self.file.clone();
+        let moly_client_clone = moly_client.clone();
+        spawn(async move {
+            let result = moly_client_clone.download_file(file).await;
+            tx.unbounded_send(result).unwrap();
+        });
     }
 
     pub fn handle_action(&mut self, action: &DownloadFileAction) {
