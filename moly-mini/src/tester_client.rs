@@ -14,7 +14,7 @@ impl BotClient for TesterClient {
         moly_future(future)
     }
 
-    fn send_stream(
+    fn send(
         &mut self,
         _bot: &Bot,
         messages: &[Message],

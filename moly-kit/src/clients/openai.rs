@@ -247,7 +247,7 @@ impl BotClient for OpenAIClient {
     }
 
     /// Stream pieces of content back as a ChatDelta instead of just a String.
-    fn send_stream(
+    fn send(
         &mut self,
         bot: &Bot,
         messages: &[Message],

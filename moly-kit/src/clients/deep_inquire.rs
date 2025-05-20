@@ -210,7 +210,7 @@ impl BotClient for DeepInquireClient {
         Box::new(self.clone())
     }
 
-    fn send_stream(
+    fn send(
         &mut self,
         bot: &Bot,
         messages: &[Message],

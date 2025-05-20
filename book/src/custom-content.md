@@ -100,7 +100,7 @@ impl BotClient for MyCustomClient {
             return None;
         };
 
-        // Let's assume `MessageContent` yielded from our `send_stream` contains
+        // Let's assume `MessageContent` yielded from our `send` contains
         // this arbitrary data, explicitly stating it wants to be rendered with
         // `MyCustomContent`.
         if data != "I want to be displayed with MyCustomContent widget" {

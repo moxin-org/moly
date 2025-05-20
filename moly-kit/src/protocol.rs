@@ -1,4 +1,3 @@
-use futures::StreamExt;
 use makepad_widgets::{Cx, LiveId, LivePtr, LiveValue, WidgetRef};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -388,13 +387,13 @@ impl<T> ClientResult<T> {
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
 pub trait BotClient: Send {
-    /// Send a message to a bot expecting a streamed response.
+    /// Send a message to a bot with support for streamed response.
     ///
     /// Each message yielded by the stream should be a snapshot of the full
     /// message as it is being built.
     ///
     /// You are free to add, modify or remove content on-the-go.
-    fn send_stream(
+    fn send(
         &mut self,
         bot: &Bot,
         messages: &[Message],
@@ -413,41 +412,6 @@ pub trait BotClient: Send {
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
-
-    /// Send a message to a bot expecting a full response at once.
-    fn send(
-        &mut self,
-        bot: &Bot,
-        messages: &[Message],
-    ) -> MolyFuture<'static, ClientResult<MessageContent>> {
-        let mut stream = self.send_stream(bot, messages);
-
-        let future = async move {
-            let mut content = MessageContent::default();
-            let mut errors = Vec::new();
-
-            while let Some(result) = stream.next().await {
-                let (c, e) = result.into_value_and_errors();
-
-                if let Some(c) = c {
-                    content = c;
-                }
-
-                if !e.is_empty() {
-                    errors = e;
-                    break;
-                }
-            }
-
-            if errors.is_empty() {
-                ClientResult::new_ok(content)
-            } else {
-                ClientResult::new_ok_and_err(content, errors)
-            }
-        };
-
-        moly_future(future)
-    }
 
     /// Optionally override how the content of a message is rendered by Makepad.
     ///

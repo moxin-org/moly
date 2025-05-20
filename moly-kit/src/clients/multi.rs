@@ -29,7 +29,7 @@ impl MultiClient {
 }
 
 impl BotClient for MultiClient {
-    fn send_stream(
+    fn send(
         &mut self,
         bot: &Bot,
         messages: &[Message],
@@ -48,7 +48,7 @@ impl BotClient for MultiClient {
             });
 
         match client {
-            Some(mut client) => client.send_stream(bot, messages),
+            Some(mut client) => client.send(bot, messages),
             None => {
                 let bot = bot.clone();
                 moly_stream(futures::stream::once(async move {

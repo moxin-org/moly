@@ -59,7 +59,7 @@ pub enum ChatTask {
     ClearPrompt,
 
     /// When received back, the chat will scroll to the bottom.
-    /// 
+    ///
     /// The boolean indicates if the scroll was triggered by a stream or not.
     ScrollToBottom(bool),
 }
@@ -252,8 +252,11 @@ impl Chat {
         if repo.get_bot(&bot_id).is_none() {
             // Bot not found, add error message
             let next_index = self.messages_ref().read().messages.len();
-            let error_message = format!("App error: Bot not found. The bot might have been disabled or removed. Bot ID: {}", bot_id);
-            
+            let error_message = format!(
+                "App error: Bot not found. The bot might have been disabled or removed. Bot ID: {}",
+                bot_id
+            );
+
             let message = Message {
                 from: EntityId::App,
                 content: MessageContent {
@@ -262,7 +265,7 @@ impl Chat {
                 },
                 is_writing: false,
             };
-            
+
             self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
             return;
         }
@@ -297,7 +300,10 @@ impl Chat {
                     // This should never happen as we check above, but handle it gracefully anyway
                     let bot_id_clone = bot_id.clone(); // Clone the bot_id for the closure
                     ui.defer_with_redraw(move |me, cx, _| {
-                        let error_message = format!("App error: Bot not found during stream initialization. Bot ID: {}", bot_id_clone);
+                        let error_message = format!(
+                            "App error: Bot not found during stream initialization. Bot ID: {}",
+                            bot_id_clone
+                        );
                         let next_index = me.messages_ref().read().messages.len();
                         let message = Message {
                             from: EntityId::App,
@@ -313,7 +319,7 @@ impl Chat {
                 }
             };
 
-            let mut message_stream = client.send_stream(&bot, &context);
+            let mut message_stream = client.send(&bot, &context);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes
@@ -449,7 +455,9 @@ impl Chat {
                 self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
             }
             ChatTask::ScrollToBottom(triggered_by_stream) => {
-                self.messages_ref().write().scroll_to_bottom(cx, *triggered_by_stream);
+                self.messages_ref()
+                    .write()
+                    .scroll_to_bottom(cx, *triggered_by_stream);
             }
         }
     }
