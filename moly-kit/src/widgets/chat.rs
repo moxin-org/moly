@@ -319,7 +319,7 @@ impl Chat {
                 }
             };
 
-            let mut message_stream = client.send(&bot, &context);
+            let mut message_stream = client.send(&bot.id, &context);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes

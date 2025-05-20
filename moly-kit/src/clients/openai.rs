@@ -249,7 +249,7 @@ impl BotClient for OpenAIClient {
     /// Stream pieces of content back as a ChatDelta instead of just a String.
     fn send(
         &mut self,
-        bot: &Bot,
+        bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
@@ -267,7 +267,7 @@ impl BotClient for OpenAIClient {
             .post(&url)
             .headers(headers)
             .json(&serde_json::json!({
-                "model": bot.id.id(),
+                "model": bot_id.id(),
                 "messages": moly_messages,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,

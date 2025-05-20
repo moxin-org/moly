@@ -212,7 +212,7 @@ impl BotClient for DeepInquireClient {
 
     fn send(
         &mut self,
-        bot: &Bot,
+        bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
@@ -230,7 +230,7 @@ impl BotClient for DeepInquireClient {
             .post(&url)
             .headers(headers)
             .json(&serde_json::json!({
-                "model": bot.id.id(),
+                "model": bot_id.id(),
                 "messages": moly_messages,
                 "stream": true
             }));

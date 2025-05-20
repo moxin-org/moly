@@ -395,7 +395,7 @@ pub trait BotClient: Send {
     /// You are free to add, modify or remove content on-the-go.
     fn send(
         &mut self,
-        bot: &Bot,
+        bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>>;
 

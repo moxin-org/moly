@@ -45,7 +45,7 @@ impl BotClient for MyCustomClient {
 
     fn send(
         &mut self,
-        bot: &Bot,
+        bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let stream = stream! {
@@ -121,7 +121,7 @@ impl BotClient for EchoClient {
 
     fn send(
         &mut self,
-        _bot: &Bot,
+        _bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let last = messages.last().map(|m| m.content.text.clone()).unwrap_or_default();
