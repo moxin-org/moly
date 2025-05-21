@@ -439,7 +439,7 @@ impl Clone for Box<dyn BotClient> {
     }
 }
 
-struct InnerBotRepo {
+struct InnerBotContext {
     client: Box<dyn BotClient>,
     bots: Vec<Bot>,
 }
@@ -449,26 +449,26 @@ struct InnerBotRepo {
 ///
 /// Passed down through widgets from this crate.
 ///
-/// Separate chat widgets can share the same [BotRepo] to avoid loading the same
+/// Separate chat widgets can share the same [BotContext] to avoid loading the same
 /// bots multiple times.
-pub struct BotRepo(Arc<Mutex<InnerBotRepo>>);
+pub struct BotContext(Arc<Mutex<InnerBotContext>>);
 
-impl Clone for BotRepo {
+impl Clone for BotContext {
     fn clone(&self) -> Self {
-        BotRepo(self.0.clone())
+        BotContext(self.0.clone())
     }
 }
 
-impl PartialEq for BotRepo {
+impl PartialEq for BotContext {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl BotRepo {
-    /// Differenciates [BotRepo]s.
+impl BotContext {
+    /// Differenciates [BotContext]s.
     ///
-    /// Two [BotRepo]s are equal and share the same underlying data if they have
+    /// Two [BotContext]s are equal and share the same underlying data if they have
     /// the same id.
     pub fn id(&self) -> usize {
         Arc::as_ptr(&self.0) as usize
@@ -508,9 +508,9 @@ impl BotRepo {
     }
 }
 
-impl<T: BotClient + 'static> From<T> for BotRepo {
+impl<T: BotClient + 'static> From<T> for BotContext {
     fn from(client: T) -> Self {
-        BotRepo(Arc::new(Mutex::new(InnerBotRepo {
+        BotContext(Arc::new(Mutex::new(InnerBotContext {
             client: Box::new(client),
             bots: Vec::new(),
         })))

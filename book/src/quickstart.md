@@ -77,10 +77,10 @@ The `Chat` widget as it is will not work. We need to configure some one-time stu
 from the Rust side.
 
 The `Chat` widget pulls information about available bots from a synchronous interface
-called a `BotRepo`. We don't need to understand how it works, but we need to create
+called a `BotContext`. We don't need to understand how it works, but we need to create
 and pass one to `Chat`.
 
-A `BotRepo` can be directly created from a `BotClient`, which is an asynchronous
+A `BotContext` can be directly created from a `BotClient`, which is an asynchronous
 interface to interact with (mostly remote) bot providers like OpenAI, Ollama, OpenRouter,
 Moly Server, MoFa, etc.
 
@@ -100,10 +100,10 @@ impl LiveHook for YourAmazingWidget {
         let mut client = OpenAIClient::new("https://api.openai.com/v1".into());
         client.set_key("<YOUR_KEY>".into());
 
-        let repo = BotRepo::from(client);
+        let context = BotContext::from(client);
 
         let mut chat = self.chat(id!(chat));
-        chat.write().bot_repo = repo;
+        chat.write().bot_context = context;
     }
 }
 ```
