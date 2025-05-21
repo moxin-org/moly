@@ -69,7 +69,7 @@ pub struct ChatScreen {
     first_render: bool,
 
     #[rust]
-    creating_bot_repo: bool,
+    creating_bot_context: bool,
 }
 
 impl Widget for ChatScreen {
@@ -85,10 +85,10 @@ impl Widget for ChatScreen {
 
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        let should_recreate_bot_repo = store.bot_repo.is_none();
+        let should_recreate_bot_context = store.bot_context.is_none();
 
-        if (self.first_render || should_recreate_bot_repo) && !self.creating_bot_repo {
-            self.create_bot_repo(cx, scope);
+        if (self.first_render || should_recreate_bot_context) && !self.creating_bot_context {
+            self.create_bot_context(cx, scope);
             self.first_render = false;
         }
     }
@@ -99,7 +99,7 @@ impl Widget for ChatScreen {
 }
 
 impl ChatScreen {
-    fn create_bot_repo(&mut self, _cx: &mut Cx, scope: &mut Scope) {
+    fn create_bot_context(&mut self, _cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         let multi_client = {
@@ -142,17 +142,17 @@ impl ChatScreen {
             multi_client
         };
 
-        let mut repo: BotRepo = multi_client.into();
-        store.bot_repo = Some(repo.clone());
-        self.chats_deck(id!(chats_deck)).sync_bot_repos(scope);
+        let mut context: BotContext = multi_client.into();
+        store.bot_context = Some(context.clone());
+        self.chats_deck(id!(chats_deck)).sync_bot_contexts(scope);
 
-        self.creating_bot_repo = true;
+        self.creating_bot_context = true;
 
         let ui = self.ui_runner();
         spawn(async move {
-            repo.load().await;
+            context.load().await;
             ui.defer_with_redraw(move |me, _cx, _scope| {
-                me.creating_bot_repo = false;
+                me.creating_bot_context = false;
             });
         });
     }
@@ -177,8 +177,8 @@ pub struct ChatsDeck {
     #[rust]
     currently_visible_chat_id: Option<ChatID>,
 
-    /// A list of chat views that need to be synced with the bot repo.
-    /// This is used to avoid interrumpting the chat stream when the bot repo is being updated.
+    /// A list of chat views that need to be synced with the [BotContext].
+    /// This is used to avoid interrumpting the chat stream when the [BotContext] is being updated.
     #[rust]
     chats_views_pending_sync: Vec<ChatViewRef>,
 
@@ -199,7 +199,7 @@ impl Widget for ChatsDeck {
             chat_view.handle_event(cx, event, scope);
         }
 
-        // Sync the bot repo for chat views that are not currently streaming
+        // Sync the [BotContext] for chat views that are not currently streaming
         let store = scope.data.get_mut::<Store>().unwrap();
         for chat_view in self.chats_views_pending_sync.iter_mut() {
             if !chat_view
@@ -210,7 +210,7 @@ impl Widget for ChatsDeck {
                 .unwrap()
                 .is_writing
             {
-                chat_view.chat(id!(chat)).write().bot_repo = store.bot_repo.clone();
+                chat_view.chat(id!(chat)).write().bot_context = store.bot_context.clone();
             }
         }
     }
@@ -239,14 +239,22 @@ impl WidgetMatchEvent for ChatsDeck {
                     let chat_id = store.chats.create_empty_chat(Some(bot_id.clone()));
                     let chat = store.chats.get_chat_by_id(chat_id);
                     if let Some(chat) = chat {
-                        self.create_or_update_chat_view(cx, &chat.borrow(), store.bot_repo.clone());
+                        self.create_or_update_chat_view(
+                            cx,
+                            &chat.borrow(),
+                            store.bot_context.clone(),
+                        );
                     }
                 }
                 ChatAction::StartWithoutEntity => {
                     let chat_id = store.chats.create_empty_chat(None);
                     let chat = store.chats.get_chat_by_id(chat_id);
                     if let Some(chat) = chat {
-                        self.create_or_update_chat_view(cx, &chat.borrow(), store.bot_repo.clone());
+                        self.create_or_update_chat_view(
+                            cx,
+                            &chat.borrow(),
+                            store.bot_context.clone(),
+                        );
                     }
                 }
                 _ => {}
@@ -262,7 +270,11 @@ impl WidgetMatchEvent for ChatsDeck {
                             .preferences
                             .set_current_chat_model(chat.borrow().associated_bot.clone());
 
-                        self.create_or_update_chat_view(cx, &chat.borrow(), store.bot_repo.clone());
+                        self.create_or_update_chat_view(
+                            cx,
+                            &chat.borrow(),
+                            store.bot_context.clone(),
+                        );
 
                         self.redraw(cx);
                     }
@@ -292,7 +304,7 @@ impl ChatsDeck {
         &mut self,
         cx: &mut Cx,
         chat: &ChatData,
-        bot_repo: Option<BotRepo>,
+        bot_context: Option<BotContext>,
     ) {
         let mut chat_view_to_update;
         if let Some(chat_view) = self.chat_view_refs.get_mut(&chat.id) {
@@ -302,7 +314,7 @@ impl ChatsDeck {
             chat_view_to_update = chat_view.clone();
         } else {
             let chat_view = WidgetRef::new_from_ptr(cx, self.chat_view_template);
-            chat_view.chat(id!(chat)).write().bot_repo = bot_repo;
+            chat_view.chat(id!(chat)).write().bot_context = bot_context;
             chat_view.as_chat_view().set_chat_id(chat.id);
 
             self.chat_view_refs
@@ -367,12 +379,12 @@ impl ChatsDeck {
         // TODO: Focus on prompt input
     }
 
-    fn sync_bot_repos(&mut self, scope: &mut Scope) {
+    fn sync_bot_contexts(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
         for (_, chat_view) in self.chat_view_refs.iter_mut() {
-            // Only set the bot repo if the chat is not currently streaming, otherwise it will be interrumpted.
+            // Only set the BotContext if the chat is not currently streaming, otherwise it will be interrumpted.
             if !chat_view.chat(id!(chat)).read().is_streaming() {
-                chat_view.chat(id!(chat)).write().bot_repo = store.bot_repo.clone();
+                chat_view.chat(id!(chat)).write().bot_context = store.bot_context.clone();
             } else {
                 self.chats_views_pending_sync.push(chat_view.clone());
             }
@@ -381,9 +393,9 @@ impl ChatsDeck {
 }
 
 impl ChatsDeckRef {
-    pub fn sync_bot_repos(&mut self, scope: &mut Scope) {
+    pub fn sync_bot_contexts(&mut self, scope: &mut Scope) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.sync_bot_repos(scope);
+            inner.sync_bot_contexts(scope);
         }
     }
 }

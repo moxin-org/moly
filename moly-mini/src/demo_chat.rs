@@ -59,7 +59,7 @@ impl LiveHook for DemoChat {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         // Setup some hooks as an example of how to use them.
         self.setup_chat_hooks();
-        self.setup_chat_repo();
+        self.setup_chat_bot_context();
     }
 }
 
@@ -174,7 +174,7 @@ impl DemoChat {
         });
     }
 
-    fn setup_chat_repo(&self) {
+    fn setup_chat_bot_context(&self) {
         let client = {
             let mut client = MultiClient::new();
 
@@ -211,18 +211,18 @@ impl DemoChat {
             client
         };
 
-        let mut repo: BotRepo = client.into();
-        self.chat(id!(chat)).write().bot_repo = Some(repo.clone());
+        let mut context: BotContext = client.into();
+        self.chat(id!(chat)).write().bot_context = Some(context.clone());
 
         let ui = self.ui_runner();
         spawn(async move {
-            let errors = repo.load().await.into_errors();
+            let errors = context.load().await.into_errors();
 
             ui.defer_with_redraw(move |me, _cx, _scope| {
                 let mut chat = me.chat(id!(chat));
                 let mut messages = chat.read().messages_ref();
 
-                me.fill_selector(repo.bots());
+                me.fill_selector(context.bots());
                 chat.write().visible = true;
 
                 for error in errors {

@@ -70,7 +70,7 @@ pub struct Store {
     pub downloads: Downloads,
     pub chats: Chats,
     pub preferences: Preferences,
-    pub bot_repo: Option<BotRepo>,
+    pub bot_context: Option<BotContext>,
     moly_client: MolyClient,
     pub provider_syncing_status: ProviderSyncingStatus,
 }
@@ -100,7 +100,7 @@ impl Store {
             chats: Chats::new(moly_client.clone()),
             moly_client,
             preferences,
-            bot_repo: None,
+            bot_context: None,
             provider_syncing_status: ProviderSyncingStatus::NotSyncing,
         };
 
@@ -375,10 +375,10 @@ impl Store {
         // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
         // Update in MolyKit (to update the API key used by the client, if needed)
-        if let Some(_bot_repo) = &self.bot_repo {
-            // Because MolyKit does not currently expose an API to update the clients, we'll remove and recreate the entire bot repo
+        if let Some(_bot_context) = &self.bot_context {
+            // Because MolyKit does not currently expose an API to update the clients, we'll remove and recreate the entire bot context
             // TODO(MolyKit): Find a better way to do this
-            self.bot_repo = None;
+            self.bot_context = None;
         }
     }
 

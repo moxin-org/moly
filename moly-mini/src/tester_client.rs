@@ -14,9 +14,9 @@ impl BotClient for TesterClient {
         moly_future(future)
     }
 
-    fn send_stream(
+    fn send(
         &mut self,
-        _bot: &Bot,
+        _bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let mut input = messages

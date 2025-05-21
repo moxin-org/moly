@@ -12,7 +12,8 @@ use makepad_code_editor::code_view::CodeViewWidgetRefExt;
 use makepad_widgets::*;
 
 use super::{
-    citation::CitationAction, slot::SlotWidgetRefExt,
+    citation::CitationAction,
+    slot::SlotWidgetRefExt,
     standard_message_content::{MessageAnimationAction, StandardMessageContentWidgetRefExt},
 };
 
@@ -122,9 +123,9 @@ pub struct Messages {
     #[rust]
     pub messages: Vec<Message>,
 
-    /// Bot repository to get bot information.
+    /// [BotContext] to get bot information.
     #[rust]
-    pub bot_repo: Option<BotRepo>,
+    pub bot_context: Option<BotContext>,
 
     /// Registry of DSL templates used by custom content widgets.
     ///
@@ -164,7 +165,7 @@ pub struct Messages {
     sticking_to_bottom: bool,
 
     /// Tracks if any messages are still being animated
-    /// 
+    ///
     /// If the message is still animating, we should keep sticking to the bottom
     /// since more text might be added to the screen even after is_writing is false for the given message.
     #[rust]
@@ -197,23 +198,23 @@ impl Widget for Messages {
             // (e.g. slot.default().as_standard_message_content().is_animating())
             // but that wasn't possible due to some widgetref borrowing issues during runtime.
 
-            // TODO: Clean up this mechanism as it is slightly redundant, 
+            // TODO: Clean up this mechanism as it is slightly redundant,
             // Chat already emits an action that results in a scroll after each stream message,
-            // but that is not enough if we want to keep scrolling even after the streaming has ended. 
+            // but that is not enough if we want to keep scrolling even after the streaming has ended.
             // Perhaps we should make streaming request sticking to bottom instead of manually scrolling.
             // Then this widget would take care of sticking to bottom entirely by itself.
             if let MessageAnimationAction::Started = action.cast() {
                 self.is_last_message_animating = true;
-                
+
                 // If we're sticking to bottom, scroll now that animation has started
                 if self.sticking_to_bottom && !self.user_scrolled {
                     self.scroll_to_bottom(cx, true);
                 }
-            }   
+            }
 
             if let MessageAnimationAction::Ended = action.cast() {
                 self.is_last_message_animating = false;
-                
+
                 // One final scroll at the end of animation
                 if self.sticking_to_bottom && !self.user_scrolled {
                     self.scroll_to_bottom(cx, true);
@@ -266,8 +267,8 @@ impl Messages {
             self.should_defer_scroll_to_bottom = false;
         }
 
-        let repo = self.bot_repo.clone().expect("no bot client set");
-        let mut client = repo.client();
+        let context = self.bot_context.clone().expect("no bot client set");
+        let mut client = context.client();
 
         let mut list = list_ref.borrow_mut().unwrap();
         list.set_item_range(cx, 0, self.messages.len());
@@ -310,7 +311,7 @@ impl Messages {
                             item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                                 Some(Picture::Grapheme("X".into()));
                             item.label(id!(name)).set_text(cx, left);
-                            
+
                             let error_content = MessageContent {
                                 text: right.to_string(),
                                 ..Default::default()
@@ -319,7 +320,7 @@ impl Messages {
                                 .current()
                                 .as_standard_message_content()
                                 .set_content(cx, &error_content, false);
-                            
+
                             self.apply_actions_and_editor_visibility(cx, &item, index);
                             item.draw_all(cx, &mut Scope::empty());
                             continue;
@@ -330,12 +331,12 @@ impl Messages {
                     let item = list.item(cx, index, live_id!(AppLine));
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("A".into()));
-                    
+
                     item.slot(id!(content))
                         .current()
                         .as_standard_message_content()
                         .set_content(cx, &message.content, false);
-                    
+
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
@@ -355,7 +356,7 @@ impl Messages {
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
-                    let bot = repo.get_bot(id);
+                    let bot = context.get_bot(id);
 
                     let (name, avatar) = bot
                         .as_ref()
@@ -363,7 +364,10 @@ impl Messages {
                         .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
 
                     // Show a loading animation if there if the message is being streamed and there's no valuable content to show yet.
-                    let item = if message.is_writing && message.content.is_empty() && message.content.reasoning.is_none() {
+                    let item = if message.is_writing
+                        && message.content.is_empty()
+                        && message.content.reasoning.is_none()
+                    {
                         let item = list.item(cx, index, live_id!(LoadingLine));
                         item.message_loading(id!(content_section.loading))
                             .animate(cx);
@@ -387,9 +391,11 @@ impl Messages {
                         // Since portal list may reuse widgets, we must restore
                         // the default widget just in case.
                         slot.restore();
-                        slot.default()
-                            .as_standard_message_content()
-                            .set_content(cx, &message.content, message.is_writing);
+                        slot.default().as_standard_message_content().set_content(
+                            cx,
+                            &message.content,
+                            message.is_writing,
+                        );
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);

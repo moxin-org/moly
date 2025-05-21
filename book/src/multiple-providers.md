@@ -6,14 +6,14 @@ This guide assumes you already read the [Quickstart](quickstart.md).
 
 ## Mixing clients
 
-As seen before, a `BotRepo` is created from one (and only one) `BotClient`.
+As seen before, a `BotContext` is created from one (and only one) `BotClient`.
 
 If we want out app to be able to use multiple clients configured in different ways
 at the same time, we will need to compose them into one.
 
 Fortunally, Moly Kit comes with a built-in client called `MultiClient`, which does
 exactly that. `MultiClient` can take several "sub-clients" but acts as a single
-one to `BotRepo`, routing requests to them accordengly.
+one to `BotContext`, routing requests to them accordengly.
 
 Going back to our configuration from the [Quickstart](quickstart.md), we can
 update it to work with several clients at the same time:
@@ -40,10 +40,10 @@ impl LiveHook for YourAmazingWidget {
           client
         };
 
-        let repo = BotRepo::from(client);
+        let context = BotContext::from(client);
 
         let mut chat = self.chat(id!(chat));
-        chat.write().bot_repo = repo;
+        chat.write().bot_context = context;
     }
 }
 ```

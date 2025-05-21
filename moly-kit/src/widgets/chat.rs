@@ -59,7 +59,7 @@ pub enum ChatTask {
     ClearPrompt,
 
     /// When received back, the chat will scroll to the bottom.
-    /// 
+    ///
     /// The boolean indicates if the scroll was triggered by a stream or not.
     ScrollToBottom(bool),
 }
@@ -76,13 +76,13 @@ pub struct Chat {
     #[deref]
     deref: View,
 
-    /// The bot repository used by this chat to hold bots and interact with them.
+    /// The [BotContext] used by this chat to hold bots and interact with them.
     #[rust]
-    pub bot_repo: Option<BotRepo>,
+    pub bot_context: Option<BotContext>,
 
     /// The id of the bot the chat will message when sending.
     // TODO: Can this be live?
-    // TODO: Default to the first bot in the repo if `None`.
+    // TODO: Default to the first bot in [BotContext] if `None`.
     #[rust]
     pub bot_id: Option<BotId>,
 
@@ -117,10 +117,10 @@ pub struct Chat {
 
 impl Widget for Chat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        // Pass down the bot repo if not the same.
+        // Pass down the BotContext if not the same.
         self.messages_ref().write_with(|m| {
-            if m.bot_repo != self.bot_repo {
-                m.bot_repo = self.bot_repo.clone();
+            if m.bot_context != self.bot_context {
+                m.bot_context = self.bot_context.clone();
             }
         });
 
@@ -242,18 +242,21 @@ impl Chat {
         // TODO: See `bot_id` TODO.
         let bot_id = self.bot_id.clone().expect("no bot selected");
 
-        let repo = self
-            .bot_repo
+        let context = self
+            .bot_context
             .as_ref()
-            .expect("no bot repo provided")
+            .expect("no BotContext provided")
             .clone();
 
-        // First check if the bot exists in the repository
-        if repo.get_bot(&bot_id).is_none() {
+        // First check if the bot exists in the BotContext.
+        if context.get_bot(&bot_id).is_none() {
             // Bot not found, add error message
             let next_index = self.messages_ref().read().messages.len();
-            let error_message = format!("App error: Bot not found. The bot might have been disabled or removed. Bot ID: {}", bot_id);
-            
+            let error_message = format!(
+                "App error: Bot not found. The bot might have been disabled or removed. Bot ID: {}",
+                bot_id
+            );
+
             let message = Message {
                 from: EntityId::App,
                 content: MessageContent {
@@ -262,13 +265,13 @@ impl Chat {
                 },
                 is_writing: false,
             };
-            
+
             self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
             return;
         }
 
-        let context: Vec<Message> = self.messages_ref().write_with(|messages| {
-            messages.bot_repo = Some(repo.clone());
+        let messages_history_context: Vec<Message> = self.messages_ref().write_with(|messages| {
+            messages.bot_context = Some(context.clone());
 
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
@@ -290,14 +293,17 @@ impl Chat {
 
         let ui = self.ui_runner();
         let future = async move {
-            let mut client = repo.client();
-            let bot = match repo.get_bot(&bot_id) {
+            let mut client = context.client();
+            let bot = match context.get_bot(&bot_id) {
                 Some(bot) => bot,
                 None => {
                     // This should never happen as we check above, but handle it gracefully anyway
                     let bot_id_clone = bot_id.clone(); // Clone the bot_id for the closure
                     ui.defer_with_redraw(move |me, cx, _| {
-                        let error_message = format!("App error: Bot not found during stream initialization. Bot ID: {}", bot_id_clone);
+                        let error_message = format!(
+                            "App error: Bot not found during stream initialization. Bot ID: {}",
+                            bot_id_clone
+                        );
                         let next_index = me.messages_ref().read().messages.len();
                         let message = Message {
                             from: EntityId::App,
@@ -313,7 +319,7 @@ impl Chat {
                 }
             };
 
-            let mut message_stream = client.send_stream(&bot, &context);
+            let mut message_stream = client.send(&bot.id, &messages_history_context);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes
@@ -449,7 +455,9 @@ impl Chat {
                 self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
             }
             ChatTask::ScrollToBottom(triggered_by_stream) => {
-                self.messages_ref().write().scroll_to_bottom(cx, *triggered_by_stream);
+                self.messages_ref()
+                    .write()
+                    .scroll_to_bottom(cx, *triggered_by_stream);
             }
         }
     }

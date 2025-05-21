@@ -1,4 +1,3 @@
-use futures::StreamExt;
 use makepad_widgets::{Cx, LiveId, LivePtr, LiveValue, WidgetRef};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -388,15 +387,15 @@ impl<T> ClientResult<T> {
 /// Note: Generics do not play well with makepad's widgets, so this trait relies
 /// on dynamic dispatch (with its limitations).
 pub trait BotClient: Send {
-    /// Send a message to a bot expecting a streamed response.
+    /// Send a message to a bot with support for streamed response.
     ///
     /// Each message yielded by the stream should be a snapshot of the full
     /// message as it is being built.
     ///
     /// You are free to add, modify or remove content on-the-go.
-    fn send_stream(
+    fn send(
         &mut self,
-        bot: &Bot,
+        bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>>;
 
@@ -413,41 +412,6 @@ pub trait BotClient: Send {
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
-
-    /// Send a message to a bot expecting a full response at once.
-    fn send(
-        &mut self,
-        bot: &Bot,
-        messages: &[Message],
-    ) -> MolyFuture<'static, ClientResult<MessageContent>> {
-        let mut stream = self.send_stream(bot, messages);
-
-        let future = async move {
-            let mut content = MessageContent::default();
-            let mut errors = Vec::new();
-
-            while let Some(result) = stream.next().await {
-                let (c, e) = result.into_value_and_errors();
-
-                if let Some(c) = c {
-                    content = c;
-                }
-
-                if !e.is_empty() {
-                    errors = e;
-                    break;
-                }
-            }
-
-            if errors.is_empty() {
-                ClientResult::new_ok(content)
-            } else {
-                ClientResult::new_ok_and_err(content, errors)
-            }
-        };
-
-        moly_future(future)
-    }
 
     /// Optionally override how the content of a message is rendered by Makepad.
     ///
@@ -475,7 +439,7 @@ impl Clone for Box<dyn BotClient> {
     }
 }
 
-struct InnerBotRepo {
+struct InnerBotContext {
     client: Box<dyn BotClient>,
     bots: Vec<Bot>,
 }
@@ -485,26 +449,26 @@ struct InnerBotRepo {
 ///
 /// Passed down through widgets from this crate.
 ///
-/// Separate chat widgets can share the same [BotRepo] to avoid loading the same
+/// Separate chat widgets can share the same [BotContext] to avoid loading the same
 /// bots multiple times.
-pub struct BotRepo(Arc<Mutex<InnerBotRepo>>);
+pub struct BotContext(Arc<Mutex<InnerBotContext>>);
 
-impl Clone for BotRepo {
+impl Clone for BotContext {
     fn clone(&self) -> Self {
-        BotRepo(self.0.clone())
+        BotContext(self.0.clone())
     }
 }
 
-impl PartialEq for BotRepo {
+impl PartialEq for BotContext {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl BotRepo {
-    /// Differenciates [BotRepo]s.
+impl BotContext {
+    /// Differenciates [BotContext]s.
     ///
-    /// Two [BotRepo]s are equal and share the same underlying data if they have
+    /// Two [BotContext]s are equal and share the same underlying data if they have
     /// the same id.
     pub fn id(&self) -> usize {
         Arc::as_ptr(&self.0) as usize
@@ -544,9 +508,9 @@ impl BotRepo {
     }
 }
 
-impl<T: BotClient + 'static> From<T> for BotRepo {
+impl<T: BotClient + 'static> From<T> for BotContext {
     fn from(client: T) -> Self {
-        BotRepo(Arc::new(Mutex::new(InnerBotRepo {
+        BotContext(Arc::new(Mutex::new(InnerBotContext {
             client: Box::new(client),
             bots: Vec::new(),
         })))

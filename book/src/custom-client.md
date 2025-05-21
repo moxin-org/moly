@@ -43,9 +43,9 @@ impl BotClient for MyCustomClient {
         moly_future(future)
     }
 
-    fn send_stream(
+    fn send(
         &mut self,
-        bot: &Bot,
+        bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let stream = stream! {
@@ -90,7 +90,7 @@ a list of available models/agents. It's pretty simple to implement; you could us
 something like `reqwest` to fetch some JSON from your provider with the list of models,
 parse that, and return it.
 
-`send_stream` is the method that sends a message to a model/agent. It returns a
+`send` is the method that sends a message to a model/agent. It returns a
 stream which allows you to push chunks of content in real-time. Although, you
 could also yield a single chunk from it if you don't support streaming.
 
@@ -119,9 +119,9 @@ impl BotClient for EchoClient {
         moly_future(future)
     }
 
-    fn send_stream(
+    fn send(
         &mut self,
-        _bot: &Bot,
+        _bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
         let last = messages.last().map(|m| m.content.text.clone()).unwrap_or_default();

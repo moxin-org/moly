@@ -5,7 +5,7 @@ This guide assumes you have already read the [Quickstart](quickstart.md).
 
 ## Introduction
 
-As we saw before, we only need to give a `BotRepo` to `Chat`, and then it just works.
+As we saw before, we only need to give a `BotContext` to `Chat`, and then it just works.
 The `Chat` widget is designed to work on its own after initial configuration, without
 you needing to do anything else.
 
