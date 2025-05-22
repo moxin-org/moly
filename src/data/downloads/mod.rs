@@ -41,7 +41,7 @@ impl Downloads {
         spawn(async move {
             let response = moly_client.get_downloaded_files().await;
             app_runner().defer(|app, _, _| {
-                let me = &mut app.store.downloads;
+                let me = &mut app.store.as_mut().unwrap().downloads;
                 match response {
                     Ok(files) => {
                         me.downloaded_files = files;
@@ -62,7 +62,7 @@ impl Downloads {
             let response = moly_client.get_current_downloads().await;
 
             app_runner().defer(|app, _, _| {
-                let me = &mut app.store.downloads;
+                let me = &mut app.store.as_mut().unwrap().downloads;
                 match response {
                     Ok(files) => {
                         me.pending_downloads = files;
@@ -167,7 +167,7 @@ impl Downloads {
             match response {
                 Ok(()) => {
                     app_runner().defer(move |app, _, _| {
-                        let me = &mut app.store.downloads;
+                        let me = &mut app.store.as_mut().unwrap().downloads;
                         me.current_downloads.remove(&file_id);
                         me.pending_downloads.iter_mut().for_each(|d| {
                             if d.file.id == *file_id {
@@ -194,7 +194,7 @@ impl Downloads {
         spawn(async move {
             let response = moly_client.cancel_download_file(file_id.clone()).await;
             app_runner().defer(move |app, _, _| {
-                let me = &mut app.store.downloads;
+                let me = &mut app.store.as_mut().unwrap().downloads;
                 match response {
                     Ok(()) => {
                         me.current_downloads.remove(&file_id);

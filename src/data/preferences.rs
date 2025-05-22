@@ -1,15 +1,15 @@
-use std::path::PathBuf;
-
-use moly_kit::BotId;
+use moly_kit::{utils::asynchronous::spawn, BotId};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
-use super::{filesystem::{
-    read_from_file, setup_model_downloads_folder, setup_preferences_folder, write_to_file
-}, providers::{Provider, ProviderType}};
+use crate::shared::utils::filesystem;
 
+use super::providers::{Provider, ProviderType};
+
+const PREFERENCES_DIR: &str = "preferences";
 const PREFERENCES_FILENAME: &str = "preferences.json";
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Preferences {
     pub current_chat_model: Option<BotId>,
     #[serde(default)]
@@ -18,34 +18,44 @@ pub struct Preferences {
     pub providers_preferences: Vec<ProviderPreferences>,
 }
 
-impl Preferences {
-    pub fn load() -> Self {
-        let preferences_path = preferences_path();
-
-        if let Ok(json) = read_from_file(preferences_path) {
-            if let Ok(mut preferences) = serde_json::from_str::<Preferences>(&json) {
-                // Check if the downloaded_files_dir exists, if not, create it
-                if !preferences.downloaded_files_dir.exists() {
-                    preferences.downloaded_files_dir = setup_model_downloads_folder();
-                }
-                return preferences;
-            }
-        }
-
-        // If no preferences file exists, create default preferences
+impl Default for Preferences {
+    fn default() -> Self {
         Self {
             current_chat_model: None,
-            downloaded_files_dir: setup_model_downloads_folder(),
+            downloaded_files_dir: default_model_downloads_dir().to_path_buf(),
             providers_preferences: vec![],
+        }
+    }
+}
+
+impl Preferences {
+    pub async fn load() -> Self {
+        let preferences_path = preferences_path();
+        let fs = filesystem::global();
+        match fs.read_json::<Preferences>(&preferences_path).await {
+            Ok(preferences) => {
+                println!("Loaded preferences from file: {:?}", preferences_path);
+                println!("Preferences: {:?}", preferences);
+                preferences
+            }
+            Err(e) => {
+                eprintln!("Failed to read preferences file: {:?}", e);
+                Preferences::default()
+            }
         }
     }
 
     pub fn save(&self) {
-        let json = serde_json::to_string(&self).unwrap();
-        match write_to_file(preferences_path(), &json) {
-            Ok(_) => (),
-            Err(e) => eprintln!("Failed to write to the file: {:?}", e),
-        }
+        let self_clone = self.clone();
+        spawn(async move {
+            match filesystem::global()
+                .queue_write_json(preferences_path(), &self_clone)
+                .await
+            {
+                Ok(()) => (),
+                Err(e) => eprintln!("Failed to write to the file: {:?}", e),
+            }
+        });
     }
 
     pub fn set_current_chat_model(&mut self, bot_id: Option<BotId>) {
@@ -59,7 +69,11 @@ impl Preferences {
     }
 
     pub fn insert_or_update_provider(&mut self, provider: &Provider) {
-        if let Some(existing_provider) = self.providers_preferences.iter_mut().find(|p| p.url == provider.url) {
+        if let Some(existing_provider) = self
+            .providers_preferences
+            .iter_mut()
+            .find(|p| p.url == provider.url)
+        {
             existing_provider.api_key = provider.api_key.clone();
             existing_provider.enabled = provider.enabled;
         } else {
@@ -69,7 +83,11 @@ impl Preferences {
                 api_key: provider.api_key.clone(),
                 enabled: provider.enabled,
                 provider_type: provider.provider_type.clone(),
-                models: provider.models.iter().map(|m| (m.as_str().to_string(), true)).collect(),
+                models: provider
+                    .models
+                    .iter()
+                    .map(|m| (m.as_str().to_string(), true))
+                    .collect(),
                 was_customly_added: provider.was_customly_added,
             });
         }
@@ -77,14 +95,17 @@ impl Preferences {
     }
 
     pub fn remove_provider(&mut self, address: &str) {
-        self.providers_preferences
-            .retain(|p| p.url != address);
+        self.providers_preferences.retain(|p| p.url != address);
         self.save();
     }
 
     /// Update the enabled/disabled status of a model for a specific server
     pub fn update_model_status(&mut self, address: &str, model_name: &str, enabled: bool) {
-        if let Some(provider) = self.providers_preferences.iter_mut().find(|p| p.url == address) {
+        if let Some(provider) = self
+            .providers_preferences
+            .iter_mut()
+            .find(|p| p.url == address)
+        {
             if let Some(model) = provider.models.iter_mut().find(|m| m.0 == model_name) {
                 model.1 = enabled;
             } else {
@@ -97,8 +118,7 @@ impl Preferences {
 }
 
 fn preferences_path() -> PathBuf {
-    let preference_dir = setup_preferences_folder();
-    preference_dir.join(PREFERENCES_FILENAME)
+    Path::new(PREFERENCES_DIR).join(PREFERENCES_FILENAME)
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -111,4 +131,8 @@ pub struct ProviderPreferences {
     // (model_name, enabled)
     pub models: Vec<(String, bool)>,
     pub was_customly_added: bool,
+}
+
+fn default_model_downloads_dir() -> &'static Path {
+    Path::new("model_downloads")
 }
