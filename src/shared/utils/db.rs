@@ -1,31 +1,19 @@
-use anyhow::Result;
-use chrono::{DateTime, Utc};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use anyhow::{anyhow, Result};
+use serde::{de::DeserializeOwned, Serialize};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard};
 
 mod adapter;
-mod native;
-mod web;
-
 use adapter::Adapter;
-use native::NativeAdapter;
-use web::WebAdapter;
 
-/// "Mimic" a simple synchronous document database by using the filesystem on native
-/// and storage APIs on web.
+/// "Mimic" a simple synchronous document database over a simple key-value storage
+/// adapter.
 ///
-/// On native, collections are just directories, and documents are files with JSON
-/// content.
-///
-/// On web, key-value storage is used, where colection names and document keys are
-/// joined with `/` to form the final key and JSON is used as the string value.
-///
-/// `/` is disallowed as collection names and document keys.
+/// `/` is disallowed as collection names and document keys as its reserved.
 ///
 /// Can store anything that can be serialized with `serde_json`.
 ///
-/// The database must be explicitly locked during use to prevent concurrent access
-/// to the file system on multi-threaded native environments.
+/// The database must be explicitly locked during use to prevent simultaneous access
+/// on multi-threaded environments.
 #[derive(Clone)]
 struct Db<A: Adapter> {
     adapter: Arc<Mutex<A>>,
@@ -54,34 +42,54 @@ impl<'a, A: Adapter> DbLock<'a, A> {
         Self { adapter_lock }
     }
 
-    /// Get the metadata of a record.
-    pub fn metadata(&mut self, collection: &str, key: &str) -> Result<RecordMetadata> {
-        unimplemented!()
-    }
-
     /// Fetch the value of a record.
-    pub fn value<V: RecordValue>(
-        &mut self,
-        collection: &str,
-        key: &str,
-    ) -> Result<Option<V>> {
-        let value = self.adapter_lock.get(collection, key)?;
+    pub fn value<V: RecordValue>(&mut self, collection: &str, key: &str) -> Result<Option<V>> {
+        validate_identifier(collection)?;
+        validate_identifier(key)?;
+        let value = self.adapter_lock.get(&value_key(collection, key))?;
         if let Some(value) = value {
-            let record: V = serde_json::from_str(&value)?;
-            Ok(Some(record))
+            let value: V = serde_json::from_str(&value)?;
+            Ok(Some(value))
         } else {
             Ok(None)
         }
     }
 
-    /// Store a record in the database.
-    pub fn upsert<V: RecordValue>(
-        &mut self,
-        collection: &str,
-        key: &str,
-        value: V,
-    ) -> Result<()> {
-        let existing 
+    /// Update an existing (or create a new) record with the given value.
+    pub fn upsert<V: RecordValue>(&mut self, collection: &str, key: &str, value: V) -> Result<()> {
+        validate_identifier(collection)?;
+        validate_identifier(key)?;
+        let value = serde_json::to_string(&value)?;
+        self.adapter_lock.set(&value_key(collection, key), &value)?;
+        Ok(())
+    }
+
+    /// Delete a record.
+    pub fn remove(&mut self, collection: &str, key: &str) -> Result<()> {
+        validate_identifier(collection)?;
+        validate_identifier(key)?;
+        self.adapter_lock.remove(&value_key(collection, key))?;
+        Ok(())
+    }
+
+    /// Get all the record keys of a collection.
+    pub fn keys(&mut self, collection: &str) -> Result<Vec<String>> {
+        validate_identifier(collection)?;
+        let results = self
+            .adapter_lock
+            .keys()?
+            .into_iter()
+            .filter_map(|key| {
+                let (c, k) = deconstruct_key(&key);
+                if c == collection {
+                    Some(k.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(results)
     }
 }
 
@@ -90,41 +98,36 @@ fn value_key(collection: &str, key: &str) -> String {
     format!("{}/{}", collection, key)
 }
 
-/// The underlying key in the storage adapter for the metadata of a record.
-fn metadata_key(collection: &str, key: &str) -> String {
-    format!("{}/{}/metadata", collection, key)
+/// Deconstruct a key into its possible components.
+fn deconstruct_key(key: &str) -> (&str, &str) {
+    key.split_once('/').expect("malformed storage key")
+}
+
+fn validate_identifier(key: &str) -> Result<()> {
+    if key.contains('/') {
+        Err(anyhow!("identifier cannot contain '/'"))
+    } else {
+        Ok(())
+    }
 }
 
 /// Record values require serialization and deserialization capabilities.
 pub trait RecordValue: Serialize + DeserializeOwned {}
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-/// Metadata related to the record.
-pub struct RecordMetadata {
-    /// Timestamp set only when the record is created without previous existence.
-    pub created_at: DateTime<Utc>,
-    /// Timestamp updated everytime the record is written to. Also set on creation.
-    pub updated_at: DateTime<Utc>,
-}
+#[cfg(target_arch = "wasm32")]
+mod web;
 
-/// A full record stored in the database, with timestamps and other metadata.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(bound(deserialize = "V: DeserializeOwned"))]
-pub struct Record<V: RecordValue> {
-    /// The key that was used during fetch time to get this record.
-    pub key: String,
-    /// The data stored in this record.
-    pub value: V,
-    /// Metadata related to the record.
-    pub metadata: RecordMetadata,
-}
+#[cfg(not(target_arch = "wasm32"))]
+mod native;
 
 /// Get access to the global database instance.
 pub fn global() -> Db<impl Adapter> {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
+            use web::WebAdapter;
             static DB: LazyLock<Db<WebAdapter>> = LazyLock::new(|| Db::new(WebAdapter::default()));
         } else {
+            use native::NativeAdapter;
             static DB: LazyLock<Db<NativeAdapter>> = LazyLock::new(|| Db::new(NativeAdapter::default()));
         }
     }

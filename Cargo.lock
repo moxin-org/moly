@@ -1565,6 +1565,7 @@ dependencies = [
  "unicode-segmentation",
  "url",
  "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

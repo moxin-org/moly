@@ -14,6 +14,6 @@ pub trait Adapter {
     /// Delete a key and its value.
     fn remove(&mut self, key: &str) -> Result<()>;
 
-    /// An iterator over stored keys.
-    fn keys(&mut self) -> Result<impl Iterator<Item = String>>;
+    /// Get all the keys in the storage.
+    fn keys(&mut self) -> Result<Vec<String>>;
 }
