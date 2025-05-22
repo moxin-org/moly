@@ -1,4 +1,5 @@
-use makepad_widgets::{Cx, LiveId, LivePtr, LiveValue, WidgetRef};
+use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
+
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -10,13 +11,13 @@ use std::{
 pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub enum Picture {
     // TODO: could be reduced to avoid allocation
     Grapheme(String),
     Image(String),
     // TODO: could be downed to a more concrete type
-    Dependency(LiveValue),
+    Dependency(LiveDependency),
 }
 
 /// Indentify the entities that are recognized by this crate, mainly in a chat.
@@ -41,7 +42,7 @@ pub enum EntityId {
     App,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct Bot {
     /// Unique internal identifier for the bot across all providers
     pub id: BotId,

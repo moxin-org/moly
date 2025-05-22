@@ -360,8 +360,8 @@ impl Messages {
 
                     let (name, avatar) = bot
                         .as_ref()
-                        .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
-                        .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
+                        .map(|b| (b.name.as_str(), b.avatar.clone()))
+                        .unwrap_or(("Unknown bot", Picture::Grapheme("B".into())));
 
                     // Show a loading animation if there if the message is being streamed and there's no valuable content to show yet.
                     let item = if message.is_writing
@@ -376,7 +376,7 @@ impl Messages {
                         list.item(cx, index, live_id!(BotLine))
                     };
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
                     item.label(id!(name)).set_text(cx, name);
 
                     let mut slot = item.slot(id!(content));

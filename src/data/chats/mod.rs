@@ -387,6 +387,14 @@ impl Chats {
         self.available_bots.get(bot_id)
     }
 
+    pub fn get_bot_provider(&self, bot_id: &BotId) -> Option<&Provider> {
+        if let Some(bot) = self.available_bots.get(bot_id) {
+            self.providers.get(&bot.provider_url)
+        } else {
+            None
+        }
+    }
+
     /// Returns a list of all available agents.
     ///
     /// If [enabled_only] is set to true, then only enabled agents from enabled providers are returned.

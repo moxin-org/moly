@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use makepad_widgets::*;
+use moly_kit::protocol::Picture;
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
@@ -105,35 +106,50 @@ impl ChatScreen {
         let multi_client = {
             let mut multi_client = MultiClient::new();
 
-            for provider in store.chats.providers.iter() {
-                match provider.1.provider_type {
+            for (_key, provider) in store.chats.providers.iter() {
+                match provider.provider_type {
                     ProviderType::OpenAI | ProviderType::MolyServer => {
-                        if provider.1.enabled
-                            && (provider.1.api_key.is_some()
-                                || provider.1.url.starts_with("http://localhost"))
+                        if provider.enabled
+                            && (provider.api_key.is_some()
+                                || provider.url.starts_with("http://localhost"))
                         {
-                            let mut new_client = OpenAIClient::new(provider.1.url.clone());
-                            if let Some(key) = provider.1.api_key.as_ref() {
+                            let mut new_client = OpenAIClient::new(provider.url.clone());
+                            if let Some(key) = provider.api_key.as_ref() {
                                 let _ = new_client.set_key(&key);
                             }
+
+                            if let Some(icon) = store.get_provider_icon(&provider) {
+                                new_client.set_provider_avatar(Picture::Dependency(icon));
+                            }
+
                             multi_client.add_client(Box::new(new_client));
                         }
                     }
                     ProviderType::MoFa => {
                         // For MoFa we don't require an API key
-                        if provider.1.enabled {
-                            let mut new_client = OpenAIClient::new(provider.1.url.clone());
-                            if let Some(key) = provider.1.api_key.as_ref() {
+                        if provider.enabled {
+                            let mut new_client = OpenAIClient::new(provider.url.clone());
+                            if let Some(key) = provider.api_key.as_ref() {
                                 let _ = new_client.set_key(&key);
                             }
+
+                            if let Some(icon) = store.get_provider_icon(&provider) {
+                                new_client.set_provider_avatar(Picture::Dependency(icon));
+                            }
+
                             multi_client.add_client(Box::new(new_client));
                         }
                     }
                     ProviderType::DeepInquire => {
-                        let mut new_client = DeepInquireClient::new(provider.1.url.clone());
-                        if let Some(key) = provider.1.api_key.as_ref() {
+                        let mut new_client = DeepInquireClient::new(provider.url.clone());
+                        if let Some(key) = provider.api_key.as_ref() {
                             let _ = new_client.set_key(&key);
                         }
+
+                        if let Some(icon) = store.get_provider_icon(&provider) {
+                            new_client.set_provider_avatar(Picture::Dependency(icon));
+                        }
+
                         multi_client.add_client(Box::new(new_client));
                     }
                 }
