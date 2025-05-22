@@ -13,7 +13,7 @@ live_design! {
 
     Sender = <View> {
         height: Fit,
-        spacing: 8,
+        spacing: 10,
         margin: {bottom: 14},
         align: {y: 0.5}
         avatar = <Avatar> {}

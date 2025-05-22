@@ -20,7 +20,7 @@ live_design! {
             show_bg: true,
             draw_bg: {
                 color: #37567d,
-                border_radius: 6,
+                border_radius: 3,
             }
 
             align: {x: 0.5, y: 0.5},
@@ -33,6 +33,20 @@ live_design! {
                     color: #fff,
                 }
                 text: "P"
+            }
+        }
+
+        dependency = <RoundedView> {
+            width: 28, height: 28
+            visible: false
+
+            show_bg: true
+            draw_bg: {
+                border_radius: 2
+            }
+
+            image = <Image> {
+                width: 28, height: 28
             }
         }
     }
@@ -53,7 +67,15 @@ impl Widget for Avatar {
             match avatar {
                 Picture::Grapheme(grapheme) => {
                     self.view(id!(grapheme)).set_visible(cx, true);
+                    self.view(id!(dependency)).set_visible(cx, false);
                     self.label(id!(label)).set_text(cx, &grapheme);
+                }
+                Picture::Dependency(dependency) => {
+                    self.view(id!(dependency)).set_visible(cx, true);
+                    self.view(id!(grapheme)).set_visible(cx, false);
+                    let _ = self
+                        .image(id!(image))
+                        .load_image_dep_by_path(cx, dependency.as_str());
                 }
                 _ => unimplemented!(),
             }

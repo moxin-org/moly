@@ -108,6 +108,7 @@ struct OpenAIClientInner {
     url: String,
     headers: HeaderMap,
     client: reqwest::Client,
+    provider_avatar: Option<Picture>,
 }
 
 /// A client capable of interacting with Moly Server and other OpenAI-compatible APIs.
@@ -136,6 +137,7 @@ impl OpenAIClient {
             url,
             headers,
             client,
+            provider_avatar: None,
         }
         .into()
     }
@@ -156,6 +158,11 @@ impl OpenAIClient {
 
     pub fn set_key(&mut self, key: &str) -> Result<(), &'static str> {
         self.set_header("Authorization", &format!("Bearer {}", key))
+    }
+
+    /// Set a custom provider avatar for this client
+    pub fn set_provider_avatar(&mut self, avatar: Picture) {
+        self.0.write().unwrap().provider_avatar = Some(avatar);
     }
 }
 
@@ -227,10 +234,11 @@ impl BotClient for OpenAIClient {
                 .map(|m| Bot {
                     id: BotId::new(&m.id, &inner.url),
                     name: m.id.clone(),
-                    // TODO: Handle this char as a grapheme.
-                    avatar: Picture::Grapheme(
-                        m.id.chars().next().unwrap().to_string().to_uppercase(),
-                    ),
+                    avatar: if let Some(avatar) = &inner.provider_avatar {
+                        avatar.clone()
+                    } else {
+                        Picture::Grapheme(m.id.chars().next().unwrap().to_string().to_uppercase())
+                    },
                 })
                 .collect();
 

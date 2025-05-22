@@ -37,6 +37,7 @@ live_design! {
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_LOCAL = dep("crate://self/resources/icons/local.svg")
     ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
+    ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
 
     App = {{App}} {
         ui: <Window> {
@@ -71,7 +72,7 @@ live_design! {
                     sidebar_menu = <RoundedView> {
                         width: 90, height: Fill,
                         flow: Down, spacing: 15.0,
-                        padding: { top: 50, bottom: 20, left: 0, right: 0 },
+                        padding: { top: 40, bottom: 20, left: 0, right: 0 },
 
                         align: {x: 0.5, y: 0.0},
 
@@ -79,6 +80,24 @@ live_design! {
                         draw_bg: {
                             color: (SIDEBAR_BG_COLOR),
                             instance border_radius: 0.0,
+                        }
+
+                        logo = <View> {
+                            width: Fit, height: Fit
+                            margin: {bottom: 5}
+                            <Image> {
+                                width: 50, height: 50,
+                                source: (ICON_MOLYSERVER),
+                            }
+                        }
+
+                        seprator = <View> {
+                            width: Fill, height: 1.6,
+                            margin: {left: 15, right: 15, bottom: 10}
+                            show_bg: true
+                            draw_bg: {
+                                color: #dadada,
+                            }
                         }
 
                         chat_tab = <SidebarMenuButton> {

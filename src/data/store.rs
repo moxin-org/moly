@@ -73,6 +73,8 @@ pub struct Store {
     pub bot_context: Option<BotContext>,
     moly_client: MolyClient,
     pub provider_syncing_status: ProviderSyncingStatus,
+
+    pub provider_icons: Vec<LiveDependency>,
 }
 
 impl Default for Store {
@@ -102,6 +104,7 @@ impl Store {
             preferences,
             bot_context: None,
             provider_syncing_status: ProviderSyncingStatus::NotSyncing,
+            provider_icons: vec![],
         };
 
         store.chats.load_chats();
@@ -385,5 +388,18 @@ impl Store {
     pub fn remove_provider(&mut self, url: &str) {
         self.chats.remove_provider(url);
         self.preferences.remove_provider(url);
+    }
+
+    pub fn get_provider_icon(&self, provider: &Provider) -> Option<LiveDependency> {
+        // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
+        // Find a path that contains the provider name
+        self.provider_icons
+            .iter()
+            .find(|icon| {
+                icon.as_str()
+                    .to_lowercase()
+                    .contains(&provider.name.to_lowercase())
+            })
+            .cloned()
     }
 }

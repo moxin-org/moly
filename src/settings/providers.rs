@@ -1,6 +1,9 @@
-use makepad_widgets::*;
-use crate::data::{providers::{Provider, ProviderConnectionStatus}, store::Store};
+use crate::data::{
+    providers::{Provider, ProviderConnectionStatus},
+    store::Store,
+};
 use crate::shared::modal::ModalWidgetExt;
+use makepad_widgets::*;
 
 use super::{add_provider_modal::AddProviderModalAction, provider_view::ProviderViewAction};
 
@@ -8,7 +11,7 @@ live_design! {
     use link::widgets::*;
     use link::theme::*;
     use link::shaders::*;
-    
+
     use crate::shared::widgets::*;
     use crate::shared::styles::*;
     use crate::settings::add_provider_modal::*;
@@ -27,10 +30,8 @@ live_design! {
     // Provider icons
     ICON_OPENAI = dep("crate://self/resources/images/providers/openai.png")
     ICON_GEMINI = dep("crate://self/resources/images/providers/gemini.png")
-    ICON_MOFA = dep("crate://self/resources/images/providers/mofa.png")
     ICON_SILICONFLOW = dep("crate://self/resources/images/providers/siliconflow.png")
     ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
-    ICON_DEEPINQUIRE = dep("crate://self/resources/images/providers/deepinquire.png")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
 
     // Not making this based on <Icon> because button does not support images
@@ -39,7 +40,7 @@ live_design! {
         visible: false
         cursor: Hand
         width: Fit, height: Fit
-        
+
         icon = <Image> {
             width: 22, height: 22
             // Override the color of the icon
@@ -85,7 +86,7 @@ live_design! {
                     }
                     visible: true
                 }
-                
+
                 label_wrapper = <RoundedView> {
                     width: 25, height: 25
                     visible: false
@@ -95,7 +96,7 @@ live_design! {
                         border_radius: 6
                     }
                     align: {x: 0.5, y: 0.5}
-                    
+
                     initial_label = <Label> {
                         draw_text:{
                             text_style: <BOLD_FONT>{font_size: 12}
@@ -105,7 +106,7 @@ live_design! {
                 }
             }
 
-    
+
             <View> {
                 flow: Right
                 width: Fill, height: Fill
@@ -120,7 +121,7 @@ live_design! {
                 }
 
                 filler = <View> { width: Fill, height: Fill }
-            
+
                 status_view = <RoundedView> {
                     align: {x: 0.5, y: 0.5}
                     show_bg: true
@@ -162,7 +163,7 @@ live_design! {
             width: Fill, height: Fit
             align: {x: 0.5, y: 0.5}
             padding: {left: 30, right: 30, bottom: 10, top: 10}
-            draw_bg: { 
+            draw_bg: {
                 color: (MAIN_BG_COLOR)
                 border_radius: 4.5,
                 uniform shadow_color: #0002
@@ -181,10 +182,8 @@ live_design! {
         provider_icons: [
             (ICON_OPENAI),
             (ICON_GEMINI),
-            (ICON_MOFA),
             (ICON_SILICONFLOW),
             (ICON_OPENROUTER),
-            (ICON_DEEPINQUIRE),
             (ICON_MOLYSERVER),
         ]
 
@@ -198,7 +197,7 @@ live_design! {
                 }
             }
         }
-    }   
+    }
 }
 
 #[derive(Widget, Live)]
@@ -216,7 +215,9 @@ impl LiveHook for Providers {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
         let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
         self.selected_provider = Some(default_provider_url.clone());
-        cx.action(ConnectionSettingsAction::ProviderSelected(default_provider_url));
+        cx.action(ConnectionSettingsAction::ProviderSelected(
+            default_provider_url,
+        ));
     }
 }
 
@@ -224,6 +225,11 @@ impl Widget for Providers {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        let store = scope.data.get_mut::<Store>().unwrap();
+        if store.provider_icons.is_empty() {
+            store.provider_icons = self.provider_icons.clone();
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -250,7 +256,8 @@ impl Widget for Providers {
                         let provider = all_providers[item_id].clone();
                         let icon = self.get_provider_icon(&provider);
                         let is_selected = self.selected_provider == Some(provider.url.clone());
-                        item.as_provider_item().set_provider(cx, provider, icon, is_selected);
+                        item.as_provider_item()
+                            .set_provider(cx, provider, icon, is_selected);
                         item.draw_all(cx, scope);
                     }
                 }
@@ -264,8 +271,13 @@ impl Providers {
     fn get_provider_icon(&self, provider: &Provider) -> Option<LiveDependency> {
         // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
         // Find a path that contains the provider name
-        self.provider_icons.iter()
-            .find(|icon| icon.as_str().to_lowercase().contains(&provider.name.to_lowercase()))
+        self.provider_icons
+            .iter()
+            .find(|icon| {
+                icon.as_str()
+                    .to_lowercase()
+                    .contains(&provider.name.to_lowercase())
+            })
             .cloned()
     }
 }
@@ -273,7 +285,11 @@ impl Providers {
 impl WidgetMatchEvent for Providers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         // Handle modal open
-        if self.view(id!(add_provider_button)).finger_up(actions).is_some() {
+        if self
+            .view(id!(add_provider_button))
+            .finger_up(actions)
+            .is_some()
+        {
             let modal = self.modal(id!(add_provider_modal));
             modal.open(cx);
         }
@@ -296,7 +312,9 @@ impl WidgetMatchEvent for Providers {
                 let store = scope.data.get::<Store>().unwrap();
                 if let Some(first_provider) = store.chats.providers.values().next() {
                     self.selected_provider = Some(first_provider.url.clone());
-                    cx.action(ConnectionSettingsAction::ProviderSelected(first_provider.url.clone()));
+                    cx.action(ConnectionSettingsAction::ProviderSelected(
+                        first_provider.url.clone(),
+                    ));
                 }
                 self.redraw(cx);
             }
@@ -328,8 +346,10 @@ impl Widget for ProviderItem {
         // Show connection status icons
         self.update_connection_status(cx, &connection_status);
 
-        self.view(id!(status_view))
-            .set_visible(cx, connection_status == ProviderConnectionStatus::Connected && self.provider.enabled);
+        self.view(id!(status_view)).set_visible(
+            cx,
+            connection_status == ProviderConnectionStatus::Connected && self.provider.enabled,
+        );
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -339,7 +359,9 @@ impl WidgetMatchEvent for ProviderItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let was_item_clicked = self.view(id!(main_view)).finger_up(actions).is_some();
         if was_item_clicked {
-            cx.action(ConnectionSettingsAction::ProviderSelected(self.provider.url.clone()));
+            cx.action(ConnectionSettingsAction::ProviderSelected(
+                self.provider.url.clone(),
+            ));
         }
     }
 }
@@ -349,58 +371,81 @@ impl ProviderItem {
     fn update_connection_status(
         &mut self,
         cx: &mut Cx,
-        connection_status: &ProviderConnectionStatus
+        connection_status: &ProviderConnectionStatus,
     ) {
-        self.view(id!(connection_status_success))
-            .set_visible(cx, *connection_status == ProviderConnectionStatus::Connected);
-        self.view(id!(connection_status_failure))
-            .set_visible(cx, *connection_status == ProviderConnectionStatus::Disconnected);
-        self.view(id!(connection_status_loading))
-            .set_visible(cx, *connection_status == ProviderConnectionStatus::Connecting);
+        self.view(id!(connection_status_success)).set_visible(
+            cx,
+            *connection_status == ProviderConnectionStatus::Connected,
+        );
+        self.view(id!(connection_status_failure)).set_visible(
+            cx,
+            *connection_status == ProviderConnectionStatus::Disconnected,
+        );
+        self.view(id!(connection_status_loading)).set_visible(
+            cx,
+            *connection_status == ProviderConnectionStatus::Connecting,
+        );
     }
 }
 
 impl ProviderItemRef {
-    fn set_provider(&mut self, cx: &mut Cx, provider: Provider, icon_path: Option<LiveDependency>, is_selected: bool) {
+    fn set_provider(
+        &mut self,
+        cx: &mut Cx,
+        provider: Provider,
+        icon_path: Option<LiveDependency>,
+        is_selected: bool,
+    ) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
         inner.provider = provider.clone();
-        
+
         // Determine whether to show image or label
         if let Some(icon) = icon_path {
             // Show the image
             inner.view(id!(image_wrapper)).set_visible(cx, true);
             let image = inner.image(id!(provider_icon_image));
             let _ = image.load_image_dep_by_path(cx, icon.as_str());
-            
+
             // Hide the label
             let label_view = inner.view(id!(provider_icon_label));
             label_view.set_visible(cx, false);
         } else {
             // Hide the image
             inner.view(id!(image_wrapper)).set_visible(cx, false);
-            
+
             // Show the label
             let label_view = inner.view(id!(label_wrapper));
             label_view.set_visible(cx, true);
-            
+
             // Get first character of the provider name
-            let first_char = provider.name.chars().next()
+            let first_char = provider
+                .name
+                .chars()
+                .next()
                 .map(|c| c.to_uppercase().to_string())
                 .unwrap_or_default();
-                
-            label_view.label(id!(initial_label)).set_text(cx, &first_char);
+
+            label_view
+                .label(id!(initial_label))
+                .set_text(cx, &first_char);
         }
 
         if is_selected {
-            inner.view.apply_over(cx, live! {
-                draw_bg: { color: #EAECEF }
-            });
+            inner.view.apply_over(
+                cx,
+                live! {
+                    draw_bg: { color: #EAECEF }
+                },
+            );
         } else {
-            inner.view.apply_over(cx, live! {
-                draw_bg: { color: #f9f9f9 }
-            });
+            inner.view.apply_over(
+                cx,
+                live! {
+                    draw_bg: { color: #f9f9f9 }
+                },
+            );
         }
     }
 }

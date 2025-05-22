@@ -5,11 +5,11 @@ use crate::{
 
 use makepad_widgets::*;
 
+use super::delete_chat_modal::DeleteChatModalWidgetExt;
 use super::{
     chat_history_card_options::ChatHistoryCardOptionsWidgetExt,
     delete_chat_modal::DeleteChatModalAction,
 };
-use super::{delete_chat_modal::DeleteChatModalWidgetExt, shared::ChatAgentAvatarWidgetExt};
 
 live_design! {
     use link::theme::*;
@@ -19,8 +19,6 @@ live_design! {
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
     use crate::shared::modal::*;
-    use crate::chat::shared::ChatAgentAvatar;
-    use crate::chat::shared::ChatModelAvatar;
     use crate::chat::chat_history_card_options::ChatHistoryCardOptions;
     use crate::chat::delete_chat_modal::DeleteChatModal;
 
@@ -112,18 +110,6 @@ live_design! {
             }
 
             <View> {
-                width: Fit
-                height: Fill
-                align: {y: 0.5}
-                padding: {left: 4, top: 10}
-
-                avatar_section = <View> {
-                    width: Fit, height: Fill,
-                    model = <ChatModelAvatar> {}
-                    agent = <ChatAgentAvatar> { visible: false }
-                }
-            }
-            <View> {
                 width: Fill
                 height: Fill
                 flow: Down
@@ -139,7 +125,7 @@ live_design! {
                         height: Fit,
                         padding: 0
                         draw_text:{
-                            text_style: <BOLD_FONT>{font_size: 9},
+                            text_style: <BOLD_FONT>{font_size: 8.2},
                             color: #475467,
                         }
                     }
@@ -186,7 +172,7 @@ live_design! {
                                 width: Fill,
                                 height: Fit,
                                 draw_text: {
-                                    text_style: <REGULAR_FONT>{font_size: 10},
+                                    text_style: <REGULAR_FONT>{font_size: 11},
                                     color: #101828,
                                 }
                                 text: ""
@@ -355,35 +341,6 @@ impl Widget for ChatHistoryCard {
             &caption.clone().unwrap_or_default(),
         );
         self.update_title_visibility(cx);
-
-        let initial_letter = caption
-            .unwrap_or("a".to_string())
-            .chars()
-            .next()
-            .unwrap()
-            .to_uppercase()
-            .to_string();
-
-        match &chat.borrow().associated_bot {
-            Some(bot_id) => {
-                let bot = store.chats.get_bot_or_placeholder(&bot_id);
-
-                if store.chats.is_agent(bot_id) {
-                    let mut chat_agent_avatar = self.chat_agent_avatar(id!(avatar_section.agent));
-                    self.view(id!(avatar_section.model)).set_visible(cx, false);
-                    chat_agent_avatar.set_visible(true);
-                    chat_agent_avatar.set_bot(bot);
-                } else {
-                    self.view(id!(avatar_section.model)).set_visible(cx, true);
-                    self.chat_agent_avatar(id!(avatar_section.agent))
-                        .set_visible(false);
-                    self.view
-                        .label(id!(avatar_label))
-                        .set_text(cx, &initial_letter);
-                }
-            }
-            _ => {}
-        }
 
         self.view.draw_walk(cx, scope, walk)
     }
