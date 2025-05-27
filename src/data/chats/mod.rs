@@ -1,12 +1,16 @@
 pub mod chat;
 
 use chat::{Chat, ChatID};
+use futures::StreamExt;
+use moly_kit::utils::asynchronous::spawn;
 use moly_kit::BotId;
 use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::{cell::RefCell, path::PathBuf};
 
-use super::filesystem::{read_dir, setup_chats_folder};
+use crate::app::app_runner;
+use crate::shared::utils::filesystem;
+
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{
@@ -40,7 +44,7 @@ impl Chats {
             moly_client,
             saved_chats: Vec::new(),
             current_chat_id: None,
-            chats_dir: setup_chats_folder(),
+            chats_dir: PathBuf::from("chats"),
             available_bots: HashMap::new(),
             provider_clients: HashMap::new(),
             providers: HashMap::new(),
@@ -49,15 +53,29 @@ impl Chats {
     }
 
     pub fn load_chats(&mut self) {
-        for path in read_dir(self.chats_dir.clone()).map(|p| p.unwrap()) {
-            let loaded_chat_result = Chat::load(path, self.chats_dir.clone());
-            match loaded_chat_result {
-                Err(e) => {
-                    eprintln!("{}", &e.to_string());
-                }
-                Ok(loaded_chat) => self.saved_chats.push(RefCell::new(loaded_chat)),
-            }
-        }
+        let chats_dir = self.chats_dir.clone();
+        spawn(async move {
+            let fs = filesystem::global();
+            let paths = fs
+                .list(&chats_dir)
+                .await
+                .unwrap_or_else(|_| {
+                    eprintln!("Failed to read chats directory: {:?}", chats_dir);
+                    vec![]
+                })
+                .into_iter()
+                .map(|file_name| chats_dir.join(file_name));
+
+            let chats = futures::stream::iter(paths)
+                .then(|path| async move { Chat::load(&path).await.unwrap() })
+                .collect::<Vec<_>>()
+                .await;
+
+            app_runner().defer(move |app, _, _| {
+                app.store.chats.saved_chats = chats.into_iter().map(RefCell::new).collect();
+                app.store.init_current_chat();
+            });
+        });
     }
 
     pub fn get_last_selected_chat_id(&self) -> Option<ChatID> {
@@ -91,14 +109,14 @@ impl Chats {
         if let Some(chat) = self.get_current_chat() {
             let mut chat = chat.borrow_mut();
             chat.update_accessed_at();
-            chat.save();
+            chat.save_and_forget();
         }
     }
 
     pub fn delete_chat_message(&mut self, message_id: usize) {
         if let Some(chat) = self.get_current_chat() {
             chat.borrow_mut().delete_message(message_id);
-            chat.borrow().save();
+            chat.borrow().save_and_forget();
         }
     }
 
@@ -117,7 +135,7 @@ impl Chats {
             }
         }
 
-        new_chat.save();
+        new_chat.save_and_forget();
         self.saved_chats.push(RefCell::new(new_chat));
         self.set_current_chat(Some(id));
         id
@@ -135,7 +153,7 @@ impl Chats {
             .expect("non-existing chat");
 
         let chat = self.saved_chats.remove(pos);
-        chat.borrow().remove_saved_file();
+        chat.borrow().remove_saved_file_and_forget();
     }
 
     /// Registers a provider to listen to and the provider info.

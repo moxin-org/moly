@@ -1,4 +1,5 @@
 mod db;
+pub mod filesystem;
 
 use anyhow::Result;
 use makepad_widgets::math_f32::{vec4, Vec4};

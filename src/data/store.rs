@@ -85,7 +85,7 @@ impl Default for Store {
 
 impl Store {
     pub fn new() -> Self {
-        let preferences = Preferences::load();
+        let preferences = Preferences::default();
 
         let server_port = std::env::var("MOLY_SERVER_PORT")
             .ok()
@@ -107,8 +107,8 @@ impl Store {
             provider_icons: vec![],
         };
 
+        store.preferences.load();
         store.chats.load_chats();
-        store.init_current_chat();
 
         store.sync_with_moly_server();
         store.load_preference_connections();
@@ -248,7 +248,7 @@ impl Store {
         }
     }
 
-    fn init_current_chat(&mut self) {
+    pub fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
             self.chats.set_current_chat(Some(chat_id));
             Cx::post_action(ChatAction::ChatSelected(chat_id));

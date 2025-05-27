@@ -512,7 +512,7 @@ impl ChatHistoryCard {
 
             if !updated_title.trim().is_empty() && chat.borrow().get_title() != updated_title {
                 chat.borrow_mut().set_title(updated_title.clone());
-                chat.borrow().save();
+                chat.borrow().save_and_forget();
             }
 
             self.transition_title_state(cx)
@@ -528,7 +528,7 @@ impl ChatHistoryCard {
 
             if !val.trim().is_empty() && chat.borrow().get_title() != val {
                 chat.borrow_mut().set_title(val.clone());
-                chat.borrow().save();
+                chat.borrow().save_and_forget();
             }
 
             self.transition_title_state(cx)
