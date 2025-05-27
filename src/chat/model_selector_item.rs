@@ -76,7 +76,7 @@ pub struct ModelSelectorItem {
     #[deref]
     view: View,
 
-    // TODO: We should remove this at the item level and handle the item clicking 
+    // TODO: We should remove this at the item level and handle the item clicking
     // in the parent widget (ModelSelectorList)
     #[rust]
     chat_id: ChatID,
@@ -100,7 +100,10 @@ impl WidgetMatchEvent for ModelSelectorItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(fd) = self.view(id!(content)).finger_down(&actions) {
             if fd.tap_count == 1 {
-                cx.action(ModelSelectorAction::BotSelected(self.chat_id, self.model.clone()));
+                cx.action(ModelSelectorAction::BotSelected(
+                    self.chat_id,
+                    self.model.clone(),
+                ));
             }
         }
     }
