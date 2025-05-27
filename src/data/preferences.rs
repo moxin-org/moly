@@ -1,9 +1,8 @@
-use anyhow::Result;
 use moly_kit::{utils::asynchronous::spawn, BotId};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::{app::app_runner, shared::utils::filesystem};
+use crate::shared::utils::filesystem;
 
 use super::providers::{Provider, ProviderType};
 
@@ -30,28 +29,20 @@ impl Default for Preferences {
 }
 
 impl Preferences {
-    pub fn load(&self) {
-        spawn(async move {
-            let preferences_path = preferences_path();
-            let fs = filesystem::global();
-            let preferences = match fs.read_json::<Preferences>(&preferences_path).await {
-                Ok(preferences) => {
-                    println!("Loaded preferences from file: {:?}", preferences_path);
-                    println!("Preferences: {:?}", preferences);
-                    preferences
-                }
-                Err(e) => {
-                    eprintln!("Failed to read preferences file: {:?}", e);
-                    Preferences::default()
-                }
-            };
-
-            app_runner().defer(move |app, cx, _| {
-                println!("Setting preferences in store app");
-                app.store.preferences = preferences;
-                app.ui.redraw(cx);
-            });
-        });
+    pub async fn load() -> Self {
+        let preferences_path = preferences_path();
+        let fs = filesystem::global();
+        match fs.read_json::<Preferences>(&preferences_path).await {
+            Ok(preferences) => {
+                println!("Loaded preferences from file: {:?}", preferences_path);
+                println!("Preferences: {:?}", preferences);
+                preferences
+            }
+            Err(e) => {
+                eprintln!("Failed to read preferences file: {:?}", e);
+                Preferences::default()
+            }
+        }
     }
 
     pub fn save(&self) {

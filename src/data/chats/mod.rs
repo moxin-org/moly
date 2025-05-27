@@ -72,8 +72,9 @@ impl Chats {
                 .await;
 
             app_runner().defer(move |app, _, _| {
-                app.store.chats.saved_chats = chats.into_iter().map(RefCell::new).collect();
-                app.store.init_current_chat();
+                let store = app.store.as_mut().unwrap();
+                store.chats.saved_chats = chats.into_iter().map(RefCell::new).collect();
+                store.init_current_chat();
             });
         });
     }
