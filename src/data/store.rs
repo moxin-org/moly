@@ -390,7 +390,7 @@ impl Store {
         self.preferences.remove_provider(url);
     }
 
-    pub fn get_provider_icon(&self, provider: &Provider) -> Option<LiveDependency> {
+    pub fn get_provider_icon(&self, provider_name: &str) -> Option<LiveDependency> {
         // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
         // Find a path that contains the provider name
         self.provider_icons
@@ -398,7 +398,7 @@ impl Store {
             .find(|icon| {
                 icon.as_str()
                     .to_lowercase()
-                    .contains(&provider.name.to_lowercase())
+                    .contains(&provider_name.to_lowercase())
             })
             .cloned()
     }

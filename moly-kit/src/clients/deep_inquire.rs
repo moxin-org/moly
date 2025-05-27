@@ -7,7 +7,6 @@ use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{
-    any::Any,
     str::FromStr,
     sync::{Arc, RwLock},
 };

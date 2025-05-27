@@ -21,13 +21,47 @@ live_design! {
 
     pub ModelSelectorList = {{ModelSelectorList}} {
         flow: Down,
-        model_template: <ModelSelectorItem> { content = <ModelInfo> {} }
+        model_template: <ModelSelectorItem> {
+            content = <ModelInfo> {
+                padding: {left: 24, right: 10, top: 12, bottom: 12}
+            }
+        }
 
-        section_label_template: <Label> {
-            padding: {left: 4, top: 4., bottom: 4.}
-            draw_text: {
-                text_style: <BOLD_FONT>{font_size: 10.0},
-                color: #98A2B3
+        section_label_template: <View> {
+            width: Fit, height: Fit,
+            padding: {left: 6, top: 4., bottom: 4.}
+            spacing: 8
+            align: {x: 0.0, y: 0.5},
+            image_view = <View> {
+                width: Fit, height: Fit
+                visible: false
+                image = <Image> {
+                    width: 22, height: 22
+                    source: dep("crate://self/resources/images/globe_icon.png")
+                }
+            }
+            provider_initial_view = <RoundedView> {
+                width: Fit, height: Fit
+                padding: {left: 6, right: 6, top: 3, bottom: 3}
+                visible: false
+                show_bg: true
+                draw_bg: {
+                    color: #37567d,
+                    border_radius: 3.0
+                }
+                provider_initial_label = <Label> {
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 10.0},
+                        color: #f
+                    }
+                }
+            }
+
+            label = <Label> {
+                draw_text: {
+                    text_style: <BOLD_FONT>{font_size: 11.0},
+                    color: #989898
+                }
             }
         }
     }
@@ -128,7 +162,9 @@ impl ModelSelectorList {
         let mut models_by_provider: HashMap<String, (String, Vec<ProviderBot>)> = HashMap::new();
         for model in all_bots.iter() {
             // Get provider name from the providers map
-            let provider_name = store.chats.providers
+            let provider_name = store
+                .chats
+                .providers
                 .get(&model.provider_url)
                 .map(|p| p.name.clone())
                 .unwrap_or_else(|| "Unknown Provider".to_string());
@@ -159,17 +195,37 @@ impl ModelSelectorList {
 
             // Add provider section label
             let section_id = LiveId::from_str(&provider_url);
-            
+
             let section_label = self.items.get_or_insert(cx, section_id, |cx| {
                 WidgetRef::new_from_ptr(cx, self.section_label_template)
             });
-            section_label.set_text(cx, &provider_name);
+            section_label.label(id!(label)).set_text(cx, &provider_name);
+
+            let provider_icon = store.get_provider_icon(&provider_name);
+            if let Some(provider_icon) = provider_icon {
+                section_label
+                    .view(id!(provider_initial_view))
+                    .set_visible(cx, false);
+                section_label.view(id!(image_view)).set_visible(cx, true);
+                let _ = section_label
+                    .image(id!(image))
+                    .load_image_dep_by_path(cx, provider_icon.as_str());
+            } else {
+                section_label.view(id!(image_view)).set_visible(cx, false);
+                section_label
+                    .view(id!(provider_initial_view))
+                    .set_visible(cx, true);
+                section_label
+                    .label(id!(provider_initial_label))
+                    .set_text(cx, &provider_name.chars().next().unwrap().to_string());
+            }
             let _ = section_label.draw_all(cx, &mut Scope::empty());
             total_height += section_label.as_label().area().rect(cx).size.y;
 
             // Add models for this provider
             for provider_bot in provider_bots.iter() {
-                let bot_item_id = LiveId::from_str(format!("{}{}", provider_url, provider_bot.id).as_str());
+                let bot_item_id =
+                    LiveId::from_str(format!("{}{}", provider_url, provider_bot.id).as_str());
 
                 let item_widget = self.items.get_or_insert(cx, bot_item_id, |cx| {
                     WidgetRef::new_from_ptr(cx, self.model_template)
@@ -187,7 +243,12 @@ impl ModelSelectorList {
                 let mut param_size = None;
                 let mut size = None;
 
-                if let Some(downloaded_file) = store.downloads.downloaded_files.iter().find(|f| f.file.id == provider_bot.name) {
+                if let Some(downloaded_file) = store
+                    .downloads
+                    .downloaded_files
+                    .iter()
+                    .find(|f| f.file.id == provider_bot.name)
+                {
                     // Only set the value as some if the string isn't empty
                     architecture = if !downloaded_file.model.architecture.is_empty() {
                         Some(downloaded_file.model.architecture.clone())
@@ -199,7 +260,9 @@ impl ModelSelectorList {
                     } else {
                         None
                     };
-                    size = Some(format_model_size(&downloaded_file.file.size).unwrap_or("".to_string()));
+                    size = Some(
+                        format_model_size(&downloaded_file.file.size).unwrap_or("".to_string()),
+                    );
 
                     // Override the caption with the local file name
                     caption = &downloaded_file.file.name;
@@ -221,7 +284,7 @@ impl ModelSelectorList {
                 item_widget
                     .as_model_selector_item()
                     .set_bot(provider_bot.clone());
-                
+
                 item_widget
                     .as_model_selector_item()
                     .set_chat_id(self.chat_id);

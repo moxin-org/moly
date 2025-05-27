@@ -118,7 +118,7 @@ impl ChatScreen {
                                 let _ = new_client.set_key(&key);
                             }
 
-                            if let Some(icon) = store.get_provider_icon(&provider) {
+                            if let Some(icon) = store.get_provider_icon(&provider.name) {
                                 new_client.set_provider_avatar(Picture::Dependency(icon));
                             }
 
@@ -133,7 +133,7 @@ impl ChatScreen {
                                 let _ = new_client.set_key(&key);
                             }
 
-                            if let Some(icon) = store.get_provider_icon(&provider) {
+                            if let Some(icon) = store.get_provider_icon(&provider.name) {
                                 new_client.set_provider_avatar(Picture::Dependency(icon));
                             }
 
@@ -146,7 +146,7 @@ impl ChatScreen {
                             let _ = new_client.set_key(&key);
                         }
 
-                        if let Some(icon) = store.get_provider_icon(&provider) {
+                        if let Some(icon) = store.get_provider_icon(&provider.name) {
                             new_client.set_provider_avatar(Picture::Dependency(icon));
                         }
 

@@ -4,7 +4,7 @@ live_design! {
     use link::theme::*;
     use link::shaders::*;
     use link::widgets::*;
-    
+
     use crate::shared::styles::*;
     use crate::chat::shared::ChatAgentAvatar;
 
@@ -13,7 +13,7 @@ live_design! {
     ModelAttributeTag = <RoundedView> {
         width: Fit,
         height: Fit,
-        padding: {top: 6, bottom: 6, left: 10, right: 10}
+        padding: {top: 4, bottom: 4, left: 10, right: 10}
 
         spacing: 5,
         draw_bg: {
@@ -22,7 +22,7 @@ live_design! {
 
         caption = <Label> {
             draw_text: {
-                text_style: <REGULAR_FONT>{font_size: 9},
+                text_style: <REGULAR_FONT>{font_size: 8},
                 color: #1D2939
             }
         }
@@ -34,7 +34,16 @@ live_design! {
         spacing: 10,
         align: {x: 0.0, y: 0.5},
 
-        cursor: Hand,
+        cursor: Hand
+
+        provider_image_view = <View> {
+            width: Fit, height: Fit
+            visible: false
+            provider_image = <Image> {
+                width: 22,
+                height: 22,
+            }
+        }
 
         label = <Label> {
             draw_text:{
@@ -68,7 +77,7 @@ live_design! {
         }
 
         icon_tick_tag = <RoundedView> {
-            align: {x: 1.0, y: 0.5}, 
+            align: {x: 1.0, y: 0.5},
             visible: false,
             icon_tick = <Image> {
                 width: 14,
@@ -98,7 +107,7 @@ live_design! {
         }
 
         icon_tick_tag = <RoundedView> {
-            align: {x: 1.0, y: 0.5}, 
+            align: {x: 1.0, y: 0.5},
             visible: false,
             icon_tick = <Image> {
                 width: 14,
@@ -108,4 +117,3 @@ live_design! {
         }
     }
 }
-
