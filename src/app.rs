@@ -171,6 +171,9 @@ pub struct App {
     pub ui: WidgetRef,
 
     #[rust]
+    pub unloaded_ui: WidgetRef,
+
+    #[rust]
     pub store: Option<Store>,
 
     #[rust]
@@ -202,6 +205,9 @@ impl AppMain for App {
             .handle(cx, event, &mut Scope::empty(), self);
 
         if let Event::Startup = event {
+            // Workaround to prevent makepad from rendering the ui before the store
+            // is initialized. To avoid bigger changes for now.
+            self.unloaded_ui = std::mem::take(&mut self.ui);
             register_capture_manager();
             Store::load();
         }
@@ -219,7 +225,7 @@ impl AppMain for App {
             }
         }
 
-        let scope = &mut Scope::with_data(&mut self.store);
+        let scope = &mut Scope::with_data(store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
     }

@@ -106,6 +106,7 @@ impl Store {
 
             app_runner().defer(move |app, _, _| {
                 app.store = Some(store);
+                app.ui = std::mem::take(&mut app.unloaded_ui);
             });
         })
     }
