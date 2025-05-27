@@ -2,7 +2,6 @@ pub mod chat;
 
 use chat::{Chat, ChatID};
 use futures::StreamExt;
-use moly_kit::utils::asynchronous::spawn;
 use moly_kit::BotId;
 use moly_protocol::data::*;
 use std::collections::HashMap;
@@ -39,7 +38,7 @@ pub struct Chats {
 }
 
 impl Chats {
-    pub fn new(moly_client: MolyClient) -> Self {
+    fn new(moly_client: MolyClient) -> Self {
         Self {
             moly_client,
             saved_chats: Vec::new(),
@@ -52,31 +51,27 @@ impl Chats {
         }
     }
 
-    pub fn load_chats(&mut self) {
-        let chats_dir = self.chats_dir.clone();
-        spawn(async move {
-            let fs = filesystem::global();
-            let paths = fs
-                .list(&chats_dir)
-                .await
-                .unwrap_or_else(|_| {
-                    eprintln!("Failed to read chats directory: {:?}", chats_dir);
-                    vec![]
-                })
-                .into_iter()
-                .map(|file_name| chats_dir.join(file_name));
+    pub async fn load(moly_client: MolyClient) -> Self {
+        let mut chats = Chats::new(moly_client);
 
-            let chats = futures::stream::iter(paths)
-                .then(|path| async move { Chat::load(&path).await.unwrap() })
-                .collect::<Vec<_>>()
-                .await;
+        let fs = filesystem::global();
+        let paths = fs
+            .list(&chats.chats_dir)
+            .await
+            .unwrap_or_else(|_| {
+                eprintln!("Failed to read chats directory: {:?}", chats.chats_dir);
+                vec![]
+            })
+            .into_iter()
+            .map(|file_name| chats.chats_dir.join(file_name));
 
-            app_runner().defer(move |app, _, _| {
-                let store = app.store.as_mut().unwrap();
-                store.chats.saved_chats = chats.into_iter().map(RefCell::new).collect();
-                store.init_current_chat();
-            });
-        });
+        chats.saved_chats = futures::stream::iter(paths)
+            .then(|path| async move { Chat::load(&path).await.unwrap() })
+            .map(RefCell::new)
+            .collect::<Vec<_>>()
+            .await;
+
+        chats
     }
 
     pub fn get_last_selected_chat_id(&self) -> Option<ChatID> {

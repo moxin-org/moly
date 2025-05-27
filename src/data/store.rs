@@ -88,10 +88,12 @@ impl Store {
 
             let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
 
+            let chats = Chats::load(moly_client.clone()).await;
+
             let mut store = Self {
                 search: Search::new(moly_client.clone()),
                 downloads: Downloads::new(moly_client.clone()),
-                chats: Chats::new(moly_client.clone()),
+                chats,
                 moly_client,
                 preferences,
                 bot_context: None,
@@ -99,8 +101,7 @@ impl Store {
                 provider_icons: vec![],
             };
 
-            store.chats.load_chats();
-
+            store.init_current_chat();
             store.sync_with_moly_server();
             store.load_preference_connections();
 
@@ -245,7 +246,7 @@ impl Store {
         }
     }
 
-    pub fn init_current_chat(&mut self) {
+    fn init_current_chat(&mut self) {
         if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
             self.chats.set_current_chat(Some(chat_id));
             Cx::post_action(ChatAction::ChatSelected(chat_id));
