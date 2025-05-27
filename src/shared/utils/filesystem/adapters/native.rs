@@ -22,13 +22,6 @@ fn project_dirs() -> &'static ProjectDirs {
 }
 
 fn validate_and_resolve(path: &Path) -> PathBuf {
-    if path.is_absolute() {
-        panic!(
-            "filesystem adapters do not support absolute paths: {:?}",
-            path
-        );
-    }
-
     match path.strip_prefix("preferences/") {
         Ok(rest) => project_dirs().preference_dir().join(rest),
         Err(_) => project_dirs().data_dir().join(path),
@@ -41,6 +34,7 @@ pub struct NativeAdapter;
 impl Adapter for NativeAdapter {
     async fn read(&mut self, path: &Path) -> Result<Vec<u8>> {
         let path = validate_and_resolve(path);
+        println!("Reading from path: {}", path.display());
         let content = async_fs::read(path).await?;
         Ok(content)
     }

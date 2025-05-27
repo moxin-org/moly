@@ -167,7 +167,7 @@ app_main!(App);
 #[derive(Live, LiveHook)]
 pub struct App {
     #[live]
-    ui: WidgetRef,
+    pub ui: WidgetRef,
 
     #[rust]
     pub store: Store,

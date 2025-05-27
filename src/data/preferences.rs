@@ -34,39 +34,24 @@ impl Preferences {
         spawn(async move {
             let preferences_path = preferences_path();
             let fs = filesystem::global();
-            let mut preferences = match fs.read_json::<Preferences>(&preferences_path).await {
-                Ok(preferences) => preferences,
+            let preferences = match fs.read_json::<Preferences>(&preferences_path).await {
+                Ok(preferences) => {
+                    println!("Loaded preferences from file: {:?}", preferences_path);
+                    println!("Preferences: {:?}", preferences);
+                    preferences
+                }
                 Err(e) => {
                     eprintln!("Failed to read preferences file: {:?}", e);
                     Preferences::default()
                 }
             };
 
-            preferences.ensure_downloaded_files_dir().await.unwrap();
-
-            app_runner().defer(move |app, _, _| {
+            app_runner().defer(move |app, cx, _| {
+                println!("Setting preferences in store app");
                 app.store.preferences = preferences;
+                app.ui.redraw(cx);
             });
         });
-    }
-
-    // TODO: If the download folder exists should not be a problem of Moly
-    // but of Moly Server instead.
-    async fn ensure_downloaded_files_dir(&mut self) -> Result<()> {
-        let mut fs = filesystem::global();
-
-        if !fs.exists(&self.downloaded_files_dir).await? {
-            let default_dir = default_model_downloads_dir();
-            self.downloaded_files_dir = default_dir.to_path_buf();
-
-            // I don't want to add a create dirs function to the filesystem
-            // abstraction just for this.
-            let temp = self.downloaded_files_dir.join("temp");
-            fs.queue_write(temp.clone(), vec![]).await?;
-            fs.remove(&temp).await?;
-        }
-
-        Ok(())
     }
 
     pub fn save(&self) {
