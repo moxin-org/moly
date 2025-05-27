@@ -40,22 +40,25 @@ live_design! {
     ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
 
-    App = {{App}} {
-        ui: <Window> {
-            window: {inner_size: vec2(1440, 1024), title: "Moly"},
-            pass: {clear_color: #fff}
+    UiWindow = <Window> {
+        window: {inner_size: vec2(1440, 1024), title: "Moly"},
+        pass: {clear_color: #fff}
 
-            caption_bar = {
-                caption_label = <View> {} // empty view to remove the default caption label
-                windows_buttons = <View> {
-                    visible: false,
-                    width: Fit, height: Fit,
-                    min = <MolyDesktopButton> {draw_bg: {button_type: WindowsMin}}
-                    max = <MolyDesktopButton> {draw_bg: {button_type: WindowsMax}}
-                    close = <MolyDesktopButton> {draw_bg: {button_type: WindowsClose}}
-                }
+        caption_bar = {
+            caption_label = <View> {} // empty view to remove the default caption label
+            windows_buttons = <View> {
+                visible: false,
+                width: Fit, height: Fit,
+                min = <MolyDesktopButton> {draw_bg: {button_type: WindowsMin}}
+                max = <MolyDesktopButton> {draw_bg: {button_type: WindowsMax}}
+                close = <MolyDesktopButton> {draw_bg: {button_type: WindowsClose}}
             }
+        }
+    }
 
+    App = {{App}} {
+        unloaded_ui: <UiWindow> {}
+        ui: <UiWindow> {
             body = {
                 flow: Overlay
                 width: Fill,
@@ -170,7 +173,7 @@ pub struct App {
     #[live]
     pub ui: WidgetRef,
 
-    #[rust]
+    #[live]
     pub unloaded_ui: WidgetRef,
 
     #[rust]
@@ -207,7 +210,7 @@ impl AppMain for App {
         if let Event::Startup = event {
             // Workaround to prevent makepad from rendering the ui before the store
             // is initialized. To avoid bigger changes for now.
-            self.unloaded_ui = std::mem::take(&mut self.ui);
+            std::mem::swap(&mut self.ui, &mut self.unloaded_ui);
             register_capture_manager();
             Store::load();
         }

@@ -105,9 +105,10 @@ impl Store {
             store.sync_with_moly_server();
             store.load_preference_connections();
 
-            app_runner().defer(move |app, _, _| {
+            app_runner().defer(move |app, cx, _| {
                 app.store = Some(store);
-                app.ui = std::mem::take(&mut app.unloaded_ui);
+                std::mem::swap(&mut app.ui, &mut app.unloaded_ui);
+                app.ui.redraw(cx);
             });
         })
     }
