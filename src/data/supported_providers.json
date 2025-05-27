@@ -67,6 +67,8 @@
             "url": "https://openrouter.ai/api/v1",
             "provider_type": "OpenAI",
             "supported_models": [
+                "anthropic/claude-opus-4",
+                "anthropic/claude-sonnet-4",
                 "anthropic/claude-3.7-sonnet",
                 "anthropic/claude-3.7-sonnet:thinking",
                 "anthropic/claude-3-opus",
