@@ -1,7 +1,6 @@
 use crate::app::app_runner;
 use crate::shared::actions::ChatAction;
 
-use super::capture::register_capture_manager;
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
 use super::moly_client::MolyClient;
@@ -77,43 +76,41 @@ pub struct Store {
     pub provider_icons: Vec<LiveDependency>,
 }
 
-impl Default for Store {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Store {
-    pub fn new() -> Self {
-        let preferences = Preferences::load();
+    pub fn load_into_app() {
+        spawn(async move {
+            let preferences = Preferences::load().await;
 
-        let server_port = std::env::var("MOLY_SERVER_PORT")
-            .ok()
-            .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(8765);
+            let server_port = std::env::var("MOLY_SERVER_PORT")
+                .ok()
+                .and_then(|p| p.parse::<u16>().ok())
+                .unwrap_or(8765);
 
-        let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
+            let moly_client = MolyClient::new(format!("http://localhost:{}", server_port));
 
-        register_capture_manager();
+            let chats = Chats::load(moly_client.clone()).await;
 
-        let mut store = Self {
-            search: Search::new(moly_client.clone()),
-            downloads: Downloads::new(moly_client.clone()),
-            chats: Chats::new(moly_client.clone()),
-            moly_client,
-            preferences,
-            bot_context: None,
-            provider_syncing_status: ProviderSyncingStatus::NotSyncing,
-            provider_icons: vec![],
-        };
+            let mut store = Self {
+                search: Search::new(moly_client.clone()),
+                downloads: Downloads::new(moly_client.clone()),
+                chats,
+                moly_client,
+                preferences,
+                bot_context: None,
+                provider_syncing_status: ProviderSyncingStatus::NotSyncing,
+                provider_icons: vec![],
+            };
 
-        store.chats.load_chats();
-        store.init_current_chat();
+            store.init_current_chat();
+            store.sync_with_moly_server();
+            store.load_preference_connections();
 
-        store.sync_with_moly_server();
-        store.load_preference_connections();
-
-        store
+            app_runner().defer(move |app, cx, _| {
+                app.store = Some(store);
+                app.ui.view(id!(body)).set_visible(cx, true);
+                cx.redraw_all(); // app.ui.redraw(cx) doesn't work as expected on web.
+            });
+        })
     }
 
     /// Check if the main moly server provider is enabled in settings.
@@ -143,9 +140,10 @@ impl Store {
             };
 
             app_runner().defer(|app, _, _| {
-                app.store.downloads.load_downloaded_files();
-                app.store.downloads.load_pending_downloads();
-                app.store.search.load_featured_models();
+                let store = app.store.as_mut().unwrap();
+                store.downloads.load_downloaded_files();
+                store.downloads.load_pending_downloads();
+                store.search.load_featured_models();
             });
         });
     }
@@ -219,9 +217,10 @@ impl Store {
             };
 
             app_runner().defer(move |app, _, _| {
-                app.store.downloads.load_downloaded_files();
-                app.store.downloads.load_pending_downloads();
-                app.store
+                let store = app.store.as_mut().unwrap();
+                store.downloads.load_downloaded_files();
+                store.downloads.load_pending_downloads();
+                store
                     .search
                     .update_downloaded_file_in_search_results(&file_id, false);
             });

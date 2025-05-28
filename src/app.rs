@@ -1,4 +1,5 @@
 use crate::chat::model_selector_list::ModelSelectorListAction;
+use crate::data::capture::register_capture_manager;
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::moly_client::MolyClientAction;
@@ -167,10 +168,10 @@ app_main!(App);
 #[derive(Live, LiveHook)]
 pub struct App {
     #[live]
-    ui: WidgetRef,
+    pub ui: WidgetRef,
 
     #[rust]
-    pub store: Store,
+    pub store: Option<Store>,
 
     #[rust]
     timer: Timer,
@@ -200,16 +201,27 @@ impl AppMain for App {
         self.ui_runner()
             .handle(cx, event, &mut Scope::empty(), self);
 
+        if let Event::Startup = event {
+            // Prevent rendering the ui before the store is initialized.
+            self.ui.view(id!(body)).set_visible(cx, false);
+            register_capture_manager();
+            Store::load_into_app();
+        }
+
+        let Some(store) = self.store.as_mut() else {
+            return;
+        };
+
         // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
             if let Some(file_id) = &self.file_id {
-                let (model, file) = self.store.get_model_and_file_download(&file_id);
-                self.store.downloads.download_file(model, file);
+                let (model, file) = store.get_model_and_file_download(&file_id);
+                store.downloads.download_file(model, file);
                 self.ui.redraw(cx);
             }
         }
 
-        let scope = &mut Scope::with_data(&mut self.store);
+        let scope = &mut Scope::with_data(store);
         self.ui.handle_event(cx, event, scope);
         self.match_event(cx, event);
     }
@@ -239,29 +251,31 @@ impl MatchEvent for App {
                 let _ = robius_open::Uri::new(&url).open();
             }
 
-            self.store.handle_action(action);
+            self.store.as_mut().unwrap().handle_action(action);
 
             if let Some(_) = action.downcast_ref::<DownloadFileAction>() {
                 self.notify_downloaded_files(cx);
             }
 
+            let store = self.store.as_mut().unwrap();
+
             match action.cast() {
                 StoreAction::Search(keywords) => {
-                    self.store.search.load_search_results(keywords);
+                    store.search.load_search_results(keywords);
                 }
                 StoreAction::ResetSearch => {
-                    self.store.search.load_featured_models();
+                    store.search.load_featured_models();
                 }
                 StoreAction::Sort(criteria) => {
-                    self.store.search.sort_models(criteria);
+                    store.search.sort_models(criteria);
                 }
                 _ => {}
             }
 
             match action.cast() {
                 ModelFileItemAction::Download(file_id) => {
-                    let (model, file) = self.store.get_model_and_file_download(&file_id);
-                    self.store.downloads.download_file(model, file);
+                    let (model, file) = store.get_model_and_file_download(&file_id);
+                    store.downloads.download_file(model, file);
                     self.ui.redraw(cx);
                 }
                 _ => {}
@@ -269,16 +283,16 @@ impl MatchEvent for App {
 
             match action.cast() {
                 DownloadAction::Play(file_id) => {
-                    let (model, file) = self.store.get_model_and_file_download(&file_id);
-                    self.store.downloads.download_file(model, file);
+                    let (model, file) = store.get_model_and_file_download(&file_id);
+                    store.downloads.download_file(model, file);
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Pause(file_id) => {
-                    self.store.downloads.pause_download_file(&file_id);
+                    store.downloads.pause_download_file(&file_id);
                     self.ui.redraw(cx);
                 }
                 DownloadAction::Cancel(file_id) => {
-                    self.store.downloads.cancel_download_file(&file_id);
+                    store.downloads.cancel_download_file(&file_id);
                     self.ui.redraw(cx);
                 }
                 _ => {}
@@ -299,7 +313,7 @@ impl MatchEvent for App {
                 providers_radio_button.select(cx, &mut Scope::empty());
             }
 
-            self.store.handle_provider_connection_action(action.cast());
+            store.handle_provider_connection_action(action.cast());
             // redraw the UI to reflect the connection status
             self.ui.redraw(cx);
 
@@ -324,7 +338,8 @@ impl MatchEvent for App {
 
 impl App {
     fn notify_downloaded_files(&mut self, cx: &mut Cx) {
-        if let Some(notification) = self.store.downloads.next_download_notification() {
+        let store = self.store.as_mut().unwrap();
+        if let Some(notification) = store.downloads.next_download_notification() {
             let mut popup = self
                 .ui
                 .download_notification_popup(id!(popup_download_notification));

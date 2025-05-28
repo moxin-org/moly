@@ -1,10 +1,9 @@
+use crate::shared::utils::filesystem;
 use anyhow::{anyhow, Result};
-use moly_kit::{BotId, Message};
+use moly_kit::{utils::asynchronous::spawn, BotId, Message};
 use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-
-use crate::data::filesystem::{read_from_file, remove_file, write_to_file};
+use std::path::{Path, PathBuf};
 
 pub type ChatID = u128;
 
@@ -31,7 +30,7 @@ struct ChatData {
     last_used_file_id: Option<FileID>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChatInferenceParams {
     pub frequency_penalty: f32,
     pub max_tokens: u32,
@@ -56,7 +55,7 @@ impl Default for ChatInferenceParams {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chat {
     /// Unix timestamp in ms.
     pub id: ChatID,
@@ -96,30 +95,35 @@ impl Chat {
         }
     }
 
-    pub fn load(path: PathBuf, chats_dir: PathBuf) -> Result<Self> {
-        match read_from_file(path) {
-            Ok(json) => {
-                let data: ChatData = serde_json::from_str(&json)?;
+    pub async fn load(path: &Path) -> Result<Self> {
+        let fs = filesystem::global();
+        let dir = path
+            .parent()
+            .ok_or_else(|| anyhow!("Invalid chat file path"))?;
 
+        match fs.read_json::<ChatData>(path).await {
+            Ok(data) => {
                 let chat = Chat {
                     id: data.id,
                     associated_bot: data.associated_bot,
                     messages: data.messages,
                     title: data.title,
                     title_state: data.title_state,
-                    chats_dir,
+                    chats_dir: dir.to_path_buf(),
                     inferences_params: ChatInferenceParams::default(),
                     system_prompt: data.system_prompt,
                     accessed_at: data.accessed_at,
                     has_unread_messages: false,
                 };
+
                 Ok(chat)
             }
             Err(_) => Err(anyhow!("Couldn't read chat file from path")),
         }
     }
 
-    pub fn save(&self) {
+    pub async fn save(&self) {
+        let path = self.chats_dir.join(self.file_name());
         let data = ChatData {
             id: self.id,
             associated_bot: self.associated_bot.clone(),
@@ -132,14 +136,25 @@ impl Chat {
             // Legacy field, it can be removed in the future.
             last_used_file_id: None,
         };
-        let json = serde_json::to_string(&data).unwrap();
-        let path = self.chats_dir.join(self.file_name());
-        write_to_file(path, &json).unwrap();
+
+        filesystem::global()
+            .queue_write_json(path, &data)
+            .await
+            .unwrap();
     }
 
-    pub fn remove_saved_file(&self) {
+    pub fn save_and_forget(&self) {
+        let self_clone = self.clone();
+        spawn(async move {
+            self_clone.save().await;
+        });
+    }
+
+    pub fn remove_saved_file_and_forget(&self) {
         let path = self.chats_dir.join(self.file_name());
-        remove_file(path).unwrap();
+        spawn(async move {
+            filesystem::global().remove(&path).await.unwrap();
+        });
     }
 
     fn file_name(&self) -> String {

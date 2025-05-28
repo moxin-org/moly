@@ -159,7 +159,7 @@ impl WidgetMatchEvent for ChatView {
 
                         if let Some(chat) = store.chats.get_chat_by_id(chat_id) {
                             chat.borrow_mut().associated_bot = Some(bot.id.clone());
-                            chat.borrow().save();
+                            chat.borrow().save_and_forget();
                         }
                         // self.focus_on_prompt_input_pending = true;
                     }
@@ -190,7 +190,7 @@ impl WidgetMatchEvent for ChatView {
                                     new_message.is_writing = false;
                                     store_chat.messages.push(new_message);
                                     store_chat.update_title_based_on_first_message();
-                                    store_chat.save();
+                                    store_chat.save_and_forget();
                                 }
                             });
                         }
@@ -222,13 +222,13 @@ impl WidgetMatchEvent for ChatView {
                                         new_message.is_writing = false;
                                         store_chat.messages.push(new_message);
                                     }
-                                
+
                                     // Keep track of whether the message was updated while the chat view was inactive
                                     if !me.focused {
                                         me.message_updated_while_inactive = true;
                                     }
 
-                                    store_chat.save();
+                                    store_chat.save_and_forget();
                                 }
                             });
                         }
@@ -246,7 +246,7 @@ impl WidgetMatchEvent for ChatView {
                                 if let Some(store_chat) = chat_to_update {
                                     let mut store_chat = store_chat.borrow_mut();
                                     store_chat.messages = messages;
-                                    store_chat.save();
+                                    store_chat.save_and_forget();
                                 }
                             });
                         }
