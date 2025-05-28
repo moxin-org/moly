@@ -4,6 +4,9 @@ use super::super::adapter::Adapter;
 use anyhow::Result;
 use futures::StreamExt;
 
+/// An [Adapter] for `FileSystem` built on top of OPFS for web environments.
+// Note: This uses the `web_fs` crate, which has a similar API to `async_fs`,
+// used by the native adapter.
 #[derive(Default)]
 pub struct WebAdapter;
 

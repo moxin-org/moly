@@ -28,6 +28,9 @@ fn validate_and_resolve(path: &Path) -> PathBuf {
     }
 }
 
+/// An [Adapter] for `FileSystem` that interacts with a traditional native filesystem.
+// Note: This uses `async_fs` so its implementation is easy to port to web since
+// the `web_fs` crate has a similar API.
 #[derive(Default)]
 pub struct NativeAdapter;
 
