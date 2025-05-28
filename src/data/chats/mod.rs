@@ -7,7 +7,6 @@ use moly_protocol::data::*;
 use std::collections::HashMap;
 use std::{cell::RefCell, path::PathBuf};
 
-use crate::app::app_runner;
 use crate::shared::utils::filesystem;
 
 use super::moly_client::MolyClient;
