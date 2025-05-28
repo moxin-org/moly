@@ -33,11 +33,7 @@ impl Preferences {
         let preferences_path = preferences_path();
         let fs = filesystem::global();
         match fs.read_json::<Preferences>(&preferences_path).await {
-            Ok(preferences) => {
-                println!("Loaded preferences from file: {:?}", preferences_path);
-                println!("Preferences: {:?}", preferences);
-                preferences
-            }
+            Ok(preferences) => preferences,
             Err(e) => {
                 eprintln!("Failed to read preferences file: {:?}", e);
                 Preferences::default()

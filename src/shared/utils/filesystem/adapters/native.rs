@@ -34,7 +34,6 @@ pub struct NativeAdapter;
 impl Adapter for NativeAdapter {
     async fn read(&mut self, path: &Path) -> Result<Vec<u8>> {
         let path = validate_and_resolve(path);
-        println!("Reading from path: {}", path.display());
         let content = async_fs::read(path).await?;
         Ok(content)
     }

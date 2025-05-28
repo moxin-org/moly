@@ -259,14 +259,6 @@ impl Widget for ProviderView {
         let store = scope.data.get_mut::<Store>().unwrap();
         let models = store.chats.get_provider_models(&self.provider.url);
 
-        // Catch up with the latest provider status in the store
-        dbg!(&store.chats.providers);
-        dbg!(&self.provider.url);
-
-        if self.provider.url.is_empty() {
-            return DrawStep::done();
-        }
-
         self.provider = store
             .chats
             .providers
