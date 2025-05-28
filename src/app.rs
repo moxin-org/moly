@@ -205,7 +205,7 @@ impl AppMain for App {
             // Prevent rendering the ui before the store is initialized.
             self.ui.view(id!(body)).set_visible(cx, false);
             register_capture_manager();
-            Store::load();
+            Store::load_into_app();
         }
 
         let Some(store) = self.store.as_mut() else {

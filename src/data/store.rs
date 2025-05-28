@@ -77,7 +77,7 @@ pub struct Store {
 }
 
 impl Store {
-    pub fn load() {
+    pub fn load_into_app() {
         spawn(async move {
             let preferences = Preferences::load().await;
 
