@@ -1,4 +1,3 @@
-mod db;
 pub mod filesystem;
 
 use anyhow::Result;

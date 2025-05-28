@@ -2,7 +2,6 @@ pub mod capture;
 pub mod chats;
 pub mod deep_inquire_client;
 pub mod downloads;
-mod filesystem;
 pub mod moly_client;
 pub mod openai_client;
 pub mod preferences;
