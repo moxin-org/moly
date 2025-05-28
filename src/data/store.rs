@@ -107,8 +107,8 @@ impl Store {
 
             app_runner().defer(move |app, cx, _| {
                 app.store = Some(store);
-                std::mem::swap(&mut app.ui, &mut app.unloaded_ui);
-                app.ui.redraw(cx);
+                app.ui.view(id!(body)).set_visible(cx, true);
+                cx.redraw_all(); // app.ui.redraw(cx) doesn't work as expected on web.
             });
         })
     }
