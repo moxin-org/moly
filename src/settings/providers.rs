@@ -200,7 +200,7 @@ live_design! {
     }
 }
 
-#[derive(Widget, Live)]
+#[derive(Widget, Live, LiveHook)]
 struct Providers {
     #[deref]
     view: View,
@@ -209,22 +209,29 @@ struct Providers {
     provider_icons: Vec<LiveDependency>,
     #[rust]
     selected_provider: Option<String>,
-}
 
-impl LiveHook for Providers {
-    fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
-        self.selected_provider = Some(default_provider_url.clone());
-        cx.action(ConnectionSettingsAction::ProviderSelected(
-            default_provider_url,
-        ));
-    }
+    #[rust]
+    initialized: bool,
 }
 
 impl Widget for Providers {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
+
+        // `after_new_from_doc` will run although the whole app is set to invisible
+        // so the event will not be received.
+        //
+        // I think this demostrates that `after_new_from_doc != initialize`.
+        if !self.initialized {
+            self.initialized = true;
+
+            let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
+            self.selected_provider = Some(default_provider_url.clone());
+            cx.action(ConnectionSettingsAction::ProviderSelected(
+                default_provider_url,
+            ));
+        }
 
         let store = scope.data.get_mut::<Store>().unwrap();
         if store.provider_icons.is_empty() {
