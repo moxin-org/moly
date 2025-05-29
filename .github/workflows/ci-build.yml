@@ -96,3 +96,24 @@ jobs:
       - name: Build before-packaging-command
         run: |
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
+
+  build_web:
+    name: Web (WebAssembly)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust: [1.81]
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Build
+        run: |
+          cargo build --target wasm32-unknown-unknown
