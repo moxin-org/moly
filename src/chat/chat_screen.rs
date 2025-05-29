@@ -5,6 +5,9 @@ use moly_kit::protocol::Picture;
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
+use super::chat_view::ChatViewRef;
+use super::model_selector::ModelSelectorWidgetRefExt;
+use crate::app::NavigationAction;
 use crate::chat::chat_view::ChatViewWidgetRefExt;
 use crate::data::capture::CaptureAction;
 use crate::data::chats::chat::Chat as ChatData;
@@ -12,9 +15,7 @@ use crate::data::chats::chat::ChatID;
 use crate::data::providers::ProviderType;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
-
-use super::chat_view::ChatViewRef;
-use super::model_selector::ModelSelectorWidgetRefExt;
+use crate::shared::modal::ModalWidgetExt;
 
 live_design! {
     use link::theme::*;
@@ -24,30 +25,105 @@ live_design! {
     use crate::shared::styles::*;
     use crate::chat::chat_history::ChatHistory;
     use crate::chat::chat_view::ChatView;
+    use crate::shared::modal::*;
     use moly_kit::widgets::chat::Chat;
 
+    ICON_MENU = dep("crate://self/resources/images/hamburger_menu_icon.png")
+
     ChatsDeck = {{ChatsDeck}} {
-        width: Fill,
-        height: Fill,
-        spacing: 10,
+        width: Fill, height: Fill
+        padding: {top: 38, bottom: 10, right: 28, left: 28},
+        spacing: 10
         flow: Right
 
         chat_view_template: <ChatView> {}
     }
 
-    pub ChatScreen = {{ChatScreen}} {
-        width: Fill,
-        height: Fill,
-        spacing: 10,
+    ChatScreenMobile = {{ChatScreenMobile}} {
+        width: Fill, height: Fill
+        flow: Overlay
 
-        <View> {
-            width: Fit,
-            height: Fill,
-
-            chat_history = <ChatHistory> {}
+        menu_toggle = <View> {
+            margin: {top: 10, left: 15}
+            width: Fit, height: Fit
+            cursor: Hand
+            <IconSet> {
+                text: "" // FontAwesome f0c9
+                draw_text: {
+                    color: #x0
+                    text_style: { font_size: 18.0 }
+                }
+            }
         }
 
-        chats_deck = <ChatsDeck> {}
+        <CachedWidget> {
+            chats_deck = <ChatsDeck> {
+                margin: {top: 55}
+                padding: 0
+            }
+        }
+
+        chat_history_modal = <Modal> {
+            align: {x: 0.0, y: 0.0}
+            bg_view: {
+                width: Fill, height: Fill
+                visible: true
+            }
+            content: {
+                width: Fit, height: Fill
+
+                <View> {
+                    show_bg: true
+                    draw_bg: {
+                        color: (MAIN_BG_COLOR)
+                    }
+                    width: Fit, height: Fill
+                    flow: Down
+                    spacing: 10
+
+                    chat_history = <ChatHistory> {}
+                    <View> {
+                        width: Fill, height: Fit
+
+                        <View> { width: Fill, height: 1}
+                        settings_button = <View> {
+                            width: Fit, height: Fit
+                            padding: {right: 12, bottom: 5}
+                            cursor: Hand
+                            <IconSet> {
+                                text: "" // FontAwesome 141
+                                draw_text: {
+                                    color: #x0
+                                    text_style: { font_size: 18.0 }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub ChatScreen = {{ChatScreen}} {
+        width: Fill, height: Fill
+        spacing: 10
+
+        adaptive_view = <AdaptiveView> {
+            Mobile = {
+                <ChatScreenMobile> {}
+            }
+
+            Desktop = {
+                <View> {
+                    width: Fit, height: Fill
+                    chat_history = <ChatHistory> {}
+                }
+
+                <CachedWidget> {
+                    chats_deck = <ChatsDeck> {}
+                }
+            }
+        }
 
         // TODO: Add chat params back in, only when the model is a local model (MolyServer)
         // currenlty MolyKit does not support chat params
@@ -61,7 +137,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook, Widget)]
+#[derive(Live, LiveHook,Widget)]
 pub struct ChatScreen {
     #[deref]
     view: View,
@@ -412,6 +488,35 @@ impl ChatsDeckRef {
     pub fn sync_bot_contexts(&mut self, scope: &mut Scope) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.sync_bot_contexts(scope);
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ChatScreenMobile {
+    #[deref]
+    view: View,
+}
+
+impl Widget for ChatScreenMobile {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        self.widget_match_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl WidgetMatchEvent for ChatScreenMobile {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        if let Some(_evt) = self.view(id!(menu_toggle)).finger_down(actions) {
+            self.modal(id!(chat_history_modal)).open(cx);
+        }
+
+        if let Some(_evt) = self.view(id!(settings_button)).finger_down(actions) {
+            cx.action(NavigationAction::NavigateToProviders);
         }
     }
 }

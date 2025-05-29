@@ -92,10 +92,9 @@ live_design! {
     }
 
     pub ChatView = {{ChatView}} {
-        width: Fill, height: Fill,
-        align: {x: 0.5},
-        padding: {top: 38, bottom: 10, right: 28, left: 28},
-        flow: Down,
+        width: Fill, height: Fill
+        align: {x: 0.5}
+        flow: Down
         spacing: 20
 
         model_selector = <ModelSelector> {}

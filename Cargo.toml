@@ -25,7 +25,7 @@ description = "Desktop app for downloading and chatting with AI LLMs"
 [dependencies]
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 moly-kit = { path = "./moly-kit", features = ["full"] }
-makepad-widgets = { git = "https://github.com/joulei/makepad", branch = "moly-release-0.2.0" }
+makepad-widgets = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
 unicode-segmentation = "1.10.1"
 anyhow = "1.0"
 serde_json = "1.0"
@@ -33,7 +33,7 @@ serde = { version = "1.0.197", features = ["derive"] }
 chrono = "0.4"
 url = "2.5.4"
 futures = "0.3.31"
-reqwest = { version = "0.12.12", features = ["json", "stream"] }
+reqwest = { version = "0.12.12", features = ["json", "stream", "rustls-tls"], default-features = false }
 robius-open = "0.1.1"
 
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }

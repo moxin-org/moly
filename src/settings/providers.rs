@@ -225,12 +225,14 @@ impl Widget for Providers {
         // I think this demostrates that `after_new_from_doc != initialize`.
         if !self.initialized {
             self.initialized = true;
+            if cx.display_context.is_desktop() || !cx.display_context.is_screen_size_known() {
+                let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
+                self.selected_provider = Some(default_provider_url.clone());
 
-            let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
-            self.selected_provider = Some(default_provider_url.clone());
-            cx.action(ConnectionSettingsAction::ProviderSelected(
-                default_provider_url,
-            ));
+                cx.action(ConnectionSettingsAction::ProviderSelected(
+                    default_provider_url,
+                ));
+            }
         }
 
         let store = scope.data.get_mut::<Store>().unwrap();
