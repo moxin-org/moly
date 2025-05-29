@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        rust: [1.81]
+        rust: [1.85]
 
     steps:
       - name: Checkout sources
@@ -55,7 +55,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-14, macos-13]
-        rust: [1.81]
+        rust: [1.85]
 
     steps:
       - name: Checkout sources
@@ -79,7 +79,7 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        rust: [1.81]
+        rust: [1.85]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -103,7 +103,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        rust: [1.81]
+        rust: [1.85]
 
     steps:
       - name: Checkout sources
