@@ -8,7 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
+pub use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream};
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, Debug)]

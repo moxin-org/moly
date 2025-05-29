@@ -1,7 +1,7 @@
 use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::capture::register_capture_manager;
-use crate::data::downloads::download::DownloadFileAction;
 use crate::data::downloads::DownloadPendingNotification;
+use crate::data::downloads::download::DownloadFileAction;
 use crate::data::moly_client::MolyClientAction;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;

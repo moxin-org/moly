@@ -177,7 +177,6 @@ impl EntityButton {
         let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
         let server_url = self.label(id!(server_url.label));
 
-
         let bot = store.chats.get_bot_or_placeholder(&bot_id);
 
         let name = bot.human_readable_name();
@@ -188,7 +187,8 @@ impl EntityButton {
             avatar.set_bot(bot);
             description_label.set_text(cx, &bot.description);
 
-            let formatted_server_url = bot.provider_url
+            let formatted_server_url = bot
+                .provider_url
                 .strip_prefix("https://")
                 .or_else(|| bot.provider_url.strip_prefix("http://"))
                 .unwrap_or(&bot.provider_url);

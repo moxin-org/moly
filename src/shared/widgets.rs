@@ -4,7 +4,7 @@ live_design! {
     use link::theme::*;
     use link::shaders::*;
     use link::widgets::*;
-    
+
     use crate::shared::styles::*;
 
     pub VerticalFiller = <View> {
@@ -60,9 +60,9 @@ live_design! {
     pub SIDEBAR_FONT_COLOR_HOVER = (MAIN_BG_COLOR)
     pub SIDEBAR_FONT_COLOR_SELECTED = (MAIN_BG_COLOR)
 
-    pub SIDEBAR_BG_COLOR_SELECTED = #344054    
+    pub SIDEBAR_BG_COLOR_SELECTED = #344054
     pub SIDEBAR_BG_COLOR_HOVER = #677483
-    
+
     pub SidebarMenuButton = <RadioButton> {
         width: 70,
         height: Fit,

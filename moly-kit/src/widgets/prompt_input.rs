@@ -169,19 +169,25 @@ impl Widget for PromptInput {
 
         match self.interactivity {
             Interactivity::Enabled => {
-                button.apply_over(cx, live! {
-                    draw_bg: {
-                        enabled: 1.0
-                    }
-                });
+                button.apply_over(
+                    cx,
+                    live! {
+                        draw_bg: {
+                            enabled: 1.0
+                        }
+                    },
+                );
                 button.set_enabled(cx, true);
             }
             Interactivity::Disabled => {
-                button.apply_over(cx, live! {
-                    draw_bg: {
-                        enabled: 0.0
-                    }
-                });
+                button.apply_over(
+                    cx,
+                    live! {
+                        draw_bg: {
+                            enabled: 0.0
+                        }
+                    },
+                );
                 button.set_enabled(cx, false);
             }
         }
@@ -198,7 +204,8 @@ impl PromptInput {
     pub fn submitted(&self, actions: &Actions) -> bool {
         let submit = self.button(id!(submit));
         let input = self.text_input_ref();
-        (submit.clicked(actions) || input.returned(actions).is_some()) && self.interactivity == Interactivity::Enabled
+        (submit.clicked(actions) || input.returned(actions).is_some())
+            && self.interactivity == Interactivity::Enabled
     }
 
     /// Shorthand to check if [Self::task] is set to [Task::Send].

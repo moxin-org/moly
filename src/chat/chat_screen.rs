@@ -137,7 +137,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook,Widget)]
+#[derive(Live, LiveHook, Widget)]
 pub struct ChatScreen {
     #[deref]
     view: View,

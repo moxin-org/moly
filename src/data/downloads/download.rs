@@ -44,7 +44,7 @@ impl Download {
     }
 
     pub fn start(&mut self, moly_client: MolyClient) {
-        use futures::{channel::mpsc::unbounded, StreamExt};
+        use futures::{StreamExt, channel::mpsc::unbounded};
 
         let (tx, mut rx) = unbounded();
         let file_id = self.file.id.clone();

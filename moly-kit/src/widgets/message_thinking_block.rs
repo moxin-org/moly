@@ -14,7 +14,7 @@ live_design! {
     BALL_MAX_SIZE = 20.0
     BALL_MIN_SIZE = 10.0
     BALL_SPACING = 0.0
-    
+
     LoadingBall = <CircleView> {
         width: (BALL_MAX_SIZE)
         height: (BALL_MAX_SIZE)
@@ -22,7 +22,7 @@ live_design! {
         padding: 0.0
         draw_bg: {
             border_radius: (BALL_MAX_SIZE / 2.0)
-        }    
+        }
     }
 
     PulsingBalls = <View> {
@@ -33,7 +33,7 @@ live_design! {
         flow: Right
         padding: 0
         margin: 0
-        
+
         ball1 = <LoadingBall> {
             margin: 0.0
             padding: 0.0
@@ -41,7 +41,7 @@ live_design! {
                 color: #E55E50
             }
         }
-        
+
         ball2 = <LoadingBall> {
             margin: 0.0
             padding: 0.0
@@ -99,7 +99,7 @@ live_design! {
         flow: Down,
         show_bg: true,
         padding: {top: 5, bottom: 5, left: 5, right: 5}
-        
+
         inner = <RoundedShadowView> {
             width: 200, height: Fit,
             flow: Down
@@ -168,7 +168,7 @@ pub struct MessageThinkingBlock {
 
     #[rust]
     should_animate: bool,
-    
+
     #[rust]
     current_animated_ball: usize,
 }
@@ -190,7 +190,8 @@ impl Widget for MessageThinkingBlock {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         if let Some(content) = &self.thinking_content {
             // Use message_markdown widget to render the thinking text
-            self.markdown(id!(thinking_text)).set_text(cx, &content.text);
+            self.markdown(id!(thinking_text))
+                .set_text(cx, &content.text);
             self.view.draw_walk(cx, scope, walk)
         } else {
             DrawStep::done()
@@ -210,7 +211,7 @@ impl MessageThinkingBlock {
     pub fn update_animation(&mut self, cx: &mut Cx) {
         // Alternate between animating the first and second ball
         self.current_animated_ball = (self.current_animated_ball + 1) % 2;
-        
+
         match self.current_animated_ball {
             0 => {
                 self.animator_play(cx, id!(ball1.run));
@@ -222,7 +223,7 @@ impl MessageThinkingBlock {
             }
             _ => unreachable!(),
         }
-        
+
         // Schedule the next animation step
         self.timer = cx.start_timeout(ANIMATION_SPEED_RUST);
     }
@@ -233,7 +234,10 @@ impl MessageThinkingBlock {
         let mut should_stop_animation = false;
         if let Some(reasoning) = &self.thinking_content {
             if reasoning.time_taken_seconds.is_some() {
-                let title = format!("Thought for {:0.2} seconds", reasoning.time_taken_seconds.unwrap());
+                let title = format!(
+                    "Thought for {:0.2} seconds",
+                    reasoning.time_taken_seconds.unwrap()
+                );
                 self.view(id!(thinking_title)).set_text(cx, &title);
                 should_stop_animation = true;
             }
@@ -245,8 +249,8 @@ impl MessageThinkingBlock {
                 self.view(id!(balls)).set_visible(cx, true);
                 self.update_animation(cx);
             }
-        } 
-        
+        }
+
         if should_stop_animation || !is_writing {
             self.should_animate = false;
             self.view(id!(balls)).set_visible(cx, false);
@@ -268,10 +272,10 @@ impl MessageThinkingBlock {
             );
             // Expand the inner view to fit the content
             self.view(id!(inner)).apply_over(
-                cx, 
+                cx,
                 live! {
                     width: Fill
-                }
+                },
             );
             // Set a different color to the title background
             self.view(id!(collapse)).apply_over(
@@ -280,7 +284,7 @@ impl MessageThinkingBlock {
                     draw_bg: {
                         color: #f0f0f0
                     }
-                }
+                },
             );
         } else {
             // Collapse the content
@@ -295,7 +299,7 @@ impl MessageThinkingBlock {
                 cx,
                 live! {
                     width: 200
-                }
+                },
             );
             // Set the title background color back to the default
             self.view(id!(collapse)).apply_over(
@@ -304,7 +308,7 @@ impl MessageThinkingBlock {
                     draw_bg: {
                         color: #f7f7f7
                     }
-                }
+                },
             );
             self.should_animate = false;
         }

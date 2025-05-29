@@ -1,4 +1,4 @@
-use moly_kit::{utils::asynchronous::spawn, BotId};
+use moly_kit::{BotId, utils::asynchronous::spawn};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 

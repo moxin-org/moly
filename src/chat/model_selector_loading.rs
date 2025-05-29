@@ -1,5 +1,5 @@
+use crate::data::store::{ProviderSyncing, ProviderSyncingStatus, Store};
 use makepad_widgets::*;
-use crate::data::store::{ProviderSyncingStatus, ProviderSyncing, Store};
 
 live_design! {
     use link::theme::*;
@@ -71,7 +71,7 @@ live_design! {
 
         <View> {
             width: Fill,
-            height: Fill,            
+            height: Fill,
         }
 
         progress_container = <ProgressBarContainer> {}
@@ -104,16 +104,16 @@ pub struct ModelSelectorLoading {
 
     #[rust]
     timer: Timer,
-    
+
     #[rust]
     progress: f64,
-    
+
     #[rust]
     was_syncing: bool,
-    
+
     #[rust]
     last_syncing_progress: f64,
-    
+
     #[rust]
     hide_timer: Timer,
 }
@@ -123,11 +123,11 @@ impl Widget for ModelSelectorLoading {
         if self.timer.is_event(event).is_some() {
             self.update_animation(cx);
         }
-        
+
         if self.hide_timer.is_event(event).is_some() {
             self.hide_progress_components(cx);
         }
-        
+
         if self.animator_handle_event(cx, event).must_redraw() {
             self.redraw(cx);
         }
@@ -148,7 +148,7 @@ impl Widget for ModelSelectorLoading {
                 self.complete_progress_bar(cx);
             }
         }
-        
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
@@ -156,7 +156,7 @@ impl Widget for ModelSelectorLoading {
 impl ModelSelectorLoading {
     pub fn update_animation(&mut self, cx: &mut Cx) {
         self.visible = true;
-        
+
         if self.animator_in_state(cx, id!(line.restart)) {
             self.animator_play(cx, id!(line.run));
         } else {
@@ -164,29 +164,29 @@ impl ModelSelectorLoading {
         }
         self.timer = cx.start_timeout(1.5);
     }
-    
+
     fn update_progress_bar(&mut self, cx: &mut Cx, syncing: &ProviderSyncing) {
         let progress_percentage = if syncing.total > 0 {
             syncing.current as f64 / syncing.total as f64
         } else {
             0.0
         };
-        
+
         // Update our stored progress values
         self.progress = progress_percentage;
         self.last_syncing_progress = progress_percentage;
-        
+
         // Calculate the width - 5.0 is the multiplier (500px / 100%)
         let progress_bar_width = progress_percentage * 5.0 * 100.0;
-        
+
         self.view(id!(progress_container.progress_bar)).apply_over(
             cx,
             live! {
                 width: (progress_bar_width)
-            }
+            },
         );
     }
-    
+
     fn complete_progress_bar(&mut self, cx: &mut Cx) {
         // Always animate to full width before disappearing
         // Set width to full 500px to ensure it completes
@@ -194,30 +194,33 @@ impl ModelSelectorLoading {
             cx,
             live! {
                 width: 500.0
-            }
+            },
         );
-        
+
         // Set a timer to hide the progress bar components after a short delay
         self.hide_timer = cx.start_timeout(0.3);
     }
-    
+
     fn hide_progress_components(&mut self, cx: &mut Cx) {
-        self.view(id!(progress_container.background)).set_visible(cx, false);
-        
+        self.view(id!(progress_container.background))
+            .set_visible(cx, false);
+
         self.view(id!(progress_container.progress_bar)).apply_over(
             cx,
             live! {
                 visible: false,
                 width: 0.0
-            }
+            },
         );
-        
+
         self.redraw(cx);
     }
 
     fn show_progress_components(&mut self, cx: &mut Cx) {
-        self.view(id!(progress_container.background)).set_visible(cx, true);
-        self.view(id!(progress_container.progress_bar)).set_visible(cx, true);
+        self.view(id!(progress_container.background))
+            .set_visible(cx, true);
+        self.view(id!(progress_container.progress_bar))
+            .set_visible(cx, true);
     }
 }
 

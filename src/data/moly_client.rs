@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use makepad_widgets::*;
 use moly_protocol::{
     data::{DownloadedFile, File, FileID, Model, PendingDownload},
@@ -201,7 +201,7 @@ impl MolyClient {
             Result<FileDownloadResponse, anyhow::Error>,
         >,
     ) {
-        use futures::{stream::TryStreamExt, SinkExt};
+        use futures::{SinkExt, stream::TryStreamExt};
 
         let mut url =
             Url::parse(&format!("{}/downloads", self.address())).expect("Invalid Moly server URL");

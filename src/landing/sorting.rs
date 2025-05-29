@@ -170,7 +170,7 @@ impl WidgetMatchEvent for Sorting {
                 3 => SortCriteria::LeastLikes,
                 4_usize.. => panic!(),
             };
-            
+
             cx.action(StoreAction::Sort(criteria));
         }
     }
@@ -199,6 +199,8 @@ impl SortingRef {
             SortCriteria::MostLikes => 2,
             SortCriteria::LeastLikes => 3,
         };
-        inner.drop_down(id!(options)).set_selected_item(cx, criteria_id);
+        inner
+            .drop_down(id!(options))
+            .set_selected_item(cx, criteria_id);
     }
 }

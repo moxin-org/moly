@@ -85,7 +85,8 @@ impl WidgetNode for ModelFilesList {
     }
 
     fn uid_to_widget(&self, ui: WidgetUid) -> WidgetRef {
-        self.items.values()
+        self.items
+            .values()
             .map(|item| item.uid_to_widget(ui))
             .find(|x| !x.is_empty())
             .unwrap_or(WidgetRef::empty())

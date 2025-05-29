@@ -1,6 +1,6 @@
 use crate::shared::utils::filesystem;
-use anyhow::{anyhow, Result};
-use moly_kit::{utils::asynchronous::spawn, BotId, Message};
+use anyhow::{Result, anyhow};
+use moly_kit::{BotId, Message, utils::asynchronous::spawn};
 use moly_protocol::data::FileID;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

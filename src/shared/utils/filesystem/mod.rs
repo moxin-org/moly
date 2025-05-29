@@ -2,13 +2,13 @@ mod adapter;
 mod adapters;
 
 use adapter::Adapter;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use futures::{
-    channel::{mpsc, oneshot},
     SinkExt, StreamExt,
+    channel::{mpsc, oneshot},
 };
 use moly_kit::utils::asynchronous::spawn;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},

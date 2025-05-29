@@ -12,8 +12,8 @@ use crate::shared::utils::filesystem;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{
-    create_client_for_provider, Provider, ProviderBot, ProviderClient, ProviderConnectionStatus,
-    ProviderFetchModelsResult, ProviderType,
+    Provider, ProviderBot, ProviderClient, ProviderConnectionStatus, ProviderFetchModelsResult,
+    ProviderType, create_client_for_provider,
 };
 use super::store::{ProviderSyncing, ProviderSyncingStatus};
 
