@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use objc2::rc::Retained;
-use objc2::{define_class, msg_send, AllocAnyThread, ClassType, DefinedClass, MainThreadMarker};
+use objc2::{AllocAnyThread, ClassType, DefinedClass, MainThreadMarker, define_class, msg_send};
 use objc2_app_kit::{NSApplication, NSPasteboard, NSPasteboardTypeString};
 use objc2_foundation::{NSObject, NSObjectProtocol, NSString};
 

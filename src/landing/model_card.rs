@@ -361,7 +361,8 @@ impl Widget for ModelCard {
             .set_text(cx, &format!("{}", like_count));
 
         let size = &model.size;
-        self.label(id!(model_size_tag.attr_value)).set_text(cx, size);
+        self.label(id!(model_size_tag.attr_value))
+            .set_text(cx, size);
 
         let requires = &model.requires;
         self.label(id!(model_requires_tag.attr_value))
@@ -382,7 +383,8 @@ impl Widget for ModelCard {
         } else {
             summary.to_string()
         };
-        self.label(id!(model_summary)).set_text(cx, &trimmed_summary);
+        self.label(id!(model_summary))
+            .set_text(cx, &trimmed_summary);
 
         let author_name = &model.author.name;
         let author_url = &model.author.url;
@@ -449,7 +451,8 @@ impl Widget for ModelCardViewAllModal {
         self.label(id!(view_all_model_name)).set_text(cx, name);
 
         let summary = &model.summary;
-        self.label(id!(view_all_model_summary)).set_text(cx, summary);
+        self.label(id!(view_all_model_summary))
+            .set_text(cx, summary);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
@@ -458,7 +461,6 @@ impl Widget for ModelCardViewAllModal {
 
 impl WidgetMatchEvent for ModelCardViewAllModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(ModelCardViewAllModalAction::CloseButtonClicked);
         }

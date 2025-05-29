@@ -1,6 +1,6 @@
 use log::error;
 use makepad_widgets::Cx;
-use moly_kit::{utils::asynchronous::spawn, BotId};
+use moly_kit::{BotId, utils::asynchronous::spawn};
 use serde::Deserialize;
 
 use super::providers::*;

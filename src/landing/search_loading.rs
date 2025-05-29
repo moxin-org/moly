@@ -21,7 +21,7 @@ live_design! {
                 let gradient_ratio = self.pos.y;
                 return mix(top_color, bottom_color, gradient_ratio);
             }
-        }    
+        }
     }
 
     pub SearchLoading = {{SearchLoading}} {
@@ -139,7 +139,6 @@ impl SearchLoading {
             1 => {
                 self.animator_play(cx, id!(circle1.start));
                 self.animator_play(cx, id!(circle2.run));
-            
             }
             2 => {
                 self.animator_play(cx, id!(circle2.start));

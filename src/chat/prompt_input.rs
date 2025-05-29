@@ -2,10 +2,7 @@ use makepad_widgets::*;
 use moly_kit::BotId;
 
 use crate::{
-    data::{
-        capture::CaptureAction, providers::ProviderBot,
-        store::Store,
-    },
+    data::{capture::CaptureAction, providers::ProviderBot, store::Store},
     shared::actions::ChatAction,
 };
 
@@ -255,8 +252,11 @@ impl WidgetMatchEvent for PromptInput {
 
             // Group non-agent models by provider URL
             let mut models_by_provider: HashMap<String, Vec<&ProviderBot>> = HashMap::new();
-            
-            for model in non_agent_models.iter().filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t))) {
+
+            for model in non_agent_models
+                .iter()
+                .filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t)))
+            {
                 models_by_provider
                     .entry(model.provider_url.clone())
                     .or_default()
@@ -270,7 +270,9 @@ impl WidgetMatchEvent for PromptInput {
                 }
 
                 // Get provider name from the providers map
-                let provider_name = store.chats.providers
+                let provider_name = store
+                    .chats
+                    .providers
                     .get(&provider_url)
                     .map(|p| p.name.clone())
                     .unwrap_or_else(|| "Unknown Provider".to_string());
@@ -289,7 +291,7 @@ impl WidgetMatchEvent for PromptInput {
                     prompt.add_item(option);
                 }
             }
-            
+
             // Add agents
             for (idx, agent) in agents
                 .iter()
@@ -326,7 +328,12 @@ impl WidgetMatchEvent for PromptInput {
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
                 let mut entity_button = option.entity_button(id!(button));
-                let bot_id = store.chats.available_bots.iter().find(|(_, m)| m.name == file.id).map(|(id, _)| id);
+                let bot_id = store
+                    .chats
+                    .available_bots
+                    .iter()
+                    .find(|(_, m)| m.name == file.id)
+                    .map(|(id, _)| id);
                 if let Some(bot_id) = bot_id {
                     entity_button.set_bot_id(cx, &bot_id);
                     entity_button.set_description_visible(cx, true);
@@ -394,7 +401,7 @@ impl LiveHook for PromptInput {
         let prompt = self.command_text_input(id!(prompt));
         prompt.apply_over(cx, live! { trigger: "@" });
         prompt.text_input_ref().apply_over(
-        cx,
+            cx,
             live! {
                 empty_text: "Start typing or tag @model or @agent"
             },

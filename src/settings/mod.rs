@@ -1,9 +1,9 @@
-pub mod providers_screen;
-pub mod moly_server_screen;
-pub mod delete_server_modal;
 pub mod add_provider_modal;
+pub mod delete_server_modal;
+pub mod moly_server_screen;
 pub mod provider_view;
 pub mod providers;
+pub mod providers_screen;
 use makepad_widgets::Cx;
 
 pub fn live_design(cx: &mut Cx) {

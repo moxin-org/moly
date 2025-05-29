@@ -1,4 +1,4 @@
-use futures::{stream::AbortHandle, StreamExt};
+use futures::{StreamExt, stream::AbortHandle};
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 use utils::asynchronous::spawn;

@@ -1,7 +1,7 @@
 use makepad_widgets::{Cx, LiveId, LivePtr, WidgetRef};
 
 use crate::protocol::*;
-pub use crate::utils::asynchronous::{moly_future, moly_stream, MolyFuture, MolyStream};
+pub use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},

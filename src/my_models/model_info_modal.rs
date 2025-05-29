@@ -206,7 +206,8 @@ impl Widget for ModelInfoModal {
             .expect("Could not serialize model data into json");
         let metadata = format!("<pre>{}</pre>", self.stringified_model_data);
 
-        self.html(id!(wrapper.body.metadata)).set_text(cx, &metadata);
+        self.html(id!(wrapper.body.metadata))
+            .set_text(cx, &metadata);
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
@@ -215,7 +216,6 @@ impl Widget for ModelInfoModal {
 
 impl WidgetMatchEvent for ModelInfoModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-
         if self.button(id!(close_button)).clicked(actions) {
             cx.action(ModelInfoModalAction::ModalDismissed);
         }

@@ -223,7 +223,7 @@ pub struct DownloadNotificationPopup {
     #[rust]
     filename: String,
     #[rust]
-    count: usize
+    count: usize,
 }
 
 impl Widget for DownloadNotificationPopup {
@@ -301,7 +301,8 @@ impl DownloadNotificationPopup {
         self.label(id!(title))
             .set_text(cx, "Errors while downloading models");
 
-        self.label(id!(summary)).set_text(cx,
+        self.label(id!(summary)).set_text(
+            cx,
             &(format!(
                 "{} encountered some errors when downloading.",
                 &self.filename
@@ -310,7 +311,6 @@ impl DownloadNotificationPopup {
     }
 
     pub fn show_retry_content(&mut self, cx: &mut Cx) {
-
         let content = self.label(id!(summary));
         self.view(id!(success_icon)).set_visible(cx, false);
         self.view(id!(failure_icon)).set_visible(cx, true);
@@ -318,22 +318,21 @@ impl DownloadNotificationPopup {
         self.view(id!(success_actions)).set_visible(cx, false);
         self.view(id!(failure_actions)).set_visible(cx, false);
 
-        self.label(id!(title))
-            .set_text(cx, "Retry");
+        self.label(id!(title)).set_text(cx, "Retry");
 
         match self.count {
             0 => {
                 content.set_text(cx, "Download interrupted. Will resume in 15 seconds.");
                 self.count += 1;
-            },
+            }
             1 => {
                 content.set_text(cx, "Download interrupted. Will resume in 30 seconds.");
                 self.count += 1;
-            },
+            }
             2 => {
                 content.set_text(cx, "Download interrupted. Will resume in 60 seconds.");
                 self.count += 1;
-            },
+            }
             _ => {
                 self.count = 0;
             }

@@ -62,7 +62,7 @@
 //! 2. the wasi-nn plugin `libwasmedgePluginWasiNN.dylib`,
 //!    which is located in `$HOME/.wasmedge/plugin/libwasmedgePluginWasiNN.dylib`.
 //!
-//! On Windows and Linux, the concepts are the same, but the file names and 
+//! On Windows and Linux, the concepts are the same, but the file names and
 //! directory layout of WasmEdge differ from macOS.
 //!
 
@@ -78,56 +78,67 @@ pub const MOLY_APP_BINARY: &str = "_moly_app";
 
 /// The name of the wasmedge root directory.
 const WASMEDGE_ROOT_DIR_NAME: &str = {
-    #[cfg(any(target_os = "linux", target_os = "macos"))] {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
         ".wasmedge"
     }
-    #[cfg(windows)] {
+    #[cfg(windows)]
+    {
         "WasmEdge-0.14.1-Windows"
     }
 };
 
 /// The subdirectory within the WasmEdge root directory where the main dylib is located.
 const DYLIB_DIR_NAME: &str = {
-    #[cfg(any(target_os = "linux", target_os = "macos"))] {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
         "lib"
     }
-    #[cfg(windows)] {
+    #[cfg(windows)]
+    {
         "bin"
     }
 };
 
-
 /// The subdirectory within the WasmEdge root directory where the plugin dylibs are located.
 fn plugin_dir_path_from_root() -> PathBuf {
-    #[cfg(any(target_os = "linux", target_os = "macos"))] {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
         PathBuf::from("plugin")
     }
-    #[cfg(windows)] {
+    #[cfg(windows)]
+    {
         Path::new("lib").join("wasmedge")
     }
 }
 
 /// The file name of the main WasmEdge dylib.
 const WASMEDGE_MAIN_DYLIB: &str = {
-    #[cfg(target_os = "macos")] {
+    #[cfg(target_os = "macos")]
+    {
         "libwasmedge.0.dylib"
     }
-    #[cfg(target_os = "linux")] {
+    #[cfg(target_os = "linux")]
+    {
         "libwasmedge.so.0"
     }
-    #[cfg(windows)] {
+    #[cfg(windows)]
+    {
         "wasmedge.dll"
     }
 };
 /// The file name of the Wasi-NN plugin dylib.
 const WASMEDGE_WASI_NN_PLUGIN_DYLIB: &str = {
-    #[cfg(target_os = "macos")] {
+    #[cfg(target_os = "macos")]
+    {
         "libwasmedgePluginWasiNN.dylib"
     }
-    #[cfg(target_os = "linux")] {
+    #[cfg(target_os = "linux")]
+    {
         "libwasmedgePluginWasiNN.so"
     }
-    #[cfg(windows)] {
+    #[cfg(windows)]
+    {
         "wasmedgePluginWasiNN.dll"
     }
 };
@@ -144,7 +155,6 @@ const ENV_LD_LIBRARY_PATH: &str = "DYLD_LIBRARY_PATH";
 const ENV_LD_LIBRARY_PATH: &str = "LD_LIBRARY_PATH";
 #[cfg(target_os = "macos")]
 const ENV_DYLD_FALLBACK_LIBRARY_PATH: &str = "DYLD_FALLBACK_LIBRARY_PATH";
-
 
 /// Returns the URL of the WASI-NN plugin that should be downloaded, and its inner directory name.
 ///
@@ -182,7 +192,9 @@ fn wasmedge_wasi_nn_plugin_url() -> (&'static str, &'static str) {
 
 /// An extension trait for checking if a path exists.
 pub trait PathExt {
-    fn path_if_exists(self) -> Option<Self> where Self: Sized;
+    fn path_if_exists(self) -> Option<Self>
+    where
+        Self: Sized;
 }
 impl<P: AsRef<Path>> PathExt for P {
     fn path_if_exists(self) -> Option<P> {
@@ -195,7 +207,6 @@ impl<P: AsRef<Path>> PathExt for P {
         }
     }
 }
-
 
 #[cfg(feature = "macos_bundle")]
 fn main() -> std::io::Result<()> {
@@ -212,7 +223,8 @@ fn main() -> std::io::Result<()> {
     // within the app bundle, which is the subdirectory that contains the actual moly executables.
     std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, "../Frameworks");
 
-    println!("Running within a macOS app bundle.
+    println!(
+        "Running within a macOS app bundle.
         {ENV_WASMEDGE_PLUGIN_PATH}: {:?}",
         std::env::var(ENV_WASMEDGE_PLUGIN_PATH).ok()
     );
@@ -221,13 +233,11 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-
 #[cfg(not(feature = "macos_bundle"))]
 fn main() -> std::io::Result<()> {
-
     assert_cpu_features();
 
-    let (wasmedge_root_dir_in_use, main_dylib_path, wasi_nn_plugin_path) = 
+    let (wasmedge_root_dir_in_use, main_dylib_path, wasi_nn_plugin_path) =
         // First, try to find the wasmedge installation directory in the app data dir.
         existing_wasmedge_default_dir()
         // If we have a wasmedge installation directory, try to find the dylibs within it.
@@ -241,7 +251,8 @@ fn main() -> std::io::Result<()> {
         )
         .expect("failed to find or install wasmedge dylibs");
 
-    println!("Found required wasmedge files:
+    println!(
+        "Found required wasmedge files:
         wasmedge root dir: {}
         wasmedge dylib:    {}
         wasi_nn plugin:    {}",
@@ -273,11 +284,24 @@ fn main() -> std::io::Result<()> {
         println!("Finished installing WasmEdge and WASI-nn plugin.\n");
     }
     if install {
-        println!("To build and run Moly, set these environment variables (see the Moly README for more):");
-        println!("    1. {}: \"{}\"", ENV_WASMEDGE_DIR, wasmedge_root_dir_in_use.display());
-        println!("    2. {}: \"{}\"", ENV_WASMEDGE_PLUGIN_PATH, wasi_nn_plugin_path.parent().unwrap().display());
+        println!(
+            "To build and run Moly, set these environment variables (see the Moly README for more):"
+        );
+        println!(
+            "    1. {}: \"{}\"",
+            ENV_WASMEDGE_DIR,
+            wasmedge_root_dir_in_use.display()
+        );
+        println!(
+            "    2. {}: \"{}\"",
+            ENV_WASMEDGE_PLUGIN_PATH,
+            wasi_nn_plugin_path.parent().unwrap().display()
+        );
         #[cfg(target_os = "windows")]
-        println!("    3. Prepend this to $PATH: \"{}\"", main_dylib_path.parent().unwrap().display());
+        println!(
+            "    3. Prepend this to $PATH: \"{}\"",
+            main_dylib_path.parent().unwrap().display()
+        );
         return Ok(());
     }
 
@@ -287,10 +311,7 @@ fn main() -> std::io::Result<()> {
         let mut cargo_cmd = Command::new("cargo");
         cargo_cmd.args(cargo_args);
         println!("Running command: {cargo_cmd:?}");
-        let success = cargo_cmd
-            .spawn()?
-            .wait()?
-            .success();
+        let success = cargo_cmd.spawn()?.wait()?.success();
         if success {
             Ok(())
         } else {
@@ -301,12 +322,10 @@ fn main() -> std::io::Result<()> {
     }
 }
 
-
 /// Returns the path to the default wasmedge installation directory, if it exists.
 fn existing_wasmedge_default_dir() -> Option<PathBuf> {
     wasmedge_default_dir_path()?.path_if_exists()
 }
-
 
 pub const APP_QUALIFIER: &str = "com";
 pub const APP_ORGANIZATION: &str = "moxin-org";
@@ -321,29 +340,35 @@ fn wasmedge_default_dir_path() -> Option<PathBuf> {
         .map(|dirs| dirs.data_dir().join(WASMEDGE_ROOT_DIR_NAME))
 }
 
-
 /// Looks for the wasmedge dylib and wasi_nn plugin dylib in the given `wasmedge_root_dir`.
 ///
 /// The `wasmedge_root_dir` should be the root directory of the wasmedge installation;
 /// see the crate-level documentation for more information about the expected layout.
-/// 
+///
 /// If all items were found in their expected locations, this returns a tuple of:
 /// 1. the wasmedge root directory path (the given `wasmedge_root_dir` parameter),
 /// 2. the main wasmedge dylib path,
 /// 3. the wasi_nn plugin dylib path.
-fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(PathBuf, PathBuf, PathBuf)> {
-    let main_dylib_path = wasmedge_root_dir.as_ref()
+fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(
+    wasmedge_root_dir: P,
+) -> Option<(PathBuf, PathBuf, PathBuf)> {
+    let main_dylib_path = wasmedge_root_dir
+        .as_ref()
         .join(DYLIB_DIR_NAME)
         .join(WASMEDGE_MAIN_DYLIB)
         .path_if_exists()?;
-    let wasi_nn_plugin_path = wasmedge_root_dir.as_ref()
+    let wasi_nn_plugin_path = wasmedge_root_dir
+        .as_ref()
         .join(plugin_dir_path_from_root())
         .join(WASMEDGE_WASI_NN_PLUGIN_DYLIB)
         .path_if_exists()?;
 
-    Some((wasmedge_root_dir.as_ref().into(), main_dylib_path, wasi_nn_plugin_path))
+    Some((
+        wasmedge_root_dir.as_ref().into(),
+        main_dylib_path,
+        wasi_nn_plugin_path,
+    ))
 }
-
 
 /// Installs wasmedge by downloading and running the wasmedge `install_v2.sh` script.
 ///
@@ -356,7 +381,10 @@ fn find_wasmedge_dylibs_in_dir<P: AsRef<Path>>(wasmedge_root_dir: P) -> Option<(
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io::Error> {
     use std::process::Stdio;
-    println!("Downloading WasmEdge 0.14.1 from GitHub; installing to {}", install_path.as_ref().display());
+    println!(
+        "Downloading WasmEdge 0.14.1 from GitHub; installing to {}",
+        install_path.as_ref().display()
+    );
     let temp_dir = std::env::temp_dir();
     let curl_script_cmd = Command::new("curl")
         .stdout(Stdio::piped())
@@ -368,7 +396,11 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 
     let mut bash_cmd = Command::new("bash");
     bash_cmd
-        .stdin(Stdio::from(curl_script_cmd.stdout.expect("failed to pipe curl stdout into bash stdin")))
+        .stdin(Stdio::from(
+            curl_script_cmd
+                .stdout
+                .expect("failed to pipe curl stdout into bash stdin"),
+        ))
         .arg("-s")
         .arg("--")
         .arg("--version=0.14.1")
@@ -383,8 +415,12 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
     // so we force it here based on our own detected version of CUDA.
     // See: <https://github.com/moxin-org/moly/issues/225>
     match cuda {
-        Some(CudaVersion::V12) => { bash_cmd.arg("-c").arg("12"); }
-        Some(CudaVersion::V11) => { bash_cmd.arg("-c").arg("11"); }
+        Some(CudaVersion::V12) => {
+            bash_cmd.arg("-c").arg("12");
+        }
+        Some(CudaVersion::V11) => {
+            bash_cmd.arg("-c").arg("11");
+        }
         None => {
             // If the current machine doesn't have CUDA and the CPU doesn't support AVX512,
             // tell the install script to select the no-AVX WASI-nn plugin version.
@@ -395,26 +431,30 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
         }
     };
 
-    let output = bash_cmd
-        .spawn()?
-        .wait_with_output()?;
+    let output = bash_cmd.spawn()?.wait_with_output()?;
     if !output.status.success() {
-        eprintln!("Failed to install wasmedge: {}
+        eprintln!(
+            "Failed to install wasmedge: {}
             ------------------------- stderr: -------------------------
             {:?}",
             output.status,
             String::from_utf8_lossy(&output.stderr),
         );
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "The wasmedge install_v2.sh script failed."));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "The wasmedge install_v2.sh script failed.",
+        ));
     }
 
-    println!("Successfully installed wasmedge to: {}", install_path.as_ref().display());
+    println!(
+        "Successfully installed wasmedge to: {}",
+        install_path.as_ref().display()
+    );
 
     set_env_vars(&install_path);
 
     Ok(install_path.as_ref().to_path_buf())
-} 
-
+}
 
 /// Installs WasmEdge by calling out to PowerShell to run the Windows installation steps
 /// provided in the main Moly README.
@@ -423,10 +463,14 @@ fn install_wasmedge<P: AsRef<Path>>(install_path: P) -> Result<PathBuf, std::io:
 #[cfg(windows)]
 fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std::io::Error> {
     let install_path = install_path_ref.as_ref();
-    println!("Downloading WasmEdge 0.14.1 from GitHub; installing to {}", install_path.display());
+    println!(
+        "Downloading WasmEdge 0.14.1 from GitHub; installing to {}",
+        install_path.display()
+    );
 
     // Currently we hardcode the URL for the v0.14.1 release of WasmEdge for windows.
-    const WASMEDGE_0_14_0_WINDOWS_URL: &'static str = "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-0.14.1-windows.zip";
+    const WASMEDGE_0_14_0_WINDOWS_URL: &'static str =
+        "https://github.com/WasmEdge/WasmEdge/releases/download/0.14.1/WasmEdge-0.14.1-windows.zip";
     let (wasi_nn_plugin_url, wasi_nn_dir_name) = wasmedge_wasi_nn_plugin_url();
     println!(" --> Using WASI-NN plugin at: {wasi_nn_plugin_url}");
 
@@ -454,29 +498,49 @@ fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std:
     {
         Ok(output) => {
             if output.success() {
-                println!("Successfully installed wasmedge to: {}", install_path.display());
+                println!(
+                    "Successfully installed wasmedge to: {}",
+                    install_path.display()
+                );
                 Ok(install_path.to_path_buf())
             } else {
-                eprintln!("------------- Powershell stdout --------------\n{}", output.stdout().unwrap_or_default());
+                eprintln!(
+                    "------------- Powershell stdout --------------\n{}",
+                    output.stdout().unwrap_or_default()
+                );
                 eprintln!("----------------------------------------------\n");
-                eprintln!("------------- Powershell stderr --------------\n{}", output.stderr().unwrap_or_default());
+                eprintln!(
+                    "------------- Powershell stderr --------------\n{}",
+                    output.stderr().unwrap_or_default()
+                );
                 eprintln!("----------------------------------------------\n");
-                Err(std::io::Error::new(std::io::ErrorKind::Other, "The WasmEdge install PowerShell script failed."))
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "The WasmEdge install PowerShell script failed.",
+                ))
             }
         }
         Err(err) => {
             eprintln!("Failed to install wasmedge: {:?}", err);
             if let powershell_script::PsError::Powershell(output) = err {
-                eprintln!("------------- Powershell stdout --------------\n{}", output.stdout().unwrap_or_default());
+                eprintln!(
+                    "------------- Powershell stdout --------------\n{}",
+                    output.stdout().unwrap_or_default()
+                );
                 eprintln!("----------------------------------------------\n");
-                eprintln!("------------- Powershell stderr --------------\n{}", output.stderr().unwrap_or_default());
+                eprintln!(
+                    "------------- Powershell stderr --------------\n{}",
+                    output.stderr().unwrap_or_default()
+                );
                 eprintln!("----------------------------------------------\n");
             }
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "The WasmEdge install PowerShell script failed."))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "The WasmEdge install PowerShell script failed.",
+            ))
         }
     }
 }
-
 
 /// Sets the environment variables required for WasmEdge and its plugins to be found.
 fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
@@ -484,22 +548,27 @@ fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
     std::env::set_var(ENV_WASMEDGE_DIR, wasmedge_root_dir);
     prepend_env_var(ENV_PATH, wasmedge_root_dir.join("bin"));
 
-    #[cfg(target_os = "windows")] {
+    #[cfg(target_os = "windows")]
+    {
         std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, wasmedge_root_dir);
     }
 
-    #[cfg(any(target_os = "linux", target_os = "macos"))] {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
         prepend_env_var(ENV_C_INCLUDE_PATH, wasmedge_root_dir.join("include"));
         prepend_env_var(ENV_CPLUS_INCLUDE_PATH, wasmedge_root_dir.join("include"));
         prepend_env_var(ENV_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
         prepend_env_var(ENV_LD_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
     }
 
-    #[cfg(target_os = "macos")] {
-        prepend_env_var(ENV_DYLD_FALLBACK_LIBRARY_PATH, wasmedge_root_dir.join("lib"));
+    #[cfg(target_os = "macos")]
+    {
+        prepend_env_var(
+            ENV_DYLD_FALLBACK_LIBRARY_PATH,
+            wasmedge_root_dir.join("lib"),
+        );
     }
 }
-
 
 /// Prepends the given `prefix` to the environment variable with the given `key`.
 ///
@@ -515,7 +584,6 @@ fn prepend_env_var(env_key: impl AsRef<OsStr>, prefix: impl AsRef<OsStr>) {
     }
 }
 
-
 /// Versions of CUDA that WasmEdge supports.
 #[derive(Debug)]
 enum CudaVersion {
@@ -530,26 +598,24 @@ enum CudaVersion {
 /// This function first runs `nvcc --version` on both Linux and Windows,
 /// and if that fails, it will try `/usr/local/cuda/bin/nvcc --version` on Linux only.
 fn get_cuda_version() -> Option<CudaVersion> {
-    #[cfg(target_os = "macos")] {
+    #[cfg(target_os = "macos")]
+    {
         None
     }
 
-    #[cfg(not(target_os = "macos"))] {
-        let mut output = Command::new("nvcc")
-            .arg("--version")
-            .output();
+    #[cfg(not(target_os = "macos"))]
+    {
+        let mut output = Command::new("nvcc").arg("--version").output();
 
-        #[cfg(target_os = "linux")] {
-            output = output.or_else(|_|
+        #[cfg(target_os = "linux")]
+        {
+            output = output.or_else(|_| {
                 Command::new("/usr/local/cuda/bin/nvcc")
                     .arg("--version")
                     .output()
-            );
-            output = output.or_else(|_|
-                Command::new("/opt/cuda/bin/nvcc")
-                    .arg("--version")
-                    .output()
-            );
+            });
+            output =
+                output.or_else(|_| Command::new("/opt/cuda/bin/nvcc").arg("--version").output());
         }
 
         let output = output.ok()?;
@@ -564,45 +630,47 @@ fn get_cuda_version() -> Option<CudaVersion> {
     }
 }
 
-
 /// Runs the `_moly_app` binary, which must be located in the same directory as this moly-runner binary.
 fn run_moly() -> std::io::Result<()> {
     let current_exe = std::env::current_exe()?;
     let current_exe_dir = current_exe.parent().unwrap();
     let args = std::env::args().collect::<Vec<_>>();
 
-    println!("Running the main Moly binary:
+    println!(
+        "Running the main Moly binary:
         working directory: {}
         args: {:?}",
         current_exe_dir.display(),
         args,
     );
 
-
     let main_moly_binary_path = current_exe_dir.join(MOLY_APP_BINARY);
     let _output = Command::new(&main_moly_binary_path)
         .current_dir(current_exe_dir)
         .args(args.into_iter().skip(1)) // skip the first arg (the binary name)
         .spawn()
-        .inspect_err(|e| if e.kind() == std::io::ErrorKind::NotFound {
-            eprintln!("\nError: couldn't find the main Moly binary at {}\n\
+        .inspect_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                eprintln!(
+                    "\nError: couldn't find the main Moly binary at {}\n\
                 \t--> Have you compiled the main Moly app yet?\n\
                 \t--> If not, run `cargo build [--release]` first.\n",
-                main_moly_binary_path.display(),
-            );
+                    main_moly_binary_path.display(),
+                );
+            }
         })?
         .wait_with_output()?;
 
     Ok(())
 }
 
-
 /// Checks that the current CPU supports AVX512, or either SSE4.2 or SSE4a,
 /// at least one of which is required by the current builds of WasmEdge 0.14.1 on Windows.
 ///
 /// This only checks x86_64 platforms, and does nothing on other platforms.
 fn assert_cpu_features() {
-    #[cfg(target_arch = "x86_64")] {
+    #[cfg(target_arch = "x86_64")]
+    {
         // AVX-512 support is preferred, and it alone is sufficient.
         if is_x86_feature_detected!("avx512f") {
             return;
@@ -618,7 +686,10 @@ fn assert_cpu_features() {
         // we could check for the minimum required SIMD support here (e.g., SSE2).
 
         eprintln!("Feature aes: {}", is_x86_feature_detected!("aes"));
-        eprintln!("Feature pclmulqdq: {}", is_x86_feature_detected!("pclmulqdq"));
+        eprintln!(
+            "Feature pclmulqdq: {}",
+            is_x86_feature_detected!("pclmulqdq")
+        );
         eprintln!("Feature rdrand: {}", is_x86_feature_detected!("rdrand"));
         eprintln!("Feature rdseed: {}", is_x86_feature_detected!("rdseed"));
         eprintln!("Feature tsc: {}", is_x86_feature_detected!("tsc"));
@@ -640,17 +711,44 @@ fn assert_cpu_features() {
         eprintln!("Feature avx512bw: {}", is_x86_feature_detected!("avx512bw"));
         eprintln!("Feature avx512dq: {}", is_x86_feature_detected!("avx512dq"));
         eprintln!("Feature avx512vl: {}", is_x86_feature_detected!("avx512vl"));
-        eprintln!("Feature avx512ifma: {}", is_x86_feature_detected!("avx512ifma"));
-        eprintln!("Feature avx512vbmi: {}", is_x86_feature_detected!("avx512vbmi"));
-        eprintln!("Feature avx512vpopcntdq: {}", is_x86_feature_detected!("avx512vpopcntdq"));
-        eprintln!("Feature avx512vbmi2: {}", is_x86_feature_detected!("avx512vbmi2"));
+        eprintln!(
+            "Feature avx512ifma: {}",
+            is_x86_feature_detected!("avx512ifma")
+        );
+        eprintln!(
+            "Feature avx512vbmi: {}",
+            is_x86_feature_detected!("avx512vbmi")
+        );
+        eprintln!(
+            "Feature avx512vpopcntdq: {}",
+            is_x86_feature_detected!("avx512vpopcntdq")
+        );
+        eprintln!(
+            "Feature avx512vbmi2: {}",
+            is_x86_feature_detected!("avx512vbmi2")
+        );
         eprintln!("Feature gfni: {}", is_x86_feature_detected!("gfni"));
         eprintln!("Feature vaes: {}", is_x86_feature_detected!("vaes"));
-        eprintln!("Feature vpclmulqdq: {}", is_x86_feature_detected!("vpclmulqdq"));
-        eprintln!("Feature avx512vnni: {}", is_x86_feature_detected!("avx512vnni"));
-        eprintln!("Feature avx512bitalg: {}", is_x86_feature_detected!("avx512bitalg"));
-        eprintln!("Feature avx512bf16: {}", is_x86_feature_detected!("avx512bf16"));
-        eprintln!("Feature avx512vp2intersect: {}", is_x86_feature_detected!("avx512vp2intersect"));
+        eprintln!(
+            "Feature vpclmulqdq: {}",
+            is_x86_feature_detected!("vpclmulqdq")
+        );
+        eprintln!(
+            "Feature avx512vnni: {}",
+            is_x86_feature_detected!("avx512vnni")
+        );
+        eprintln!(
+            "Feature avx512bitalg: {}",
+            is_x86_feature_detected!("avx512bitalg")
+        );
+        eprintln!(
+            "Feature avx512bf16: {}",
+            is_x86_feature_detected!("avx512bf16")
+        );
+        eprintln!(
+            "Feature avx512vp2intersect: {}",
+            is_x86_feature_detected!("avx512vp2intersect")
+        );
         // eprintln!("Feature avx512fp16: {}", is_x86_feature_detected!("avx512fp16"));
         eprintln!("Feature f16c: {}", is_x86_feature_detected!("f16c"));
         eprintln!("Feature fma: {}", is_x86_feature_detected!("fma"));
@@ -665,15 +763,19 @@ fn assert_cpu_features() {
         eprintln!("Feature xsaveopt: {}", is_x86_feature_detected!("xsaveopt"));
         eprintln!("Feature xsaves: {}", is_x86_feature_detected!("xsaves"));
         eprintln!("Feature xsavec: {}", is_x86_feature_detected!("xsavec"));
-        eprintln!("Feature cmpxchg16b: {}", is_x86_feature_detected!("cmpxchg16b"));
+        eprintln!(
+            "Feature cmpxchg16b: {}",
+            is_x86_feature_detected!("cmpxchg16b")
+        );
         eprintln!("Feature adx: {}", is_x86_feature_detected!("adx"));
         eprintln!("Feature rtm: {}", is_x86_feature_detected!("rtm"));
         eprintln!("Feature movbe: {}", is_x86_feature_detected!("movbe"));
         eprintln!("Feature ermsb: {}", is_x86_feature_detected!("ermsb"));
 
-        #[cfg(windows)] {
+        #[cfg(windows)]
+        {
             use windows_sys::Win32::UI::WindowsAndMessaging::{
-                MessageBoxW, MB_ICONERROR, MB_SETFOREGROUND, MB_TOPMOST,
+                MB_ICONERROR, MB_SETFOREGROUND, MB_TOPMOST, MessageBoxW,
             };
             // SAFE: just displaying an Error dialog box; the program will be terminated regardless.
             unsafe {
@@ -683,12 +785,15 @@ fn assert_cpu_features() {
                         "Moly requires the CPU to support either AVX512, SSE4.2, or SSE4a,\
                         but the current CPU does not support any of those SIMD versions.\n\n\
                         The list of supported CPU features has been logged to the console.\
-                    "),
+                    "
+                    ),
                     windows_sys::w!("Error: Unsupported CPU!"),
                     MB_SETFOREGROUND | MB_TOPMOST | MB_ICONERROR,
                 );
             }
         }
-        panic!("\nError: this CPU does not support AVX512, SSE4.2, or SSE4a, one of which is required by Moly.\n")
+        panic!(
+            "\nError: this CPU does not support AVX512, SSE4.2, or SSE4a, one of which is required by Moly.\n"
+        )
     }
 }

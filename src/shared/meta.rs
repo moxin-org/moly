@@ -9,7 +9,7 @@ live_design! {
     use link::theme::*;
     use link::shaders::*;
     use link::widgets::*;
-    
+
     Meta = {{Meta}} { width: 0, height: 0 }
 }
 

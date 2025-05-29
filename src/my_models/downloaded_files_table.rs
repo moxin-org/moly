@@ -52,10 +52,10 @@ live_design! {
         width: Fill,
         height: Fill,
         align: {x: 0.5, y: 0.5}
-        // TODO: This causes the invisible space taken by the PortalList to be visible, 
+        // TODO: This causes the invisible space taken by the PortalList to be visible,
         // perhaps we can make PortalList height: Fit
         show_bg: true
-        draw_bg: { 
+        draw_bg: {
             color: (MAIN_BG_COLOR)
             border_radius: 5
             uniform shadow_color: #0001

@@ -218,7 +218,7 @@ live_design! {
                 substages = <SubStages> {}
             }
         }
-        
+
         animator: {
             streaming = {
                 default: off,
@@ -384,13 +384,13 @@ impl Stages {
                     thinking_stage.set_stage(cx, &stage);
                     // Thinking streams if content stage doesn't exist yet
                     thinking_stage.set_streaming_state(cx, !has_content_stage);
-                },
+                }
                 StageType::Content => {
                     let mut content_stage = self.stage_view(id!(content_stage));
                     content_stage.set_stage(cx, &stage);
                     // Content streams if completion stage doesn't exist yet
                     content_stage.set_streaming_state(cx, !has_completion_stage);
-                },
+                }
                 _ => {}
             }
         }
@@ -443,23 +443,24 @@ impl Widget for StageView {
                     self.animator_play(cx, id!(streaming.move_down));
                 } else if self.animator_in_state(cx, id!(streaming.move_down)) {
                     self.animator_play(cx, id!(streaming.move_left));
-                } else { // Assumes it's in move_left or just started
+                } else {
+                    // Assumes it's in move_left or just started
                     self.animator_play(cx, id!(streaming.move_up));
                 }
                 // Restart the timer for the next step
                 self.timer = cx.start_timeout(0.4); // Match state duration
             } else {
-                 // If streaming stopped while timer was pending, ensure animation is off
-                 self.animator_cut(cx, id!(streaming.off));
-                 if !self.timer.is_empty() {
-                     cx.stop_timer(self.timer);
-                     self.timer = Timer::empty(); // Clear timer
-                 }
+                // If streaming stopped while timer was pending, ensure animation is off
+                self.animator_cut(cx, id!(streaming.off));
+                if !self.timer.is_empty() {
+                    cx.stop_timer(self.timer);
+                    self.timer = Timer::empty(); // Clear timer
+                }
             }
         }
 
         if self.animator_handle_event(cx, event).must_redraw() {
-             self.redraw(cx);
+            self.redraw(cx);
         }
 
         self.view.handle_event(cx, event, scope);
@@ -483,8 +484,10 @@ impl Widget for StageView {
             );
         }
 
-        self.view(id!(expanded_stage_content)).set_visible(cx, self.is_active);
-        self.view(id!(stage_content_preview)).set_visible(cx, !self.is_active);
+        self.view(id!(expanded_stage_content))
+            .set_visible(cx, self.is_active);
+        self.view(id!(stage_content_preview))
+            .set_visible(cx, !self.is_active);
 
         self.view.draw_walk(cx, scope, walk)
     }
@@ -494,7 +497,7 @@ impl WidgetMatchEvent for StageView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if let Some(_fe) = self.view(id!(wrapper)).finger_down(actions) {
             self.is_active = !self.is_active;
-            
+
             cx.action(StageViewAction::StageViewClicked(self.stage_type.clone()));
             self.redraw(cx);
         }
@@ -507,12 +510,13 @@ impl StageView {
         self.stage_type = stage.stage_type.clone();
         self.visible = true;
 
-        self.sub_stages(id!(substages)).set_substages(cx, &stage.substages);
+        self.sub_stages(id!(substages))
+            .set_substages(cx, &stage.substages);
 
         if !stage.citations.is_empty() {
             self.view(id!(citations_view)).set_visible(cx, true);
             let citations = self.citation_list(id!(citations_list));
-            let mut citations = citations.borrow_mut().unwrap(); 
+            let mut citations = citations.borrow_mut().unwrap();
             citations.urls = stage.citations.iter().map(|a| a.url.clone()).collect();
         } else {
             self.view(id!(citations_view)).set_visible(cx, false);
@@ -522,7 +526,8 @@ impl StageView {
         // Roughly grab the first 10 words of the first substage text to display as a preview
         let stage_preview_text: Option<String> = stage.substages.get(0).and_then(|substage| {
             // Since we're using plain text for summary, remove common markdown characters
-            let cleaned_text = substage.text
+            let cleaned_text = substage
+                .text
                 .replace("*", "")
                 .replace("_", "")
                 .replace("#", "")
@@ -532,7 +537,7 @@ impl StageView {
                 .replace("(", "")
                 .replace(")", "")
                 .replace(">", "");
-            
+
             let words: Vec<&str> = cleaned_text.split_whitespace().collect();
             if words.len() > 10 {
                 Some(words[0..10].join(" "))
@@ -625,7 +630,9 @@ impl Widget for SubStages {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        if !self.visible { return DrawStep::done() }
+        if !self.visible {
+            return DrawStep::done();
+        }
         cx.begin_turtle(walk, self.layout);
 
         for stage_id in self.substage_ids.iter() {
@@ -641,19 +648,24 @@ impl Widget for SubStages {
 
 impl SubStages {
     pub fn update_substages(&mut self, cx: &mut Cx, substages: &[SubStage]) {
-        self.substage_ids = substages.iter().map(|substage| substage.id.clone()).collect();
+        self.substage_ids = substages
+            .iter()
+            .map(|substage| substage.id.clone())
+            .collect();
         self.visible = true;
         for substage in substages.iter() {
             // If the substage widget exists, update it
-            let substage_view = if let Some(substage_view) = self.substage_views.get_mut(&substage.id) {
-                substage_view
-            } else {
-                // Otherwise, create a new substage widget
-                let substage_view = View::new_from_ptr(cx, self.substage_template);
-                // substage_view.set_stage(cx, &substage);
-                self.substage_views.insert(substage.id.clone(), substage_view);
-                self.substage_views.get_mut(&substage.id).unwrap()
-            };
+            let substage_view =
+                if let Some(substage_view) = self.substage_views.get_mut(&substage.id) {
+                    substage_view
+                } else {
+                    // Otherwise, create a new substage widget
+                    let substage_view = View::new_from_ptr(cx, self.substage_template);
+                    // substage_view.set_stage(cx, &substage);
+                    self.substage_views
+                        .insert(substage.id.clone(), substage_view);
+                    self.substage_views.get_mut(&substage.id).unwrap()
+                };
 
             substage_view
                 .label(id!(content_heading_label))

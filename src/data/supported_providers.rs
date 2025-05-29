@@ -18,9 +18,8 @@ pub struct SupportedProvider {
 
 /// Utility to load from the JSON file
 pub fn load_supported_providers() -> Vec<SupportedProvider> {
-
     let data = include_str!("./supported_providers.json");
-    let parsed: SupportedProvidersFile = serde_json::from_str(data)
-        .expect("Failed to parse supported_providers.json");
+    let parsed: SupportedProvidersFile =
+        serde_json::from_str(data).expect("Failed to parse supported_providers.json");
     parsed.providers
 }

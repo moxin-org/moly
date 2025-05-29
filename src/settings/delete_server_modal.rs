@@ -136,7 +136,6 @@ pub enum DeleteServerModalAction {
     ServerDismissed,
 }
 
-
 #[derive(Live, LiveHook, Widget)]
 pub struct DeleteServerModal {
     #[deref]
@@ -145,7 +144,6 @@ pub struct DeleteServerModal {
     #[rust]
     server_address: String,
 }
-
 
 impl Widget for DeleteServerModal {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
@@ -166,7 +164,6 @@ impl Widget for DeleteServerModal {
 
         self.view
             .draw_walk(cx, scope, walk.with_abs_pos(DVec2 { x: 0., y: 0. }))
-
     }
 }
 

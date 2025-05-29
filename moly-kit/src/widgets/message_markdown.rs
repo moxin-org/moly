@@ -32,7 +32,7 @@ live_design! {
                 width:Fill,
                 height:Fit,
                 align:{ x: 1.0 }
-                
+
                 copy_code_button = <ButtonFlat> {
                     margin:{right: 2}
                     draw_bg: {
@@ -71,7 +71,7 @@ live_design! {
                         delimiter_highlight: #c5cee0, // Using a slightly brighter gray for highlight
                         error_decoration: #f44747,   // token.error-token
                         warning_decoration: #cd9731, // token.warn-token
-                        
+
                         unknown: #a8b5d1,          // General text color
                         branch_keyword: #d2a6ef,     // keyword.control
                         constant: #ffd9af,         // constant.numeric
