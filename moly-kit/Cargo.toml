@@ -4,7 +4,7 @@ version = "0.2.1"
 edition = "2024"
 
 [dependencies]
-reqwest = { version = "0.12.12", features = ["json", "stream"], optional = true }
+reqwest = { version = "0.12.12", features = ["json", "stream", "rustls-tls"], default-features = false, optional = true }
 scraper = { version = "0.23.1", optional = true }
 serde = { version = "1.0.217", features = ["derive", "rc"], optional = true }
 serde_json = { version = "1.0.135", optional = true }
@@ -14,8 +14,8 @@ url = "2.4.10"
 robius-open = "0.1.1"
 async-stream = "0.3.6"
 
-makepad-widgets = { git = "https://github.com/joulei/makepad", branch = "moly-release-0.2.0" }
-makepad-code-editor = { git = "https://github.com/joulei/makepad", branch = "moly-release-0.2.0" }
+makepad-widgets = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
+makepad-code-editor = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
 cfg-if = "1.0.0"
 
 log = "0.4"

@@ -44,7 +44,7 @@ live_design! {
                 }
                 text: "Provider Settings"
             }
-    
+
             <Label> {
                 draw_text:{
                     text_style: <BOLD_FONT>{font_size: 12}
@@ -54,11 +54,52 @@ live_design! {
             }
         }
 
-        <View> {
-            spacing: 10
-            padding: {top: 10}
-            providers = <Providers> {}
-            provider_view = <ProviderView> {}
+        adaptive_view =<AdaptiveView> {
+            Desktop = {
+                spacing: 10
+                padding: {top: 10}
+                providers = <Providers> {}
+                provider_view = <ProviderView> {}
+            }
+
+            Mobile = {
+                navigation = <StackNavigation> {
+                    width: Fill, height: Fill
+                    root_view = {
+                        width: Fill, height: Fill
+                        providers = <Providers> {
+                            width: Fill, height: Fill
+                        }
+                    }
+
+                    provider_navigation_view = <StackNavigationView> {
+                        width: Fill, height: Fill
+                        header = {
+                            height: 300
+                            content = {
+                                button_container = {
+                                    padding: {left: 14}
+                                }
+                                title_container = {
+                                    show_bg: true
+                                    draw_bg: { color: #x0 }
+                                    title = {
+                                        text: "Provider Settings"
+                                        draw_text: {
+                                            color: #x0
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        body = {
+                            provider_view = <ProviderView> {
+                                width: Fill, height: Fill
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -82,12 +123,25 @@ impl Widget for ProvidersScreen {
 
 impl WidgetMatchEvent for ProvidersScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+        let stack_navigation = self.stack_navigation(id!(navigation));
+        stack_navigation.handle_stack_view_actions(cx, actions);
+
         for action in actions {
             if let ConnectionSettingsAction::ProviderSelected(address) = action.cast() {
+                stack_navigation.show_stack_view_by_id(live_id!(provider_navigation_view), cx);
+
                 // fetch provider from store
-                let provider = scope.data.get_mut::<Store>().unwrap().chats.providers.get(&address);
+                let provider = scope
+                    .data
+                    .get_mut::<Store>()
+                    .unwrap()
+                    .chats
+                    .providers
+                    .get(&address);
                 if let Some(provider) = provider {
-                    self.view.provider_view(id!(provider_view)).set_provider(cx, provider);
+                    self.view
+                        .provider_view(id!(provider_view))
+                        .set_provider(cx, provider);
                 } else {
                     eprintln!("Provider not found: {}", address);
                 }

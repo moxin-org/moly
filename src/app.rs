@@ -40,6 +40,79 @@ live_design! {
     ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
 
+    ApplicationPages = <RoundedShadowView> {
+        width: Fill, height: Fill
+        margin: {top: 12, right: 12, bottom: 12}
+        padding: 3
+        flow: Overlay
+
+        show_bg: true
+        draw_bg: {
+            color: (MAIN_BG_COLOR),
+            border_radius: 4.5,
+            uniform shadow_color: #0003
+            shadow_radius: 15.0,
+            shadow_offset: vec2(0.0,-1.5)
+        }
+
+        chat_frame = <ChatScreen> {visible: true}
+        moly_server_frame = <MolyServerScreen> {visible: false}
+        providers_frame = <ProvidersScreen> {visible: false}
+    }
+
+    SidebarMenu = <RoundedView> {
+        width: 90, height: Fill,
+        flow: Down, spacing: 15.0,
+        padding: { top: 40, bottom: 20, left: 0, right: 0 },
+
+        align: {x: 0.5, y: 0.0},
+
+        show_bg: true,
+        draw_bg: {
+            color: (SIDEBAR_BG_COLOR),
+            instance border_radius: 0.0,
+        }
+
+        logo = <View> {
+            width: Fit, height: Fit
+            margin: {bottom: 5}
+            <Image> {
+                width: 50, height: 50,
+                source: (ICON_MOLYSERVER),
+            }
+        }
+
+        seprator = <View> {
+            width: Fill, height: 1.6,
+            margin: {left: 15, right: 15, bottom: 10}
+            show_bg: true
+            draw_bg: {
+                color: #dadada,
+            }
+        }
+
+        chat_tab = <SidebarMenuButton> {
+            animator: {active = {default: on}}
+            text: "Chat",
+            draw_icon: {
+                svg_file: (ICON_CHAT),
+            }
+        }
+        moly_server_tab = <SidebarMenuButton> {
+            text: "MolyServer",
+            draw_icon: {
+                svg_file: (ICON_LOCAL),
+            }
+        }
+        <HorizontalFiller> {}
+        providers_tab = <SidebarMenuButton> {
+            text: "Providers",
+            draw_icon: {
+                svg_file: (ICON_CLOUD),
+            }
+        }
+    }
+
     App = {{App}} {
         ui: <Window> {
             window: {inner_size: vec2(1440, 1024), title: "Moly"},
@@ -70,80 +143,15 @@ live_design! {
                         color: (MAIN_BG_COLOR_DARK),
                     }
 
-                    sidebar_menu = <RoundedView> {
-                        width: 90, height: Fill,
-                        flow: Down, spacing: 15.0,
-                        padding: { top: 40, bottom: 20, left: 0, right: 0 },
-
-                        align: {x: 0.5, y: 0.0},
-
-                        show_bg: true,
-                        draw_bg: {
-                            color: (SIDEBAR_BG_COLOR),
-                            instance border_radius: 0.0,
+                    root_adaptive_view = <AdaptiveView> {
+                        Mobile = {
+                            application_pages = <ApplicationPages> {}
                         }
 
-                        logo = <View> {
-                            width: Fit, height: Fit
-                            margin: {bottom: 5}
-                            <Image> {
-                                width: 50, height: 50,
-                                source: (ICON_MOLYSERVER),
-                            }
+                        Desktop = {
+                            sidebar_menu = <SidebarMenu> {}
+                            application_pages = <ApplicationPages> {}
                         }
-
-                        seprator = <View> {
-                            width: Fill, height: 1.6,
-                            margin: {left: 15, right: 15, bottom: 10}
-                            show_bg: true
-                            draw_bg: {
-                                color: #dadada,
-                            }
-                        }
-
-                        chat_tab = <SidebarMenuButton> {
-                            animator: {active = {default: on}}
-                            text: "Chat",
-                            draw_icon: {
-                                svg_file: (ICON_CHAT),
-                            }
-                        }
-                        moly_server_tab = <SidebarMenuButton> {
-                            text: "MolyServer",
-                            draw_icon: {
-                                svg_file: (ICON_LOCAL),
-                            }
-                        }
-                        <HorizontalFiller> {}
-                        providers_tab = <SidebarMenuButton> {
-                            text: "Providers",
-                            draw_icon: {
-                                svg_file: (ICON_CLOUD),
-                            }
-                        }
-                    }
-
-                    application_pages = <RoundedShadowView> {
-                        show_bg: true,
-                        draw_bg: {
-                            color: (MAIN_BG_COLOR),
-                            border_radius: 4.5,
-                            uniform shadow_color: #0003
-                            shadow_radius: 15.0,
-                            shadow_offset: vec2(0.0,-1.5)
-                        }
-
-                        margin: {top: 12, right: 12, bottom: 12}
-                        padding: 3
-
-                        flow: Overlay,
-
-                        width: Fill,
-                        height: Fill,
-
-                        chat_frame = <ChatScreen> {visible: true}
-                        moly_server_frame = <MolyServerScreen> {visible: false}
-                        providers_frame = <ProvidersScreen> {visible: false}
                     }
                 }
 
@@ -229,22 +237,27 @@ impl AppMain for App {
 
 impl MatchEvent for App {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
-        self.ui
+        let mut navigate_to_chat = false;
+        let mut navigate_to_moly_server = false;
+        let mut navigate_to_providers = false;
+
+        // TODO: Replace this with a proper navigation widget.
+        if let Some(selected_tab) = self
+            .ui
             .radio_button_set(ids!(
                 sidebar_menu.chat_tab,
                 sidebar_menu.moly_server_tab,
                 sidebar_menu.providers_tab,
             ))
-            .selected_to_visible(
-                cx,
-                &self.ui,
-                actions,
-                ids!(
-                    application_pages.chat_frame,
-                    application_pages.moly_server_frame,
-                    application_pages.providers_frame,
-                ),
-            );
+            .selected(cx, actions)
+        {
+            match selected_tab {
+                0 => navigate_to_chat = true,
+                1 => navigate_to_moly_server = true,
+                2 => navigate_to_providers = true,
+                _ => {}
+            }
+        }
 
         for action in actions.iter() {
             if let MarkdownAction::LinkNavigated(url) = action.as_widget_action().cast() {
@@ -306,11 +319,13 @@ impl MatchEvent for App {
             if let NavigationAction::NavigateToMyModels = action.cast() {
                 let my_models_radio_button = self.ui.radio_button(id!(my_models_tab));
                 my_models_radio_button.select(cx, &mut Scope::empty());
+                // navigate_to_my_models = true;
             }
 
             if let NavigationAction::NavigateToProviders = action.cast() {
                 let providers_radio_button = self.ui.radio_button(id!(providers_tab));
                 providers_radio_button.select(cx, &mut Scope::empty());
+                navigate_to_providers = true;
             }
 
             store.handle_provider_connection_action(action.cast());
@@ -332,6 +347,15 @@ impl MatchEvent for App {
             if let MolyServerPopupAction::CloseButtonClicked = action.cast() {
                 self.ui.popup_notification(id!(moly_server_popup)).close(cx);
             }
+        }
+
+        // Handle navigation after processing all actions
+        if navigate_to_providers {
+            self.navigate_to(cx, id!(application_pages.providers_frame));
+        } else if navigate_to_chat {
+            self.navigate_to(cx, id!(application_pages.chat_frame));
+        } else if navigate_to_moly_server {
+            self.navigate_to(cx, id!(application_pages.moly_server_frame));
         }
     }
 }
@@ -386,6 +410,26 @@ impl App {
                 self.download_retry_attempts = 0;
             }
         }
+    }
+
+    fn navigate_to(&mut self, cx: &mut Cx, id: &[LiveId]) {
+        let providers_id = id!(application_pages.providers_frame);
+        let chat_id = id!(application_pages.chat_frame);
+        let moly_server_id = id!(application_pages.moly_server_frame);
+
+        if id != providers_id {
+            self.ui.widget(providers_id).set_visible(cx, false);
+        }
+
+        if id != chat_id {
+            self.ui.widget(chat_id).set_visible(cx, false);
+        }
+
+        if id != moly_server_id {
+            self.ui.widget(moly_server_id).set_visible(cx, false);
+        }
+
+        self.ui.widget(id).set_visible(cx, true);
     }
 }
 

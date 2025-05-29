@@ -247,6 +247,9 @@ struct ProviderView {
 
     #[rust]
     provider: Provider,
+
+    #[rust]
+    initialized: bool,
 }
 
 impl Widget for ProviderView {
@@ -259,12 +262,14 @@ impl Widget for ProviderView {
         let store = scope.data.get_mut::<Store>().unwrap();
         let models = store.chats.get_provider_models(&self.provider.url);
 
-        self.provider = store
-            .chats
-            .providers
-            .get(&self.provider.url)
-            .unwrap()
-            .clone();
+        if !self.initialized {
+            // Catch up with the latest provider status in the store
+            if let Some(provider) = store.chats.providers.get(&self.provider.url) {
+                self.provider = provider.clone();
+                self.initialized = true;
+            }
+        }
+
         self.update_connection_status(cx);
 
         if self.provider.enabled {
