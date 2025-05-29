@@ -5,3 +5,4 @@ preferences.json
 /wasmedge
 /WasmEdge*
 .DS_Store
+ignored/
