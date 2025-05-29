@@ -16,7 +16,7 @@ use std::{
 
 /// Filesystem implementation over abstract adapters.
 ///
-/// It's abstract but async natiure allows it to be used on restrictive environments
+/// Its abstract but async nature allows it to be used on restrictive environments
 /// like the web.
 ///
 /// Writes (inside this instance) are queued and executed in order in favor of a
