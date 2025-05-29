@@ -90,7 +90,7 @@ jobs:
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
 
   build_web:
-    name: Web (WebAssembly)
+    name: Web
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
