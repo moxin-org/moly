@@ -1,7 +1,7 @@
 [package]
 name = "moly-runner"
 version = "0.2.0-rc1"
-edition = "2021"
+edition = "2024"
 description = "A companion app that runs before Moly to handle wasmedge configuration and more"
 
 [dependencies]
