@@ -54,7 +54,7 @@ cd moly-server/
 cargo run -p moly-server
 ```
 
-## Building and Running
+## Building and Running (native)
 
 1. [Install Rust](https://www.rust-lang.org/tools/install).
 
@@ -87,6 +87,30 @@ Then use `cargo` to build and run Moly:
 cd moly
 cargo run --release
 ```
+
+## Building and Running (web)
+
+1. Install [Rust](https://www.rust-lang.org/tools/install) and [cargo-makepad](https://github.com/makepad/makepad/tree/dev).
+2. Obtain the source code for this repository:
+
+```sh
+git clone https://github.com/moxin-org/moly.git
+```
+
+3. Run and serve the Moly app:
+
+```sh
+cargo makepad wasm --bindgen run -p moly --release
+```
+
+> [!NOTE]
+> If you want to deploy it, it's recommended to optimize for size building it
+> like this:
+>
+> ```sh
+> cargo makepad wasm --strip --brotli --bindgen build -p moly --profile=small
+> ```
+
 
 ### Packaging Moly for Distribution
 
