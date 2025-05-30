@@ -43,6 +43,14 @@ jobs:
         run: |
           cargo build
 
+      - name: Test Moly
+        run: |
+          cargo test --all-features
+
+      - name: Test Moly Kit
+        run: |
+          cargo test --all-features --package moly-kit
+
       - name: Build before-packaging-command
         run: |
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
@@ -71,6 +79,14 @@ jobs:
         run: |
           cargo build
 
+      - name: Test Moly
+        run: |
+          cargo test --all-features
+
+      - name: Test Moly Kit
+        run: |
+          cargo test --all-features --package moly-kit
+
       - name: Build before-packaging-command
         run: |
           cargo build --manifest-path packaging/before-packaging-command/Cargo.toml
@@ -93,6 +109,14 @@ jobs:
       - name: Build
         run: |
           cargo build
+
+      - name: Test Moly
+        run: |
+          cargo test --all-features
+
+      - name: Test Moly Kit
+        run: |
+          cargo test --all-features --package moly-kit
 
       - name: Build before-packaging-command
         run: |
@@ -117,3 +141,11 @@ jobs:
       - name: Build
         run: |
           cargo build --target wasm32-unknown-unknown
+
+      - name: Test Moly
+        run: |
+          cargo test --all-features --target wasm32-unknown-unknown
+
+      - name: Test Moly Kit
+        run: |
+          cargo test --all-features --package moly-kit --target wasm32-unknown-unknown
