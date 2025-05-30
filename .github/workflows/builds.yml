@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -35,6 +35,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
@@ -54,12 +57,15 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
@@ -74,12 +80,15 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
@@ -94,13 +103,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
           targets: wasm32-unknown-unknown
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
