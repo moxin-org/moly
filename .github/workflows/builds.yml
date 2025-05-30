@@ -26,15 +26,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -44,6 +35,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
@@ -65,19 +59,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
@@ -94,19 +82,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
@@ -123,20 +105,14 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85
           targets: wasm32-unknown-unknown
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: |
