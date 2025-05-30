@@ -1,0 +1,60 @@
+name: Tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - "main"
+      - "dev"
+    paths-ignore:
+      - "**/*.md"
+  pull_request:
+    branches:
+      - "main"
+      - "dev"
+    paths-ignore:
+      - "**/*.md"
+
+jobs:
+  moly:
+    name: Moly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85
+          components: rustfmt
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: |
+          cargo test --all-features --all-targets --verbose
+
+  moly-kit:
+    name: Moly Kit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust-stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85
+          components: rustfmt
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: |
+          cargo test --all-features --all-targets --verbose --package moly-kit
