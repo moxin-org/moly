@@ -37,7 +37,7 @@ jobs:
 
       - name: Run tests
         run: |
-          cargo test --all-features --all-targets --verbose
+          cargo test --all-features
 
   moly-kit:
     name: Moly Kit
@@ -57,4 +57,4 @@ jobs:
 
       - name: Run tests
         run: |
-          cargo test --all-features --all-targets --verbose --package moly-kit
+          cargo test --all-features --package moly-kit
