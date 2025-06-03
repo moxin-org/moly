@@ -103,7 +103,7 @@ impl fmt::Display for BotId {
     }
 }
 
-/// Standard message content format.
+/// Standard message content format. a
 #[derive(Clone, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MessageContent {
