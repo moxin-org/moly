@@ -10,8 +10,7 @@ fn main() {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-#[tokio::main]
-async fn main() {
+fn main() {
     // Initialize the logger
     env_logger::init();
 
@@ -34,5 +33,23 @@ async fn main() {
             .unwrap();
     });
 
-    moly::app::app_main()
+    tokio::runtime::Builder::new_multi_thread()
+        // We are using non-tokio specific crates for fs and time operations,
+        // but at least these needs to be enabled on native platforms using tokio
+        // as their async runtime because `reqwest` use these.
+        .enable_io()
+        .enable_time()
+        .build()
+        .expect("Failed to create Tokio runtime")
+        .block_on(async {
+            // - Makepad's own event loop will block this main tokio thread.
+            // - However, in some systems, UI apps can't run outside of the main thread,
+            //   so using `spawn_blocking` may not work as expected.
+            // - This forces us to at least use the multi-threaded runtime, requiring
+            //   `Send` to spawn futures. However using single-threaded runtime
+            //   would unify `Send` requirements across web and native.
+            // - On web, `Send` should not be required as some crates interface with
+            //   `wasm_bindgen` and `JsValue` is not `Send`.
+            moly::app::app_main();
+        })
 }

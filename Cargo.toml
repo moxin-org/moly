@@ -42,7 +42,7 @@ env_logger = "0.11"
 cfg-if = "1.0.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 directories = "5.0.1"
 async-fs = "2.1.2"
 
