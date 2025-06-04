@@ -54,7 +54,7 @@ live_design! {
             }
         }
 
-        adaptive_view =<AdaptiveView> {
+        adaptive_view = <AdaptiveView> {
             Desktop = {
                 spacing: 10
                 padding: {top: 10}
@@ -63,41 +63,8 @@ live_design! {
             }
 
             Mobile = {
-                navigation = <StackNavigation> {
+                providers = <Providers> {
                     width: Fill, height: Fill
-                    root_view = {
-                        width: Fill, height: Fill
-                        providers = <Providers> {
-                            width: Fill, height: Fill
-                        }
-                    }
-
-                    provider_navigation_view = <StackNavigationView> {
-                        width: Fill, height: Fill
-                        header = {
-                            height: 300
-                            content = {
-                                button_container = {
-                                    padding: {left: 14}
-                                }
-                                title_container = {
-                                    show_bg: true
-                                    draw_bg: { color: #x0 }
-                                    title = {
-                                        text: "Provider Settings"
-                                        draw_text: {
-                                            color: #x0
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        body = {
-                            provider_view = <ProviderView> {
-                                width: Fill, height: Fill
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -128,8 +95,6 @@ impl WidgetMatchEvent for ProvidersScreen {
 
         for action in actions {
             if let ConnectionSettingsAction::ProviderSelected(address) = action.cast() {
-                stack_navigation.show_stack_view_by_id(live_id!(provider_navigation_view), cx);
-
                 // fetch provider from store
                 let provider = scope
                     .data

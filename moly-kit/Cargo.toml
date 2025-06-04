@@ -14,8 +14,8 @@ url = "2.4.10"
 robius-open = "0.1.1"
 async-stream = "0.3.6"
 
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
-makepad-code-editor = { git = "https://github.com/makepad/makepad", branch = "dev" }
+makepad-widgets = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
+makepad-code-editor = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
 
 cfg-if = "1.0.0"
 
