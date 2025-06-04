@@ -12,12 +12,8 @@ live_design! {
 
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
-    use crate::chat::shared::ChatAgentAvatar;
     use crate::chat::chat_history_card::ChatHistoryCard;
-    use crate::chat::shared::ChatModelAvatar;
     use crate::chat::entity_button::*;
-
-    ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
 
     HeadingLabel = <Label> {
         margin: {left: 4, bottom: 4},
@@ -36,75 +32,33 @@ live_design! {
         }
     }
 
-    pub ChatHistory = {{ChatHistory}} <MolyTogglePanel> {
-        // Workaround: Instantiate a view replacing the whole `open_content` content,
-        // because `CachedView` is currently rendering up-side-down on web.
-        open_content = <View> {
-            <View> {
-                width: Fill,
-                height: Fill,
-                show_bg: true
-                draw_bg: {
-                    color: (MAIN_BG_COLOR)
-                }
+    pub ChatHistory = {{ChatHistory}} {
+        width: Fill, height: Fill
+        show_bg: true
+        draw_bg: {
+            color: (MAIN_BG_COLOR)
+        }
+        padding: { left: 10, right: 10 }
 
-                <View> {
-                    width: Fill,
-                    height: Fill,
-
-                    margin: { top: 120 }
-                    padding: { left: 10, right: 10, bottom: 20 }
-
-                    list = <PortalList> {
-                        drag_scrolling: false,
-                        AgentHeading = <HeadingLabel> { text: "AGENTS" }
-                        NoAgentsWarning = <NoAgentsWarning> {}
-                        Agent = <EntityButton> {
-                            server_url_visible: true,
-                        }
-                        ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
-                        ChatHistoryCard = <ChatHistoryCard> {
-                            cursor: Default
-                        }
-                    }
-                }
+        list = <PortalList> {
+            drag_scrolling: false,
+            AgentHeading = <HeadingLabel> { text: "AGENTS" }
+            NoAgentsWarning = <NoAgentsWarning> {}
+            Agent = <EntityButton> {
+                server_url_visible: true,
             }
-            right_border = <View> {
-                width: 1.6, height: Fill
-                margin: {top: 15, bottom: 15}
-                show_bg: true,
-                draw_bg: {
-                    color: #eaeaea
-                }
+            ChatsHeading = <HeadingLabel> { text: "CHATS", margin: {top: 10}, }
+            ChatHistoryCard = <ChatHistoryCard> {
+                cursor: Default
             }
         }
-
-        persistent_content = {
-            margin: { left: -10 },
-            default = {
-                after = {
-                    new_chat_button = <MolyButton> {
-                        width: Fit,
-                        height: Fit,
-                        icon_walk: {margin: { top: -1 }, width: 21, height: 21},
-                        draw_icon: {
-                            svg_file: (ICON_NEW_CHAT),
-                            fn get_color(self) -> vec4 {
-                                return #475467;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
     }
 }
 
 #[derive(Live, LiveHook, Widget)]
 pub struct ChatHistory {
     #[deref]
-    deref: TogglePanel,
+    deref: View,
 }
 
 impl Widget for ChatHistory {
@@ -205,11 +159,6 @@ impl WidgetMatchEvent for ChatHistory {
             if let Some(bot_id) = bot_id {
                 cx.action(ChatAction::Start(bot_id));
             }
-        }
-
-        if self.button(id!(new_chat_button)).clicked(&actions) {
-            cx.action(ChatAction::StartWithoutEntity);
-            self.redraw(cx);
         }
     }
 }
