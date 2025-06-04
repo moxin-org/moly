@@ -97,8 +97,8 @@ live_design! {
                     align: { x: 0.98, y: 0.98 }
                     <RoundedView> {
                         show_bg: true
-                        draw_bg: { 
-                            color: #x0 
+                        draw_bg: {
+                            color: #x0
                             border_radius: 5.0
                         }
                         width: Fit, height: Fit

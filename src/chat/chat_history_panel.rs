@@ -80,7 +80,7 @@ impl Widget for ChatHistoryPanel {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-       self.deref.draw_walk(cx, scope, walk)
+        self.deref.draw_walk(cx, scope, walk)
     }
 }
 
