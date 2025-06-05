@@ -1,3 +1,4 @@
+use base64::{Engine, prelude::BASE64_STANDARD};
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 
 use serde::{Deserialize, Serialize};
@@ -119,6 +120,10 @@ pub struct MessageContent {
     /// The reasoning/thinking content of this message.
     pub reasoning: Option<Reasoning>,
 
+    /// File attachments in this content.
+    #[serde(default)]
+    pub attachments: Vec<Attachment>,
+
     /// Non-standard data contained by this message.
     ///
     /// May be used by clients for tracking purposes or to represent unsupported
@@ -141,6 +146,49 @@ impl MessageContent {
     /// Checks if the content is absolutely empty (contains no data at all).
     pub fn is_empty(&self) -> bool {
         self.text.is_empty() && self.citations.is_empty() && self.data.is_none()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct Attachment {
+    pub name: String,
+    pub url: String,
+}
+
+impl Attachment {
+    pub fn new(name: String, url: String) -> Self {
+        Attachment { url, name }
+    }
+
+    pub fn new_base64_encoded(name: String, data: Vec<u8>) -> Self {
+        // Encode the data as base64 and create a data URL.
+        let base64_data = BASE64_STANDARD.encode(data);
+        let url = format!("data:application/octet-stream;base64,{}", base64_data);
+        Attachment { url, name }
+    }
+
+    pub async fn read(&self) -> std::io::Result<Vec<u8>> {
+        if let Some(data) = self.url.strip_prefix("data:") {
+            let (mime, base64_data) = data.split_once(',').ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "Malformed data URL")
+            })?;
+
+            if !mime.ends_with(";base64") {
+                unimplemented!();
+            }
+
+            let decoded = BASE64_STANDARD.decode(base64_data).map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Failed to decode base64 data",
+                )
+            })?;
+
+            Ok(decoded)
+        } else {
+            unimplemented!()
+        }
     }
 }
 

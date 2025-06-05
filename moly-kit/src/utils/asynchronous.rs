@@ -40,6 +40,18 @@ use futures::{
     stream::{Stream, StreamExt},
 };
 
+// TODO: Consider using single-threaded futures across all platforms, even in
+// Moly Kit `spawn` function to avoid separating code by `Send`.
+cfg_if::cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        pub trait PlatformSend {}
+        impl<T> PlatformSend for T {}
+    } else {
+        pub trait PlatformSend: Send {}
+        impl<T: Send> PlatformSend for T {}
+    }
+}
+
 #[cfg(feature = "async-rt")]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn spawn(fut: impl Future<Output = ()> + 'static + Send) {
@@ -97,5 +109,38 @@ impl<'a, T> Stream for MolyStream<'a, T> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.0).poll_next(cx)
+    }
+}
+
+/// Convinient extension to work with futures in MolyKit.
+pub trait MolyFutureExt<O: PlatformSend + 'static> {
+    /// Spawn this future passing the result to the callback.
+    ///
+    /// Can be aborted by the returned handle.
+    fn fire(self, cb: impl FnOnce(O) + PlatformSend + 'static) -> futures::future::AbortHandle;
+
+    /// Quickly spawn a future without worrying about its result.
+    fn fire_and_forget(self);
+}
+
+impl<F, O: PlatformSend + 'static> MolyFutureExt<O> for F
+where
+    F: Future<Output = O> + 'static + PlatformSend,
+{
+    fn fire(self, cb: impl FnOnce(O) + PlatformSend + 'static) -> futures::future::AbortHandle {
+        let (future, abort_handle) = futures::future::abortable(self);
+        spawn(async move {
+            match future.await {
+                Ok(result) => cb(result),
+                Err(_) => {
+                    // The future has been aborted.
+                }
+            }
+        });
+        abort_handle
+    }
+
+    fn fire_and_forget(self) {
+        self.fire(|_| {});
     }
 }

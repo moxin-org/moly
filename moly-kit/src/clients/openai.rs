@@ -23,6 +23,53 @@ struct Models {
     pub data: Vec<Model>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ImageUrlDetail {
+    pub url: String,
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub detail: Option<String>,
+}
+
+// Represents a single part in a multi-part content array
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum ContentPart {
+    Text { text: String },
+    ImageUrl { image_url: ImageUrlDetail },
+}
+
+// Represents the 'content' field, which can be a string or an array of ContentPart
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)] // Tells Serde to try deserializing into variants without a specific tag
+pub enum Content {
+    Text(String),
+    Parts(Vec<ContentPart>),
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Content::Text(String::new())
+    }
+}
+
+impl Content {
+    /// Returns the text content if available, otherwise an empty string.
+    pub fn text(&self) -> String {
+        match self {
+            Content::Text(text) => text.clone(),
+            Content::Parts(parts) => parts
+                .iter()
+                .filter_map(|part| match part {
+                    ContentPart::Text { text } => Some(text.clone()),
+                    _ => None,
+                })
+                .collect::<Vec<String>>()
+                .join(" "),
+        }
+    }
+}
+
 /// Message being received by the completions endpoint.
 ///
 /// Although most OpenAI-compatible APIs return a `role` field, OpenAI itself does not.
@@ -32,11 +79,11 @@ struct Models {
 ///
 /// And SiliconFlow may set `content` to a `null` value, that's why the custom deserializer
 /// is needed.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize)]
 struct IncomingMessage {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_null_default")]
-    pub content: String,
+    pub content: Content,
     /// The reasoning text, if provided.
     ///
     /// Used by agregators like OpenRouter.

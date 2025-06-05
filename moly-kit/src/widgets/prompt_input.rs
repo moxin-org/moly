@@ -1,6 +1,11 @@
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 
+use crate::{
+    Attachment,
+    utils::{asynchronous::spawn, events::EventExt},
+};
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -47,6 +52,7 @@ live_design! {
                     }
                 }
                 right = {
+                    flow: Down,
                     submit = <Button> {
                         width: 28,
                         height: 28,
@@ -82,6 +88,10 @@ live_design! {
                             height: 12
                             margin: {top: 0, left: 2},
                         }
+                    }
+                    attach = <Button> {
+                        text: "Attach",
+                        draw_text: { color: #000, color_hover: #000, color_focus: #000 }
                     }
                 }
             }
@@ -126,6 +136,9 @@ pub struct PromptInput {
     /// If this widget should be interactive or not.
     #[rust]
     pub interactivity: Interactivity,
+
+    #[rust]
+    attachments: Vec<Attachment>,
 }
 
 impl Widget for PromptInput {
@@ -139,6 +152,34 @@ impl Widget for PromptInput {
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.deref.handle_event(cx, event, scope);
+        self.ui_runner().handle(cx, event, scope, self);
+
+        if self.button(id!(attach)).clicked(event.actions()) {
+            let ui = self.ui_runner();
+            spawn(async move {
+                if let Ok(files) = crate::utils::fs::pick_files().await {
+                    // - `Cx::post_action`, `UiRunner::defer`, etc require `Send`.
+                    // - On web, the crate `rfd` returns a JS `File` handle, which is not `Send`.
+                    // - This forces as to load the attachments here, so we don't need to hold
+                    //   the handle. Even if it may not be necessary right now from a functional
+                    //   point of view.
+
+                    let mut attachments: Vec<Attachment> = Vec::with_capacity(files.len());
+                    for file in &files {
+                        match file.read().await {
+                            Ok(content) => attachments
+                                .push(Attachment::new_base64_encoded(file.file_name(), content)),
+                            Err(e) => log!("Failed to read file {}: {}", file.file_name(), e),
+                        }
+                    }
+
+                    ui.defer_with_redraw(|me, _, _| {
+                        me.attachments.extend(attachments);
+                        log!("Attachments: {:?}", me.attachments);
+                    });
+                }
+            });
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {

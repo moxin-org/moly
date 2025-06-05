@@ -22,18 +22,23 @@ cfg-if = "1.0.0"
 log = "0.4"
 env_logger = "0.11"
 chrono = "0.4.41"
+base64 = "0.22.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }
+rfd = {version = "0.15.3" , features = ["ashpd", "urlencoding", "xdg-portal", "tokio"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = { version = "0.4.50", optional = true }
+rfd = {version = "0.15.3" , features = ["urlencoding"], optional = true }
 
 [features]
-default = []
-# default = ["full"]
+# default = []
+default = ["full"]
 json = ["dep:serde", "dep:serde_json"]
 http = ["dep:reqwest", "dep:scraper"]
 async-rt = ["dep:tokio"]
 async-web = ["dep:wasm-bindgen-futures"]
-full = ["default", "json", "async-rt", "async-web", "http"]
+web-fs = ["dep:rfd", "async-web"]
+native-fs = ["dep:rfd", "async-rt"]
+full = ["default", "json", "async-rt", "async-web", "http", "web-fs", "native-fs"]
