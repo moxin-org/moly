@@ -195,11 +195,11 @@ impl WidgetMatchEvent for ChatScreenMobile {
         let stack_navigation = self.stack_navigation(id!(navigation));
         stack_navigation.handle_stack_view_actions(cx, actions);
         if let Some(_evt) = self.view(id!(menu_toggle)).finger_down(actions) {
-            stack_navigation.show_stack_view_by_id(live_id!(history_navigation_view), cx);
+            stack_navigation.push(cx, live_id!(history_navigation_view));
         }
 
         if let Some(_evt) = self.view(id!(settings_button)).finger_down(actions) {
-            stack_navigation.show_stack_view_by_id(live_id!(providers_navigation_view), cx);
+            stack_navigation.push(cx, live_id!(providers_navigation_view));
         }
     }
 }

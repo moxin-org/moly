@@ -99,19 +99,19 @@ impl WidgetMatchEvent for ChatScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.button(id!(new_chat_button)).clicked(&actions) {
             cx.action(ChatAction::StartWithoutEntity);
-            self.stack_navigation(id!(navigation)).back_to_root_view(cx);
+            self.stack_navigation(id!(navigation)).pop_to_root(cx);
             self.redraw(cx);
         }
 
         for action in actions {
             if let ChatAction::ChatSelected(_chat_id) = action.cast() {
-                self.stack_navigation(id!(navigation)).back_to_root_view(cx);
+                self.stack_navigation(id!(navigation)).pop_to_root(cx);
                 self.redraw(cx);
             }
 
             if let ConnectionSettingsAction::ProviderSelected(provider_id) = action.cast() {
                 self.stack_navigation(id!(navigation))
-                    .show_stack_view_by_id(live_id!(provider_navigation_view), cx);
+                    .push(cx, live_id!(provider_navigation_view));
 
                 let provider = scope
                     .data
