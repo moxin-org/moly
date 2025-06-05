@@ -205,6 +205,12 @@ impl Attachment {
             ))
         }
     }
+
+    pub async fn read_base64(&self) -> std::io::Result<String> {
+        use base64::Engine;
+        let content = self.read().await?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(content))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]

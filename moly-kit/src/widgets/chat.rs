@@ -211,6 +211,7 @@ impl Chat {
         if prompt.read().has_send_task() {
             let next_index = self.messages_ref().read().messages.len();
             let text = prompt.text();
+            let attachments = prompt.read().attachments().to_vec();
             let mut composition = Vec::new();
 
             if !text.is_empty() {
@@ -220,6 +221,7 @@ impl Chat {
                         from: EntityId::User,
                         content: MessageContent {
                             text,
+                            attachments,
                             ..Default::default()
                         },
                         is_writing: false,

@@ -263,6 +263,11 @@ impl PromptInput {
     pub fn set_stop(&mut self) {
         self.task = Task::Stop;
     }
+
+    /// Returns the selected attachments to send.
+    pub fn attachments(&self) -> &[Attachment] {
+        &self.attachments
+    }
 }
 
 impl PromptInputRef {

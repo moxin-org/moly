@@ -1836,6 +1836,7 @@ name = "moly-kit"
 version = "0.2.1"
 dependencies = [
  "async-stream",
+ "base64",
  "cfg-if",
  "chrono",
  "env_logger",

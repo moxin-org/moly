@@ -100,26 +100,41 @@ struct IncomingMessage {
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
 struct OutcomingMessage {
-    pub content: String,
+    pub content: Content,
     pub role: Role,
 }
 
-impl TryFrom<Message> for OutcomingMessage {
-    type Error = ();
+async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> {
+    let role = match message.from {
+        EntityId::User => Ok(Role::User),
+        EntityId::System => Ok(Role::System),
+        EntityId::Bot(_) => Ok(Role::Assistant),
+        EntityId::App => Err(()),
+    }?;
 
-    fn try_from(message: Message) -> Result<Self, Self::Error> {
-        let role = match message.from {
-            EntityId::User => Ok(Role::User),
-            EntityId::System => Ok(Role::System),
-            EntityId::Bot(_) => Ok(Role::Assistant),
-            EntityId::App => Err(()),
-        }?;
+    let content = if message.content.attachments.is_empty() {
+        Content::Text(message.content.text)
+    } else {
+        let mut parts = Vec::new();
+        for attachment in message.content.attachments {
+            let content = attachment.read_base64().await.map_err(|_| ())?;
+            parts.push(ContentPart::ImageUrl {
+                image_url: ImageUrlDetail {
+                    url: format!(
+                        "data:{};base64,{}",
+                        attachment.content_type.as_deref().unwrap_or("image/png"),
+                        content
+                    ),
+                },
+            });
+        }
+        parts.push(ContentPart::Text {
+            text: message.content.text,
+        });
+        Content::Parts(parts)
+    };
 
-        Ok(Self {
-            content: message.content.text,
-            role,
-        })
-    }
+    Ok(OutcomingMessage { content, role })
 }
 
 /// Role of a message that is part of the conversation context.
@@ -307,29 +322,41 @@ impl BotClient for OpenAIClient {
         bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
-        let inner = self.0.read().unwrap().clone();
+        let bot_id = bot_id.clone();
+        let messages = messages.to_vec();
 
+        let inner = self.0.read().unwrap().clone();
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
-        let moly_messages: Vec<OutcomingMessage> = messages
-            .iter()
-            .filter_map(|m| m.clone().try_into().ok())
-            .collect();
-
-        let request = inner
-            .client
-            .post(&url)
-            .headers(headers)
-            .json(&serde_json::json!({
-                "model": bot_id.id(),
-                "messages": moly_messages,
-                // Note: o1 only supports 1.0, it will error if other value is used.
-                // "temperature": 0.7,
-                "stream": true
-            }));
-
         let stream = stream! {
+            let mut outgoing_messages: Vec<OutcomingMessage> = Vec::with_capacity(messages.len());
+            for message in messages {
+                match to_outcoming_message(message.clone()).await {
+                    Ok(outgoing_message) => outgoing_messages.push(outgoing_message),
+                    Err(_) => {
+                        error!("Could not convert message to outgoing format: {:?}", message);
+                        yield ClientError::new(
+                            ClientErrorKind::Format,
+                            "Could not convert message to outgoing format.".into(),
+                        ).into();
+                        return;
+                    }
+                }
+            }
+
+            let request = inner
+                .client
+                .post(&url)
+                .headers(headers)
+                .json(&serde_json::json!({
+                    "model": bot_id.id(),
+                    "messages": outgoing_messages,
+                    // Note: o1 only supports 1.0, it will error if other value is used.
+                    // "temperature": 0.7,
+                    "stream": true
+                }));
+
             let response = match request.send().await {
                 Ok(response) => {
                     if response.status().is_success() {
