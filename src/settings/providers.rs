@@ -159,7 +159,7 @@ live_design! {
 
         add_provider_button = <RoundedShadowView> {
             cursor: Hand
-            margin: {left: 10, right: 10, bottom: 5, top: 10}
+            margin: {left: 10, right: 10, bottom: 0, top: 10}
             width: Fill, height: Fit
             align: {x: 0.5, y: 0.5}
             padding: {left: 30, right: 30, bottom: 10, top: 10}
@@ -171,9 +171,9 @@ live_design! {
                 shadow_offset: vec2(0.0,-1.5)
             }
             <Label> {
-                text: "+"
+                text: "+ Add a Custom Provider"
                 draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 15}
+                    text_style: <REGULAR_FONT>{font_size: 11}
                     color: #000
                 }
             }
@@ -441,7 +441,7 @@ impl ProviderItemRef {
                 .set_text(cx, &first_char);
         }
 
-        if is_selected {
+        if is_selected && cx.display_context.is_desktop() {
             inner.view.apply_over(
                 cx,
                 live! {

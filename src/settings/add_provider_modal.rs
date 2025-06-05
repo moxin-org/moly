@@ -137,7 +137,7 @@ live_design! {
 
         wrapper = <RoundedView> {
             flow: Down
-            width: 600
+            width: 420
             height: Fit
             padding: {top: 44, right: 30 bottom: 30 left: 50}
             spacing: 10
@@ -148,7 +148,7 @@ live_design! {
                 border_radius: 3
             }
 
-            header =<View> {
+            header = <View> {
                 width: Fill,
                 height: Fit,
                 flow: Right

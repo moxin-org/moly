@@ -85,7 +85,7 @@ impl Widget for ChatHistoryPanel {
 }
 
 impl WidgetMatchEvent for ChatHistoryPanel {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         if self.button(id!(new_chat_button)).clicked(&actions) {
             cx.action(ChatAction::StartWithoutEntity);
             self.redraw(cx);

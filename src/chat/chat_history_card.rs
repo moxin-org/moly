@@ -359,7 +359,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
         if self.button(id!(chat_options)).clicked(actions) {
             let wrapper_coords = chat_options_wrapper_rect.pos;
             let coords = dvec2(
-                wrapper_coords.x,
+                wrapper_coords.x - 100.,
                 wrapper_coords.y + chat_options_wrapper_rect.size.y - 12.0,
             );
 

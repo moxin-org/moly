@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use crate::chat::chats_deck::ChatsDeckWidgetExt;
 
 live_design! {
     use link::theme::*;
@@ -18,15 +19,24 @@ live_design! {
         width: Fill, height: Fill
         draw_bg: { color: (MAIN_BG_COLOR) }
         header = {
-            padding: {top: 30}
+            padding: {top: 35}
             content = {
                 align: {y: 0.5}
                 button_container = {
-                    padding: {left: 14}
+                    align: {y: 0.5}
+                    padding: {left: 16}
+                    left_button = {
+                        height: Fit,
+                        icon_walk: {width: 12, height: Fit}
+                        draw_icon: {
+                            brightness: 0.0
+                        }
+                    }
                 }
                 title_container = {
                     title = {
                         draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 14},
                             color: #x0
                         }
                     }
@@ -45,7 +55,7 @@ live_design! {
                 width: Fill, height: Fill
                 flow: Overlay
                 menu_toggle = <View> {
-                    margin: {top: 10, left: 15}
+                    margin: {top: 10, left: 20}
                     width: Fit, height: Fit
                     cursor: Hand
                     <IconSet> {
@@ -58,10 +68,7 @@ live_design! {
                 }
 
                 <CachedWidget> {
-                    chats_deck = <ChatsDeck> {
-                        margin: {top: 55}
-                        padding: 0
-                    }
+                    chats_deck = <ChatsDeck> {}
                 }
             }
 
@@ -82,7 +89,7 @@ live_design! {
                             <IconSet> {
                                 text: "" // FontAwesome f013
                                 draw_text: {
-                                    color: #x0
+                                    color: #333
                                     text_style: { font_size: 18.0 }
                                 }
                             }
@@ -175,6 +182,10 @@ impl Widget for ChatScreenMobile {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Because chats_deck is being cached, overriding its properties in the DSL does not take effect.
+        // For now we'll override them through apply_over.
+        // TODO: Do not use CachedWidget, create a shared structure of chat instances that is shared across layouts.
+        self.chats_deck(id!(chats_deck)).apply_over(cx, live! { padding: {top: 55, left: 0, right: 0, bottom: 0} });
         self.view.draw_walk(cx, scope, walk)
     }
 }

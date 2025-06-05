@@ -140,6 +140,24 @@ impl Widget for ChatView {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // On mobile, only set padding on top of the prompt
+        // TODO: do this with AdaptiveView instead of apply_over
+        if !cx.display_context.is_desktop() && cx.display_context.is_screen_size_known() {
+            self.prompt_input(id!(chat.prompt)).apply_over(cx, live! {
+                padding: {top: 8, left: 0, right: 0, bottom: 0}
+                persistent = {
+                    height: 60
+                }
+            });
+        } else {
+            self.prompt_input(id!(chat.prompt)).apply_over(cx, live! {
+                padding: {left: 10, right: 10, top: 8, bottom: 8}
+                persistent = {
+                    height: Fit
+                }
+            });
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }
