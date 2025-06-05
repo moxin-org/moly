@@ -157,23 +157,8 @@ impl Widget for PromptInput {
         if self.button(id!(attach)).clicked(event.actions()) {
             let ui = self.ui_runner();
             spawn(async move {
-                if let Ok(files) = crate::utils::fs::pick_files().await {
-                    // - `Cx::post_action`, `UiRunner::defer`, etc require `Send`.
-                    // - On web, the crate `rfd` returns a JS `File` handle, which is not `Send`.
-                    // - This forces as to load the attachments here, so we don't need to hold
-                    //   the handle. Even if it may not be necessary right now from a functional
-                    //   point of view.
-
-                    let mut attachments: Vec<Attachment> = Vec::with_capacity(files.len());
-                    for file in &files {
-                        match file.read().await {
-                            Ok(content) => attachments
-                                .push(Attachment::new_base64_encoded(file.file_name(), content)),
-                            Err(e) => log!("Failed to read file {}: {}", file.file_name(), e),
-                        }
-                    }
-
-                    ui.defer_with_redraw(|me, _, _| {
+                if let Ok(attachments) = Attachment::pick_multiple().await {
+                    ui.defer_with_redraw(move |me, _, _| {
                         me.attachments.extend(attachments);
                         log!("Attachments: {:?}", me.attachments);
                     });

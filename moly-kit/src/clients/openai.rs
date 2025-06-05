@@ -395,7 +395,7 @@ impl BotClient for OpenAIClient {
 
                 for choice in &completion.choices {
                     // Append main content delta
-                    if !choice.delta.content.is_empty() {
+                    if !choice.delta.content.text().is_empty() {
                         // Main content arrived, we can assume reasoning is done
                         if let Some(start_time) = reasoning_start_time {
                             if let Some(reasoning) = &mut content.reasoning {
@@ -407,7 +407,7 @@ impl BotClient for OpenAIClient {
                                 }
                             }
                         }
-                        content.text.push_str(&choice.delta.content);
+                        content.text.push_str(&choice.delta.content.text());
                     }
 
                     // Extract reasoning text, could be found in "reasoning" or "reasoning_content"

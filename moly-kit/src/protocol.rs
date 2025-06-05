@@ -1,4 +1,3 @@
-use base64::{Engine, prelude::BASE64_STANDARD};
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 
 use serde::{Deserialize, Serialize};
@@ -149,45 +148,61 @@ impl MessageContent {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Attachment {
     pub name: String,
-    pub url: String,
+    pub content_type: Option<String>,
+    #[serde(skip)]
+    content: Option<Vec<u8>>,
+}
+
+impl Default for Attachment {
+    fn default() -> Self {
+        Attachment {
+            name: String::new(),
+            content_type: None,
+            content: Some(Vec::new()),
+        }
+    }
 }
 
 impl Attachment {
-    pub fn new(name: String, url: String) -> Self {
-        Attachment { url, name }
+    pub(crate) async fn pick_multiple() -> Result<Vec<Attachment>, ()> {
+        let picks = crate::utils::fs::pick_files().await?;
+
+        let mut attachments = Vec::with_capacity(picks.len());
+        for pick in picks {
+            // - `Cx::post_action`, `UiRunner::defer`, etc require `Send`.
+            // - On web, the crate `rfd` returns a JS `File` handle, which is not `Send`.
+            // - This forces as to load the attachments here, so we don't need to hold
+            //   the handle. Even if it may not be necessary right now from a functional
+            //   point of view.
+            let content = pick.read().await.map_err(|_| ())?;
+            let name = pick.file_name();
+            let content_type = mime_guess::from_path(&name).first().map(|m| m.to_string());
+            let attachment = Attachment {
+                name,
+                content_type,
+                content: Some(content),
+            };
+            attachments.push(attachment);
+        }
+        Ok(attachments)
     }
 
-    pub fn new_base64_encoded(name: String, data: Vec<u8>) -> Self {
-        // Encode the data as base64 and create a data URL.
-        let base64_data = BASE64_STANDARD.encode(data);
-        let url = format!("data:application/octet-stream;base64,{}", base64_data);
-        Attachment { url, name }
+    pub fn is_available(&self) -> bool {
+        self.content.is_some()
     }
 
     pub async fn read(&self) -> std::io::Result<Vec<u8>> {
-        if let Some(data) = self.url.strip_prefix("data:") {
-            let (mime, base64_data) = data.split_once(',').ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, "Malformed data URL")
-            })?;
-
-            if !mime.ends_with(";base64") {
-                unimplemented!();
-            }
-
-            let decoded = BASE64_STANDARD.decode(base64_data).map_err(|_| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Failed to decode base64 data",
-                )
-            })?;
-
-            Ok(decoded)
+        if let Some(content) = &self.content {
+            Ok(content.clone())
         } else {
-            unimplemented!()
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Attachment content not available",
+            ))
         }
     }
 }
