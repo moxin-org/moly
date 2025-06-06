@@ -168,27 +168,73 @@ impl Default for Attachment {
 }
 
 impl Attachment {
-    pub(crate) async fn pick_multiple() -> Result<Vec<Attachment>, ()> {
-        let picks = crate::utils::fs::pick_files().await?;
+    /// Crate private utility to pick files from the file system.
+    ///
+    /// - On web, async API is required to pick files.
+    /// - On macos, sync API is required and must be called from the main UI thread.
+    ///   - This is the reason why it takes a closure instead of returning a Future.
+    ///     Because on native `spawn` may run in a separate thread. So we can't generalize.
+    /// - We follow macos requirements on all native platforms just in case.
+    pub(crate) fn pick_multiple(cb: impl FnOnce(Result<Vec<Attachment>, ()>) + 'static) {
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                crate::utils::asynchronous::spawn(async move {
+                    let Some(handles) = rfd::AsyncFileDialog::new()
+                        .pick_files()
+                        .await
+                    else {
+                        cb(Err(()));
+                        return;
+                    };
 
-        let mut attachments = Vec::with_capacity(picks.len());
-        for pick in picks {
-            // - `Cx::post_action`, `UiRunner::defer`, etc require `Send`.
-            // - On web, the crate `rfd` returns a JS `File` handle, which is not `Send`.
-            // - This forces as to load the attachments here, so we don't need to hold
-            //   the handle. Even if it may not be necessary right now from a functional
-            //   point of view.
-            let content = pick.read().await.map_err(|_| ())?;
-            let name = pick.file_name();
-            let content_type = mime_guess::from_path(&name).first().map(|m| m.to_string());
-            let attachment = Attachment {
-                name,
-                content_type,
-                content: Some(content),
-            };
-            attachments.push(attachment);
+                    let mut attachments = Vec::with_capacity(handles.len());
+                    for handle in handles {
+                        // Notice that rfd doesn't return a Result.
+                        let content = handle.read().await;
+                        let name = handle.file_name();
+                        let content_type = mime_guess::from_path(&name)
+                            .first()
+                            .map(|m| m.to_string());
+                        attachments.push(Attachment {
+                            name,
+                            content_type,
+                            content: Some(content),
+                        });
+                    }
+
+                    cb(Ok(attachments));
+                });
+            } else {
+                let Some(paths) = rfd::FileDialog::new()
+                    .pick_files()
+                else {
+                    cb(Err(()));
+                    return;
+                };
+
+                let mut attachments = Vec::with_capacity(paths.len());
+                for path in paths {
+                    let content = match std::fs::read(&path) {
+                        Ok(content) => content,
+                        Err(_) => {
+                            cb(Err(()));
+                            return;
+                        }
+                    };
+                    let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    let content_type = mime_guess::from_path(&name)
+                        .first()
+                        .map(|m| m.to_string());
+
+                    attachments.push(Attachment {
+                        name,
+                        content_type,
+                        content: Some(content),
+                    });
+                }
+                cb(Ok(attachments));
+            }
         }
-        Ok(attachments)
     }
 
     pub fn is_available(&self) -> bool {

@@ -1,10 +1,7 @@
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 
-use crate::{
-    Attachment,
-    utils::{asynchronous::spawn, events::EventExt},
-};
+use crate::{Attachment, utils::events::EventExt};
 
 live_design! {
     use link::theme::*;
@@ -95,6 +92,66 @@ live_design! {
                     }
                 }
             }
+            bottom = {
+                attachments = <View> {
+                    visible: false,
+                    height: 64,
+                    attachments_list = <PortalList> {
+                        spacing: 4,
+                        Image = <RoundedView> {
+                            width: 64,
+                            height: 64,
+                            draw_bg: {
+                                // color: #c00,
+                                border_radius: 8.0,
+                                border_color: #D0D5DD,
+                                border_size: 1.0,
+                            }
+                        }
+                        File = <RoundedView> {
+                            width: (64 * 4),
+                            height: 64,
+                            padding: 8,
+                            spacing: 8,
+                            draw_bg: {
+                                // color: #c00,
+                                border_radius: 8.0,
+                                border_color: #D0D5DD,
+                                border_size: 1.0,
+                            }
+                            <RoundedView> {
+                                height: Fill,
+                                width: (64 - 8 * 2),
+                                draw_bg: {
+                                    color: #0c0,
+                                    border_radius: 4.0,
+                                    border_color: #D0D5DD,
+                                    border_size: 1.0,
+                                }
+                            }
+                            <View> {
+                                flow: Down,
+                                align: {y: 0.5},
+                                spacing: 2,
+                                title = <Label> {
+                                    text: "document.pdf",
+                                    draw_text: {
+                                        color: #000,
+                                        text_style: <THEME_FONT_BOLD>{font_size: 11}
+                                    }
+                                }
+                                kind = <Label> {
+                                    text: "PDF",
+                                    draw_text: {
+                                        color: #000,
+                                        text_style: {font_size: 10}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -156,13 +213,13 @@ impl Widget for PromptInput {
 
         if self.button(id!(attach)).clicked(event.actions()) {
             let ui = self.ui_runner();
-            spawn(async move {
-                if let Ok(attachments) = Attachment::pick_multiple().await {
+            Attachment::pick_multiple(move |result| match result {
+                Ok(attachments) => {
                     ui.defer_with_redraw(move |me, _, _| {
                         me.attachments.extend(attachments);
-                        log!("Attachments: {:?}", me.attachments);
                     });
                 }
+                Err(_) => {}
             });
         }
     }
@@ -218,7 +275,35 @@ impl Widget for PromptInput {
             }
         }
 
-        self.deref.draw_walk(cx, scope, walk)
+        self.view(id!(attachments))
+            .set_visible(cx, !self.attachments.is_empty());
+        let attachments_list = self.portal_list(id!(attachments_list));
+        while let Some(widget) = self.deref.draw_walk(cx, scope, walk).step() {
+            if widget.widget_uid() == attachments_list.widget_uid() {
+                let attachments_list = attachments_list.as_portal_list();
+                let mut attachments_list = attachments_list.borrow_mut().unwrap();
+                attachments_list.set_item_range(cx, 0, self.attachments.len());
+                while let Some(index) = attachments_list.next_visible_item(cx) {
+                    if index >= self.attachments.len() {
+                        continue;
+                    }
+
+                    let item = attachments_list.item(cx, index, live_id!(File));
+                    item.label(id!(title))
+                        .set_text(cx, &self.attachments[index].name);
+                    item.label(id!(kind)).set_text(
+                        cx,
+                        self.attachments[index]
+                            .content_type
+                            .as_deref()
+                            .unwrap_or_default(),
+                    );
+                    item.draw_all_unscoped(cx);
+                }
+            }
+        }
+
+        DrawStep::done()
     }
 }
 
