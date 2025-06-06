@@ -213,6 +213,12 @@ impl AppMain for App {
             // Prevent rendering the ui before the store is initialized.
             self.ui.view(id!(body)).set_visible(cx, false);
             register_capture_manager();
+            
+            // Initialize filesystem with the data directory if available, required for mobile platforms.
+            if let Some(data_dir) = cx.get_data_dir() {
+                crate::shared::utils::filesystem::init_cx_data_dir(std::path::PathBuf::from(data_dir));
+            }
+            
             Store::load_into_app();
         }
 
