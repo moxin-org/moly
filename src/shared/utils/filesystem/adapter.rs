@@ -31,7 +31,7 @@ cfg_if::cfg_if! {
 /// An adapter exposes the **bare minimum** functionality needed to interact with
 /// a specific filesystem.
 ///
-/// This trait is the foundation for the `FileSystem` abstraction, which exposes 
+/// This trait is the foundation for the `FileSystem` abstraction, which exposes
 /// higher-level operations with better ergonomics. Different platforms implement
 /// this trait to provide filesystem access:
 ///
@@ -47,16 +47,16 @@ pub trait Adapter: Send + Sync + 'static {
         path: &Path,
         content: &[u8],
     ) -> impl Future<Output = Result<()>> + PlatformSpecifics;
-    
+
     /// Read a file from the filesystem, returning its content as a byte vector.
     fn read(&mut self, path: &Path) -> impl Future<Output = Result<Vec<u8>>> + PlatformSpecifics;
-    
+
     /// Check if a file exists, failing if it cannot be determined.
     fn exists(&mut self, path: &Path) -> impl Future<Output = Result<bool>> + PlatformSpecifics;
-    
+
     /// Remove a file from the filesystem.
     fn remove(&mut self, path: &Path) -> impl Future<Output = Result<()>> + PlatformSpecifics;
-    
+
     /// Get a list of the entry names in the given directory.
     fn list(
         &mut self,

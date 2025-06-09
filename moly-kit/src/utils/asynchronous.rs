@@ -64,7 +64,7 @@ fn get_or_create_runtime() -> &'static tokio::runtime::Runtime {
 }
 
 /// Spawns a future to run independently.
-/// 
+///
 /// This function handles different runtime contexts:
 /// - If a Tokio runtime is already available, uses it directly
 /// - If no runtime exists (e.g., Android/library context), creates a shared runtime

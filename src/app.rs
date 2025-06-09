@@ -213,7 +213,7 @@ impl AppMain for App {
             // Prevent rendering the ui before the store is initialized.
             self.ui.view(id!(body)).set_visible(cx, false);
             register_capture_manager();
-            
+
             // Initialize filesystem with the data directory if available, required for mobile platforms.
             if let Some(data_dir) = cx.get_data_dir() {
                 // Ensure the data directory exists
@@ -225,7 +225,7 @@ impl AppMain for App {
                     panic!("Failed to create data directory: {}", data_dir);
                 }
             }
-            
+
             Store::load_into_app();
         }
 

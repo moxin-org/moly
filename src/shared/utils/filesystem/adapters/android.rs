@@ -38,7 +38,7 @@ use futures::StreamExt;
 static ANDROID_DATA_DIR: LazyLock<Mutex<Option<PathBuf>>> = LazyLock::new(|| Mutex::new(None));
 
 /// Set the Android data directory path from Makepad's Cx.get_data_dir()
-/// 
+///
 /// This should be called early in the app lifecycle when Cx is available.
 /// The path will be used as the base directory for all file operations.
 pub fn set_android_data_dir(path: PathBuf) {
@@ -48,25 +48,23 @@ pub fn set_android_data_dir(path: PathBuf) {
 }
 
 /// Get the Android data directory, panicking if not set
-/// 
+///
 /// # Panics
-/// 
+///
 /// Panics if the Android data directory has not been initialized via `set_android_data_dir()`.
 fn get_android_data_dir() -> PathBuf {
-    ANDROID_DATA_DIR
-        .lock()
-        .unwrap()
-        .clone()
-        .expect("Android data directory not set. Call filesystem::init_cx_data_dir() during app startup.")
+    ANDROID_DATA_DIR.lock().unwrap().clone().expect(
+        "Android data directory not set. Call filesystem::init_cx_data_dir() during app startup.",
+    )
 }
 
 /// Resolve a relative path to an absolute path within the Android data directory.
-/// 
+///
 /// - Paths starting with "preferences/" are placed in a preferences subdirectory
 /// - All other paths are placed directly in the data directory
 fn validate_and_resolve(path: &Path) -> PathBuf {
     let base_dir = get_android_data_dir();
-    
+
     match path.strip_prefix("preferences/") {
         Ok(rest) => {
             // For preferences, create a preferences subdirectory in the data dir
@@ -81,7 +79,7 @@ fn validate_and_resolve(path: &Path) -> PathBuf {
 
 /// An [Adapter] for `FileSystem` that interacts with Android's filesystem
 /// using the data directory provided by Makepad's Cx.get_data_dir().
-/// 
+///
 /// This adapter automatically organizes files into appropriate subdirectories
 /// within the Android app's data directory for better organization and compatibility
 /// with Android's file system conventions.
@@ -132,4 +130,4 @@ impl Adapter for AndroidAdapter {
         async_fs::write(path, content).await?;
         Ok(())
     }
-} 
+}
