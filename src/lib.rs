@@ -1,5 +1,6 @@
 pub mod app;
 pub mod capture;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod runtime;
 
 mod chat;
