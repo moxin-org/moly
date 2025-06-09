@@ -253,9 +253,9 @@ impl AppMain for App {
             self.ui.handle_event(cx, event, &mut Scope::empty());
             return;
         };
-        
+
         self.ui.view(id!(loading_view)).set_visible(cx, false);
-        
+
         // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
             if let Some(file_id) = &self.file_id {
@@ -483,13 +483,12 @@ pub fn app_runner() -> UiRunner<App> {
     UiRunner::new(0)
 }
 
-
 /// A wrapper around the main Moly view, used to prevent draw/events
 /// from being propagated to the all of Moly if the store is not loaded.
 #[derive(Live, Widget, LiveHook)]
 pub struct MolyRoot {
     #[deref]
-    view: View   
+    view: View,
 }
 
 impl Widget for MolyRoot {
