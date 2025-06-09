@@ -60,7 +60,7 @@ where
 /// moly::runtime::init_early();
 ///
 /// // Now async operations will work regardless of context
-/// moly_kit::spawn(async {
+/// moly_kit::utils::asynchronous::spawn(async {
 ///     // Your async code here
 /// });
 /// ```

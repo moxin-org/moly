@@ -10,7 +10,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```ignore
 //! use crate::shared::utils::filesystem;
 //! use std::path::Path;
 //!
@@ -28,14 +28,12 @@
 //!
 //! On Android, the filesystem adapter needs to be initialized with the data directory:
 //!
-//! ```rust
+//! ```ignore
 //! // In the app's initialization code where we have access to Cx
 //! if let Some(data_dir) = cx.get_data_dir() {
 //!     filesystem::init_cx_data_dir(PathBuf::from(data_dir));
 //! }
 //! ```
-//!
-//! This is automatically handled in `src/app.rs` during the `Event::Startup` event.
 
 mod adapter;
 mod adapters;
@@ -186,7 +184,7 @@ impl<A: Adapter> FileSystem<A> {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// use crate::shared::utils::filesystem;
 /// use std::path::Path;
 ///
