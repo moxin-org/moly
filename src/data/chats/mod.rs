@@ -54,21 +54,43 @@ impl Chats {
         let mut chats = Chats::new(moly_client);
 
         let fs = filesystem::global();
-        let paths = fs
-            .list(&chats.chats_dir)
-            .await
-            .unwrap_or_else(|_| {
-                eprintln!("Failed to read chats directory: {:?}", chats.chats_dir);
-                vec![]
-            })
-            .into_iter()
-            .map(|file_name| chats.chats_dir.join(file_name));
 
-        chats.saved_chats = futures::stream::iter(paths)
-            .then(|path| async move { Chat::load(&path).await.unwrap() })
-            .map(RefCell::new)
-            .collect::<Vec<_>>()
-            .await;
+        // Check if the chats directory exists first
+        match fs.exists(&chats.chats_dir).await {
+            Ok(true) => {
+                // Directory exists, try to list files
+                let paths = fs
+                    .list(&chats.chats_dir)
+                    .await
+                    .unwrap_or_else(|e| {
+                        log::error!("Failed to read chats directory: {:?}", e);
+                        vec![]
+                    })
+                    .into_iter()
+                    .map(|file_name| chats.chats_dir.join(file_name));
+
+                chats.saved_chats = futures::stream::iter(paths)
+                    .filter_map(|path| async move {
+                        match Chat::load(&path).await {
+                            Ok(chat) => Some(chat),
+                            Err(e) => {
+                                log::error!("Failed to load chat from {:?}: {:?}", path, e);
+                                None
+                            }
+                        }
+                    })
+                    .map(RefCell::new)
+                    .collect::<Vec<_>>()
+                    .await;
+            }
+            Ok(false) => {
+                // Directory doesn't exist yet, which is fine for a new installation
+                log::info!("Chats directory doesn't exist yet, starting with empty chat list");
+            }
+            Err(e) => {
+                log::error!("Failed to check if chats directory exists: {:?}", e);
+            }
+        }
 
         chats
     }

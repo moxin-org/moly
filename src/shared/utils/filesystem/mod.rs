@@ -198,9 +198,9 @@ pub fn global() -> FileSystem<impl Adapter> {
         if #[cfg(target_arch = "wasm32")] {
             use adapters::web::WebAdapter;
             static FS: LazyLock<FileSystem<WebAdapter>> = LazyLock::new(|| FileSystem::new(WebAdapter::default()));
-        } else if #[cfg(target_os = "android")] {
-            use adapters::android::AndroidAdapter;
-            static FS: LazyLock<FileSystem<AndroidAdapter>> = LazyLock::new(|| FileSystem::new(AndroidAdapter::default()));
+        } else if #[cfg(any(target_os = "android", target_os = "ios"))] {
+            use adapters::mobile::MobileAdapter;
+            static FS: LazyLock<FileSystem<MobileAdapter>> = LazyLock::new(|| FileSystem::new(MobileAdapter::default()));
         } else {
             use adapters::native::NativeAdapter;
             static FS: LazyLock<FileSystem<NativeAdapter>> = LazyLock::new(|| FileSystem::new(NativeAdapter::default()));
@@ -210,14 +210,15 @@ pub fn global() -> FileSystem<impl Adapter> {
     FS.clone()
 }
 
-/// Initialize the data directory for platform-specific filesystem adapters.
+/// Initialize the data directory for mobile platforms (iOS and Android).
 ///
-/// This function is primarily used on Mobile platforms to set the data directory path
-/// obtained from Makepad's `cx.get_data_dir()`. On other platforms, this is a no-op.
+/// This function should be called during app startup when the Makepad Cx context
+/// is available. It sets up the base directory for all filesystem operations
+/// on mobile devices.
 ///
 /// # Arguments
 ///
-/// * `data_dir` - The data directory path from `cx.get_data_dir()`
+/// * `data_dir` - The data directory path obtained from `cx.get_data_dir()`
 ///
 /// # Example
 ///
@@ -227,12 +228,7 @@ pub fn global() -> FileSystem<impl Adapter> {
 ///     filesystem::init_cx_data_dir(PathBuf::from(data_dir));
 /// }
 /// ```
-///
-/// # Note
-///
-/// This is automatically handled in `src/app.rs` during the `Event::Startup` event.
-#[allow(unused)]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 pub fn init_cx_data_dir(data_dir: PathBuf) {
-    #[cfg(target_os = "android")]
-    adapters::android::set_android_data_dir(data_dir);
+    adapters::set_mobile_data_dir(data_dir);
 }

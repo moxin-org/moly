@@ -214,6 +214,7 @@ impl AppMain for App {
             self.ui.view(id!(body)).set_visible(cx, false);
             register_capture_manager();
 
+            #[cfg(any(target_os = "android", target_os = "ios"))]
             // Initialize filesystem with the data directory if available, required for mobile platforms.
             if let Some(data_dir) = cx.get_data_dir() {
                 // Ensure the data directory exists

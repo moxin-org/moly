@@ -1,7 +1,7 @@
-//! Android filesystem adapter for Makepad applications.
+//! Mobile filesystem adapter for Makepad applications (iOS and Android).
 //!
 //! This adapter uses the data directory provided by Makepad's `cx.get_data_dir()` to store
-//! application files on Android devices. It organizes files into a logical directory structure
+//! application files on mobile devices. It organizes files into a logical directory structure
 //! within the app's data directory.
 //!
 //! ## Directory Structure
@@ -34,36 +34,36 @@ use super::super::adapter::Adapter;
 use anyhow::Result;
 use futures::StreamExt;
 
-/// Global storage for Android data directory path
-static ANDROID_DATA_DIR: LazyLock<Mutex<Option<PathBuf>>> = LazyLock::new(|| Mutex::new(None));
+/// Global storage for mobile data directory path
+static MOBILE_DATA_DIR: LazyLock<Mutex<Option<PathBuf>>> = LazyLock::new(|| Mutex::new(None));
 
-/// Set the Android data directory path from Makepad's Cx.get_data_dir()
+/// Set the mobile data directory path from Makepad's Cx.get_data_dir()
 ///
 /// This should be called early in the app lifecycle when Cx is available.
 /// The path will be used as the base directory for all file operations.
-pub fn set_android_data_dir(path: PathBuf) {
-    log::info!("Android data directory set to: {}", path.display());
-    let mut data_dir = ANDROID_DATA_DIR.lock().unwrap();
+pub fn set_mobile_data_dir(path: PathBuf) {
+    log::info!("Mobile data directory set to: {}", path.display());
+    let mut data_dir = MOBILE_DATA_DIR.lock().unwrap();
     *data_dir = Some(path);
 }
 
-/// Get the Android data directory, panicking if not set
+/// Get the mobile data directory, panicking if not set
 ///
 /// # Panics
 ///
-/// Panics if the Android data directory has not been initialized via `set_android_data_dir()`.
-fn get_android_data_dir() -> PathBuf {
-    ANDROID_DATA_DIR.lock().unwrap().clone().expect(
-        "Android data directory not set. Call filesystem::init_cx_data_dir() during app startup.",
+/// Panics if the mobile data directory has not been initialized via `set_mobile_data_dir()`.
+fn get_mobile_data_dir() -> PathBuf {
+    MOBILE_DATA_DIR.lock().unwrap().clone().expect(
+        "Mobile data directory not set. Call filesystem::init_cx_data_dir() during app startup.",
     )
 }
 
-/// Resolve a relative path to an absolute path within the Android data directory.
+/// Resolve a relative path to an absolute path within the mobile data directory.
 ///
 /// - Paths starting with "preferences/" are placed in a preferences subdirectory
 /// - All other paths are placed directly in the data directory
 fn validate_and_resolve(path: &Path) -> PathBuf {
-    let base_dir = get_android_data_dir();
+    let base_dir = get_mobile_data_dir();
 
     match path.strip_prefix("preferences/") {
         Ok(rest) => {
@@ -77,16 +77,16 @@ fn validate_and_resolve(path: &Path) -> PathBuf {
     }
 }
 
-/// An [Adapter] for `FileSystem` that interacts with Android's filesystem
+/// An [Adapter] for `FileSystem` that interacts with mobile device filesystems (iOS and Android)
 /// using the data directory provided by Makepad's Cx.get_data_dir().
 ///
 /// This adapter automatically organizes files into appropriate subdirectories
-/// within the Android app's data directory for better organization and compatibility
-/// with Android's file system conventions.
+/// within the mobile app's data directory for better organization and compatibility
+/// with mobile platform file system conventions.
 #[derive(Default)]
-pub struct AndroidAdapter;
+pub struct MobileAdapter;
 
-impl Adapter for AndroidAdapter {
+impl Adapter for MobileAdapter {
     async fn read(&mut self, path: &Path) -> Result<Vec<u8>> {
         let path = validate_and_resolve(path);
         let content = async_fs::read(path).await?;

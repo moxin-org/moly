@@ -31,11 +31,33 @@ impl Default for Preferences {
 impl Preferences {
     pub async fn load() -> Self {
         let preferences_path = preferences_path();
-        let fs = filesystem::global();
-        match fs.read_json::<Preferences>(&preferences_path).await {
-            Ok(preferences) => preferences,
+        let mut fs = filesystem::global();
+
+        // Check if the preferences file exists
+        match fs.exists(&preferences_path).await {
+            Ok(true) => {
+                // File exists, try to read it
+                match fs.read_json::<Preferences>(&preferences_path).await {
+                    Ok(preferences) => preferences,
+                    Err(e) => {
+                        log::error!("Failed to read preferences file: {:?}", e);
+                        Preferences::default()
+                    }
+                }
+            }
+            Ok(false) => {
+                // File doesn't exist, create default preferences and save them
+                let default_preferences = Preferences::default();
+                if let Err(e) = fs
+                    .queue_write_json(preferences_path, &default_preferences)
+                    .await
+                {
+                    log::error!("Failed to create default preferences file: {:?}", e);
+                }
+                default_preferences
+            }
             Err(e) => {
-                eprintln!("Failed to read preferences file: {:?}", e);
+                log::error!("Failed to check if preferences file exists: {:?}", e);
                 Preferences::default()
             }
         }
@@ -49,7 +71,7 @@ impl Preferences {
                 .await
             {
                 Ok(()) => (),
-                Err(e) => eprintln!("Failed to write to the file: {:?}", e),
+                Err(e) => log::error!("Failed to write preferences file: {:?}", e),
             }
         });
     }
