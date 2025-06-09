@@ -135,7 +135,24 @@ live_design! {
                 height: Fill,
                 padding: 0
 
-                root = <View> {
+                // View that shows by default, eventually gets replaced by the root view.
+                loading_view = <View> {
+                    align: {x: 0.5, y: 0.5}
+                    flow: Down, spacing: 20
+                    <Image> {
+                        width: 100, height: 100,
+                        source: (ICON_MOLYSERVER),
+                    }
+                    <Label> {
+                        text: "Loading..."
+                        draw_text: {
+                            text_style: <THEME_FONT_BOLD> { font_size: 12 }
+                            color: #444
+                        }
+                    }
+                }
+
+                root = {{MolyRoot}} {
                     width: Fill,
                     height: Fill,
                     show_bg: true,
@@ -230,9 +247,14 @@ impl AppMain for App {
             Store::load_into_app();
         }
 
+        // If the store is not loaded, do not continue with store-dependent logic
+        // however, we still want the window to handle Makepad events. (e.g. window initialization events, platform context changes, etc.)
         let Some(store) = self.store.as_mut() else {
+            self.ui.handle_event(cx, event, &mut Scope::empty());
             return;
         };
+
+        self.ui.view(id!(loading_view)).set_visible(cx, false);
 
         // It triggers when the timer expires.
         if self.timer.is_event(event).is_some() {
@@ -459,4 +481,28 @@ pub enum NavigationAction {
 pub fn app_runner() -> UiRunner<App> {
     // `0` is reserved for whatever implements `AppMain`.
     UiRunner::new(0)
+}
+
+/// A wrapper around the main Moly view, used to prevent draw/events
+/// from being propagated to the all of Moly if the store is not loaded.
+#[derive(Live, Widget, LiveHook)]
+pub struct MolyRoot {
+    #[deref]
+    view: View,
+}
+
+impl Widget for MolyRoot {
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if scope.data.get::<Store>().is_none() {
+            return DrawStep::done();
+        }
+        self.view.draw_walk(cx, scope, walk)
+    }
+
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if scope.data.get::<Store>().is_none() {
+            return;
+        }
+        self.view.handle_event(cx, event, scope);
+    }
 }
