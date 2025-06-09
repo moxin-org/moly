@@ -1,3 +1,40 @@
+//! # Filesystem Adapters
+//!
+//! This module provides filesystem abstractions that work across different platforms.
+//!
+//! ## Supported Platforms
+//!
+//! - **Desktop (Native)**: Uses the `directories` crate for standard OS directories
+//! - **Web (WASM)**: Uses browser-based storage through the `web_fs` crate
+//! - **Android**: Uses Makepad's `cx.get_data_dir()` for the app data directory
+//!
+//! ## Usage
+//!
+//! ```ignore
+//! use crate::shared::utils::filesystem;
+//! use std::path::Path;
+//!
+//! // Get the global filesystem instance
+//! let fs = filesystem::global();
+//!
+//! // Read a file
+//! let content = fs.read_string(Path::new("preferences/preferences.json")).await?;
+//!
+//! // Write a file
+//! fs.queue_write_json(PathBuf::from("preferences/preferences.json"), &data).await?;
+//! ```
+//!
+//! ## Android Setup
+//!
+//! On Android, the filesystem adapter needs to be initialized with the data directory:
+//!
+//! ```ignore
+//! // In the app's initialization code where we have access to Cx
+//! if let Some(data_dir) = cx.get_data_dir() {
+//!     filesystem::init_cx_data_dir(PathBuf::from(data_dir));
+//! }
+//! ```
+
 mod adapter;
 mod adapters;
 
@@ -145,12 +182,23 @@ impl<A: Adapter> FileSystem<A> {
 
 /// Access the global singleton instance of the filesystem used across Moly.
 ///
-/// Configured propertly for the target platform (native or web).
+/// # Example
+///
+/// ```ignore
+/// use crate::shared::utils::filesystem;
+/// use std::path::Path;
+///
+/// let fs = filesystem::global();
+/// let content = fs.read_string(Path::new("preferences/settings.json")).await?;
+/// ```
 pub fn global() -> FileSystem<impl Adapter> {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             use adapters::web::WebAdapter;
             static FS: LazyLock<FileSystem<WebAdapter>> = LazyLock::new(|| FileSystem::new(WebAdapter::default()));
+        } else if #[cfg(any(target_os = "android", target_os = "ios"))] {
+            use adapters::mobile::MobileAdapter;
+            static FS: LazyLock<FileSystem<MobileAdapter>> = LazyLock::new(|| FileSystem::new(MobileAdapter::default()));
         } else {
             use adapters::native::NativeAdapter;
             static FS: LazyLock<FileSystem<NativeAdapter>> = LazyLock::new(|| FileSystem::new(NativeAdapter::default()));
@@ -158,4 +206,27 @@ pub fn global() -> FileSystem<impl Adapter> {
     }
 
     FS.clone()
+}
+
+/// Initialize the data directory for mobile platforms (iOS and Android).
+///
+/// This function should be called during app startup when the Makepad Cx context
+/// is available. It sets up the base directory for all filesystem operations
+/// on mobile devices.
+///
+/// # Arguments
+///
+/// * `data_dir` - The data directory path obtained from `cx.get_data_dir()`
+///
+/// # Example
+///
+/// ```rust
+/// // In the app's Event::Startup handler
+/// if let Some(data_dir) = cx.get_data_dir() {
+///     filesystem::init_cx_data_dir(PathBuf::from(data_dir));
+/// }
+/// ```
+#[cfg(any(target_os = "android", target_os = "ios"))]
+pub fn init_cx_data_dir(data_dir: PathBuf) {
+    adapters::set_mobile_data_dir(data_dir);
 }

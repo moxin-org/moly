@@ -34,8 +34,8 @@ impl Preferences {
         let fs = filesystem::global();
         match fs.read_json::<Preferences>(&preferences_path).await {
             Ok(preferences) => preferences,
-            Err(e) => {
-                eprintln!("Failed to read preferences file: {:?}", e);
+            Err(_e) => {
+                log::info!("No preferences file found, a default one will be created.");
                 Preferences::default()
             }
         }
@@ -49,7 +49,7 @@ impl Preferences {
                 .await
             {
                 Ok(()) => (),
-                Err(e) => eprintln!("Failed to write to the file: {:?}", e),
+                Err(e) => log::error!("Failed to write preferences file: {:?}", e),
             }
         });
     }

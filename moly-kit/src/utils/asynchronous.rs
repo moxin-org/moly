@@ -7,6 +7,7 @@
 //! Runs a future independently, in a platform-specific way.
 //! - **Non-WASM**: May run in parallel and needs to be [Send].
 //! - **WASM**: Will run concurrently and doesn't need to be [Send].
+//! - **Android**: Creates a Tokio runtime if none exists (e.g., when running as a library).
 //!
 //! ## [MolyFuture] and [MolyStream]
 //!
@@ -42,8 +43,48 @@ use futures::{
 
 #[cfg(feature = "async-rt")]
 #[cfg(not(target_arch = "wasm32"))]
+use std::sync::OnceLock;
+
+#[cfg(feature = "async-rt")]
+#[cfg(not(target_arch = "wasm32"))]
+static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+
+#[cfg(feature = "async-rt")]
+#[cfg(not(target_arch = "wasm32"))]
+fn get_or_create_runtime() -> &'static tokio::runtime::Runtime {
+    RUNTIME.get_or_init(|| {
+        log::info!("Creating Tokio runtime for MolyKit (likely running on Android or as library)");
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_io()
+            .enable_time()
+            .thread_name("moly-tokio")
+            .build()
+            .expect("Failed to create Tokio runtime for MolyKit")
+    })
+}
+
+/// Spawns a future to run independently.
+///
+/// This function handles different runtime contexts:
+/// - If a Tokio runtime is already available, uses it directly
+/// - If no runtime exists (e.g., Android/library context), creates a shared runtime
+/// - On WASM, uses wasm-bindgen-futures
+#[cfg(feature = "async-rt")]
+#[cfg(not(target_arch = "wasm32"))]
 pub fn spawn(fut: impl Future<Output = ()> + 'static + Send) {
-    tokio::task::spawn(fut);
+    // Try to spawn on existing runtime first, fallback to creating our own
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => {
+            log::trace!("Spawning on existing Tokio runtime");
+            handle.spawn(fut);
+        }
+        Err(_) => {
+            // No runtime available, use our own (common on Android)
+            log::trace!("No Tokio runtime found, using MolyKit shared runtime");
+            let runtime = get_or_create_runtime();
+            runtime.spawn(fut);
+        }
+    }
 }
 
 #[cfg(feature = "async-web")]

@@ -17,9 +17,10 @@ The following table shows which host systems can currently be used to build Moly
 <!-- prettier-ignore-start -->
 | Host OS | Target Platform | Builds? | Runs? | Packaging Support                            |
 | ------- | --------------- | ------- | ----- | -------------------------------------------- |
-| macOS   | macOS           | ✅      | ✅    | `.app`, [`.dmg`]                             |
-| Linux   | Linux           | ✅      | ✅    | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
-| Windows | Windows (10+)   | ✅      | ✅    | `.exe` (NSIS)                                |
+| macOS   | macOS           | ✅       | ✅     | `.app`, [`.dmg`]                             |
+| Linux   | Linux           | ✅       | ✅     | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
+| Windows | Windows (10+)   | ✅       | ✅     | `.exe` (NSIS)                                |
+| Linux   | Android         | 🚧       | 🚧     | TBD                                          |
 <!-- prettier-ignore-end -->
 
 ## Features

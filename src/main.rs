@@ -5,7 +5,9 @@ use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 fn main() {
     // Initialize the logger
-    env_logger::init();
+    env_logger::Builder::from_default_env()
+        .format_timestamp(None) // env_logger doesn't support timestamps on wasm (relies on SystemTime)
+        .init();
     moly::app::app_main()
 }
 

@@ -58,7 +58,10 @@ impl Chats {
             .list(&chats.chats_dir)
             .await
             .unwrap_or_else(|_| {
-                eprintln!("Failed to read chats directory: {:?}", chats.chats_dir);
+                log::info!(
+                    "No chats directory found {:?}, it will be created upon first chat creation.",
+                    chats.chats_dir
+                );
                 vec![]
             })
             .into_iter()
