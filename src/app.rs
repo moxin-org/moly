@@ -162,7 +162,9 @@ live_design! {
 
                     root_adaptive_view = <AdaptiveView> {
                         Mobile = {
-                            application_pages = <ApplicationPages> {}
+                            application_pages = <ApplicationPages> {
+                                margin: 0
+                            }
                         }
 
                         Desktop = {

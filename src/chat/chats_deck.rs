@@ -24,9 +24,7 @@ live_design! {
 
     pub ChatsDeck = {{ChatsDeck}} {
         width: Fill, height: Fill
-        padding: {top: 38, bottom: 10, right: 28, left: 28},
-        spacing: 10
-        flow: Right
+        padding: {top: 18, bottom: 10, right: 28, left: 28},
 
         chat_view_template: <ChatView> {}
     }

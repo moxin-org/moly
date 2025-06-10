@@ -93,9 +93,8 @@ live_design! {
 
     pub ChatView = {{ChatView}} {
         width: Fill, height: Fill
-        align: {x: 0.5}
         flow: Down
-        spacing: 20
+        spacing: 0
 
         model_selector = <ModelSelector> {}
         chat = <Chat> {
@@ -148,8 +147,15 @@ impl Widget for ChatView {
                 live! {
                     padding: {top: 8, left: 0, right: 0, bottom: 0}
                     persistent = {
-                        height: 60
+                        height: 80
                     }
+                },
+            );
+            self.model_selector(id!(model_selector)).apply_over(
+                cx,
+                live! {
+                    width: Fill
+                    button = { width: Fill }
                 },
             );
         } else {
@@ -160,6 +166,13 @@ impl Widget for ChatView {
                     persistent = {
                         height: Fit
                     }
+                },
+            );
+            self.model_selector(id!(model_selector)).apply_over(
+                cx,
+                live! {
+                    width: Fit
+                    button = { width: Fit }
                 },
             );
         }

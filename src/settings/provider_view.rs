@@ -38,7 +38,7 @@ live_design! {
         content = <View> {
             flow: Right,
             width: Fill, height: Fill
-            padding: {top: 10, bottom: 10, left: 20, right: 20}
+            padding: {top: 8, bottom: 10, left: 15, right: 15}
             align: {x: 0.5, y: 0.5}
             model_name = <Label> {
                 text: "Model Name"
@@ -206,12 +206,7 @@ live_design! {
                 }
             }
 
-            <RoundedView> {
-                show_bg: true
-                draw_bg: {
-                    color: #f
-                }
-                padding: 10
+            models_view = <RoundedView> {
                 models_list = <PortalList> {
                     width: Fill,
                     height: Fill,
@@ -470,6 +465,28 @@ impl Widget for ModelEntry {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // TODO: Do this using AdaptiveView instead, currently here because there PortalList
+        // does not support height: Fit on children, and there's also no proper text wrapping.
+        if cx.display_context.is_desktop() {
+            self.apply_over(
+                cx,
+                live! {
+                    height: 60
+                    content = { model_name = { width: Fit } }
+                    vertical_filler = { visible: true }
+                },
+            );
+        } else {
+            self.apply_over(
+                cx,
+                live! {
+                    height: 80
+                    content = { model_name = { width: 200 } }
+                    vertical_filler = { visible: false }
+                },
+            );
+        }
+
         self.view.draw_walk(cx, scope, walk)
     }
 }

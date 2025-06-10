@@ -28,20 +28,19 @@ live_design! {
     ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
 
     ModelSelectorButton = <View> {
-        width: Fill,
+        width: Fit,
         height: 54,
         flow: Overlay,
 
-        align: {x: 0.5, y: 0.5}
+        align: {x: 0.0, y: 0.5}
         loading = <ModelSelectorLoading> {}
 
         <View> {
-            width: Fill,
-            height: Fill,
-            flow: Right,
+            width: Fit, height: Fill
+            flow: Right, spacing: 8
 
-            align: {x: 0.5, y: 0.5},
-            padding: {left: 16, right: 16, top: 0, bottom: 0},
+            align: {x: 0.0, y: 0.5},
+            padding: {left: 8, right: 8, top: 0, bottom: 0},
 
             cursor: Hand,
 
@@ -119,6 +118,7 @@ live_design! {
             width: Fill,
             height: 400,
             scroll_bars: <ScrollBars> {}
+            padding: 8
             list = <ModelSelectorList> {
                 width: Fill,
                 height: Fit,
@@ -127,15 +127,16 @@ live_design! {
     }
 
     pub ModelSelector = {{ModelSelector}}<RoundedShadowView> {
-        width: 500, height: Fit,
-        flow: Down,
+        width: Fit, height: Fit
+        flow: Down
+        margin: {left: 12, right: 12, top: 8, bottom: 15}
 
-        show_bg: true,
+        show_bg: true
         draw_bg: {
             color: (MAIN_BG_COLOR_DARK),
             border_radius: 4.5,
             uniform shadow_color: #0001
-            shadow_radius: 8.0,
+            shadow_radius: 15.0,
             shadow_offset: vec2(0.0,-2.0)
         }
 
@@ -147,7 +148,7 @@ live_design! {
             }
             content: {
                 padding: {top: 20, left: 10, right: 10, bottom: 20}
-                width: 510
+                width: 368
                 height: 500
                 options = <ModelSelectorOptions> {}
             }
@@ -247,12 +248,13 @@ impl Widget for ModelSelector {
                         button_rect.pos.x - 5.0,
                         button_rect.pos.y + button_rect.size.y,
                     );
+                    let modal_content_size = (button_rect.size.x + 10.0).max(360.0);
 
                     let modal = self.modal(id!(bot_options_modal));
                     modal.apply_over(
                         cx,
                         live! {
-                            content: { margin: { left: (coords.x), top: (coords.y) } }
+                            content: { margin: { left: (coords.x), top: (coords.y) }, width: (modal_content_size) }
                         },
                     );
                     modal.open(cx);
