@@ -35,7 +35,7 @@ live_design! {
         deep_inquire_content: <DeepInquireContent> {}
 
         list = <PortalList> {
-            padding: { left: 10, right: 80 }
+            padding: { left: 10, right: 10 }
             scroll_bar: {
                 bar_size: 0.0,
             }

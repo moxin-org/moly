@@ -15,12 +15,15 @@ live_design! {
 
     ICON_NEW_CHAT = dep("crate://self/resources/icons/new_chat.svg")
 
+    HEADER_HEIGHT = 100
+
     MolyNavigationView = <StackNavigationView> {
         width: Fill, height: Fill
         draw_bg: { color: (MAIN_BG_COLOR) }
         header = {
-            padding: {top: 35}
+            height: (HEADER_HEIGHT)
             content = {
+                padding: {top: 10}
                 align: {y: 0.5}
                 button_container = {
                     align: {y: 0.5}
@@ -43,11 +46,13 @@ live_design! {
                 }
             }
         }
+        body = { margin: {top: (HEADER_HEIGHT) }}
     }
 
     pub ChatScreenMobile = {{ChatScreenMobile}} {
         width: Fill, height: Fill
         flow: Overlay
+        margin: { top: 40 }
 
         navigation = <StackNavigation> {
             width: Fill, height: Fill
@@ -101,7 +106,7 @@ live_design! {
                     chat_history = <ChatHistory> {
                         width: Fill, height: Fill
                     }
-                    align: { x: 0.98, y: 0.98 }
+                    align: { x: 0.95, y: 0.95 }
                     <RoundedView> {
                         show_bg: true
                         draw_bg: {
@@ -160,8 +165,10 @@ live_design! {
                     }
                 }
                 body = {
+                    padding: {top: 10}
                     provider_view = <ProviderView> {
                         width: Fill, height: Fill
+                        padding: {left: 20, right: 20, top: 30, bottom: 30}
                     }
                 }
             }
