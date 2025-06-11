@@ -211,6 +211,12 @@ impl Chat {
         if prompt.read().has_send_task() {
             let next_index = self.messages_ref().read().messages.len();
             let text = prompt.text();
+            let attachments = prompt
+                .read()
+                .attachment_list_ref()
+                .read()
+                .attachments
+                .clone();
             let mut composition = Vec::new();
 
             if !text.is_empty() {
@@ -220,6 +226,7 @@ impl Chat {
                         from: EntityId::User,
                         content: MessageContent {
                             text,
+                            attachments,
                             ..Default::default()
                         },
                         is_writing: false,
@@ -452,7 +459,7 @@ impl Chat {
                 self.redraw(cx);
             }
             ChatTask::ClearPrompt => {
-                self.prompt_input_ref().write().reset(cx); // `reset` comes from command text input.
+                self.prompt_input_ref().write().reset(cx);
             }
             ChatTask::ScrollToBottom(triggered_by_stream) => {
                 self.messages_ref()

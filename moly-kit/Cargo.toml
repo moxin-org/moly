@@ -4,7 +4,11 @@ version = "0.2.1"
 edition = "2024"
 
 [dependencies]
-reqwest = { version = "0.12.12", features = ["json", "stream", "rustls-tls"], default-features = false, optional = true }
+reqwest = { version = "0.12.12", features = [
+  "json",
+  "stream",
+  "rustls-tls",
+], default-features = false, optional = true }
 scraper = { version = "0.23.1", optional = true }
 serde = { version = "1.0.217", features = ["derive", "rc"], optional = true }
 serde_json = { version = "1.0.135", optional = true }
@@ -22,6 +26,9 @@ cfg-if = "1.0.0"
 log = "0.4"
 env_logger = "0.11"
 chrono = "0.4.41"
+mime_guess = "2.0.5"
+rfd = { version = "0.15.3", features = ["ashpd", "urlencoding", "xdg-portal"] }
+base64 = { version = "0.22.1", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }
@@ -32,7 +39,7 @@ wasm-bindgen-futures = { version = "0.4.50", optional = true }
 [features]
 default = []
 # default = ["full"]
-json = ["dep:serde", "dep:serde_json"]
+json = ["dep:serde", "dep:serde_json", "dep:base64"]
 http = ["dep:reqwest", "dep:scraper"]
 async-rt = ["dep:tokio"]
 async-web = ["dep:wasm-bindgen-futures"]

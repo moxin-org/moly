@@ -23,6 +23,62 @@ struct Models {
     pub data: Vec<Model>,
 }
 
+/// The content of a [`ContentPart::ImageUrl`].
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ImageUrlDetail {
+    url: String,
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // detail: Option<String>,
+}
+
+/// The content of a [`ContentPart::File`].
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct File {
+    filename: String,
+    file_data: String,
+}
+
+/// Represents a single part in a multi-part content array of [`Content`].
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+enum ContentPart {
+    Text { text: String },
+    ImageUrl { image_url: ImageUrlDetail },
+    File { file: File },
+}
+
+/// Represents the 'content' field, which can be a string or an array of ContentPart
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)] // Tells Serde to try deserializing into variants without a specific tag
+enum Content {
+    Text(String),
+    Parts(Vec<ContentPart>),
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Content::Text(String::new())
+    }
+}
+
+impl Content {
+    /// Returns the text content if available, otherwise an empty string.
+    pub fn text(&self) -> String {
+        match self {
+            Content::Text(text) => text.clone(),
+            Content::Parts(parts) => parts
+                .iter()
+                .filter_map(|part| match part {
+                    ContentPart::Text { text } => Some(text.clone()),
+                    _ => None,
+                })
+                .collect::<Vec<String>>()
+                .join(" "),
+        }
+    }
+}
+
 /// Message being received by the completions endpoint.
 ///
 /// Although most OpenAI-compatible APIs return a `role` field, OpenAI itself does not.
@@ -32,11 +88,11 @@ struct Models {
 ///
 /// And SiliconFlow may set `content` to a `null` value, that's why the custom deserializer
 /// is needed.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize)]
 struct IncomingMessage {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_null_default")]
-    pub content: String,
+    pub content: Content,
     /// The reasoning text, if provided.
     ///
     /// Used by agregators like OpenRouter.
@@ -53,26 +109,58 @@ struct IncomingMessage {
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
 struct OutcomingMessage {
-    pub content: String,
+    pub content: Content,
     pub role: Role,
 }
 
-impl TryFrom<Message> for OutcomingMessage {
-    type Error = ();
+async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> {
+    let role = match message.from {
+        EntityId::User => Ok(Role::User),
+        EntityId::System => Ok(Role::System),
+        EntityId::Bot(_) => Ok(Role::Assistant),
+        EntityId::App => Err(()),
+    }?;
 
-    fn try_from(message: Message) -> Result<Self, Self::Error> {
-        let role = match message.from {
-            EntityId::User => Ok(Role::User),
-            EntityId::System => Ok(Role::System),
-            EntityId::Bot(_) => Ok(Role::Assistant),
-            EntityId::App => Err(()),
-        }?;
+    let content = if message.content.attachments.is_empty() {
+        Content::Text(message.content.text)
+    } else {
+        let mut parts = Vec::new();
+        for attachment in message.content.attachments {
+            if !attachment.is_available() {
+                makepad_widgets::warning!("Skipping unavailable attachment: {}", attachment.name);
+                continue;
+            }
 
-        Ok(Self {
-            content: message.content.text,
-            role,
-        })
-    }
+            let content = attachment.read_base64().await.map_err(|_| ())?;
+            let data_url = format!(
+                "data:{};base64,{}",
+                attachment
+                    .content_type
+                    .as_deref()
+                    .unwrap_or("application/octet-stream"),
+                content
+            );
+
+            if attachment.is_image() {
+                parts.push(ContentPart::ImageUrl {
+                    image_url: ImageUrlDetail { url: data_url },
+                });
+            } else {
+                parts.push(ContentPart::File {
+                    file: File {
+                        filename: attachment.name,
+                        file_data: data_url,
+                    },
+                });
+            }
+        }
+        parts.push(ContentPart::Text {
+            text: message.content.text,
+        });
+        Content::Parts(parts)
+    };
+
+    Ok(OutcomingMessage { content, role })
 }
 
 /// Role of a message that is part of the conversation context.
@@ -260,29 +348,44 @@ impl BotClient for OpenAIClient {
         bot_id: &BotId,
         messages: &[Message],
     ) -> MolyStream<'static, ClientResult<MessageContent>> {
-        let inner = self.0.read().unwrap().clone();
+        let bot_id = bot_id.clone();
+        let messages = messages.to_vec();
 
+        let inner = self.0.read().unwrap().clone();
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
-        let moly_messages: Vec<OutcomingMessage> = messages
-            .iter()
-            .filter_map(|m| m.clone().try_into().ok())
-            .collect();
+        let stream = stream! {
+            let mut outgoing_messages: Vec<OutcomingMessage> = Vec::with_capacity(messages.len());
+            for message in messages {
+                match to_outcoming_message(message.clone()).await {
+                    Ok(outgoing_message) => outgoing_messages.push(outgoing_message),
+                    Err(_) => {
+                        error!("Could not convert message to outgoing format: {:?}", message);
+                        yield ClientError::new(
+                            ClientErrorKind::Format,
+                            "Could not convert message to outgoing format.".into(),
+                        ).into();
+                        return;
+                    }
+                }
+            }
 
-        let request = inner
-            .client
-            .post(&url)
-            .headers(headers)
-            .json(&serde_json::json!({
+            let json = serde_json::json!({
                 "model": bot_id.id(),
-                "messages": moly_messages,
+                "messages": outgoing_messages,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,
                 "stream": true
-            }));
+            });
 
-        let stream = stream! {
+
+            let request = inner
+                .client
+                .post(&url)
+                .headers(headers)
+                .json(&json);
+
             let response = match request.send().await {
                 Ok(response) => {
                     if response.status().is_success() {
@@ -348,7 +451,7 @@ impl BotClient for OpenAIClient {
 
                 for choice in &completion.choices {
                     // Append main content delta
-                    if !choice.delta.content.is_empty() {
+                    if !choice.delta.content.text().is_empty() {
                         // Main content arrived, we can assume reasoning is done
                         if let Some(start_time) = reasoning_start_time {
                             if let Some(reasoning) = &mut content.reasoning {
@@ -360,7 +463,7 @@ impl BotClient for OpenAIClient {
                                 }
                             }
                         }
-                        content.text.push_str(&choice.delta.content);
+                        content.text.push_str(&choice.delta.content.text());
                     }
 
                     // Extract reasoning text, could be found in "reasoning" or "reasoning_content"

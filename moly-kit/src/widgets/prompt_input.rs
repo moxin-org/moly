@@ -1,11 +1,19 @@
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 
+use crate::{
+    Attachment,
+    utils::events::EventExt,
+    widgets::attachment_list::{AttachmentListRef, AttachmentListWidgetExt},
+};
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
     use link::moly_kit_theme::*;
     use link::shaders::*;
+
+    use crate::widgets::attachment_list::AttachmentList;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
         send_icon: dep("crate://self/resources/send.svg"),
@@ -20,6 +28,25 @@ live_design! {
                 border_size: 1.0,
             }
             center = {
+                left = {
+                    attach = <Button> {
+                        text: "",
+                        draw_text: {
+                            text_style: <THEME_FONT_ICONS> {
+                                font_size: 14.
+                            }
+                            color: #000,
+                            color_hover: #000,
+                            color_focus: #000
+                            color_down: #000
+                        }
+                        draw_bg: {
+                            color_down: #0000
+                            border_radius: 7.
+                            border_size: 0.
+                        }
+                    }
+                }
                 text_input = {
                     empty_text: "Start typing...",
                     draw_bg: {
@@ -85,6 +112,13 @@ live_design! {
                     }
                 }
             }
+            bottom = {
+                attachments = <AttachmentList> {
+                    wrapper = {
+                        margin: { top: 6 }
+                    }
+                }
+            }
         }
     }
 }
@@ -139,6 +173,22 @@ impl Widget for PromptInput {
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.deref.handle_event(cx, event, scope);
+        self.ui_runner().handle(cx, event, scope, self);
+
+        if self.button(id!(attach)).clicked(event.actions()) {
+            let ui = self.ui_runner();
+            Attachment::pick_multiple(move |result| match result {
+                Ok(attachments) => {
+                    ui.defer_with_redraw(move |me, _, _| {
+                        me.attachment_list_ref()
+                            .write()
+                            .attachments
+                            .extend(attachments);
+                    });
+                }
+                Err(_) => {}
+            });
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -197,6 +247,14 @@ impl Widget for PromptInput {
 }
 
 impl PromptInput {
+    /// Reset this prompt input erasing text, removing attachments, etc.
+    ///
+    /// Shadows the [`CommandTextInput::reset`] method.
+    pub fn reset(&mut self, cx: &mut Cx) {
+        self.deref.reset(cx);
+        self.attachment_list_ref().write().attachments.clear();
+    }
+
     /// Check if the submit button or the return key was pressed.
     ///
     /// Note: To know what the button submission means, check [Self::task] or
@@ -236,6 +294,10 @@ impl PromptInput {
     /// Shorthand to set [Self::task] to [Task::Stop].
     pub fn set_stop(&mut self) {
         self.task = Task::Stop;
+    }
+
+    pub(crate) fn attachment_list_ref(&self) -> AttachmentListRef {
+        self.attachment_list(id!(attachments))
     }
 }
 
