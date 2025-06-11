@@ -119,6 +119,10 @@ pub struct MessageContent {
     /// The reasoning/thinking content of this message.
     pub reasoning: Option<Reasoning>,
 
+    /// File attachments in this content.
+    #[cfg_attr(feature = "json", serde(default))]
+    pub attachments: Vec<Attachment>,
+
     /// Non-standard data contained by this message.
     ///
     /// May be used by clients for tracking purposes or to represent unsupported
@@ -141,6 +145,119 @@ impl MessageContent {
     /// Checks if the content is absolutely empty (contains no data at all).
     pub fn is_empty(&self) -> bool {
         self.text.is_empty() && self.citations.is_empty() && self.data.is_none()
+    }
+}
+
+/// Represents a file/image/document sent or received as part of a message.
+#[derive(Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct Attachment {
+    /// Normally the original filename.
+    pub name: String,
+    /// Mime type of the content, if known.
+    pub content_type: Option<String>,
+    // TODO: Read on demand instead of holding the content in memory.
+    #[serde(skip)]
+    content: Option<Vec<u8>>,
+}
+
+impl Attachment {
+    /// Crate private utility to pick files from the file system.
+    ///
+    /// - On web, async API is required to pick files.
+    /// - On macos, sync API is required and must be called from the main UI thread.
+    ///   - This is the reason why it takes a closure instead of returning a Future.
+    ///     Because on native `spawn` may run in a separate thread. So we can't generalize.
+    /// - We follow macos requirements on all native platforms just in case.
+    pub(crate) fn pick_multiple(cb: impl FnOnce(Result<Vec<Attachment>, ()>) + 'static) {
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                crate::utils::asynchronous::spawn(async move {
+                    let Some(handles) = rfd::AsyncFileDialog::new()
+                        .pick_files()
+                        .await
+                    else {
+                        cb(Err(()));
+                        return;
+                    };
+
+                    let mut attachments = Vec::with_capacity(handles.len());
+                    for handle in handles {
+                        // Notice that rfd doesn't return a Result.
+                        let content = handle.read().await;
+                        let name = handle.file_name();
+                        let content_type = mime_guess::from_path(&name)
+                            .first()
+                            .map(|m| m.to_string());
+                        attachments.push(Attachment {
+                            name,
+                            content_type,
+                            content: Some(content),
+                        });
+                    }
+
+                    cb(Ok(attachments));
+                });
+            } else {
+                let Some(paths) = rfd::FileDialog::new()
+                    .pick_files()
+                else {
+                    cb(Err(()));
+                    return;
+                };
+
+                let mut attachments = Vec::with_capacity(paths.len());
+                for path in paths {
+                    let content = match std::fs::read(&path) {
+                        Ok(content) => content,
+                        Err(_) => {
+                            cb(Err(()));
+                            return;
+                        }
+                    };
+                    let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    let content_type = mime_guess::from_path(&name)
+                        .first()
+                        .map(|m| m.to_string());
+
+                    attachments.push(Attachment {
+                        name,
+                        content_type,
+                        content: Some(content),
+                    });
+                }
+                cb(Ok(attachments));
+            }
+        }
+    }
+
+    pub fn is_available(&self) -> bool {
+        self.content.is_some()
+    }
+
+    pub fn is_image(&self) -> bool {
+        if let Some(content_type) = &self.content_type {
+            content_type.starts_with("image/")
+        } else {
+            false
+        }
+    }
+
+    pub async fn read(&self) -> std::io::Result<Vec<u8>> {
+        if let Some(content) = &self.content {
+            Ok(content.clone())
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Attachment content not available",
+            ))
+        }
+    }
+
+    pub async fn read_base64(&self) -> std::io::Result<String> {
+        use base64::Engine;
+        let content = self.read().await?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(content))
     }
 }
 
