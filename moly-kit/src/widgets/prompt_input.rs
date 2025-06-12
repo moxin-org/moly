@@ -167,7 +167,12 @@ pub struct PromptInput {
 impl LiveHook for PromptInput {
     #[allow(unused)]
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_arch = "wasm32"))]
+        #[cfg(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_arch = "wasm32"
+        ))]
         self.button(id!(attach)).set_visible(cx, true);
     }
 }
@@ -185,7 +190,12 @@ impl Widget for PromptInput {
         self.deref.handle_event(cx, event, scope);
         self.ui_runner().handle(cx, event, scope, self);
 
-        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_arch = "wasm32"))]
+        #[cfg(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_arch = "wasm32"
+        ))]
         {
             if self.button(id!(attach)).clicked(event.actions()) {
                 let ui = self.ui_runner();
@@ -203,7 +213,6 @@ impl Widget for PromptInput {
             }
         }
     }
-
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let button = self.button(id!(submit));
