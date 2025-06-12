@@ -111,6 +111,26 @@ impl Preferences {
         }
         self.save();
     }
+
+    /// Import preferences from a JSON string
+    ///
+    /// If merge is true, the provider preferences will be extended with the new ones,
+    /// otherwise, the existing preferences will be replaced.
+    pub fn import_from_json(&mut self, json: &str, merge: bool) -> Result<(), serde_json::Error> {
+        let preferences = serde_json::from_str::<Preferences>(json)?;
+        if merge {
+            self.providers_preferences
+                .extend(preferences.providers_preferences);
+        } else {
+            *self = preferences;
+        }
+        self.save();
+        Ok(())
+    }
+
+    pub fn as_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
 }
 
 fn preferences_path() -> PathBuf {

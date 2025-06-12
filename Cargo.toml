@@ -5,6 +5,7 @@ members = [
     "moly-runner",
     "moly-kit",
     "moly-mini",
+    "moly-sync",
 ]
 exclude = ["packaging/before-packaging-command"]
 
@@ -25,6 +26,7 @@ description = "Desktop app for downloading and chatting with AI LLMs"
 [dependencies]
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 moly-kit = { path = "./moly-kit", features = ["full"] }
+moly-sync = { path = "./moly-sync"}
 makepad-widgets = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
 unicode-segmentation = "1.10.1"
 anyhow = "1.0"
@@ -42,7 +44,7 @@ env_logger = "0.11"
 cfg-if = "1.0.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "signal"] }
 directories = "5.0.1"
 async-fs = "2.1.2"
 

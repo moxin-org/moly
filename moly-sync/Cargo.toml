@@ -1,0 +1,26 @@
+[package]
+name = "moly-sync"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+moly-kit = { path = "../moly-kit", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+serde_json = "1.0"
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.11"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "signal"] }
+tower-http = { version = "0.5", features = ["cors"] }
+rand = "0.9.1"
+
+[[bin]]
+name = "sync-server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "sync-client"
+path = "src/bin/client.rs"
