@@ -169,6 +169,12 @@ impl Attachment {
     ///   - This is the reason why it takes a closure instead of returning a Future.
     ///     Because on native `spawn` may run in a separate thread. So we can't generalize.
     /// - We follow macos requirements on all native platforms just in case.
+    #[cfg(any(
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "linux",
+        target_arch = "wasm32"
+    ))]
     pub(crate) fn pick_multiple(cb: impl FnOnce(Result<Vec<Attachment>, ()>) + 'static) {
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {

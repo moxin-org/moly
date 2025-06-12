@@ -1,8 +1,11 @@
-use crate::data::{
-    providers::{Provider, ProviderConnectionStatus},
-    store::Store,
-};
 use crate::shared::modal::ModalWidgetExt;
+use crate::{
+    data::{
+        providers::{Provider, ProviderConnectionStatus},
+        store::Store,
+    },
+    settings::sync_modal::{SyncModalAction, SyncModalWidgetExt},
+};
 use makepad_widgets::*;
 
 use super::{add_provider_modal::AddProviderModalAction, provider_view::ProviderViewAction};
@@ -15,6 +18,7 @@ live_design! {
     use crate::shared::widgets::*;
     use crate::shared::styles::*;
     use crate::settings::add_provider_modal::*;
+    use crate::settings::sync_modal::SyncModal;
     use crate::shared::modal::*;
 
     ICON_EDIT = dep("crate://self/resources/icons/edit.svg")
@@ -150,7 +154,7 @@ live_design! {
 
     pub Providers = {{Providers}} {
         width: 300, height: Fill
-        flow: Down, spacing: 20
+        flow: Down, spacing: 10
         padding: {left: 10, right: 10}
         providers_list = <PortalList> {
             width: Fill, height: Fill
@@ -162,7 +166,7 @@ live_design! {
             margin: {left: 10, right: 10, bottom: 0, top: 10}
             width: Fill, height: Fit
             align: {x: 0.5, y: 0.5}
-            padding: {left: 30, right: 30, bottom: 10, top: 10}
+            padding: {left: 30, right: 30, bottom: 15, top: 15}
             draw_bg: {
                 color: (MAIN_BG_COLOR)
                 border_radius: 4.5,
@@ -172,6 +176,28 @@ live_design! {
             }
             <Label> {
                 text: "+ Add a Custom Provider"
+                draw_text: {
+                    text_style: <REGULAR_FONT>{font_size: 11}
+                    color: #000
+                }
+            }
+        }
+
+        open_sync_button = <RoundedShadowView> {
+            cursor: Hand
+            margin: {left: 10, right: 10, bottom: 0}
+            width: Fill, height: Fit
+            align: {x: 0.5, y: 0.5}
+            padding: {left: 30, right: 30, bottom: 15, top: 15}
+            draw_bg: {
+                color: (MAIN_BG_COLOR)
+                border_radius: 4.5,
+                uniform shadow_color: #0002
+                shadow_radius: 8.0,
+                shadow_offset: vec2(0.0,-1.5)
+            }
+            <Label> {
+                text: "Sync Settings"
                 draw_text: {
                     text_style: <REGULAR_FONT>{font_size: 11}
                     color: #000
@@ -194,6 +220,12 @@ live_design! {
             add_provider_modal = <Modal> {
                 content: {
                     add_provider_modal_inner = <AddProviderModal> {}
+                }
+            }
+
+            sync_modal = <Modal> {
+                content: {
+                    sync_modal_inner = <SyncModal> {}
                 }
             }
         }
@@ -303,6 +335,15 @@ impl WidgetMatchEvent for Providers {
             modal.open(cx);
         }
 
+        if self
+            .view(id!(open_sync_button))
+            .finger_up(actions)
+            .is_some()
+        {
+            let modal = self.modal(id!(sync_modal));
+            modal.open(cx);
+        }
+
         for action in actions {
             // Handle selected provider
             if let ConnectionSettingsAction::ProviderSelected(provider_url) = action.cast() {
@@ -313,6 +354,18 @@ impl WidgetMatchEvent for Providers {
             if let AddProviderModalAction::ModalDismissed = action.cast() {
                 self.modal(id!(add_provider_modal)).close(cx);
                 self.redraw(cx);
+            }
+
+            if let SyncModalAction::ModalDismissed = action.cast() {
+                self.modal(id!(sync_modal)).close(cx);
+                self.redraw(cx);
+            }
+
+            // Handle the case where the modal is dismissed by the user clicking outside the modal
+            // This is a hacky way to reset the modal state because the inner content never gets to
+            // hear if it was dismissed from outside.
+            if self.modal(id!(sync_modal)).dismissed(actions) {
+                self.sync_modal(id!(sync_modal_inner)).reset_state(cx);
             }
 
             // Handle provider removed
