@@ -118,7 +118,7 @@ live_design! {
 
         <FormGroup> {
             <ModalLabel> {
-                text: "URL"
+                text: "Serving sync address:"
             }
             import_url = <ModalTextInput> {
                 empty_text: "http://localhost:8080"
@@ -128,7 +128,7 @@ live_design! {
 
         <FormGroup> {
             <ModalLabel> {
-                text: "PIN"
+                text: "Access PIN:"
             }
             import_pin = <ModalTextInput> {
                 empty_text: "1234"
@@ -165,7 +165,7 @@ live_design! {
 
         <FormGroup> {
             <ModalLabel> {
-                text: "Serving sync address"
+                text: "Serving sync address:"
             }
             serving_url = <ModalLabel> {
                 text: "http://localhost:8080"
@@ -173,14 +173,14 @@ live_design! {
         }
         <FormGroup> {
             <ModalLabel> {
-                text: "Sync PIN"
+                text: "Access PIN:"
             }
             sync_pin = <ModalLabel> {
                 text: "1234"
             }
         }
         stop_server = <ShadowButton> {
-            label = { text: "Stop server" }
+            label = { text: "Stop sharing" }
             width: Fill
         }
     }
@@ -251,7 +251,7 @@ live_design! {
                     spacing: 10, flow: Down
 
                     hint = <ModalLabel> {
-                        text: "Choose wether you want to share or import settings"
+                        text: "Sync settings between devices"
                         draw_text: {
                             text_style: {font_size: 11},
                         }
@@ -264,11 +264,11 @@ live_design! {
                         align: {x: 0.5, y: 0.5}
 
                         serve = <ShadowButton> {
-                            label = { text: "Serve as a sync server" }
+                            label = { text: "Share from this device" }
                         }
 
                         show_import = <ShadowButton> {
-                            label = { text: "Import from server" }
+                            label = { text: "Import from another" }
                         }
                     }
                 }

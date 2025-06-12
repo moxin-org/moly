@@ -27,8 +27,10 @@ log = "0.4"
 env_logger = "0.11"
 chrono = "0.4.41"
 mime_guess = "2.0.5"
-rfd = { version = "0.15.3", features = ["ashpd", "urlencoding", "xdg-portal"] }
 base64 = { version = "0.22.1", optional = true }
+
+[target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_arch = "wasm32"))'.dependencies]
+rfd = { version = "0.15.3", features = ["ashpd", "urlencoding", "xdg-portal"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }

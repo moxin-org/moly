@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 
+#[allow(unused)]
 use crate::{
     Attachment,
     utils::events::EventExt,
@@ -30,6 +31,7 @@ live_design! {
             center = {
                 left = {
                     attach = <Button> {
+                        visible: false
                         text: "",
                         draw_text: {
                             text_style: <THEME_FONT_ICONS> {
@@ -140,7 +142,7 @@ pub enum Interactivity {
 /// A prepared text input for conversation with bots.
 ///
 /// This is mostly a dummy widget. Prefer using and adapting [crate::widgets::chat::Chat] instead.
-#[derive(Live, LiveHook, Widget)]
+#[derive(Live, Widget)]
 pub struct PromptInput {
     #[deref]
     deref: CommandTextInput,
@@ -162,6 +164,14 @@ pub struct PromptInput {
     pub interactivity: Interactivity,
 }
 
+impl LiveHook for PromptInput {
+    #[allow(unused)]
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_arch = "wasm32"))]
+        self.button(id!(attach)).set_visible(cx, true);
+    }
+}
+
 impl Widget for PromptInput {
     fn set_text(&mut self, cx: &mut Cx, v: &str) {
         self.deref.set_text(cx, v);
@@ -175,21 +185,25 @@ impl Widget for PromptInput {
         self.deref.handle_event(cx, event, scope);
         self.ui_runner().handle(cx, event, scope, self);
 
-        if self.button(id!(attach)).clicked(event.actions()) {
-            let ui = self.ui_runner();
-            Attachment::pick_multiple(move |result| match result {
-                Ok(attachments) => {
-                    ui.defer_with_redraw(move |me, _, _| {
-                        me.attachment_list_ref()
-                            .write()
-                            .attachments
-                            .extend(attachments);
-                    });
-                }
-                Err(_) => {}
-            });
+        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_arch = "wasm32"))]
+        {
+            if self.button(id!(attach)).clicked(event.actions()) {
+                let ui = self.ui_runner();
+                Attachment::pick_multiple(move |result| match result {
+                    Ok(attachments) => {
+                        ui.defer_with_redraw(move |me, _, _| {
+                            me.attachment_list_ref()
+                                .write()
+                                .attachments
+                                .extend(attachments);
+                        });
+                    }
+                    Err(_) => {}
+                });
+            }
         }
     }
+
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let button = self.button(id!(submit));
