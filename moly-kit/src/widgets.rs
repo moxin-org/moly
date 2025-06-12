@@ -2,6 +2,7 @@
 //!
 //! Note: Some widgets may depend on certain feature flags.
 
+mod attachment_list;
 mod avatar;
 mod chat_lines;
 mod citation;
@@ -33,6 +34,7 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     // Currently we only have a light theme which we use as default.
     cx.link(live_id!(moly_kit_theme), live_id!(theme_moly_kit_light));
 
+    attachment_list::live_design(cx);
     citation::live_design(cx);
     citation_list::live_design(cx);
     makepad_code_editor::live_design(cx);

@@ -1,4 +1,4 @@
-use crate::protocol::*;
+use crate::{protocol::*, widgets::attachment_list::AttachmentListWidgetExt};
 use makepad_widgets::*;
 
 use super::{
@@ -13,6 +13,7 @@ live_design! {
     use crate::widgets::message_thinking_block::*;
     use crate::widgets::message_markdown::*;
     use crate::widgets::citation_list::*;
+    use crate::widgets::attachment_list::*;
 
     pub StandardMessageContent = {{StandardMessageContent}} {
         flow: Down
@@ -21,6 +22,7 @@ live_design! {
         thinking_block = <MessageThinkingBlock> {}
         markdown = <MessageMarkdown> {}
         citations = <CitationList> { visible: false }
+        attachments = <AttachmentList> {}
     }
 }
 
@@ -84,6 +86,9 @@ impl StandardMessageContent {
             self.message_thinking_block(id!(thinking_block))
                 .set_thinking_content(cx, reasoning, is_writing);
         }
+
+        let attachments = self.attachment_list(id!(attachments));
+        attachments.borrow_mut().unwrap().attachments = content.attachments.clone();
 
         if !content.text.is_empty() {
             if is_writing {
