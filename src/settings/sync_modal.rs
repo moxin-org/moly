@@ -6,7 +6,7 @@ use moly_kit::utils::asynchronous::spawn;
 use moly_sync::fetch_json;
 
 #[cfg(not(target_arch = "wasm32"))]
-use moly_sync::{ServerHandle, start_server_with_handle};
+use moly_sync::{ServerHandle, start_server};
 
 use crate::data::store::Store;
 
@@ -392,7 +392,7 @@ impl SyncModal {
         let ui = self.ui_runner();
         spawn(async move {
             // Start moly-sync server
-            let server_result = start_server_with_handle(json_file, None).await;
+            let server_result = start_server(json_file, None).await;
             match server_result {
                 Ok(server_handle) => {
                     let addr = server_handle.addr;

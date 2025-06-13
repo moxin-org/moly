@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-/// Fetch JSON from a sync server
+use crate::crypto::decrypt_json;
+
+/// Fetch and decrypt JSON from a sync server
 pub async fn fetch_json(server_addr: &str, pin: &str) -> Result<String> {
     let url = if server_addr.starts_with("http") {
         format!("{}/preferences.json?token={}", server_addr, pin)
@@ -20,8 +22,13 @@ pub async fn fetch_json(server_addr: &str, pin: &str) -> Result<String> {
         );
     }
 
-    let content = response.text().await?;
-    Ok(content)
+    let encrypted_content = response.text().await?;
+
+    // Decrypt the content using the PIN
+    let decrypted_content = decrypt_json(&encrypted_content, pin)
+        .map_err(|e| anyhow::anyhow!("Failed to decrypt preferences data: {}. This could be due to an incorrect PIN or corrupted data.", e))?;
+
+    Ok(decrypted_content)
 }
 
 /// Test if server is reachable
