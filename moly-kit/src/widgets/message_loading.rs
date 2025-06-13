@@ -40,7 +40,6 @@ live_design! {
 
         flow: Down,
         spacing: 4,
-        padding: {right: 100}
 
         line1 = <Bar> {}
         line2 = <Bar> {}

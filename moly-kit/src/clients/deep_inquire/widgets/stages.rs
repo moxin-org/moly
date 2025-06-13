@@ -133,7 +133,6 @@ live_design! {
     SubStages = {{SubStages}} {
         flow: Down
         width: Fill, height: Fit,
-        padding: {right: 200}
         spacing: 20
 
         substage_template: <SubStage> {}
