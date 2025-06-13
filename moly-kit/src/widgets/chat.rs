@@ -326,7 +326,7 @@ impl Chat {
                 }
             };
 
-            let mut message_stream = client.send(&bot.id, &messages_history_context);
+            let mut message_stream = amortize(client.send(&bot.id, &messages_history_context));
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes
@@ -624,4 +624,59 @@ impl ChatRef {
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Chat) -> R) -> R {
         f(&mut *self.write())
     }
+}
+
+/// Util that wraps the stream of `send()` and gives you a stream less agresive to
+/// the receiver UI regardless of the streaming chunk size.
+fn amortize(
+    input: MolyStream<'static, ClientResult<MessageContent>>,
+) -> MolyStream<'static, ClientResult<MessageContent>> {
+    // Use utils
+    use async_stream::stream;
+
+    // Factors
+    /// How many characters to send at once.
+    ///
+    /// - `1` gives the smoothest experience, but will slow down the consumer end
+    ///   of the stream and also cause more redraws on makepad's side.
+    /// - `10`, on a model that yields big chunks of text like Gemini-1.5-flash,
+    ///   will look decent, but not perfectly smooth.
+    /// - `5` is a good compromise between smoothness and performance.
+    ///
+    /// TODO: Use unicode segmentation instead of byte indexes, so this can be
+    /// 5 real characters instead of 2-3 in multi-byte languages like Chinese.
+    const CHUNK_SIZE: usize = 5;
+
+    // Stream state
+    let mut tail = 0;
+
+    // Stream compute
+    let stream = stream! {
+        for await result in input {
+            if result.has_errors() {
+                yield result;
+                return;
+            }
+
+            let mut content = result.into_value().unwrap();
+            let buffer = std::mem::take(&mut content.text);
+
+            while tail < buffer.len() {
+                tail = (tail + CHUNK_SIZE).min(buffer.len());
+
+                // Let's correct the tail if not at a char boundary or start/end of
+                // the buffer.
+                while !buffer.is_char_boundary(tail) {
+                    tail += 1;
+                }
+
+                yield ClientResult::new_ok(MessageContent {
+                    text: buffer[..tail].to_string(),
+                    ..content.clone()
+                });
+            }
+        }
+    };
+
+    moly_stream(stream)
 }
