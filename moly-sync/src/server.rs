@@ -5,6 +5,8 @@ use rand::Rng;
 use std::collections::HashMap;
 use tokio::sync::oneshot;
 
+use crate::crypto::encrypt_json;
+
 /// Server handle that can be used to stop the server
 #[derive(Debug)]
 pub struct ServerHandle {
@@ -20,11 +22,8 @@ impl ServerHandle {
     }
 }
 
-/// Start a simple HTTP server that serves a JSON file and return a handle to stop it
-pub async fn start_server_with_handle(
-    json_file: String,
-    port: Option<u16>,
-) -> Result<ServerHandle> {
+/// Start a simple HTTP server that serves encrypted JSON file and return a handle to stop it
+pub async fn start_server(json_file: String, port: Option<u16>) -> Result<ServerHandle> {
     use axum::{routing::get, Router};
     use tower_http::cors::CorsLayer;
 
@@ -36,16 +35,21 @@ pub async fn start_server_with_handle(
     // Generate a random 4 digit PIN
     let pin = format!("{:04}", rand::rng().random_range(0..=9999));
 
+    // Pre-encrypt the JSON data with the PIN
+    let encrypted_json = encrypt_json(&json_file, &pin)
+        .map_err(|e| anyhow::anyhow!("Failed to encrypt preferences data: {}", e))?;
+
     let app = Router::new()
         .route(
             "/preferences.json",
             get({
                 let token = pin.clone();
+                let encrypted_data = encrypted_json.clone();
                 move |Query(query): Query<HashMap<String, String>>| async move {
                     if query.get("token") == Some(&token) {
-                        Ok(json_file)
+                        Ok(encrypted_data)
                     } else {
-                        ::log::info!("Invalid token: {}", token);
+                        ::log::warn!("Invalid token provided for preferences access");
                         Err(axum::http::StatusCode::UNAUTHORIZED)
                     }
                 }
