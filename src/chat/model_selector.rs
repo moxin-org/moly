@@ -26,6 +26,7 @@ live_design! {
     use crate::chat::model_selector_loading::ModelSelectorLoading;
 
     ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
+    ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
 
     ModelSelectorButton = <View> {
         width: Fit,
@@ -112,6 +113,32 @@ live_design! {
             uniform shadow_color: #0002
             shadow_radius: 9.0,
             shadow_offset: vec2(0.0,-2.0)
+        }
+
+        search = <View> {
+            width: Fill, height: Fit,
+            show_bg: true,
+            padding: {top: 3, bottom: 3, left: 20, right: 20},
+            spacing: 4,
+            align: {x: 0.0, y: 0.5},
+            draw_bg: {
+                border_radius: 9.0,
+                border_color: #D0D5DD,
+                border_size: 1.0,
+                color: #fff,
+            }
+            <Icon> {
+                draw_icon: {
+                    svg_file: (ICON_SEARCH),
+                    fn get_color(self) -> vec4 { return #666; }
+                }
+                icon_walk: {width: 14, height: Fit}
+            }
+            input = <MolyTextInput> {
+                width: Fill, height: Fit,
+                empty_text: "Search models",
+                draw_text: { text_style:<REGULAR_FONT>{font_size: 11} }
+            }
         }
 
         list_container = <View> {
@@ -394,6 +421,15 @@ impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let mut should_hide_options = false;
         for action in actions {
+            if let Some(text) = self
+                .text_input(id!(options.search.input))
+                .changed(actions)
+            {
+                self
+                    .model_selector_list(id!(list_container.list))
+                    .set_search_filter(cx, &text);
+            }
+
             match action.cast() {
                 ModelSelectorAction::BotSelected(chat_id, m) => {
                     if chat_id == self.chat_id {
