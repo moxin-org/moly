@@ -349,9 +349,13 @@ impl MatchEvent for App {
                 _ => {}
             }
 
-            if let ChatAction::Start(_) = action.cast() {
-                let chat_radio_button = self.ui.radio_button(id!(chat_tab));
-                chat_radio_button.select(cx, &mut Scope::empty());
+            match action.cast() {
+                ChatAction::Start(_) | ChatAction::StartWithoutEntity => {
+                    let chat_radio_button = self.ui.radio_button(id!(chat_tab));
+                    chat_radio_button.select(cx, &mut Scope::empty());
+                    navigate_to_chat = true;
+                }
+                _ => {}
             }
 
             if let NavigationAction::NavigateToMyModels = action.cast() {
