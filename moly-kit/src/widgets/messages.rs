@@ -345,7 +345,7 @@ impl Messages {
                         slot.restore();
                         slot.default()
                             .as_standard_message_content()
-                            .set_content(cx, &message.content);
+                            .set_content_with_typing(cx, &message.content, message.is_writing);
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);

@@ -66,16 +66,47 @@ impl StandardMessageContent {
             self.label(id!(markdown)).set_text(cx, &body);
         }
     }
+
+    /// Same as [`set_content`], with an optional typing indicator automatically added.
+    pub fn set_content_with_typing(
+        &mut self,
+        cx: &mut Cx,
+        content: &MessageContent,
+        is_typing: bool,
+    ) {
+        /// String to add as suffix to the message text when its being typed.
+        const TYPING_INDICATOR: &str = "●";
+
+        let mut content = content.clone();
+        if is_typing {
+            content.text = format!("{} {}", content.text, TYPING_INDICATOR);
+        }
+        self.set_content(cx, &content);
+    }
 }
 
 impl StandardMessageContentRef {
-    /// See [StandardMessageContent::set_content].
+    /// See [`StandardMessageContent::set_content`].
     pub fn set_content(&mut self, cx: &mut Cx, content: &MessageContent) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
 
         inner.set_content(cx, content);
+    }
+
+    /// See [`StandardMessageContent::set_content_with_typing`].
+    pub fn set_content_with_typing(
+        &mut self,
+        cx: &mut Cx,
+        content: &MessageContent,
+        is_typing: bool,
+    ) {
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
+
+        inner.set_content_with_typing(cx, content, is_typing);
     }
 }
 
