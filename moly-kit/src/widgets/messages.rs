@@ -50,13 +50,12 @@ live_design! {
         <View> {
             align: {x: 1.0, y: 1.0},
             jump_to_bottom = <Button> {
-                width: 34,
-                height: 34,
-                margin: 2,
-                padding: {bottom: 2},
+                width: 36,
+                height: 36,
+                margin: {left: 2, right: 2, top: 2, bottom: 10},
                 icon_walk: {
-                    width: 12, height: 12
-                    margin: {left: 4.5},
+                    width: 16, height: 16
+                    margin: {left: 4.5, top: 6.5},
                 }
                 draw_icon: {
                     svg_file: dep("crate://self/resources/jump_to_bottom.svg")
@@ -71,7 +70,7 @@ live_design! {
 
                         sdf.circle(center.x, center.y, radius - 1.0);
                         sdf.fill_keep(#fff);
-                        sdf.stroke(#EAECF0, 1.0);
+                        sdf.stroke(#EAECF0, 1.5);
 
                         return sdf.result
                     }
@@ -223,8 +222,8 @@ impl Messages {
             self.should_defer_scroll_to_bottom = false;
         }
 
-        let bot_context = self.bot_context.clone().expect("no bot client set");
-        let mut client = bot_context.client();
+        let context = self.bot_context.clone().expect("no bot client set");
+        let mut client = context.client();
 
         let mut list = list_ref.borrow_mut().unwrap();
         list.set_item_range(cx, 0, self.messages.len());
@@ -312,12 +311,12 @@ impl Messages {
                     item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::Bot(id) => {
-                    let bot = bot_context.get_bot(id);
+                    let bot = context.get_bot(id);
 
                     let (name, avatar) = bot
                         .as_ref()
-                        .map(|b| (b.name.as_str(), Some(b.avatar.clone())))
-                        .unwrap_or(("Unknown bot", Some(Picture::Grapheme("B".into()))));
+                        .map(|b| (b.name.as_str(), b.avatar.clone()))
+                        .unwrap_or(("Unknown bot", Picture::Grapheme("B".into())));
 
                     let item = if message.is_writing && message.content.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
@@ -328,7 +327,7 @@ impl Messages {
                         list.item(cx, index, live_id!(BotLine))
                     };
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = avatar;
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
                     item.label(id!(name)).set_text(cx, name);
 
                     let mut slot = item.slot(id!(content));

@@ -77,11 +77,13 @@ impl StandardMessageContent {
         /// String to add as suffix to the message text when its being typed.
         const TYPING_INDICATOR: &str = "●";
 
-        let mut content = content.clone();
         if is_typing {
+            let mut content = content.clone();
             content.text = format!("{} {}", content.text, TYPING_INDICATOR);
+            self.set_content(cx, &content);
+        } else {
+            self.set_content(cx, content);
         }
-        self.set_content(cx, &content);
     }
 }
 
