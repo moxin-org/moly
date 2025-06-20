@@ -626,13 +626,23 @@ impl ChatRef {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct AmortizedString {
     text: String,
     tail: usize,
 
     /// Only set after the whole string has been consumed, but reseted on update.
     is_done: bool,
+}
+
+impl Default for AmortizedString {
+    fn default() -> Self {
+        Self {
+            text: String::new(),
+            tail: 0,
+            is_done: true,
+        }
+    }
 }
 
 impl Iterator for AmortizedString {
@@ -652,7 +662,7 @@ impl Iterator for AmortizedString {
         }
 
         self.is_done = self.tail == self.text.len();
-        Some(self.text[..self.tail].to_string())
+        Some(self.current().to_string())
     }
 }
 
@@ -669,6 +679,10 @@ impl AmortizedString {
     /// TODO: Use unicode segmentation instead of byte indexes, so this can be
     /// 5 real characters instead of 2-3 in multi-byte languages like Chinese.
     const CHUNK_SIZE: usize = 5;
+
+    fn current(&self) -> &str {
+        &self.text[..self.tail]
+    }
 
     fn update(&mut self, text: String) {
         // If this is not appending text, but replacing it, ensure next iteration
@@ -692,6 +706,7 @@ fn amortize(
 
     // Stream state
     let mut amortized_text = AmortizedString::default();
+    let mut amortized_reasoning = AmortizedString::default();
 
     // Stream compute
     let stream = stream! {
@@ -701,15 +716,38 @@ fn amortize(
                 return;
             }
 
+            // Modified content that we will be yielding.
             let mut content = result.into_value().unwrap();
+
+            // Feed the whole string into the string amortizer.
+            // Put back what has been already amortized from previous iterations.
             let text = std::mem::take(&mut content.text);
             amortized_text.update(text);
+            content.text = amortized_text.current().to_string();
 
-            for text in &mut amortized_text {
-                yield ClientResult::new_ok(MessageContent {
+            // Deal with the optional reasoning.
+            if let Some(reasoning) = content.reasoning.as_mut() {
+                let text = std::mem::take(&mut reasoning.text);
+                amortized_reasoning.update(text);
+                reasoning.text = amortized_reasoning.current().to_string();
+            }
+
+            // Prioritize yielding amortized reasoning updates first.
+            for text in &mut amortized_reasoning {
+                content.reasoning = Some(Reasoning {
                     text,
-                    ..content.clone()
+                    time_taken_seconds: content.reasoning.as_ref().and_then(|r| r.time_taken_seconds),
                 });
+
+                yield ClientResult::new_ok(content.clone());
+            }
+
+            // Finially, beging yielding amortized text updates.
+            // This will also include the amortized reasoning until now because we
+            // fed it back into the content.
+            for text in &mut amortized_text {
+                content.text = text;
+                yield ClientResult::new_ok(content.clone());
             }
         }
     };

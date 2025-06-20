@@ -318,8 +318,6 @@ impl Messages {
                         .map(|b| (b.name.as_str(), b.avatar.clone()))
                         .unwrap_or(("Unknown bot", Picture::Grapheme("B".into())));
 
-                    dbg!(&message.content.reasoning);
-
                     let item = if message.is_writing && message.content.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
                         item.message_loading(id!(content_section.loading))
