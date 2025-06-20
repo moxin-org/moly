@@ -626,82 +626,13 @@ impl ChatRef {
     }
 }
 
-#[derive(Debug)]
-struct AmortizedString {
-    text: String,
-    tail: usize,
-
-    /// Only set after the whole string has been consumed, but reseted on update.
-    is_done: bool,
-}
-
-impl Default for AmortizedString {
-    fn default() -> Self {
-        Self {
-            text: String::new(),
-            tail: 0,
-            is_done: true,
-        }
-    }
-}
-
-impl Iterator for AmortizedString {
-    type Item = String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.is_done {
-            return None;
-        }
-
-        self.tail = (self.tail + Self::CHUNK_SIZE).min(self.text.len());
-
-        // Let's correct the tail if not at a char boundary or start/end of
-        // the buffer.
-        while !self.text.is_char_boundary(self.tail) {
-            self.tail += 1;
-        }
-
-        self.is_done = self.tail == self.text.len();
-        Some(self.current().to_string())
-    }
-}
-
-impl AmortizedString {
-    // Factors
-    /// How many characters to send at once.
-    ///
-    /// - `1` gives the smoothest experience, but will slow down the consumer end
-    ///   of the stream and also cause more redraws on makepad's side.
-    /// - `10`, on a model that yields big chunks of text like Gemini-1.5-flash,
-    ///   will look decent, but not perfectly smooth.
-    /// - `5` is a good compromise between smoothness and performance.
-    ///
-    /// TODO: Use unicode segmentation instead of byte indexes, so this can be
-    /// 5 real characters instead of 2-3 in multi-byte languages like Chinese.
-    const CHUNK_SIZE: usize = 5;
-
-    fn current(&self) -> &str {
-        &self.text[..self.tail]
-    }
-
-    fn update(&mut self, text: String) {
-        // If this is not appending text, but replacing it, ensure next iteration
-        // returns the whole modified string.
-        if !text.starts_with(&self.text) {
-            self.tail = text.len();
-        }
-
-        self.text = text;
-        self.is_done = false;
-    }
-}
-
 /// Util that wraps the stream of `send()` and gives you a stream less agresive to
 /// the receiver UI regardless of the streaming chunk size.
 fn amortize(
     input: MolyStream<'static, ClientResult<MessageContent>>,
 ) -> MolyStream<'static, ClientResult<MessageContent>> {
     // Use utils
+    use crate::utils::string::AmortizedString;
     use async_stream::stream;
 
     // Stream state
@@ -710,7 +641,9 @@ fn amortize(
 
     // Stream compute
     let stream = stream! {
+        // Our wrapper stream "activates" when something comes from the underlying stream.
         for await result in input {
+            // Transparently yield the result on error and then stop.
             if result.has_errors() {
                 yield result;
                 return;
@@ -742,7 +675,7 @@ fn amortize(
                 yield ClientResult::new_ok(content.clone());
             }
 
-            // Finially, beging yielding amortized text updates.
+            // Finially, begin yielding amortized text updates.
             // This will also include the amortized reasoning until now because we
             // fed it back into the content.
             for text in &mut amortized_text {

@@ -5,6 +5,7 @@ pub(crate) mod errors;
 pub(crate) mod events;
 pub(crate) mod portal_list;
 pub(crate) mod scraping;
+pub(crate) mod string;
 
 #[cfg(feature = "json")]
 pub(crate) mod serde;
