@@ -626,14 +626,37 @@ impl ChatRef {
     }
 }
 
-/// Util that wraps the stream of `send()` and gives you a stream less agresive to
-/// the receiver UI regardless of the streaming chunk size.
-fn amortize(
-    input: MolyStream<'static, ClientResult<MessageContent>>,
-) -> MolyStream<'static, ClientResult<MessageContent>> {
-    // Use utils
-    use async_stream::stream;
+#[derive(Default, Debug)]
+struct AmortizedString {
+    text: String,
+    tail: usize,
 
+    /// Only set after the whole string has been consumed, but reseted on update.
+    is_done: bool,
+}
+
+impl Iterator for AmortizedString {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_done {
+            return None;
+        }
+
+        self.tail = (self.tail + Self::CHUNK_SIZE).min(self.text.len());
+
+        // Let's correct the tail if not at a char boundary or start/end of
+        // the buffer.
+        while !self.text.is_char_boundary(self.tail) {
+            self.tail += 1;
+        }
+
+        self.is_done = self.tail == self.text.len();
+        Some(self.text[..self.tail].to_string())
+    }
+}
+
+impl AmortizedString {
     // Factors
     /// How many characters to send at once.
     ///
@@ -647,8 +670,28 @@ fn amortize(
     /// 5 real characters instead of 2-3 in multi-byte languages like Chinese.
     const CHUNK_SIZE: usize = 5;
 
+    fn update(&mut self, text: String) {
+        // If this is not appending text, but replacing it, ensure next iteration
+        // returns the whole modified string.
+        if !text.starts_with(&self.text) {
+            self.tail = text.len();
+        }
+
+        self.text = text;
+        self.is_done = false;
+    }
+}
+
+/// Util that wraps the stream of `send()` and gives you a stream less agresive to
+/// the receiver UI regardless of the streaming chunk size.
+fn amortize(
+    input: MolyStream<'static, ClientResult<MessageContent>>,
+) -> MolyStream<'static, ClientResult<MessageContent>> {
+    // Use utils
+    use async_stream::stream;
+
     // Stream state
-    let mut tail = 0;
+    let mut amortized_text = AmortizedString::default();
 
     // Stream compute
     let stream = stream! {
@@ -659,19 +702,12 @@ fn amortize(
             }
 
             let mut content = result.into_value().unwrap();
-            let buffer = std::mem::take(&mut content.text);
+            let text = std::mem::take(&mut content.text);
+            amortized_text.update(text);
 
-            while tail < buffer.len() {
-                tail = (tail + CHUNK_SIZE).min(buffer.len());
-
-                // Let's correct the tail if not at a char boundary or start/end of
-                // the buffer.
-                while !buffer.is_char_boundary(tail) {
-                    tail += 1;
-                }
-
+            for text in &mut amortized_text {
                 yield ClientResult::new_ok(MessageContent {
-                    text: buffer[..tail].to_string(),
+                    text,
                     ..content.clone()
                 });
             }
