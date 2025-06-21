@@ -326,7 +326,7 @@ impl Chat {
                 }
             };
 
-            let mut message_stream = client.send(&bot.id, &messages_history_context);
+            let mut message_stream = amortize(client.send(&bot.id, &messages_history_context));
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes
@@ -624,4 +624,66 @@ impl ChatRef {
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Chat) -> R) -> R {
         f(&mut *self.write())
     }
+}
+
+/// Util that wraps the stream of `send()` and gives you a stream less agresive to
+/// the receiver UI regardless of the streaming chunk size.
+fn amortize(
+    input: MolyStream<'static, ClientResult<MessageContent>>,
+) -> MolyStream<'static, ClientResult<MessageContent>> {
+    // Use utils
+    use crate::utils::string::AmortizedString;
+    use async_stream::stream;
+
+    // Stream state
+    let mut amortized_text = AmortizedString::default();
+    let mut amortized_reasoning = AmortizedString::default();
+
+    // Stream compute
+    let stream = stream! {
+        // Our wrapper stream "activates" when something comes from the underlying stream.
+        for await result in input {
+            // Transparently yield the result on error and then stop.
+            if result.has_errors() {
+                yield result;
+                return;
+            }
+
+            // Modified content that we will be yielding.
+            let mut content = result.into_value().unwrap();
+
+            // Feed the whole string into the string amortizer.
+            // Put back what has been already amortized from previous iterations.
+            let text = std::mem::take(&mut content.text);
+            amortized_text.update(text);
+            content.text = amortized_text.current().to_string();
+
+            // Deal with the optional reasoning.
+            if let Some(reasoning) = content.reasoning.as_mut() {
+                let text = std::mem::take(&mut reasoning.text);
+                amortized_reasoning.update(text);
+                reasoning.text = amortized_reasoning.current().to_string();
+            }
+
+            // Prioritize yielding amortized reasoning updates first.
+            for text in &mut amortized_reasoning {
+                content.reasoning = Some(Reasoning {
+                    text,
+                    time_taken_seconds: content.reasoning.as_ref().and_then(|r| r.time_taken_seconds),
+                });
+
+                yield ClientResult::new_ok(content.clone());
+            }
+
+            // Finially, begin yielding amortized text updates.
+            // This will also include the amortized reasoning until now because we
+            // fed it back into the content.
+            for text in &mut amortized_text {
+                content.text = text;
+                yield ClientResult::new_ok(content.clone());
+            }
+        }
+    };
+
+    moly_stream(stream)
 }

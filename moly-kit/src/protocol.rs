@@ -144,7 +144,11 @@ pub struct MessageContent {
 impl MessageContent {
     /// Checks if the content is absolutely empty (contains no data at all).
     pub fn is_empty(&self) -> bool {
-        self.text.is_empty() && self.citations.is_empty() && self.data.is_none()
+        self.text.is_empty()
+            && self.citations.is_empty()
+            && self.data.is_none()
+            && self.reasoning.is_none()
+            && self.attachments.is_empty()
     }
 }
 
