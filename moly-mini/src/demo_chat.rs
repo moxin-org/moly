@@ -6,6 +6,7 @@ use crate::bot_selector::BotSelectorWidgetExt;
 use crate::tester_client::TesterClient;
 
 const OPEN_AI_KEY: Option<&str> = option_env!("OPEN_AI_KEY");
+const OPEN_AI_IMAGE_KEY: Option<&str> = option_env!("OPEN_AI_IMAGE_KEY");
 const OPEN_ROUTER_KEY: Option<&str> = option_env!("OPEN_ROUTER_KEY");
 const SILICON_FLOW_KEY: Option<&str> = option_env!("SILICON_FLOW_KEY");
 
@@ -80,6 +81,8 @@ impl DemoChat {
                     "o3-mini-high",
                 ];
 
+                let openai_image_whitelist = ["dall-e-3"];
+
                 let openrouter_whitelist = [
                     "openai/gpt-4o",
                     "openai/gpt-4o-mini",
@@ -115,6 +118,7 @@ impl DemoChat {
 
                 openai_whitelist
                     .iter()
+                    .chain(openai_image_whitelist.iter())
                     .chain(openrouter_whitelist.iter())
                     .chain(ollama_whitelist.iter())
                     .chain(siliconflow_whitelist.iter())
@@ -184,9 +188,15 @@ impl DemoChat {
             let ollama = OpenAIClient::new("http://localhost:11434/v1".into());
             client.add_client(Box::new(ollama));
 
+            if let Some(key) = OPEN_AI_IMAGE_KEY {
+                let mut openai_image = OpenAIImageClient::new("https://api.openai.com/v1".into());
+                let _ = openai_image.set_key(key);
+                client.add_client(Box::new(openai_image));
+            }
+
             // Only add OpenAI client if API key is present
             if let Some(key) = OPEN_AI_KEY {
-                let openai_url = "https://api.openai.com/api/v1";
+                let openai_url = "https://api.openai.com/v1";
                 let mut openai = OpenAIClient::new(openai_url.into());
                 let _ = openai.set_key(key);
                 client.add_client(Box::new(openai));

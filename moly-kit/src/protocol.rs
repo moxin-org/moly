@@ -241,6 +241,31 @@ impl Attachment {
         }
     }
 
+    /// Creates a new in-memory attachment from the given bytes.
+    pub fn from_bytes(name: String, content_type: Option<String>, content: Vec<u8>) -> Self {
+        Attachment {
+            name,
+            content_type,
+            content: Some(content),
+        }
+    }
+
+    /// Creates a new in-memory attachment from a base64 encoded string.
+    pub fn from_base64(
+        name: String,
+        content_type: Option<String>,
+        base64_content: &str,
+    ) -> std::io::Result<Self> {
+        use base64::Engine;
+        let content = base64::engine::general_purpose::STANDARD
+            .decode(base64_content)
+            .map_err(|_| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid base64 content")
+            })?;
+
+        Ok(Attachment::from_bytes(name, content_type, content))
+    }
+
     pub fn is_available(&self) -> bool {
         self.content.is_some()
     }

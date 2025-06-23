@@ -328,6 +328,10 @@ impl BotClient for OpenAIClient {
                         Picture::Grapheme(m.id.chars().next().unwrap().to_string().to_uppercase())
                     },
                 })
+                .filter(|b| {
+                    // These will be handled by a separate client.
+                    !b.id.id().starts_with("dall-e") && !b.id.id().starts_with("gpt-image")
+                })
                 .collect();
 
             bots.sort_by(|a, b| a.name.cmp(&b.name));
