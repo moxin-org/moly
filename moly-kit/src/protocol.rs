@@ -294,6 +294,55 @@ impl Attachment {
         let content = self.read().await?;
         Ok(base64::engine::general_purpose::STANDARD.encode(content))
     }
+
+    // /// Crate private utility to open the attachment (outside of the app).
+    // pub(crate) fn open(&self) {
+    //     let self_clone = self.clone();
+    //     crate::utils::asynchronous::spawn(async move {
+    //         let Ok(b64) = self_clone.read_base64().await else {
+    //             log::error!("Failed to open attachment: {}", self_clone.name);
+    //             return;
+    //         };
+
+    //         let url = format!(
+    //             "data:{};base64,{}",
+    //             self_clone
+    //                 .content_type
+    //                 .as_deref()
+    //                 .unwrap_or("application/octet-stream"),
+    //             b64
+    //         );
+
+    //         if robius_open::Uri::new(url.as_str()).open().is_err() {
+    //             log::error!("Failed to open attachment: {}", self_clone.name);
+    //         }
+    //     });
+    // }
+
+    /// Crate private utility to save/download the attachment to the file system.
+    pub(crate) fn save(&self) {
+        let Some(path) = rfd::FileDialog::new().set_file_name(&self.name).save_file() else {
+            return;
+        };
+
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap_or_else(|_| {
+            log::error!(
+                "Failed to create directory for attachment: {}",
+                path.display()
+            );
+        });
+
+        if let Err(e) = std::fs::write(
+            &path,
+            self.content
+                .as_ref()
+                .expect("Attachment content not available"),
+        ) {
+            log::error!("Failed to save attachment {}: {}", self.name, e);
+        } else {
+            log::info!("Attachment {} saved to {}", self.name, path.display());
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]

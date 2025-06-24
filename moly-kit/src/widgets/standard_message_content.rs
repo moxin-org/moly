@@ -51,8 +51,13 @@ impl StandardMessageContent {
         citation_list.borrow_mut().unwrap().urls = content.citations.clone();
         citation_list.borrow_mut().unwrap().visible = !content.citations.is_empty();
 
-        let attachments = self.attachment_list(id!(attachments));
-        attachments.borrow_mut().unwrap().attachments = content.attachments.clone();
+        let mut attachments = self.attachment_list(id!(attachments));
+        attachments.write().attachments = content.attachments.clone();
+        attachments.write().on_tap = Some(Box::new(|index, list| {
+            if let Some(attachment) = list.attachments.get(index).cloned() {
+                attachment.save();
+            }
+        }));
 
         if let Some(reasoning) = &content.reasoning {
             self.message_thinking_block(id!(thinking_block))

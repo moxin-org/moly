@@ -202,10 +202,11 @@ impl Widget for PromptInput {
                 Attachment::pick_multiple(move |result| match result {
                     Ok(attachments) => {
                         ui.defer_with_redraw(move |me, _, _| {
-                            me.attachment_list_ref()
-                                .write()
-                                .attachments
-                                .extend(attachments);
+                            let mut list = me.attachment_list_ref();
+                            list.write().attachments.extend(attachments);
+                            list.write().on_tap = Some(Box::new(move |index, list| {
+                                list.attachments.remove(index);
+                            }));
                         });
                     }
                     Err(_) => {}

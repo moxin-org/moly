@@ -75,20 +75,22 @@ impl OpenAIImageClient {
             })?;
 
         let url = format!("{}/images/generations", inner.url);
-        let request =
-            inner
-                .client
-                .post(&url)
-                .headers(inner.headers.clone())
-                .json(&serde_json::json!({
-                    "model": bot_id.id(),
-                    "prompt": prompt,
-                    // "auto" is supported by `gpt-image` but not for `dall-e`.
-                    "size": "1024x1024",
-                    // `gpt-image` always returns base64, but `dall-e` supports
-                    // and defaults to `url` response format.
-                    "response_format": "b64_json",
-                }));
+
+        let request_json = serde_json::json!({
+            "model": bot_id.id(),
+            "prompt": prompt,
+            // "auto" is supported by `gpt-image` but not for `dall-e`.
+            "size": "1024x1024",
+            // `gpt-image` always returns base64, but `dall-e` supports
+            // and defaults to `url` response format.
+            "response_format": "b64_json"
+        });
+
+        let request = inner
+            .client
+            .post(&url)
+            .headers(inner.headers.clone())
+            .json(&request_json);
 
         let response = request.send().await.map_err(|e| {
             ClientError::new_with_source(
@@ -113,7 +115,7 @@ impl OpenAIImageClient {
             ));
         }
 
-        let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
+        let response_json: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
             ClientError::new_with_source(
                 ClientErrorKind::Format,
                 format!(
@@ -123,7 +125,7 @@ impl OpenAIImageClient {
             )
         })?;
 
-        let image_data = json
+        let image_data = response_json
             .get("data")
             .and_then(|data| data.get(0))
             .and_then(|item| item.get("b64_json"))
