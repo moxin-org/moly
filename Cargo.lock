@@ -2034,6 +2034,7 @@ dependencies = [
  "chrono",
  "env_logger",
  "futures",
+ "js-sys",
  "log",
  "makepad-code-editor",
  "makepad-widgets",
@@ -2047,6 +2048,7 @@ dependencies = [
  "tokio",
  "url",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

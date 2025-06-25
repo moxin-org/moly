@@ -190,27 +190,20 @@ impl Widget for PromptInput {
         self.deref.handle_event(cx, event, scope);
         self.ui_runner().handle(cx, event, scope, self);
 
-        #[cfg(any(
-            target_os = "windows",
-            target_os = "macos",
-            target_os = "linux",
-            target_arch = "wasm32"
-        ))]
-        {
-            if self.button(id!(attach)).clicked(event.actions()) {
-                let ui = self.ui_runner();
-                Attachment::pick_multiple(move |result| match result {
-                    Ok(attachments) => {
-                        ui.defer_with_redraw(move |me, _, _| {
-                            me.attachment_list_ref()
-                                .write()
-                                .attachments
-                                .extend(attachments);
-                        });
-                    }
-                    Err(_) => {}
-                });
-            }
+        if self.button(id!(attach)).clicked(event.actions()) {
+            let ui = self.ui_runner();
+            Attachment::pick_multiple(move |result| match result {
+                Ok(attachments) => {
+                    ui.defer_with_redraw(move |me, _, _| {
+                        let mut list = me.attachment_list_ref();
+                        list.write().attachments.extend(attachments);
+                        list.write().on_tap = Some(Box::new(move |list, index| {
+                            list.attachments.remove(index);
+                        }));
+                    });
+                }
+                Err(_) => {}
+            });
         }
     }
 

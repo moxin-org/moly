@@ -77,6 +77,9 @@ pub struct AttachmentList {
     // Note: The macro is not letting me use `pub(crate)`.
     #[rust]
     pub attachments: Vec<Attachment>,
+
+    #[rust]
+    pub on_tap: Option<Box<dyn FnMut(&mut AttachmentList, usize) + 'static>>,
 }
 
 impl Widget for AttachmentList {
@@ -127,7 +130,10 @@ impl Widget for AttachmentList {
                     let ui = self.ui_runner();
                     item.as_item_view().borrow_mut().unwrap().on_tap = Some(Box::new(move || {
                         ui.defer_with_redraw(move |me, _, _| {
-                            me.attachments.remove(index);
+                            if let Some(mut on_tap) = me.on_tap.take() {
+                                on_tap(me, index);
+                                me.on_tap = Some(on_tap);
+                            }
                         });
                     }));
 

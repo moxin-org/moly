@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_kit::{BotId, ChatWidgetRefExt, EntityId, Message, MessageContent};
+use moly_kit::{ChatWidgetRefExt, protocol::*};
 
 use crate::demo_chat::DemoChatWidgetExt;
 
@@ -71,6 +71,11 @@ impl Widget for Ui {
                     from: EntityId::Bot(bot_id),
                     content: MessageContent {
                         text: "World".to_string(),
+                        attachments: vec![Attachment::from_bytes(
+                            "text.txt".into(),
+                            Some("text/plain".into()),
+                            b"Hello, world!".to_vec(),
+                        )],
                         citations: vec![
                             "https://github.com/ZhangHanDong/url-preview/issues/2".to_string(),
                             "https://3.basecamp.com/5400951/buckets/28531977/messages/8467029657"

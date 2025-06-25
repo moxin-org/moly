@@ -173,12 +173,6 @@ impl Attachment {
     ///   - This is the reason why it takes a closure instead of returning a Future.
     ///     Because on native `spawn` may run in a separate thread. So we can't generalize.
     /// - We follow macos requirements on all native platforms just in case.
-    #[cfg(any(
-        target_os = "windows",
-        target_os = "macos",
-        target_os = "linux",
-        target_arch = "wasm32"
-    ))]
     pub(crate) fn pick_multiple(cb: impl FnOnce(Result<Vec<Attachment>, ()>) + 'static) {
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -208,7 +202,7 @@ impl Attachment {
 
                     cb(Ok(attachments));
                 });
-            } else {
+            } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
                 let Some(paths) = rfd::FileDialog::new()
                     .pick_files()
                 else {
@@ -237,8 +231,36 @@ impl Attachment {
                     });
                 }
                 cb(Ok(attachments));
+            } else {
+                makepad_widgets::warning!("Attachment picking is not supported on this platform");
+                cb(Err(()));
             }
         }
+    }
+
+    /// Creates a new in-memory attachment from the given bytes.
+    pub fn from_bytes(name: String, content_type: Option<String>, content: Vec<u8>) -> Self {
+        Attachment {
+            name,
+            content_type,
+            content: Some(content),
+        }
+    }
+
+    /// Creates a new in-memory attachment from a base64 encoded string.
+    pub fn from_base64(
+        name: String,
+        content_type: Option<String>,
+        base64_content: &str,
+    ) -> std::io::Result<Self> {
+        use base64::Engine;
+        let content = base64::engine::general_purpose::STANDARD
+            .decode(base64_content)
+            .map_err(|_| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid base64 content")
+            })?;
+
+        Ok(Attachment::from_bytes(name, content_type, content))
     }
 
     pub fn is_available(&self) -> bool {
@@ -268,6 +290,29 @@ impl Attachment {
         use base64::Engine;
         let content = self.read().await?;
         Ok(base64::engine::general_purpose::STANDARD.encode(content))
+    }
+
+    /// Crate private utility to save/download the attachment to the file system.
+    pub(crate) fn save(&self) {
+        makepad_widgets::log!("Downloading attachment: {}", self.name);
+
+        let Some(content) = self.content.as_ref() else {
+            makepad_widgets::warning!("Attachment content not available for saving: {}", self.name);
+            return;
+        };
+
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                use crate::utils::platform::{create_scoped_blob_url, trigger_download};
+                create_scoped_blob_url(content, self.content_type.as_deref(), |url| {
+                    trigger_download(url, &self.name);
+                });
+            } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
+                crate::utils::platform::trigger_save_as(content, Some(self.name.as_str()));
+            } else {
+                makepad_widgets::warning!("Attachment saving is not supported on this platform");
+            }
+        }
     }
 }
 

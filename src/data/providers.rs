@@ -2,7 +2,10 @@ use makepad_widgets::*;
 use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 
-use super::{deep_inquire_client::DeepInquireClient, openai_client::OpenAIClient};
+use super::{
+    deep_inquire_client::DeepInquireClient, openai_client::OpenAIClient,
+    openai_image_client::OpenAIImageClient,
+};
 
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -26,6 +29,10 @@ pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient
         ProviderType::OpenAI | ProviderType::MolyServer | ProviderType::MoFa => Box::new(
             OpenAIClient::new(provider.url.clone(), provider.api_key.clone()),
         ),
+        ProviderType::OpenAIImage => Box::new(OpenAIImageClient::new(
+            provider.url.clone(),
+            provider.api_key.clone(),
+        )),
         ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone())),
     }
 }
@@ -127,6 +134,7 @@ pub trait ProviderClient: Send + Sync {
 pub enum ProviderType {
     #[pick]
     OpenAI,
+    OpenAIImage,
     MoFa,
     DeepInquire,
     MolyServer,

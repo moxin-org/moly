@@ -344,6 +344,16 @@ impl WidgetMatchEvent for AddProviderModal {
                     models: vec![],
                     was_customly_added: true,
                 },
+                ProviderType::OpenAIImage => Provider {
+                    name: name.clone(),
+                    url: api_host.clone(),
+                    api_key: Some(api_key.clone()),
+                    provider_type: ProviderType::OpenAI,
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: true,
+                    models: vec![],
+                    was_customly_added: true,
+                },
                 ProviderType::MolyServer => Provider {
                     name: name.clone(),
                     url: api_host.clone(),

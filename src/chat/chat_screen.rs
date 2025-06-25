@@ -160,6 +160,15 @@ impl ChatScreen {
                             multi_client.add_client(Box::new(new_client));
                         }
                     }
+                    ProviderType::OpenAIImage => {
+                        let client_url = provider.url.trim_start_matches('#').to_string();
+                        let mut new_client = OpenAIImageClient::new(client_url);
+                        if let Some(key) = provider.api_key.as_ref() {
+                            let _ = new_client.set_key(&key);
+                        }
+
+                        multi_client.add_client(Box::new(new_client));
+                    }
                     ProviderType::MoFa => {
                         // For MoFa we don't require an API key
                         if provider.enabled {
