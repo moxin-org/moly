@@ -2,7 +2,10 @@ use makepad_widgets::*;
 use moly_kit::BotId;
 use serde::{Deserialize, Serialize};
 
-use super::{deep_inquire_client::DeepInquireClient, openai_client::OpenAIClient};
+use super::{
+    deep_inquire_client::DeepInquireClient, openai_client::OpenAIClient,
+    openai_image_client::OpenAIImageClient,
+};
 
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -26,13 +29,10 @@ pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient
         ProviderType::OpenAI | ProviderType::MolyServer | ProviderType::MoFa => Box::new(
             OpenAIClient::new(provider.url.clone(), provider.api_key.clone()),
         ),
-        ProviderType::OpenAIImage => {
-            let mut client = OpenAIImageClient::new(provider.url.clone());
-            if let Some(api_key) = &provider.api_key {
-                let _ = client.set_key(api_key);
-            }
-            Box::new(client)
-        }
+        ProviderType::OpenAIImage => Box::new(OpenAIImageClient::new(
+            provider.url.clone(),
+            provider.api_key.clone(),
+        )),
         ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone())),
     }
 }
@@ -143,67 +143,5 @@ pub enum ProviderType {
 impl Default for ProviderType {
     fn default() -> Self {
         ProviderType::OpenAI
-    }
-}
-
-use moly_kit::{clients::OpenAIImageClient, protocol::*, utils::asynchronous::spawn};
-
-impl ProviderClient for OpenAIImageClient {
-    fn fetch_models(&self) {
-        let url = self.get_url();
-        let future = self.bots();
-        spawn(async move {
-            match future.await.into_result() {
-                Ok(bots) => {
-                    let bots = bots
-                        .into_iter()
-                        .map(|bot| ProviderBot {
-                            id: bot.id.clone(),
-                            name: bot.name,
-                            description: format!("OpenAI Image Generation Model {}", bot.id.id()),
-                            provider_url: url.clone(),
-                            enabled: true,
-                        })
-                        .collect::<Vec<_>>();
-                    Cx::post_action(ProviderFetchModelsResult::Success(url, bots));
-                }
-                Err(e) => {
-                    let e = e
-                        .first()
-                        .expect("error variant without error should not be possible");
-                    match e.kind() {
-                        ClientErrorKind::Network => {
-                            error!("Network error while fetching models: {}", e);
-                            Cx::post_action(ProviderFetchModelsResult::Failure(
-                                url,
-                                ProviderClientError::UnexpectedResponse,
-                            ));
-                        }
-                        ClientErrorKind::Format => {
-                            error!("Failed to parse models response: {}", e);
-                            Cx::post_action(ProviderFetchModelsResult::Failure(
-                                url,
-                                ProviderClientError::UnexpectedResponse,
-                            ));
-                        }
-                        ClientErrorKind::Remote => {
-                            error!("Received a bad response from the server: {}", e);
-                            Cx::post_action(ProviderFetchModelsResult::Failure(
-                                url,
-                                ProviderClientError::UnexpectedResponse,
-                            ));
-                        }
-                        ClientErrorKind::Unknown => {
-                            let message = format!("Unknown error while fetching models: {}", e);
-                            error!("{}", message);
-                            Cx::post_action(ProviderFetchModelsResult::Failure(
-                                url,
-                                ProviderClientError::Other(message),
-                            ));
-                        }
-                    }
-                }
-            }
-        });
     }
 }

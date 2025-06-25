@@ -161,7 +161,8 @@ impl ChatScreen {
                         }
                     }
                     ProviderType::OpenAIImage => {
-                        let mut new_client = OpenAIImageClient::new(provider.url.clone());
+                        let client_url = provider.url.trim_start_matches('#').to_string();
+                        let mut new_client = OpenAIImageClient::new(client_url);
                         if let Some(key) = provider.api_key.as_ref() {
                             let _ = new_client.set_key(&key);
                         }

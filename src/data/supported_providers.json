@@ -18,7 +18,7 @@
         },
         {
             "name": "OpenAI (Image Generation)",
-            "url": "https://api.openai.com/v1",
+            "url": "#https://api.openai.com/v1",
             "provider_type": "OpenAIImage",
             "supported_models": [
                 "dall-e-2",
