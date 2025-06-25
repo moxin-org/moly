@@ -60,6 +60,10 @@ impl OpenAIImageClient {
         self.set_header("Authorization", &format!("Bearer {}", key))
     }
 
+    pub fn get_url(&self) -> String {
+        self.0.read().unwrap().url.clone()
+    }
+
     async fn generate_image(
         &self,
         bot_id: &BotId,
