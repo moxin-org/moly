@@ -28,6 +28,7 @@ env_logger = "0.11"
 chrono = "0.4.41"
 mime_guess = "2.0.5"
 base64 = { version = "0.22.1", optional = true }
+js-sys = "0.3.77"
 
 [target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_arch = "wasm32"))'.dependencies]
 rfd = { version = "0.15.3", features = ["ashpd", "urlencoding", "xdg-portal"] }
@@ -37,6 +38,16 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = { version = "0.4.50", optional = true }
+web-sys = { version = "0.3.77", features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlElement",
+  "HtmlAnchorElement",
+  "Node",
+  "Window",
+  "Blob",
+] }
 
 [features]
 default = []

@@ -321,26 +321,64 @@ impl Attachment {
 
     /// Crate private utility to save/download the attachment to the file system.
     pub(crate) fn save(&self) {
-        let Some(path) = rfd::FileDialog::new().set_file_name(&self.name).save_file() else {
-            return;
-        };
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                use web_sys::wasm_bindgen::JsCast;
 
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap_or_else(|_| {
-            log::error!(
-                "Failed to create directory for attachment: {}",
-                path.display()
-            );
-        });
+                makepad_widgets::log!("Downloading attachment: {}", self.name);
+                let Some(content) = self.content.as_ref() else {
+                    makepad_widgets::warning!("Attachment content not available for saving: {}", self.name);
+                    return;
+                };
 
-        if let Err(e) = std::fs::write(
-            &path,
-            self.content
-                .as_ref()
-                .expect("Attachment content not available"),
-        ) {
-            log::error!("Failed to save attachment {}: {}", self.name, e);
-        } else {
-            log::info!("Attachment {} saved to {}", self.name, path.display());
+                let uint8_array = js_sys::Uint8Array::new_with_length(content.len() as u32);
+                uint8_array.copy_from(content);
+
+                let blob_parts = js_sys::Array::new();
+                blob_parts.push(&uint8_array);
+
+                let mut blob_options = web_sys::BlobPropertyBag::new();
+                if let Some(content_type) = &self.content_type {
+                    blob_options.type_(content_type);
+                }
+
+                let blob = web_sys::Blob::new_with_blob_sequence_and_options(
+                    &blob_parts,
+                    &blob_options
+                ).unwrap();
+
+                let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+                let window = web_sys::window().unwrap();
+                let document = window.document().unwrap();
+                let body = document.body().unwrap();
+                let a = document.create_element("a").unwrap();
+                a.set_attribute("href", &url).unwrap();
+                a.set_attribute("download", &self.name).unwrap();
+                a.set_attribute("style", "display: none;").unwrap();
+                body.append_child(&a).unwrap();
+                a.dyn_into::<web_sys::HtmlAnchorElement>().unwrap().click();
+                web_sys::Url::revoke_object_url(&url).unwrap();
+            } else {
+                let Some(path) = rfd::FileDialog::new().set_file_name(&self.name).save_file() else {
+                    return;
+                };
+
+                let name = self.name.as_str();
+                let Some(content) = self.content.as_ref() else {
+                    makepad_widgets::warning!("Attachment content not available for saving: {}", name);
+                    return;
+                };
+
+                if let Err(e) = std::fs::write(&path, content) {
+                    makepad_widgets::error!(
+                        "Failed to save attachment '{}' to '{}': {}",
+                        name,
+                        path.display(),
+                        e
+                    );
+                }
+            }
         }
     }
 }
