@@ -53,7 +53,7 @@ impl StandardMessageContent {
 
         let mut attachments = self.attachment_list(id!(attachments));
         attachments.write().attachments = content.attachments.clone();
-        attachments.write().on_tap = Some(Box::new(|index, list| {
+        attachments.write().on_tap = Some(Box::new(|list, index| {
             if let Some(attachment) = list.attachments.get(index).cloned() {
                 attachment.save();
             }

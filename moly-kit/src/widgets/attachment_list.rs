@@ -79,7 +79,7 @@ pub struct AttachmentList {
     pub attachments: Vec<Attachment>,
 
     #[rust]
-    pub on_tap: Option<Box<dyn FnMut(usize, &mut AttachmentList) + 'static>>,
+    pub on_tap: Option<Box<dyn FnMut(&mut AttachmentList, usize) + 'static>>,
 }
 
 impl Widget for AttachmentList {
@@ -131,7 +131,7 @@ impl Widget for AttachmentList {
                     item.as_item_view().borrow_mut().unwrap().on_tap = Some(Box::new(move || {
                         ui.defer_with_redraw(move |me, _, _| {
                             if let Some(mut on_tap) = me.on_tap.take() {
-                                on_tap(index, me);
+                                on_tap(me, index);
                                 me.on_tap = Some(on_tap);
                             }
                         });

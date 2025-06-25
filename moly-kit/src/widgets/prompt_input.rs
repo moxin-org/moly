@@ -204,7 +204,7 @@ impl Widget for PromptInput {
                         ui.defer_with_redraw(move |me, _, _| {
                             let mut list = me.attachment_list_ref();
                             list.write().attachments.extend(attachments);
-                            list.write().on_tap = Some(Box::new(move |index, list| {
+                            list.write().on_tap = Some(Box::new(move |list, index| {
                                 list.attachments.remove(index);
                             }));
                         });
