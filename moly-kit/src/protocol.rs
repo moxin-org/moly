@@ -173,12 +173,6 @@ impl Attachment {
     ///   - This is the reason why it takes a closure instead of returning a Future.
     ///     Because on native `spawn` may run in a separate thread. So we can't generalize.
     /// - We follow macos requirements on all native platforms just in case.
-    #[cfg(any(
-        target_os = "windows",
-        target_os = "macos",
-        target_os = "linux",
-        target_arch = "wasm32"
-    ))]
     pub(crate) fn pick_multiple(cb: impl FnOnce(Result<Vec<Attachment>, ()>) + 'static) {
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -208,7 +202,7 @@ impl Attachment {
 
                     cb(Ok(attachments));
                 });
-            } else {
+            } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
                 let Some(paths) = rfd::FileDialog::new()
                     .pick_files()
                 else {
@@ -237,6 +231,9 @@ impl Attachment {
                     });
                 }
                 cb(Ok(attachments));
+            } else {
+                makepad_widgets::warning!("Attachment picking is not supported on this platform");
+                cb(Err(()));
             }
         }
     }
@@ -310,9 +307,10 @@ impl Attachment {
                 create_scoped_blob_url(content, self.content_type.as_deref(), |url| {
                     trigger_download(url, &self.name);
                 });
+            } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
+                crate::utils::platform::trigger_save_as(content, Some(self.name.as_str()));
             } else {
-                use crate::utils::platform::{trigger_save_as};
-                trigger_save_as(content, Some(self.name.as_str()));
+                makepad_widgets::warning!("Attachment saving is not supported on this platform");
             }
         }
     }
