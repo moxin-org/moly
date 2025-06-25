@@ -118,13 +118,13 @@ live_design! {
                 align: {x: 0.0, y: 0.5}
 
                 provider_name_label = <Label> {
+                    flow: Right,
+                    width: Fill,
                     draw_text:{
                         text_style: <REGULAR_FONT>{font_size: 11}
                         color: #000
                     }
                 }
-
-                filler = <View> { width: Fill, height: Fill }
 
                 status_view = <RoundedView> {
                     align: {x: 0.5, y: 0.5}
