@@ -212,7 +212,7 @@ impl Messages {
                 text: "EOC".into(),
                 ..Default::default()
             },
-            is_writing: false,
+            ..Default::default()
         });
 
         if self.should_defer_scroll_to_bottom {
@@ -318,7 +318,7 @@ impl Messages {
                         .map(|b| (b.name.as_str(), b.avatar.clone()))
                         .unwrap_or(("Unknown bot", Picture::Grapheme("B".into())));
 
-                    let item = if message.is_writing && message.content.is_empty() {
+                    let item = if message.metadata.is_writing() && message.content.is_empty() {
                         let item = list.item(cx, index, live_id!(LoadingLine));
                         item.message_loading(id!(content_section.loading))
                             .animate(cx);
@@ -344,7 +344,11 @@ impl Messages {
                         slot.restore();
                         slot.default()
                             .as_standard_message_content()
-                            .set_content_with_typing(cx, &message.content, message.is_writing);
+                            .set_content_with_typing(
+                                cx,
+                                &message.content,
+                                message.metadata.is_writing(),
+                            );
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);

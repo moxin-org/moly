@@ -1,5 +1,6 @@
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -323,6 +324,86 @@ pub struct Reasoning {
     pub time_taken_seconds: Option<f64>,
 }
 
+/// The current state of a message.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum MessageStatus {
+    /// The message is not being written.
+    #[default]
+    Idle,
+    /// The message is still being written.
+    Writing,
+}
+
+/// Metadata automatically tracked by MolyKit for each message.
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct MessageMetadata {
+    /// The runtime status of the message.
+    ///
+    /// Not serialized.
+    #[cfg_attr(feature = "json", serde(skip))]
+    pub status: MessageStatus,
+
+    // /// When the message got created.
+    // #[cfg_attr(feature = "json", serde(default))]
+    // pub created_at: DateTime<Utc>,
+
+    // /// Last time the message was updated.
+    // #[cfg_attr(feature = "json", serde(default))]
+    // pub updated_at: DateTime<Utc>,
+    /// Last time reasoning was updated.
+    ///
+    /// Defaults to current time when created, but if missing during deserialization,
+    /// it will default to epoch for backwards compatibility.
+    #[cfg_attr(feature = "json", serde(default))]
+    pub reasoning_updated_at: DateTime<Utc>,
+
+    /// Last time the main text was updated.
+    ///
+    /// Defaults to current time when created, but if missing during deserialization,
+    /// it will default to epoch for backwards compatibility.
+    #[cfg_attr(feature = "json", serde(default))]
+    pub text_updated_at: DateTime<Utc>,
+}
+
+impl Default for MessageMetadata {
+    fn default() -> Self {
+        MessageMetadata {
+            status: MessageStatus::Idle,
+            // created_at: Utc::now(),
+            // updated_at: Utc::now(),
+            reasoning_updated_at: Utc::now(),
+            text_updated_at: Utc::now(),
+        }
+    }
+}
+
+impl MessageMetadata {
+    /// Check if metadata indicates that the message is still being written
+    pub fn is_reasoning(&self) -> bool {
+        self.status == MessageStatus::Writing && self.reasoning_updated_at > self.text_updated_at
+    }
+
+    /// The inferred amount of time the reasoning step took, in seconds (with milliseconds).
+    pub fn reasoning_time_taken_seconds(&self) -> f64 {
+        if self.reasoning_updated_at > self.text_updated_at {
+            let duration = self.reasoning_updated_at - self.text_updated_at;
+            duration.num_seconds() as f64 + (duration.num_milliseconds() % 1000) as f64 / 1000.0
+        } else {
+            0.0
+        }
+    }
+
+    pub fn is_idle(&self) -> bool {
+        self.status == MessageStatus::Idle
+    }
+
+    pub fn is_writing(&self) -> bool {
+        self.status == MessageStatus::Writing
+    }
+}
+
 /// A message that is part of a conversation.
 #[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -330,13 +411,11 @@ pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
 
+    /// Auto-generated metadata for this message.
+    pub metadata: MessageMetadata,
+
     /// The parsed content of this message ready to present.
     pub content: MessageContent,
-
-    /// Whether the message is actively being modified.
-    ///
-    /// False when no more changes are expected.
-    pub is_writing: bool,
 }
 
 /// The standard error kinds a client implementatiin should facilitate.

@@ -229,7 +229,7 @@ impl Chat {
                             attachments,
                             ..Default::default()
                         },
-                        is_writing: false,
+                        ..Default::default()
                     },
                 ));
             }
@@ -270,7 +270,7 @@ impl Chat {
                     text: error_message,
                     ..Default::default()
                 },
-                is_writing: false,
+                ..Default::default()
             };
 
             self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
@@ -282,14 +282,17 @@ impl Chat {
 
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
-                is_writing: true,
+                metadata: MessageMetadata {
+                    status: MessageStatus::Writing,
+                    ..Default::default()
+                },
                 ..Default::default()
             });
 
             messages
                 .messages
                 .iter()
-                .filter(|m| !m.is_writing && m.from != EntityId::App)
+                .filter(|m| m.metadata.is_idle() && m.from != EntityId::App)
                 .cloned()
                 .collect()
         });
@@ -318,7 +321,7 @@ impl Chat {
                                 text: error_message,
                                 ..Default::default()
                             },
-                            is_writing: false,
+                            ..Default::default()
                         };
                         me.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
                     });
@@ -508,7 +511,7 @@ impl Chat {
         self.messages_ref().write().reset_scroll_state();
         self.prompt_input_ref().write().set_send();
         self.messages_ref().write().messages.retain_mut(|m| {
-            m.is_writing = false;
+            m.metadata.status = MessageStatus::Idle;
             !m.content.is_empty()
         });
     }
@@ -566,7 +569,7 @@ impl Chat {
                                     text: e.to_string(),
                                     ..Default::default()
                                 },
-                                is_writing: false,
+                                ..Default::default()
                             },
                         )
                     })
@@ -587,7 +590,7 @@ impl Chat {
     /// Returns true if the chat is currently streaming.
     pub fn is_streaming(&self) -> bool {
         if let Some(message) = self.messages_ref().read().messages.last() {
-            message.is_writing
+            message.metadata.status == MessageStatus::Writing
         } else {
             false
         }
