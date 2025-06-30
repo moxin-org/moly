@@ -148,53 +148,71 @@ impl ChatScreen {
                             && (provider.api_key.is_some()
                                 || provider.url.starts_with("http://localhost"))
                         {
-                            let mut new_client = OpenAIClient::new(provider.url.clone());
+                            let mut client = OpenAIClient::new(provider.url.clone());
                             if let Some(key) = provider.api_key.as_ref() {
-                                let _ = new_client.set_key(&key);
+                                let _ = client.set_key(&key);
                             }
 
+                            let mut client = MapClient::from(client);
                             if let Some(icon) = store.get_provider_icon(&provider.name) {
-                                new_client.set_provider_avatar(Picture::Dependency(icon));
+                                client.set_map_bots(move |mut bots| {
+                                    for bot in bots.iter_mut() {
+                                        bot.avatar = Picture::Dependency(icon.clone());
+                                    }
+                                    bots
+                                });
                             }
 
-                            multi_client.add_client(Box::new(new_client));
+                            multi_client.add_client(Box::new(client));
                         }
                     }
                     ProviderType::OpenAIImage => {
                         let client_url = provider.url.trim_start_matches('#').to_string();
-                        let mut new_client = OpenAIImageClient::new(client_url);
+                        let mut client = OpenAIImageClient::new(client_url);
                         if let Some(key) = provider.api_key.as_ref() {
-                            let _ = new_client.set_key(&key);
+                            let _ = client.set_key(&key);
                         }
 
-                        multi_client.add_client(Box::new(new_client));
+                        multi_client.add_client(Box::new(client));
                     }
                     ProviderType::MoFa => {
                         // For MoFa we don't require an API key
                         if provider.enabled {
-                            let mut new_client = OpenAIClient::new(provider.url.clone());
+                            let mut client = OpenAIClient::new(provider.url.clone());
                             if let Some(key) = provider.api_key.as_ref() {
-                                let _ = new_client.set_key(&key);
+                                let _ = client.set_key(&key);
                             }
 
+                            let mut client = MapClient::from(client);
                             if let Some(icon) = store.get_provider_icon(&provider.name) {
-                                new_client.set_provider_avatar(Picture::Dependency(icon));
+                                client.set_map_bots(move |mut bots| {
+                                    for bot in bots.iter_mut() {
+                                        bot.avatar = Picture::Dependency(icon.clone());
+                                    }
+                                    bots
+                                });
                             }
 
-                            multi_client.add_client(Box::new(new_client));
+                            multi_client.add_client(Box::new(client));
                         }
                     }
                     ProviderType::DeepInquire => {
-                        let mut new_client = DeepInquireClient::new(provider.url.clone());
+                        let mut client = DeepInquireClient::new(provider.url.clone());
                         if let Some(key) = provider.api_key.as_ref() {
-                            let _ = new_client.set_key(&key);
+                            let _ = client.set_key(&key);
                         }
 
+                        let mut client = MapClient::from(client);
                         if let Some(icon) = store.get_provider_icon(&provider.name) {
-                            new_client.set_provider_avatar(Picture::Dependency(icon));
+                            client.set_map_bots(move |mut bots| {
+                                for bot in bots.iter_mut() {
+                                    bot.avatar = Picture::Dependency(icon.clone());
+                                }
+                                bots
+                            });
                         }
 
-                        multi_client.add_client(Box::new(new_client));
+                        multi_client.add_client(Box::new(client));
                     }
                 }
             }

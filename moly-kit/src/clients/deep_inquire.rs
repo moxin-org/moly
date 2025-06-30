@@ -139,7 +139,6 @@ struct DeepInquireClientInner {
     url: String,
     headers: HeaderMap,
     client: reqwest::Client,
-    provider_avatar: Option<Picture>,
 }
 
 /// A client for interacting with the DeepInquire API
@@ -168,7 +167,6 @@ impl DeepInquireClient {
             url,
             headers,
             client,
-            provider_avatar: None,
         }
         .into()
     }
@@ -189,11 +187,6 @@ impl DeepInquireClient {
 
     pub fn set_key(&mut self, key: &str) -> Result<(), &'static str> {
         self.set_header("Authorization", &format!("Bearer {}", key))
-    }
-
-    /// Set a custom provider avatar for this client
-    pub fn set_provider_avatar(&mut self, avatar: Picture) {
-        self.0.write().unwrap().provider_avatar = Some(avatar);
     }
 }
 
