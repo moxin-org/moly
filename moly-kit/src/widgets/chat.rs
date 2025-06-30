@@ -283,8 +283,8 @@ impl Chat {
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
                 metadata: MessageMetadata {
-                    status: MessageStatus::Writing,
-                    ..Default::default()
+                    is_writing: true,
+                    ..MessageMetadata::new()
                 },
                 ..Default::default()
             });
@@ -522,7 +522,7 @@ impl Chat {
         self.messages_ref().write().reset_scroll_state();
         self.prompt_input_ref().write().set_send();
         self.messages_ref().write().messages.retain_mut(|m| {
-            m.metadata.status = MessageStatus::Idle;
+            m.metadata.is_writing = false;
             !m.content.is_empty()
         });
     }
@@ -536,12 +536,18 @@ impl Chat {
             Ok(content) => {
                 // Let's abort if we don't have where to put the delta.
                 let Some(mut message) = messages.read().messages.last().cloned() else {
+                    eprintln!("No message to update with delta");
                     return true;
                 };
 
                 // Let's abort if we see we are putting delta in the wrong message.
                 if let Some(expected_message) = self.expected_message.as_ref() {
-                    if message != *expected_message {
+                    if message.from != expected_message.from
+                        || message.content != expected_message.content
+                        || message.metadata.is_writing != expected_message.metadata.is_writing
+                        || message.metadata.created_at != expected_message.metadata.created_at
+                    {
+                        eprintln!("Expected message does not match the last message");
                         return true;
                     }
                 }
@@ -560,6 +566,7 @@ impl Chat {
 
                 let Some(ChatTask::UpdateMessage(_, message)) = tasks.into_iter().next() else {
                     // Let's abort if the tasks were modified in an unexpected way.
+                    eprintln!("Unexpected tasks after updating message");
                     return true;
                 };
 
@@ -592,7 +599,7 @@ impl Chat {
                 }
 
                 self.dispatch(cx, &mut tasks);
-
+                eprintln!("Error while streaming");
                 true
             }
         }
@@ -601,7 +608,7 @@ impl Chat {
     /// Returns true if the chat is currently streaming.
     pub fn is_streaming(&self) -> bool {
         if let Some(message) = self.messages_ref().read().messages.last() {
-            message.metadata.status == MessageStatus::Writing
+            message.metadata.is_writing
         } else {
             false
         }
@@ -673,19 +680,13 @@ fn amortize(
             content.text = amortized_text.current().to_string();
 
             // Deal with the optional reasoning.
-            if let Some(reasoning) = content.reasoning.as_mut() {
-                let text = std::mem::take(&mut reasoning.text);
-                amortized_reasoning.update(text);
-                reasoning.text = amortized_reasoning.current().to_string();
-            }
+            let reasoning = std::mem::take(&mut content.reasoning);
+            amortized_reasoning.update(reasoning);
+            content.reasoning = amortized_reasoning.current().to_string();
 
             // Prioritize yielding amortized reasoning updates first.
-            for text in &mut amortized_reasoning {
-                content.reasoning = Some(Reasoning {
-                    text,
-                    time_taken_seconds: content.reasoning.as_ref().and_then(|r| r.time_taken_seconds),
-                });
-
+            for reasoning in &mut amortized_reasoning {
+                content.reasoning = reasoning;
                 yield ClientResult::new_ok(content.clone());
             }
 

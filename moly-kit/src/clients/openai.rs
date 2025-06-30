@@ -1,6 +1,5 @@
 use async_stream::stream;
-use chrono::Utc;
-use log::error;
+use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -424,8 +423,6 @@ impl BotClient for OpenAIClient {
             let mut content = MessageContent::default();
             let events = parse_sse(response.bytes_stream());
 
-            let mut reasoning_start_time: Option<chrono::DateTime<Utc>> = None;
-
             for await event in events {
                 let event = match event {
                     Ok(event) => event,
@@ -456,17 +453,6 @@ impl BotClient for OpenAIClient {
                 for choice in &completion.choices {
                     // Append main content delta
                     if !choice.delta.content.text().is_empty() {
-                        // Main content arrived, we can assume reasoning is done
-                        if let Some(start_time) = reasoning_start_time {
-                            if let Some(reasoning) = &mut content.reasoning {
-                                if reasoning.time_taken_seconds.is_none() {
-                                    let end_time = Utc::now();
-                                    let time_taken_duration = end_time.signed_duration_since(start_time);
-                                    let time_taken = time_taken_duration.num_milliseconds() as f64 / 1000.0;
-                                    reasoning.time_taken_seconds = Some(time_taken);
-                                }
-                            }
-                        }
                         content.text.push_str(&choice.delta.content.text());
                     }
 
@@ -474,18 +460,12 @@ impl BotClient for OpenAIClient {
                     let mut actual_reasoning_delta_text: Option<&str> = None;
                     if let Some(r_text) = &choice.delta.reasoning {
                         if !r_text.is_empty() {
-                            if reasoning_start_time.is_none() {
-                                reasoning_start_time = Some(Utc::now());
-                            }
                             actual_reasoning_delta_text = Some(r_text);
                         }
                     }
                     if actual_reasoning_delta_text.is_none() {
                         if let Some(rc_text) = &choice.delta.reasoning_content {
                             if !rc_text.is_empty() {
-                                if reasoning_start_time.is_none() {
-                                    reasoning_start_time = Some(Utc::now());
-                                }
                                 actual_reasoning_delta_text = Some(rc_text);
                             }
                         }
@@ -493,14 +473,7 @@ impl BotClient for OpenAIClient {
 
                     // Append reasoning delta if found
                     if let Some(reasoning_text_to_append) = actual_reasoning_delta_text {
-                        if let Some(reasoning) = &mut content.reasoning {
-                            reasoning.text.push_str(reasoning_text_to_append);
-                        } else {
-                            content.reasoning = Some(Reasoning {
-                                text: reasoning_text_to_append.to_string(),
-                                time_taken_seconds: None,
-                            });
-                        }
+                        content.reasoning.push_str(reasoning_text_to_append);
                     }
                 }
 

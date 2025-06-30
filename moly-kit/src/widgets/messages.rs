@@ -344,11 +344,7 @@ impl Messages {
                         slot.restore();
                         slot.default()
                             .as_standard_message_content()
-                            .set_content_with_typing(
-                                cx,
-                                &message.content,
-                                message.metadata.is_writing(),
-                            );
+                            .set_content_with_metadata(cx, &message.content, &message.metadata);
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);

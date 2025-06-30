@@ -118,7 +118,7 @@ pub struct MessageContent {
     pub citations: Vec<String>,
 
     /// The reasoning/thinking content of this message.
-    pub reasoning: Option<Reasoning>,
+    pub reasoning: String,
 
     /// File attachments in this content.
     #[cfg_attr(feature = "json", serde(default))]
@@ -148,7 +148,7 @@ impl MessageContent {
         self.text.is_empty()
             && self.citations.is_empty()
             && self.data.is_none()
-            && self.reasoning.is_none()
+            && self.reasoning.is_empty()
             && self.attachments.is_empty()
     }
 }
@@ -317,52 +317,36 @@ impl Attachment {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct Reasoning {
-    pub text: String,
-    pub time_taken_seconds: Option<f64>,
-}
-
-/// The current state of a message.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub enum MessageStatus {
-    /// The message is not being written.
-    #[default]
-    Idle,
-    /// The message is still being written.
-    Writing,
-}
-
 /// Metadata automatically tracked by MolyKit for each message.
+///
+/// Does not implement default to be explicit about timestamps.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MessageMetadata {
-    /// The runtime status of the message.
+    /// Runtime flag indicating that the message is still being written.
     ///
     /// Not serialized.
     #[cfg_attr(feature = "json", serde(skip))]
-    pub status: MessageStatus,
+    pub is_writing: bool,
 
-    // /// When the message got created.
-    // #[cfg_attr(feature = "json", serde(default))]
-    // pub created_at: DateTime<Utc>,
-
-    // /// Last time the message was updated.
-    // #[cfg_attr(feature = "json", serde(default))]
-    // pub updated_at: DateTime<Utc>,
-    /// Last time reasoning was updated.
+    /// When the message got created.
     ///
-    /// Defaults to current time when created, but if missing during deserialization,
-    /// it will default to epoch for backwards compatibility.
+    /// Default to epoch if missing during deserialization. Otherwise, if constructed
+    /// by [`MessageMetadata::default`], it defaults to "now".
+    #[cfg_attr(feature = "json", serde(default))]
+    pub created_at: DateTime<Utc>,
+
+    /// Last time the reasoning/thinking content was updated.
+    ///
+    /// Default to epoch if missing during deserialization. Otherwise, if constructed
+    /// by [`MessageMetadata::default`], it defaults to "now".
     #[cfg_attr(feature = "json", serde(default))]
     pub reasoning_updated_at: DateTime<Utc>,
 
     /// Last time the main text was updated.
     ///
-    /// Defaults to current time when created, but if missing during deserialization,
-    /// it will default to epoch for backwards compatibility.
+    /// Default to epoch if missing during deserialization. Otherwise, if constructed
+    /// by [`MessageMetadata::default`], it defaults to "now".
     #[cfg_attr(feature = "json", serde(default))]
     pub text_updated_at: DateTime<Utc>,
 }
@@ -370,9 +354,8 @@ pub struct MessageMetadata {
 impl Default for MessageMetadata {
     fn default() -> Self {
         MessageMetadata {
-            status: MessageStatus::Idle,
-            // created_at: Utc::now(),
-            // updated_at: Utc::now(),
+            is_writing: false,
+            created_at: Utc::now(),
             reasoning_updated_at: Utc::now(),
             text_updated_at: Utc::now(),
         }
@@ -380,9 +363,26 @@ impl Default for MessageMetadata {
 }
 
 impl MessageMetadata {
+    /// Same behavior as [`MessageMetadata::default`].
+    pub fn new() -> Self {
+        MessageMetadata::default()
+    }
+
+    /// Create a new metadata with all fields set to default but timestamps set to epoch.
+    pub fn epoch() -> Self {
+        MessageMetadata {
+            is_writing: false,
+            created_at: DateTime::UNIX_EPOCH,
+            reasoning_updated_at: DateTime::UNIX_EPOCH,
+            text_updated_at: DateTime::UNIX_EPOCH,
+        }
+    }
+}
+
+impl MessageMetadata {
     /// Check if metadata indicates that the message is still being written
     pub fn is_reasoning(&self) -> bool {
-        self.status == MessageStatus::Writing && self.reasoning_updated_at > self.text_updated_at
+        self.is_writing && self.reasoning_updated_at > self.text_updated_at
     }
 
     /// The inferred amount of time the reasoning step took, in seconds (with milliseconds).
@@ -396,15 +396,17 @@ impl MessageMetadata {
     }
 
     pub fn is_idle(&self) -> bool {
-        self.status == MessageStatus::Idle
+        !self.is_writing
     }
 
     pub fn is_writing(&self) -> bool {
-        self.status == MessageStatus::Writing
+        self.is_writing
     }
 }
 
 /// A message that is part of a conversation.
+///
+///
 #[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Message {
@@ -412,6 +414,10 @@ pub struct Message {
     pub from: EntityId,
 
     /// Auto-generated metadata for this message.
+    ///
+    /// Timestamps inside default to "now" on creation, but if missing during
+    /// deserialization, they default to "epoch".
+    #[cfg_attr(feature = "json", serde(default = "MessageMetadata::epoch"))]
     pub metadata: MessageMetadata,
 
     /// The parsed content of this message ready to present.
@@ -528,6 +534,7 @@ impl ClientError {
 ///
 /// It would be mistake if this contains no value and no errors at the same time.
 /// This is taken care on creation time, and it can't be modified afterwards.
+#[derive(Debug)]
 pub struct ClientResult<T> {
     errors: Vec<ClientError>,
     value: Option<T>,

@@ -223,7 +223,7 @@ impl WidgetMatchEvent for ChatView {
                                 if let Some(store_chat) = chat_to_update {
                                     let mut store_chat = store_chat.borrow_mut();
                                     let mut new_message = message.clone();
-                                    new_message.metadata.status = MessageStatus::Idle;
+                                    new_message.metadata.is_writing = false;
                                     store_chat.messages.push(new_message);
                                     store_chat.update_title_based_on_first_message();
                                     store_chat.save_and_forget();
@@ -252,10 +252,10 @@ impl WidgetMatchEvent for ChatView {
                                         store_chat.messages.get_mut(index)
                                     {
                                         message_to_update.content = message.content.clone();
-                                        message_to_update.metadata.status = MessageStatus::Idle;
+                                        message_to_update.metadata.is_writing = false;
                                     } else {
                                         let mut new_message = message.clone();
-                                        new_message.metadata.status = MessageStatus::Idle;
+                                        new_message.metadata.is_writing = false;
                                         store_chat.messages.push(new_message);
                                     }
 

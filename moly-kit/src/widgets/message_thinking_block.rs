@@ -1,6 +1,5 @@
+use crate::protocol::*;
 use makepad_widgets::*;
-
-use crate::Reasoning;
 
 live_design! {
     use link::theme::*;
@@ -158,13 +157,13 @@ pub struct MessageThinkingBlock {
     animator: Animator,
 
     #[rust]
-    thinking_content: Option<Reasoning>,
-
-    #[rust]
     timer: Timer,
 
     #[rust]
     is_expanded: bool,
+
+    #[rust]
+    is_visible: bool,
 
     #[rust]
     should_animate: bool,
@@ -188,10 +187,7 @@ impl Widget for MessageThinkingBlock {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        if let Some(content) = &self.thinking_content {
-            // Use message_markdown widget to render the thinking text
-            self.markdown(id!(thinking_text))
-                .set_text(cx, &content.text);
+        if self.is_visible {
             self.view.draw_walk(cx, scope, walk)
         } else {
             DrawStep::done()
@@ -228,22 +224,31 @@ impl MessageThinkingBlock {
         self.timer = cx.start_timeout(ANIMATION_SPEED_RUST);
     }
 
-    pub fn set_thinking_content(&mut self, cx: &mut Cx, content: &Reasoning, is_writing: bool) {
-        self.thinking_content = Some(content.clone());
+    pub fn set_thinking_content(
+        &mut self,
+        cx: &mut Cx,
+        reasoning: String,
+        metadata: &MessageMetadata,
+    ) {
+        self.is_visible = !reasoning.is_empty();
+
+        self.markdown(id!(thinking_text)).set_text(cx, &reasoning);
+        self.view(id!(thinking_title)).set_text(
+            cx,
+            &format!(
+                "Thought for {:0.2} seconds",
+                metadata.reasoning_time_taken_seconds()
+            ),
+        );
+
+        //
 
         let mut should_stop_animation = false;
-        if let Some(reasoning) = &self.thinking_content {
-            if reasoning.time_taken_seconds.is_some() {
-                let title = format!(
-                    "Thought for {:0.2} seconds",
-                    reasoning.time_taken_seconds.unwrap()
-                );
-                self.view(id!(thinking_title)).set_text(cx, &title);
-                should_stop_animation = true;
-            }
+        if !reasoning.is_empty() {
+            should_stop_animation = true;
         }
 
-        if is_writing {
+        if metadata.is_writing() {
             if self.timer.is_empty() {
                 self.should_animate = true;
                 self.view(id!(balls)).set_visible(cx, true);
@@ -251,7 +256,7 @@ impl MessageThinkingBlock {
             }
         }
 
-        if should_stop_animation || !is_writing {
+        if should_stop_animation || !metadata.is_writing() {
             self.should_animate = false;
             self.view(id!(balls)).set_visible(cx, false);
             self.animator_play(cx, id!(ball1.start));
@@ -317,9 +322,14 @@ impl MessageThinkingBlock {
 }
 
 impl MessageThinkingBlockRef {
-    pub fn set_thinking_content(&mut self, cx: &mut Cx, content: &Reasoning, is_writing: bool) {
+    pub fn set_thinking_content(
+        &mut self,
+        cx: &mut Cx,
+        reasoning: String,
+        metadata: &MessageMetadata,
+    ) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_thinking_content(cx, content, is_writing);
+            inner.set_thinking_content(cx, reasoning, metadata);
         }
     }
 }
