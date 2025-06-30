@@ -453,7 +453,7 @@ pub enum ClientErrorKind {
     ///
     /// Example: On a centralized HTTP server, this would happen when it returns
     /// an HTTP error code.
-    Remote,
+    Response,
 
     /// The remote server/peer returned a successful response, but we can't parse
     /// its content.
@@ -470,7 +470,7 @@ impl ClientErrorKind {
     pub fn to_human_readable(&self) -> &str {
         match self {
             ClientErrorKind::Network => "Network error",
-            ClientErrorKind::Remote => "Remote error",
+            ClientErrorKind::Response => "Remote error",
             ClientErrorKind::Format => "Format error",
             ClientErrorKind::Unknown => "Unknown error",
         }

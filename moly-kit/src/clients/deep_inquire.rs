@@ -254,7 +254,7 @@ impl BotClient for DeepInquireClient {
                             let enriched = enrich_http_error(status_code, &original);
 
                             yield ClientError::new_with_source(
-                                ClientErrorKind::Remote,
+                                ClientErrorKind::Response,
                                 enriched,
                                 Some(error),
                             ).into();

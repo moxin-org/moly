@@ -278,7 +278,7 @@ impl BotClient for OpenAIClient {
             if !response.status().is_success() {
                 let code = response.status().as_u16();
                 return ClientError::new(
-                    ClientErrorKind::Remote,
+                    ClientErrorKind::Response,
                     format!("Got unexpected HTTP status code {code} from {url}."),
                 )
                 .into();
@@ -401,7 +401,7 @@ impl BotClient for OpenAIClient {
 
                             error!("Error sending request to {}: {:?}", url, error);
                             yield ClientError::new_with_source(
-                                ClientErrorKind::Remote,
+                                ClientErrorKind::Response,
                                 enriched,
                                 Some(error),
                             ).into();

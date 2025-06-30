@@ -111,7 +111,7 @@ impl OpenAIImageClient {
 
         if !status.is_success() {
             return Err(ClientError::new(
-                ClientErrorKind::Remote,
+                ClientErrorKind::Response,
                 format!(
                     "Request to {url} failed with status {} and content: {}",
                     status, text
