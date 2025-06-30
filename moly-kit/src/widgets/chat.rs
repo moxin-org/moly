@@ -180,7 +180,9 @@ impl Chat {
                 MessagesAction::EditSave(index) => {
                     let mut tasks = self.messages_ref().read_with(|m| {
                         let mut message = m.messages[index].clone();
-                        message.content.text = m.current_editor_text().expect("no editor text");
+                        message.update_content(|content| {
+                            content.text = m.current_editor_text().expect("no editor text");
+                        });
                         ChatTask::UpdateMessage(index, message).into()
                     });
 
@@ -193,7 +195,9 @@ impl Chat {
                         let index = m.current_editor_index().expect("no editor index");
                         let text = m.current_editor_text().expect("no editor text");
 
-                        messages[index].content.text = text;
+                        messages[index].update_content(|content| {
+                            content.text = text;
+                        });
 
                         vec![ChatTask::SetMessages(messages), ChatTask::Send]
                     });
@@ -444,16 +448,8 @@ impl Chat {
             }
             ChatTask::UpdateMessage(index, message) => {
                 self.messages_ref().write_with(|m| {
-                    let mut new_message = message.clone();
+                    let new_message = message.clone();
                     let old_message = m.messages.get_mut(*index).expect("no message at index");
-
-                    if new_message.content.text != old_message.content.text {
-                        new_message.metadata.text_updated_at = chrono::Utc::now();
-                    }
-
-                    if new_message.content.reasoning != old_message.content.reasoning {
-                        new_message.metadata.reasoning_updated_at = chrono::Utc::now();
-                    }
 
                     *old_message = new_message;
                     m.set_message_editor_visibility(*index, false);
@@ -552,7 +548,7 @@ impl Chat {
                     }
                 }
 
-                message.content = content;
+                message.set_content(content);
 
                 let index = messages.read().messages.len() - 1;
                 let mut tasks = vec![ChatTask::UpdateMessage(index, message)];

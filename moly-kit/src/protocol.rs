@@ -380,11 +380,6 @@ impl MessageMetadata {
 }
 
 impl MessageMetadata {
-    /// Check if metadata indicates that the message is still being written
-    pub fn is_reasoning(&self) -> bool {
-        self.is_writing && self.reasoning_updated_at > self.text_updated_at
-    }
-
     /// The inferred amount of time the reasoning step took, in seconds (with milliseconds).
     pub fn reasoning_time_taken_seconds(&self) -> f64 {
         let duration = self.reasoning_updated_at - self.created_at;
@@ -411,6 +406,9 @@ pub struct Message {
 
     /// Auto-generated metadata for this message.
     ///
+    /// Metadata is literally "data about data". Like modification timestamps,
+    /// ongoing state of fields, etc.
+    ///
     /// Timestamps inside default to "now" on creation, but if missing during
     /// deserialization, they default to "epoch".
     #[cfg_attr(feature = "json", serde(default = "MessageMetadata::epoch"))]
@@ -418,6 +416,30 @@ pub struct Message {
 
     /// The parsed content of this message ready to present.
     pub content: MessageContent,
+}
+
+impl Message {
+    /// Set the content of a message as a whole (also updates metadata).
+    pub fn set_content(&mut self, content: MessageContent) {
+        self.update_content(|c| {
+            *c = content;
+        });
+    }
+
+    /// Update specific parts of the content of a message (also updates metadata).
+    pub fn update_content(&mut self, f: impl FnOnce(&mut MessageContent)) {
+        let bk = self.content.clone();
+
+        f(&mut self.content);
+
+        if self.content.text != bk.text {
+            self.metadata.text_updated_at = Utc::now();
+        }
+
+        if self.content.reasoning != bk.reasoning {
+            self.metadata.reasoning_updated_at = Utc::now();
+        }
+    }
 }
 
 /// The standard error kinds a client implementatiin should facilitate.

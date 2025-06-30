@@ -224,43 +224,41 @@ impl MessageThinkingBlock {
         self.timer = cx.start_timeout(ANIMATION_SPEED_RUST);
     }
 
-    pub fn set_thinking_content(
+    pub fn set_content(
         &mut self,
         cx: &mut Cx,
-        reasoning: String,
+        content: &MessageContent,
         metadata: &MessageMetadata,
     ) {
-        self.is_visible = !reasoning.is_empty();
+        let content_reasoning = content.reasoning.as_str();
+        let content_text = content.text.as_str();
 
-        self.markdown(id!(thinking_text)).set_text(cx, &reasoning);
-        self.view(id!(thinking_title)).set_text(
-            cx,
-            &format!(
-                "Thought for {:0.2} seconds",
-                metadata.reasoning_time_taken_seconds()
-            ),
-        );
+        self.is_visible = !content_reasoning.is_empty();
 
-        //
+        self.markdown(id!(thinking_text))
+            .set_text(cx, content_reasoning);
 
-        let mut should_stop_animation = false;
-        if !reasoning.is_empty() {
-            should_stop_animation = true;
-        }
+        let is_reasoning_ongoing =
+            !content_reasoning.is_empty() && content_text.is_empty() && metadata.is_writing();
 
-        if metadata.is_writing() {
+        if is_reasoning_ongoing {
             if self.timer.is_empty() {
                 self.should_animate = true;
                 self.view(id!(balls)).set_visible(cx, true);
                 self.update_animation(cx);
             }
-        }
-
-        if should_stop_animation || !metadata.is_writing() {
+        } else {
             self.should_animate = false;
             self.view(id!(balls)).set_visible(cx, false);
             self.animator_play(cx, id!(ball1.start));
             self.animator_play(cx, id!(ball2.start));
+            self.view(id!(thinking_title)).set_text(
+                cx,
+                &format!(
+                    "Thought for {:0.2} seconds",
+                    metadata.reasoning_time_taken_seconds()
+                ),
+            );
         }
     }
 
@@ -318,18 +316,5 @@ impl MessageThinkingBlock {
             self.should_animate = false;
         }
         self.redraw(cx);
-    }
-}
-
-impl MessageThinkingBlockRef {
-    pub fn set_thinking_content(
-        &mut self,
-        cx: &mut Cx,
-        reasoning: String,
-        metadata: &MessageMetadata,
-    ) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.set_thinking_content(cx, reasoning, metadata);
-        }
     }
 }

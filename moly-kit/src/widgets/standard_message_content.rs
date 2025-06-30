@@ -65,7 +65,9 @@ impl StandardMessageContent {
         }));
 
         self.message_thinking_block(id!(thinking_block))
-            .set_thinking_content(cx, content.reasoning.clone(), metadata);
+            .borrow_mut()
+            .unwrap()
+            .set_content(cx, content, metadata);
 
         let markdown = self.label(id!(markdown));
         if metadata.is_writing() {
