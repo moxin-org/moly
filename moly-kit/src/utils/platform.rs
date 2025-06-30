@@ -54,7 +54,7 @@ pub(crate) fn trigger_download(url: &str, filename: &str) {
 /// Prompts the user to save a file with the given content.
 ///
 /// Native platforms only.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 pub(crate) fn trigger_save_as(content: &[u8], filename: Option<&str>) {
     let filename = filename.unwrap_or("file");
     let dialog = rfd::FileDialog::new().set_file_name(filename);
