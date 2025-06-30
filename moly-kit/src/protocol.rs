@@ -387,12 +387,8 @@ impl MessageMetadata {
 
     /// The inferred amount of time the reasoning step took, in seconds (with milliseconds).
     pub fn reasoning_time_taken_seconds(&self) -> f64 {
-        if self.reasoning_updated_at > self.text_updated_at {
-            let duration = self.reasoning_updated_at - self.text_updated_at;
-            duration.num_seconds() as f64 + (duration.num_milliseconds() % 1000) as f64 / 1000.0
-        } else {
-            0.0
-        }
+        let duration = self.reasoning_updated_at - self.created_at;
+        duration.num_seconds() as f64 + (duration.num_milliseconds() % 1000) as f64 / 1000.0
     }
 
     pub fn is_idle(&self) -> bool {
