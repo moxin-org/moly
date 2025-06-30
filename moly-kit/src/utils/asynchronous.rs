@@ -2,129 +2,90 @@
 //!
 //! Mainly helps you to deal with the runtime differences across native and web.
 //!
-//! ## [spawn] function
-
-//! Runs a future independently, in a platform-specific way.
-//! - **Non-WASM**: May run in parallel and needs to be [Send].
-//! - **WASM**: Will run concurrently and doesn't need to be [Send].
-//! - **Android**: Creates a Tokio runtime if none exists (e.g., when running as a library).
-//!
-//! ## [MolyFuture] and [MolyStream]
-//!
-//! Dynamic and pinned wrappers around futures and streams with platform-specific implementations.
-//! - **Non-WASM**: Requires [Send].
-//! - **WASM**: Doesn't require [Send].
-//!
-//! ## [moly_future] and [moly_stream] functions
-//!
-//! Wraps a future or stream into a [MolyFuture] or [MolyStream] respectively.
-//! - **Non-WASM**: Requires [Send].
-//! - **WASM**: Doesn't require [Send].
-
-// Note: I'm documenting functions and types in the module doc because I don't know
-// right now an easy way to share the docs between conditional compilations.
-
-// TODO: Continue thinking on a way to avoid this.
-// The next thing to try would be to limit the native implementation to non-Send,
-// and use `LocalSet` from Tokio as `reqwest` still needs Tokio on native.
-//
-// Note: `reqwest` gives you a `Send` future in native, but on web it uses a `JsValue`
-// so its future is not send there.
+//! For example: `reqwest` gives you a `Send` future in native, but on web it uses a `JsValue`
+//! so its future is not send there.
 
 use std::{
     pin::Pin,
     task::{Context, Poll},
 };
 
-use futures::{
-    future::{Future, FutureExt},
-    stream::{Stream, StreamExt},
-};
+use futures::{future::Future, stream::Stream};
 
-#[cfg(feature = "async-rt")]
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::OnceLock;
-
-#[cfg(feature = "async-rt")]
-#[cfg(not(target_arch = "wasm32"))]
-static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
-
-#[cfg(feature = "async-rt")]
-#[cfg(not(target_arch = "wasm32"))]
-fn get_or_create_runtime() -> &'static tokio::runtime::Runtime {
-    RUNTIME.get_or_init(|| {
-        log::info!("Creating Tokio runtime for MolyKit (likely running on Android or as library)");
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_io()
-            .enable_time()
-            .thread_name("moly-tokio")
-            .build()
-            .expect("Failed to create Tokio runtime for MolyKit")
-    })
+cfg_if::cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        pub trait PlatformSendInner {}
+        impl<T> PlatformSendInner for T {}
+    } else {
+        pub trait PlatformSendInner: Send {}
+        impl<T> PlatformSendInner for T where T: Send {}
+    }
 }
 
-/// Spawns a future to run independently.
+/// Implies [`Send`] only on native platforms, but not on WASM.
 ///
-/// This function handles different runtime contexts:
-/// - If a Tokio runtime is already available, uses it directly
-/// - If no runtime exists (e.g., Android/library context), creates a shared runtime
-/// - On WASM, uses wasm-bindgen-futures
+/// In other words:
+/// - On native this gets implemented by all types that implement [`Send`].
+/// - On WASM this gets implemented by all types, regardless of [`Send`].
+pub trait PlatformSend: PlatformSendInner {}
+impl<T> PlatformSend for T where T: PlatformSendInner {}
+
+/// A future that requires [`Send`] on native platforms, but not on WASM.
+pub trait PlatformSendFuture: Future + PlatformSend {}
+impl<F, O> PlatformSendFuture for F where F: Future<Output = O> + PlatformSend {}
+
+/// A stream that requires [`Send`] on native platforms, but not on WASM.
+pub trait PlatformSendStream: Stream + PlatformSend {}
+impl<S, T> PlatformSendStream for S where S: Stream<Item = T> + PlatformSend {}
+
+/// Runs a future independently, in a platform-specific way.
+///
+/// - Uses tokio and requires [`Send`] on native platforms.
+/// - Uses wasm-bindgen-futures on WASM and does not require [`Send`].
+///
+/// **Note:** This function may spawn it's own runtime if it can't find an existing one.
+/// Currently, Makepad doesn't expose the entry point in certain platforms (like Android),
+/// making harder to configure a runtime manually.
+pub fn spawn(fut: impl PlatformSendFuture<Output = ()> + 'static) {
+    spawn_impl(fut);
+}
+
 #[cfg(feature = "async-rt")]
 #[cfg(not(target_arch = "wasm32"))]
-pub fn spawn(fut: impl Future<Output = ()> + 'static + Send) {
-    // Try to spawn on existing runtime first, fallback to creating our own
-    match tokio::runtime::Handle::try_current() {
-        Ok(handle) => {
-            log::trace!("Spawning on existing Tokio runtime");
-            handle.spawn(fut);
-        }
-        Err(_) => {
-            // No runtime available, use our own (common on Android)
-            log::trace!("No Tokio runtime found, using MolyKit shared runtime");
-            let runtime = get_or_create_runtime();
-            runtime.spawn(fut);
-        }
+fn spawn_impl(fut: impl Future<Output = ()> + 'static + Send) {
+    use std::sync::OnceLock;
+    use tokio::runtime::{Builder, Handle, Runtime};
+
+    static RUNTIME: OnceLock<Runtime> = OnceLock::new();
+
+    if let Ok(handle) = Handle::try_current() {
+        handle.spawn(fut);
+    } else {
+        log::warn!("No Tokio runtime found on this native platform. Creating a shared runtime.");
+        let rt = RUNTIME.get_or_init(|| {
+            Builder::new_multi_thread()
+                .enable_io()
+                .enable_time()
+                .thread_name("moly-kit-tokio")
+                .build()
+                .expect("Failed to create Tokio runtime for MolyKit")
+        });
+        rt.spawn(fut);
     }
 }
 
 #[cfg(feature = "async-web")]
 #[cfg(target_arch = "wasm32")]
-pub fn spawn(fut: impl Future<Output = ()> + 'static) {
+fn spawn_impl(fut: impl Future<Output = ()> + 'static) {
     wasm_bindgen_futures::spawn_local(fut);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-pub struct MolyFuture<'a, T>(futures::future::BoxFuture<'a, T>);
-
-#[cfg(not(target_arch = "wasm32"))]
-pub struct MolyStream<'a, T>(futures::stream::BoxStream<'a, T>);
-
-#[cfg(target_arch = "wasm32")]
-pub struct MolyFuture<'a, T>(futures::future::LocalBoxFuture<'a, T>);
-
-#[cfg(target_arch = "wasm32")]
-pub struct MolyStream<'a, T>(futures::stream::LocalBoxStream<'a, T>);
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn moly_future<'a, T>(future: impl Future<Output = T> + 'a + Send) -> MolyFuture<'a, T> {
-    MolyFuture(future.boxed())
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn moly_future<'a, T>(future: impl Future<Output = T> + 'a) -> MolyFuture<'a, T> {
-    MolyFuture(future.boxed_local())
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn moly_stream<'a, T>(stream: impl Stream<Item = T> + 'a + Send) -> MolyStream<'a, T> {
-    MolyStream(stream.boxed())
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn moly_stream<'a, T>(stream: impl Stream<Item = T> + 'a) -> MolyStream<'a, T> {
-    MolyStream(stream.boxed_local())
-}
-
+/// Opaque, boxed and pinned future commonly expected by traits in MolyKit.
+///
+/// This future requires [`Send`] only on native platforms, but not on WASM.
+///
+/// Use [`moly_future`] to create an instance of this type.
+pub struct MolyFuture<'a, T>(Pin<Box<dyn PlatformSendFuture<Output = T> + 'a>>);
 impl<'a, T> Future for MolyFuture<'a, T> {
     type Output = T;
 
@@ -133,10 +94,26 @@ impl<'a, T> Future for MolyFuture<'a, T> {
     }
 }
 
+/// Opaque, boxed and pinned stream commonly expected by traits in MolyKit.
+///
+/// This stream requires [`Send`] only on native platforms, but not on WASM.
+///
+/// Use [`moly_stream`] to create an instance of this type.
+pub struct MolyStream<'a, T>(Pin<Box<dyn PlatformSendStream<Item = T> + 'a>>);
 impl<'a, T> Stream for MolyStream<'a, T> {
     type Item = T;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.0).poll_next(cx)
     }
+}
+
+/// Wraps a future into a [`MolyFuture`].
+pub fn moly_future<'a, T>(future: impl PlatformSendFuture<Output = T> + 'a) -> MolyFuture<'a, T> {
+    MolyFuture(Box::pin(future))
+}
+
+/// Wraps a stream into a [`MolyStream`].
+pub fn moly_stream<'a, T>(stream: impl PlatformSendStream<Item = T> + 'a) -> MolyStream<'a, T> {
+    MolyStream(Box::pin(stream))
 }

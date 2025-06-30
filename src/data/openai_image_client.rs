@@ -60,7 +60,7 @@ impl ProviderClient for OpenAIImageClient {
                                 ProviderClientError::UnexpectedResponse,
                             ));
                         }
-                        ClientErrorKind::Remote => {
+                        ClientErrorKind::Response => {
                             error!("Received a bad response from the server: {}", e);
                             Cx::post_action(ProviderFetchModelsResult::Failure(
                                 url,

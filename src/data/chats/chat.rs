@@ -118,7 +118,7 @@ impl Chat {
 
                 Ok(chat)
             }
-            Err(_) => Err(anyhow!("Couldn't read chat file from path")),
+            Err(e) => Err(e),
         }
     }
 

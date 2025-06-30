@@ -68,8 +68,15 @@ impl Chats {
             .map(|file_name| chats.chats_dir.join(file_name));
 
         chats.saved_chats = futures::stream::iter(paths)
-            .then(|path| async move { Chat::load(&path).await.unwrap() })
-            .map(RefCell::new)
+            .filter_map(|path| async move {
+                match Chat::load(&path).await {
+                    Ok(chat) => Some(RefCell::new(chat)),
+                    Err(e) => {
+                        log::error!("Failed to load chat from path {:?}: {}", path, e);
+                        None
+                    }
+                }
+            })
             .collect::<Vec<_>>()
             .await;
 

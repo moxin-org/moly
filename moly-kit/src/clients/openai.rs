@@ -1,6 +1,5 @@
 use async_stream::stream;
-use chrono::Utc;
-use log::error;
+use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -196,7 +195,6 @@ struct OpenAIClientInner {
     url: String,
     headers: HeaderMap,
     client: reqwest::Client,
-    provider_avatar: Option<Picture>,
 }
 
 /// A client capable of interacting with Moly Server and other OpenAI-compatible APIs.
@@ -225,7 +223,6 @@ impl OpenAIClient {
             url,
             headers,
             client,
-            provider_avatar: None,
         }
         .into()
     }
@@ -246,11 +243,6 @@ impl OpenAIClient {
 
     pub fn set_key(&mut self, key: &str) -> Result<(), &'static str> {
         self.set_header("Authorization", &format!("Bearer {}", key))
-    }
-
-    /// Set a custom provider avatar for this client
-    pub fn set_provider_avatar(&mut self, avatar: Picture) {
-        self.0.write().unwrap().provider_avatar = Some(avatar);
     }
 }
 
@@ -279,7 +271,7 @@ impl BotClient for OpenAIClient {
             if !response.status().is_success() {
                 let code = response.status().as_u16();
                 return ClientError::new(
-                    ClientErrorKind::Remote,
+                    ClientErrorKind::Response,
                     format!("Got unexpected HTTP status code {code} from {url}."),
                 )
                 .into();
@@ -322,11 +314,9 @@ impl BotClient for OpenAIClient {
                 .map(|m| Bot {
                     id: BotId::new(&m.id, &inner.url),
                     name: m.id.clone(),
-                    avatar: if let Some(avatar) = &inner.provider_avatar {
-                        avatar.clone()
-                    } else {
-                        Picture::Grapheme(m.id.chars().next().unwrap().to_string().to_uppercase())
-                    },
+                    avatar: Picture::Grapheme(
+                        m.id.chars().next().unwrap().to_string().to_uppercase(),
+                    ),
                 })
                 .filter(|b| {
                     // These will be handled by a separate client.
@@ -402,7 +392,7 @@ impl BotClient for OpenAIClient {
 
                             error!("Error sending request to {}: {:?}", url, error);
                             yield ClientError::new_with_source(
-                                ClientErrorKind::Remote,
+                                ClientErrorKind::Response,
                                 enriched,
                                 Some(error),
                             ).into();
@@ -423,8 +413,6 @@ impl BotClient for OpenAIClient {
 
             let mut content = MessageContent::default();
             let events = parse_sse(response.bytes_stream());
-
-            let mut reasoning_start_time: Option<chrono::DateTime<Utc>> = None;
 
             for await event in events {
                 let event = match event {
@@ -456,17 +444,6 @@ impl BotClient for OpenAIClient {
                 for choice in &completion.choices {
                     // Append main content delta
                     if !choice.delta.content.text().is_empty() {
-                        // Main content arrived, we can assume reasoning is done
-                        if let Some(start_time) = reasoning_start_time {
-                            if let Some(reasoning) = &mut content.reasoning {
-                                if reasoning.time_taken_seconds.is_none() {
-                                    let end_time = Utc::now();
-                                    let time_taken_duration = end_time.signed_duration_since(start_time);
-                                    let time_taken = time_taken_duration.num_milliseconds() as f64 / 1000.0;
-                                    reasoning.time_taken_seconds = Some(time_taken);
-                                }
-                            }
-                        }
                         content.text.push_str(&choice.delta.content.text());
                     }
 
@@ -474,18 +451,12 @@ impl BotClient for OpenAIClient {
                     let mut actual_reasoning_delta_text: Option<&str> = None;
                     if let Some(r_text) = &choice.delta.reasoning {
                         if !r_text.is_empty() {
-                            if reasoning_start_time.is_none() {
-                                reasoning_start_time = Some(Utc::now());
-                            }
                             actual_reasoning_delta_text = Some(r_text);
                         }
                     }
                     if actual_reasoning_delta_text.is_none() {
                         if let Some(rc_text) = &choice.delta.reasoning_content {
                             if !rc_text.is_empty() {
-                                if reasoning_start_time.is_none() {
-                                    reasoning_start_time = Some(Utc::now());
-                                }
                                 actual_reasoning_delta_text = Some(rc_text);
                             }
                         }
@@ -493,14 +464,7 @@ impl BotClient for OpenAIClient {
 
                     // Append reasoning delta if found
                     if let Some(reasoning_text_to_append) = actual_reasoning_delta_text {
-                        if let Some(reasoning) = &mut content.reasoning {
-                            reasoning.text.push_str(reasoning_text_to_append);
-                        } else {
-                            content.reasoning = Some(Reasoning {
-                                text: reasoning_text_to_append.to_string(),
-                                time_taken_seconds: None,
-                            });
-                        }
+                        content.reasoning.push_str(reasoning_text_to_append);
                     }
                 }
 

@@ -4,29 +4,8 @@
 //! for filesystem operations across different platforms (native, web, Android).
 
 use anyhow::Result;
-use std::future::Future;
+use moly_kit::utils::asynchronous::PlatformSendFuture;
 use std::path::Path;
-
-// TODO: Consider using single-threaded futures across all platforms, even in
-// Moly Kit `spawn` function to avoid separating code by `Send`.
-cfg_if::cfg_if! {
-    if #[cfg(target_arch = "wasm32")] {
-        pub trait PlatformSpecifics {}
-        impl<F, O> PlatformSpecifics for F
-        where
-            F: Future<Output = O>,
-        {
-        }
-    } else {
-        pub trait PlatformSpecifics: Send {}
-        impl<F, O> PlatformSpecifics for F
-        where
-            F: Future<Output = O> + Send,
-            O: Send,
-        {
-        }
-    }
-}
 
 /// An adapter exposes the **bare minimum** functionality needed to interact with
 /// a specific filesystem.
@@ -46,20 +25,17 @@ pub trait Adapter: Send + Sync + 'static {
         &mut self,
         path: &Path,
         content: &[u8],
-    ) -> impl Future<Output = Result<()>> + PlatformSpecifics;
+    ) -> impl PlatformSendFuture<Output = Result<()>>;
 
     /// Read a file from the filesystem, returning its content as a byte vector.
-    fn read(&mut self, path: &Path) -> impl Future<Output = Result<Vec<u8>>> + PlatformSpecifics;
+    fn read(&mut self, path: &Path) -> impl PlatformSendFuture<Output = Result<Vec<u8>>>;
 
     /// Check if a file exists, failing if it cannot be determined.
-    fn exists(&mut self, path: &Path) -> impl Future<Output = Result<bool>> + PlatformSpecifics;
+    fn exists(&mut self, path: &Path) -> impl PlatformSendFuture<Output = Result<bool>>;
 
     /// Remove a file from the filesystem.
-    fn remove(&mut self, path: &Path) -> impl Future<Output = Result<()>> + PlatformSpecifics;
+    fn remove(&mut self, path: &Path) -> impl PlatformSendFuture<Output = Result<()>>;
 
     /// Get a list of the entry names in the given directory.
-    fn list(
-        &mut self,
-        path: &Path,
-    ) -> impl Future<Output = Result<Vec<String>>> + PlatformSpecifics;
+    fn list(&mut self, path: &Path) -> impl PlatformSendFuture<Output = Result<Vec<String>>>;
 }

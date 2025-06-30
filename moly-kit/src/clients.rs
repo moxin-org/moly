@@ -14,3 +14,6 @@ cfg_if::cfg_if! {
 
 pub use multi::*;
 pub mod multi;
+
+pub use map::*;
+pub mod map;

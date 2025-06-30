@@ -1,5 +1,6 @@
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -117,7 +118,11 @@ pub struct MessageContent {
     pub citations: Vec<String>,
 
     /// The reasoning/thinking content of this message.
-    pub reasoning: Option<Reasoning>,
+    #[cfg_attr(
+        feature = "json",
+        serde(deserialize_with = "crate::utils::serde::deserialize_default_on_error")
+    )]
+    pub reasoning: String,
 
     /// File attachments in this content.
     #[cfg_attr(feature = "json", serde(default))]
@@ -147,7 +152,7 @@ impl MessageContent {
         self.text.is_empty()
             && self.citations.is_empty()
             && self.data.is_none()
-            && self.reasoning.is_none()
+            && self.reasoning.is_empty()
             && self.attachments.is_empty()
     }
 }
@@ -316,11 +321,85 @@ impl Attachment {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+/// Metadata automatically tracked by MolyKit for each message.
+///
+/// "Metadata" basically means "data about data". Like tracking timestamps for
+/// data modification.
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct Reasoning {
-    pub text: String,
-    pub time_taken_seconds: Option<f64>,
+pub struct MessageMetadata {
+    /// Runtime flag indicating that the message is still incomplete (being written).
+    ///
+    /// Skipped during serialization.
+    #[cfg_attr(feature = "json", serde(skip))]
+    pub is_writing: bool,
+
+    /// When the message got created.
+    ///
+    /// Default to epoch if missing during deserialization. Otherwise, if constructed
+    /// by [`MessageMetadata::default`], it defaults to "now".
+    #[cfg_attr(feature = "json", serde(default))]
+    pub created_at: DateTime<Utc>,
+
+    /// Last time the reasoning/thinking content was updated.
+    ///
+    /// Default to epoch if missing during deserialization. Otherwise, if constructed
+    /// by [`MessageMetadata::default`], it defaults to "now".
+    #[cfg_attr(feature = "json", serde(default))]
+    pub reasoning_updated_at: DateTime<Utc>,
+
+    /// Last time the main text was updated.
+    ///
+    /// Default to epoch if missing during deserialization. Otherwise, if constructed
+    /// by [`MessageMetadata::default`], it defaults to "now".
+    #[cfg_attr(feature = "json", serde(default))]
+    pub text_updated_at: DateTime<Utc>,
+}
+
+impl Default for MessageMetadata {
+    fn default() -> Self {
+        // Use the same timestamp for all fields.
+        let now = Utc::now();
+        MessageMetadata {
+            is_writing: false,
+            created_at: now,
+            reasoning_updated_at: now,
+            text_updated_at: now,
+        }
+    }
+}
+
+impl MessageMetadata {
+    /// Same behavior as [`MessageMetadata::default`].
+    pub fn new() -> Self {
+        MessageMetadata::default()
+    }
+
+    /// Create a new metadata with all fields set to default but timestamps set to epoch.
+    pub fn epoch() -> Self {
+        MessageMetadata {
+            is_writing: false,
+            created_at: DateTime::UNIX_EPOCH,
+            reasoning_updated_at: DateTime::UNIX_EPOCH,
+            text_updated_at: DateTime::UNIX_EPOCH,
+        }
+    }
+}
+
+impl MessageMetadata {
+    /// The inferred amount of time the reasoning step took, in seconds (with milliseconds).
+    pub fn reasoning_time_taken_seconds(&self) -> f32 {
+        let delta = self.reasoning_updated_at - self.created_at;
+        delta.as_seconds_f32()
+    }
+
+    pub fn is_idle(&self) -> bool {
+        !self.is_writing
+    }
+
+    pub fn is_writing(&self) -> bool {
+        self.is_writing
+    }
 }
 
 /// A message that is part of a conversation.
@@ -330,13 +409,40 @@ pub struct Message {
     /// The id of who sent this message.
     pub from: EntityId,
 
+    /// Auto-generated metadata for this message.
+    ///
+    /// If missing during deserialization, uses [`MessageMetadata::epoch`] instead
+    /// of [`MessageMetadata::default`].
+    #[cfg_attr(feature = "json", serde(default = "MessageMetadata::epoch"))]
+    pub metadata: MessageMetadata,
+
     /// The parsed content of this message ready to present.
     pub content: MessageContent,
+}
 
-    /// Whether the message is actively being modified.
-    ///
-    /// False when no more changes are expected.
-    pub is_writing: bool,
+impl Message {
+    /// Set the content of a message as a whole (also updates metadata).
+    pub fn set_content(&mut self, content: MessageContent) {
+        self.update_content(|c| {
+            *c = content;
+        });
+    }
+
+    /// Update specific parts of the content of a message (also updates metadata).
+    pub fn update_content(&mut self, f: impl FnOnce(&mut MessageContent)) {
+        let bk = self.content.clone();
+        let now = Utc::now();
+
+        f(&mut self.content);
+
+        if self.content.text != bk.text {
+            self.metadata.text_updated_at = now;
+        }
+
+        if self.content.reasoning != bk.reasoning {
+            self.metadata.reasoning_updated_at = now;
+        }
+    }
 }
 
 /// The standard error kinds a client implementatiin should facilitate.
@@ -350,7 +456,7 @@ pub enum ClientErrorKind {
     ///
     /// Example: On a centralized HTTP server, this would happen when it returns
     /// an HTTP error code.
-    Remote,
+    Response,
 
     /// The remote server/peer returned a successful response, but we can't parse
     /// its content.
@@ -367,7 +473,7 @@ impl ClientErrorKind {
     pub fn to_human_readable(&self) -> &str {
         match self {
             ClientErrorKind::Network => "Network error",
-            ClientErrorKind::Remote => "Remote error",
+            ClientErrorKind::Response => "Remote error",
             ClientErrorKind::Format => "Format error",
             ClientErrorKind::Unknown => "Unknown error",
         }
@@ -449,6 +555,7 @@ impl ClientError {
 ///
 /// It would be mistake if this contains no value and no errors at the same time.
 /// This is taken care on creation time, and it can't be modified afterwards.
+#[derive(Debug)]
 pub struct ClientResult<T> {
     errors: Vec<ClientError>,
     value: Option<T>,

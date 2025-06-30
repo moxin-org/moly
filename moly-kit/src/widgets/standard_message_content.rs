@@ -43,7 +43,12 @@ impl Widget for StandardMessageContent {
 }
 
 impl StandardMessageContent {
-    fn set_content_impl(&mut self, cx: &mut Cx, content: &MessageContent, is_typing: bool) {
+    fn set_content_impl(
+        &mut self,
+        cx: &mut Cx,
+        content: &MessageContent,
+        metadata: &MessageMetadata,
+    ) {
         /// String to add as suffix to the message text when its being typed.
         const TYPING_INDICATOR: &str = "●";
 
@@ -59,13 +64,13 @@ impl StandardMessageContent {
             }
         }));
 
-        if let Some(reasoning) = &content.reasoning {
-            self.message_thinking_block(id!(thinking_block))
-                .set_thinking_content(cx, reasoning, is_typing);
-        }
+        self.message_thinking_block(id!(thinking_block))
+            .borrow_mut()
+            .unwrap()
+            .set_content(cx, content, metadata);
 
         let markdown = self.label(id!(markdown));
-        if is_typing {
+        if metadata.is_writing() {
             let text_with_typing = format!("{} {}", content.text, TYPING_INDICATOR);
             markdown.set_text(cx, &text_with_typing);
         } else {
@@ -75,17 +80,18 @@ impl StandardMessageContent {
 
     /// Set a message content to display it.
     pub fn set_content(&mut self, cx: &mut Cx, content: &MessageContent) {
-        self.set_content_impl(cx, content, false);
+        self.set_content_impl(cx, content, &MessageMetadata::new());
     }
 
-    /// Same as [`set_content`], with an optional typing indicator automatically added.
-    pub fn set_content_with_typing(
+    /// Same as [`set_content`], but also passes down metadata which is required
+    /// by certain features.
+    pub fn set_content_with_metadata(
         &mut self,
         cx: &mut Cx,
         content: &MessageContent,
-        is_typing: bool,
+        metadata: &MessageMetadata,
     ) {
-        self.set_content_impl(cx, content, is_typing);
+        self.set_content_impl(cx, content, metadata);
     }
 }
 
@@ -100,16 +106,16 @@ impl StandardMessageContentRef {
     }
 
     /// See [`StandardMessageContent::set_content_with_typing`].
-    pub fn set_content_with_typing(
+    pub fn set_content_with_metadata(
         &mut self,
         cx: &mut Cx,
         content: &MessageContent,
-        is_typing: bool,
+        metadata: &MessageMetadata,
     ) {
         let Some(mut inner) = self.borrow_mut() else {
             return;
         };
 
-        inner.set_content_with_typing(cx, content, is_typing);
+        inner.set_content_with_metadata(cx, content, metadata);
     }
 }

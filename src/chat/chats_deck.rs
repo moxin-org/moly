@@ -74,13 +74,14 @@ impl Widget for ChatsDeck {
         // Sync the [BotContext] for chat views that are not currently streaming
         let store = scope.data.get_mut::<Store>().unwrap();
         for chat_view in self.chats_views_pending_sync.iter_mut() {
-            if !chat_view
+            if chat_view
                 .messages(id!(chat.messages))
                 .read()
                 .messages
                 .last()
                 .unwrap()
-                .is_writing
+                .metadata
+                .is_idle()
             {
                 chat_view.chat(id!(chat)).write().bot_context = store.bot_context.clone();
             }

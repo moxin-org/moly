@@ -180,7 +180,9 @@ impl Chat {
                 MessagesAction::EditSave(index) => {
                     let mut tasks = self.messages_ref().read_with(|m| {
                         let mut message = m.messages[index].clone();
-                        message.content.text = m.current_editor_text().expect("no editor text");
+                        message.update_content(|content| {
+                            content.text = m.current_editor_text().expect("no editor text");
+                        });
                         ChatTask::UpdateMessage(index, message).into()
                     });
 
@@ -193,7 +195,9 @@ impl Chat {
                         let index = m.current_editor_index().expect("no editor index");
                         let text = m.current_editor_text().expect("no editor text");
 
-                        messages[index].content.text = text;
+                        messages[index].update_content(|content| {
+                            content.text = text;
+                        });
 
                         vec![ChatTask::SetMessages(messages), ChatTask::Send]
                     });
@@ -229,7 +233,7 @@ impl Chat {
                             attachments,
                             ..Default::default()
                         },
-                        is_writing: false,
+                        ..Default::default()
                     },
                 ));
             }
@@ -270,7 +274,7 @@ impl Chat {
                     text: error_message,
                     ..Default::default()
                 },
-                is_writing: false,
+                ..Default::default()
             };
 
             self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
@@ -282,14 +286,17 @@ impl Chat {
 
             messages.messages.push(Message {
                 from: EntityId::Bot(bot_id.clone()),
-                is_writing: true,
+                metadata: MessageMetadata {
+                    is_writing: true,
+                    ..MessageMetadata::new()
+                },
                 ..Default::default()
             });
 
             messages
                 .messages
                 .iter()
-                .filter(|m| !m.is_writing && m.from != EntityId::App)
+                .filter(|m| m.metadata.is_idle() && m.from != EntityId::App)
                 .cloned()
                 .collect()
         });
@@ -318,7 +325,7 @@ impl Chat {
                                 text: error_message,
                                 ..Default::default()
                             },
-                            is_writing: false,
+                            ..Default::default()
                         };
                         me.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
                     });
@@ -441,7 +448,10 @@ impl Chat {
             }
             ChatTask::UpdateMessage(index, message) => {
                 self.messages_ref().write_with(|m| {
-                    m.messages[*index] = message.clone();
+                    let new_message = message.clone();
+                    let old_message = m.messages.get_mut(*index).expect("no message at index");
+
+                    *old_message = new_message;
                     m.set_message_editor_visibility(*index, false);
                 });
 
@@ -508,7 +518,7 @@ impl Chat {
         self.messages_ref().write().reset_scroll_state();
         self.prompt_input_ref().write().set_send();
         self.messages_ref().write().messages.retain_mut(|m| {
-            m.is_writing = false;
+            m.metadata.is_writing = false;
             !m.content.is_empty()
         });
     }
@@ -527,12 +537,17 @@ impl Chat {
 
                 // Let's abort if we see we are putting delta in the wrong message.
                 if let Some(expected_message) = self.expected_message.as_ref() {
-                    if message != *expected_message {
+                    if message.from != expected_message.from
+                        || message.content != expected_message.content
+                        || message.metadata.is_writing != expected_message.metadata.is_writing
+                        || message.metadata.created_at != expected_message.metadata.created_at
+                    {
+                        log!("Unexpected message to put delta in. Stopping.");
                         return true;
                     }
                 }
 
-                message.content = content;
+                message.set_content(content);
 
                 let index = messages.read().messages.len() - 1;
                 let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
@@ -566,7 +581,7 @@ impl Chat {
                                     text: e.to_string(),
                                     ..Default::default()
                                 },
-                                is_writing: false,
+                                ..Default::default()
                             },
                         )
                     })
@@ -578,7 +593,6 @@ impl Chat {
                 }
 
                 self.dispatch(cx, &mut tasks);
-
                 true
             }
         }
@@ -587,7 +601,7 @@ impl Chat {
     /// Returns true if the chat is currently streaming.
     pub fn is_streaming(&self) -> bool {
         if let Some(message) = self.messages_ref().read().messages.last() {
-            message.is_writing
+            message.metadata.is_writing
         } else {
             false
         }
@@ -658,20 +672,14 @@ fn amortize(
             amortized_text.update(text);
             content.text = amortized_text.current().to_string();
 
-            // Deal with the optional reasoning.
-            if let Some(reasoning) = content.reasoning.as_mut() {
-                let text = std::mem::take(&mut reasoning.text);
-                amortized_reasoning.update(text);
-                reasoning.text = amortized_reasoning.current().to_string();
-            }
+            // Same for reasoning.
+            let reasoning = std::mem::take(&mut content.reasoning);
+            amortized_reasoning.update(reasoning);
+            content.reasoning = amortized_reasoning.current().to_string();
 
             // Prioritize yielding amortized reasoning updates first.
-            for text in &mut amortized_reasoning {
-                content.reasoning = Some(Reasoning {
-                    text,
-                    time_taken_seconds: content.reasoning.as_ref().and_then(|r| r.time_taken_seconds),
-                });
-
+            for reasoning in &mut amortized_reasoning {
+                content.reasoning = reasoning;
                 yield ClientResult::new_ok(content.clone());
             }
 
