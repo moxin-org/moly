@@ -50,7 +50,7 @@ web-sys = { version = "0.3.77", features = [
 [features]
 default = []
 # default = ["full"]
-json = ["dep:serde", "dep:serde_json", "dep:base64"]
+json = ["dep:serde", "dep:serde_json", "dep:base64", "chrono/serde"]
 http = ["dep:reqwest", "dep:scraper"]
 async-rt = ["dep:tokio"]
 async-web = ["dep:wasm-bindgen-futures"]
