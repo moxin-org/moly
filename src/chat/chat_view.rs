@@ -222,9 +222,7 @@ impl WidgetMatchEvent for ChatView {
 
                                 if let Some(store_chat) = chat_to_update {
                                     let mut store_chat = store_chat.borrow_mut();
-                                    let mut new_message = message.clone();
-                                    new_message.metadata.is_writing = false;
-                                    store_chat.messages.push(new_message);
+                                    store_chat.messages.push(message);
                                     store_chat.update_title_based_on_first_message();
                                     store_chat.save_and_forget();
                                 }
@@ -237,7 +235,7 @@ impl WidgetMatchEvent for ChatView {
                         // (if it's the first chunk from the bot message)
                         if let ChatTask::UpdateMessage(index, message) = task {
                             let message = message.clone();
-                            let index = index.clone();
+                            let index = *index;
                             ui.defer_with_redraw(move |me, _cx, scope| {
                                 let chat_to_update = scope
                                     .data
@@ -251,12 +249,9 @@ impl WidgetMatchEvent for ChatView {
                                     if let Some(message_to_update) =
                                         store_chat.messages.get_mut(index)
                                     {
-                                        message_to_update.content = message.content.clone();
-                                        message_to_update.metadata.is_writing = false;
+                                        *message_to_update = message;
                                     } else {
-                                        let mut new_message = message.clone();
-                                        new_message.metadata.is_writing = false;
-                                        store_chat.messages.push(new_message);
+                                        store_chat.messages.push(message);
                                     }
 
                                     // Keep track of whether the message was updated while the chat view was inactive
