@@ -83,7 +83,8 @@ impl StandardMessageContent {
         self.set_content_impl(cx, content, &MessageMetadata::new());
     }
 
-    /// Same as [`set_content`], with an optional typing indicator automatically added.
+    /// Same as [`set_content`], but also passes down metadata which is required
+    /// by certain features.
     pub fn set_content_with_metadata(
         &mut self,
         cx: &mut Cx,

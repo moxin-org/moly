@@ -532,7 +532,6 @@ impl Chat {
             Ok(content) => {
                 // Let's abort if we don't have where to put the delta.
                 let Some(mut message) = messages.read().messages.last().cloned() else {
-                    eprintln!("No message to update with delta");
                     return true;
                 };
 
@@ -543,7 +542,7 @@ impl Chat {
                         || message.metadata.is_writing != expected_message.metadata.is_writing
                         || message.metadata.created_at != expected_message.metadata.created_at
                     {
-                        eprintln!("Expected message does not match the last message");
+                        log!("Unexpected message to put delta in. Stopping.");
                         return true;
                     }
                 }
@@ -562,7 +561,6 @@ impl Chat {
 
                 let Some(ChatTask::UpdateMessage(_, message)) = tasks.into_iter().next() else {
                     // Let's abort if the tasks were modified in an unexpected way.
-                    eprintln!("Unexpected tasks after updating message");
                     return true;
                 };
 
@@ -595,7 +593,6 @@ impl Chat {
                 }
 
                 self.dispatch(cx, &mut tasks);
-                eprintln!("Error while streaming");
                 true
             }
         }
@@ -675,7 +672,7 @@ fn amortize(
             amortized_text.update(text);
             content.text = amortized_text.current().to_string();
 
-            // Deal with the optional reasoning.
+            // Same for reasoning.
             let reasoning = std::mem::take(&mut content.reasoning);
             amortized_reasoning.update(reasoning);
             content.reasoning = amortized_reasoning.current().to_string();

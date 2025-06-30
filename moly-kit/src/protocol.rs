@@ -323,13 +323,14 @@ impl Attachment {
 
 /// Metadata automatically tracked by MolyKit for each message.
 ///
-/// Does not implement default to be explicit about timestamps.
+/// "Metadata" basically means "data about data". Like tracking timestamps for
+/// data modification.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MessageMetadata {
-    /// Runtime flag indicating that the message is still being written.
+    /// Runtime flag indicating that the message is still incomplete (being written).
     ///
-    /// Not serialized.
+    /// Skipped during serialization.
     #[cfg_attr(feature = "json", serde(skip))]
     pub is_writing: bool,
 
@@ -357,11 +358,13 @@ pub struct MessageMetadata {
 
 impl Default for MessageMetadata {
     fn default() -> Self {
+        // Use the same timestamp for all fields.
+        let now = Utc::now();
         MessageMetadata {
             is_writing: false,
-            created_at: Utc::now(),
-            reasoning_updated_at: Utc::now(),
-            text_updated_at: Utc::now(),
+            created_at: now,
+            reasoning_updated_at: now,
+            text_updated_at: now,
         }
     }
 }
@@ -385,9 +388,9 @@ impl MessageMetadata {
 
 impl MessageMetadata {
     /// The inferred amount of time the reasoning step took, in seconds (with milliseconds).
-    pub fn reasoning_time_taken_seconds(&self) -> f64 {
-        let duration = self.reasoning_updated_at - self.created_at;
-        duration.num_seconds() as f64 + (duration.num_milliseconds() % 1000) as f64 / 1000.0
+    pub fn reasoning_time_taken_seconds(&self) -> f32 {
+        let delta = self.reasoning_updated_at - self.created_at;
+        delta.as_seconds_f32()
     }
 
     pub fn is_idle(&self) -> bool {
@@ -400,8 +403,6 @@ impl MessageMetadata {
 }
 
 /// A message that is part of a conversation.
-///
-///
 #[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Message {
@@ -410,11 +411,8 @@ pub struct Message {
 
     /// Auto-generated metadata for this message.
     ///
-    /// Metadata is literally "data about data". Like modification timestamps,
-    /// ongoing state of fields, etc.
-    ///
-    /// Timestamps inside default to "now" on creation, but if missing during
-    /// deserialization, they default to "epoch".
+    /// If missing during deserialization, uses [`MessageMetadata::epoch`] instead
+    /// of [`MessageMetadata::default`].
     #[cfg_attr(feature = "json", serde(default = "MessageMetadata::epoch"))]
     pub metadata: MessageMetadata,
 
@@ -433,15 +431,16 @@ impl Message {
     /// Update specific parts of the content of a message (also updates metadata).
     pub fn update_content(&mut self, f: impl FnOnce(&mut MessageContent)) {
         let bk = self.content.clone();
+        let now = Utc::now();
 
         f(&mut self.content);
 
         if self.content.text != bk.text {
-            self.metadata.text_updated_at = Utc::now();
+            self.metadata.text_updated_at = now;
         }
 
         if self.content.reasoning != bk.reasoning {
-            self.metadata.reasoning_updated_at = Utc::now();
+            self.metadata.reasoning_updated_at = now;
         }
     }
 }

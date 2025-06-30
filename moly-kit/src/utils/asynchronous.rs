@@ -83,6 +83,8 @@ fn spawn_impl(fut: impl Future<Output = ()> + 'static) {
 /// Opaque, boxed and pinned future commonly expected by traits in MolyKit.
 ///
 /// This future requires [`Send`] only on native platforms, but not on WASM.
+///
+/// Use [`moly_future`] to create an instance of this type.
 pub struct MolyFuture<'a, T>(Pin<Box<dyn PlatformSendFuture<Output = T> + 'a>>);
 impl<'a, T> Future for MolyFuture<'a, T> {
     type Output = T;
@@ -95,6 +97,8 @@ impl<'a, T> Future for MolyFuture<'a, T> {
 /// Opaque, boxed and pinned stream commonly expected by traits in MolyKit.
 ///
 /// This stream requires [`Send`] only on native platforms, but not on WASM.
+///
+/// Use [`moly_stream`] to create an instance of this type.
 pub struct MolyStream<'a, T>(Pin<Box<dyn PlatformSendStream<Item = T> + 'a>>);
 impl<'a, T> Stream for MolyStream<'a, T> {
     type Item = T;

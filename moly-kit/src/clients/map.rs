@@ -36,11 +36,13 @@ impl<C: BotClient> MapClient<C> {
         }
     }
 
+    /// Sets a transformation function for the list of bots returned by the `bots` method.
     pub fn set_map_bots(&mut self, map: impl FnMut(Vec<Bot>) -> Vec<Bot> + Send + 'static) {
         let mut inner = self.inner.lock().unwrap();
         inner.map_bots = Some(Box::new(map));
     }
 
+    /// Sets a sync transformation function for the successful result of the `send` method.
     pub fn set_map_send(
         &mut self,
         map: impl FnMut(MessageContent) -> MessageContent + Send + 'static,
