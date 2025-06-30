@@ -118,6 +118,10 @@ pub struct MessageContent {
     pub citations: Vec<String>,
 
     /// The reasoning/thinking content of this message.
+    #[cfg_attr(
+        feature = "json",
+        serde(deserialize_with = "crate::utils::serde::deserialize_default_on_error")
+    )]
     pub reasoning: String,
 
     /// File attachments in this content.
