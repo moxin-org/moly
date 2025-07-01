@@ -412,6 +412,7 @@ impl BotClient for OpenAIClient {
             };
 
             let mut content = MessageContent::default();
+            let mut full_text = String::default();
             let events = parse_sse(response.bytes_stream());
 
             for await event in events {
@@ -442,20 +443,21 @@ impl BotClient for OpenAIClient {
                 };
 
                 for choice in &completion.choices {
-                    // Append main content delta
-                    if !choice.delta.content.text().is_empty() {
-                        content.text.push_str(&choice.delta.content.text());
+                    full_text.push_str(&choice.delta.content.text());
+
+                    let (reasoning, text) = split_reasoning_tag(&full_text);
+                    content.text = text.to_string();
+
+                    if reasoning.is_empty() {
+                        let reasoning_delta = choice.delta.reasoning
+                            .as_deref()
+                            .or(choice.delta.reasoning_content.as_deref())
+                            .unwrap_or_default();
+
+                        content.reasoning.push_str(reasoning_delta);
+                    } else {
+                        content.reasoning = reasoning.to_string();
                     }
-
-                    // Extract reasoning text, could be found in "reasoning" or "reasoning_content"
-                    let reasoning = choice.delta.reasoning
-                        .as_ref()
-                        .or(choice.delta.reasoning_content.as_ref())
-                        .cloned()
-                        .unwrap_or_default();
-
-                    // Append reasoning delta if found
-                    content.reasoning.push_str(&reasoning);
                 }
 
                 for citation in completion.citations {
@@ -496,4 +498,19 @@ fn default_client() -> reqwest::Client {
     // On web, reqwest timeouts are not configurable, but it uses the browser's
     // fetch API under the hood, which handles connection issues properly.
     reqwest::Client::new()
+}
+
+/// If a string starts with a `<think>` tag, split the content from the rest of the text.
+/// - This happens in order, so first element of the tuple is the reasoning.
+/// - If the tag is unclosed, everything goes to reasoning.
+/// - If there is no tag, everything goes to the second element of the tuple.
+fn split_reasoning_tag(text: &str) -> (&str, &str) {
+    const START_TAG: &str = "<think>";
+    const END_TAG: &str = "</think>";
+
+    if let Some(text) = text.trim_start().strip_prefix(START_TAG) {
+        text.split_once(END_TAG).unwrap_or((text, ""))
+    } else {
+        ("", text)
+    }
 }
