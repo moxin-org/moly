@@ -92,19 +92,17 @@ struct IncomingMessage {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_null_default")]
     pub content: Content,
-    /// The reasoning text, if provided.
-    ///
-    /// Used by agregators like OpenRouter.
+    /// The reasoning text separated from the main content if provided.
+    /// - Aggregators like OpenRouter may expose this as `reasoning`.
+    /// - Other providers like Silicon Flow may use `reasoning_content` instead
+    ///   for **some** models.
+    /// - Local distilled DeepSeek R1 models may NOT use this, and instead return
+    ///   reasoning as part of the `content` under a `<think>` tag.
     #[serde(default)]
-    pub reasoning: Option<String>,
-    /// Wait, another reasoning text? Well, yes.
-    /// Some developers take API definitions as suggestions rather than standards.
-    ///
-    /// Used by providers like Sillicon flow for *some* models.
-    #[serde(default)]
-    pub reasoning_content: Option<String>,
+    #[serde(deserialize_with = "deserialize_null_default")]
+    #[serde(alias = "reasoning_content")]
+    pub reasoning: String,
 }
-
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
 struct OutcomingMessage {
@@ -442,20 +440,22 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
+                // Aggregate deltas
                 for choice in &completion.choices {
+                    // Keep track of the full content as it came, without modifications.
                     full_text.push_str(&choice.delta.content.text());
 
+                    // Extract the inlined reasoning if any.
                     let (reasoning, text) = split_reasoning_tag(&full_text);
+
+                    // Set the content text without any reasoning.
                     content.text = text.to_string();
 
                     if reasoning.is_empty() {
-                        let reasoning_delta = choice.delta.reasoning
-                            .as_deref()
-                            .or(choice.delta.reasoning_content.as_deref())
-                            .unwrap_or_default();
-
-                        content.reasoning.push_str(reasoning_delta);
+                        // Append reasoning delta if reasoning was not part of the content.
+                        content.reasoning.push_str(&choice.delta.reasoning);
                     } else {
+                        // Otherwise, set the reasoning to what we extracted from the full text.
                         content.reasoning = reasoning.to_string();
                     }
                 }
