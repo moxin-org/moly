@@ -448,24 +448,14 @@ impl BotClient for OpenAIClient {
                     }
 
                     // Extract reasoning text, could be found in "reasoning" or "reasoning_content"
-                    let mut actual_reasoning_delta_text: Option<&str> = None;
-                    if let Some(r_text) = &choice.delta.reasoning {
-                        if !r_text.is_empty() {
-                            actual_reasoning_delta_text = Some(r_text);
-                        }
-                    }
-                    if actual_reasoning_delta_text.is_none() {
-                        if let Some(rc_text) = &choice.delta.reasoning_content {
-                            if !rc_text.is_empty() {
-                                actual_reasoning_delta_text = Some(rc_text);
-                            }
-                        }
-                    }
+                    let reasoning = choice.delta.reasoning
+                        .as_ref()
+                        .or(choice.delta.reasoning_content.as_ref())
+                        .cloned()
+                        .unwrap_or_default();
 
                     // Append reasoning delta if found
-                    if let Some(reasoning_text_to_append) = actual_reasoning_delta_text {
-                        content.reasoning.push_str(reasoning_text_to_append);
-                    }
+                    content.reasoning.push_str(&reasoning);
                 }
 
                 for citation in completion.citations {
