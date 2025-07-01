@@ -92,19 +92,17 @@ struct IncomingMessage {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_null_default")]
     pub content: Content,
-    /// The reasoning text, if provided.
-    ///
-    /// Used by agregators like OpenRouter.
+    /// The reasoning text separated from the main content if provided.
+    /// - Aggregators like OpenRouter may expose this as `reasoning`.
+    /// - Other providers like Silicon Flow may use `reasoning_content` instead
+    ///   for **some** models.
+    /// - Local distilled DeepSeek R1 models may NOT use this, and instead return
+    ///   reasoning as part of the `content` under a `<think>` tag.
     #[serde(default)]
-    pub reasoning: Option<String>,
-    /// Wait, another reasoning text? Well, yes.
-    /// Some developers take API definitions as suggestions rather than standards.
-    ///
-    /// Used by providers like Sillicon flow for *some* models.
-    #[serde(default)]
-    pub reasoning_content: Option<String>,
+    #[serde(deserialize_with = "deserialize_null_default")]
+    #[serde(alias = "reasoning_content")]
+    pub reasoning: String,
 }
-
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
 struct OutcomingMessage {
@@ -412,6 +410,7 @@ impl BotClient for OpenAIClient {
             };
 
             let mut content = MessageContent::default();
+            let mut full_text = String::default();
             let events = parse_sse(response.bytes_stream());
 
             for await event in events {
@@ -441,30 +440,23 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
+                // Aggregate deltas
                 for choice in &completion.choices {
-                    // Append main content delta
-                    if !choice.delta.content.text().is_empty() {
-                        content.text.push_str(&choice.delta.content.text());
-                    }
+                    // Keep track of the full content as it came, without modifications.
+                    full_text.push_str(&choice.delta.content.text());
 
-                    // Extract reasoning text, could be found in "reasoning" or "reasoning_content"
-                    let mut actual_reasoning_delta_text: Option<&str> = None;
-                    if let Some(r_text) = &choice.delta.reasoning {
-                        if !r_text.is_empty() {
-                            actual_reasoning_delta_text = Some(r_text);
-                        }
-                    }
-                    if actual_reasoning_delta_text.is_none() {
-                        if let Some(rc_text) = &choice.delta.reasoning_content {
-                            if !rc_text.is_empty() {
-                                actual_reasoning_delta_text = Some(rc_text);
-                            }
-                        }
-                    }
+                    // Extract the inlined reasoning if any.
+                    let (reasoning, text) = split_reasoning_tag(&full_text);
 
-                    // Append reasoning delta if found
-                    if let Some(reasoning_text_to_append) = actual_reasoning_delta_text {
-                        content.reasoning.push_str(reasoning_text_to_append);
+                    // Set the content text without any reasoning.
+                    content.text = text.to_string();
+
+                    if reasoning.is_empty() {
+                        // Append reasoning delta if reasoning was not part of the content.
+                        content.reasoning.push_str(&choice.delta.reasoning);
+                    } else {
+                        // Otherwise, set the reasoning to what we extracted from the full text.
+                        content.reasoning = reasoning.to_string();
                     }
                 }
 
@@ -506,4 +498,19 @@ fn default_client() -> reqwest::Client {
     // On web, reqwest timeouts are not configurable, but it uses the browser's
     // fetch API under the hood, which handles connection issues properly.
     reqwest::Client::new()
+}
+
+/// If a string starts with a `<think>` tag, split the content from the rest of the text.
+/// - This happens in order, so first element of the tuple is the reasoning.
+/// - If the tag is unclosed, everything goes to reasoning.
+/// - If there is no tag, everything goes to the second element of the tuple.
+fn split_reasoning_tag(text: &str) -> (&str, &str) {
+    const START_TAG: &str = "<think>";
+    const END_TAG: &str = "</think>";
+
+    if let Some(text) = text.trim_start().strip_prefix(START_TAG) {
+        text.split_once(END_TAG).unwrap_or((text, ""))
+    } else {
+        ("", text)
+    }
 }
