@@ -44,14 +44,21 @@ live_design! {
                     spacing: 12.,
                     align: {y: 0.5},
                     icon_wrapper = <View> {
+                        visible: false,
                         align: {x: 0.5, y: 0.5},
                         icon = <Label> {
-                        text: "",
-                        draw_text: {
-                            color: #000,
-                            text_style: <THEME_FONT_ICONS>{font_size: 28}
+                            text: "",
+                            draw_text: {
+                                color: #000,
+                                text_style: <THEME_FONT_ICONS>{font_size: 28}
+                            }
                         }
                     }
+                    image_wrapper = <View> {
+                        image = <Image> {
+                            width: Fill,
+                            height: Fill,
+                        }
                     }
                     <View> {
                         flow: Down,
@@ -89,6 +96,10 @@ live_design! {
                     icon_wrapper = {
                         width: Fit,
                         align: {y: 0.5},
+                    }
+                    image_wrapper = {
+                        width: 48.0,
+                        height: 48.0,
                     }
                 }
             }
@@ -129,6 +140,7 @@ impl Widget for AttachmentList {
                     let attachment = &self.attachments[index];
                     let item = list.item(cx, index, live_id!(File));
                     let icon = item.label(id!(icon));
+                    let image = item.image(id!(image));
                     let kind = item.label(id!(kind));
                     let title = item.label(id!(title));
 
@@ -150,6 +162,14 @@ impl Widget for AttachmentList {
                     } else {
                         icon.set_text(cx, "\u{f127}");
                         kind.set_text(cx, "Unavailable");
+                    }
+
+                    // test
+                    // TODO: Remove
+                    if !image.has_texture() {
+                        const IMG: &[u8] =
+                            include_bytes!("../../../packaging/Moly macOS dmg background.png");
+                        image.load_png_from_data(cx, IMG).unwrap();
                     }
 
                     title.set_text(cx, &attachment.name);
