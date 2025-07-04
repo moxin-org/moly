@@ -14,7 +14,7 @@ live_design! {
     use link::moly_kit_theme::*;
     use link::shaders::*;
 
-    use crate::widgets::attachment_list::AttachmentList;
+    use crate::widgets::attachment_list::*;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
         send_icon: dep("crate://self/resources/send.svg"),
@@ -115,7 +115,7 @@ live_design! {
                 }
             }
             bottom = {
-                attachments = <AttachmentList> {
+                attachments = <DenseAttachmentList> {
                     wrapper = {
                         margin: { top: 6 }
                     }

@@ -6,7 +6,12 @@ live_design! {
     use link::widgets::*;
     use link::moly_kit_theme::*;
 
-    ITEM_HEIGHT = 64.0;
+    ITEM_HEIGHT = 200.0;
+    ITEM_WIDTH = (ITEM_HEIGHT);
+
+    DENSE_ITEM_HEIGHT = 64.0;
+    DENSE_ITEM_WIDTH = (DENSE_ITEM_HEIGHT * 4.0);
+
 
     ItemView = {{ItemView}} <RoundedView> {
         height: (ITEM_HEIGHT),
@@ -25,27 +30,32 @@ live_design! {
         // `draw_walk` will not run at all, making visibility binding harder.
         wrapper = <View> {
             visible: false,
-            height: 64,
+            height: (ITEM_HEIGHT),
             list = <PortalList> {
                 flow: Right,
                 // Image = <ItemView> {
                 //     width: (ITEM_HEIGHT),
                 // }
                 File = <ItemView> {
-                    width: (ITEM_HEIGHT * 4),
-                    padding: {left: 12., right: 8., top: 8., bottom: 8.},
+                    flow: Down,
+                    height: (ITEM_HEIGHT),
+                    width: (ITEM_WIDTH),
+                    padding: {left: 12., right: 12., top: 16., bottom: 16.},
                     spacing: 12.,
                     align: {y: 0.5},
-                    icon = <Label> {
+                    icon_wrapper = <View> {
+                        align: {x: 0.5, y: 0.5},
+                        icon = <Label> {
                         text: "",
                         draw_text: {
                             color: #000,
                             text_style: <THEME_FONT_ICONS>{font_size: 28}
                         }
                     }
+                    }
                     <View> {
                         flow: Down,
-                        align: {y: 0.5},
+                        height: Fit,
                         spacing: 2,
                         title = <Label> {
                             text: "document.pdf",
@@ -61,6 +71,24 @@ live_design! {
                                 text_style: {font_size: 10}
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    pub DenseAttachmentList = <AttachmentList> {
+        wrapper = {
+            height: (DENSE_ITEM_HEIGHT),
+            list = {
+                File = {
+                    flow: Right,
+                    height: (DENSE_ITEM_HEIGHT),
+                    width: (DENSE_ITEM_WIDTH),
+                    padding: {left: 12., right: 8., top: 8., bottom: 8.},
+                    icon_wrapper = {
+                        width: Fit,
+                        align: {y: 0.5},
                     }
                 }
             }
