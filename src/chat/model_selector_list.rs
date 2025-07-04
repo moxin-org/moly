@@ -105,6 +105,9 @@ pub struct ModelSelectorList {
 
     #[rust]
     chat_id: ChatID,
+
+    #[rust]
+    search_filter: String,
 }
 
 impl Widget for ModelSelectorList {
@@ -184,6 +187,12 @@ impl ModelSelectorList {
         // Sort providers alphabetically by name
         providers.sort_by(|a, b| a.1.cmp(&b.1));
 
+        let terms = self
+            .search_filter
+            .split_whitespace()
+            .map(|s| s.to_ascii_lowercase())
+            .collect::<Vec<_>>();
+
         // Add models grouped by provider
         for (provider_url, provider_name, mut provider_bots) in providers {
             if provider_bots.is_empty() {
@@ -192,6 +201,25 @@ impl ModelSelectorList {
 
             // Sort models within each provider by name for consistent ordering
             provider_bots.sort_by(|a, b| a.name.cmp(&b.name));
+
+            let provider_bots: Vec<ProviderBot> = provider_bots
+                .into_iter()
+                .filter(|bot| {
+                    if terms.is_empty() {
+                        true
+                    } else {
+                        let name = bot.human_readable_name().to_ascii_lowercase();
+                        let id = bot.name.to_ascii_lowercase();
+                        terms
+                            .iter()
+                            .all(|t| name.contains(t) || id.contains(t))
+                    }
+                })
+                .collect();
+
+            if provider_bots.is_empty() {
+                continue;
+            }
 
             // Add provider section label
             let section_id = LiveId::from_str(&provider_url);
@@ -311,5 +339,17 @@ impl ModelSelectorListRef {
             return;
         };
         inner.chat_id = chat_id;
+    }
+
+    pub fn set_search_filter(&mut self, cx: &mut Cx, filter: &str) {
+        let Some(mut inner) = self.borrow_mut() else { return; };
+        inner.search_filter = filter.to_string();
+	inner.items.clear();
+	inner.total_height = None;
+        inner.redraw(cx);
+    }
+
+    pub fn clear_search_filter(&mut self, cx: &mut Cx) {
+	self.set_search_filter(cx, "");
     }
 }
