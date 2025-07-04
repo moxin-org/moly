@@ -331,17 +331,6 @@ impl Widget for ModelSelector {
             }
         }
 
-       // if let Event::MouseDown(e) = event {
-       //     if self.open {
-       //         let hovered = self.view.area().rect(cx).contains(e.abs);
-       //         if !hovered {
-       //             self.open = false;
-       //             self.hide_animation_timer = cx.start_timeout(0.3);
-       //             self.animator_play(cx, id!(open.hide));
-       //         }
-       //     }
-       // }
-
         // Trigger a redraw if the provider syncing status has changed
         if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
             self.model_selector_loading(id!(loading))
