@@ -148,8 +148,6 @@ impl WidgetMatchEvent for ChatsDeck {
                             &chat.borrow(),
                             store.bot_context.clone(),
                         );
-
-                        self.redraw(cx);
                     }
                 }
                 _ => {}

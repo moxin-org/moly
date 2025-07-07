@@ -159,10 +159,10 @@ impl ModelSelectorLoading {
 
         if self.animator_in_state(cx, id!(line.restart)) {
             self.animator_play(cx, id!(line.run));
+            self.timer = cx.start_timeout(1.5);
         } else {
             self.animator_play(cx, id!(line.restart));
         }
-        self.timer = cx.start_timeout(1.5);
     }
 
     fn update_progress_bar(&mut self, cx: &mut Cx, syncing: &ProviderSyncing) {

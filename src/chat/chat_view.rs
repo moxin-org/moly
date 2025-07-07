@@ -323,8 +323,6 @@ impl ChatView {
 
             self.model_selector(id!(model_selector))
                 .set_currently_selected_model(cx, None);
-
-            self.redraw(cx);
         } else if bot_available && self.chat(id!(chat)).read().bot_id.is_none() {
             // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
             // This can happen if the bot or provider was re-enabled after being disabled while being selected
