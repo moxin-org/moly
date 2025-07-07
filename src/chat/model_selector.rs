@@ -19,12 +19,14 @@ live_design! {
     use link::widgets::*;
 
     use crate::shared::styles::*;
+    use crate::shared::widgets::*;
     use crate::chat::model_info::ModelInfo;
     use crate::chat::model_info::AgentInfo;
     use crate::shared::modal::*;
     use crate::chat::model_selector_list::ModelSelectorList;
     use crate::chat::model_selector_loading::ModelSelectorLoading;
 
+    ICON_SEARCH = dep("crate://self/resources/icons/search.svg")
     ICON_DROP = dep("crate://self/resources/images/drop_icon.png")
 
     ModelSelectorButton = <View> {
@@ -103,6 +105,7 @@ live_design! {
     }
 
     ModelSelectorOptions = <RoundedShadowView> {
+    flow: Down
         width: Fill, height: Fit,
         padding: 5,
 
@@ -112,6 +115,32 @@ live_design! {
             uniform shadow_color: #0002
             shadow_radius: 9.0,
             shadow_offset: vec2(0.0,-2.0)
+        }
+
+        search = <RoundedView> {
+            width: Fill, height: Fit,
+            show_bg: true,
+            padding: {top: 3, bottom: 3, left: 20, right: 20},
+            spacing: 4,
+            align: {x: 0.0, y: 0.5},
+            draw_bg: {
+                border_radius: 6.0,
+                border_color: #D0D5DD,
+                border_size: 1.0,
+                color: #fff,
+            }
+            <Icon> {
+                draw_icon: {
+                    svg_file: (ICON_SEARCH),
+                    fn get_color(self) -> vec4 { return #666; }
+                }
+                icon_walk: {width: 14, height: Fit}
+            }
+            input = <MolyTextInput> {
+                width: Fill, height: Fit,
+                empty_text: "Search models",
+                draw_text: { text_style:<REGULAR_FONT>{font_size: 11} }
+            }
         }
 
         list_container = <View> {
@@ -302,17 +331,6 @@ impl Widget for ModelSelector {
             }
         }
 
-        if let Event::MouseDown(e) = event {
-            if self.open {
-                let hovered = self.view.area().rect(cx).contains(e.abs);
-                if !hovered {
-                    self.open = false;
-                    self.hide_animation_timer = cx.start_timeout(0.3);
-                    self.animator_play(cx, id!(open.hide));
-                }
-            }
-        }
-
         // Trigger a redraw if the provider syncing status has changed
         if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
             self.model_selector_loading(id!(loading))
@@ -394,11 +412,17 @@ impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let mut should_hide_options = false;
         for action in actions {
+            if let Some(text) = self.text_input(id!(options.search.input)).changed(actions) {
+                self.model_selector_list(id!(list_container.list))
+                    .set_search_filter(cx, &text);
+            }
+
             match action.cast() {
                 ModelSelectorAction::BotSelected(chat_id, m) => {
                     if chat_id == self.chat_id {
                         self.currently_selected_model = Some(m.id);
                         should_hide_options = true;
+                        self.clear_search(cx);
                     }
                 }
                 _ => {}
@@ -406,24 +430,33 @@ impl WidgetMatchEvent for ModelSelector {
 
             if should_hide_options {
                 self.hide_options(cx);
+                self.clear_search(cx);
             }
 
             match action.cast() {
                 ChatAction::Start(_) => {
                     self.hide_options(cx);
+                    self.clear_search(cx);
                 }
                 _ => {}
             }
 
             let modal = self.modal(id!(bot_options_modal));
             if modal.dismissed(actions) {
-                self.hide_options(cx);
+                self.clear_search(cx);
             }
         }
     }
 }
 
 impl ModelSelector {
+    fn clear_search(&mut self, cx: &mut Cx) {
+        self.model_selector_list(id!(list_container.list))
+            .clear_search_filter(cx);
+        self.text_input(id!(options.search.input)).set_text(cx, "");
+        self.redraw(cx);
+    }
+
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
         self.view(id!(options)).apply_over(cx, live! { height: 0 });
