@@ -76,6 +76,8 @@ pub struct Store {
     pub provider_icons: Vec<LiveDependency>,
 }
 
+const MOLY_SERVER_VERSION_EXTENSION: &str = "/api/v1";
+
 impl Store {
     pub fn load_into_app() {
         spawn(async move {
@@ -238,6 +240,20 @@ impl Store {
 
     fn update_downloads(&mut self) {
         let completed_download_ids = self.downloads.refresh_downloads_data();
+
+        let mut address = self.moly_client.address().clone();
+        address.push_str(MOLY_SERVER_VERSION_EXTENSION);
+
+        if !completed_download_ids.is_empty() {
+            if let Some(provider) = self.chats.providers.get(&address).cloned() {
+                if provider.provider_type == ProviderType::MolyServer && provider.enabled {
+                    self.chats.test_provider_and_fetch_models(
+                        &provider.url,
+                        &mut self.provider_syncing_status,
+                    );
+                }
+            }
+        }
 
         // For search results let's trust on our local cache, but updating
         // the downloaded state of the files
