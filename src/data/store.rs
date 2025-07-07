@@ -269,6 +269,9 @@ impl Store {
             Cx::post_action(ChatAction::ChatSelected(chat_id));
         } else {
             self.chats.create_empty_chat(None);
+            if let Some(chat_id) = self.chats.get_last_selected_chat_id() {
+                Cx::post_action(ChatAction::ChatSelected(chat_id));
+            }
         }
     }
 
