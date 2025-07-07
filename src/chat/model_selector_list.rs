@@ -210,9 +210,7 @@ impl ModelSelectorList {
                     } else {
                         let name = bot.human_readable_name().to_ascii_lowercase();
                         let id = bot.name.to_ascii_lowercase();
-                        terms
-                            .iter()
-                            .all(|t| name.contains(t) || id.contains(t))
+                        terms.iter().all(|t| name.contains(t) || id.contains(t))
                     }
                 })
                 .collect();
@@ -342,14 +340,16 @@ impl ModelSelectorListRef {
     }
 
     pub fn set_search_filter(&mut self, cx: &mut Cx, filter: &str) {
-        let Some(mut inner) = self.borrow_mut() else { return; };
+        let Some(mut inner) = self.borrow_mut() else {
+            return;
+        };
         inner.search_filter = filter.to_string();
-	inner.items.clear();
-	inner.total_height = None;
+        inner.items.clear();
+        inner.total_height = None;
         inner.redraw(cx);
     }
 
     pub fn clear_search_filter(&mut self, cx: &mut Cx) {
-	self.set_search_filter(cx, "");
+        self.set_search_filter(cx, "");
     }
 }
