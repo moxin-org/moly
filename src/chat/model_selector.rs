@@ -593,8 +593,10 @@ impl ModelSelector {
 impl ModelSelectorRef {
     pub fn set_currently_selected_model(&mut self, cx: &mut Cx, model: Option<BotId>) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.currently_selected_model = model;
-            inner.redraw(cx);
+            if model != inner.currently_selected_model {
+                inner.currently_selected_model = model;
+                inner.redraw(cx);
+            }
         }
     }
 
