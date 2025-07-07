@@ -117,14 +117,14 @@ live_design! {
             shadow_offset: vec2(0.0,-2.0)
         }
 
-        search = <View> {
+        search = <RoundedView> {
             width: Fill, height: Fit,
             show_bg: true,
             padding: {top: 3, bottom: 3, left: 20, right: 20},
             spacing: 4,
             align: {x: 0.0, y: 0.5},
             draw_bg: {
-                border_radius: 9.0,
+                border_radius: 6.0,
                 border_color: #D0D5DD,
                 border_size: 1.0,
                 color: #fff,
