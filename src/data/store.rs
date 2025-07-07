@@ -76,6 +76,8 @@ pub struct Store {
     pub provider_icons: Vec<LiveDependency>,
 }
 
+const MOLY_SERVER_VERSION_EXTENSION: &str = "/api/v1";
+
 impl Store {
     pub fn load_into_app() {
         spawn(async move {
@@ -240,13 +242,13 @@ impl Store {
         let completed_download_ids = self.downloads.refresh_downloads_data();
 
 	let mut address = self.moly_client.address().clone();
-	address.push_str("/api/v1");
+	address.push_str(MOLY_SERVER_VERSION_EXTENSION);
 
         if !completed_download_ids.is_empty() {
             if let Some(provider) = self
                 .chats
                 .providers
-                .get(&address)
+                .get(&self.moly_client.address())
                 .cloned()
             {
                 if provider.provider_type == ProviderType::MolyServer && provider.enabled {
