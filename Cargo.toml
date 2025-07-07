@@ -36,7 +36,7 @@ chrono = "0.4"
 url = "2.5.4"
 futures = "0.3.31"
 reqwest = { version = "0.12.12", features = ["json", "stream", "rustls-tls"], default-features = false }
-robius-open = { git = "https://github.com/project-robius/robius-open" }
+robius-open = { git = "https://github.com/project-robius/robius" }
 
 robius-url-handler = { git = "https://github.com/project-robius/robius-url-handler" }
 log = "0.4"
