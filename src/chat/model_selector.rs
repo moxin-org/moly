@@ -105,7 +105,7 @@ live_design! {
     }
 
     ModelSelectorOptions = <RoundedShadowView> {
-	flow: Down
+    flow: Down
         width: Fill, height: Fit,
         padding: 5,
 
@@ -412,23 +412,17 @@ impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let mut should_hide_options = false;
         for action in actions {
-
-            if let Some(text) = self
-                .text_input(id!(options.search.input))
-                .changed(actions)
-            {
-                self
-                    .model_selector_list(id!(list_container.list))
+            if let Some(text) = self.text_input(id!(options.search.input)).changed(actions) {
+                self.model_selector_list(id!(list_container.list))
                     .set_search_filter(cx, &text);
             }
-
 
             match action.cast() {
                 ModelSelectorAction::BotSelected(chat_id, m) => {
                     if chat_id == self.chat_id {
                         self.currently_selected_model = Some(m.id);
                         should_hide_options = true;
-			self.clear_search(cx);
+                        self.clear_search(cx);
                     }
                 }
                 _ => {}
@@ -436,20 +430,20 @@ impl WidgetMatchEvent for ModelSelector {
 
             if should_hide_options {
                 self.hide_options(cx);
-		self.clear_search(cx);
+                self.clear_search(cx);
             }
 
             match action.cast() {
                 ChatAction::Start(_) => {
                     self.hide_options(cx);
-		    self.clear_search(cx);
+                    self.clear_search(cx);
                 }
                 _ => {}
             }
 
             let modal = self.modal(id!(bot_options_modal));
             if modal.dismissed(actions) {
-		self.clear_search(cx);
+                self.clear_search(cx);
             }
         }
     }
@@ -457,11 +451,10 @@ impl WidgetMatchEvent for ModelSelector {
 
 impl ModelSelector {
     fn clear_search(&mut self, cx: &mut Cx) {
-	self
-	    .model_selector_list(id!(list_container.list))
-	    .clear_search_filter(cx);
-	self.text_input(id!(options.search.input)).set_text(cx, "");
-	self.redraw(cx);
+        self.model_selector_list(id!(list_container.list))
+            .clear_search_filter(cx);
+        self.text_input(id!(options.search.input)).set_text(cx, "");
+        self.redraw(cx);
     }
 
     fn hide_options(&mut self, cx: &mut Cx) {
