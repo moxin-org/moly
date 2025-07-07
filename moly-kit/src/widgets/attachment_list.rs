@@ -199,6 +199,15 @@ impl Widget for AttachmentList {
     }
 }
 
+impl AttachmentList {
+    pub fn on_tap<F>(&mut self, f: F)
+    where
+        F: FnMut(&mut AttachmentList, usize) + 'static,
+    {
+        self.on_tap = Some(Box::new(f));
+    }
+}
+
 impl AttachmentListRef {
     /// Immutable access to the underlying [[AttachmentList]].
     ///

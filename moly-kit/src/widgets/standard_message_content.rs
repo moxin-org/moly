@@ -1,4 +1,7 @@
-use crate::{protocol::*, widgets::attachment_list::AttachmentListWidgetExt};
+use crate::{
+    protocol::*,
+    widgets::{attachment_list::AttachmentListWidgetExt, moly_modal::MolyModalWidgetExt},
+};
 use makepad_widgets::*;
 
 use super::{
@@ -14,6 +17,7 @@ live_design! {
     use crate::widgets::message_markdown::*;
     use crate::widgets::citation_list::*;
     use crate::widgets::attachment_list::*;
+    use crate::widgets::moly_modal::*;
 
     pub StandardMessageContent = {{StandardMessageContent}} {
         flow: Down
@@ -23,6 +27,23 @@ live_design! {
         markdown = <MessageMarkdown> {}
         citations = <CitationList> { visible: false }
         attachments = <AttachmentList> {}
+        <View> {
+            flow: Overlay,
+            width: 0,
+            height: 0,
+            gallery_modal = <MolyModal> {
+                content: {
+                    width: Fill,
+                    height: Fill,
+                    image = <Image> {
+                        width: Fill,
+                        height: Fill,
+                        fit: Smallest,
+                        align: {x: 0.5, y: 0.5},
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -38,6 +59,7 @@ impl Widget for StandardMessageContent {
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope)
     }
 }
@@ -58,11 +80,26 @@ impl StandardMessageContent {
 
         let mut attachments = self.attachment_list(id!(attachments));
         attachments.write().attachments = content.attachments.clone();
-        attachments.write().on_tap = Some(Box::new(|list, index| {
+
+        // TODO: Remove
+        attachments.write().on_tap(|list, index| {
             if let Some(attachment) = list.attachments.get(index).cloned() {
                 attachment.save();
             }
-        }));
+        });
+
+        let ui = self.ui_runner();
+        attachments.write().on_tap(move |list, index| {
+            ui.defer(|me, cx, _| {
+                eprintln!("Openning modal!!!");
+                let modal = me.moly_modal(id!(gallery_modal));
+                modal.open(cx);
+                const IMG: &[u8] =
+                    include_bytes!("../../../packaging/Moly macOS dmg background.png");
+                let image = me.image(id!(image));
+                image.load_png_from_data(cx, IMG).unwrap();
+            });
+        });
 
         self.message_thinking_block(id!(thinking_block))
             .borrow_mut()
