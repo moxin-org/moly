@@ -248,7 +248,7 @@ impl Store {
             if let Some(provider) = self
                 .chats
                 .providers
-                .get(&self.moly_client.address())
+                .get(&address)
                 .cloned()
             {
                 if provider.provider_type == ProviderType::MolyServer && provider.enabled {
