@@ -1,4 +1,3 @@
-use makepad_widgets::image_cache::ImageBuffer;
 use makepad_widgets::*;
 
 use crate::protocol::*;
@@ -20,18 +19,21 @@ live_design! {
         height: 0,
         modal = <MolyModal> {
             content: {
-                flow: Down,
+                // TODO: Using fill in the content breaks the underlying modal backdrop
+                // close on click behavior.
                 width: Fill,
                 height: Fill,
                 <View> {
-                    height: Fit,
-                    align: {x: 1},
-                    padding: {left: 6, right: 6, top: 4, bottom: 4},
-                    close = <Button> {
-                        text: "X",
+                    flow: Down,
+                    padding: 16,
+                    spacing: 16,
+                    <View> {
+                        height: Fit,
+                        align: {x: 1},
+                        close = <Button> {text: "X"}
                     }
+                    image = <ImageContain> {}
                 }
-                image = <ImageContain> {}
             }
         }
     }
