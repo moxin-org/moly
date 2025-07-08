@@ -55,6 +55,7 @@ impl AsyncView {
         F: FnOnce(UiRunner<Self>) -> Fut + 'static,
         Fut: PlatformSendFuture + 'static,
     {
+        eprintln!("Spawning");
         self.abort();
 
         let future = future_cb(self.ui_runner());

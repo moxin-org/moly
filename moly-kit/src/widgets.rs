@@ -12,6 +12,7 @@ mod chat_lines;
 mod citation;
 pub(crate) mod citation_list;
 mod gallery_modal;
+mod image_contain;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
@@ -39,6 +40,7 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     // Currently we only have a light theme which we use as default.
     cx.link(live_id!(moly_kit_theme), live_id!(theme_moly_kit_light));
 
+    image_contain::live_design(cx);
     async_view::live_design(cx);
     moly_modal::live_design(cx);
     gallery_modal::live_design(cx);
