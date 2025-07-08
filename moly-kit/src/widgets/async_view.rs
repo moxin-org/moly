@@ -9,13 +9,19 @@ live_design! {
     pub AsyncView = {{AsyncView}} {}
 }
 
-/// A `View` widget that can safely run an asynchronous task tied to its lifecycle.
+/// A `View` widget that can run an asynchronous task tied to its lifecycle to some extent.
 ///
 /// - If the widget gets dropped, the running task will be aborted automatically.
+/// - Same if it becomes invisible.
 /// - Running a new task will abort the previous one, if it exists.
 ///
 /// Also, the running task can access the `UiRunner` of the widget, allowing it to
 /// defer UI updates from the task.
+///
+/// **Warning:** Makepad may cache widgets sometimes or hold them without drawing them,
+/// in which case the task may not be aborted automatically. It's difficult to cover
+/// all cases. So it's still recommended that you call `abort()` manually where suitable,
+/// and even consider implementing `Drop` in your parent widget to call `abort()`.
 #[derive(Live, Widget, LiveHook)]
 pub struct AsyncView {
     #[deref]
@@ -27,6 +33,10 @@ pub struct AsyncView {
 
 impl Widget for AsyncView {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if !self.visible {
+            self.abort();
+        }
+
         self.deref.draw_walk(cx, scope, walk)
     }
 
@@ -67,5 +77,21 @@ impl AsyncView {
 impl Drop for AsyncView {
     fn drop(&mut self) {
         self.abort();
+    }
+}
+
+impl AsyncViewRef {
+    /// Immutable access to the underlying [`AsyncView`].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn read(&self) -> std::cell::Ref<AsyncView> {
+        self.borrow().unwrap()
+    }
+
+    /// Mutable access to the underlying [`AsyncView`].
+    ///
+    /// Panics if the widget reference is empty or if it's already borrowed.
+    pub fn write(&mut self) -> std::cell::RefMut<AsyncView> {
+        self.borrow_mut().unwrap()
     }
 }
