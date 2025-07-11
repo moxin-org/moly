@@ -12,7 +12,20 @@ live_design! {
     use crate::widgets::image_contain::*;
 
     pub AttachmentView = {{AttachmentView}} {
-        image = <ImageContain> {}
+        icon_wrapper = <View> {
+            align: {x: 0.5, y: 0.5},
+            icon = <Label> {
+                text: "",
+                draw_text: {
+                    color: #000,
+                    text_style: <THEME_FONT_ICONS>{font_size: 28}
+                }
+            }
+        }
+
+        image_wrapper = <View> {
+            image = <ImageContain> {}
+        }
     }
 }
 
@@ -40,15 +53,40 @@ impl Widget for AttachmentView {
 }
 
 impl AttachmentView {
-    pub fn set_attachment(&mut self, attachment: Attachment) {
+    pub fn set_attachment(&mut self, cx: &mut Cx, attachment: Attachment) {
+        // Only trigger stuff if attachment has changed.
         if self.attachment != attachment {
+            // Preserve for future comparisons.
             self.attachment = attachment;
-            self.try_load();
+
+            let icon = self.label(id!(icon));
+
+            self.icon_wrapper_ref().set_visible(cx, true);
+            self.image_wrapper_ref().set_visible(cx, false);
+
+            if self.attachment.is_available() {
+                if self.attachment.is_image() {
+                    icon.set_text(cx, "\u{f03e}");
+                    self.try_load();
+                } else {
+                    icon.set_text(cx, "\u{f15b}");
+                }
+            } else {
+                icon.set_text(cx, "\u{f127}");
+            }
         }
     }
 
     fn image_ref(&self) -> ImageContainRef {
         self.image_contain(id!(image))
+    }
+
+    fn image_wrapper_ref(&self) -> ViewRef {
+        self.view(id!(image_wrapper))
+    }
+
+    fn icon_wrapper_ref(&self) -> ViewRef {
+        self.view(id!(icon_wrapper))
     }
 
     fn try_load(&mut self) {
@@ -76,6 +114,9 @@ impl AttachmentView {
                         attachment.name, e
                     );
                 }
+
+                me.icon_wrapper_ref().set_visible(cx, false);
+                me.image_wrapper_ref().set_visible(cx, true);
             });
         };
 

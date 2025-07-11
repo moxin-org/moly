@@ -156,7 +156,7 @@ impl Widget for AttachmentList {
                             icon.set_text(cx, "\u{f03e}");
 
                             if attachment.content_type.as_deref() == Some("image/png") {
-                                image.write().set_attachment(attachment.clone());
+                                image.write().set_attachment(cx, attachment.clone());
                                 icon_wrapper.set_visible(cx, false);
                                 image_wrapper.set_visible(cx, true);
                             }
