@@ -81,7 +81,7 @@ impl StandardMessageContent {
             ui.defer(move |me, cx, _| {
                 eprintln!("Openning modal!!!");
                 let mut modal = me.attachment_viewer_modal(id!(attachment_viewer_modal));
-                modal.write().open(cx, &attachment.unwrap());
+                modal.write().open(cx, attachment.unwrap());
                 // const IMG: &[u8] =
                 //     include_bytes!("../../../packaging/Moly macOS dmg background.png");
                 // let image = me.image(id!(image));

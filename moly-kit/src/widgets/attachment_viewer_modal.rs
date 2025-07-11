@@ -2,7 +2,7 @@ use makepad_widgets::*;
 
 use crate::protocol::*;
 use crate::utils::events::EventExt;
-use crate::widgets::image_contain::ImageContainWidgetExt;
+use crate::widgets::attachment_view::AttachmentViewWidgetExt;
 use crate::widgets::moly_modal::{MolyModalRef, MolyModalWidgetExt};
 
 live_design! {
@@ -10,8 +10,7 @@ live_design! {
     use link::widgets::*;
 
     use crate::widgets::moly_modal::*;
-    use crate::widgets::async_view::*;
-    use crate::widgets::image_contain::*;
+    use crate::widgets::attachment_view::*;
 
     pub AttachmentViewerModal = {{AttachmentViewerModal}} {
         flow: Overlay,
@@ -32,7 +31,7 @@ live_design! {
                         align: {x: 1},
                         close = <Button> {text: "X"}
                     }
-                    image = <ImageContain> {}
+                    attachment = <AttachmentView> {}
                 }
             }
         }
@@ -60,13 +59,11 @@ impl Widget for AttachmentViewerModal {
 }
 
 impl AttachmentViewerModal {
-    pub fn open(&mut self, cx: &mut Cx, attachment: &Attachment) {
+    pub fn open(&mut self, cx: &mut Cx, attachment: Attachment) {
         self.modal_ref().open(cx);
-        const IMG: &[u8] = include_bytes!("../../../packaging/Moly macOS dmg background.png");
-        self.image_contain(id!(image))
+        self.attachment_view(id!(attachment))
             .write()
-            .load_png(cx, IMG)
-            .unwrap();
+            .set_attachment(cx, attachment);
     }
 
     pub fn close(&mut self, cx: &mut Cx) {
