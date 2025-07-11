@@ -45,23 +45,7 @@ live_design! {
                     padding: {left: 12., right: 12., top: 16., bottom: 16.},
                     spacing: 12.,
                     align: {y: 0.5},
-                    icon_wrapper = <View> {
-                        visible: false,
-                        align: {x: 0.5, y: 0.5},
-                        icon = <Label> {
-                            text: "",
-                            draw_text: {
-                                color: #000,
-                                text_style: <THEME_FONT_ICONS>{font_size: 28}
-                            }
-                        }
-                    }
-                    image_wrapper = <View> {
-                        image = <AttachmentView> {
-                            width: Fill,
-                            height: Fill,
-                        }
-                    }
+                    preview = <AttachmentView> {}
                     <View> {
                         flow: Down,
                         height: Fit,
@@ -95,14 +79,7 @@ live_design! {
                     height: (DENSE_ITEM_HEIGHT),
                     width: (DENSE_ITEM_WIDTH),
                     padding: {left: 12., right: 8., top: 8., bottom: 8.},
-                    icon_wrapper = {
-                        width: Fit,
-                        align: {y: 0.5},
-                    }
-                    image_wrapper = {
-                        width: 48.0,
-                        height: 48.0,
-                    }
+                    preview = {width: 48}
                 }
             }
         }
@@ -141,29 +118,14 @@ impl Widget for AttachmentList {
 
                     let attachment = &self.attachments[index];
                     let item = list.item(cx, index, live_id!(File));
-                    let icon_wrapper = item.view(id!(icon_wrapper));
-                    let icon = item.label(id!(icon));
-                    let image_wrapper = item.view(id!(image_wrapper));
-                    let mut image = item.attachment_view(id!(image));
+
+                    let mut preview = item.attachment_view(id!(preview));
                     let kind = item.label(id!(kind));
                     let title = item.label(id!(title));
 
-                    icon_wrapper.set_visible(cx, true);
-                    image_wrapper.set_visible(cx, false);
+                    title.set_text(cx, &attachment.name);
 
                     if attachment.is_available() {
-                        if attachment.is_image() {
-                            icon.set_text(cx, "\u{f03e}");
-
-                            if attachment.content_type.as_deref() == Some("image/png") {
-                                image.write().set_attachment(cx, attachment.clone());
-                                icon_wrapper.set_visible(cx, false);
-                                image_wrapper.set_visible(cx, true);
-                            }
-                        } else {
-                            icon.set_text(cx, "\u{f15b}");
-                        }
-
                         kind.set_text(
                             cx,
                             attachment
@@ -174,11 +136,10 @@ impl Widget for AttachmentList {
                                 .as_str(),
                         );
                     } else {
-                        icon.set_text(cx, "\u{f127}");
                         kind.set_text(cx, "Unavailable");
                     }
 
-                    title.set_text(cx, &attachment.name);
+                    preview.write().set_attachment(cx, attachment.clone());
 
                     // Tired of fighthing an event bubbling issue for an internal widget...
                     let ui = self.ui_runner();
