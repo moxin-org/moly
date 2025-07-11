@@ -10,7 +10,10 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures::{future::Future, stream::Stream};
+use futures::{
+    future::{AbortHandle, Abortable, Future, abortable},
+    stream::Stream,
+};
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -78,6 +81,46 @@ fn spawn_impl(fut: impl Future<Output = ()> + 'static + Send) {
 #[cfg(target_arch = "wasm32")]
 fn spawn_impl(fut: impl Future<Output = ()> + 'static) {
     wasm_bindgen_futures::spawn_local(fut);
+}
+
+/// A handle that aborts its associated future when dropped.
+///
+/// Similar to https://docs.rs/tokio-util/latest/tokio_util/task/struct.AbortOnDropHandle.html
+/// but runtime agnostic.
+///
+/// This is created from the [`abort_on_drop`] function.
+///
+/// This is useful in Makepad to ensure tasks gets cancelled on widget drop instead
+/// of keep running in the background unnoticed.
+///
+/// Note: In makepad, widgets may be cached or reused causing this to not work as expected
+/// in many scenarios.
+// TODO: Consider having a shared lightweight supervisor task that awakes makepad to check
+// for responding handles through it's event system, but only if there are active tasks.
+pub struct AbortOnDropHandle(AbortHandle);
+
+impl Drop for AbortOnDropHandle {
+    fn drop(&mut self) {
+        self.abort();
+    }
+}
+
+impl AbortOnDropHandle {
+    /// Manually aborts the future associated with this handle before it is dropped.
+    pub fn abort(&mut self) {
+        self.0.abort();
+    }
+}
+
+/// Constructs a future + [`AbortOnDropHandle`] pair.
+///
+/// See [`AbortOnDropHandle`] for more details.
+pub fn abort_on_drop<F, T>(future: F) -> (Abortable<F>, AbortOnDropHandle)
+where
+    F: PlatformSendFuture<Output = T> + 'static,
+{
+    let (abort_handle, abort_registration) = abortable(future);
+    (abort_handle, AbortOnDropHandle(abort_registration))
 }
 
 /// Opaque, boxed and pinned future commonly expected by traits in MolyKit.

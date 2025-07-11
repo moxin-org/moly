@@ -1,10 +1,12 @@
-use crate::protocol::*;
+use crate::{protocol::*, widgets::attachment_view::AttachmentViewWidgetRefExt};
 use makepad_widgets::*;
 
 live_design! {
     use link::theme::*;
     use link::widgets::*;
     use link::moly_kit_theme::*;
+
+    use crate::widgets::attachment_view::*;
 
     ITEM_HEIGHT = 200.0;
     ITEM_WIDTH = (ITEM_HEIGHT);
@@ -55,7 +57,7 @@ live_design! {
                         }
                     }
                     image_wrapper = <View> {
-                        image = <Image> {
+                        image = <AttachmentView> {
                             width: Fill,
                             height: Fill,
                         }
@@ -139,17 +141,29 @@ impl Widget for AttachmentList {
 
                     let attachment = &self.attachments[index];
                     let item = list.item(cx, index, live_id!(File));
+                    let icon_wrapper = item.view(id!(icon_wrapper));
                     let icon = item.label(id!(icon));
-                    let image = item.image(id!(image));
+                    let image_wrapper = item.view(id!(image_wrapper));
+                    let mut image = item.attachment_view(id!(image));
                     let kind = item.label(id!(kind));
                     let title = item.label(id!(title));
+
+                    icon_wrapper.set_visible(cx, true);
+                    image_wrapper.set_visible(cx, false);
 
                     if attachment.is_available() {
                         if attachment.is_image() {
                             icon.set_text(cx, "\u{f03e}");
+
+                            if attachment.content_type.as_deref() == Some("image/png") {
+                                image.write().set_attachment(attachment.clone());
+                                icon_wrapper.set_visible(cx, false);
+                                image_wrapper.set_visible(cx, true);
+                            }
                         } else {
                             icon.set_text(cx, "\u{f15b}");
                         }
+
                         kind.set_text(
                             cx,
                             attachment
@@ -162,14 +176,6 @@ impl Widget for AttachmentList {
                     } else {
                         icon.set_text(cx, "\u{f127}");
                         kind.set_text(cx, "Unavailable");
-                    }
-
-                    // test
-                    // TODO: Remove
-                    if !image.has_texture() {
-                        const IMG: &[u8] =
-                            include_bytes!("../../../packaging/Moly macOS dmg background.png");
-                        image.load_png_from_data(cx, IMG).unwrap();
                     }
 
                     title.set_text(cx, &attachment.name);

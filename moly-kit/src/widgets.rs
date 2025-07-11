@@ -6,6 +6,7 @@ use makepad_widgets::*;
 
 mod async_view;
 mod attachment_list;
+mod attachment_view;
 mod attachment_viewer_modal;
 mod avatar;
 mod chat_lines;
@@ -42,6 +43,7 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
 
     image_contain::live_design(cx);
     async_view::live_design(cx);
+    attachment_view::live_design(cx);
     moly_modal::live_design(cx);
     gallery_modal::live_design(cx);
     attachment_viewer_modal::live_design(cx);
