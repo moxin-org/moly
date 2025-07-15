@@ -51,7 +51,7 @@ live_design! {
         padding: 10
         draw_bg: {
             border_size: 1.0
-            border_color_1: #ddd
+            border_color: #ddd
         }
         draw_text: {
             text_style: <REGULAR_FONT>{font_size: 11},
@@ -88,12 +88,12 @@ live_design! {
             color_focus: (TRANSPARENT)
             color_disabled: (TRANSPARENT)
 
-            border_color_1: #ddd
-            border_color_1_hover: #ddd
-            border_color_1_down: #ddd
-            border_color_1_active: #ddd
-            border_color_1_focus: #ddd
-            border_color_1_disabled: #ddd
+            border_color: #ddd
+            border_color_hover: #ddd
+            border_color_down: #ddd
+            border_color_active: #ddd
+            border_color_focus: #ddd
+            border_color_disabled: #ddd
 
             border_color_2: #ddd
             border_color_2_hover: #ddd

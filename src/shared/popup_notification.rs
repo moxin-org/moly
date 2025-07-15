@@ -66,10 +66,10 @@ impl Widget for PopupNotification {
         self.content.handle_event(cx, event, scope);
     }
 
-    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, _walk: Walk) -> DrawStep {
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.draw_list.begin_overlay_reuse(cx);
 
-        cx.begin_pass_sized_turtle(self.layout);
+        cx.begin_turtle(walk, self.layout);
         self.draw_bg.begin(cx, self.walk, self.layout);
 
         if self.opened {

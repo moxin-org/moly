@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "ab_glyph_rasterizer"
 version = "0.1.8"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "addr2line"
@@ -1512,7 +1512,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.53.0",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -1577,7 +1577,7 @@ dependencies = [
 [[package]]
 name = "makepad-code-editor"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-widgets",
 ]
@@ -1585,7 +1585,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-live"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1594,7 +1594,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-wasm-bridge"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1602,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "makepad-derive-widget"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-proc-macro",
@@ -1611,7 +1611,7 @@ dependencies = [
 [[package]]
 name = "makepad-draw"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "ab_glyph_rasterizer",
  "fxhash",
@@ -1630,7 +1630,7 @@ dependencies = [
 [[package]]
 name = "makepad-fonts-chinese-bold"
 version = "1.0.1"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-platform",
 ]
@@ -1638,7 +1638,7 @@ dependencies = [
 [[package]]
 name = "makepad-fonts-chinese-bold-2"
 version = "1.0.1"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-platform",
 ]
@@ -1646,7 +1646,7 @@ dependencies = [
 [[package]]
 name = "makepad-fonts-chinese-regular"
 version = "1.0.1"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-platform",
 ]
@@ -1654,7 +1654,7 @@ dependencies = [
 [[package]]
 name = "makepad-fonts-chinese-regular-2"
 version = "1.0.1"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-platform",
 ]
@@ -1662,7 +1662,7 @@ dependencies = [
 [[package]]
 name = "makepad-fonts-emoji"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-platform",
 ]
@@ -1670,17 +1670,17 @@ dependencies = [
 [[package]]
 name = "makepad-futures"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "makepad-futures-legacy"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "makepad-html"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-live-id",
 ]
@@ -1688,7 +1688,7 @@ dependencies = [
 [[package]]
 name = "makepad-http"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "makepad-jni-sys"
@@ -1699,7 +1699,7 @@ checksum = "9775cbec5fa0647500c3e5de7c850280a88335d1d2d770e5aa2332b801ba7064"
 [[package]]
 name = "makepad-live-compiler"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-derive-live",
  "makepad-live-tokenizer",
@@ -1709,7 +1709,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-live-id-macros",
 ]
@@ -1717,7 +1717,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-id-macros"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1725,7 +1725,7 @@ dependencies = [
 [[package]]
 name = "makepad-live-tokenizer"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-live-id",
  "makepad-math",
@@ -1735,7 +1735,7 @@ dependencies = [
 [[package]]
 name = "makepad-math"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-micro-serde",
 ]
@@ -1743,12 +1743,12 @@ dependencies = [
 [[package]]
 name = "makepad-micro-proc-macro"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "makepad-micro-serde"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-live-id",
  "makepad-micro-serde-derive",
@@ -1757,7 +1757,7 @@ dependencies = [
 [[package]]
 name = "makepad-micro-serde-derive"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-micro-proc-macro",
 ]
@@ -1765,12 +1765,12 @@ dependencies = [
 [[package]]
 name = "makepad-objc-sys"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "makepad-platform"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "bitflags 2.9.1",
  "hilog-sys",
@@ -1788,13 +1788,13 @@ dependencies = [
  "smallvec",
  "windows 0.56.0",
  "windows-core 0.56.0",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
 name = "makepad-rustybuzz"
 version = "0.8.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "bitflags 1.3.2",
  "bytemuck",
@@ -1809,7 +1809,7 @@ dependencies = [
 [[package]]
 name = "makepad-shader-compiler"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-live-compiler",
 ]
@@ -1817,12 +1817,12 @@ dependencies = [
 [[package]]
 name = "makepad-ttf-parser"
 version = "0.21.1"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "makepad-vector"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-ttf-parser",
  "resvg",
@@ -1831,7 +1831,7 @@ dependencies = [
 [[package]]
 name = "makepad-wasm-bridge"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-derive-wasm-bridge",
  "makepad-live-id",
@@ -1840,7 +1840,7 @@ dependencies = [
 [[package]]
 name = "makepad-widgets"
 version = "1.0.0"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-derive-widget",
  "makepad-draw",
@@ -1859,7 +1859,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-core"
 version = "0.2.14"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "bitflags 2.9.1",
 ]
@@ -1867,7 +1867,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-jpeg"
 version = "0.3.17"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "makepad-zune-core",
 ]
@@ -1875,7 +1875,7 @@ dependencies = [
 [[package]]
 name = "makepad-zune-png"
 version = "0.4.10"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 dependencies = [
  "zune-core",
  "zune-inflate",
@@ -2975,7 +2975,7 @@ dependencies = [
 [[package]]
 name = "sdfer"
 version = "0.2.1"
-source = "git+https://github.com/wyeworks/makepad?branch=moly#d50a8e41a4ac54410f279f6d7cd7d08551ae84de"
+source = "git+https://github.com/wyeworks/makepad?branch=moly#20f1333f55da7f7a60d3526c7cb508b8b76c3a70"
 
 [[package]]
 name = "selectors"
@@ -4105,27 +4105,11 @@ dependencies = [
  "windows_aarch64_gnullvm 0.52.6",
  "windows_aarch64_msvc 0.52.6",
  "windows_i686_gnu 0.52.6",
- "windows_i686_gnullvm 0.52.6",
+ "windows_i686_gnullvm",
  "windows_i686_msvc 0.52.6",
  "windows_x86_64_gnu 0.52.6",
  "windows_x86_64_gnullvm 0.52.6",
  "windows_x86_64_msvc 0.52.6",
-]
-
-[[package]]
-name = "windows-targets"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1e4c7e8ceaaf9cb7d7507c974735728ab453b67ef8f18febdd7c11fe59dca8b"
-dependencies = [
- "windows_aarch64_gnullvm 0.53.0",
- "windows_aarch64_msvc 0.53.0",
- "windows_i686_gnu 0.53.0",
- "windows_i686_gnullvm 0.53.0",
- "windows_i686_msvc 0.53.0",
- "windows_x86_64_gnu 0.53.0",
- "windows_x86_64_gnullvm 0.53.0",
- "windows_x86_64_msvc 0.53.0",
 ]
 
 [[package]]
@@ -4147,12 +4131,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a4622180e7a0ec044bb555404c800bc9fd9ec262ec147edd5989ccd0c02cd3"
 
 [[package]]
-name = "windows_aarch64_gnullvm"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86b8d5f90ddd19cb4a147a5fa63ca848db3df085e25fee3cc10b39b6eebae764"
-
-[[package]]
 name = "windows_aarch64_msvc"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4169,12 +4147,6 @@ name = "windows_aarch64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09ec2a7bb152e2252b53fa7803150007879548bc709c039df7627cabbd05d469"
-
-[[package]]
-name = "windows_aarch64_msvc"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7651a1f62a11b8cbd5e0d42526e55f2c99886c77e007179efff86c2b137e66c"
 
 [[package]]
 name = "windows_i686_gnu"
@@ -4195,22 +4167,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e9b5ad5ab802e97eb8e295ac6720e509ee4c243f69d781394014ebfe8bbfa0b"
 
 [[package]]
-name = "windows_i686_gnu"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1dc67659d35f387f5f6c479dc4e28f1d4bb90ddd1a5d3da2e5d97b42d6272c3"
-
-[[package]]
 name = "windows_i686_gnullvm"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0eee52d38c090b3caa76c563b86c3a4bd71ef1a819287c19d586d7334ae8ed66"
-
-[[package]]
-name = "windows_i686_gnullvm"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ce6ccbdedbf6d6354471319e781c0dfef054c81fbc7cf83f338a4296c0cae11"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -4231,12 +4191,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66"
 
 [[package]]
-name = "windows_i686_msvc"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "581fee95406bb13382d2f65cd4a908ca7b1e4c2f1917f143ba16efe98a589b5d"
-
-[[package]]
 name = "windows_x86_64_gnu"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4253,12 +4207,6 @@ name = "windows_x86_64_gnu"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "147a5c80aabfbf0c7d901cb5895d1de30ef2907eb21fbbab29ca94c5b08b1a78"
-
-[[package]]
-name = "windows_x86_64_gnu"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e55b5ac9ea33f2fc1716d1742db15574fd6fc8dadc51caab1c16a3d3b4190ba"
 
 [[package]]
 name = "windows_x86_64_gnullvm"
@@ -4279,12 +4227,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24d5b23dc417412679681396f2b49f3de8c1473deb516bd34410872eff51ed0d"
 
 [[package]]
-name = "windows_x86_64_gnullvm"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a6e035dd0599267ce1ee132e51c27dd29437f63325753051e71dd9e42406c57"
-
-[[package]]
 name = "windows_x86_64_msvc"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4301,12 +4243,6 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
-
-[[package]]
-name = "windows_x86_64_msvc"
-version = "0.53.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winnow"

@@ -25,7 +25,7 @@ live_design! {
     ModalTextInput = <MolyTextInput> {
         draw_bg: {
             border_size: 1.0
-            border_color_1: #ddd
+            border_color: #ddd
         }
         draw_text: {
             text_style: <REGULAR_FONT>{font_size: 12},
@@ -111,12 +111,12 @@ live_design! {
             color_focus: (TRANSPARENT)
             color_disabled: (TRANSPARENT)
 
-            border_color_1: #ddd
-            border_color_1_hover: #ddd
-            border_color_1_down: #ddd
-            border_color_1_active: #ddd
-            border_color_1_focus: #ddd
-            border_color_1_disabled: #ddd
+            border_color: #ddd
+            border_color_hover: #ddd
+            border_color_down: #ddd
+            border_color_active: #ddd
+            border_color_focus: #ddd
+            border_color_disabled: #ddd
 
             border_color_2: #ddd
             border_color_2_hover: #ddd
@@ -261,7 +261,7 @@ live_design! {
                         height: 40
                         padding: {left: 20, right: 20, top: 0, bottom: 0}
                         text: "Add Provider"
-                        draw_bg: { color: (CTA_BUTTON_COLOR), border_color_1: (CTA_BUTTON_COLOR) }
+                        draw_bg: { color: (CTA_BUTTON_COLOR), border_color: (CTA_BUTTON_COLOR) }
                     }
                 }
             }
