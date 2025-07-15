@@ -118,7 +118,7 @@ live_design! {
                 padding: { left: 6, top: 10, bottom: 6 }
 
                 <View> {
-                    width: Fit, height: Fit
+                    width: Fill, height: Fit
                     spacing: 8
                     model_or_agent_name_label = <Label> {
                         width: Fit,

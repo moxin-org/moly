@@ -65,7 +65,7 @@ live_design! {
         flow: Down, spacing: 15.0,
         padding: { top: 40, bottom: 20, left: 0, right: 0 },
 
-        align: {x: 0.5, y: 0.0},
+        align: {x: 0.5, y: 0.5},
 
         show_bg: true,
         draw_bg: {

@@ -154,6 +154,7 @@ live_design! {
     // Customized button widget, based on the RoundedView shaders with some modifications
     // which is a better fit with our application UI design
     pub MolyButton = <Button> {
+        text: ""
         draw_bg: {
             instance color: #0000
             instance color_hover: #fff

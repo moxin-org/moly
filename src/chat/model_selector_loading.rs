@@ -55,7 +55,7 @@ live_design! {
                     )
                     sdf.fill_keep(self.get_color())
                     if self.border_size > 0.0 {
-                        sdf.stroke(self.get_border_color(), self.border_size)
+                        sdf.stroke(self.border_color, self.border_size)
                     }
                     return sdf.result;
                 }
