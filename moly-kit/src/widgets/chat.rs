@@ -3,7 +3,7 @@ use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 use utils::asynchronous::spawn;
 
-use crate::utils::events::EventExt;
+use crate::utils::makepad::EventExt;
 use crate::utils::ui_runner::DeferWithRedrawAsync;
 use crate::*;
 

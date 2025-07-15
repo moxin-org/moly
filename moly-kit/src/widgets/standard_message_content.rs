@@ -1,4 +1,10 @@
-use crate::{protocol::*, widgets::attachment_list::AttachmentListWidgetExt};
+use crate::{
+    protocol::*,
+    widgets::{
+        attachment_list::AttachmentListWidgetExt,
+        attachment_viewer_modal::AttachmentViewerModalWidgetExt,
+    },
+};
 use makepad_widgets::*;
 
 use super::{
@@ -14,6 +20,7 @@ live_design! {
     use crate::widgets::message_markdown::*;
     use crate::widgets::citation_list::*;
     use crate::widgets::attachment_list::*;
+    use crate::widgets::attachment_viewer_modal::*;
 
     pub StandardMessageContent = {{StandardMessageContent}} {
         flow: Down
@@ -23,6 +30,7 @@ live_design! {
         markdown = <MessageMarkdown> {}
         citations = <CitationList> { visible: false }
         attachments = <AttachmentList> {}
+        attachment_viewer_modal = <AttachmentViewerModal> {}
     }
 }
 
@@ -38,6 +46,7 @@ impl Widget for StandardMessageContent {
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope)
     }
 }
@@ -58,11 +67,20 @@ impl StandardMessageContent {
 
         let mut attachments = self.attachment_list(id!(attachments));
         attachments.write().attachments = content.attachments.clone();
-        attachments.write().on_tap = Some(Box::new(|list, index| {
+
+        let ui = self.ui_runner();
+        attachments.write().on_tap(move |list, index| {
             if let Some(attachment) = list.attachments.get(index).cloned() {
-                attachment.save();
+                if crate::widgets::attachment_view::can_preview(&attachment) {
+                    ui.defer(move |me, cx, _| {
+                        let modal = me.attachment_viewer_modal(id!(attachment_viewer_modal));
+                        modal.borrow_mut().unwrap().open(cx, attachment);
+                    });
+                } else {
+                    attachment.save();
+                }
             }
-        }));
+        });
 
         self.message_thinking_block(id!(thinking_block))
             .borrow_mut()

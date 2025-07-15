@@ -71,11 +71,18 @@ impl Widget for Ui {
                     from: EntityId::Bot(bot_id),
                     content: MessageContent {
                         text: "World".to_string(),
-                        attachments: vec![Attachment::from_bytes(
-                            "text.txt".into(),
-                            Some("text/plain".into()),
-                            b"Hello, world!".to_vec(),
-                        )],
+                        attachments: vec![
+                            Attachment::from_bytes(
+                                "text.txt".into(),
+                                Some("text/plain".into()),
+                                b"Hello, world!",
+                            ),
+                            Attachment::from_bytes(
+                                "image.png".into(),
+                                Some("image/png".into()),
+                                include_bytes!("../../packaging/Moly macOS dmg background.png"),
+                            ),
+                        ],
                         citations: vec![
                             "https://github.com/ZhangHanDong/url-preview/issues/2".to_string(),
                             "https://3.basecamp.com/5400951/buckets/28531977/messages/8467029657"

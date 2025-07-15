@@ -2,20 +2,25 @@
 //!
 //! Note: Some widgets may depend on certain feature flags.
 
+use makepad_widgets::*;
+
 mod attachment_list;
+mod attachment_view;
+mod attachment_viewer_modal;
 mod avatar;
 mod chat_lines;
 mod citation;
 pub(crate) mod citation_list;
+mod image_view;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
+mod moly_modal;
 mod slot;
 mod standard_message_content;
 mod theme_moly_kit_light;
 
 pub mod messages;
-use makepad_widgets::*;
 pub use messages::*;
 
 pub mod prompt_input;
@@ -34,6 +39,10 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     // Currently we only have a light theme which we use as default.
     cx.link(live_id!(moly_kit_theme), live_id!(theme_moly_kit_light));
 
+    image_view::live_design(cx);
+    attachment_view::live_design(cx);
+    moly_modal::live_design(cx);
+    attachment_viewer_modal::live_design(cx);
     attachment_list::live_design(cx);
     citation::live_design(cx);
     citation_list::live_design(cx);
