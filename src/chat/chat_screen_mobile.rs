@@ -1,4 +1,3 @@
-use crate::chat::chats_deck::ChatsDeckWidgetExt;
 use makepad_widgets::*;
 
 live_design! {
@@ -189,13 +188,6 @@ impl Widget for ChatScreenMobile {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        // Because chats_deck is being cached, overriding its properties in the DSL does not take effect.
-        // For now we'll override them through apply_over.
-        // TODO: Do not use CachedWidget, create a shared structure of chat instances that is shared across layouts.
-        self.chats_deck(id!(chats_deck)).apply_over(
-            cx,
-            live! { padding: {top: 55, left: 0, right: 0, bottom: 0} },
-        );
         self.view.draw_walk(cx, scope, walk)
     }
 }

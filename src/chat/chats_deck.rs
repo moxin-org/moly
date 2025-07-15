@@ -89,6 +89,21 @@ impl Widget for ChatsDeck {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Because chats_deck is being cached, overriding its properties in the DSL does not take effect.
+        // For now we'll override them through apply_over.
+        // TODO: Do not use CachedWidget, create a shared structure of chat instances that is shared across layouts.
+        if cx.display_context.is_desktop() {
+            self.view.apply_over(
+                cx,
+                live! {padding: {top: 18, bottom: 10, right: 28, left: 28} },
+            );
+        } else {
+            self.view.apply_over(
+                cx,
+                live! { padding: {top: 55, left: 0, right: 0, bottom: 0} },
+            );
+        }
+
         cx.begin_turtle(walk, self.layout);
 
         if let Some(chat_id) = self.currently_visible_chat_id {

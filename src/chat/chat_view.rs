@@ -98,6 +98,7 @@ live_design! {
 
         model_selector = <ModelSelector> {}
         chat = <Chat> {
+            messages = { padding: {left: 10, right: 10} }
             prompt = <PromptInputWithShadow> {}
         }
     }
