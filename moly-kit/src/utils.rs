@@ -2,9 +2,8 @@
 
 pub mod asynchronous;
 pub(crate) mod errors;
-pub(crate) mod events;
+pub(crate) mod makepad;
 pub(crate) mod platform;
-pub(crate) mod portal_list;
 pub(crate) mod scraping;
 pub(crate) mod string;
 

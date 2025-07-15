@@ -1,4 +1,4 @@
-use crate::protocol::*;
+use crate::{protocol::*, widgets::attachment_view::AttachmentViewWidgetRefExt};
 use makepad_widgets::*;
 
 live_design! {
@@ -6,14 +6,24 @@ live_design! {
     use link::widgets::*;
     use link::moly_kit_theme::*;
 
-    ITEM_HEIGHT = 64.0;
+    use crate::widgets::attachment_view::*;
+
+    ITEM_HEIGHT = 200.0;
+    ITEM_WIDTH = (ITEM_HEIGHT);
+    ITEM_RADIUS = 8.0;
+
+    DENSE_ITEM_HEIGHT = (ITEM_HEIGHT * 0.5);
+    DENSE_ITEM_WIDTH = (ITEM_WIDTH * 0.5);
+    DENSE_ITEM_RADIUS = (ITEM_RADIUS * 0.75);
+
 
     ItemView = {{ItemView}} <RoundedView> {
         height: (ITEM_HEIGHT),
+        width: (ITEM_WIDTH),
         margin: {right: 4},
+        cursor: Hand,
         draw_bg: {
-            // color: #c00,
-            border_radius: 8.0,
+            border_radius: (ITEM_RADIUS),
             border_color: #D0D5DD,
             border_size: 1.0,
         }
@@ -25,41 +35,42 @@ live_design! {
         // `draw_walk` will not run at all, making visibility binding harder.
         wrapper = <View> {
             visible: false,
-            height: 64,
+            height: Fit,
             list = <PortalList> {
                 flow: Right,
-                // Image = <ItemView> {
-                //     width: (ITEM_HEIGHT),
-                // }
+                height: (ITEM_HEIGHT),
+                scroll_bar: {bar_size: 0.0}
+
                 File = <ItemView> {
-                    width: (ITEM_HEIGHT * 4),
-                    padding: {left: 12., right: 8., top: 8., bottom: 8.},
-                    spacing: 12.,
-                    align: {y: 0.5},
-                    icon = <Label> {
-                        text: "",
-                        draw_text: {
-                            color: #000,
-                            text_style: <THEME_FONT_ICONS>{font_size: 28}
+                    preview_wrapper = <CachedRoundedView> {
+                        draw_bg: {
+                            border_radius: (ITEM_RADIUS),
+                        }
+                        preview = <AttachmentView> {
+                            image_wrapper = {
+                                image = {contain: false}
+                            }
+                            tag_wrapper = {visible: true}
                         }
                     }
-                    <View> {
-                        flow: Down,
-                        align: {y: 0.5},
-                        spacing: 2,
-                        title = <Label> {
-                            text: "document.pdf",
-                            draw_text: {
-                                color: #000,
-                                text_style: <THEME_FONT_BOLD>{font_size: 11}
-                            }
-                        }
-                        kind = <Label> {
-                            text: "PDF",
-                            draw_text: {
-                                color: #000,
-                                text_style: {font_size: 10}
-                            }
+                }
+            }
+        }
+    }
+
+    pub DenseAttachmentList = <AttachmentList> {
+        wrapper = {
+            list = {
+                height: (DENSE_ITEM_HEIGHT),
+                File = {
+                    height: (DENSE_ITEM_HEIGHT),
+                    width: (DENSE_ITEM_WIDTH),
+                    draw_bg: {
+                        border_radius: (DENSE_ITEM_RADIUS),
+                    }
+                    preview_wrapper = {
+                        draw_bg: {
+                            border_radius: (DENSE_ITEM_RADIUS),
                         }
                     }
                 }
@@ -100,31 +111,11 @@ impl Widget for AttachmentList {
 
                     let attachment = &self.attachments[index];
                     let item = list.item(cx, index, live_id!(File));
-                    let icon = item.label(id!(icon));
-                    let kind = item.label(id!(kind));
-                    let title = item.label(id!(title));
 
-                    if attachment.is_available() {
-                        if attachment.is_image() {
-                            icon.set_text(cx, "\u{f03e}");
-                        } else {
-                            icon.set_text(cx, "\u{f15b}");
-                        }
-                        kind.set_text(
-                            cx,
-                            attachment
-                                .content_type
-                                .as_deref()
-                                .map(|s| s.split('/').last().unwrap_or_default().to_uppercase())
-                                .unwrap_or_default()
-                                .as_str(),
-                        );
-                    } else {
-                        icon.set_text(cx, "\u{f127}");
-                        kind.set_text(cx, "Unavailable");
-                    }
-
-                    title.set_text(cx, &attachment.name);
+                    item.attachment_view(id!(preview))
+                        .borrow_mut()
+                        .unwrap()
+                        .set_attachment(cx, attachment.clone());
 
                     // Tired of fighthing an event bubbling issue for an internal widget...
                     let ui = self.ui_runner();
@@ -148,6 +139,15 @@ impl Widget for AttachmentList {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope)
+    }
+}
+
+impl AttachmentList {
+    pub fn on_tap<F>(&mut self, f: F)
+    where
+        F: FnMut(&mut AttachmentList, usize) + 'static,
+    {
+        self.on_tap = Some(Box::new(f));
     }
 }
 

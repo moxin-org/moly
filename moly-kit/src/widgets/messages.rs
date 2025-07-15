@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     protocol::*,
-    utils::{events::EventExt, portal_list::ItemsRangeIter},
+    utils::makepad::{EventExt, ItemsRangeIter},
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
 use makepad_code_editor::code_view::CodeViewWidgetRefExt;
@@ -448,12 +448,14 @@ impl Messages {
                 self.redraw(cx);
             }
 
-            if item.button(id!(cancel)).clicked(actions) {
+            if item.button(id!(edit_actions.cancel)).clicked(actions) {
                 self.set_message_editor_visibility(index, false);
                 self.redraw(cx);
             }
 
-            if item.button(id!(save)).clicked(actions) {
+            // Being more explicit because makepad query may actually check for
+            // other save button somewhere else (like in the image viewer modal).
+            if item.button(id!(edit_actions.save)).clicked(actions) {
                 cx.widget_action(
                     self.widget_uid(),
                     &scope.path,
@@ -461,7 +463,10 @@ impl Messages {
                 );
             }
 
-            if item.button(id!(save_and_regenerate)).clicked(actions) {
+            if item
+                .button(id!(edit_actions.save_and_regenerate))
+                .clicked(actions)
+            {
                 cx.widget_action(
                     self.widget_uid(),
                     &scope.path,

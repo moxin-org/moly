@@ -4,7 +4,7 @@ use std::cell::{Ref, RefMut};
 #[allow(unused)]
 use crate::{
     Attachment,
-    utils::events::EventExt,
+    utils::makepad::EventExt,
     widgets::attachment_list::{AttachmentListRef, AttachmentListWidgetExt},
 };
 
@@ -14,7 +14,7 @@ live_design! {
     use link::moly_kit_theme::*;
     use link::shaders::*;
 
-    use crate::widgets::attachment_list::AttachmentList;
+    use crate::widgets::attachment_list::*;
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
         send_icon: dep("crate://self/resources/send.svg"),
@@ -115,7 +115,7 @@ live_design! {
                 }
             }
             bottom = {
-                attachments = <AttachmentList> {
+                attachments = <DenseAttachmentList> {
                     wrapper = {
                         margin: { top: 6 }
                     }
@@ -197,9 +197,9 @@ impl Widget for PromptInput {
                     ui.defer_with_redraw(move |me, _, _| {
                         let mut list = me.attachment_list_ref();
                         list.write().attachments.extend(attachments);
-                        list.write().on_tap = Some(Box::new(move |list, index| {
+                        list.write().on_tap(move |list, index| {
                             list.attachments.remove(index);
-                        }));
+                        });
                     });
                 }
                 Err(_) => {}

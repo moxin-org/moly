@@ -158,7 +158,24 @@ impl MessageContent {
 }
 
 /// Represents a file/image/document sent or received as part of a message.
-#[derive(Clone, Debug, PartialEq, Default)]
+///
+/// When comparing, two [`Attachment`]s are considered equal if they have the same
+/// metadata (name, content type, etc), and they **point** to the same data.
+///
+/// This means:
+/// - For in-memory attachments, the content is compared by reference (pointer equality).
+/// - TODO: For attachments picked from a native file system, the path is compared.
+/// - TODO: For attachments picked on the web, the (wrapped) file handle must be the same.
+/// - TODO: For persisted attachments, the storage key and adapter are compared.
+///
+/// The content itself is never compared, because not all attachments can be read
+/// synchronously, and it would be expensive to do so.
+///
+/// Unless persistence is configured, when serializing this type, the "pointer" to
+/// data is skipped and the attachment will become "unavailable" when deserialized back.
+///
+/// Two unavailable attachments are considered equal if they have the same metadata.
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Attachment {
     /// Normally the original filename.
@@ -167,7 +184,25 @@ pub struct Attachment {
     pub content_type: Option<String>,
     // TODO: Read on demand instead of holding the content in memory.
     #[serde(skip)]
-    content: Option<Vec<u8>>,
+    content: Option<Arc<[u8]>>,
+}
+
+impl PartialEq for Attachment {
+    fn eq(&self, other: &Self) -> bool {
+        let ptr = self
+            .content
+            .as_ref()
+            .map(|c| Arc::as_ptr(c) as *const u8 as usize)
+            .unwrap_or_default();
+
+        let other_ptr = other
+            .content
+            .as_ref()
+            .map(|c| Arc::as_ptr(c) as *const u8 as usize)
+            .unwrap_or_default();
+
+        self.name == other.name && self.content_type == other.content_type && ptr == other_ptr
+    }
 }
 
 impl Attachment {
@@ -201,7 +236,7 @@ impl Attachment {
                         attachments.push(Attachment {
                             name,
                             content_type,
-                            content: Some(content),
+                            content: Some(content.into()),
                         });
                     }
 
@@ -232,7 +267,7 @@ impl Attachment {
                     attachments.push(Attachment {
                         name,
                         content_type,
-                        content: Some(content),
+                        content: Some(content.into()),
                     });
                 }
                 cb(Ok(attachments));
@@ -244,11 +279,11 @@ impl Attachment {
     }
 
     /// Creates a new in-memory attachment from the given bytes.
-    pub fn from_bytes(name: String, content_type: Option<String>, content: Vec<u8>) -> Self {
+    pub fn from_bytes(name: String, content_type: Option<String>, content: &[u8]) -> Self {
         Attachment {
             name,
             content_type,
-            content: Some(content),
+            content: Some(content.into()),
         }
     }
 
@@ -265,7 +300,7 @@ impl Attachment {
                 std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid base64 content")
             })?;
 
-        Ok(Attachment::from_bytes(name, content_type, content))
+        Ok(Attachment::from_bytes(name, content_type, &content))
     }
 
     pub fn is_available(&self) -> bool {
@@ -280,7 +315,7 @@ impl Attachment {
         }
     }
 
-    pub async fn read(&self) -> std::io::Result<Vec<u8>> {
+    pub async fn read(&self) -> std::io::Result<Arc<[u8]>> {
         if let Some(content) = &self.content {
             Ok(content.clone())
         } else {
@@ -318,6 +353,13 @@ impl Attachment {
                 makepad_widgets::warning!("Attachment saving is not supported on this platform");
             }
         }
+    }
+
+    /// Get the content type or "application/octet-stream" if not set.
+    pub fn content_type_or_octet_stream(&self) -> &str {
+        self.content_type
+            .as_deref()
+            .unwrap_or("application/octet-stream")
     }
 }
 
