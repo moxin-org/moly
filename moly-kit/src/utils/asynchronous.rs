@@ -160,3 +160,102 @@ pub fn moly_future<'a, T>(future: impl PlatformSendFuture<Output = T> + 'a) -> M
 pub fn moly_stream<'a, T>(stream: impl PlatformSendStream<Item = T> + 'a) -> MolyStream<'a, T> {
     MolyStream(Box::pin(stream))
 }
+
+mod thread_token {
+    use std::any::Any;
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NEXT_KEY: AtomicU64 = AtomicU64::new(0);
+
+    thread_local! {
+        static STORAGE: RefCell<HashMap<u64, Option<Box<dyn Any>>>> = RefCell::new(HashMap::new());
+    }
+
+    /// Holds a value inside a thread-local storage.
+    ///
+    /// Then, this token can be used to access the underlying value as long you
+    /// are in the same thread that created it.
+    ///
+    /// This is useful on the web, where you are always in the same thread, but you
+    /// need to pass some kind of non-`Send` value across `Send` boundries of Makepad.
+    ///
+    /// **Warning**: Trying to read the value from a different thread will panic.
+    ///
+    /// **Warning**: This token must be dropped in the same thread that created it
+    /// to avoid leaks. If this value is dropped in a different thread, it will panic.
+    pub struct ThreadToken<T: 'static> {
+        key: u64,
+        _phantom: std::marker::PhantomData<fn() -> T>,
+    }
+
+    impl<T> ThreadToken<T> {
+        pub fn new(value: T) -> Self {
+            let key = NEXT_KEY.fetch_add(1, Ordering::Relaxed);
+
+            STORAGE.with_borrow_mut(|storage| {
+                storage.insert(key, Some(Box::new(value)));
+            });
+
+            Self {
+                key,
+                _phantom: std::marker::PhantomData,
+            }
+        }
+
+        pub fn take(self) -> T {
+            STORAGE.with_borrow_mut(|storage| {
+                let option = storage
+                    .get_mut(&self.key)
+                    .expect("Token `take` called from different thread");
+
+                let boxed = option.take().expect("Token `take` called multiple times");
+
+                *boxed.downcast::<T>().unwrap()
+            })
+        }
+
+        pub fn peek<R>(&self, f: impl FnOnce(&T) -> R) -> R {
+            STORAGE.with_borrow_mut(|storage| {
+                let option = storage
+                    .get(&self.key)
+                    .expect("Token `peek` called from different thread");
+
+                let boxed = option
+                    .as_ref()
+                    .expect("Token `peek` called after value was taken");
+
+                let value = boxed.downcast_ref::<T>().unwrap();
+                f(value)
+            })
+        }
+
+        pub fn peek_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
+            STORAGE.with_borrow_mut(|storage| {
+                let option = storage
+                    .get_mut(&self.key)
+                    .expect("Token `peek_mut` called from different thread");
+
+                let boxed = option
+                    .as_mut()
+                    .expect("Token `peek_mut` called after value was taken");
+
+                let value = boxed.downcast_mut::<T>().unwrap();
+                f(value)
+            })
+        }
+    }
+
+    impl<T> Drop for ThreadToken<T> {
+        fn drop(&mut self) {
+            STORAGE.with_borrow_mut(|storage| {
+                storage
+                    .remove(&self.key)
+                    .expect("Token dropped in a different thread.");
+            });
+        }
+    }
+}
+
+pub use thread_token::*;
