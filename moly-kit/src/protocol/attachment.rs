@@ -278,18 +278,20 @@ impl Attachment {
 
     #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
     fn save_impl(&self) {
-        let self_clone = self.clone();
-        crate::utils::asynchronous::spawn(async move {
-            let Ok(content) = self_clone.content.as_ref().unwrap().read().await else {
+        let content_handle = self.content.as_ref().unwrap();
+
+        let content = match futures::executor::block_on(content_handle.read()) {
+            Ok(content) => content,
+            Err(_) => {
                 makepad_widgets::warning!(
                     "Failed to read attachment content for saving: {}",
-                    self_clone.name
+                    self.name
                 );
                 return;
-            };
+            }
+        };
 
-            crate::utils::platform::trigger_save_as(&content, Some(self_clone.name.as_str()));
-        });
+        crate::utils::platform::trigger_save_as(&content, Some(self.name.as_str()));
     }
 
     #[cfg(not(any(
