@@ -249,14 +249,19 @@ impl Attachment {
     pub(crate) fn save(&self) {
         makepad_widgets::log!("Downloading attachment: {}", self.name);
 
-        let Some(content) = self.content.clone() else {
+        if self.content.is_none() {
             makepad_widgets::warning!("Attachment content not available for saving: {}", self.name);
             return;
-        };
+        }
 
+        self.save_impl();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn save_impl(&self) {
         let self_clone = self.clone();
         crate::utils::asynchronous::spawn(async move {
-            let Ok(content) = content.read().await else {
+            let Ok(content) = self_clone.content.as_ref().unwrap().read().await else {
                 makepad_widgets::warning!(
                     "Failed to read attachment content for saving: {}",
                     self_clone.name
@@ -264,19 +269,37 @@ impl Attachment {
                 return;
             };
 
-            cfg_if::cfg_if! {
-                if #[cfg(target_arch = "wasm32")] {
-                    use crate::utils::platform::{create_scoped_blob_url, trigger_download};
-                    create_scoped_blob_url(content, self_clone.content_type.as_deref(), |url| {
-                        trigger_download(url, &self_clone.name);
-                    });
-                } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
-                    crate::utils::platform::trigger_save_as(&content, Some(self_clone.name.as_str()));
-                } else {
-                    makepad_widgets::warning!("Attachment saving is not supported on this platform");
-                }
-            }
+            use crate::utils::platform::{create_scoped_blob_url, trigger_download};
+            create_scoped_blob_url(content, self_clone.content_type.as_deref(), |url| {
+                trigger_download(url, &self_clone.name);
+            });
         });
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+    fn save_impl(&self) {
+        let self_clone = self.clone();
+        crate::utils::asynchronous::spawn(async move {
+            let Ok(content) = self_clone.content.as_ref().unwrap().read().await else {
+                makepad_widgets::warning!(
+                    "Failed to read attachment content for saving: {}",
+                    self_clone.name
+                );
+                return;
+            };
+
+            crate::utils::platform::trigger_save_as(&content, Some(self_clone.name.as_str()));
+        });
+    }
+
+    #[cfg(not(any(
+        target_arch = "wasm32",
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "linux"
+    )))]
+    fn save_impl(&self) {
+        makepad_widgets::warning!("Attachment saving is not supported on this platform");
     }
 
     /// Get the content type or "application/octet-stream" if not set.
