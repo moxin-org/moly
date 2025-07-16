@@ -165,12 +165,28 @@ mod thread_token {
     use std::any::Any;
     use std::cell::RefCell;
     use std::collections::HashMap;
+    use std::sync::Arc;
     use std::sync::atomic::{AtomicU64, Ordering};
 
     static NEXT_KEY: AtomicU64 = AtomicU64::new(0);
 
     thread_local! {
         static STORAGE: RefCell<HashMap<u64, Option<Box<dyn Any>>>> = RefCell::new(HashMap::new());
+    }
+
+    struct ThreadTokenInner<T: 'static> {
+        key: u64,
+        _phantom: std::marker::PhantomData<fn() -> T>,
+    }
+
+    impl<T> Drop for ThreadTokenInner<T> {
+        fn drop(&mut self) {
+            STORAGE.with_borrow_mut(|storage| {
+                storage
+                    .remove(&self.key)
+                    .expect("Token dropped in a different thread.");
+            });
+        }
     }
 
     /// Holds a value inside a thread-local storage.
@@ -183,11 +199,26 @@ mod thread_token {
     ///
     /// **Warning**: Trying to read the value from a different thread will panic.
     ///
-    /// **Warning**: This token must be dropped in the same thread that created it
-    /// to avoid leaks. If this value is dropped in a different thread, it will panic.
-    pub struct ThreadToken<T: 'static> {
-        key: u64,
-        _phantom: std::marker::PhantomData<fn() -> T>,
+    /// **Warning**: This token is reference counted so you can have copies of it,
+    /// but the last copy must be dropped in the same thread that created it to
+    /// avoid leaks. If this value is dropped in a different thread, it will panic.
+    pub struct ThreadToken<T: 'static>(Arc<ThreadTokenInner<T>>);
+
+    impl<T> Clone for ThreadToken<T> {
+        fn clone(&self) -> Self {
+            Self(Arc::clone(&self.0))
+        }
+    }
+
+    impl<T> std::fmt::Debug for ThreadToken<T> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(
+                f,
+                "ThreadToken<{}>({})",
+                std::any::type_name::<T>(),
+                self.0.key
+            )
+        }
     }
 
     impl<T> ThreadToken<T> {
@@ -198,28 +229,16 @@ mod thread_token {
                 storage.insert(key, Some(Box::new(value)));
             });
 
-            Self {
+            Self(Arc::new(ThreadTokenInner {
                 key,
                 _phantom: std::marker::PhantomData,
-            }
-        }
-
-        pub fn take(self) -> T {
-            STORAGE.with_borrow_mut(|storage| {
-                let option = storage
-                    .get_mut(&self.key)
-                    .expect("Token `take` called from different thread");
-
-                let boxed = option.take().expect("Token `take` called multiple times");
-
-                *boxed.downcast::<T>().unwrap()
-            })
+            }))
         }
 
         pub fn peek<R>(&self, f: impl FnOnce(&T) -> R) -> R {
             STORAGE.with_borrow_mut(|storage| {
                 let option = storage
-                    .get(&self.key)
+                    .get(&self.0.key)
                     .expect("Token `peek` called from different thread");
 
                 let boxed = option
@@ -234,7 +253,7 @@ mod thread_token {
         pub fn peek_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
             STORAGE.with_borrow_mut(|storage| {
                 let option = storage
-                    .get_mut(&self.key)
+                    .get_mut(&self.0.key)
                     .expect("Token `peek_mut` called from different thread");
 
                 let boxed = option
@@ -246,15 +265,11 @@ mod thread_token {
             })
         }
     }
+}
 
-    impl<T> Drop for ThreadToken<T> {
-        fn drop(&mut self) {
-            STORAGE.with_borrow_mut(|storage| {
-                storage
-                    .remove(&self.key)
-                    .expect("Token dropped in a different thread.");
-            });
-        }
+impl<T: Clone> ThreadToken<T> {
+    pub fn clone_inner(&self) -> T {
+        self.peek(|value| value.clone())
     }
 }
 

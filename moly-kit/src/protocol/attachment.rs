@@ -9,9 +9,10 @@ use std::sync::{
 use serde::{Deserialize, Serialize};
 
 /// Private `rfd::FileHandle` wrapper with a runtime generated ID for partial equality.
+#[derive(Clone)]
 struct WebFileHandle {
     id: u64,
-    rfd_handle: ThreadToken<rfd::FileHandle>,
+    rfd_handle: rfd::FileHandle,
 }
 
 impl From<rfd::FileHandle> for WebFileHandle {
@@ -20,7 +21,7 @@ impl From<rfd::FileHandle> for WebFileHandle {
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         WebFileHandle {
             id,
-            rfd_handle: ThreadToken::new(handle),
+            rfd_handle: handle,
         }
     }
 }
@@ -34,7 +35,7 @@ impl PartialEq for WebFileHandle {
 /// Private type that points to wherever the attachment content is stored.
 ///
 /// Comparision is done by pointer, file path, file handle, etc. Not by content.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum AttachmentContentHandle {
     InMemory(Arc<[u8]>),
     NativeFile(std::path::PathBuf),
@@ -60,6 +61,33 @@ impl PartialEq for AttachmentContentHandle {
     }
 }
 
+impl<T> From<T> for AttachmentContentHandle
+where
+    T: AsRef<[u8]>,
+{
+    fn from(bytes: T) -> Self {
+        AttachmentContentHandle::InMemory(Arc::from(bytes.as_ref()))
+    }
+}
+
+impl AttachmentContentHandle {
+    async fn read(&self) -> std::io::Result<Arc<[u8]>> {
+        match self {
+            AttachmentContentHandle::InMemory(content) => Ok(content.clone()),
+            AttachmentContentHandle::NativeFile(path) => {
+                // TODO: Do not compile tokio on web!
+                let content = tokio::fs::read(path).await?;
+                Ok(Arc::from(content))
+            }
+            AttachmentContentHandle::WebFile(handle) => {
+                let handle = handle.clone_inner();
+                let content = handle.rfd_handle.read().await;
+                Ok(Arc::from(content))
+            }
+        }
+    }
+}
+
 /// Represents a file/image/document sent or received as part of a message.
 ///
 /// When comparing, two [`Attachment`]s are considered equal if they have the same
@@ -78,7 +106,7 @@ impl PartialEq for AttachmentContentHandle {
 /// data is skipped and the attachment will become "unavailable" when deserialized back.
 ///
 /// Two unavailable attachments are considered equal if they have the same metadata.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Attachment {
     /// Normally the original filename.
@@ -88,24 +116,6 @@ pub struct Attachment {
     // TODO: Read on demand instead of holding the content in memory.
     #[serde(skip)]
     content: Option<AttachmentContentHandle>,
-}
-
-impl PartialEq for Attachment {
-    fn eq(&self, other: &Self) -> bool {
-        let ptr = self
-            .content
-            .as_ref()
-            .map(|c| Arc::as_ptr(c) as *const u8 as usize)
-            .unwrap_or_default();
-
-        let other_ptr = other
-            .content
-            .as_ref()
-            .map(|c| Arc::as_ptr(c) as *const u8 as usize)
-            .unwrap_or_default();
-
-        self.name == other.name && self.content_type == other.content_type && ptr == other_ptr
-    }
 }
 
 impl Attachment {
@@ -220,7 +230,7 @@ impl Attachment {
 
     pub async fn read(&self) -> std::io::Result<Arc<[u8]>> {
         if let Some(content) = &self.content {
-            Ok(content.clone())
+            content.read().await
         } else {
             Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -239,23 +249,34 @@ impl Attachment {
     pub(crate) fn save(&self) {
         makepad_widgets::log!("Downloading attachment: {}", self.name);
 
-        let Some(content) = self.content.as_ref() else {
+        let Some(content) = self.content.clone() else {
             makepad_widgets::warning!("Attachment content not available for saving: {}", self.name);
             return;
         };
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
-                use crate::utils::platform::{create_scoped_blob_url, trigger_download};
-                create_scoped_blob_url(content, self.content_type.as_deref(), |url| {
-                    trigger_download(url, &self.name);
-                });
-            } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
-                crate::utils::platform::trigger_save_as(content, Some(self.name.as_str()));
-            } else {
-                makepad_widgets::warning!("Attachment saving is not supported on this platform");
+        let self_clone = self.clone();
+        crate::utils::asynchronous::spawn(async move {
+            let Ok(content) = content.read().await else {
+                makepad_widgets::warning!(
+                    "Failed to read attachment content for saving: {}",
+                    self_clone.name
+                );
+                return;
+            };
+
+            cfg_if::cfg_if! {
+                if #[cfg(target_arch = "wasm32")] {
+                    use crate::utils::platform::{create_scoped_blob_url, trigger_download};
+                    create_scoped_blob_url(content, self_clone.content_type.as_deref(), |url| {
+                        trigger_download(url, &self_clone.name);
+                    });
+                } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
+                    crate::utils::platform::trigger_save_as(&content, Some(self_clone.name.as_str()));
+                } else {
+                    makepad_widgets::warning!("Attachment saving is not supported on this platform");
+                }
             }
-        }
+        });
     }
 
     /// Get the content type or "application/octet-stream" if not set.
