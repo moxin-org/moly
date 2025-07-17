@@ -86,6 +86,20 @@ impl AttachmentContentHandle {
             }
         }
     }
+
+    fn read_blocking(&self) -> std::io::Result<Arc<[u8]>> {
+        match self {
+            AttachmentContentHandle::InMemory(content) => Ok(content.clone()),
+            AttachmentContentHandle::NativeFile(path) => {
+                let content = std::fs::read(path)?;
+                Ok(Arc::from(content))
+            }
+            AttachmentContentHandle::WebFile(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "Blocking read is not supported on web. Use async read instead.",
+            )),
+        }
+    }
 }
 
 /// Represents a file/image/document sent or received as part of a message.
@@ -185,7 +199,7 @@ impl Attachment {
                 }
                 cb(Ok(attachments));
             } else {
-                makepad_widgets::warning!("Attachment picking is not supported on this platform");
+                ::log::warn!("Attachment picking is not supported on this platform");
                 cb(Err(()));
             }
         }
@@ -247,10 +261,10 @@ impl Attachment {
 
     /// Crate private utility to save/download the attachment to the file system.
     pub(crate) fn save(&self) {
-        makepad_widgets::log!("Downloading attachment: {}", self.name);
+        ::log::info!("Downloading attachment: {}", self.name);
 
         if self.content.is_none() {
-            makepad_widgets::warning!("Attachment content not available for saving: {}", self.name);
+            ::log::warn!("Attachment content not available for saving: {}", self.name);
             return;
         }
 
@@ -262,7 +276,7 @@ impl Attachment {
         let self_clone = self.clone();
         crate::utils::asynchronous::spawn(async move {
             let Ok(content) = self_clone.content.as_ref().unwrap().read().await else {
-                makepad_widgets::warning!(
+                ::log::warn!(
                     "Failed to read attachment content for saving: {}",
                     self_clone.name
                 );
@@ -280,12 +294,13 @@ impl Attachment {
     fn save_impl(&self) {
         let content_handle = self.content.as_ref().unwrap();
 
-        let content = match futures::executor::block_on(content_handle.read()) {
+        let content = match content_handle.read_blocking() {
             Ok(content) => content,
-            Err(_) => {
-                makepad_widgets::warning!(
-                    "Failed to read attachment content for saving: {}",
-                    self.name
+            Err(err) => {
+                ::log::warn!(
+                    "Failed to read attachment content for saving {}: {}",
+                    self.name,
+                    err
                 );
                 return;
             }
@@ -301,7 +316,7 @@ impl Attachment {
         target_os = "linux"
     )))]
     fn save_impl(&self) {
-        makepad_widgets::warning!("Attachment saving is not supported on this platform");
+        ::log::warn!("Attachment saving is not supported on this platform");
     }
 
     /// Get the content type or "application/octet-stream" if not set.
