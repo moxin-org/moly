@@ -9,12 +9,14 @@ use std::sync::{
 use serde::{Deserialize, Serialize};
 
 /// Private `rfd::FileHandle` wrapper with a runtime generated ID for partial equality.
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone)]
 struct WebFileHandle {
     id: u64,
     rfd_handle: rfd::FileHandle,
 }
 
+#[cfg(target_arch = "wasm32")]
 impl From<rfd::FileHandle> for WebFileHandle {
     fn from(handle: rfd::FileHandle) -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
@@ -26,6 +28,7 @@ impl From<rfd::FileHandle> for WebFileHandle {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl PartialEq for WebFileHandle {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
