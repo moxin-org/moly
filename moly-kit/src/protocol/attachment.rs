@@ -120,8 +120,8 @@ impl AttachmentContentHandle {
 ///
 /// This means:
 /// - For in-memory attachments, the content is compared by reference (pointer equality).
-/// - TODO: For attachments picked from a native file system, the path is compared.
-/// - TODO: For attachments picked on the web, the (wrapped) file handle must be the same.
+/// - For attachments picked from a native file system, the path is compared.
+/// - For attachments picked on the web, the (wrapped) file handle must be the same.
 /// - TODO: For persisted attachments, the storage key and adapter are compared.
 ///
 /// The content itself is never compared, because not all attachments can be read
