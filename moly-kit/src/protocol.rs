@@ -9,7 +9,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::utils::asynchronous::ThreadToken;
 pub use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream};
 
 mod attachment;

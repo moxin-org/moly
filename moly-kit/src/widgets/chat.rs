@@ -282,6 +282,12 @@ impl Chat {
         }
 
         let messages_history_context: Vec<Message> = self.messages_ref().write_with(|messages| {
+            if let Some(message) = messages.messages.last() {
+                if let Some(attachment) = message.content.attachments.first() {
+                    dbg!(attachment);
+                }
+            }
+
             messages.bot_context = Some(context.clone());
 
             messages.messages.push(Message {

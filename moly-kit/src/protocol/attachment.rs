@@ -1,4 +1,4 @@
-use crate::utils::asynchronous::{PlatformSendFuture, PlatformSendStream, ThreadToken};
+use crate::utils::asynchronous::ThreadToken;
 
 use std::sync::{
     Arc,
@@ -38,8 +38,10 @@ impl PartialEq for WebFileHandle {
 #[derive(Debug, Clone)]
 enum AttachmentContentHandle {
     InMemory(Arc<[u8]>),
-    NativeFile(std::path::PathBuf),
-    WebFile(ThreadToken<WebFileHandle>),
+    #[cfg(not(target_arch = "wasm32"))]
+    FilePick(std::path::PathBuf),
+    #[cfg(target_arch = "wasm32")]
+    FilePick(ThreadToken<WebFileHandle>),
 }
 
 impl PartialEq for AttachmentContentHandle {
@@ -48,10 +50,10 @@ impl PartialEq for AttachmentContentHandle {
             (AttachmentContentHandle::InMemory(a), AttachmentContentHandle::InMemory(b)) => {
                 Arc::ptr_eq(a, b)
             }
-            (AttachmentContentHandle::NativeFile(a), AttachmentContentHandle::NativeFile(b)) => {
-                a == b
-            }
-            (AttachmentContentHandle::WebFile(a), AttachmentContentHandle::WebFile(b)) => {
+            #[cfg(not(target_arch = "wasm32"))]
+            (AttachmentContentHandle::FilePick(a), AttachmentContentHandle::FilePick(b)) => a == b,
+            #[cfg(target_arch = "wasm32")]
+            (AttachmentContentHandle::FilePick(a), AttachmentContentHandle::FilePick(b)) => {
                 let a_id = a.peek(|handle| handle.id);
                 let b_id = b.peek(|handle| handle.id);
                 a_id == b_id
@@ -67,15 +69,17 @@ impl From<&[u8]> for AttachmentContentHandle {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl From<std::path::PathBuf> for AttachmentContentHandle {
     fn from(path: std::path::PathBuf) -> Self {
-        AttachmentContentHandle::NativeFile(path)
+        AttachmentContentHandle::FilePick(path)
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl From<rfd::FileHandle> for AttachmentContentHandle {
     fn from(handle: rfd::FileHandle) -> Self {
-        AttachmentContentHandle::WebFile(ThreadToken::new(WebFileHandle::from(handle)))
+        AttachmentContentHandle::FilePick(ThreadToken::new(WebFileHandle::from(handle)))
     }
 }
 
@@ -83,12 +87,13 @@ impl AttachmentContentHandle {
     async fn read(&self) -> std::io::Result<Arc<[u8]>> {
         match self {
             AttachmentContentHandle::InMemory(content) => Ok(content.clone()),
-            AttachmentContentHandle::NativeFile(path) => {
-                // TODO: Do not compile tokio on web!
+            #[cfg(not(target_arch = "wasm32"))]
+            AttachmentContentHandle::FilePick(path) => {
                 let content = tokio::fs::read(path).await?;
                 Ok(Arc::from(content))
             }
-            AttachmentContentHandle::WebFile(handle) => {
+            #[cfg(target_arch = "wasm32")]
+            AttachmentContentHandle::FilePick(handle) => {
                 let handle = handle.clone_inner();
                 let content = handle.rfd_handle.read().await;
                 Ok(Arc::from(content))
@@ -96,17 +101,14 @@ impl AttachmentContentHandle {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn read_blocking(&self) -> std::io::Result<Arc<[u8]>> {
         match self {
             AttachmentContentHandle::InMemory(content) => Ok(content.clone()),
-            AttachmentContentHandle::NativeFile(path) => {
+            AttachmentContentHandle::FilePick(path) => {
                 let content = std::fs::read(path)?;
                 Ok(Arc::from(content))
             }
-            AttachmentContentHandle::WebFile(_) => Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                "Blocking read is not supported on web. Use async read instead.",
-            )),
         }
     }
 }
@@ -284,7 +286,7 @@ impl Attachment {
             };
 
             use crate::utils::platform::{create_scoped_blob_url, trigger_download};
-            create_scoped_blob_url(content, self_clone.content_type.as_deref(), |url| {
+            create_scoped_blob_url(&content, self_clone.content_type.as_deref(), |url| {
                 trigger_download(url, &self_clone.name);
             });
         });
