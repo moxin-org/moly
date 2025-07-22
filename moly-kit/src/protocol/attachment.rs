@@ -61,12 +61,21 @@ impl PartialEq for AttachmentContentHandle {
     }
 }
 
-impl<T> From<T> for AttachmentContentHandle
-where
-    T: AsRef<[u8]>,
-{
-    fn from(bytes: T) -> Self {
-        AttachmentContentHandle::InMemory(Arc::from(bytes.as_ref()))
+impl From<&[u8]> for AttachmentContentHandle {
+    fn from(bytes: &[u8]) -> Self {
+        AttachmentContentHandle::InMemory(Arc::from(bytes))
+    }
+}
+
+impl From<std::path::PathBuf> for AttachmentContentHandle {
+    fn from(path: std::path::PathBuf) -> Self {
+        AttachmentContentHandle::NativeFile(path)
+    }
+}
+
+impl From<rfd::FileHandle> for AttachmentContentHandle {
+    fn from(handle: rfd::FileHandle) -> Self {
+        AttachmentContentHandle::WebFile(ThreadToken::new(WebFileHandle::from(handle)))
     }
 }
 
@@ -154,8 +163,6 @@ impl Attachment {
 
                     let mut attachments = Vec::with_capacity(handles.len());
                     for handle in handles {
-                        // Notice that rfd doesn't return a Result.
-                        let content = handle.read().await;
                         let name = handle.file_name();
                         let content_type = mime_guess::from_path(&name)
                             .first()
@@ -163,7 +170,7 @@ impl Attachment {
                         attachments.push(Attachment {
                             name,
                             content_type,
-                            content: Some(content.into()),
+                            content: Some(handle.into()),
                         });
                     }
 
@@ -179,13 +186,6 @@ impl Attachment {
 
                 let mut attachments = Vec::with_capacity(paths.len());
                 for path in paths {
-                    let content = match std::fs::read(&path) {
-                        Ok(content) => content,
-                        Err(_) => {
-                            cb(Err(()));
-                            return;
-                        }
-                    };
                     let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                     let content_type = mime_guess::from_path(&name)
                         .first()
@@ -194,7 +194,7 @@ impl Attachment {
                     attachments.push(Attachment {
                         name,
                         content_type,
-                        content: Some(content.into()),
+                        content: Some(path.into()),
                     });
                 }
                 cb(Ok(attachments));
@@ -294,6 +294,9 @@ impl Attachment {
     fn save_impl(&self) {
         let content_handle = self.content.as_ref().unwrap();
 
+        // Although we could read this content asynchronously, we would still need
+        // to open the save dialog synchronously from the main thread, which would
+        // complicate things.
         let content = match content_handle.read_blocking() {
             Ok(content) => content,
             Err(err) => {
