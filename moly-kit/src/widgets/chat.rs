@@ -223,7 +223,7 @@ impl Chat {
                 .clone();
             let mut composition = Vec::new();
 
-            if !text.is_empty() {
+            if !text.is_empty() || !attachments.is_empty() {
                 composition.push(ChatTask::InsertMessage(
                     next_index,
                     Message {
