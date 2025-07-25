@@ -9,10 +9,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream};
-
 mod attachment;
 pub use attachment::*;
+
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, Debug)]
@@ -516,7 +516,7 @@ pub trait BotClient: Send {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>>;
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>>;
 
     /// Interrupt the bot's current operation.
     // TODO: There may be many chats with the same bot/model/agent so maybe this
@@ -527,7 +527,7 @@ pub trait BotClient: Send {
     // NOTE: Could be a stream, but may add complexity rarely needed.
     // TODO: Support partial results with errors for an union multi client/service
     // later.
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>>;
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>>;
 
     /// Make a boxed dynamic clone of this client to pass around.
     fn clone_box(&self) -> Box<dyn BotClient>;
@@ -596,7 +596,7 @@ impl BotContext {
     /// Fetches the bots and keeps them to be read synchronously later.
     ///
     /// It errors with whatever the underlying client errors with.
-    pub fn load(&mut self) -> MolyFuture<ClientResult<()>> {
+    pub fn load(&mut self) -> BoxPlatformSendFuture<ClientResult<()>> {
         let future = async move {
             let result = self.client().bots().await;
             let (new_bots, errors) = result.into_value_and_errors();
@@ -612,7 +612,7 @@ impl BotContext {
             }
         };
 
-        moly_future(future)
+        Box::pin(future)
     }
     pub fn client(&self) -> Box<dyn BotClient> {
         self.0.lock().unwrap().client.clone_box()
