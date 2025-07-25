@@ -1,14 +1,17 @@
 //! Asynchronous utilities for MolyKit.
 //!
-//! Mainly helps you to deal with the runtime differences across native and web.
+//! Mainly helps you to deal with the runtime differences across native and web
+//! and do workaround integrations of async code in Makepad.
 //!
-//! For example: `reqwest` gives you a `Send` future in native, but on web it uses a `JsValue`
-//! so its future is not send there.
+//! For example: `rfd::FileHandle` is `Send` on native, but not on web. And on web
+//! it may need to be send back to the UI through `Cx::post_action` which requires
+//! `Send` unconditionally.
+//!
+//! Since Makepad doesn't expose an equivalent to `wasm_bindgen_futures::spawn_local`
+//! tied to its own event loop, we need to run Tokio on a separate thread which causes
+//! problems with `Send`.
 
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
+use std::pin::Pin;
 
 use futures::{
     future::{AbortHandle, Abortable, Future, abortable},
@@ -40,6 +43,12 @@ impl<F, O> PlatformSendFuture for F where F: Future<Output = O> + PlatformSend {
 /// A stream that requires [`Send`] on native platforms, but not on WASM.
 pub trait PlatformSendStream: Stream + PlatformSend {}
 impl<S, T> PlatformSendStream for S where S: Stream<Item = T> + PlatformSend {}
+
+/// An owned dynamically typed Future that only requires [`Send`] on native platforms, but not on WASM.
+pub type BoxPlatformSendFuture<'a, T> = Pin<Box<dyn PlatformSendFuture<Output = T> + 'a>>;
+
+/// An owned dynamically typed Stream that only requires [`Send`] on native platforms, but not on WASM.
+pub type BoxPlatformSendStream<'a, T> = Pin<Box<dyn PlatformSendStream<Item = T> + 'a>>;
 
 /// Runs a future independently, in a platform-specific way.
 ///
@@ -121,44 +130,6 @@ where
 {
     let (abort_handle, abort_registration) = abortable(future);
     (abort_handle, AbortOnDropHandle(abort_registration))
-}
-
-/// Opaque, boxed and pinned future commonly expected by traits in MolyKit.
-///
-/// This future requires [`Send`] only on native platforms, but not on WASM.
-///
-/// Use [`moly_future`] to create an instance of this type.
-pub struct MolyFuture<'a, T>(Pin<Box<dyn PlatformSendFuture<Output = T> + 'a>>);
-impl<'a, T> Future for MolyFuture<'a, T> {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.0).poll(cx)
-    }
-}
-
-/// Opaque, boxed and pinned stream commonly expected by traits in MolyKit.
-///
-/// This stream requires [`Send`] only on native platforms, but not on WASM.
-///
-/// Use [`moly_stream`] to create an instance of this type.
-pub struct MolyStream<'a, T>(Pin<Box<dyn PlatformSendStream<Item = T> + 'a>>);
-impl<'a, T> Stream for MolyStream<'a, T> {
-    type Item = T;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.0).poll_next(cx)
-    }
-}
-
-/// Wraps a future into a [`MolyFuture`].
-pub fn moly_future<'a, T>(future: impl PlatformSendFuture<Output = T> + 'a) -> MolyFuture<'a, T> {
-    MolyFuture(Box::pin(future))
-}
-
-/// Wraps a stream into a [`MolyStream`].
-pub fn moly_stream<'a, T>(stream: impl PlatformSendStream<Item = T> + 'a) -> MolyStream<'a, T> {
-    MolyStream(Box::pin(stream))
 }
 
 mod thread_token {

@@ -1,3 +1,4 @@
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use crate::utils::errors::enrich_http_error;
 use crate::{protocol::*, utils::sse::parse_sse};
 use async_stream::stream;
@@ -191,7 +192,7 @@ impl DeepInquireClient {
 }
 
 impl BotClient for DeepInquireClient {
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let inner = self.0.read().unwrap().clone();
 
         // For now we return a hardcoded bot because DeepInquire does not support a /models endpoint
@@ -203,7 +204,7 @@ impl BotClient for DeepInquireClient {
 
         let future = async move { ClientResult::new_ok(vec![bot]) };
 
-        moly_future(future)
+        Box::pin(future)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
@@ -214,7 +215,7 @@ impl BotClient for DeepInquireClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
 
         let url = format!("{}/chat/completions", inner.url);
@@ -334,7 +335,7 @@ impl BotClient for DeepInquireClient {
             yield ClientResult::new_ok(content.clone());
         };
 
-        moly_stream(stream)
+        Box::pin(stream)
     }
 
     fn content_widget(
