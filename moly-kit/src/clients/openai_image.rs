@@ -1,6 +1,7 @@
 //! Client based on the OpenAI one, but hits the image generation API instead.
 
 use crate::protocol::*;
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use reqwest::header::{HeaderMap, HeaderName};
 use std::{
     str::FromStr,
@@ -162,7 +163,7 @@ impl OpenAIImageClient {
 }
 
 impl BotClient for OpenAIImageClient {
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let inner = self.0.read().unwrap().clone();
 
         // Hardcoded list of OpenAI-only image generation models that are currently
@@ -176,19 +177,19 @@ impl BotClient for OpenAIImageClient {
             })
             .collect();
 
-        moly_future(futures::future::ready(ClientResult::new_ok(supported)))
+        Box::pin(futures::future::ready(ClientResult::new_ok(supported)))
     }
 
     fn send(
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let self_clone = self.clone();
         let bot_id = bot_id.clone();
         let messages = messages.to_vec();
 
-        moly_stream(async_stream::stream! {
+        Box::pin(async_stream::stream! {
             match self_clone.generate_image(&bot_id, &messages).await {
                 Ok(content) => yield ClientResult::new_ok(content),
                 Err(e) => yield ClientResult::new_err(e.into()),

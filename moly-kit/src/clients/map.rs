@@ -1,4 +1,5 @@
 use crate::protocol::*;
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use std::sync::{Arc, Mutex};
 
 struct Inner<C: BotClient> {
@@ -63,11 +64,11 @@ impl<C: BotClient + 'static> BotClient for MapClient<C> {
         Box::new(self.clone())
     }
 
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let inner = self.inner.clone();
         let future = self.inner.lock().unwrap().client.bots();
 
-        moly_future(async move {
+        Box::pin(async move {
             let result = future.await;
 
             if result.has_errors() {
@@ -88,7 +89,7 @@ impl<C: BotClient + 'static> BotClient for MapClient<C> {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let inner = self.inner.clone();
         let stream = self.inner.lock().unwrap().client.send(bot_id, messages);
 
@@ -109,6 +110,6 @@ impl<C: BotClient + 'static> BotClient for MapClient<C> {
             }
         };
 
-        moly_stream(stream)
+        Box::pin(stream)
     }
 }

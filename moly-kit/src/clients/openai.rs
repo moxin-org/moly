@@ -7,6 +7,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use crate::utils::{serde::deserialize_null_default, sse::parse_sse};
 use crate::{protocol::*, utils::errors::enrich_http_error};
 
@@ -245,7 +246,7 @@ impl OpenAIClient {
 }
 
 impl BotClient for OpenAIClient {
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let inner = self.0.read().unwrap().clone();
 
         let url = format!("{}/models", inner.url);
@@ -327,7 +328,7 @@ impl BotClient for OpenAIClient {
             ClientResult::new_ok(bots)
         };
 
-        moly_future(future)
+        Box::pin(future)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
@@ -339,7 +340,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let bot_id = bot_id.clone();
         let messages = messages.to_vec();
 
@@ -470,7 +471,7 @@ impl BotClient for OpenAIClient {
             }
         };
 
-        moly_stream(stream)
+        Box::pin(stream)
     }
 }
 
