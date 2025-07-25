@@ -1,6 +1,6 @@
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use crate::utils::errors::enrich_http_error;
 use crate::{protocol::*, utils::sse::parse_sse};
-use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use async_stream::stream;
 use makepad_widgets::*;
 use makepad_widgets::{Cx, LiveNew, WidgetRef};
