@@ -11,10 +11,7 @@
 //! tied to its own event loop, we need to run Tokio on a separate thread which causes
 //! problems with `Send`.
 
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
+use std::pin::Pin;
 
 use futures::{
     future::{AbortHandle, Abortable, Future, abortable},
