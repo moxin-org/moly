@@ -215,7 +215,7 @@ live_design! {
             selected_voice_view = <View> {
                 visible: false
                 height: Fit
-                align: {x: 0.5, y: 0.5}
+                align: {x: 0.0, y: 0.5}
                 selected_voice = <Label> {
                     draw_text: {
                         text_style: {font_size: 11}

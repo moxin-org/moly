@@ -5,13 +5,11 @@ use std::sync::{Arc, Mutex};
 use crate::protocol::*;
 use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream, spawn};
 
-// Conditional imports for WebSocket support
+// Realtime enabled + not wasm
 #[cfg(feature = "realtime")]
 use {
     futures::{SinkExt, StreamExt},
-    http,
-    tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage},
-    url::Url,
+    tokio_tungstenite::tungstenite::Message as WsMessage,
 };
 
 // OpenAI Realtime API message structures

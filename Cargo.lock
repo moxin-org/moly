@@ -2011,7 +2011,6 @@ dependencies = [
  "chrono",
  "env_logger",
  "futures",
- "http",
  "js-sys",
  "log",
  "makepad-code-editor",
