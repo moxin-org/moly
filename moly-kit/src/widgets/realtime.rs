@@ -78,6 +78,7 @@ live_design! {
             border_radius: 10.0
         }
         flow: Down
+        spacing: 20
         width: 450, height: 600
         align: {x: 0.5, y: 0.5}
 
@@ -292,7 +293,7 @@ live_design! {
 
             reset_button = <RoundedShadowView> {
                 cursor: Hand
-                margin: {left: 10, right: 10, bottom: 0}
+                margin: {left: 10, right: 10, bottom: 0, top: 10}
                 width: Fill, height: Fit
                 align: {x: 0.5, y: 0.5}
                 padding: {left: 30, right: 30, bottom: 15, top: 15}

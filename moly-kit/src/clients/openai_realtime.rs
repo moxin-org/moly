@@ -6,7 +6,7 @@ use crate::protocol::*;
 use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream, spawn};
 
 // Realtime enabled + not wasm
-#[cfg(feature = "realtime")]
+#[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
 use {
     futures::{SinkExt, StreamExt},
     tokio_tungstenite::tungstenite::Message as WsMessage,
@@ -225,7 +225,7 @@ impl OpenAIRealtimeClient {
             //     )]),
             // };
 
-            #[cfg(feature = "realtime")]
+            #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
             {
                 println!("Creating WebSocket connection");
                 // Create WebSocket connection to OpenAI Realtime API
@@ -502,13 +502,13 @@ impl OpenAIRealtimeClient {
                 });
             }
 
-            #[cfg(not(feature = "realtime"))]
+            #[cfg(not(all(feature = "realtime", not(target_arch = "wasm32"))))]
             {
-                // Fallback mock implementation when websocket feature is not enabled
+                // Fallback mock implementation when websocket feature is not enabled or on WASM
                 let event_sender_clone = event_sender.clone();
                 spawn(async move {
                     let _ = event_sender_clone.send(RealtimeEvent::Error(
-                        "Realtime feature not enabled".to_string(),
+                        "Realtime feature not available on this platform".to_string(),
                     ));
                 });
             }
