@@ -7,6 +7,9 @@ cfg_if::cfg_if! {
         pub mod openai_image;
         pub use openai_image::OpenAIImageClient;
 
+        pub mod openai_realtime;
+        pub use openai_realtime::OpenAIRealtimeClient;
+
         pub mod deep_inquire;
         pub use deep_inquire::DeepInquireClient;
     }

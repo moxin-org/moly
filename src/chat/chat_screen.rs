@@ -175,6 +175,17 @@ impl ChatScreen {
 
                         multi_client.add_client(Box::new(client));
                     }
+                    ProviderType::OpenAIRealtime => {
+                        if provider.enabled && provider.api_key.is_some() {
+                            let client_url = provider.url.trim_start_matches('#').to_string();
+                            let mut client = OpenAIRealtimeClient::new(client_url);
+                            if let Some(key) = provider.api_key.as_ref() {
+                                let _ = client.set_key(&key);
+                            }
+
+                            multi_client.add_client(Box::new(client));
+                        }
+                    }
                     ProviderType::MoFa => {
                         // For MoFa we don't require an API key
                         if provider.enabled {

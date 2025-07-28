@@ -3,7 +3,7 @@ use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     error::Error,
     fmt,
     sync::{Arc, Mutex},
@@ -13,6 +13,75 @@ pub use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_s
 
 mod attachment;
 pub use attachment::*;
+/// Upgrade types for enhanced communication modes
+#[derive(Debug, Clone, PartialEq)]
+pub enum Upgrade {
+    /// Realtime audio/voice communication
+    Realtime(RealtimeChannel),
+}
+
+/// Channel for realtime communication events
+#[derive(Debug, Clone)]
+pub struct RealtimeChannel {
+    /// Sender for realtime events to the UI
+    pub event_sender: tokio::sync::mpsc::UnboundedSender<RealtimeEvent>,
+    /// Receiver for realtime events from the client
+    pub event_receiver: Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<RealtimeEvent>>>>,
+    /// Sender for commands to the realtime client
+    pub command_sender: tokio::sync::mpsc::UnboundedSender<RealtimeCommand>,
+}
+
+impl PartialEq for RealtimeChannel {
+    fn eq(&self, _other: &Self) -> bool {
+        // For now, we'll consider all channels equal since we can't compare the actual channels
+        true
+    }
+}
+
+/// Events sent from the realtime client to the UI
+#[derive(Debug, Clone)]
+pub enum RealtimeEvent {
+    /// Session is ready for communication
+    SessionReady,
+    /// Session has been configured with settings
+    SessionConfigured,
+    /// Audio data received (PCM16 format)
+    AudioData(Vec<u8>),
+    /// Text transcript of received audio
+    AudioTranscript(String),
+    /// User started speaking
+    SpeechStarted,
+    /// User stopped speaking
+    SpeechStopped,
+    /// AI response completed
+    ResponseCompleted,
+    /// Error occurred
+    Error(String),
+}
+
+/// Commands sent from the UI to the realtime client
+#[derive(Debug, Clone)]
+pub enum RealtimeCommand {
+    /// Start the realtime session
+    StartSession,
+    /// Stop the realtime session
+    StopSession,
+    /// Send audio data (PCM16 format)
+    SendAudio(Vec<u8>),
+    /// Send text message
+    SendText(String),
+    /// Interrupt current AI response
+    Interrupt,
+    /// Configure interruption handling
+    SetInterruptionEnabled(bool),
+    /// Update session configuration
+    UpdateSessionConfig {
+        voice: String,
+        transcription_model: String,
+    },
+    /// Create a greeting response from AI
+    CreateGreetingResponse,
+}
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, Debug)]
@@ -46,12 +115,69 @@ pub enum EntityId {
     App,
 }
 
+/// Represents the capabilities of a bot
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum BotCapability {
+    /// Bot supports realtime audio communication
+    Realtime,
+    /// Bot supports image/file attachments
+    Attachments,
+    /// Bot supports function calling
+    FunctionCalling,
+}
+
+/// Set of capabilities that a bot supports
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct BotCapabilities {
+    capabilities: HashSet<BotCapability>,
+}
+
+impl BotCapabilities {
+    pub fn new() -> Self {
+        Self {
+            capabilities: HashSet::new(),
+        }
+    }
+
+    pub fn with_capability(mut self, capability: BotCapability) -> Self {
+        self.capabilities.insert(capability);
+        self
+    }
+
+    pub fn add_capability(&mut self, capability: BotCapability) {
+        self.capabilities.insert(capability);
+    }
+
+    pub fn has_capability(&self, capability: &BotCapability) -> bool {
+        self.capabilities.contains(capability)
+    }
+
+    pub fn supports_realtime(&self) -> bool {
+        self.has_capability(&BotCapability::Realtime)
+    }
+
+    pub fn supports_attachments(&self) -> bool {
+        self.has_capability(&BotCapability::Attachments)
+    }
+
+    pub fn supports_function_calling(&self) -> bool {
+        self.has_capability(&BotCapability::FunctionCalling)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &BotCapability> {
+        self.capabilities.iter()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Bot {
     /// Unique internal identifier for the bot across all providers
     pub id: BotId,
     pub name: String,
     pub avatar: Picture,
+    pub capabilities: BotCapabilities,
 }
 
 /// Identifies any kind of bot, local or remote, model or agent, whatever.
@@ -147,6 +273,10 @@ pub struct MessageContent {
     // A wrapper type over Value and Box exposing a unified interface could be
     // a solution for later.
     pub data: Option<String>,
+
+    /// Optional upgrade to realtime communication
+    #[cfg_attr(feature = "json", serde(skip))]
+    pub upgrade: Option<Upgrade>,
 }
 
 impl MessageContent {
@@ -157,6 +287,7 @@ impl MessageContent {
             && self.data.is_none()
             && self.reasoning.is_empty()
             && self.attachments.is_empty()
+            && self.upgrade.is_none()
     }
 }
 

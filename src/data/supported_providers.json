@@ -27,6 +27,14 @@
             ]
         },
         {
+            "name": "OpenAI (Realtime)",
+            "url": "wss://api.openai.com/v1/realtime",
+            "provider_type": "OpenAIRealtime",
+            "supported_models": [
+                "gpt-4o-realtime-preview-2025-06-03"
+            ]
+        },
+        {
             "name": "Gemini",
             "url": "https://generativelanguage.googleapis.com/v1beta/openai",
             "provider_type": "OpenAI",

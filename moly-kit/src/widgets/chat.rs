@@ -5,6 +5,8 @@ use utils::asynchronous::spawn;
 
 use crate::utils::makepad::EventExt;
 use crate::utils::ui_runner::DeferWithRedrawAsync;
+use crate::widgets::moly_modal::MolyModalWidgetExt;
+
 use crate::*;
 
 live_design!(
@@ -15,11 +17,27 @@ live_design!(
 
     use crate::widgets::messages::*;
     use crate::widgets::prompt_input::*;
+    use crate::widgets::moly_modal::*;
+    use crate::widgets::realtime::*;
 
     pub Chat = {{Chat}} <RoundedView> {
         flow: Down,
         messages = <Messages> {}
         prompt = <PromptInput> {}
+
+        <View> {
+            width: Fill, height: Fit
+            flow: Overlay
+
+            audio_modal = <MolyModal> {
+                content: <RoundedView> {
+                    draw_bg: {border_radius: 10}
+                    width: 450, height: 600
+                    align: {x: 0.5, y: 0.5}
+                    realtime = <Realtime>{}
+                }
+            }
+        }
     }
 );
 
@@ -129,6 +147,16 @@ impl Widget for Chat {
         self.handle_messages(cx, event);
         self.handle_prompt_input(cx, event);
         self.handle_scrolling();
+
+        // Update prompt input capabilities based on selected bot
+        if let (Some(bot_context), Some(bot_id)) = (&self.bot_context, &self.bot_id) {
+            if let Some(bot) = bot_context.get_bot(bot_id) {
+                self.prompt_input_ref()
+                    .set_bot_capabilities(cx, Some(bot.capabilities.clone()));
+            }
+        } else {
+            self.prompt_input_ref().set_bot_capabilities(cx, None);
+        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -150,6 +178,10 @@ impl Chat {
     fn handle_prompt_input(&mut self, cx: &mut Cx, event: &Event) {
         if self.prompt_input_ref().read().submitted(event.actions()) {
             self.handle_submit(cx);
+        }
+
+        if self.prompt_input_ref().read().call_pressed(event.actions()) {
+            self.handle_call(cx);
         }
     }
 
@@ -244,6 +276,12 @@ impl Chat {
         } else if prompt.read().has_stop_task() {
             self.dispatch(cx, &mut ChatTask::Stop.into());
         }
+    }
+
+    fn handle_call(&mut self, cx: &mut Cx) {
+        // Use the standard send mechanism which will return the upgrade
+        // The upgrade message will be processed in handle_message_delta
+        self.dispatch(cx, &mut ChatTask::Send.into());
     }
 
     fn handle_send_task(&mut self, cx: &mut Cx) {
@@ -523,6 +561,9 @@ impl Chat {
         });
     }
 
+    /// Handles a message delta from the bot.
+    ///
+    /// Returns true if the message delta was handled successfully.
     fn handle_message_delta(&mut self, cx: &mut Cx, result: ClientResult<MessageContent>) -> bool {
         let messages = self.messages_ref();
 
@@ -530,6 +571,19 @@ impl Chat {
         // if there are errors.
         match result.into_result() {
             Ok(content) => {
+                // Check if this is a realtime upgrade message
+                if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
+                    // Set up the realtime channel in the UI
+                    let mut realtime = self.realtime(id!(realtime));
+                    realtime.set_realtime_channel(channel.clone());
+
+                    let modal = self.moly_modal(id!(audio_modal));
+                    modal.open(cx);
+
+                    // Skip the rest, do not add a message to the chat
+                    return true;
+                }
+
                 // Let's abort if we don't have where to put the delta.
                 let Some(mut message) = messages.read().messages.last().cloned() else {
                     return true;

@@ -1,6 +1,6 @@
 //! Utilities to deal with stuff that is highly specific to Makepad.
 
-mod events;
+pub mod events;
 mod portal_list;
 
 pub use events::*;
