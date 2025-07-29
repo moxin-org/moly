@@ -80,7 +80,7 @@ live_design! {
                     align: {x: 0.5, y: 0.5}
                     spacing: 5
                     audio = <Button> {
-                        visible: true
+                        visible: false
                         text: ""
                         draw_text: {
                             text_style: <THEME_FONT_ICONS> {
