@@ -24,11 +24,12 @@ pub enum Upgrade {
 #[derive(Debug, Clone)]
 pub struct RealtimeChannel {
     /// Sender for realtime events to the UI
-    pub event_sender: tokio::sync::mpsc::UnboundedSender<RealtimeEvent>,
+    pub event_sender: futures::channel::mpsc::UnboundedSender<RealtimeEvent>,
     /// Receiver for realtime events from the client
-    pub event_receiver: Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<RealtimeEvent>>>>,
+    pub event_receiver:
+        Arc<Mutex<Option<futures::channel::mpsc::UnboundedReceiver<RealtimeEvent>>>>,
     /// Sender for commands to the realtime client
-    pub command_sender: tokio::sync::mpsc::UnboundedSender<RealtimeCommand>,
+    pub command_sender: futures::channel::mpsc::UnboundedSender<RealtimeCommand>,
 }
 
 impl PartialEq for RealtimeChannel {

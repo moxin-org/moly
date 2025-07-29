@@ -1,4 +1,5 @@
 use crate::{protocol::*, utils::makepad::events::EventExt};
+use futures::StreamExt;
 use makepad_widgets::*;
 use std::sync::{Arc, Mutex};
 
@@ -496,7 +497,9 @@ impl Realtime {
                 .set_text(cx, "🔄 Connecting...");
 
             // Start the session and trigger greeting
-            let _ = channel.command_sender.send(RealtimeCommand::StartSession);
+            let _ = channel
+                .command_sender
+                .unbounded_send(RealtimeCommand::StartSession);
             log!("Starting realtime session");
         } else {
             self.label(id!(status_label))
@@ -559,7 +562,7 @@ impl Realtime {
                 if let Some(channel) = &self.realtime_channel {
                     let _ = channel
                         .command_sender
-                        .send(RealtimeCommand::SendAudio(pcm16_data));
+                        .unbounded_send(RealtimeCommand::SendAudio(pcm16_data));
                 }
             } else {
                 // log!("No audio data to send");
@@ -588,7 +591,9 @@ impl Realtime {
 
         // Stop the session
         if let Some(channel) = &self.realtime_channel {
-            let _ = channel.command_sender.send(RealtimeCommand::StopSession);
+            let _ = channel
+                .command_sender
+                .unbounded_send(RealtimeCommand::StopSession);
         }
     }
 
@@ -621,7 +626,7 @@ impl Realtime {
             if let Ok(mut receiver_opt) = channel.event_receiver.lock() {
                 if let Some(receiver) = receiver_opt.as_mut() {
                     let mut events = Vec::new();
-                    while let Ok(event) = receiver.try_recv() {
+                    while let Ok(Some(event)) = receiver.try_next() {
                         events.push(event);
                     }
                     events
@@ -927,7 +932,7 @@ impl Realtime {
         if let Some(channel) = &self.realtime_channel {
             let _ = channel
                 .command_sender
-                .send(RealtimeCommand::UpdateSessionConfig {
+                .unbounded_send(RealtimeCommand::UpdateSessionConfig {
                     voice: self.selected_voice.clone(),
                     transcription_model: self
                         .drop_down(id!(transcription_model_selector))
@@ -940,7 +945,7 @@ impl Realtime {
         if let Some(channel) = &self.realtime_channel {
             let _ = channel
                 .command_sender
-                .send(RealtimeCommand::CreateGreetingResponse);
+                .unbounded_send(RealtimeCommand::CreateGreetingResponse);
         }
     }
 

@@ -4,13 +4,11 @@ use std::sync::{Arc, Mutex};
 
 use crate::protocol::*;
 use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream, spawn};
+use futures::StreamExt;
 
 // Realtime enabled + not wasm
 #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
-use {
-    futures::{SinkExt, StreamExt},
-    tokio_tungstenite::tungstenite::Message as WsMessage,
-};
+use {futures::SinkExt, tokio_tungstenite::tungstenite::Message as WsMessage};
 
 // OpenAI Realtime API message structures
 #[derive(Serialize, Deserialize, Debug)]
@@ -212,8 +210,8 @@ impl OpenAIRealtimeClient {
         println!("Creating realtime session");
 
         let future = async move {
-            let (event_sender, event_receiver) = tokio::sync::mpsc::unbounded_channel();
-            let (command_sender, mut command_receiver) = tokio::sync::mpsc::unbounded_channel();
+            let (event_sender, event_receiver) = futures::channel::mpsc::unbounded();
+            let (command_sender, mut command_receiver) = futures::channel::mpsc::unbounded();
 
             // TODO(Julian) API key
             // let api_key = std::env::var("OPENAI_API_KEY").unwrap();
@@ -267,7 +265,7 @@ impl OpenAIRealtimeClient {
                 println!("WebSocket connection created");
 
                 // Spawn task to handle incoming messages
-                let event_sender_clone = event_sender.clone();
+                let mut event_sender_clone = event_sender.clone();
                 spawn(async move {
                     while let Some(msg) = read.next().await {
                         match msg {
@@ -313,7 +311,7 @@ impl OpenAIRealtimeClient {
                                     };
 
                                     if let Some(event) = event {
-                                        let _ = event_sender_clone.send(event);
+                                        let _ = event_sender_clone.unbounded_send(event);
                                     }
                                 }
                             }
@@ -323,8 +321,8 @@ impl OpenAIRealtimeClient {
                             }
                             Err(e) => {
                                 log::error!("WebSocket error: {}", e);
-                                let _ =
-                                    event_sender_clone.send(RealtimeEvent::Error(e.to_string()));
+                                let _ = event_sender_clone
+                                    .unbounded_send(RealtimeEvent::Error(e.to_string()));
                                 break;
                             }
                             _ => {}
@@ -333,17 +331,18 @@ impl OpenAIRealtimeClient {
                 });
 
                 // Spawn task to handle outgoing commands
-                let event_sender_for_commands = event_sender.clone();
+                let mut event_sender_for_commands = event_sender.clone();
                 spawn(async move {
                     // Don't initialize session immediately - wait for UI to configure it
 
                     // Handle commands
-                    while let Some(command) = command_receiver.recv().await {
+                    while let Some(command) = command_receiver.next().await {
                         match command {
                             RealtimeCommand::StartSession => {
                                 makepad_widgets::log!("Starting realtime session");
                                 // Just send ready event - session config will be sent separately
-                                let _ = event_sender_for_commands.send(RealtimeEvent::SessionReady);
+                                let _ = event_sender_for_commands
+                                    .unbounded_send(RealtimeEvent::SessionReady);
                             }
                             RealtimeCommand::UpdateSessionConfig {
                                 voice,
@@ -389,7 +388,7 @@ impl OpenAIRealtimeClient {
                                     let _ = write.send(WsMessage::Text(json)).await;
                                     // Send configured event after updating session
                                     let _ = event_sender_for_commands
-                                        .send(RealtimeEvent::SessionConfigured);
+                                        .unbounded_send(RealtimeEvent::SessionConfigured);
                                 }
                             }
                             RealtimeCommand::CreateGreetingResponse => {
@@ -505,9 +504,9 @@ impl OpenAIRealtimeClient {
             #[cfg(not(all(feature = "realtime", not(target_arch = "wasm32"))))]
             {
                 // Fallback mock implementation when websocket feature is not enabled or on WASM
-                let event_sender_clone = event_sender.clone();
+                let mut event_sender_clone = event_sender.clone();
                 spawn(async move {
-                    let _ = event_sender_clone.send(RealtimeEvent::Error(
+                    let _ = event_sender_clone.unbounded_send(RealtimeEvent::Error(
                         "Realtime feature not available on this platform".to_string(),
                     ));
                 });

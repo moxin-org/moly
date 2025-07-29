@@ -37,7 +37,6 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { version = "1", features = ["sync"], optional = true }
 wasm-bindgen-futures = { version = "0.4.50", optional = true }
 js-sys = "0.3.77"
 web-sys = { version = "0.3.77", features = [
