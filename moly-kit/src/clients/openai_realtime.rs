@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 use crate::protocol::*;
-use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream, spawn};
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream, spawn};
 use futures::StreamExt;
 
 // Realtime enabled + not wasm
@@ -204,7 +204,7 @@ impl OpenAIRealtimeClient {
         Ok(())
     }
 
-    pub fn create_realtime_session(&self) -> MolyFuture<'static, ClientResult<RealtimeChannel>> {
+    pub fn create_realtime_session(&self) -> BoxPlatformSendFuture<'static, ClientResult<RealtimeChannel>> {
         let _address = self.address.clone();
         let api_key = self.api_key.clone().expect("No API key provided");
         println!("Creating realtime session");
@@ -519,7 +519,7 @@ impl OpenAIRealtimeClient {
             })
         };
 
-        moly_future(future)
+        Box::pin(future)
     }
 }
 
@@ -528,7 +528,7 @@ impl BotClient for OpenAIRealtimeClient {
         &mut self,
         _bot_id: &BotId,
         _messages: &[crate::protocol::Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         // For realtime, we create a session and return the upgrade in the message content
         let future = self.create_realtime_session();
 
@@ -555,10 +555,10 @@ impl BotClient for OpenAIRealtimeClient {
             }
         };
 
-        moly_stream(stream)
+        Box::pin(stream)
     }
 
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         // Hardcoded list of OpenAI-only realtime models that are currently
         // available and supported.
         let supported: Vec<Bot> = ["gpt-4o-realtime-preview-2025-06-03"]
@@ -571,7 +571,7 @@ impl BotClient for OpenAIRealtimeClient {
             })
             .collect();
 
-        moly_future(futures::future::ready(ClientResult::new_ok(supported)))
+        Box::pin(futures::future::ready(ClientResult::new_ok(supported)))
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
