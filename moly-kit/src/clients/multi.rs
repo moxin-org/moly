@@ -1,7 +1,7 @@
 use makepad_widgets::{Cx, LiveId, LivePtr, WidgetRef};
 
 use crate::protocol::*;
-pub use crate::utils::asynchronous::{MolyFuture, MolyStream, moly_future, moly_stream};
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -33,7 +33,7 @@ impl BotClient for MultiClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let client = self
             .clients_with_bots
             .lock()
@@ -51,7 +51,7 @@ impl BotClient for MultiClient {
             Some(mut client) => client.send(bot_id, messages),
             None => {
                 let bot_id_clone = bot_id.clone();
-                moly_stream(futures::stream::once(async move {
+                Box::pin(futures::stream::once(async move {
                     ClientError::new(
                         ClientErrorKind::Unknown,
                         format!(
@@ -71,7 +71,7 @@ impl BotClient for MultiClient {
         Box::new(self.clone())
     }
 
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let clients_with_bots = self.clients_with_bots.clone();
 
         let future = async move {
@@ -113,7 +113,7 @@ impl BotClient for MultiClient {
             }
         };
 
-        moly_future(future)
+        Box::pin(future)
     }
 
     fn content_widget(

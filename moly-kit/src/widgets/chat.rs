@@ -3,6 +3,7 @@ use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 use utils::asynchronous::spawn;
 
+use crate::utils::asynchronous::PlatformSendStream;
 use crate::utils::makepad::EventExt;
 use crate::utils::ui_runner::DeferWithRedrawAsync;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
@@ -371,7 +372,8 @@ impl Chat {
                 }
             };
 
-            let mut message_stream = amortize(client.send(&bot.id, &messages_history_context));
+            let message_stream = amortize(client.send(&bot.id, &messages_history_context));
+            let mut message_stream = std::pin::pin!(message_stream);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
                 // faster than deferred closures are executed, and one closure causes
@@ -697,8 +699,8 @@ impl ChatRef {
 /// Util that wraps the stream of `send()` and gives you a stream less agresive to
 /// the receiver UI regardless of the streaming chunk size.
 fn amortize(
-    input: MolyStream<'static, ClientResult<MessageContent>>,
-) -> MolyStream<'static, ClientResult<MessageContent>> {
+    input: impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static,
+) -> impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static {
     // Use utils
     use crate::utils::string::AmortizedString;
     use async_stream::stream;
@@ -708,7 +710,7 @@ fn amortize(
     let mut amortized_reasoning = AmortizedString::default();
 
     // Stream compute
-    let stream = stream! {
+    stream! {
         // Our wrapper stream "activates" when something comes from the underlying stream.
         for await result in input {
             // Transparently yield the result on error and then stop.
@@ -745,7 +747,5 @@ fn amortize(
                 yield ClientResult::new_ok(content.clone());
             }
         }
-    };
-
-    moly_stream(stream)
+    }
 }
