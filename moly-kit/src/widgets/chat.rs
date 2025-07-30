@@ -194,21 +194,29 @@ impl Chat {
             // Reset realtime widget state
             self.realtime(id!(realtime)).reset_state(cx);
 
-            // Add transcripts as messages to chat history if any
+            // Add each completed transcript as a separate message to chat history
             if !transcripts.is_empty() {
-                let combined_transcript = transcripts.join(" ");
-                if !combined_transcript.trim().is_empty() {
-                    let next_index = self.messages_ref().read().messages.len();
-                    let message = Message {
-                        from: EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
-                        content: MessageContent {
-                            text: combined_transcript,
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    };
+                let mut tasks = Vec::new();
+                let mut next_index = self.messages_ref().read().messages.len();
 
-                    self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
+                for transcript in transcripts {
+                    if !transcript.trim().is_empty() {
+                        let message = Message {
+                            from: EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
+                            content: MessageContent {
+                                text: transcript,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        };
+
+                        tasks.push(ChatTask::InsertMessage(next_index, message));
+                        next_index += 1;
+                    }
+                }
+
+                if !tasks.is_empty() {
+                    self.dispatch(cx, &mut tasks);
                 }
             }
         }

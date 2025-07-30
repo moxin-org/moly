@@ -296,7 +296,10 @@ pub struct Realtime {
     transcript: String,
 
     #[rust]
-    accumulated_transcripts: Vec<String>,
+    current_transcript: String,
+
+    #[rust]
+    completed_transcripts: Vec<String>,
 
     #[rust]
     recorded_audio: Arc<Mutex<Vec<f32>>>,
@@ -476,6 +479,7 @@ impl Realtime {
             *self.is_playing.lock().unwrap() = false;
             *self.playback_position.lock().unwrap() = 0;
             self.transcript.clear();
+            self.current_transcript.clear();
 
             self.update_ui(cx);
             self.start_audio_streaming(cx);
@@ -504,6 +508,7 @@ impl Realtime {
         *self.is_playing.lock().unwrap() = false;
         *self.playback_position.lock().unwrap() = 0;
         self.transcript.clear();
+        self.current_transcript.clear();
 
         self.update_ui(cx);
         self.start_audio_streaming(cx);
@@ -544,6 +549,7 @@ impl Realtime {
         self.should_request_connection = false;
         self.connection_request_sent = false;
         self.transcript.clear();
+        self.current_transcript.clear();
         self.label(id!(status_label)).set_text(cx, "Ready to start");
 
         // Show voice selector again
@@ -640,10 +646,8 @@ impl Realtime {
                 }
                 RealtimeEvent::AudioTranscript(text) => {
                     self.transcript.push_str(&text);
-                    // Store transcript chunks for later addition to chat
-                    if !text.trim().is_empty() {
-                        self.accumulated_transcripts.push(text);
-                    }
+                    // Accumulate transcript deltas into current transcript
+                    self.current_transcript.push_str(&text);
                 }
                 RealtimeEvent::SpeechStarted => {
                     self.label(id!(status_label))
@@ -689,6 +693,13 @@ impl Realtime {
                     self.user_is_interrupting = false;
                     self.ai_is_responding = false;
                     self.current_assistant_item_id = None;
+
+                    // Store the completed transcript if it has content
+                    if !self.current_transcript.trim().is_empty() {
+                        self.completed_transcripts
+                            .push(self.current_transcript.clone());
+                        self.current_transcript.clear();
+                    }
 
                     // Resume recording after AI response is complete
                     if self.conversation_active {
@@ -924,9 +935,9 @@ impl Realtime {
         }
     }
 
-    /// Get collected transcripts and clear the collection
+    /// Get completed transcripts and clear the collection
     pub fn take_transcripts(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.accumulated_transcripts)
+        std::mem::take(&mut self.completed_transcripts)
     }
 
     /// Add reset_state method for cleanup when modal closes
