@@ -330,14 +330,19 @@ impl Chat {
         let messages_history_context: Vec<Message> = self.messages_ref().write_with(|messages| {
             messages.bot_context = Some(context.clone());
 
-            messages.messages.push(Message {
-                from: EntityId::Bot(bot_id.clone()),
-                metadata: MessageMetadata {
-                    is_writing: true,
-                    ..MessageMetadata::new()
-                },
-                ..Default::default()
-            });
+            // A hack to avoid showing a loading message for realtime assistants
+            // TODO: we should base this on upgrade rather than capabilities
+            let bot = context.get_bot(&bot_id).unwrap(); // We already checked it exists above
+            if !bot.capabilities.supports_realtime() {
+                messages.messages.push(Message {
+                    from: EntityId::Bot(bot_id.clone()),
+                    metadata: MessageMetadata {
+                        is_writing: true,
+                        ..MessageMetadata::new()
+                    },
+                    ..Default::default()
+                });
+            }
 
             messages
                 .messages
@@ -582,6 +587,9 @@ impl Chat {
             Ok(content) => {
                 // Check if this is a realtime upgrade message
                 if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
+                    // Clean up any loading state since we're opening the modal instead
+                    self.clean_streaming_artifacts();
+                    
                     // Set up the realtime channel in the UI
                     let mut realtime = self.realtime(id!(realtime));
                     realtime.set_realtime_channel(channel.clone());
