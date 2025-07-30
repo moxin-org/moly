@@ -147,17 +147,9 @@ impl Widget for Chat {
         self.deref.handle_event(cx, event, scope);
         self.handle_messages(cx, event);
         self.handle_prompt_input(cx, event);
+        self.handle_realtime(cx);
         self.handle_scrolling();
-
-        // Update prompt input capabilities based on selected bot
-        if let (Some(bot_context), Some(bot_id)) = (&self.bot_context, &self.bot_id) {
-            if let Some(bot) = bot_context.get_bot(bot_id) {
-                self.prompt_input_ref()
-                    .set_bot_capabilities(cx, Some(bot.capabilities.clone()));
-            }
-        } else {
-            self.prompt_input_ref().set_bot_capabilities(cx, None);
-        }
+        self.handle_capabilities(cx);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -183,6 +175,21 @@ impl Chat {
 
         if self.prompt_input_ref().read().call_pressed(event.actions()) {
             self.handle_call(cx);
+        }
+    }
+
+    fn handle_realtime(&mut self, cx: &mut Cx) {
+        if self.realtime(id!(realtime)).connection_requested() {
+            self.dispatch(cx, &mut ChatTask::Send.into());
+        }
+    }
+
+    fn handle_capabilities(&mut self, cx: &mut Cx) {
+        if let (Some(bot_context), Some(bot_id)) = (&self.bot_context, &self.bot_id) {
+            if let Some(bot) = bot_context.get_bot(bot_id) {
+                self.prompt_input_ref()
+                    .set_bot_capabilities(cx, Some(bot.capabilities.clone()));
+            }
         }
     }
 

@@ -330,6 +330,12 @@ pub struct Realtime {
 
     #[rust]
     has_sent_audio: bool,
+
+    #[rust]
+    should_request_connection: bool,
+
+    #[rust]
+    connection_request_sent: bool,
 }
 
 impl Widget for Realtime {
@@ -362,6 +368,9 @@ impl Widget for Realtime {
 
         // Handle realtime events
         self.handle_realtime_events(cx);
+
+        // Try to start pending conversation if we got connected
+        self.try_start_pending_conversation(cx);
 
         // Setup audio if needed
         if !self.audio_setup_done {
@@ -432,7 +441,6 @@ impl WidgetMatchEvent for Realtime {
             if self.conversation_active {
                 self.reset_all(cx);
             } else {
-                // TODO: here we need to start a new ws connection as well.
                 self.start_conversation(cx);
             }
             self.update_ui(cx);
@@ -447,10 +455,37 @@ impl Realtime {
         log!("Realtime channel set");
     }
 
+    fn try_start_pending_conversation(&mut self, cx: &mut Cx) {
+        if self.is_connected && !self.conversation_active && self.should_request_connection {
+            // We can now start the conversation that was requested
+            self.should_request_connection = false;
+            self.connection_request_sent = false;
+            self.conversation_active = true;
+            self.ai_is_responding = false;
+            self.user_is_interrupting = false;
+            self.current_assistant_item_id = None;
+            *self.is_recording.lock().unwrap() = true;
+            self.has_sent_audio = false;
+
+            // Clear previous audio
+            self.recorded_audio.lock().unwrap().clear();
+            self.playback_audio.lock().unwrap().clear();
+            *self.is_playing.lock().unwrap() = false;
+            *self.playback_position.lock().unwrap() = 0;
+            self.transcript.clear();
+
+            self.update_ui(cx);
+            self.start_audio_streaming(cx);
+            self.create_greeting_response(cx);
+        }
+    }
+
     fn start_conversation(&mut self, cx: &mut Cx) {
         if !self.is_connected {
+            // Set flag to request reconnection - Chat widget will handle this
+            self.should_request_connection = true;
             self.label(id!(status_label))
-                .set_text(cx, "❌ Not connected");
+                .set_text(cx, "Connecting...");
             return;
         }
 
@@ -504,6 +539,8 @@ impl Realtime {
 
         self.is_connected = false;
         self.has_sent_audio = false;
+        self.should_request_connection = false;
+        self.connection_request_sent = false;
         self.transcript.clear();
         self.label(id!(status_label)).set_text(cx, "Ready to start");
 
@@ -864,15 +901,22 @@ impl Realtime {
     }
 
     fn update_ui(&self, cx: &mut Cx) {
-        if !self.is_connected {
+        if !self.conversation_active {
             self.label(id!(stop_start_label))
                 .set_text(cx, "Start conversation");
-        } else if self.conversation_active {
-            self.label(id!(stop_start_label))
-                .set_text(cx, "Stop conversation");
         } else {
             self.label(id!(stop_start_label))
-                .set_text(cx, "Start conversation");
+                .set_text(cx, "Stop conversation");
+        }
+    }
+
+    /// Check if the realtime widget is requesting a new connection
+    pub fn connection_requested(&mut self) -> bool {
+        if self.should_request_connection && !self.is_connected && !self.connection_request_sent {
+            self.connection_request_sent = true;
+            true
+        } else {
+            false
         }
     }
 }
@@ -881,6 +925,14 @@ impl RealtimeRef {
     pub fn set_realtime_channel(&mut self, channel: RealtimeChannel) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_realtime_channel(channel);
+        }
+    }
+
+    pub fn connection_requested(&mut self) -> bool {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.connection_requested()
+        } else {
+            false
         }
     }
 }
