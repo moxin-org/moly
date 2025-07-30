@@ -42,8 +42,6 @@ impl PartialEq for RealtimeChannel {
 pub enum RealtimeEvent {
     /// Session is ready for communication
     SessionReady,
-    /// Session has been configured with settings
-    SessionConfigured,
     /// Audio data received (PCM16 format)
     AudioData(Vec<u8>),
     /// Text transcript of received audio

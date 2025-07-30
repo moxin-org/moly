@@ -204,28 +204,18 @@ impl OpenAIRealtimeClient {
         Ok(())
     }
 
-    pub fn create_realtime_session(&self) -> BoxPlatformSendFuture<'static, ClientResult<RealtimeChannel>> {
+    pub fn create_realtime_session(
+        &self,
+    ) -> BoxPlatformSendFuture<'static, ClientResult<RealtimeChannel>> {
         let _address = self.address.clone();
         let api_key = self.api_key.clone().expect("No API key provided");
-        println!("Creating realtime session");
 
         let future = async move {
             let (event_sender, event_receiver) = futures::channel::mpsc::unbounded();
             let (command_sender, mut command_receiver) = futures::channel::mpsc::unbounded();
 
-            // TODO(Julian) API key
-            // let api_key = std::env::var("OPENAI_API_KEY").unwrap();
-            // let api_key = match api_key {
-            //     Some(key) => key,
-            //     None => return ClientResult::new_err(vec![ClientError::new(
-            //         ClientErrorKind::Unknown,
-            //         "No API key provided".to_string(),
-            //     )]),
-            // };
-
             #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
             {
-                println!("Creating WebSocket connection");
                 // Create WebSocket connection to OpenAI Realtime API
                 let url_str = format!(
                     "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03"
@@ -234,6 +224,7 @@ impl OpenAIRealtimeClient {
                 // Use connect_async_with_config for proper header handling
                 use tokio_tungstenite::tungstenite::handshake::client::Request;
 
+                // We need to setup all of these headers manually if we want to setup our Auhtorization header.
                 let request = Request::builder()
                     .uri(&url_str)
                     .header("Host", "api.openai.com")
@@ -331,7 +322,7 @@ impl OpenAIRealtimeClient {
                 });
 
                 // Spawn task to handle outgoing commands
-                let mut event_sender_for_commands = event_sender.clone();
+                let event_sender_for_commands = event_sender.clone();
                 spawn(async move {
                     // Don't initialize session immediately - wait for UI to configure it
 
@@ -339,10 +330,10 @@ impl OpenAIRealtimeClient {
                     while let Some(command) = command_receiver.next().await {
                         match command {
                             RealtimeCommand::StartSession => {
-                                makepad_widgets::log!("Starting realtime session");
-                                // Just send ready event - session config will be sent separately
-                                let _ = event_sender_for_commands
-                                    .unbounded_send(RealtimeEvent::SessionReady);
+                                // makepad_widgets::log!("Starting realtime session");
+                                // // Just send ready event - session config will be sent separately
+                                // let _ = event_sender_for_commands
+                                //     .unbounded_send(RealtimeEvent::SessionReady);
                             }
                             RealtimeCommand::UpdateSessionConfig {
                                 voice,
@@ -386,9 +377,6 @@ impl OpenAIRealtimeClient {
                                 if let Ok(json) = serde_json::to_string(&session_message) {
                                     makepad_widgets::log!("Sending session update: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
-                                    // Send configured event after updating session
-                                    let _ = event_sender_for_commands
-                                        .unbounded_send(RealtimeEvent::SessionConfigured);
                                 }
                             }
                             RealtimeCommand::CreateGreetingResponse => {

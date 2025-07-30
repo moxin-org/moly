@@ -1,5 +1,4 @@
 use crate::{protocol::*, utils::makepad::events::EventExt};
-use futures::StreamExt;
 use makepad_widgets::*;
 use std::sync::{Arc, Mutex};
 
@@ -226,23 +225,6 @@ live_design! {
                 }
             }
 
-            // <View> {
-            //     height: Fit
-            //     align: {x: 0.5, y: 0.5}
-            //     spacing: 20
-            //     flow: Right
-
-            //     connect_button = <Button> {
-            //         text: "🔗 Connect and start conversation"
-            //         draw_text: {text_style: {font_size: 11}}
-            //     }
-
-            //     connection_status = <Label> {
-            //         text: "Disconnected"
-            //         draw_text: {text_style: {font_size: 11}}
-            //     }
-            // }
-
             toggle_interruptions = <Toggle> {
                 text: "Allow interruptions\n(requires headphones, no AEC yet)"
                 width: Fit
@@ -262,42 +244,21 @@ live_design! {
                 padding: {left: 5, right: 5, top: 5, bottom: 5}
             }
 
-            // transcript_area = <RoundedView> {
-            //     width: Fill, height: 50
-            //     show_bg: true
-            //     draw_bg: {
-            //         color: #f0f0f0
-            //         border_radius: 5.0
-            //     }
-            //     padding: 10
-
-            //     transcript_label = <Label> {
-            //         text: "Transcript will appear here..."
-            //         width: Fill
-            //         draw_text: {
-            //             color: #222
-            //             text_style: {font_size: 10.5}
-            //         }
-            //         align: {x: 0.0, y: 0.0}
-            //     }
-            // }
-
             status_label = <Label> {
-                text: "Ready to connect"
-                width: Fill
+                text: "Ready to start"
+                width: Fit
                 draw_text: {
                     color: #222
                     text_style: {font_size: 11}
                 }
-                align: {x: 0.5, y: 0.5}
             }
 
-            reset_button = <RoundedShadowView> {
+            start_stop_button = <RoundedShadowView> {
                 cursor: Hand
                 margin: {left: 10, right: 10, bottom: 0, top: 10}
                 width: Fill, height: Fit
                 align: {x: 0.5, y: 0.5}
-                padding: {left: 30, right: 30, bottom: 15, top: 15}
+                padding: {left: 20, right: 20, bottom: 10, top: 10}
                 draw_bg: {
                     color: #f9f9f9
                     border_radius: 4.5,
@@ -305,8 +266,8 @@ live_design! {
                     shadow_radius: 8.0,
                     shadow_offset: vec2(0.0,-1.5)
                 }
-                <Label> {
-                    text: "🔄 Reset"
+                stop_start_label = <Label> {
+                    text: "Start"
                     draw_text: {
                         text_style: {font_size: 11}
                         color: #000
@@ -375,19 +336,6 @@ impl Widget for Realtime {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
-
-        // Handle button clicks
-        if self.button(id!(connect_button)).clicked(event.actions()) {
-            self.connect_and_start_conversation(cx);
-        }
-
-        if self
-            .view(id!(reset_button))
-            .finger_up(event.actions())
-            .is_some()
-        {
-            self.reset_all(cx);
-        }
 
         if let Some(_value) = self
             .drop_down(id!(transcription_model_selector))
@@ -463,23 +411,32 @@ impl WidgetMatchEvent for Realtime {
         devices: &AudioDevicesEvent,
         _scope: &mut Scope,
     ) {
-        log!(
-            "App::handle_audio_devices called with {} devices",
-            devices.descs.len()
-        );
-        for _desc in &devices.descs {
-            // log!("Audio device: {}", desc);
-        }
+        // for _desc in &devices.descs {
+        // log!("Audio device: {}", desc);
+        // }
 
         // Use default input and output devices
         let default_input = devices.default_input();
         let default_output = devices.default_output();
 
-        log!("Default input: {:?}", default_input);
-        log!("Default output: {:?}", default_output);
-
         cx.use_audio_inputs(&default_input);
         cx.use_audio_outputs(&default_output);
+    }
+
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
+        if self
+            .view(id!(start_stop_button))
+            .finger_down(actions)
+            .is_some()
+        {
+            if self.conversation_active {
+                self.reset_all(cx);
+            } else {
+                // TODO: here we need to start a new ws connection as well.
+                self.start_conversation(cx);
+            }
+            self.update_ui(cx);
+        }
     }
 }
 
@@ -490,23 +447,6 @@ impl Realtime {
         log!("Realtime channel set");
     }
 
-    fn connect_and_start_conversation(&mut self, cx: &mut Cx) {
-        if let Some(channel) = &self.realtime_channel {
-            self.is_connected = true;
-            self.label(id!(connection_status))
-                .set_text(cx, "🔄 Connecting...");
-
-            // Start the session and trigger greeting
-            let _ = channel
-                .command_sender
-                .unbounded_send(RealtimeCommand::StartSession);
-            log!("Starting realtime session");
-        } else {
-            self.label(id!(status_label))
-                .set_text(cx, "No realtime channel available");
-        }
-    }
-
     fn start_conversation(&mut self, cx: &mut Cx) {
         if !self.is_connected {
             self.label(id!(status_label))
@@ -514,7 +454,6 @@ impl Realtime {
             return;
         }
 
-        log!("Starting conversation");
         self.conversation_active = true;
         self.ai_is_responding = false;
         self.user_is_interrupting = false;
@@ -529,16 +468,9 @@ impl Realtime {
         *self.playback_position.lock().unwrap() = 0;
         self.transcript.clear();
 
-        // Update UI state
-        self.update_ui_state(cx);
-
-        // Start audio streaming
+        self.update_ui(cx);
         self.start_audio_streaming(cx);
-
-        // Create AI greeting response
-        self.create_greeting_response();
-
-        log!("Conversation started with AI greeting");
+        self.create_greeting_response(cx);
     }
 
     fn start_audio_streaming(&mut self, cx: &mut Cx) {
@@ -556,7 +488,6 @@ impl Realtime {
                 let audio_data = recorded.clone();
                 recorded.clear();
 
-                // log!("Sending audio chunk to realtime");
                 // Convert to PCM16 and send
                 let pcm16_data = Self::convert_f32_to_pcm16(&audio_data);
                 if let Some(channel) = &self.realtime_channel {
@@ -564,8 +495,6 @@ impl Realtime {
                         .command_sender
                         .unbounded_send(RealtimeCommand::SendAudio(pcm16_data));
                 }
-            } else {
-                // log!("No audio data to send");
             }
         }
     }
@@ -576,18 +505,13 @@ impl Realtime {
         self.is_connected = false;
         self.has_sent_audio = false;
         self.transcript.clear();
-        self.label(id!(status_label))
-            .set_text(cx, "Ready to connect");
-        self.label(id!(transcript_label))
-            .set_text(cx, "Transcript will appear here...");
-        self.label(id!(connection_status))
-            .set_text(cx, "Disconnected");
+        self.label(id!(status_label)).set_text(cx, "Ready to start");
 
         // Show voice selector again
         self.view(id!(voice_selector_wrapper)).set_visible(cx, true);
         self.view(id!(selected_voice_view)).set_visible(cx, false);
 
-        self.update_ui_state(cx);
+        self.update_ui(cx);
 
         // Stop the session
         if let Some(channel) = &self.realtime_channel {
@@ -598,7 +522,6 @@ impl Realtime {
     }
 
     fn stop_conversation(&mut self, cx: &mut Cx) {
-        log!("Stopping conversation");
         self.conversation_active = false;
         self.ai_is_responding = false;
         self.user_is_interrupting = false;
@@ -644,21 +567,13 @@ impl Realtime {
         for event in events {
             match event {
                 RealtimeEvent::SessionReady => {
-                    log!("Session ready");
                     self.label(id!(connection_status))
                         .set_text(cx, "✅ Connected to OpenAI");
-                    self.update_session_config(cx);
-                }
-                RealtimeEvent::SessionConfigured => {
-                    log!("Session configured");
-                    self.label(id!(status_label))
-                        .set_text(cx, "✅ Session configured");
-                    self.start_conversation(cx);
+                    // self.update_session_config(cx);
                 }
                 RealtimeEvent::AudioData(audio_data) => {
                     // When we start receiving AI audio, the user is no longer interrupting
                     if self.user_is_interrupting {
-                        log!("AI audio received - user interruption ended");
                         self.user_is_interrupting = false;
                     }
 
@@ -690,7 +605,6 @@ impl Realtime {
                         .set_text(cx, &self.transcript);
                 }
                 RealtimeEvent::SpeechStarted => {
-                    log!("Speech detected - interrupting AI audio");
                     self.label(id!(status_label))
                         .set_text(cx, "🎤 User speech detected");
 
@@ -721,7 +635,6 @@ impl Realtime {
                     }
                 }
                 RealtimeEvent::SpeechStopped => {
-                    log!("Speech ended, processing...");
                     self.label(id!(status_label))
                         .set_text(cx, "🤔 Processing...");
 
@@ -941,7 +854,8 @@ impl Realtime {
         }
     }
 
-    fn create_greeting_response(&mut self) {
+    fn create_greeting_response(&mut self, cx: &mut Cx) {
+        self.update_session_config(cx);
         if let Some(channel) = &self.realtime_channel {
             let _ = channel
                 .command_sender
@@ -949,17 +863,16 @@ impl Realtime {
         }
     }
 
-    fn update_ui_state(&self, cx: &mut Cx) {
-        // Update button states based on connection and conversation status
+    fn update_ui(&self, cx: &mut Cx) {
         if !self.is_connected {
-            self.button(id!(connect_button))
-                .set_text(cx, "🔗 Connect and start conversation");
+            self.label(id!(stop_start_label))
+                .set_text(cx, "Start conversation");
         } else if self.conversation_active {
-            self.button(id!(connect_button))
-                .set_text(cx, "✅ Connected");
+            self.label(id!(stop_start_label))
+                .set_text(cx, "Stop conversation");
         } else {
-            self.button(id!(connect_button))
-                .set_text(cx, "✅ Connected");
+            self.label(id!(stop_start_label))
+                .set_text(cx, "Start conversation");
         }
     }
 }
