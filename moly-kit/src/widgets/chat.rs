@@ -190,10 +190,10 @@ impl Chat {
         if self.moly_modal(id!(audio_modal)).dismissed(event.actions()) {
             // Collect transcripts from the realtime widget
             let transcripts = self.realtime(id!(realtime)).take_transcripts();
-            
+
             // Reset realtime widget state
             self.realtime(id!(realtime)).reset_state(cx);
-            
+
             // Add transcripts as messages to chat history if any
             if !transcripts.is_empty() {
                 let combined_transcript = transcripts.join(" ");
@@ -207,7 +207,7 @@ impl Chat {
                         },
                         ..Default::default()
                     };
-                    
+
                     self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
                 }
             }
@@ -619,7 +619,7 @@ impl Chat {
                 if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
                     // Clean up any loading state since we're opening the modal instead
                     self.clean_streaming_artifacts();
-                    
+
                     // Set up the realtime channel in the UI
                     let mut realtime = self.realtime(id!(realtime));
                     realtime.set_realtime_channel(channel.clone());

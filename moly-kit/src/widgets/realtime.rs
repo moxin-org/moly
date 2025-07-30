@@ -487,8 +487,7 @@ impl Realtime {
         if !self.is_connected {
             // Set flag to request reconnection - Chat widget will handle this
             self.should_request_connection = true;
-            self.label(id!(status_label))
-                .set_text(cx, "Connecting...");
+            self.label(id!(status_label)).set_text(cx, "Connecting...");
             return;
         }
 
