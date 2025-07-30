@@ -148,6 +148,7 @@ impl Widget for Chat {
         self.handle_messages(cx, event);
         self.handle_prompt_input(cx, event);
         self.handle_realtime(cx);
+        self.handle_modal_dismissal(cx, event);
         self.handle_scrolling();
         self.handle_capabilities(cx);
     }
@@ -181,6 +182,35 @@ impl Chat {
     fn handle_realtime(&mut self, cx: &mut Cx) {
         if self.realtime(id!(realtime)).connection_requested() {
             self.dispatch(cx, &mut ChatTask::Send.into());
+        }
+    }
+
+    fn handle_modal_dismissal(&mut self, cx: &mut Cx, event: &Event) {
+        // Check if the audio modal was dismissed
+        if self.moly_modal(id!(audio_modal)).dismissed(event.actions()) {
+            // Collect transcripts from the realtime widget
+            let transcripts = self.realtime(id!(realtime)).take_transcripts();
+            
+            // Reset realtime widget state
+            self.realtime(id!(realtime)).reset_state(cx);
+            
+            // Add transcripts as messages to chat history if any
+            if !transcripts.is_empty() {
+                let combined_transcript = transcripts.join(" ");
+                if !combined_transcript.trim().is_empty() {
+                    let next_index = self.messages_ref().read().messages.len();
+                    let message = Message {
+                        from: EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
+                        content: MessageContent {
+                            text: combined_transcript,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    };
+                    
+                    self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
+                }
+            }
         }
     }
 

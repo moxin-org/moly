@@ -296,6 +296,9 @@ pub struct Realtime {
     transcript: String,
 
     #[rust]
+    accumulated_transcripts: Vec<String>,
+
+    #[rust]
     recorded_audio: Arc<Mutex<Vec<f32>>>,
 
     #[rust]
@@ -638,8 +641,10 @@ impl Realtime {
                 }
                 RealtimeEvent::AudioTranscript(text) => {
                     self.transcript.push_str(&text);
-                    self.label(id!(transcript_label))
-                        .set_text(cx, &self.transcript);
+                    // Store transcript chunks for later addition to chat
+                    if !text.trim().is_empty() {
+                        self.accumulated_transcripts.push(text);
+                    }
                 }
                 RealtimeEvent::SpeechStarted => {
                     self.label(id!(status_label))
@@ -919,6 +924,16 @@ impl Realtime {
             false
         }
     }
+
+    /// Get collected transcripts and clear the collection
+    pub fn take_transcripts(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.accumulated_transcripts)
+    }
+
+    /// Add reset_state method for cleanup when modal closes
+    pub fn reset_state(&mut self, cx: &mut Cx) {
+        self.reset_all(cx);
+    }
 }
 
 impl RealtimeRef {
@@ -933,6 +948,20 @@ impl RealtimeRef {
             inner.connection_requested()
         } else {
             false
+        }
+    }
+
+    pub fn take_transcripts(&mut self) -> Vec<String> {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.take_transcripts()
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub fn reset_state(&mut self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.reset_state(cx);
         }
     }
 }
