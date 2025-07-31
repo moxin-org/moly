@@ -1,3 +1,8 @@
+#[cfg(target_arch = "wasm32")]
+use crate::utils::asynchronous::ThreadToken;
+#[cfg(target_arch = "wasm32")]
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use std::sync::Arc;
 
 #[cfg(feature = "json")]
