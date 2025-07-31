@@ -63,8 +63,6 @@ pub enum RealtimeEvent {
 /// Commands sent from the UI to the realtime client
 #[derive(Debug, Clone)]
 pub enum RealtimeCommand {
-    /// Start the realtime session
-    StartSession,
     /// Stop the realtime session
     StopSession,
     /// Send audio data (PCM16 format)

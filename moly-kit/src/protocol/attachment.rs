@@ -1,9 +1,4 @@
-use crate::utils::asynchronous::ThreadToken;
-
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::Arc;
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};

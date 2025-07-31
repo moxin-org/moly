@@ -377,8 +377,10 @@ impl PromptInput {
         )))]
         self.button(id!(attach)).set_visible(cx, false);
 
-        // Show audio/call button only if bot supports realtime and we're on a supported platform
+        // Show audio/call button only if bot supports realtime, we're on a supported platform
+        // and realtime feature is enabled
         #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(feature = "realtime")]
         self.button(id!(audio)).set_visible(cx, supports_realtime);
     }
 }

@@ -346,19 +346,10 @@ impl OpenAIRealtimeClient {
                 });
 
                 // Spawn task to handle outgoing commands
-                let event_sender_for_commands = event_sender.clone();
                 spawn(async move {
-                    // Don't initialize session immediately - wait for UI to configure it
-
                     // Handle commands
                     while let Some(command) = command_receiver.next().await {
                         match command {
-                            RealtimeCommand::StartSession => {
-                                // log::debug!("Starting realtime session");
-                                // // Just send ready event - session config will be sent separately
-                                // let _ = event_sender_for_commands
-                                //     .unbounded_send(RealtimeEvent::SessionReady);
-                            }
                             RealtimeCommand::UpdateSessionConfig {
                                 voice,
                                 transcription_model,
