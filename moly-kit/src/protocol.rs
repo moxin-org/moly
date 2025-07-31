@@ -44,8 +44,12 @@ pub enum RealtimeEvent {
     SessionReady,
     /// Audio data received (PCM16 format)
     AudioData(Vec<u8>),
-    /// Text transcript of received audio
+    /// Text transcript of received audio (delta)
     AudioTranscript(String),
+    /// Complete AI audio transcript (final)
+    AudioTranscriptCompleted(String),
+    /// Complete user audio transcript (final)
+    UserTranscriptCompleted(String),
     /// User started speaking
     SpeechStarted,
     /// User stopped speaking

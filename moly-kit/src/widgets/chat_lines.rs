@@ -14,7 +14,7 @@ live_design! {
     Sender = <View> {
         height: Fit,
         spacing: 10,
-        margin: {bottom: 14},
+        margin: {bottom: 8},
         align: {y: 0.5}
         avatar = <Avatar> {}
         name = <Label> {
@@ -111,6 +111,7 @@ live_design! {
     pub ChatLine = <RoundedView> {
         flow: Down,
         height: Fit,
+        margin: {left: 10, right: 10}
         message_section = <RoundedView> {
             flow: Down,
             height: Fit,
@@ -123,8 +124,8 @@ live_design! {
             editor = <Editor> { margin: { left: 32 }, visible: false }
         }
         actions_section = <View> {
-            margin: {left: 32, top: 4, bottom: 10},
-            height: 25,
+            margin: {left: 32, top: 2, bottom: 5},
+            height: 22,
             actions = <Actions> { visible: false }
             edit_actions = <EditActions> { visible: false }
         }
@@ -161,18 +162,24 @@ live_design! {
     // up to the fill size. If we drop the current design and simplify it, we could
     // just use the bot's design for all messages.
     pub AppLine = <BotLine> {
+        margin: {left: 0}
         message_section = {
-            padding: 12,
-            draw_bg: {color: #00f3}
+            padding: {left: 12, right: 12, top: 12, bottom: 0}
+            draw_bg: {
+                border_color: #344054
+                border_size: 1.2
+                border_radius: 8.0
+            }
             sender = {
+                margin: {bottom: 5}
                 avatar = {
-                    grapheme = {draw_bg: {color: #00f3}}
+                    grapheme = {draw_bg: {color: #344054}}
                 }
                 name = {text: "Application"}
             }
         }
         actions_section = {
-            margin: {left: 2}
+            margin: {left: 32}
         }
     }
 

@@ -188,36 +188,48 @@ impl Chat {
     fn handle_modal_dismissal(&mut self, cx: &mut Cx, event: &Event) {
         // Check if the audio modal was dismissed
         if self.moly_modal(id!(audio_modal)).dismissed(event.actions()) {
-            // Collect transcripts from the realtime widget
-            let transcripts = self.realtime(id!(realtime)).take_transcripts();
+            // Collect conversation messages from the realtime widget before resetting
+            let mut conversation_messages =
+                self.realtime(id!(realtime)).take_conversation_messages();
 
-            // Reset realtime widget state
+            // Reset realtime widget state for cleanup
             self.realtime(id!(realtime)).reset_state(cx);
 
-            // Add each completed transcript as a separate message to chat history
-            if !transcripts.is_empty() {
-                let mut tasks = Vec::new();
-                let mut next_index = self.messages_ref().read().messages.len();
+            // Add conversation messages to chat history preserving order
+            if !conversation_messages.is_empty() {
+                // Get current messages and append the new conversation messages
+                let mut all_messages = self.messages_ref().read().messages.clone();
 
-                for transcript in transcripts {
-                    if !transcript.trim().is_empty() {
-                        let message = Message {
-                            from: EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
-                            content: MessageContent {
-                                text: transcript,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        };
+                // Add a system message before and after the conversation, informing
+                // that a voice call happened.
+                let system_message = Message {
+                    from: EntityId::App,
+                    content: MessageContent {
+                        text: "Voice call started.".to_string(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                conversation_messages.insert(0, system_message);
 
-                        tasks.push(ChatTask::InsertMessage(next_index, message));
-                        next_index += 1;
-                    }
-                }
+                let system_message = Message {
+                    from: EntityId::App,
+                    content: MessageContent {
+                        text: "Voice call ended.".to_string(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                conversation_messages.push(system_message);
 
-                if !tasks.is_empty() {
-                    self.dispatch(cx, &mut tasks);
-                }
+                all_messages.extend(conversation_messages);
+                self.dispatch(
+                    cx,
+                    &mut vec![
+                        ChatTask::SetMessages(all_messages),
+                        ChatTask::ScrollToBottom(true),
+                    ],
+                );
             }
         }
     }
@@ -631,6 +643,8 @@ impl Chat {
                     // Set up the realtime channel in the UI
                     let mut realtime = self.realtime(id!(realtime));
                     realtime.set_realtime_channel(channel.clone());
+                    realtime
+                        .set_bot_entity_id(EntityId::Bot(self.bot_id.clone().unwrap_or_default()));
 
                     let modal = self.moly_modal(id!(audio_modal));
                     modal.open(cx);

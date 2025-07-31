@@ -296,10 +296,7 @@ pub struct Realtime {
     transcript: String,
 
     #[rust]
-    current_transcript: String,
-
-    #[rust]
-    completed_transcripts: Vec<String>,
+    conversation_messages: Vec<Message>,
 
     #[rust]
     recorded_audio: Arc<Mutex<Vec<f32>>>,
@@ -342,6 +339,9 @@ pub struct Realtime {
 
     #[rust]
     connection_request_sent: bool,
+
+    #[rust]
+    bot_entity_id: Option<EntityId>,
 }
 
 impl Widget for Realtime {
@@ -461,6 +461,10 @@ impl Realtime {
         log!("Realtime channel set");
     }
 
+    pub fn set_bot_entity_id(&mut self, bot_entity_id: EntityId) {
+        self.bot_entity_id = Some(bot_entity_id);
+    }
+
     fn try_start_pending_conversation(&mut self, cx: &mut Cx) {
         if self.is_connected && !self.conversation_active && self.should_request_connection {
             // We can now start the conversation that was requested
@@ -479,7 +483,6 @@ impl Realtime {
             *self.is_playing.lock().unwrap() = false;
             *self.playback_position.lock().unwrap() = 0;
             self.transcript.clear();
-            self.current_transcript.clear();
 
             self.update_ui(cx);
             self.start_audio_streaming(cx);
@@ -508,7 +511,6 @@ impl Realtime {
         *self.is_playing.lock().unwrap() = false;
         *self.playback_position.lock().unwrap() = 0;
         self.transcript.clear();
-        self.current_transcript.clear();
 
         self.update_ui(cx);
         self.start_audio_streaming(cx);
@@ -549,7 +551,6 @@ impl Realtime {
         self.should_request_connection = false;
         self.connection_request_sent = false;
         self.transcript.clear();
-        self.current_transcript.clear();
         self.label(id!(status_label)).set_text(cx, "Ready to start");
 
         // Show voice selector again
@@ -646,8 +647,34 @@ impl Realtime {
                 }
                 RealtimeEvent::AudioTranscript(text) => {
                     self.transcript.push_str(&text);
-                    // Accumulate transcript deltas into current transcript
-                    self.current_transcript.push_str(&text);
+                }
+                RealtimeEvent::AudioTranscriptCompleted(transcript) => {
+                    // Store completed AI transcript as a bot message
+                    if !transcript.trim().is_empty() {
+                        let message = Message {
+                            from: self.bot_entity_id.clone().unwrap_or_default(),
+                            content: MessageContent {
+                                text: transcript,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        };
+                        self.conversation_messages.push(message);
+                    }
+                }
+                RealtimeEvent::UserTranscriptCompleted(transcript) => {
+                    // Store completed user transcript as a user message
+                    if !transcript.trim().is_empty() {
+                        let message = Message {
+                            from: EntityId::User,
+                            content: MessageContent {
+                                text: transcript,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        };
+                        self.conversation_messages.push(message);
+                    }
                 }
                 RealtimeEvent::SpeechStarted => {
                     self.label(id!(status_label))
@@ -680,8 +707,7 @@ impl Realtime {
                     }
                 }
                 RealtimeEvent::SpeechStopped => {
-                    self.label(id!(status_label))
-                        .set_text(cx, "🤔 Processing...");
+                    self.label(id!(status_label)).set_text(cx, "Processing...");
 
                     // Temporarily stop recording while waiting for response
                     if self.conversation_active {
@@ -693,13 +719,6 @@ impl Realtime {
                     self.user_is_interrupting = false;
                     self.ai_is_responding = false;
                     self.current_assistant_item_id = None;
-
-                    // Store the completed transcript if it has content
-                    if !self.current_transcript.trim().is_empty() {
-                        self.completed_transcripts
-                            .push(self.current_transcript.clone());
-                        self.current_transcript.clear();
-                    }
 
                     // Resume recording after AI response is complete
                     if self.conversation_active {
@@ -935,9 +954,9 @@ impl Realtime {
         }
     }
 
-    /// Get completed transcripts and clear the collection
-    pub fn take_transcripts(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.completed_transcripts)
+    /// Get conversation messages and clear the collection
+    pub fn take_conversation_messages(&mut self) -> Vec<Message> {
+        std::mem::take(&mut self.conversation_messages)
     }
 
     /// Add reset_state method for cleanup when modal closes
@@ -953,6 +972,12 @@ impl RealtimeRef {
         }
     }
 
+    pub fn set_bot_entity_id(&mut self, bot_entity_id: EntityId) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_bot_entity_id(bot_entity_id);
+        }
+    }
+
     pub fn connection_requested(&mut self) -> bool {
         if let Some(mut inner) = self.borrow_mut() {
             inner.connection_requested()
@@ -961,9 +986,9 @@ impl RealtimeRef {
         }
     }
 
-    pub fn take_transcripts(&mut self) -> Vec<String> {
+    pub fn take_conversation_messages(&mut self) -> Vec<Message> {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.take_transcripts()
+            inner.take_conversation_messages()
         } else {
             Vec::new()
         }

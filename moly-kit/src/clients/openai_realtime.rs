@@ -160,6 +160,20 @@ pub enum OpenAIRealtimeResponse {
         content_index: u32,
         delta: String,
     },
+    #[serde(rename = "response.audio_transcript.done")]
+    ResponseAudioTranscriptDone {
+        response_id: String,
+        item_id: String,
+        output_index: u32,
+        content_index: u32,
+        transcript: String,
+    },
+    #[serde(rename = "conversation.item.input_audio_transcription.completed")]
+    ConversationItemInputAudioTranscriptionCompleted {
+        item_id: String,
+        content_index: u32,
+        transcript: String,
+    },
     #[serde(rename = "response.done")]
     ResponseDone { response: serde_json::Value },
     #[serde(rename = "input_audio_buffer.speech_started")]
@@ -256,7 +270,7 @@ impl OpenAIRealtimeClient {
                 println!("WebSocket connection created");
 
                 // Spawn task to handle incoming messages
-                let mut event_sender_clone = event_sender.clone();
+                let event_sender_clone = event_sender.clone();
                 spawn(async move {
                     while let Some(msg) = read.next().await {
                         match msg {
@@ -286,6 +300,14 @@ impl OpenAIRealtimeClient {
                                             delta,
                                             ..
                                         } => Some(RealtimeEvent::AudioTranscript(delta)),
+                                        OpenAIRealtimeResponse::ResponseAudioTranscriptDone {
+                                            transcript,
+                                            ..
+                                        } => Some(RealtimeEvent::AudioTranscriptCompleted(transcript)),
+                                        OpenAIRealtimeResponse::ConversationItemInputAudioTranscriptionCompleted {
+                                            transcript,
+                                            ..
+                                        } => Some(RealtimeEvent::UserTranscriptCompleted(transcript)),
                                         OpenAIRealtimeResponse::InputAudioBufferSpeechStarted {
                                             ..
                                         } => Some(RealtimeEvent::SpeechStarted),
