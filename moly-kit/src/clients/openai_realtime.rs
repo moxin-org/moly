@@ -80,7 +80,7 @@ pub struct ResponseConfig {
     pub instructions: Option<String>,
     pub voice: Option<String>,
     pub output_audio_format: Option<String>,
-    pub tools: Option<Vec<serde_json::Value>>,
+    pub tools: Vec<serde_json::Value>,
     pub tool_choice: Option<String>,
     pub temperature: Option<f32>,
     pub max_output_tokens: Option<u32>,
@@ -257,7 +257,7 @@ impl OpenAIRealtimeClient {
                 let (ws_stream, _) = match tokio_tungstenite::connect_async(request).await {
                     Ok(result) => result,
                     Err(e) => {
-                        println!("Error connecting to OpenAI Realtime API: {}", e);
+                        log::error!("Error connecting to OpenAI Realtime API: {}", e);
                         return ClientResult::new_err(vec![ClientError::new_with_source(
                             ClientErrorKind::Network,
                             "Failed to connect to OpenAI Realtime API".to_string(),
@@ -267,7 +267,7 @@ impl OpenAIRealtimeClient {
                 };
 
                 let (mut write, mut read) = ws_stream.split();
-                println!("WebSocket connection created");
+                log::debug!("WebSocket connection created");
 
                 // Spawn task to handle incoming messages
                 let event_sender_clone = event_sender.clone();
@@ -275,7 +275,7 @@ impl OpenAIRealtimeClient {
                     while let Some(msg) = read.next().await {
                         match msg {
                             Ok(WsMessage::Text(text)) => {
-                                makepad_widgets::log!("Received WebSocket message: {}", text);
+                                log::debug!("Received WebSocket message: {}", text);
                                 // log::info!("Received WebSocket message: {}", text);
                                 if let Ok(response) =
                                     serde_json::from_str::<OpenAIRealtimeResponse>(&text)
@@ -352,7 +352,7 @@ impl OpenAIRealtimeClient {
                     while let Some(command) = command_receiver.next().await {
                         match command {
                             RealtimeCommand::StartSession => {
-                                // makepad_widgets::log!("Starting realtime session");
+                                // log::debug!("Starting realtime session");
                                 // // Just send ready event - session config will be sent separately
                                 // let _ = event_sender_for_commands
                                 //     .unbounded_send(RealtimeEvent::SessionReady);
@@ -361,7 +361,7 @@ impl OpenAIRealtimeClient {
                                 voice,
                                 transcription_model,
                             } => {
-                                makepad_widgets::log!(
+                                log::debug!(
                                     "Updating session config with voice: {}, transcription: {}",
                                     voice,
                                     transcription_model
@@ -397,18 +397,18 @@ impl OpenAIRealtimeClient {
                                 };
 
                                 if let Ok(json) = serde_json::to_string(&session_message) {
-                                    makepad_widgets::log!("Sending session update: {}", json);
+                                    log::debug!("Sending session update: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
                             RealtimeCommand::CreateGreetingResponse => {
-                                makepad_widgets::log!("Creating AI greeting response");
+                                log::debug!("Creating AI greeting response");
                                 let response_config = ResponseConfig {
                                     modalities: vec!["text".to_string(), "audio".to_string()],
                                     instructions: Some("You are a helpful AI assistant. Respond naturally and conversationally, start with a very short but enthusiastic and playful greeting in English, the greeting must not exceed 3 words".to_string()),
                                     voice: None,
                                     output_audio_format: Some("pcm16".to_string()),
-                                    tools: None,
+                                    tools: vec![],
                                     tool_choice: None,
                                     temperature: Some(0.8),
                                     max_output_tokens: Some(4096),
@@ -419,7 +419,7 @@ impl OpenAIRealtimeClient {
                                 };
 
                                 if let Ok(json) = serde_json::to_string(&message) {
-                                    makepad_widgets::log!("Sending greeting response: {}", json);
+                                    log::debug!("Sending greeting response: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
@@ -429,8 +429,7 @@ impl OpenAIRealtimeClient {
                                     audio: base64_audio,
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
-                                    // log::debug!("Sending audio data: {} bytes", audio_data.len());
-                                    makepad_widgets::log!("Sending audio data: {}", json);
+                                    log::debug!("Sending audio data: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
@@ -445,23 +444,21 @@ impl OpenAIRealtimeClient {
                                 let message =
                                     OpenAIRealtimeMessage::ConversationItemCreate { item };
                                 if let Ok(json) = serde_json::to_string(&message) {
-                                    // log::info!("Sending text message: {}", json);
-                                    makepad_widgets::log!("Sending text message: {}", json);
+                                    log::debug!("Sending text message: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
                             RealtimeCommand::Interrupt => {
-                                // log::info!("Interrupting current response");
                                 // Send truncate message to interrupt current response
                                 let message = OpenAIRealtimeMessage::InputAudioBufferCommit;
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     // log::info!("Sending truncate message: {}", json);
-                                    makepad_widgets::log!("Sending truncate message: {}", json);
+                                    log::debug!("Sending truncate message: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
                             RealtimeCommand::SetInterruptionEnabled(enabled) => {
-                                makepad_widgets::log!("Setting interruption enabled: {}", enabled);
+                                log::debug!("Setting interruption enabled: {}", enabled);
                                 // Update session configuration for interruption handling
                                 let session_config = SessionConfig {
                                     modalities: vec!["text".to_string(), "audio".to_string()],
@@ -493,15 +490,11 @@ impl OpenAIRealtimeClient {
                                     session: session_config,
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
-                                    makepad_widgets::log!(
-                                        "Updating session for interruption: {}",
-                                        json
-                                    );
+                                    log::debug!("Updating session for interruption: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
                             RealtimeCommand::StopSession => {
-                                log::info!("Stopping realtime session");
                                 // Close the WebSocket connection
                                 let _ = write.send(WsMessage::Close(None)).await;
                                 break;

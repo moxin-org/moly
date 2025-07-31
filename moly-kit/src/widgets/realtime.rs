@@ -7,6 +7,55 @@ live_design! {
     use link::shaders::*;
     use link::widgets::*;
 
+    SimpleDropDown = <DropDownFlat> {
+        draw_text: {
+            text_style: {font_size: 12}
+            fn get_color(self) -> vec4 {
+                return mix(
+                    #2,
+                    #x0,
+                    self.down
+                )
+            }
+        }
+
+        popup_menu: {
+            width: 300, height: Fit,
+            flow: Down,
+            padding: <THEME_MSPACE_1> {}
+
+            menu_item: <PopupMenuItem> {
+                width: Fill, height: Fit,
+                align: { y: 0.5 }
+                padding: {left: 15, right: 15, top: 10, bottom: 10}
+
+                draw_text: {
+                    fn get_color(self) -> vec4 {
+                        return mix(
+                            mix(
+                                #3,
+                                #x0,
+                                self.active
+                            ),
+                            #x0,
+                            self.hover
+                        )
+                    }
+                }
+
+                draw_bg: {
+                    instance color: #f //(THEME_COLOR_FLOATING_BG)
+                    instance color_active: #f2 //(THEME_COLOR_CTRL_HOVER)
+                }
+            }
+
+            draw_bg: {
+                instance color: #f9 //(THEME_COLOR_FLOATING_BG)
+                border_size: 1.0
+            }
+        }
+    }
+
     TranscriptionModelSelector = <View> {
         height: Fit
         align: {x: 0.0, y: 0.5}
@@ -20,7 +69,7 @@ live_design! {
             }
         }
 
-        transcription_model_selector = <DropDown> {
+        transcription_model_selector = <SimpleDropDown> {
             margin: 5
             labels: ["whisper-1", "gpt-4o-transcribe", "gpt-4o-mini-transcribe"]
             values: [whisper_1, gpt_4o_transcribe, gpt_4o_mini_transcribe]
@@ -52,7 +101,7 @@ live_design! {
             }
         }
 
-        voice_selector = <DropDown> {
+        voice_selector = <SimpleDropDown> {
             margin: 5
             labels: ["alloy", "shimmer", "ash", "ballad", "coral", "echo", "sage", "verse"]
             values: [alloy, shimmer, ash, ballad, coral, echo, sage, verse]
@@ -211,7 +260,6 @@ live_design! {
             align: {x: 0.0, y: 0.5}
             padding: 20
 
-            <TranscriptionModelSelector> {}
             voice_selector_wrapper = <VoiceSelector> {}
             selected_voice_view = <View> {
                 visible: false
@@ -224,6 +272,7 @@ live_design! {
                     }
                 }
             }
+            <TranscriptionModelSelector> {}
 
             toggle_interruptions = <Toggle> {
                 text: "Allow interruptions\n(requires headphones, no AEC yet)"
@@ -400,7 +449,7 @@ impl Widget for Realtime {
                         if let Ok(mut is_recording) = self.is_recording.try_lock() {
                             if !*is_recording && self.conversation_active && !self.ai_is_responding
                             {
-                                log!(
+                                ::log::debug!(
                                     "Auto-resuming recording - playback empty and interruptions disabled"
                                 );
                                 *is_recording = true;
@@ -426,10 +475,6 @@ impl WidgetMatchEvent for Realtime {
         devices: &AudioDevicesEvent,
         _scope: &mut Scope,
     ) {
-        // for _desc in &devices.descs {
-        // log!("Audio device: {}", desc);
-        // }
-
         // Use default input and output devices
         let default_input = devices.default_input();
         let default_output = devices.default_output();
@@ -458,7 +503,6 @@ impl Realtime {
     pub fn set_realtime_channel(&mut self, channel: RealtimeChannel) {
         self.realtime_channel = Some(channel);
         self.is_connected = true;
-        log!("Realtime channel set");
     }
 
     pub fn set_bot_entity_id(&mut self, bot_entity_id: EntityId) {
@@ -687,7 +731,7 @@ impl Realtime {
                     if let Ok(mut playbook) = self.playback_audio.try_lock() {
                         let cleared_samples = playbook.len();
                         playbook.clear();
-                        log!(
+                        ::log::debug!(
                             "Cleared {} audio samples from playback buffer to prevent feedback",
                             cleared_samples
                         );
@@ -733,7 +777,7 @@ impl Realtime {
                         } else {
                             // Without interruptions, only resume when playback buffer is truly empty
                             if self.playback_audio.lock().unwrap().is_empty() {
-                                log!(
+                                ::log::debug!(
                                     "Setting is_recording to true - response completed and playback empty"
                                 );
                                 *self.is_recording.lock().unwrap() = true;
@@ -742,13 +786,13 @@ impl Realtime {
                             } else {
                                 status_label
                                     .set_text(cx, "✅ Response generated - 🔊 playing audio");
-                                log!("Playback still active, keeping recording disabled");
+                                ::log::debug!("Playback still active, keeping recording disabled");
                             }
                         }
                     }
                 }
                 RealtimeEvent::Error(error) => {
-                    log!("Realtime API error: {}", error);
+                    ::log::debug!("Realtime API error: {}", error);
                     self.label(id!(status_label))
                         .set_text(cx, &format!("❌ Error: {}", error));
 
@@ -762,7 +806,6 @@ impl Realtime {
     }
 
     fn setup_audio(&mut self, cx: &mut Cx) {
-        log!("Setting up audio");
         let recorded_audio = self.recorded_audio.clone();
         let is_recording = self.is_recording.clone();
 
@@ -837,7 +880,7 @@ impl Realtime {
                                 playback.drain(..samples_to_drain);
                                 // Adjust position since we removed samples from the front
                                 *pos = (*pos).saturating_sub(samples_to_drain * 2);
-                                // log!("Drained {} samples, buffer size now: {}, pos: {}",
+                                // ::log::debug!("Drained {} samples, buffer size now: {}, pos: {}",
                                 //         samples_to_drain, playback.len(), *pos);
                             }
                         } else {
@@ -867,7 +910,7 @@ impl Realtime {
                     playback.clear();
                     *self.playback_position.lock().unwrap() = 0;
                     *is_playing = true;
-                    log!(
+                    ::log::debug!(
                         "Started fresh playback of AI response audio ({} samples)",
                         samples.len()
                     );
