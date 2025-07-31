@@ -302,12 +302,14 @@ impl OpenAIRealtimeClient {
                                         } => Some(RealtimeEvent::AudioTranscript(delta)),
                                         OpenAIRealtimeResponse::ResponseAudioTranscriptDone {
                                             transcript,
+                                            item_id,
                                             ..
-                                        } => Some(RealtimeEvent::AudioTranscriptCompleted(transcript)),
+                                        } => Some(RealtimeEvent::AudioTranscriptCompleted(transcript, item_id)),
                                         OpenAIRealtimeResponse::ConversationItemInputAudioTranscriptionCompleted {
                                             transcript,
+                                            item_id,
                                             ..
-                                        } => Some(RealtimeEvent::UserTranscriptCompleted(transcript)),
+                                        } => Some(RealtimeEvent::UserTranscriptCompleted(transcript, item_id)),
                                         OpenAIRealtimeResponse::InputAudioBufferSpeechStarted {
                                             ..
                                         } => Some(RealtimeEvent::SpeechStarted),

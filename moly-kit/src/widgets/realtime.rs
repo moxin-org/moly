@@ -345,7 +345,7 @@ pub struct Realtime {
     transcript: String,
 
     #[rust]
-    conversation_messages: Vec<Message>,
+    conversation_messages: Vec<(String, Message)>, // (item_id, message) for ordering
 
     #[rust]
     recorded_audio: Arc<Mutex<Vec<f32>>>,
@@ -692,7 +692,7 @@ impl Realtime {
                 RealtimeEvent::AudioTranscript(text) => {
                     self.transcript.push_str(&text);
                 }
-                RealtimeEvent::AudioTranscriptCompleted(transcript) => {
+                RealtimeEvent::AudioTranscriptCompleted(transcript, item_id) => {
                     // Store completed AI transcript as a bot message
                     if !transcript.trim().is_empty() {
                         let message = Message {
@@ -703,10 +703,10 @@ impl Realtime {
                             },
                             ..Default::default()
                         };
-                        self.conversation_messages.push(message);
+                        self.conversation_messages.push((item_id, message));
                     }
                 }
-                RealtimeEvent::UserTranscriptCompleted(transcript) => {
+                RealtimeEvent::UserTranscriptCompleted(transcript, item_id) => {
                     // Store completed user transcript as a user message
                     if !transcript.trim().is_empty() {
                         let message = Message {
@@ -717,7 +717,7 @@ impl Realtime {
                             },
                             ..Default::default()
                         };
-                        self.conversation_messages.push(message);
+                        self.conversation_messages.push((item_id, message));
                     }
                 }
                 RealtimeEvent::SpeechStarted => {
@@ -999,7 +999,16 @@ impl Realtime {
 
     /// Get conversation messages and clear the collection
     pub fn take_conversation_messages(&mut self) -> Vec<Message> {
-        std::mem::take(&mut self.conversation_messages)
+        let mut messages_with_ids = std::mem::take(&mut self.conversation_messages);
+
+        // Sort by item_id to ensure chronological order
+        messages_with_ids.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Extract just the messages, maintaining the sorted order
+        messages_with_ids
+            .into_iter()
+            .map(|(_, message)| message)
+            .collect()
     }
 
     /// Add reset_state method for cleanup when modal closes

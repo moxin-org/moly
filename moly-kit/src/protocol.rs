@@ -46,10 +46,10 @@ pub enum RealtimeEvent {
     AudioData(Vec<u8>),
     /// Text transcript of received audio (delta)
     AudioTranscript(String),
-    /// Complete AI audio transcript (final)
-    AudioTranscriptCompleted(String),
-    /// Complete user audio transcript (final)
-    UserTranscriptCompleted(String),
+    /// Complete AI audio transcript
+    AudioTranscriptCompleted(String, String), // (transcript, item_id)
+    /// Complete user audio transcript
+    UserTranscriptCompleted(String, String), // (transcript, item_id)
     /// User started speaking
     SpeechStarted,
     /// User stopped speaking
