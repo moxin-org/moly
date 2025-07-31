@@ -6,6 +6,8 @@ use utils::asynchronous::spawn;
 use crate::utils::asynchronous::PlatformSendStream;
 use crate::utils::makepad::EventExt;
 use crate::utils::ui_runner::DeferWithRedrawAsync;
+use crate::widgets::moly_modal::MolyModalWidgetExt;
+
 use crate::*;
 
 live_design!(
@@ -16,11 +18,27 @@ live_design!(
 
     use crate::widgets::messages::*;
     use crate::widgets::prompt_input::*;
+    use crate::widgets::moly_modal::*;
+    use crate::widgets::realtime::*;
 
     pub Chat = {{Chat}} <RoundedView> {
         flow: Down,
         messages = <Messages> {}
         prompt = <PromptInput> {}
+
+        <View> {
+            width: Fill, height: Fit
+            flow: Overlay
+
+            audio_modal = <MolyModal> {
+                content: <RoundedView> {
+                    draw_bg: {border_radius: 10}
+                    width: 450, height: 600
+                    align: {x: 0.5, y: 0.5}
+                    realtime = <Realtime>{}
+                }
+            }
+        }
     }
 );
 
@@ -129,7 +147,10 @@ impl Widget for Chat {
         self.deref.handle_event(cx, event, scope);
         self.handle_messages(cx, event);
         self.handle_prompt_input(cx, event);
+        self.handle_realtime(cx);
+        self.handle_modal_dismissal(cx, event);
         self.handle_scrolling();
+        self.handle_capabilities(cx);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -151,6 +172,74 @@ impl Chat {
     fn handle_prompt_input(&mut self, cx: &mut Cx, event: &Event) {
         if self.prompt_input_ref().read().submitted(event.actions()) {
             self.handle_submit(cx);
+        }
+
+        if self.prompt_input_ref().read().call_pressed(event.actions()) {
+            self.handle_call(cx);
+        }
+    }
+
+    fn handle_realtime(&mut self, cx: &mut Cx) {
+        if self.realtime(id!(realtime)).connection_requested() {
+            self.dispatch(cx, &mut ChatTask::Send.into());
+        }
+    }
+
+    fn handle_modal_dismissal(&mut self, cx: &mut Cx, event: &Event) {
+        // Check if the audio modal was dismissed
+        if self.moly_modal(id!(audio_modal)).dismissed(event.actions()) {
+            // Collect conversation messages from the realtime widget before resetting
+            let mut conversation_messages =
+                self.realtime(id!(realtime)).take_conversation_messages();
+
+            // Reset realtime widget state for cleanup
+            self.realtime(id!(realtime)).reset_state(cx);
+
+            // Add conversation messages to chat history preserving order
+            if !conversation_messages.is_empty() {
+                // Get current messages and append the new conversation messages
+                let mut all_messages = self.messages_ref().read().messages.clone();
+
+                // Add a system message before and after the conversation, informing
+                // that a voice call happened.
+                let system_message = Message {
+                    from: EntityId::App,
+                    content: MessageContent {
+                        text: "Voice call started.".to_string(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                conversation_messages.insert(0, system_message);
+
+                let system_message = Message {
+                    from: EntityId::App,
+                    content: MessageContent {
+                        text: "Voice call ended.".to_string(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                conversation_messages.push(system_message);
+
+                all_messages.extend(conversation_messages);
+                self.dispatch(
+                    cx,
+                    &mut vec![
+                        ChatTask::SetMessages(all_messages),
+                        ChatTask::ScrollToBottom(true),
+                    ],
+                );
+            }
+        }
+    }
+
+    fn handle_capabilities(&mut self, cx: &mut Cx) {
+        if let (Some(bot_context), Some(bot_id)) = (&self.bot_context, &self.bot_id) {
+            if let Some(bot) = bot_context.get_bot(bot_id) {
+                self.prompt_input_ref()
+                    .set_bot_capabilities(cx, Some(bot.capabilities.clone()));
+            }
         }
     }
 
@@ -247,6 +336,12 @@ impl Chat {
         }
     }
 
+    fn handle_call(&mut self, cx: &mut Cx) {
+        // Use the standard send mechanism which will return the upgrade
+        // The upgrade message will be processed in handle_message_delta
+        self.dispatch(cx, &mut ChatTask::Send.into());
+    }
+
     fn handle_send_task(&mut self, cx: &mut Cx) {
         // Let's start clean before starting a new stream.
         self.abort();
@@ -285,14 +380,19 @@ impl Chat {
         let messages_history_context: Vec<Message> = self.messages_ref().write_with(|messages| {
             messages.bot_context = Some(context.clone());
 
-            messages.messages.push(Message {
-                from: EntityId::Bot(bot_id.clone()),
-                metadata: MessageMetadata {
-                    is_writing: true,
-                    ..MessageMetadata::new()
-                },
-                ..Default::default()
-            });
+            // A hack to avoid showing a loading message for realtime assistants
+            // TODO: we should base this on upgrade rather than capabilities
+            let bot = context.get_bot(&bot_id).unwrap(); // We already checked it exists above
+            if !bot.capabilities.supports_realtime() {
+                messages.messages.push(Message {
+                    from: EntityId::Bot(bot_id.clone()),
+                    metadata: MessageMetadata {
+                        is_writing: true,
+                        ..MessageMetadata::new()
+                    },
+                    ..Default::default()
+                });
+            }
 
             messages
                 .messages
@@ -525,6 +625,9 @@ impl Chat {
         });
     }
 
+    /// Handles a message delta from the bot.
+    ///
+    /// Returns true if the message delta was handled successfully.
     fn handle_message_delta(&mut self, cx: &mut Cx, result: ClientResult<MessageContent>) -> bool {
         let messages = self.messages_ref();
 
@@ -532,6 +635,24 @@ impl Chat {
         // if there are errors.
         match result.into_result() {
             Ok(content) => {
+                // Check if this is a realtime upgrade message
+                if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
+                    // Clean up any loading state since we're opening the modal instead
+                    self.clean_streaming_artifacts();
+
+                    // Set up the realtime channel in the UI
+                    let mut realtime = self.realtime(id!(realtime));
+                    realtime.set_realtime_channel(channel.clone());
+                    realtime
+                        .set_bot_entity_id(EntityId::Bot(self.bot_id.clone().unwrap_or_default()));
+
+                    let modal = self.moly_modal(id!(audio_modal));
+                    modal.open(cx);
+
+                    // Skip the rest, do not add a message to the chat
+                    return true;
+                }
+
                 // Let's abort if we don't have where to put the delta.
                 let Some(mut message) = messages.read().messages.last().cloned() else {
                     return true;

@@ -239,6 +239,7 @@ live_design! {
                         radio_mofa = <CustomProviderRadio> { text: "MoFa" }
                         radio_deepinquire = <CustomProviderRadio> { text: "DeepInquire" }
                         radio_moly_server = <CustomProviderRadio> { text: "MolyServer" }
+                        radio_openai_realtime = <CustomProviderRadio> { text: "OpenAI Realtime" }
                     }
                 }
 
@@ -384,6 +385,16 @@ impl WidgetMatchEvent for AddProviderModal {
                     models: vec![],
                     was_customly_added: true,
                 },
+                ProviderType::OpenAIRealtime => Provider {
+                    name: name.clone(),
+                    url: api_host.clone(),
+                    api_key: Some(api_key.clone()),
+                    provider_type: ProviderType::OpenAIRealtime,
+                    connection_status: ProviderConnectionStatus::Disconnected,
+                    enabled: true,
+                    models: vec![],
+                    was_customly_added: true,
+                },
             };
 
             store.insert_or_update_provider(&provider);
@@ -397,7 +408,8 @@ impl WidgetMatchEvent for AddProviderModal {
                 radios.radio_openai,
                 radios.radio_mofa,
                 radios.radio_deepinquire,
-                radios.radio_moly_server
+                radios.radio_moly_server,
+                radios.radio_openai_realtime
             ))
             .selected(cx, actions);
         if let Some(selected) = selected {
@@ -406,6 +418,7 @@ impl WidgetMatchEvent for AddProviderModal {
                 1 => Some(ProviderType::MoFa),
                 2 => Some(ProviderType::DeepInquire),
                 3 => Some(ProviderType::MolyServer),
+                4 => Some(ProviderType::OpenAIRealtime),
                 _ => Some(ProviderType::OpenAI),
             };
         }

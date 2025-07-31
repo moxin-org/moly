@@ -15,7 +15,6 @@ mod image_view;
 mod message_loading;
 mod message_markdown;
 mod message_thinking_block;
-mod moly_modal;
 mod slot;
 mod standard_message_content;
 mod theme_moly_kit_light;
@@ -25,6 +24,12 @@ pub use messages::*;
 
 pub mod prompt_input;
 pub use prompt_input::*;
+
+pub mod moly_modal;
+pub use moly_modal::*;
+
+pub mod realtime;
+pub use realtime::*;
 
 cfg_if::cfg_if! {
     if #[cfg(any(feature = "async-rt", feature = "async-web"))] {
@@ -57,5 +62,6 @@ pub fn live_design(cx: &mut makepad_widgets::Cx) {
     messages::live_design(cx);
     prompt_input::live_design(cx);
     chat::live_design(cx);
+    realtime::live_design(cx);
     message_thinking_block::live_design(cx);
 }

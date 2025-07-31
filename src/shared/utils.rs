@@ -1,7 +1,6 @@
 pub mod filesystem;
 
 use anyhow::Result;
-use makepad_widgets::math_f32::{Vec4, vec4};
 
 pub const BYTES_PER_MB: f64 = 1_048_576.0; // (1024^2)
 pub const HUGGING_FACE_BASE_URL: &str = "https://huggingface.co";

@@ -25,7 +25,7 @@ live_design! {
     pub StandardMessageContent = {{StandardMessageContent}} {
         flow: Down
         height: Fit,
-        spacing: 10
+        spacing: 5
         thinking_block = <MessageThinkingBlock> {}
         markdown = <MessageMarkdown> {}
         citations = <CitationList> { visible: false }

@@ -174,6 +174,7 @@ impl BotClient for OpenAIImageClient {
                 id: BotId::new(id, &inner.url),
                 name: id.to_string(),
                 avatar: Picture::Grapheme("I".into()),
+                capabilities: BotCapabilities::new(),
             })
             .collect();
 

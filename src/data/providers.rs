@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     deep_inquire_client::DeepInquireClient, openai_client::OpenAIClient,
-    openai_image_client::OpenAIImageClient,
+    openai_image_client::OpenAIImageClient, openai_realtime_client::OpenAIRealtimeClient,
 };
 
 /// Represents an AI provider
@@ -33,6 +33,13 @@ pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient
             provider.url.clone(),
             provider.api_key.clone(),
         )),
+        ProviderType::OpenAIRealtime => {
+            let mut client = OpenAIRealtimeClient::new(provider.url.clone());
+            if let Some(key) = &provider.api_key {
+                let _ = client.set_key(key);
+            }
+            Box::new(client)
+        }
         ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone())),
     }
 }
@@ -135,6 +142,7 @@ pub enum ProviderType {
     #[pick]
     OpenAI,
     OpenAIImage,
+    OpenAIRealtime,
     MoFa,
     DeepInquire,
     MolyServer,

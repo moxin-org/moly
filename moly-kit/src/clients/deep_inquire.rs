@@ -200,6 +200,7 @@ impl BotClient for DeepInquireClient {
             id: BotId::new("DeepInquire", &inner.url),
             name: "DeepInquire".to_string(),
             avatar: Picture::Grapheme("D".into()),
+            capabilities: BotCapabilities::new().with_capability(BotCapability::Attachments),
         };
 
         let future = async move { ClientResult::new_ok(vec![bot]) };

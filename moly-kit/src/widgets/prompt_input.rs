@@ -4,6 +4,7 @@ use std::cell::{Ref, RefMut};
 #[allow(unused)]
 use crate::{
     Attachment,
+    protocol::{BotCapabilities, BotCapability},
     utils::makepad::EventExt,
     widgets::attachment_list::{AttachmentListRef, AttachmentListWidgetExt},
 };
@@ -76,6 +77,26 @@ live_design! {
                     }
                 }
                 right = {
+                    align: {x: 0.5, y: 0.5}
+                    spacing: 5
+                    audio = <Button> {
+                        visible: false
+                        text: ""
+                        draw_text: {
+                            text_style: <THEME_FONT_ICONS> {
+                                font_size: 14.
+                            }
+                            color: #000,
+                            color_hover: #000,
+                            color_focus: #000
+                            color_down: #000
+                        }
+                        draw_bg: {
+                            color_down: #0000
+                            border_radius: 7.
+                            border_size: 0.
+                        }
+                    }
                     submit = <Button> {
                         width: 28,
                         height: 28,
@@ -162,18 +183,16 @@ pub struct PromptInput {
     /// If this widget should be interactive or not.
     #[rust]
     pub interactivity: Interactivity,
+
+    /// Capabilities of the currently selected bot
+    #[rust]
+    pub bot_capabilities: Option<BotCapabilities>,
 }
 
 impl LiveHook for PromptInput {
     #[allow(unused)]
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        #[cfg(any(
-            target_os = "windows",
-            target_os = "macos",
-            target_os = "linux",
-            target_arch = "wasm32"
-        ))]
-        self.button(id!(attach)).set_visible(cx, true);
+        self.update_button_visibility(cx);
     }
 }
 
@@ -282,6 +301,10 @@ impl PromptInput {
             && self.interactivity == Interactivity::Enabled
     }
 
+    pub fn call_pressed(&self, actions: &Actions) -> bool {
+        self.button(id!(audio)).clicked(actions)
+    }
+
     /// Shorthand to check if [Self::task] is set to [Task::Send].
     pub fn has_send_task(&self) -> bool {
         self.task == Task::Send
@@ -315,6 +338,51 @@ impl PromptInput {
     pub(crate) fn attachment_list_ref(&self) -> AttachmentListRef {
         self.attachment_list(id!(attachments))
     }
+
+    /// Set the capabilities of the currently selected bot
+    pub fn set_bot_capabilities(&mut self, cx: &mut Cx, capabilities: Option<BotCapabilities>) {
+        self.bot_capabilities = capabilities;
+        self.update_button_visibility(cx);
+    }
+
+    /// Update button visibility based on bot capabilities
+    fn update_button_visibility(&mut self, cx: &mut Cx) {
+        let supports_attachments = self
+            .bot_capabilities
+            .as_ref()
+            .map(|caps| caps.supports_attachments())
+            .unwrap_or(false);
+
+        let supports_realtime = self
+            .bot_capabilities
+            .as_ref()
+            .map(|caps| caps.supports_realtime())
+            .unwrap_or(false);
+
+        // Show attach button only if bot supports attachments AND we're on a supported platform
+        #[cfg(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_arch = "wasm32"
+        ))]
+        self.button(id!(attach))
+            .set_visible(cx, supports_attachments);
+
+        #[cfg(not(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_arch = "wasm32"
+        )))]
+        self.button(id!(attach)).set_visible(cx, false);
+
+        // Show audio/call button only if bot supports realtime, we're on a supported platform
+        // and realtime feature is enabled
+        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(feature = "realtime")]
+        self.button(id!(audio)).set_visible(cx, supports_realtime);
+    }
 }
 
 impl PromptInputRef {
@@ -344,5 +412,10 @@ impl PromptInputRef {
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut PromptInput) -> R) -> R {
         f(&mut *self.write())
+    }
+
+    /// Set the capabilities of the currently selected bot
+    pub fn set_bot_capabilities(&mut self, cx: &mut Cx, capabilities: Option<BotCapabilities>) {
+        self.write().set_bot_capabilities(cx, capabilities);
     }
 }
