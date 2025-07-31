@@ -450,43 +450,6 @@ impl OpenAIRealtimeClient {
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
-                            RealtimeCommand::SetInterruptionEnabled(enabled) => {
-                                log::debug!("Setting interruption enabled: {}", enabled);
-                                // Update session configuration for interruption handling
-                                let session_config = SessionConfig {
-                                    modalities: vec!["text".to_string(), "audio".to_string()],
-                                    instructions: "You are a helpful AI assistant. Respond naturally and conversationally.".to_string(),
-                                    voice: "alloy".to_string(),
-                                    input_audio_format: "pcm16".to_string(),
-                                    output_audio_format: "pcm16".to_string(),
-                                    input_audio_transcription: Some(TranscriptionConfig {
-                                        model: "whisper-1".to_string(),
-                                    }),
-                                    input_audio_noise_reduction: Some(NoiseReductionConfig {
-                                        noise_reduction_type: "far_field".to_string(),
-                                    }),
-                                    turn_detection: Some(TurnDetectionConfig {
-                                        detection_type: "server_vad".to_string(),
-                                        threshold: 0.5,
-                                        prefix_padding_ms: 300,
-                                        silence_duration_ms: 200,
-                                        interrupt_response: enabled,
-                                        create_response: true,
-                                    }),
-                                    tools: vec![],
-                                    tool_choice: "none".to_string(),  
-                                    temperature: 0.8,
-                                    max_response_output_tokens: Some(4096),
-                                };
-
-                                let message = OpenAIRealtimeMessage::SessionUpdate {
-                                    session: session_config,
-                                };
-                                if let Ok(json) = serde_json::to_string(&message) {
-                                    log::debug!("Updating session for interruption: {}", json);
-                                    let _ = write.send(WsMessage::Text(json)).await;
-                                }
-                            }
                             RealtimeCommand::StopSession => {
                                 // Close the WebSocket connection
                                 let _ = write.send(WsMessage::Close(None)).await;

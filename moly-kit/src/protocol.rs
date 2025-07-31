@@ -71,8 +71,6 @@ pub enum RealtimeCommand {
     SendText(String),
     /// Interrupt current AI response
     Interrupt,
-    /// Configure interruption handling
-    SetInterruptionEnabled(bool),
     /// Update session configuration
     UpdateSessionConfig {
         voice: String,
