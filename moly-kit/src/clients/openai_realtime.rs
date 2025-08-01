@@ -231,9 +231,7 @@ impl OpenAIRealtimeClient {
             #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
             {
                 // Create WebSocket connection to OpenAI Realtime API
-                let url_str = format!(
-                    "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03"
-                );
+                let url_str = format!("ws://127.0.0.1:8123");
 
                 // Use connect_async_with_config for proper header handling
                 use tokio_tungstenite::tungstenite::handshake::client::Request;
