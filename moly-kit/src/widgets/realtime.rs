@@ -71,8 +71,8 @@ live_design! {
 
         transcription_model_selector = <SimpleDropDown> {
             margin: 5
-            labels: ["whisper-1", "gpt-4o-transcribe", "gpt-4o-mini-transcribe"]
-            values: [whisper_1, gpt_4o_transcribe, gpt_4o_mini_transcribe]
+            labels: ["whisper", "gpt-4o-transcribe", "gpt-4o-mini-transcribe"]
+            values: [whisper, gpt_4o_transcribe, gpt_4o_mini_transcribe]
 
             draw_text: {
                 color: #222
@@ -514,11 +514,11 @@ impl Realtime {
             // We can now start the conversation that was requested
             self.should_request_connection = false;
             self.connection_request_sent = false;
-            self.conversation_active = true;
-            self.ai_is_responding = false;
+            self.conversation_active = false;
+            self.ai_is_responding = true;
             self.user_is_interrupting = false;
             self.current_assistant_item_id = None;
-            *self.is_recording.lock().unwrap() = true;
+            *self.is_recording.lock().unwrap() = false;
             self.has_sent_audio = false;
 
             // Clear previous audio
@@ -542,11 +542,11 @@ impl Realtime {
             return;
         }
 
-        self.conversation_active = true;
-        self.ai_is_responding = false;
+        self.conversation_active = false;
+        self.ai_is_responding = true;
         self.user_is_interrupting = false;
         self.current_assistant_item_id = None;
-        *self.is_recording.lock().unwrap() = true;
+        *self.is_recording.lock().unwrap() = false;
         self.has_sent_audio = false;
 
         // Clear previous audio
@@ -764,6 +764,7 @@ impl Realtime {
                     self.ai_is_responding = false;
                     self.current_assistant_item_id = None;
 
+                    self.conversation_active = true;
                     // Resume recording after AI response is complete
                     if self.conversation_active {
                         // Check if interruptions are enabled via the toggle
