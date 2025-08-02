@@ -40,6 +40,7 @@ pub enum OpenAIRealtimeMessage {
 pub struct SessionConfig {
     pub modalities: Vec<String>,
     pub instructions: String,
+    pub model: String,
     pub voice: String,
     pub input_audio_format: String,
     pub output_audio_format: String,
@@ -231,9 +232,7 @@ impl OpenAIRealtimeClient {
             #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
             {
                 // Create WebSocket connection to OpenAI Realtime API
-                let url_str = format!(
-                    "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03"
-                );
+                let url_str = format!("ws://127.0.0.1:8123");
 
                 // Use connect_async_with_config for proper header handling
                 use tokio_tungstenite::tungstenite::handshake::client::Request;
@@ -353,6 +352,7 @@ impl OpenAIRealtimeClient {
                             RealtimeCommand::UpdateSessionConfig {
                                 voice,
                                 transcription_model,
+                                llm,
                             } => {
                                 log::debug!(
                                     "Updating session config with voice: {}, transcription: {}",
@@ -363,6 +363,7 @@ impl OpenAIRealtimeClient {
                                     modalities: vec!["text".to_string(), "audio".to_string()],
                                     instructions: "You are a helpful AI assistant. Respond naturally and conversationally. Always respond in the same language as the user.".to_string(),
                                     voice: voice.clone(),
+                                    model: llm,
                                     input_audio_format: "pcm16".to_string(),
                                     output_audio_format: "pcm16".to_string(),
                                     input_audio_transcription: Some(TranscriptionConfig {

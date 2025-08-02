@@ -71,8 +71,8 @@ live_design! {
 
         transcription_model_selector = <SimpleDropDown> {
             margin: 5
-            labels: ["whisper-1", "gpt-4o-transcribe", "gpt-4o-mini-transcribe"]
-            values: [whisper_1, gpt_4o_transcribe, gpt_4o_mini_transcribe]
+            labels: ["whisper", "gpt-4o-transcribe", "gpt-4o-mini-transcribe"]
+            values: [whisper, gpt_4o_transcribe, gpt_4o_mini_transcribe]
 
             draw_text: {
                 color: #222
@@ -87,6 +87,39 @@ live_design! {
             }
         }
     }
+
+    LLMModelSelector = <View> {
+        height: Fit
+        align: {x: 0.0, y: 0.5}
+        spacing: 10
+
+        <Label> {
+            text: "LLM model:"
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+        }
+
+        llm_model_selector = <SimpleDropDown> {
+            margin: 5
+            labels: ["Qwen/Qwen2.5-0.5B-Instruct-GGUF", "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "Qwen/Qwen2.5-3B-Instruct-GGUF"]
+            values: [qwen2_5_0_5b, qwen2_5_1_5b, qwen2_5_3b]
+
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+
+            popup_menu = {
+                draw_text: {
+                    color: #222
+                    text_style: {font_size: 11}
+                }
+            }
+        }
+    }
+
 
     VoiceSelector = <View> {
         height: Fit
@@ -274,6 +307,8 @@ live_design! {
             }
             <TranscriptionModelSelector> {}
 
+            <LLMModelSelector> {}
+
             toggle_interruptions = <Toggle> {
                 text: "Allow interruptions\n(requires headphones, no AEC yet)"
                 width: Fit
@@ -407,6 +442,15 @@ impl Widget for Realtime {
             }
         }
 
+        if let Some(_value) = self
+            .drop_down(id!(llm_model_selector))
+            .changed(event.actions())
+        {
+            if self.is_connected {
+                self.update_session_config(cx);
+            }
+        }
+
         if let Some(enabled) = self
             .check_box(id!(toggle_interruptions))
             .changed(event.actions())
@@ -514,11 +558,11 @@ impl Realtime {
             // We can now start the conversation that was requested
             self.should_request_connection = false;
             self.connection_request_sent = false;
-            self.conversation_active = true;
-            self.ai_is_responding = false;
+            self.conversation_active = false;
+            self.ai_is_responding = true;
             self.user_is_interrupting = false;
             self.current_assistant_item_id = None;
-            *self.is_recording.lock().unwrap() = true;
+            *self.is_recording.lock().unwrap() = false;
             self.has_sent_audio = false;
 
             // Clear previous audio
@@ -542,11 +586,11 @@ impl Realtime {
             return;
         }
 
-        self.conversation_active = true;
-        self.ai_is_responding = false;
+        self.conversation_active = false;
+        self.ai_is_responding = true;
         self.user_is_interrupting = false;
         self.current_assistant_item_id = None;
-        *self.is_recording.lock().unwrap() = true;
+        *self.is_recording.lock().unwrap() = false;
         self.has_sent_audio = false;
 
         // Clear previous audio
@@ -764,6 +808,7 @@ impl Realtime {
                     self.ai_is_responding = false;
                     self.current_assistant_item_id = None;
 
+                    self.conversation_active = true;
                     // Resume recording after AI response is complete
                     if self.conversation_active {
                         // Check if interruptions are enabled via the toggle
@@ -964,6 +1009,7 @@ impl Realtime {
                     transcription_model: self
                         .drop_down(id!(transcription_model_selector))
                         .selected_label(),
+                    llm: self.drop_down(id!(llm_model_selector)).selected_label(),
                 });
         }
     }
