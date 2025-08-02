@@ -75,6 +75,7 @@ pub enum RealtimeCommand {
     UpdateSessionConfig {
         voice: String,
         transcription_model: String,
+        llm: String,
     },
     /// Create a greeting response from AI
     CreateGreetingResponse,

@@ -40,6 +40,7 @@ pub enum OpenAIRealtimeMessage {
 pub struct SessionConfig {
     pub modalities: Vec<String>,
     pub instructions: String,
+    pub model: String,
     pub voice: String,
     pub input_audio_format: String,
     pub output_audio_format: String,
@@ -351,6 +352,7 @@ impl OpenAIRealtimeClient {
                             RealtimeCommand::UpdateSessionConfig {
                                 voice,
                                 transcription_model,
+                                llm,
                             } => {
                                 log::debug!(
                                     "Updating session config with voice: {}, transcription: {}",
@@ -361,6 +363,7 @@ impl OpenAIRealtimeClient {
                                     modalities: vec!["text".to_string(), "audio".to_string()],
                                     instructions: "You are a helpful AI assistant. Respond naturally and conversationally. Always respond in the same language as the user.".to_string(),
                                     voice: voice.clone(),
+                                    model: llm,
                                     input_audio_format: "pcm16".to_string(),
                                     output_audio_format: "pcm16".to_string(),
                                     input_audio_transcription: Some(TranscriptionConfig {
