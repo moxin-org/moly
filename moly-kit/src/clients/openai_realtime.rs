@@ -236,11 +236,7 @@ impl OpenAIRealtimeClient {
                 // Create WebSocket connection to OpenAI Realtime API
                 // If the provider is OpenAI, include the model to the url
                 let url_str = if address.starts_with("wss://api.openai.com") {
-                    format!(
-                        "{}?model={}",
-                        address,
-                        bot_id.id()
-                    )
+                    format!("{}?model={}", address, bot_id.id())
                 } else {
                     address
                 };

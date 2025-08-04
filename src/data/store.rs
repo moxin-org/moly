@@ -372,6 +372,7 @@ impl Store {
                     && (pp.api_key.is_some()
                         || pp.provider_type == ProviderType::MoFa
                         || pp.provider_type == ProviderType::DeepInquire
+                        || pp.provider_type == ProviderType::OpenAIRealtime
                         || pp.url.starts_with("http://localhost"))
             })
             .map(|pp| pp.url.clone())
