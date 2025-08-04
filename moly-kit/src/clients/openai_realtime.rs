@@ -41,6 +41,7 @@ pub struct SessionConfig {
     pub modalities: Vec<String>,
     pub instructions: String,
     pub voice: String,
+    pub model: String,
     pub input_audio_format: String,
     pub output_audio_format: String,
     pub input_audio_transcription: Option<TranscriptionConfig>,
@@ -81,7 +82,7 @@ pub struct ResponseConfig {
     pub voice: Option<String>,
     pub output_audio_format: Option<String>,
     pub tools: Vec<serde_json::Value>,
-    pub tool_choice: Option<String>,
+    pub tool_choice: String,
     pub temperature: Option<f32>,
     pub max_output_tokens: Option<u32>,
 }
@@ -220,10 +221,12 @@ impl OpenAIRealtimeClient {
 
     pub fn create_realtime_session(
         &self,
+        bot_id: &BotId,
     ) -> BoxPlatformSendFuture<'static, ClientResult<RealtimeChannel>> {
-        let _address = self.address.clone();
+        let address = self.address.clone();
         let api_key = self.api_key.clone().expect("No API key provided");
 
+        let bot_id = bot_id.clone();
         let future = async move {
             let (event_sender, event_receiver) = futures::channel::mpsc::unbounded();
             let (command_sender, mut command_receiver) = futures::channel::mpsc::unbounded();
@@ -231,9 +234,16 @@ impl OpenAIRealtimeClient {
             #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
             {
                 // Create WebSocket connection to OpenAI Realtime API
-                let url_str = format!(
-                    "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03"
-                );
+                // If the provider is OpenAI, include the model to the url
+                let url_str = if address.starts_with("wss://api.openai.com") {
+                    format!(
+                        "{}?model={}",
+                        address,
+                        bot_id.id()
+                    )
+                } else {
+                    address
+                };
 
                 // Use connect_async_with_config for proper header handling
                 use tokio_tungstenite::tungstenite::handshake::client::Request;
@@ -347,6 +357,7 @@ impl OpenAIRealtimeClient {
 
                 // Spawn task to handle outgoing commands
                 spawn(async move {
+                    let model = bot_id.id().to_string();
                     // Handle commands
                     while let Some(command) = command_receiver.next().await {
                         match command {
@@ -363,6 +374,7 @@ impl OpenAIRealtimeClient {
                                     modalities: vec!["text".to_string(), "audio".to_string()],
                                     instructions: "You are a helpful AI assistant. Respond naturally and conversationally. Always respond in the same language as the user.".to_string(),
                                     voice: voice.clone(),
+                                    model: model.clone(),
                                     input_audio_format: "pcm16".to_string(),
                                     output_audio_format: "pcm16".to_string(),
                                     input_audio_transcription: Some(TranscriptionConfig {
@@ -402,7 +414,7 @@ impl OpenAIRealtimeClient {
                                     voice: None,
                                     output_audio_format: Some("pcm16".to_string()),
                                     tools: vec![],
-                                    tool_choice: None,
+                                    tool_choice: "none".to_string(),
                                     temperature: Some(0.8),
                                     max_output_tokens: Some(4096),
                                 };
@@ -485,11 +497,11 @@ impl OpenAIRealtimeClient {
 impl BotClient for OpenAIRealtimeClient {
     fn send(
         &mut self,
-        _bot_id: &BotId,
+        bot_id: &BotId,
         _messages: &[crate::protocol::Message],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         // For realtime, we create a session and return the upgrade in the message content
-        let future = self.create_realtime_session();
+        let future = self.create_realtime_session(bot_id);
 
         let stream = async_stream::stream! {
             match future.await.into_result() {
