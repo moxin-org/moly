@@ -505,8 +505,23 @@ impl Realtime {
         self.is_connected = true;
     }
 
-    pub fn set_bot_entity_id(&mut self, bot_entity_id: EntityId) {
+    pub fn set_bot_entity_id(&mut self, cx: &mut Cx, bot_entity_id: EntityId) {
         self.bot_entity_id = Some(bot_entity_id);
+
+        // TODO: set the available transcription models through the realtime channel.
+        // (determine the list of models in openai_realtime client)
+        // If the provider is not OpenAI, replace `whisper-1` with `whisper`
+        if let Some(EntityId::Bot(bot_id)) = &self.bot_entity_id {
+            if !bot_id.provider().contains("api.openai.com") {
+                let labels = vec![
+                    "whisper".to_string(),
+                    "gpt-4o-transcribe".to_string(),
+                    "gpt-4o-mini-transcribe".to_string(),
+                ];
+                self.drop_down(id!(transcription_model_selector))
+                    .set_labels(cx, labels);
+            }
+        }
     }
 
     fn try_start_pending_conversation(&mut self, cx: &mut Cx) {
@@ -515,10 +530,10 @@ impl Realtime {
             self.should_request_connection = false;
             self.connection_request_sent = false;
             self.conversation_active = true;
-            self.ai_is_responding = false;
+            self.ai_is_responding = true;
             self.user_is_interrupting = false;
             self.current_assistant_item_id = None;
-            *self.is_recording.lock().unwrap() = true;
+            *self.is_recording.lock().unwrap() = false;
             self.has_sent_audio = false;
 
             // Clear previous audio
@@ -543,10 +558,10 @@ impl Realtime {
         }
 
         self.conversation_active = true;
-        self.ai_is_responding = false;
+        self.ai_is_responding = true;
         self.user_is_interrupting = false;
         self.current_assistant_item_id = None;
-        *self.is_recording.lock().unwrap() = true;
+        *self.is_recording.lock().unwrap() = false;
         self.has_sent_audio = false;
 
         // Clear previous audio
@@ -1024,9 +1039,9 @@ impl RealtimeRef {
         }
     }
 
-    pub fn set_bot_entity_id(&mut self, bot_entity_id: EntityId) {
+    pub fn set_bot_entity_id(&mut self, cx: &mut Cx, bot_entity_id: EntityId) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_bot_entity_id(bot_entity_id);
+            inner.set_bot_entity_id(cx, bot_entity_id);
         }
     }
 

@@ -643,8 +643,10 @@ impl Chat {
                     // Set up the realtime channel in the UI
                     let mut realtime = self.realtime(id!(realtime));
                     realtime.set_realtime_channel(channel.clone());
-                    realtime
-                        .set_bot_entity_id(EntityId::Bot(self.bot_id.clone().unwrap_or_default()));
+                    realtime.set_bot_entity_id(
+                        cx,
+                        EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
+                    );
 
                     let modal = self.moly_modal(id!(audio_modal));
                     modal.open(cx);

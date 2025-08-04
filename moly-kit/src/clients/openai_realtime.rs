@@ -430,7 +430,7 @@ impl OpenAIRealtimeClient {
                                     audio: base64_audio,
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
-                                    log::debug!("Sending audio data: {}", json);
+                                    // log::debug!("Sending audio data: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
@@ -526,17 +526,25 @@ impl BotClient for OpenAIRealtimeClient {
     }
 
     fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
-        // Hardcoded list of OpenAI-only realtime models that are currently
-        // available and supported.
-        let supported: Vec<Bot> = ["gpt-4o-realtime-preview-2025-06-03"]
-            .into_iter()
-            .map(|id| Bot {
-                id: BotId::new(id, &self.address),
-                name: id.to_string(),
-                avatar: Picture::Grapheme("🎤".into()),
-                capabilities: BotCapabilities::new().with_capability(BotCapability::Realtime),
-            })
-            .collect();
+        // For Realtime, we're currently using `bots` for listing the supported models by the client,
+        // rather than the specific supported models by the associated provider (makes things easier elsewhere).
+        // Since both Dora and OpenAI are registered as supported providers in Moly, the models that don't
+        // belong to the provider are filtered out in Moly automatically.
+        // TODO: fetch the specific supported models from the provider instead of hardcoding them here
+        let supported: Vec<Bot> = [
+            "gpt-4o-realtime-preview-2025-06-03", // OpenAI
+            "Qwen/Qwen2.5-0.5B-Instruct-GGUF",    // Dora
+            "Qwen/Qwen2.5-1.5B-Instruct-GGUF",    // Dora
+            "Qwen/Qwen2.5-3B-Instruct-GGUF",      // Dora
+        ]
+        .into_iter()
+        .map(|id| Bot {
+            id: BotId::new(id, &self.address),
+            name: id.to_string(),
+            avatar: Picture::Grapheme("🎤".into()),
+            capabilities: BotCapabilities::new().with_capability(BotCapability::Realtime),
+        })
+        .collect();
 
         Box::pin(futures::future::ready(ClientResult::new_ok(supported)))
     }
