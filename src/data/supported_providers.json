@@ -35,6 +35,16 @@
             ]
         },
         {
+            "name": "Dora Realtime",
+            "url": "ws://127.0.0.1:8123",
+            "provider_type": "OpenAIRealtime",
+            "supported_models": [
+                "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+                "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+                "Qwen/Qwen2.5-3B-Instruct-GGUF"
+            ]
+        },
+        {
             "name": "Gemini",
             "url": "https://generativelanguage.googleapis.com/v1beta/openai",
             "provider_type": "OpenAI",

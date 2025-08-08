@@ -47,7 +47,7 @@ impl Widget for DemoChat {
 
         if selector.bot_selected(actions) {
             let id = selector.selected_bot_id().expect("no bot selected");
-            chat.borrow_mut().unwrap().bot_id = Some(id);
+            chat.borrow_mut().unwrap().set_bot_id(cx, Some(id));
         }
     }
 
@@ -57,15 +57,15 @@ impl Widget for DemoChat {
 }
 
 impl LiveHook for DemoChat {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
         // Setup some hooks as an example of how to use them.
         self.setup_chat_hooks();
-        self.setup_chat_bot_context();
+        self.setup_chat_bot_context(cx);
     }
 }
 
 impl DemoChat {
-    fn fill_selector(&mut self, bots: Vec<Bot>) {
+    fn fill_selector(&mut self, cx: &mut Cx, bots: Vec<Bot>) {
         let chat = self.chat(id!(chat));
 
         let bots = bots
@@ -128,7 +128,9 @@ impl DemoChat {
             .collect::<Vec<_>>();
 
         if let Some(bot) = bots.first() {
-            chat.borrow_mut().unwrap().bot_id = Some(bot.id.clone());
+            chat.borrow_mut()
+                .unwrap()
+                .set_bot_id(cx, Some(bot.id.clone()));
         } else {
             eprintln!("No models available, check your API keys.");
         }
@@ -178,7 +180,7 @@ impl DemoChat {
         });
     }
 
-    fn setup_chat_bot_context(&self) {
+    fn setup_chat_bot_context(&self, cx: &mut Cx) {
         let client = {
             let mut client = MultiClient::new();
 
@@ -222,17 +224,19 @@ impl DemoChat {
         };
 
         let mut context: BotContext = client.into();
-        self.chat(id!(chat)).write().bot_context = Some(context.clone());
+        self.chat(id!(chat))
+            .write()
+            .set_bot_context(cx, Some(context.clone()));
 
         let ui = self.ui_runner();
         spawn(async move {
             let errors = context.load().await.into_errors();
 
-            ui.defer_with_redraw(move |me, _cx, _scope| {
+            ui.defer_with_redraw(move |me, cx, _scope| {
                 let mut chat = me.chat(id!(chat));
                 let mut messages = chat.read().messages_ref();
 
-                me.fill_selector(context.bots());
+                me.fill_selector(cx, context.bots());
                 chat.write().visible = true;
 
                 for error in errors {

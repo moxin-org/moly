@@ -315,12 +315,6 @@ impl WidgetMatchEvent for AddProviderModal {
                 return;
             }
 
-            // Check if the URL is valid
-            if !api_host.starts_with("http") {
-                self.set_error_message(cx, "Invalid API host");
-                return;
-            }
-
             // Check if the provider type is selected
             if self.selected_provider.is_none() {
                 self.set_error_message(cx, "Please select a provider type");

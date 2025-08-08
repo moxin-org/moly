@@ -6,3 +6,4 @@ preferences.json
 /WasmEdge*
 .DS_Store
 ignored/
+.claude

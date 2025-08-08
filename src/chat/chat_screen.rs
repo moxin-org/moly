@@ -135,7 +135,7 @@ impl WidgetMatchEvent for ChatScreen {
 }
 
 impl ChatScreen {
-    fn create_bot_context(&mut self, _cx: &mut Cx, scope: &mut Scope) {
+    fn create_bot_context(&mut self, cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         let multi_client = {
@@ -233,15 +233,21 @@ impl ChatScreen {
 
         let mut context: BotContext = multi_client.into();
         store.bot_context = Some(context.clone());
-        self.chats_deck(id!(chats_deck)).sync_bot_contexts(scope);
+        self.chats_deck(id!(chats_deck))
+            .sync_bot_contexts(cx, scope);
 
         self.creating_bot_context = true;
 
         let ui = self.ui_runner();
         spawn(async move {
             context.load().await;
-            ui.defer_with_redraw(move |me, _cx, _scope| {
+            ui.defer_with_redraw(move |me, cx, scope| {
                 me.creating_bot_context = false;
+
+                // Update the bot_context with loaded bots and re-sync
+                let store = scope.data.get_mut::<Store>().unwrap();
+                store.bot_context = Some(context);
+                me.chats_deck(id!(chats_deck)).sync_bot_contexts(cx, scope);
             });
         });
     }

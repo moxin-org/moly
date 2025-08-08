@@ -382,6 +382,28 @@ impl PromptInput {
         #[cfg(not(target_arch = "wasm32"))]
         #[cfg(feature = "realtime")]
         self.button(id!(audio)).set_visible(cx, supports_realtime);
+
+        if supports_realtime {
+            self.interactivity = Interactivity::Disabled;
+            self.text_input_ref().apply_over(
+                cx,
+                live! {
+                    empty_text: "Use voice call to interact with this model →"
+                },
+            );
+            self.text_input_ref().set_is_read_only(cx, true);
+            self.redraw(cx);
+        } else {
+            self.interactivity = Interactivity::Enabled;
+            self.text_input_ref().apply_over(
+                cx,
+                live! {
+                    empty_text: "Start typing..."
+                },
+            );
+            self.text_input_ref().set_is_read_only(cx, false);
+            self.redraw(cx);
+        }
     }
 }
 
@@ -412,10 +434,5 @@ impl PromptInputRef {
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut PromptInput) -> R) -> R {
         f(&mut *self.write())
-    }
-
-    /// Set the capabilities of the currently selected bot
-    pub fn set_bot_capabilities(&mut self, cx: &mut Cx, capabilities: Option<BotCapabilities>) {
-        self.write().set_bot_capabilities(cx, capabilities);
     }
 }

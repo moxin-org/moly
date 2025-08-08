@@ -183,7 +183,7 @@ impl Widget for ChatView {
 }
 
 impl WidgetMatchEvent for ChatView {
-    fn handle_actions(&mut self, _cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
         let mut chat_widget = self.chat(id!(chat));
 
@@ -192,7 +192,7 @@ impl WidgetMatchEvent for ChatView {
             match action.cast() {
                 ModelSelectorAction::BotSelected(chat_id, bot) => {
                     if chat_id == self.chat_id {
-                        chat_widget.write().bot_id = Some(bot.id.clone());
+                        chat_widget.write().set_bot_id(cx, Some(bot.id.clone()));
 
                         if let Some(chat) = store.chats.get_chat_by_id(chat_id) {
                             chat.borrow_mut().associated_bot = Some(bot.id.clone());
@@ -320,18 +320,20 @@ impl ChatView {
 
         // If the bot is not available and we know it won't be available soon, clear the bot_id in the chat widget
         if !bot_available && store.provider_syncing_status == ProviderSyncingStatus::Synced {
-            self.chat(id!(chat)).write().bot_id = None;
+            self.chat(id!(chat)).write().set_bot_id(cx, None);
 
             self.model_selector(id!(model_selector))
                 .set_currently_selected_model(cx, None);
-        } else if bot_available && self.chat(id!(chat)).read().bot_id.is_none() {
+        } else if bot_available && self.chat(id!(chat)).read().bot_id().is_none() {
             // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
             // This can happen if the bot or provider was re-enabled after being disabled while being selected
-            self.chat(id!(chat)).write().bot_id = associiated_bot_id;
+            self.chat(id!(chat))
+                .write()
+                .set_bot_id(cx, associiated_bot_id);
         }
 
         // If there is no selected bot, disable the prompt input
-        if self.chat(id!(chat)).read().bot_id.is_none()
+        if self.chat(id!(chat)).read().bot_id().is_none()
             || !bot_available
             || store.provider_syncing_status != ProviderSyncingStatus::Synced
         {
