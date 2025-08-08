@@ -97,13 +97,13 @@ pub struct Chat {
 
     /// The [BotContext] used by this chat to hold bots and interact with them.
     #[rust]
-    pub bot_context: Option<BotContext>,
+    bot_context: Option<BotContext>,
 
     /// The id of the bot the chat will message when sending.
     // TODO: Can this be live?
     // TODO: Default to the first bot in [BotContext] if `None`.
     #[rust]
-    pub bot_id: Option<BotId>,
+    bot_id: Option<BotId>,
 
     /// Toggles response streaming on or off. Default is on.
     // TODO: Implement this.
@@ -150,7 +150,6 @@ impl Widget for Chat {
         self.handle_realtime(cx);
         self.handle_modal_dismissal(cx, event);
         self.handle_scrolling();
-        self.handle_capabilities(cx);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -238,7 +237,12 @@ impl Chat {
         if let (Some(bot_context), Some(bot_id)) = (&self.bot_context, &self.bot_id) {
             if let Some(bot) = bot_context.get_bot(bot_id) {
                 self.prompt_input_ref()
+                    .write()
                     .set_bot_capabilities(cx, Some(bot.capabilities.clone()));
+            } else if self.bot_id.is_none() {
+                self.prompt_input_ref()
+                    .write()
+                    .set_bot_capabilities(cx, None);
             }
         }
     }
@@ -730,6 +734,24 @@ impl Chat {
         } else {
             false
         }
+    }
+
+    pub fn set_bot_id(&mut self, cx: &mut Cx, bot_id: Option<BotId>) {
+        self.bot_id = bot_id;
+        self.handle_capabilities(cx);
+    }
+
+    pub fn bot_id(&self) -> Option<&BotId> {
+        self.bot_id.as_ref()
+    }
+
+    pub fn set_bot_context(&mut self, cx: &mut Cx, bot_context: Option<BotContext>) {
+        self.bot_context = bot_context;
+        self.handle_capabilities(cx);
+    }
+
+    pub fn bot_context(&self) -> Option<&BotContext> {
+        self.bot_context.as_ref()
     }
 }
 

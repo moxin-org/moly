@@ -279,7 +279,9 @@ live_design! {
                 width: Fit
                 height: Fit
                 draw_text: {
-                    color: #222
+                    fn get_color(self) -> vec4 {
+                        return #222;
+                    }
                     text_style: {font_size: 10}
                 }
 

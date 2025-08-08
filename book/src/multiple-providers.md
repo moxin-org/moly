@@ -43,7 +43,7 @@ impl LiveHook for YourAmazingWidget {
         let context = BotContext::from(client);
 
         let mut chat = self.chat(id!(chat));
-        chat.write().bot_context = context;
+        chat.write().set_bot_context(context);
     }
 }
 ```
