@@ -65,7 +65,13 @@ impl Chats {
                 vec![]
             })
             .into_iter()
-            .map(|file_name| chats.chats_dir.join(file_name));
+            .filter_map(|file_name| {
+                if file_name.ends_with(".json") {
+                    Some(chats.chats_dir.join(file_name))
+                } else {
+                    None
+                }
+            });
 
         chats.saved_chats = futures::stream::iter(paths)
             .filter_map(|path| async move {
