@@ -5,8 +5,9 @@
             "url": "https://api.openai.com/v1",
             "provider_type": "OpenAI",
             "supported_models": [
-                "gpt-4.5-preview-2025-02-27",
-                "gpt-4.5-preview",
+                "gpt-5",
+                "gpt-5-mini",
+                "gpt-5-nano",
                 "gpt-4o",
                 "gpt-4o-mini",
                 "gpt-o4-mini",
@@ -49,12 +50,9 @@
             "url": "https://generativelanguage.googleapis.com/v1beta/openai",
             "provider_type": "OpenAI",
             "supported_models": [
-                "models/gemini-1.5-flash",
-                "models/gemini-1.5-pro",
-                "models/gemini-2.0-flash",
-                "models/gemini-2.0-pro",
-                "models/gemini-2.5-pro-preview-03-25",
-                "models/gemini-2.5-pro-preview-05-06"
+                "models/gemini-2.5-pro",
+                "models/gemini-2.5-flash",
+                "models/gemini-2.5-flash-lite"
             ]
         },
         {
@@ -99,10 +97,10 @@
                 "anthropic/claude-sonnet-4",
                 "anthropic/claude-3.7-sonnet",
                 "anthropic/claude-3.7-sonnet:thinking",
-                "anthropic/claude-3-opus",
                 "anthropic/claude-3.5-haiku",
                 "perplexity/sonar",
                 "perplexity/sonar-deep-research",
+                "perplexity/r1-1776",
                 "deepseek/deepseek-r1",
                 "deepseek/deepseek-r1:free",
                 "deepseek/deepseek-chat-v3-0324:free",
@@ -114,6 +112,15 @@
             "name": "MolyServer",
             "url": "http://localhost:8765/api/v1",
             "provider_type": "MolyServer"
+        },
+        {
+            "name": "DeepSeek",
+            "url": "https://api.deepseek.com/v1",
+            "provider_type": "OpenAI",
+            "supported_models": [
+                "deepseek-chat",
+                "deepseek-reasoner"
+            ]
         }
     ]
 }

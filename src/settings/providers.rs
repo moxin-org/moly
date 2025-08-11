@@ -37,6 +37,7 @@ live_design! {
     ICON_SILICONFLOW = dep("crate://self/resources/images/providers/siliconflow.png")
     ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
+    ICON_DEEPSEEK = dep("crate://self/resources/images/providers/deepseek.png")
 
     // Not making this based on <Icon> because button does not support images
     // (and these SVGs are too complex for Makepad's SVG support)
@@ -211,6 +212,7 @@ live_design! {
             (ICON_SILICONFLOW),
             (ICON_OPENROUTER),
             (ICON_MOLYSERVER),
+            (ICON_DEEPSEEK),
         ]
 
         <View> {

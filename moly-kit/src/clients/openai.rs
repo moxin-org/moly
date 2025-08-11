@@ -389,17 +389,15 @@ impl BotClient for OpenAIClient {
                         response
                     } else {
                         let status_code = response.status();
-                        if let Err(error) = response.error_for_status() {
-                            let original = format!("Request failed: {error}");
-                            let enriched = enrich_http_error(status_code, &original);
+                        let body = response.text().await.unwrap();
+                        let original = format!("Request failed with status {}", status_code);
+                        let enriched = enrich_http_error(status_code, &original, Some(&body));
 
-                            error!("Error sending request to {}: {:?}", url, error);
-                            yield ClientError::new_with_source(
-                                ClientErrorKind::Response,
-                                enriched,
-                                Some(error),
-                            ).into();
-                        }
+                        error!("Error sending request to {}: status {}", url, status_code);
+                        yield ClientError::new(
+                            ClientErrorKind::Response,
+                            enriched,
+                        ).into();
                         return;
                     }
                 }
