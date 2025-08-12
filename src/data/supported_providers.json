@@ -121,6 +121,17 @@
                 "deepseek-chat",
                 "deepseek-reasoner"
             ]
+        },
+        {
+          "name": "Anthropic",
+          "url": "https://api.anthropic.com/v1",
+          "provider_type": "OpenAI",
+          "supported_models": [
+            "claude-opus-4-1",
+            "claude-opus-4-0",
+            "claude-sonnet-4-0",
+            "claude-3-5-haiku-latest"
+          ]
         }
     ]
 }

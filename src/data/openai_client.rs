@@ -1,143 +1,82 @@
-use log::error;
-use makepad_widgets::Cx;
-use moly_kit::{BotId, utils::asynchronous::spawn};
-use serde::Deserialize;
+use makepad_widgets::{Cx, error};
+use moly_kit::{protocol::*, utils::asynchronous::spawn};
 
 use super::providers::*;
 use crate::data::providers::ProviderClientError;
 
-fn should_include_model(model_id: &str) -> bool {
-    // First, filter out non-chat models
-    if model_id.contains("dall-e")
-        || model_id.contains("whisper")
-        || model_id.contains("tts")
-        || model_id.contains("davinci")
-        || model_id.contains("audio")
-        || model_id.contains("babbage")
-        || model_id.contains("moderation")
-        || model_id.contains("embedding")
-    {
-        return false;
-    }
-
-    true
-}
-
 #[derive(Clone, Debug)]
 pub struct OpenAIClient {
-    address: String,
-    api_key: Option<String>,
-    client: reqwest::Client,
+    url: String,
+    client: moly_kit::clients::OpenAIClient,
+}
+
+impl OpenAIClient {
+    pub fn new(url: String, api_key: Option<String>) -> Self {
+        let mut client = moly_kit::clients::OpenAIClient::new(url.clone());
+        if let Some(key) = api_key {
+            let _ = client.set_key(&key);
+        }
+
+        OpenAIClient { url, client }
+    }
 }
 
 impl ProviderClient for OpenAIClient {
     fn fetch_models(&self) {
-        let url = self.address.clone();
-        let api_key = self.api_key.clone();
-        let client = self.client.clone();
-
+        let url = self.url.clone();
+        let future = self.client.bots();
         spawn(async move {
-            let mut req = client.get(format!("{}/models", url));
-
-            // Add Authorization header if API key is available
-            if let Some(key) = &api_key {
-                req = req.header("Authorization", format!("Bearer {}", key));
-            }
-
-            let resp = req.send().await;
-
-            #[allow(dead_code)]
-            #[derive(Deserialize, Debug)]
-            struct ModelInfo {
-                id: String,
-                // may not be present
-                object: Option<String>,
-                created: Option<i64>,
-                owned_by: Option<String>,
-            }
-
-            #[allow(dead_code)]
-            #[derive(Deserialize, Debug)]
-            struct ModelsResponse {
-                object: Option<String>,
-                data: Vec<ModelInfo>,
-            }
-
-            match resp {
-                Ok(r) => match r.status() {
-                    reqwest::StatusCode::OK => match r.json::<ModelsResponse>().await {
-                        Ok(models) => {
-                            let models: Vec<ProviderBot> = models
-                                .data
-                                .into_iter()
-                                .filter(|model| should_include_model(&model.id))
-                                .map(|model| ProviderBot {
-                                    id: BotId::new(&model.id, &url),
-                                    name: model.id.clone(),
-                                    description: format!(
-                                        "OpenAI {} model",
-                                        model.object.unwrap_or(model.id)
-                                    ),
-                                    provider_url: url.clone(),
-                                    enabled: true,
-                                })
-                                .collect();
-                            Cx::post_action(ProviderFetchModelsResult::Success(url, models));
-                        }
-                        Err(e) => {
-                            error!("Failed to parse models response from {}: {:?}", url, e);
+            match future.await.into_result() {
+                Ok(bots) => {
+                    let bots = bots
+                        .into_iter()
+                        .map(|bot| ProviderBot {
+                            id: bot.id.clone(),
+                            name: bot.name.clone(),
+                            description: bot.id.id().to_string(),
+                            provider_url: url.clone(),
+                            enabled: true,
+                        })
+                        .collect::<Vec<_>>();
+                    Cx::post_action(ProviderFetchModelsResult::Success(url, bots));
+                }
+                Err(e) => {
+                    let e = e
+                        .first()
+                        .expect("error variant without error should not be possible");
+                    match e.kind() {
+                        ClientErrorKind::Network => {
+                            error!("Network error while fetching models: {}", e);
                             Cx::post_action(ProviderFetchModelsResult::Failure(
                                 url,
                                 ProviderClientError::UnexpectedResponse,
                             ));
                         }
-                    },
-                    reqwest::StatusCode::UNAUTHORIZED => {
-                        error!(
-                            "Unauthorized (401) fetching models from {}: API key missing/invalid?",
-                            url
-                        );
-                        Cx::post_action(ProviderFetchModelsResult::Failure(
-                            url,
-                            ProviderClientError::Unauthorized,
-                        ));
+                        ClientErrorKind::Format => {
+                            error!("Failed to parse models response: {}", e);
+                            Cx::post_action(ProviderFetchModelsResult::Failure(
+                                url,
+                                ProviderClientError::UnexpectedResponse,
+                            ));
+                        }
+                        ClientErrorKind::Response => {
+                            error!("Received a bad response from the server: {}", e);
+                            Cx::post_action(ProviderFetchModelsResult::Failure(
+                                url,
+                                ProviderClientError::UnexpectedResponse,
+                            ));
+                        }
+                        ClientErrorKind::Unknown => {
+                            let message = format!("Unknown error while fetching models: {}", e);
+                            error!("{}", message);
+                            Cx::post_action(ProviderFetchModelsResult::Failure(
+                                url,
+                                ProviderClientError::Other(message),
+                            ));
+                        }
                     }
-                    status => {
-                        error!("Failed to fetch models from {} - Status: {:?}", url, status);
-                        Cx::post_action(ProviderFetchModelsResult::Failure(
-                            url,
-                            ProviderClientError::UnexpectedResponse,
-                        ));
-                    }
-                },
-                Err(e) => {
-                    error!("Network/Request error fetching models from {}: {}", url, e);
-                    Cx::post_action(ProviderFetchModelsResult::Failure(
-                        url,
-                        ProviderClientError::UnexpectedResponse,
-                    ));
                 }
             }
-        })
-    }
-}
-
-impl OpenAIClient {
-    pub fn new(address: String, api_key: Option<String>) -> Self {
-        let client = reqwest::ClientBuilder::new();
-
-        // web doesn't support these
-        #[cfg(not(target_arch = "wasm32"))]
-        let client = client
-            .timeout(std::time::Duration::from_secs(60))
-            .no_proxy();
-
-        let client = client.build().unwrap();
-
-        Self {
-            address,
-            api_key,
-            client,
-        }
+        });
     }
 }
