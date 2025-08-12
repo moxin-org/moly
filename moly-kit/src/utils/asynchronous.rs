@@ -119,6 +119,13 @@ impl AbortOnDropHandle {
     pub fn abort(&mut self) {
         self.0.abort();
     }
+
+    /// True if this has been aborted without this being dropped.
+    ///
+    /// In other words, true if [`Self::abort`] was called.
+    pub fn was_manually_aborted(&self) -> bool {
+        self.0.is_aborted()
+    }
 }
 
 /// Constructs a future + [`AbortOnDropHandle`] pair.
