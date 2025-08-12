@@ -38,6 +38,7 @@ live_design! {
     ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
     ICON_DEEPSEEK = dep("crate://self/resources/images/providers/deepseek.png")
+    ICON_ANTHROPIC = dep("crate://self/resources/images/providers/anthropic.png")
 
     // Not making this based on <Icon> because button does not support images
     // (and these SVGs are too complex for Makepad's SVG support)
@@ -213,6 +214,7 @@ live_design! {
             (ICON_OPENROUTER),
             (ICON_MOLYSERVER),
             (ICON_DEEPSEEK),
+            (ICON_ANTHROPIC),
         ]
 
         <View> {

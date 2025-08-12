@@ -241,7 +241,18 @@ impl OpenAIClient {
     }
 
     pub fn set_key(&mut self, key: &str) -> Result<(), &'static str> {
-        self.set_header("Authorization", &format!("Bearer {}", key))
+        self.set_header("Authorization", &format!("Bearer {}", key))?;
+
+        // Anthropic requires a different header for the API key, 
+        // even with the OpenAI API compatibility layer.
+        if self.0.read().unwrap().url.contains("anthropic") {
+            self.set_header("x-api-key", key)?;
+            // Also needed for every Anthropic request.
+            // TODO: remove this once we support a native Anthropic client.
+            self.set_header("anthropic-version", "2023-06-01")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -266,6 +277,8 @@ impl BotClient for OpenAIClient {
                     .into();
                 }
             };
+
+            println!("response: {:?}", response);
 
             if !response.status().is_success() {
                 let code = response.status().as_u16();
