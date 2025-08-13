@@ -241,6 +241,11 @@ impl ChatScreen {
         let ui = self.ui_runner();
         spawn(async move {
             context.load().await;
+        
+            let mcp_manager = McpManagerClient::new();
+            mcp_manager.add_server("test", McpTransport::Sse("http://localhost:8000/sse".to_string())).await.unwrap();
+            context.set_tool_manager(mcp_manager);
+
             ui.defer_with_redraw(move |me, cx, scope| {
                 me.creating_bot_context = false;
 

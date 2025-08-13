@@ -1,6 +1,7 @@
 use async_stream::stream;
 use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
+use rmcp::model::Tool;
 use serde::{Deserialize, Serialize};
 use std::{
     str::FromStr,
@@ -77,6 +78,22 @@ impl Content {
                 .join(" "),
         }
     }
+}
+
+#[derive(Serialize)]
+struct FunctionDefinition {
+    name: String,
+    description: String,
+    parameters: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    strict: Option<bool>,
+}
+
+#[derive(Serialize)]
+struct FunctionTool {
+    #[serde(rename = "type")]
+    tool_type: String,
+    function: FunctionDefinition,
 }
 
 /// Message being received by the completions endpoint.
@@ -344,6 +361,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let bot_id = bot_id.clone();
         let messages = messages.to_vec();
@@ -351,6 +369,33 @@ impl BotClient for OpenAIClient {
         let inner = self.0.read().unwrap().clone();
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
+
+        let tools = tools.iter().map(|t| {
+            // Use the input_schema from the MCP tool, but ensure OpenAI compatibility
+            let mut parameters_map = (*t.input_schema).clone();
+            
+            // Ensure additionalProperties is set to false as required by OpenAI
+            parameters_map.insert("additionalProperties".to_string(), serde_json::Value::Bool(false));
+            
+            // Ensure properties field exists for object schemas (OpenAI requirement)
+            if parameters_map.get("type") == Some(&serde_json::Value::String("object".to_string())) {
+                if !parameters_map.contains_key("properties") {
+                    parameters_map.insert("properties".to_string(), serde_json::Value::Object(serde_json::Map::new()));
+                }
+            }
+            
+            let parameters = serde_json::Value::Object(parameters_map);
+            
+            FunctionTool{
+                tool_type: "function".to_string(),
+                function: FunctionDefinition {
+                    name: t.name.to_string(),
+                    description: t.description.as_deref().unwrap_or("").to_string(),
+                    parameters,
+                    strict: Some(true),
+                },
+            }
+        }).collect::<Vec<_>>();
 
         let stream = stream! {
             let mut outgoing_messages: Vec<OutcomingMessage> = Vec::with_capacity(messages.len());
@@ -371,6 +416,7 @@ impl BotClient for OpenAIClient {
             let json = serde_json::json!({
                 "model": bot_id.id(),
                 "messages": outgoing_messages,
+                "tools": tools,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,
                 "stream": true

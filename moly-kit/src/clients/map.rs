@@ -1,3 +1,5 @@
+use rmcp::model::Tool;
+
 use crate::protocol::*;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use std::sync::{Arc, Mutex};
@@ -89,9 +91,10 @@ impl<C: BotClient + 'static> BotClient for MapClient<C> {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let inner = self.inner.clone();
-        let stream = self.inner.lock().unwrap().client.send(bot_id, messages);
+        let stream = self.inner.lock().unwrap().client.send(bot_id, messages, tools);
 
         let stream = async_stream::stream! {
             for await result in stream {

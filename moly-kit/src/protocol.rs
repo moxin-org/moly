@@ -1,4 +1,6 @@
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
+use rmcp::model::Tool;
+use crate::{mcp_manager::McpManagerClient, utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream}};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -79,8 +81,6 @@ pub enum RealtimeCommand {
     /// Create a greeting response from AI
     CreateGreetingResponse,
 }
-
-use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, Debug)]
@@ -646,6 +646,7 @@ pub trait BotClient: Send {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>>;
 
     /// Interrupt the bot's current operation.
@@ -691,6 +692,7 @@ impl Clone for Box<dyn BotClient> {
 struct InnerBotContext {
     client: Box<dyn BotClient>,
     bots: Vec<Bot>,
+    tool_manager: Option<McpManagerClient>
 }
 
 /// A sharable wrapper around a [BotClient] that holds loadeed bots and provides
@@ -755,6 +757,14 @@ impl BotContext {
     pub fn get_bot(&self, id: &BotId) -> Option<Bot> {
         self.bots().into_iter().find(|bot| bot.id == *id)
     }
+
+    pub fn tool_manager(&self) -> Option<McpManagerClient> {
+        self.0.lock().unwrap().tool_manager.clone()
+    }
+
+    pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
+        self.0.lock().unwrap().tool_manager = Some(tool_manager);
+    }
 }
 
 impl<T: BotClient + 'static> From<T> for BotContext {
@@ -762,6 +772,7 @@ impl<T: BotClient + 'static> From<T> for BotContext {
         BotContext(Arc::new(Mutex::new(InnerBotContext {
             client: Box::new(client),
             bots: Vec::new(),
+            tool_manager: None,
         })))
     }
 }

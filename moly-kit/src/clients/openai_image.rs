@@ -3,6 +3,7 @@
 use crate::protocol::*;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use reqwest::header::{HeaderMap, HeaderName};
+use rmcp::model::Tool;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},
@@ -185,7 +186,9 @@ impl BotClient for OpenAIImageClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        _tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
+        let _ = _tools;
         let self_clone = self.clone();
         let bot_id = bot_id.clone();
         let messages = messages.to_vec();

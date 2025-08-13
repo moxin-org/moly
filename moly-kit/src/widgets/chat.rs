@@ -438,7 +438,21 @@ impl Chat {
                 }
             };
 
-            let message_stream = amortize(client.send(&bot.id, &messages_history_context));
+            let tools = if let Some(tool_manager) = context.tool_manager() {
+                match tool_manager.list_tools().await {
+                    Ok(tools) => tools,
+                    Err(e) => {
+                        println!("Error listing tools: {:?}", e);
+                        Vec::new()
+                    }
+                }
+            } else {
+                Vec::new()
+            };
+
+            println!("tools: {:?}", tools);
+
+            let message_stream = amortize(client.send(&bot.id, &messages_history_context, &tools));
             let mut message_stream = std::pin::pin!(message_stream);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come

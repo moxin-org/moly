@@ -20,7 +20,9 @@ pub mod clients;
 pub mod protocol;
 pub mod utils;
 pub mod widgets;
+pub mod mcp;
 
 pub use clients::*;
 pub use protocol::*;
 pub use widgets::*;
+pub use mcp::*;
