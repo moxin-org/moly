@@ -36,7 +36,7 @@ rfd = { version = "0.15.3", features = ["ashpd", "urlencoding", "xdg-portal"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread"], optional = true }
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"], optional = true }
 # rmcp = { version = "0.5.0", features = ["transport-sse-client", "transport-streamable-http-client", "transport-child-process"], optional = true }
-rmcp = { path = "../../rust-sdk/crates/rmcp", features = ["transport-sse-client", "transport-streamable-http-client", "transport-child-process", "client"], optional = true }
+rmcp = { git = "https://www.github.com/joulei/rust-sdk", features = ["transport-sse-client", "transport-streamable-http-client", "transport-child-process", "client"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = { version = "0.4.50", optional = true }
