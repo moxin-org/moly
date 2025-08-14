@@ -162,7 +162,16 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
         let content = Content::Text(
             message.content.tool_results
                 .iter()
-                .map(|result| result.content.clone())
+                .map(|result| {
+                    // Simple truncation: max 4096 tokens per tool result (roughly 16k characters)
+                    const MAX_TOOL_OUTPUT_CHARS: usize = 16384; // ~4096 tokens
+                    if result.content.len() > MAX_TOOL_OUTPUT_CHARS {
+                        let truncated = result.content.chars().take(MAX_TOOL_OUTPUT_CHARS).collect::<String>();
+                        format!("{}... [truncated]", truncated)
+                    } else {
+                        result.content.clone()
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join("\n")
         );
@@ -463,7 +472,7 @@ impl BotClient for OpenAIClient {
                     name: t.name.to_string(),
                     description: t.description.as_deref().unwrap_or("").to_string(),
                     parameters,
-                    strict: Some(true),
+                    strict: Some(false),
                 },
             }
         }).collect::<Vec<_>>();

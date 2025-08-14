@@ -163,6 +163,17 @@ impl Chat {
         self.prompt_input(id!(prompt))
     }
 
+    /// Creates a simple summary of tool output
+    fn create_tool_output_summary(_tool_name: &str, content: &str) -> String {
+        // If content is very short (like a simple status message), show it
+        if content.len() <= 80 {
+            content.to_string()
+        } else {
+            // For longer content, just indicate success without showing the verbose output
+            "Output received".to_string()
+        }
+    }
+
     /// Getter to the underlying [MessagesRef] independent of its id.
     pub fn messages_ref(&self) -> MessagesRef {
         self.messages(id!(messages))
@@ -436,15 +447,17 @@ impl Chat {
                 // Create formatted text for tool results
                 let results_text = if tool_results.len() == 1 {
                     let result = &tool_results[0];
-                    format!("🔧 Tool '{}' {}:\n{}", 
-                        // Extract tool name from the first tool call
-                        tool_calls.iter()
-                            .find(|tc| tc.id == result.tool_call_id)
-                            .map(|tc| tc.name.as_str())
-                            .unwrap_or("unknown"),
-                        if result.is_error { "failed" } else { "executed successfully" },
-                        result.content
-                    )
+                    let tool_name = tool_calls.iter()
+                        .find(|tc| tc.id == result.tool_call_id)
+                        .map(|tc| tc.name.as_str())
+                        .unwrap_or("unknown");
+                    
+                    if result.is_error {
+                        format!("🔧 Tool '{}' failed:\n{}", tool_name, result.content)
+                    } else {
+                        let summary = Self::create_tool_output_summary(tool_name, &result.content);
+                        format!("🔧 Tool '{}' executed successfully:\n{}", tool_name, summary)
+                    }
                 } else {
                     let mut text = format!("🔧 Executed {} tools:\n\n", tool_results.len());
                     for result in &tool_results {
@@ -452,11 +465,13 @@ impl Chat {
                             .find(|tc| tc.id == result.tool_call_id)
                             .map(|tc| tc.name.as_str())
                             .unwrap_or("unknown");
-                        text.push_str(&format!("**{}** {}: {}\n\n", 
-                            tool_name,
-                            if result.is_error { "❌" } else { "✅" },
-                            result.content
-                        ));
+                        
+                        if result.is_error {
+                            text.push_str(&format!("**{}** ❌: {}\n\n", tool_name, result.content));
+                        } else {
+                            let summary = Self::create_tool_output_summary(tool_name, &result.content);
+                            text.push_str(&format!("**{}** ✅: {}\n\n", tool_name, summary));
+                        }
                     }
                     text
                 };
