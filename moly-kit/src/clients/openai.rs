@@ -96,6 +96,26 @@ struct FunctionTool {
     function: FunctionDefinition,
 }
 
+/// Tool call from OpenAI API
+#[derive(Clone, Debug, Deserialize)]
+struct OpenAIToolCall {
+    #[serde(default)]
+    pub id: String,
+    #[serde(rename = "type")]
+    #[serde(default)]
+    pub tool_type: String,
+    pub function: OpenAIFunctionCall,
+}
+
+/// Function call within a tool call
+#[derive(Clone, Debug, Deserialize)]
+struct OpenAIFunctionCall {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub arguments: String, // JSON string that needs to be parsed
+}
+
 /// Message being received by the completions endpoint.
 ///
 /// Although most OpenAI-compatible APIs return a `role` field, OpenAI itself does not.
@@ -120,15 +140,42 @@ struct IncomingMessage {
     #[serde(deserialize_with = "deserialize_null_default")]
     #[serde(alias = "reasoning_content")]
     pub reasoning: String,
+    /// Tool calls made by the assistant
+    #[serde(default)]
+    pub tool_calls: Vec<OpenAIToolCall>,
 }
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
 struct OutcomingMessage {
     pub content: Content,
     pub role: Role,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<serde_json::Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> {
+    // Handle tool results specially
+    if !message.content.tool_results.is_empty() {
+        let role = Role::Tool;
+        let content = Content::Text(
+            message.content.tool_results
+                .iter()
+                .map(|result| result.content.clone())
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+        let tool_call_id = message.content.tool_results.first().map(|r| r.tool_call_id.clone());
+        
+        return Ok(OutcomingMessage { 
+            content, 
+            role, 
+            tool_calls: None,
+            tool_call_id,
+        });
+    }
+
     let role = match message.from {
         EntityId::User => Ok(Role::User),
         EntityId::System => Ok(Role::System),
@@ -175,7 +222,28 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
         Content::Parts(parts)
     };
 
-    Ok(OutcomingMessage { content, role })
+    // Convert tool calls to OpenAI format
+    let tool_calls = if !message.content.tool_calls.is_empty() {
+        Some(message.content.tool_calls.iter().map(|tc| {
+            serde_json::json!({
+                "id": tc.id,
+                "type": "function",
+                "function": {
+                    "name": tc.name,
+                    "arguments": serde_json::to_string(&tc.arguments).unwrap_or_default()
+                }
+            })
+        }).collect())
+    } else {
+        None
+    };
+
+    Ok(OutcomingMessage { 
+        content, 
+        role, 
+        tool_calls,
+        tool_call_id: None,
+    })
 }
 
 /// Role of a message that is part of the conversation context.
@@ -190,12 +258,15 @@ enum Role {
     User,
     #[serde(rename = "assistant")]
     Assistant,
+    #[serde(rename = "tool")]
+    Tool,
 }
 
 /// The Choice object as part of a streaming response.
 #[derive(Clone, Debug, Deserialize)]
 struct Choice {
     pub delta: IncomingMessage,
+    pub finish_reason: Option<String>,
 }
 
 /// Response from the completions endpoint
@@ -460,6 +531,9 @@ impl BotClient for OpenAIClient {
 
             let mut content = MessageContent::default();
             let mut full_text = String::default();
+                            let mut tool_argument_buffers: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                let mut tool_names: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                let mut tool_call_ids_by_index: std::collections::HashMap<usize, String> = std::collections::HashMap::new();
             let events = parse_sse(response.bytes_stream());
 
             for await event in events {
@@ -476,6 +550,8 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
+
+
                 let completion: Completion = match serde_json::from_str(&event) {
                     Ok(c) => c,
                     Err(error) => {
@@ -488,6 +564,44 @@ impl BotClient for OpenAIClient {
                         return;
                     }
                 };
+
+                // Check if this chunk has finish_reason for tool_calls
+                let is_tool_calls_finished = completion.choices.iter()
+                    .any(|choice| choice.finish_reason.as_deref() == Some("tool_calls"));
+                
+                let mut should_yield_content = true;
+                
+                if is_tool_calls_finished {
+                    // Process any remaining buffered tool calls
+                    for (tool_call_id, buffered_args) in tool_argument_buffers.drain() {
+                        let arguments = if buffered_args.is_empty() || buffered_args == "{}" {
+                            serde_json::Map::new()
+                        } else {
+                            match serde_json::from_str::<serde_json::Value>(&buffered_args) {
+                                Ok(serde_json::Value::Object(args)) => args,
+                                Ok(serde_json::Value::Null) => serde_json::Map::new(),
+                                Ok(_) => serde_json::Map::new(),
+                                Err(_) => serde_json::Map::new()
+                            }
+                        };
+                        
+                        // Create the tool call if we have the name and it's not already created
+                        if let Some(name) = tool_names.get(&tool_call_id) {
+                            let tool_call = ToolCall {
+                                id: tool_call_id.clone(),
+                                name: name.clone(),
+                                arguments,
+                            };
+                            content.tool_calls.push(tool_call);
+                        }
+                    }
+                    // Clear the tool names and index mapping as well
+                    tool_names.clear();
+                    tool_call_ids_by_index.clear();
+                } else if !tool_argument_buffers.is_empty() || !tool_names.is_empty() {
+                    // We have incomplete tool calls, don't yield content yet
+                    should_yield_content = false;
+                }
 
                 // Aggregate deltas
                 for choice in &completion.choices {
@@ -507,6 +621,91 @@ impl BotClient for OpenAIClient {
                         // Otherwise, set the reasoning to what we extracted from the full text.
                         content.reasoning = reasoning.to_string();
                     }
+
+                    // Handle tool calls
+                    for (index, tool_call) in choice.delta.tool_calls.iter().enumerate() {
+                        // Determine the tool call ID to use
+                        let tool_call_id = if !tool_call.id.is_empty() {
+                            // This chunk has an ID, use it and store the index mapping
+                            tool_call_ids_by_index.insert(index, tool_call.id.clone());
+                            tool_call.id.clone()
+                        } else {
+                            // This chunk doesn't have an ID, look it up by index
+                            if let Some(existing_id) = tool_call_ids_by_index.get(&index) {
+                                existing_id.clone()
+                            } else {
+                                continue;
+                            }
+                        };
+                        
+                        // Update the argument buffer for this tool call
+                        let buffer_entry = tool_argument_buffers.entry(tool_call_id.clone()).or_default();
+                        buffer_entry.push_str(&tool_call.function.arguments);
+                        
+                        // If this chunk has a function name, it's the initial tool call definition
+                        // Store the name but don't add to content.tool_calls yet, wait until arguments are complete
+                        if !tool_call.function.name.is_empty() {
+                            tool_names.insert(tool_call_id.clone(), tool_call.function.name.clone());
+                        }
+                        
+                        // Try to parse the current buffer as complete JSON
+                        if !buffer_entry.is_empty() {
+                            if buffer_entry == "{}" {
+                                if let Some(name) = tool_names.get(&tool_call_id) {
+                                    let tool_call = ToolCall {
+                                        id: tool_call_id.clone(),
+                                        name: name.clone(),
+                                        arguments: serde_json::Map::new(),
+                                    };
+                                    content.tool_calls.push(tool_call);
+                                    tool_argument_buffers.remove(&tool_call_id);
+                                    tool_names.remove(&tool_call_id);
+                                }
+                            } else {
+                                match serde_json::from_str::<serde_json::Value>(buffer_entry) {
+                                    Ok(serde_json::Value::Object(args)) => {
+                                        if let Some(name) = tool_names.get(&tool_call_id) {
+                                            let tool_call = ToolCall {
+                                                id: tool_call_id.clone(),
+                                                name: name.clone(),
+                                                arguments: args,
+                                            };
+                                            content.tool_calls.push(tool_call);
+                                            tool_argument_buffers.remove(&tool_call_id);
+                                            tool_names.remove(&tool_call_id);
+                                        }
+                                    },
+                                    Ok(serde_json::Value::Null) => {
+                                        if let Some(name) = tool_names.get(&tool_call_id) {
+                                            let tool_call = ToolCall {
+                                                id: tool_call_id.clone(),
+                                                name: name.clone(),
+                                                arguments: serde_json::Map::new(),
+                                            };
+                                            content.tool_calls.push(tool_call);
+                                            tool_argument_buffers.remove(&tool_call_id);
+                                            tool_names.remove(&tool_call_id);
+                                        }
+                                    },
+                                    Ok(_) => {
+                                        if let Some(name) = tool_names.get(&tool_call_id) {
+                                            let tool_call = ToolCall {
+                                                id: tool_call_id.clone(),
+                                                name: name.clone(),
+                                                arguments: serde_json::Map::new(),
+                                            };
+                                            content.tool_calls.push(tool_call);
+                                            tool_argument_buffers.remove(&tool_call_id);
+                                            tool_names.remove(&tool_call_id);
+                                        }
+                                    },
+                                    Err(_) => {
+                                        // Don't update tool calls yet, wait for complete arguments
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 for citation in completion.citations {
@@ -515,7 +714,9 @@ impl BotClient for OpenAIClient {
                     }
                 }
 
-                yield ClientResult::new_ok(content.clone());
+                if should_yield_content {
+                    yield ClientResult::new_ok(content.clone());
+                }
             }
         };
 

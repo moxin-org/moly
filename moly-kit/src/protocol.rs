@@ -232,6 +232,30 @@ impl fmt::Display for BotId {
     }
 }
 
+/// Represents a function/tool call made by the AI
+#[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct ToolCall {
+    /// Unique identifier for this tool call
+    pub id: String,
+    /// Name of the tool/function to call
+    pub name: String,
+    /// Arguments passed to the tool (JSON)
+    pub arguments: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Represents the result of a tool call execution
+#[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct ToolResult {
+    /// The tool call ID this result corresponds to
+    pub tool_call_id: String,
+    /// The result content from the tool execution
+    pub content: String,
+    /// Whether the tool call was successful
+    pub is_error: bool,
+}
+
 /// Standard message content format.
 #[derive(Clone, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -255,6 +279,14 @@ pub struct MessageContent {
     /// File attachments in this content.
     #[cfg_attr(feature = "json", serde(default))]
     pub attachments: Vec<Attachment>,
+
+    /// Tool calls made by the AI (for assistant messages)
+    #[cfg_attr(feature = "json", serde(default))]
+    pub tool_calls: Vec<ToolCall>,
+
+    /// Tool call results (for tool messages)
+    #[cfg_attr(feature = "json", serde(default))]
+    pub tool_results: Vec<ToolResult>,
 
     /// Non-standard data contained by this message.
     ///
@@ -286,6 +318,8 @@ impl MessageContent {
             && self.data.is_none()
             && self.reasoning.is_empty()
             && self.attachments.is_empty()
+            && self.tool_calls.is_empty()
+            && self.tool_results.is_empty()
             && self.upgrade.is_none()
     }
 }

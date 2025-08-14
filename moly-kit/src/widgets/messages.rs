@@ -41,6 +41,7 @@ live_design! {
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
+            SystemLine = <SystemLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -243,7 +244,19 @@ impl Messages {
 
             match &message.from {
                 EntityId::System => {
-                    // TODO: Can or should system messages be rendered?
+                    // Render system messages (tool results, etc.)
+                    let item = list.item(cx, index, live_id!(SystemLine));
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                        Some(Picture::Grapheme("S".into()));
+                    item.label(id!(name)).set_text(cx, "System");
+
+                    item.slot(id!(content))
+                        .current()
+                        .as_standard_message_content()
+                        .set_content(cx, &message.content);
+
+                    self.apply_actions_and_editor_visibility(cx, &item, index);
+                    item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::App => {
                     // Handle EOC marker

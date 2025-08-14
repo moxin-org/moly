@@ -194,4 +194,17 @@ live_design! {
             }
         }
     }
+
+    pub SystemLine = <AppLine> {
+        message_section = {
+            draw_bg: {color: #e3f2fd}
+
+            sender = {
+                avatar = {
+                    grapheme = {draw_bg: {color: #1976d2}}
+                }
+                name = {text: "System"}
+            }
+        }
+    }
 }
