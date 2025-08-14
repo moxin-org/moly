@@ -1,3 +1,4 @@
+use crate::utils::asynchronous::BoxPlatformSendFuture;
 #[cfg(target_arch = "wasm32")]
 use crate::utils::asynchronous::ThreadToken;
 #[cfg(target_arch = "wasm32")]
@@ -35,6 +36,22 @@ impl PartialEq for WebFileHandle {
     }
 }
 
+#[derive(Clone)]
+struct PersistedAttachmentHandle {
+    reader:
+        Arc<dyn Fn() -> BoxPlatformSendFuture<'static, std::io::Result<Arc<[u8]>>> + Send + Sync>,
+    key: String,
+}
+
+impl std::fmt::Debug for PersistedAttachmentHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PersistedAttachmentHandle")
+            .field("key", &self.key)
+            .field("reader", &format_args!("{:p}", Arc::as_ptr(&self.reader)))
+            .finish()
+    }
+}
+
 /// Private type that points to wherever the attachment content is stored.
 ///
 /// Comparision is done by pointer, file path, file handle, etc. Not by content.
@@ -45,6 +62,8 @@ enum AttachmentContentHandle {
     FilePick(std::path::PathBuf),
     #[cfg(target_arch = "wasm32")]
     FilePick(ThreadToken<WebFileHandle>),
+    ErasedPersisted(String),
+    Persisted(PersistedAttachmentHandle),
 }
 
 impl PartialEq for AttachmentContentHandle {
@@ -101,17 +120,11 @@ impl AttachmentContentHandle {
                 let content = handle.rfd_handle.read().await;
                 Ok(Arc::from(content))
             }
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn read_blocking(&self) -> std::io::Result<Arc<[u8]>> {
-        match self {
-            AttachmentContentHandle::InMemory(content) => Ok(content.clone()),
-            AttachmentContentHandle::FilePick(path) => {
-                let content = std::fs::read(path)?;
-                Ok(Arc::from(content))
-            }
+            AttachmentContentHandle::ErasedPersisted(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Cannot read erased persisted attachment. Please restore the reader with `set_persisted_reader` first.",
+            )),
+            AttachmentContentHandle::Persisted(persisted) => (persisted.reader)().await,
         }
     }
 }
@@ -302,7 +315,7 @@ impl Attachment {
         // Although we could read this content asynchronously, we would still need
         // to open the save dialog synchronously from the main thread, which would
         // complicate things.
-        let content = match content_handle.read_blocking() {
+        let content = match futures::executor::block_on(content_handle.read()) {
             Ok(content) => content,
             Err(err) => {
                 ::log::warn!(
@@ -332,5 +345,70 @@ impl Attachment {
         self.content_type
             .as_deref()
             .unwrap_or("application/octet-stream")
+    }
+
+    pub fn get_persisted_key(&self) -> Option<&str> {
+        match &self.content {
+            Some(AttachmentContentHandle::Persisted(persisted)) => Some(&persisted.key),
+            Some(AttachmentContentHandle::ErasedPersisted(key)) => Some(key),
+            _ => None,
+        }
+    }
+
+    pub fn has_persisted_key(&self) -> bool {
+        self.get_persisted_key().is_some()
+    }
+
+    pub fn has_persisted_reader(&self) -> bool {
+        matches!(&self.content, Some(AttachmentContentHandle::Persisted(_)))
+    }
+
+    pub fn set_persistent_key(&mut self, key: String) {
+        match &self.content {
+            Some(AttachmentContentHandle::Persisted(persisted)) => {
+                self.content = Some(AttachmentContentHandle::Persisted(
+                    PersistedAttachmentHandle {
+                        reader: persisted.reader.clone(),
+                        key,
+                    },
+                ));
+            }
+            Some(AttachmentContentHandle::ErasedPersisted(_)) => {
+                self.content = Some(AttachmentContentHandle::ErasedPersisted(key));
+            }
+            _ => {
+                self.content = Some(AttachmentContentHandle::ErasedPersisted(key));
+            }
+        }
+    }
+
+    pub fn set_persisted_reader(
+        &mut self,
+        reader: impl Fn() -> BoxPlatformSendFuture<'static, std::io::Result<Arc<[u8]>>>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        match &self.content {
+            Some(AttachmentContentHandle::Persisted(persisted)) => {
+                self.content = Some(AttachmentContentHandle::Persisted(
+                    PersistedAttachmentHandle {
+                        reader: Arc::new(reader),
+                        key: persisted.key.clone(),
+                    },
+                ));
+            }
+            Some(AttachmentContentHandle::ErasedPersisted(key)) => {
+                self.content = Some(AttachmentContentHandle::Persisted(
+                    PersistedAttachmentHandle {
+                        reader: Arc::new(reader),
+                        key: key.clone(),
+                    },
+                ));
+            }
+            _ => {
+                ::log::warn!("Cannot set persisted reader on a non-persisted attachment");
+            }
+        }
     }
 }

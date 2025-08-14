@@ -102,7 +102,26 @@ impl Chat {
             .ok_or_else(|| anyhow!("Invalid chat file path"))?;
 
         match fs.read_json::<ChatData>(path).await {
-            Ok(data) => {
+            Ok(mut data) => {
+                for m in &mut data.messages {
+                    for a in &mut m.content.attachments {
+                        if a.has_persisted_key() {
+                            let path = PathBuf::from(a.get_persisted_key().unwrap());
+                            a.set_persisted_reader(move || {
+                                let path = path.clone();
+                                Box::pin(async move {
+                                    let fs = filesystem::global();
+                                    let content = fs
+                                        .read(&path)
+                                        .await
+                                        .map_err(|e| std::io::Error::other(e))?;
+                                    Ok(content.into())
+                                })
+                            });
+                        }
+                    }
+                }
+
                 let chat = Chat {
                     id: data.id,
                     associated_bot: data.associated_bot,
