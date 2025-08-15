@@ -85,6 +85,24 @@ impl PartialEq for AttachmentContentHandle {
     }
 }
 
+impl Eq for AttachmentContentHandle {}
+
+impl std::hash::Hash for AttachmentContentHandle {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            AttachmentContentHandle::InMemory(content) => {
+                Arc::as_ptr(content).hash(state);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            AttachmentContentHandle::FilePick(path) => path.hash(state),
+            #[cfg(target_arch = "wasm32")]
+            AttachmentContentHandle::FilePick(handle) => handle.peek(|h| h.id).hash(state),
+            AttachmentContentHandle::ErasedPersisted(key) => key.hash(state),
+            AttachmentContentHandle::Persisted(persisted) => persisted.key.hash(state),
+        }
+    }
+}
+
 impl From<&[u8]> for AttachmentContentHandle {
     fn from(bytes: &[u8]) -> Self {
         AttachmentContentHandle::InMemory(Arc::from(bytes))
@@ -147,7 +165,7 @@ impl AttachmentContentHandle {
 /// data is skipped and the attachment will become "unavailable" when deserialized back.
 ///
 /// Two unavailable attachments are considered equal if they have the same metadata.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Attachment {
     /// Normally the original filename.
