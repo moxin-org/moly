@@ -337,8 +337,15 @@ impl ChatView {
             // TODO: Consider re-used attachments before deleting.
             spawn(async move {
                 let key = attachment.get_persisted_key().unwrap();
+                ::log::info!("Deleting persisted attachment with key: {}", key);
                 let path = Path::new(key);
-                filesystem::global().remove(path).await;
+                if let Err(e) = filesystem::global().remove(path).await {
+                    ::log::error!(
+                        "Failed to delete persisted attachment with key {}: {}",
+                        key,
+                        e
+                    );
+                }
             });
         }
 
@@ -348,9 +355,14 @@ impl ChatView {
             spawn(async move {
                 // TODO: Not unique enough.
                 let key = format!("attachments/{}", attachment.name);
+                ::log::info!("Persisting attachment with key: {}", key);
                 let path = Path::new(&key).to_path_buf();
 
                 let Ok(content) = attachment.read().await else {
+                    ::log::error!(
+                        "Failed to read attachment to persist with name: {}",
+                        attachment.name
+                    );
                     return;
                 };
 
@@ -358,6 +370,10 @@ impl ChatView {
                     .queue_write(path, content.to_vec())
                     .await
                 else {
+                    ::log::error!(
+                        "Failed to write attachment to persist with name: {}",
+                        attachment.name
+                    );
                     return;
                 };
 

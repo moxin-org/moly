@@ -66,6 +66,38 @@ enum AttachmentContentHandle {
     Persisted(PersistedAttachmentHandle),
 }
 
+#[cfg(feature = "json")]
+impl serde::Serialize for AttachmentContentHandle {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            AttachmentContentHandle::ErasedPersisted(key) => serializer.serialize_str(key),
+            AttachmentContentHandle::Persisted(persisted) => {
+                serializer.serialize_str(&persisted.key)
+            }
+            _ => serializer.serialize_none(),
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl<'de> serde::Deserialize<'de> for AttachmentContentHandle {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let opt_key: Option<String> = Option::deserialize(deserializer)?;
+        match opt_key {
+            Some(key) => Ok(AttachmentContentHandle::ErasedPersisted(key)),
+            None => Err(serde::de::Error::custom(
+                "AttachmentContentHandle cannot be deserialized from null",
+            )),
+        }
+    }
+}
+
 impl PartialEq for AttachmentContentHandle {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -172,8 +204,6 @@ pub struct Attachment {
     pub name: String,
     /// Mime type of the content, if known.
     pub content_type: Option<String>,
-    // TODO: Read on demand instead of holding the content in memory.
-    #[serde(skip)]
     content: Option<AttachmentContentHandle>,
 }
 
