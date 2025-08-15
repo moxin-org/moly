@@ -135,12 +135,14 @@ impl LiveHook for ChatView {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         self.prompt_input(id!(chat.prompt)).write().disable();
 
-        // Hook into message updates to update the persisted chat history
+        // Glue between Moly and Moly Kit.
         let ui = self.ui_runner();
         self.chat(id!(chat))
             .write()
             .set_hook_after(move |group, _, _| {
                 for task in group.iter() {
+                    // Currently, we only need to process one task at a time in
+                    // the context of our widget.
                     let task = task.clone();
                     ui.defer_with_redraw(move |me, cx, scope| {
                         me.handle_chat_task(task, cx, scope);
@@ -289,13 +291,17 @@ impl ChatView {
 
     fn handle_chat_task(&mut self, task: ChatTask, cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        // Let's get the chat in the store we will apply the modifications to.
         let Some(store_chat) = store.chats.get_chat_by_id(self.chat_id) else {
             return;
         };
 
         let mut store_chat = store_chat.borrow_mut();
 
-        // Simplify by translating message mutations into a splice operation.
+        // Transform task operations into a single `splice` operation that can
+        // be applied to the store chat messages and is easier to analyze for
+        // attachment persistence.
         let (range, replacement) = match task {
             ChatTask::InsertMessage(index, message) => (index..index, vec![message]),
             ChatTask::UpdateMessage(index, message) => {
@@ -310,29 +316,39 @@ impl ChatView {
             _ => (0..0, vec![]),
         };
 
-        let chat = self.chat(id!(chat));
-
+        // Track the attachments that are in the replacement part of the splice to
+        // help with next steps.
         let attachments_in_replacement = replacement
             .iter()
             .flat_map(|m| &m.content.attachments)
             .cloned()
             .collect::<HashSet<_>>();
 
+        // Make a list of previously PERSISTED attachments that would be lost after
+        // applying the splice.
+        // Focus on the range that will be replaced.
         let attachments_to_delete = store_chat.messages[range.clone()]
             .iter()
             .flat_map(|m| &m.content.attachments)
+            // Focus on attachments already on disk.
             .filter(|a| a.has_persisted_key())
+            // Only relevant if they really disappear from the replacement.
             .filter(|a| !attachments_in_replacement.contains(a))
             .cloned()
             .collect::<Vec<_>>();
 
+        // Make a list of NOT PERSISTED attachments that will be applied after
+        // after the splice.
         let attachments_to_persist = attachments_in_replacement
             .iter()
+            // Focus on non-persisted attachments only.
             .filter(|a| !a.has_persisted_key())
+            // Avoid attachments already being processed.
             .filter(|a| !self.persisting_attachments.contains(a))
             .cloned()
             .collect::<Vec<_>>();
 
+        // Start deleting each removed attachment.
         for attachment in attachments_to_delete {
             // TODO: Consider re-used attachments before deleting.
             spawn(async move {
@@ -349,6 +365,7 @@ impl ChatView {
             });
         }
 
+        // Start persisting each new attachment.
         for attachment in attachments_to_persist {
             let ui = self.ui_runner();
             self.persisting_attachments.insert(attachment.clone());
@@ -402,10 +419,12 @@ impl ChatView {
             });
         }
 
+        // Apply the splice to the store chat.
         store_chat
             .messages
             .splice(range.clone(), replacement.clone());
 
+        // Update the title if the first message changed (due to insert or update).
         if range.start == 0 && !replacement.is_empty() {
             store_chat.update_title_based_on_first_message();
         }
