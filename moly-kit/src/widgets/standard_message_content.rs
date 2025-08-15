@@ -88,35 +88,47 @@ impl StandardMessageContent {
             .set_content(cx, content, metadata);
 
         let markdown = self.label(id!(markdown));
-        
+
         // Create enhanced text that includes tool calls
         let enhanced_text = if !content.tool_calls.is_empty() {
             let mut text = content.text.clone();
             if !text.is_empty() {
                 text.push_str("\n\n");
             }
-            
+
             if content.tool_calls.len() == 1 {
                 let tool_call = &content.tool_calls[0];
                 let args_str = if tool_call.arguments.is_empty() {
                     "no parameters".to_string()
                 } else {
-                    format!("parameters: {}", 
-                        tool_call.arguments.iter()
+                    format!(
+                        "parameters: {}",
+                        tool_call
+                            .arguments
+                            .iter()
                             .map(|(k, v)| format!("{}: {}", k, v))
                             .collect::<Vec<_>>()
                             .join(", ")
                     )
                 };
-                text.push_str(&format!("🔧 **Calling tool:** `{}` with {}", tool_call.name, args_str));
+                text.push_str(&format!(
+                    "🔧 **Calling tool:** `{}` with {}",
+                    tool_call.name, args_str
+                ));
             } else {
-                text.push_str(&format!("🔧 **Calling {} tools:**\n", content.tool_calls.len()));
+                text.push_str(&format!(
+                    "🔧 **Calling {} tools:**\n",
+                    content.tool_calls.len()
+                ));
                 for tool_call in &content.tool_calls {
                     let args_str = if tool_call.arguments.is_empty() {
                         "no parameters".to_string()
                     } else {
-                        format!("parameters: {}", 
-                            tool_call.arguments.iter()
+                        format!(
+                            "parameters: {}",
+                            tool_call
+                                .arguments
+                                .iter()
                                 .map(|(k, v)| format!("{}: {}", k, v))
                                 .collect::<Vec<_>>()
                                 .join(", ")
@@ -129,7 +141,7 @@ impl StandardMessageContent {
         } else {
             content.text.clone()
         };
-        
+
         if metadata.is_writing() {
             let text_with_typing = format!("{} {}", enhanced_text, TYPING_INDICATOR);
             markdown.set_text(cx, &text_with_typing);

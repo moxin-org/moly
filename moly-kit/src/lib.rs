@@ -17,12 +17,12 @@
 //! [documentation](https://moxin-org.github.io/moly).
 
 pub mod clients;
+pub mod mcp;
 pub mod protocol;
 pub mod utils;
 pub mod widgets;
-pub mod mcp;
 
 pub use clients::*;
+pub use mcp::*;
 pub use protocol::*;
 pub use widgets::*;
-pub use mcp::*;

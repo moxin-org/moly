@@ -1308,7 +1308,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.61.2",
+ "windows-core 0.57.0",
 ]
 
 [[package]]
@@ -1565,7 +1565,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -2029,6 +2029,7 @@ dependencies = [
  "env_logger",
  "futures",
  "log",
+ "makepad-code-editor",
  "makepad-widgets",
  "moly-kit",
  "moly-protocol",
@@ -2936,7 +2937,7 @@ dependencies = [
 [[package]]
 name = "rmcp"
 version = "0.5.0"
-source = "git+https://www.github.com/joulei/rust-sdk#96fc5a88fe85c46e080be8c8a4dd1f4f88fc4391"
+source = "git+https://www.github.com/joulei/rust-sdk#b19a70f93b4542d31d2d26b87a5df52dd8d92b4e"
 dependencies = [
  "base64",
  "chrono",
@@ -2961,7 +2962,7 @@ dependencies = [
 [[package]]
 name = "rmcp-macros"
 version = "0.5.0"
-source = "git+https://www.github.com/joulei/rust-sdk#96fc5a88fe85c46e080be8c8a4dd1f4f88fc4391"
+source = "git+https://www.github.com/joulei/rust-sdk#b19a70f93b4542d31d2d26b87a5df52dd8d92b4e"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -4132,7 +4133,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

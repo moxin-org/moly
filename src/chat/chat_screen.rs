@@ -232,6 +232,10 @@ impl ChatScreen {
         };
 
         let mut context: BotContext = multi_client.into();
+        let tool_manager = McpManagerClient::new();
+        context.set_tool_manager(tool_manager);
+
+        let mcp_config = store.get_mcp_servers_config().clone();
         store.bot_context = Some(context.clone());
         self.chats_deck(id!(chats_deck))
             .sync_bot_contexts(cx, scope);
@@ -241,10 +245,48 @@ impl ChatScreen {
         let ui = self.ui_runner();
         spawn(async move {
             context.load().await;
-        
-            let mcp_manager = McpManagerClient::new();
-            mcp_manager.add_server("test", McpTransport::Sse("http://localhost:8000/sse".to_string())).await.unwrap();
-            context.set_tool_manager(mcp_manager);
+
+            // let mcp_manager = McpManagerClient::new();
+            // mcp_manager.add_server("test", McpTransport::Sse("http://localhost:8000/sse".to_string())).await.unwrap();
+
+            if let Some(tool_manager) = context.tool_manager() {
+                // Load MCP servers from configuration
+                for (server_id, server_config) in mcp_config.list_enabled_servers() {
+                    let transport = match &server_config.transport {
+                        crate::data::mcp_servers::McpServerTransport::Http { url } => {
+                            McpTransport::Http(url.clone())
+                        }
+                        crate::data::mcp_servers::McpServerTransport::Sse { url } => {
+                            McpTransport::Sse(url.clone())
+                        }
+                        crate::data::mcp_servers::McpServerTransport::Stdio {
+                            command,
+                            args,
+                            env,
+                            working_directory,
+                        } => {
+                            let mut cmd = tokio::process::Command::new(command);
+                            cmd.args(args);
+                            for (key, value) in env {
+                                cmd.env(key, value);
+                            }
+                            if let Some(dir) = working_directory {
+                                cmd.current_dir(dir);
+                            }
+                            McpTransport::Stdio(cmd)
+                        }
+                    };
+
+                    match tool_manager.add_server(server_id, transport).await {
+                        Ok(()) => {
+                            println!("Successfully added MCP server: {}", server_id);
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to add MCP server '{}': {}", server_id, e);
+                        }
+                    }
+                }
+            }
 
             ui.defer_with_redraw(move |me, cx, scope| {
                 me.creating_bot_context = false;

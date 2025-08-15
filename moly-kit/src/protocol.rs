@@ -1,6 +1,9 @@
+use crate::{
+    mcp_manager::McpManagerClient,
+    utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream},
+};
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 use rmcp::model::Tool;
-use crate::{mcp_manager::McpManagerClient, utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream}};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -726,7 +729,7 @@ impl Clone for Box<dyn BotClient> {
 struct InnerBotContext {
     client: Box<dyn BotClient>,
     bots: Vec<Bot>,
-    tool_manager: Option<McpManagerClient>
+    tool_manager: Option<McpManagerClient>,
 }
 
 /// A sharable wrapper around a [BotClient] that holds loadeed bots and provides

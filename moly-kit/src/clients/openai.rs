@@ -160,26 +160,36 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
     if !message.content.tool_results.is_empty() {
         let role = Role::Tool;
         let content = Content::Text(
-            message.content.tool_results
+            message
+                .content
+                .tool_results
                 .iter()
                 .map(|result| {
                     // Simple truncation: max 4096 tokens per tool result (roughly 16k characters)
                     const MAX_TOOL_OUTPUT_CHARS: usize = 16384; // ~4096 tokens
                     if result.content.len() > MAX_TOOL_OUTPUT_CHARS {
-                        let truncated = result.content.chars().take(MAX_TOOL_OUTPUT_CHARS).collect::<String>();
+                        let truncated = result
+                            .content
+                            .chars()
+                            .take(MAX_TOOL_OUTPUT_CHARS)
+                            .collect::<String>();
                         format!("{}... [truncated]", truncated)
                     } else {
                         result.content.clone()
                     }
                 })
                 .collect::<Vec<_>>()
-                .join("\n")
+                .join("\n"),
         );
-        let tool_call_id = message.content.tool_results.first().map(|r| r.tool_call_id.clone());
-        
-        return Ok(OutcomingMessage { 
-            content, 
-            role, 
+        let tool_call_id = message
+            .content
+            .tool_results
+            .first()
+            .map(|r| r.tool_call_id.clone());
+
+        return Ok(OutcomingMessage {
+            content,
+            role,
             tool_calls: None,
             tool_call_id,
         });
@@ -232,8 +242,9 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
     };
 
     // Convert tool calls to OpenAI format
-    let tool_calls = if !message.content.tool_calls.is_empty() {
-        Some(message.content.tool_calls.iter().map(|tc| {
+    let tool_calls =
+        if !message.content.tool_calls.is_empty() {
+            Some(message.content.tool_calls.iter().map(|tc| {
             serde_json::json!({
                 "id": tc.id,
                 "type": "function",
@@ -243,13 +254,13 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
                 }
             })
         }).collect())
-    } else {
-        None
-    };
+        } else {
+            None
+        };
 
-    Ok(OutcomingMessage { 
-        content, 
-        role, 
+    Ok(OutcomingMessage {
+        content,
+        role,
         tool_calls,
         tool_call_id: None,
     })
@@ -450,32 +461,43 @@ impl BotClient for OpenAIClient {
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
-        let tools = tools.iter().map(|t| {
-            // Use the input_schema from the MCP tool, but ensure OpenAI compatibility
-            let mut parameters_map = (*t.input_schema).clone();
-            
-            // Ensure additionalProperties is set to false as required by OpenAI
-            parameters_map.insert("additionalProperties".to_string(), serde_json::Value::Bool(false));
-            
-            // Ensure properties field exists for object schemas (OpenAI requirement)
-            if parameters_map.get("type") == Some(&serde_json::Value::String("object".to_string())) {
-                if !parameters_map.contains_key("properties") {
-                    parameters_map.insert("properties".to_string(), serde_json::Value::Object(serde_json::Map::new()));
+        let tools = tools
+            .iter()
+            .map(|t| {
+                // Use the input_schema from the MCP tool, but ensure OpenAI compatibility
+                let mut parameters_map = (*t.input_schema).clone();
+
+                // Ensure additionalProperties is set to false as required by OpenAI
+                parameters_map.insert(
+                    "additionalProperties".to_string(),
+                    serde_json::Value::Bool(false),
+                );
+
+                // Ensure properties field exists for object schemas (OpenAI requirement)
+                if parameters_map.get("type")
+                    == Some(&serde_json::Value::String("object".to_string()))
+                {
+                    if !parameters_map.contains_key("properties") {
+                        parameters_map.insert(
+                            "properties".to_string(),
+                            serde_json::Value::Object(serde_json::Map::new()),
+                        );
+                    }
                 }
-            }
-            
-            let parameters = serde_json::Value::Object(parameters_map);
-            
-            FunctionTool{
-                tool_type: "function".to_string(),
-                function: FunctionDefinition {
-                    name: t.name.to_string(),
-                    description: t.description.as_deref().unwrap_or("").to_string(),
-                    parameters,
-                    strict: Some(false),
-                },
-            }
-        }).collect::<Vec<_>>();
+
+                let parameters = serde_json::Value::Object(parameters_map);
+
+                FunctionTool {
+                    tool_type: "function".to_string(),
+                    function: FunctionDefinition {
+                        name: t.name.to_string(),
+                        description: t.description.as_deref().unwrap_or("").to_string(),
+                        parameters,
+                        strict: Some(false),
+                    },
+                }
+            })
+            .collect::<Vec<_>>();
 
         let stream = stream! {
             let mut outgoing_messages: Vec<OutcomingMessage> = Vec::with_capacity(messages.len());
@@ -577,9 +599,9 @@ impl BotClient for OpenAIClient {
                 // Check if this chunk has finish_reason for tool_calls
                 let is_tool_calls_finished = completion.choices.iter()
                     .any(|choice| choice.finish_reason.as_deref() == Some("tool_calls"));
-                
+
                 let mut should_yield_content = true;
-                
+
                 if is_tool_calls_finished {
                     // Process any remaining buffered tool calls
                     for (tool_call_id, buffered_args) in tool_argument_buffers.drain() {
@@ -593,7 +615,7 @@ impl BotClient for OpenAIClient {
                                 Err(_) => serde_json::Map::new()
                             }
                         };
-                        
+
                         // Create the tool call if we have the name and it's not already created
                         if let Some(name) = tool_names.get(&tool_call_id) {
                             let tool_call = ToolCall {
@@ -646,17 +668,17 @@ impl BotClient for OpenAIClient {
                                 continue;
                             }
                         };
-                        
+
                         // Update the argument buffer for this tool call
                         let buffer_entry = tool_argument_buffers.entry(tool_call_id.clone()).or_default();
                         buffer_entry.push_str(&tool_call.function.arguments);
-                        
+
                         // If this chunk has a function name, it's the initial tool call definition
                         // Store the name but don't add to content.tool_calls yet, wait until arguments are complete
                         if !tool_call.function.name.is_empty() {
                             tool_names.insert(tool_call_id.clone(), tool_call.function.name.clone());
                         }
-                        
+
                         // Try to parse the current buffer as complete JSON
                         if !buffer_entry.is_empty() {
                             if buffer_entry == "{}" {

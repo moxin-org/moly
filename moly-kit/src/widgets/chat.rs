@@ -369,7 +369,8 @@ impl Chat {
             // Get the tool manager from context
             let Some(tool_manager) = context.tool_manager() else {
                 ui.defer_with_redraw(|me, cx, _| {
-                    let error_message = "Tool manager not available for executing tool calls".to_string();
+                    let error_message =
+                        "Tool manager not available for executing tool calls".to_string();
                     let next_index = me.messages_ref().read().messages.len();
                     let message = Message {
                         from: EntityId::App,
@@ -387,12 +388,16 @@ impl Chat {
             // Execute each tool call
             let mut tool_results = Vec::new();
             for tool_call in &tool_calls {
-                match tool_manager.call_tool(&tool_call.name, tool_call.arguments.clone()).await {
+                match tool_manager
+                    .call_tool(&tool_call.name, tool_call.arguments.clone())
+                    .await
+                {
                     Ok(result) => {
                         // Convert MCP result to our ToolResult
                         let content = match result.content {
                             Some(content_items) => {
-                                content_items.iter()
+                                content_items
+                                    .iter()
                                     .filter_map(|item| {
                                         // Extract text content from the MCP result
                                         // TODO: This is a simplified conversion, we might need to handle other content types
@@ -407,7 +412,7 @@ impl Chat {
                             }
                             None => "Tool executed successfully with no output".to_string(),
                         };
-                        
+
                         println!("Tool result: {:?}", content);
 
                         tool_results.push(ToolResult {
@@ -419,18 +424,30 @@ impl Chat {
                     Err(e) => {
                         let error_message = e.to_string();
                         let formatted_error = if error_message.contains("validation failed") {
-                            format!("❌ Invalid arguments provided to tool: {}", 
-                                error_message.replace("Tool ", "").replace(" validation failed:", ""))
+                            format!(
+                                "❌ Invalid arguments provided to tool: {}",
+                                error_message
+                                    .replace("Tool ", "")
+                                    .replace(" validation failed:", "")
+                            )
                         } else if error_message.contains("not found") {
-                            format!("❓ Tool not available: {}", 
-                                error_message.replace("Tool ", "").replace(" not found in any connected MCP server", ""))
+                            format!(
+                                "❓ Tool not available: {}",
+                                error_message
+                                    .replace("Tool ", "")
+                                    .replace(" not found in any connected MCP server", "")
+                            )
                         } else if error_message.contains("execution failed") {
-                            format!("💥 Tool execution error: {}", 
-                                error_message.replace("Tool ", "").replace(" execution failed:", ""))
+                            format!(
+                                "💥 Tool execution error: {}",
+                                error_message
+                                    .replace("Tool ", "")
+                                    .replace(" execution failed:", "")
+                            )
                         } else {
                             format!("⚠️  Tool error: {}", error_message)
                         };
-                        
+
                         tool_results.push(ToolResult {
                             tool_call_id: tool_call.id.clone(),
                             content: formatted_error,
@@ -443,33 +460,39 @@ impl Chat {
             // Add tool results as new messages and trigger a new send
             ui.defer_with_redraw(move |me, cx, _| {
                 let next_index = me.messages_ref().read().messages.len();
-                
+
                 // Create formatted text for tool results
                 let results_text = if tool_results.len() == 1 {
                     let result = &tool_results[0];
-                    let tool_name = tool_calls.iter()
+                    let tool_name = tool_calls
+                        .iter()
                         .find(|tc| tc.id == result.tool_call_id)
                         .map(|tc| tc.name.as_str())
                         .unwrap_or("unknown");
-                    
+
                     if result.is_error {
                         format!("🔧 Tool '{}' failed:\n{}", tool_name, result.content)
                     } else {
                         let summary = Self::create_tool_output_summary(tool_name, &result.content);
-                        format!("🔧 Tool '{}' executed successfully:\n{}", tool_name, summary)
+                        format!(
+                            "🔧 Tool '{}' executed successfully:\n{}",
+                            tool_name, summary
+                        )
                     }
                 } else {
                     let mut text = format!("🔧 Executed {} tools:\n\n", tool_results.len());
                     for result in &tool_results {
-                        let tool_name = tool_calls.iter()
+                        let tool_name = tool_calls
+                            .iter()
                             .find(|tc| tc.id == result.tool_call_id)
                             .map(|tc| tc.name.as_str())
                             .unwrap_or("unknown");
-                        
+
                         if result.is_error {
                             text.push_str(&format!("**{}** ❌: {}\n\n", tool_name, result.content));
                         } else {
-                            let summary = Self::create_tool_output_summary(tool_name, &result.content);
+                            let summary =
+                                Self::create_tool_output_summary(tool_name, &result.content);
                             text.push_str(&format!("**{}** ✅: {}\n\n", tool_name, summary));
                         }
                     }
@@ -487,10 +510,13 @@ impl Chat {
                     ..Default::default()
                 };
 
-                me.dispatch(cx, &mut vec![
-                    ChatTask::InsertMessage(next_index, tool_message),
-                    ChatTask::Send // Trigger a new send with the tool results
-                ]);
+                me.dispatch(
+                    cx,
+                    &mut vec![
+                        ChatTask::InsertMessage(next_index, tool_message),
+                        ChatTask::Send, // Trigger a new send with the tool results
+                    ],
+                );
             });
         };
 
@@ -851,21 +877,25 @@ impl Chat {
 
                 self.dispatch(cx, &mut tasks);
 
-                let Some(ChatTask::UpdateMessage(_, updated_message)) = tasks.into_iter().next() else {
+                let Some(ChatTask::UpdateMessage(_, updated_message)) = tasks.into_iter().next()
+                else {
                     // Let's abort if the tasks were modified in an unexpected way.
                     return true;
                 };
 
                 if !updated_message.content.tool_calls.is_empty() {
-                    println!("🔧 Complete tool calls received in chat widget: {} tools", updated_message.content.tool_calls.len());
-                    
+                    println!(
+                        "🔧 Complete tool calls received in chat widget: {} tools",
+                        updated_message.content.tool_calls.len()
+                    );
+
                     // Mark message as not writing since tool calls are complete
                     let mut final_message = updated_message.clone();
                     final_message.metadata.is_writing = false;
                     self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
-                    
+
                     self.handle_tool_calls(cx, updated_message.content.tool_calls.clone());
-                    
+
                     // Signal to stop the current stream since we're switching to tool execution
                     return true;
                 }

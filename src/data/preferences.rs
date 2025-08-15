@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::shared::utils::filesystem;
 
+use super::mcp_servers::McpServersConfig;
 use super::providers::{Provider, ProviderType};
 
 const PREFERENCES_DIR: &str = "preferences";
@@ -16,6 +17,8 @@ pub struct Preferences {
     pub downloaded_files_dir: PathBuf,
     #[serde(default)]
     pub providers_preferences: Vec<ProviderPreferences>,
+    #[serde(default)]
+    pub mcp_servers_config: McpServersConfig,
 }
 
 impl Default for Preferences {
@@ -24,6 +27,7 @@ impl Default for Preferences {
             current_chat_model: None,
             downloaded_files_dir: default_model_downloads_dir().to_path_buf(),
             providers_preferences: vec![],
+            mcp_servers_config: McpServersConfig::new(),
         }
     }
 }
@@ -130,6 +134,24 @@ impl Preferences {
 
     pub fn as_json(&self) -> String {
         serde_json::to_string(self).unwrap()
+    }
+
+    pub fn update_mcp_servers_config(&mut self, config: McpServersConfig) {
+        self.mcp_servers_config = config;
+        self.save();
+    }
+
+    pub fn get_mcp_servers_config_json(&self) -> String {
+        self.mcp_servers_config
+            .to_json()
+            .unwrap_or_else(|_| "{}".to_string())
+    }
+
+    pub fn update_mcp_servers_from_json(&mut self, json: &str) -> Result<(), serde_json::Error> {
+        let config = McpServersConfig::from_json(json)?;
+        self.mcp_servers_config = config;
+        self.save();
+        Ok(())
     }
 }
 
