@@ -34,9 +34,11 @@ live_design! {
     use crate::chat::chat_screen::ChatScreen;
     use crate::settings::moly_server_screen::MolyServerScreen;
     use crate::settings::providers_screen::ProvidersScreen;
+    use crate::mcp::mcp_screen::McpScreen;
 
     ICON_CHAT = dep("crate://self/resources/icons/chat.svg")
     ICON_LOCAL = dep("crate://self/resources/icons/local.svg")
+    ICON_MCP = dep("crate://self/resources/icons/mcp.svg")
     ICON_CLOUD = dep("crate://self/resources/icons/cloud.svg")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
 
@@ -57,6 +59,7 @@ live_design! {
 
         chat_frame = <ChatScreen> {visible: true}
         moly_server_frame = <MolyServerScreen> {visible: false}
+        mcp_frame = <McpScreen> {visible: false}
         providers_frame = <ProvidersScreen> {visible: false}
     }
 
@@ -105,6 +108,14 @@ live_design! {
             }
         }
         <HorizontalFiller> {}
+
+        mcp_tab = <SidebarMenuButton> {
+            text: "MCP",
+            draw_icon: {
+                svg_file: (ICON_MCP),
+            }
+        }
+
         providers_tab = <SidebarMenuButton> {
             text: "Providers",
             draw_icon: {
@@ -220,6 +231,7 @@ impl LiveRegister for App {
         crate::chat::live_design(cx);
         crate::my_models::live_design(cx);
         crate::settings::live_design(cx);
+        crate::mcp::live_design(cx);
     }
 }
 
@@ -278,6 +290,7 @@ impl MatchEvent for App {
         let mut navigate_to_chat = false;
         let mut navigate_to_moly_server = false;
         let mut navigate_to_providers = false;
+        let mut navigate_to_mcp = false;
 
         // TODO: Replace this with a proper navigation widget.
         if let Some(selected_tab) = self
@@ -285,6 +298,7 @@ impl MatchEvent for App {
             .radio_button_set(ids!(
                 sidebar_menu.chat_tab,
                 sidebar_menu.moly_server_tab,
+                sidebar_menu.mcp_tab,
                 sidebar_menu.providers_tab,
             ))
             .selected(cx, actions)
@@ -292,7 +306,8 @@ impl MatchEvent for App {
             match selected_tab {
                 0 => navigate_to_chat = true,
                 1 => navigate_to_moly_server = true,
-                2 => navigate_to_providers = true,
+                2 => navigate_to_mcp = true,
+                3 => navigate_to_providers = true,
                 _ => {}
             }
         }
@@ -394,6 +409,8 @@ impl MatchEvent for App {
             self.navigate_to(cx, id!(application_pages.chat_frame));
         } else if navigate_to_moly_server {
             self.navigate_to(cx, id!(application_pages.moly_server_frame));
+        } else if navigate_to_mcp {
+            self.navigate_to(cx, id!(application_pages.mcp_frame));
         }
     }
 }
@@ -454,6 +471,7 @@ impl App {
         let providers_id = id!(application_pages.providers_frame);
         let chat_id = id!(application_pages.chat_frame);
         let moly_server_id = id!(application_pages.moly_server_frame);
+        let mcp_id = id!(application_pages.mcp_frame);
 
         if id != providers_id {
             self.ui.widget(providers_id).set_visible(cx, false);
@@ -465,6 +483,10 @@ impl App {
 
         if id != moly_server_id {
             self.ui.widget(moly_server_id).set_visible(cx, false);
+        }
+
+        if id != mcp_id {
+            self.ui.widget(mcp_id).set_visible(cx, false);
         }
 
         self.ui.widget(id).set_visible(cx, true);

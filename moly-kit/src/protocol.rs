@@ -1,4 +1,9 @@
+use crate::{
+    mcp_manager::McpManagerClient,
+    utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream},
+};
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
+use rmcp::model::Tool;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -79,8 +84,6 @@ pub enum RealtimeCommand {
     /// Create a greeting response from AI
     CreateGreetingResponse,
 }
-
-use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, Debug)]
@@ -232,6 +235,30 @@ impl fmt::Display for BotId {
     }
 }
 
+/// Represents a function/tool call made by the AI
+#[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct ToolCall {
+    /// Unique identifier for this tool call
+    pub id: String,
+    /// Name of the tool/function to call
+    pub name: String,
+    /// Arguments passed to the tool (JSON)
+    pub arguments: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Represents the result of a tool call execution
+#[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct ToolResult {
+    /// The tool call ID this result corresponds to
+    pub tool_call_id: String,
+    /// The result content from the tool execution
+    pub content: String,
+    /// Whether the tool call was successful
+    pub is_error: bool,
+}
+
 /// Standard message content format.
 #[derive(Clone, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -255,6 +282,14 @@ pub struct MessageContent {
     /// File attachments in this content.
     #[cfg_attr(feature = "json", serde(default))]
     pub attachments: Vec<Attachment>,
+
+    /// Tool calls made by the AI (for assistant messages)
+    #[cfg_attr(feature = "json", serde(default))]
+    pub tool_calls: Vec<ToolCall>,
+
+    /// Tool call results (for tool messages)
+    #[cfg_attr(feature = "json", serde(default))]
+    pub tool_results: Vec<ToolResult>,
 
     /// Non-standard data contained by this message.
     ///
@@ -286,6 +321,8 @@ impl MessageContent {
             && self.data.is_none()
             && self.reasoning.is_empty()
             && self.attachments.is_empty()
+            && self.tool_calls.is_empty()
+            && self.tool_results.is_empty()
             && self.upgrade.is_none()
     }
 }
@@ -646,6 +683,7 @@ pub trait BotClient: Send {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>>;
 
     /// Interrupt the bot's current operation.
@@ -691,6 +729,7 @@ impl Clone for Box<dyn BotClient> {
 struct InnerBotContext {
     client: Box<dyn BotClient>,
     bots: Vec<Bot>,
+    tool_manager: Option<McpManagerClient>,
 }
 
 /// A sharable wrapper around a [BotClient] that holds loadeed bots and provides
@@ -755,6 +794,14 @@ impl BotContext {
     pub fn get_bot(&self, id: &BotId) -> Option<Bot> {
         self.bots().into_iter().find(|bot| bot.id == *id)
     }
+
+    pub fn tool_manager(&self) -> Option<McpManagerClient> {
+        self.0.lock().unwrap().tool_manager.clone()
+    }
+
+    pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
+        self.0.lock().unwrap().tool_manager = Some(tool_manager);
+    }
 }
 
 impl<T: BotClient + 'static> From<T> for BotContext {
@@ -762,6 +809,7 @@ impl<T: BotClient + 'static> From<T> for BotContext {
         BotContext(Arc::new(Mutex::new(InnerBotContext {
             client: Box::new(client),
             bots: Vec::new(),
+            tool_manager: None,
         })))
     }
 }

@@ -163,6 +163,17 @@ impl Chat {
         self.prompt_input(id!(prompt))
     }
 
+    /// Creates a simple summary of tool output
+    fn create_tool_output_summary(_tool_name: &str, content: &str) -> String {
+        // If content is very short (like a simple status message), show it
+        if content.len() <= 80 {
+            content.to_string()
+        } else {
+            // For longer content, just indicate success without showing the verbose output
+            "Output received".to_string()
+        }
+    }
+
     /// Getter to the underlying [MessagesRef] independent of its id.
     pub fn messages_ref(&self) -> MessagesRef {
         self.messages(id!(messages))
@@ -346,6 +357,172 @@ impl Chat {
         self.dispatch(cx, &mut ChatTask::Send.into());
     }
 
+    fn handle_tool_calls(&mut self, _cx: &mut Cx, tool_calls: Vec<ToolCall>) {
+        let context = self
+            .bot_context
+            .as_ref()
+            .expect("no BotContext provided")
+            .clone();
+
+        let ui = self.ui_runner();
+        let future = async move {
+            // Get the tool manager from context
+            let Some(tool_manager) = context.tool_manager() else {
+                ui.defer_with_redraw(|me, cx, _| {
+                    let error_message =
+                        "Tool manager not available for executing tool calls".to_string();
+                    let next_index = me.messages_ref().read().messages.len();
+                    let message = Message {
+                        from: EntityId::App,
+                        content: MessageContent {
+                            text: error_message,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    };
+                    me.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
+                });
+                return;
+            };
+
+            // Execute each tool call
+            let mut tool_results = Vec::new();
+            for tool_call in &tool_calls {
+                match tool_manager
+                    .call_tool(&tool_call.name, tool_call.arguments.clone())
+                    .await
+                {
+                    Ok(result) => {
+                        // Convert MCP result to our ToolResult
+                        let content = match result.content {
+                            Some(content_items) => {
+                                content_items
+                                    .iter()
+                                    .filter_map(|item| {
+                                        // Extract text content from the MCP result
+                                        // TODO: This is a simplified conversion, we might need to handle other content types
+                                        if let Ok(text) = serde_json::to_string(item) {
+                                            Some(text)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join("\n")
+                            }
+                            None => "Tool executed successfully with no output".to_string(),
+                        };
+
+                        println!("Tool result: {:?}", content);
+
+                        tool_results.push(ToolResult {
+                            tool_call_id: tool_call.id.clone(),
+                            content,
+                            is_error: false,
+                        });
+                    }
+                    Err(e) => {
+                        let error_message = e.to_string();
+                        let formatted_error = if error_message.contains("validation failed") {
+                            format!(
+                                "❌ Invalid arguments provided to tool: {}",
+                                error_message
+                                    .replace("Tool ", "")
+                                    .replace(" validation failed:", "")
+                            )
+                        } else if error_message.contains("not found") {
+                            format!(
+                                "❓ Tool not available: {}",
+                                error_message
+                                    .replace("Tool ", "")
+                                    .replace(" not found in any connected MCP server", "")
+                            )
+                        } else if error_message.contains("execution failed") {
+                            format!(
+                                "💥 Tool execution error: {}",
+                                error_message
+                                    .replace("Tool ", "")
+                                    .replace(" execution failed:", "")
+                            )
+                        } else {
+                            format!("⚠️  Tool error: {}", error_message)
+                        };
+
+                        tool_results.push(ToolResult {
+                            tool_call_id: tool_call.id.clone(),
+                            content: formatted_error,
+                            is_error: true,
+                        });
+                    }
+                }
+            }
+
+            // Add tool results as new messages and trigger a new send
+            ui.defer_with_redraw(move |me, cx, _| {
+                let next_index = me.messages_ref().read().messages.len();
+
+                // Create formatted text for tool results
+                let results_text = if tool_results.len() == 1 {
+                    let result = &tool_results[0];
+                    let tool_name = tool_calls
+                        .iter()
+                        .find(|tc| tc.id == result.tool_call_id)
+                        .map(|tc| tc.name.as_str())
+                        .unwrap_or("unknown");
+
+                    if result.is_error {
+                        format!("🔧 Tool '{}' failed:\n{}", tool_name, result.content)
+                    } else {
+                        let summary = Self::create_tool_output_summary(tool_name, &result.content);
+                        format!(
+                            "🔧 Tool '{}' executed successfully:\n{}",
+                            tool_name, summary
+                        )
+                    }
+                } else {
+                    let mut text = format!("🔧 Executed {} tools:\n\n", tool_results.len());
+                    for result in &tool_results {
+                        let tool_name = tool_calls
+                            .iter()
+                            .find(|tc| tc.id == result.tool_call_id)
+                            .map(|tc| tc.name.as_str())
+                            .unwrap_or("unknown");
+
+                        if result.is_error {
+                            text.push_str(&format!("**{}** ❌: {}\n\n", tool_name, result.content));
+                        } else {
+                            let summary =
+                                Self::create_tool_output_summary(tool_name, &result.content);
+                            text.push_str(&format!("**{}** ✅: {}\n\n", tool_name, summary));
+                        }
+                    }
+                    text
+                };
+
+                // Add tool result message
+                let tool_message = Message {
+                    from: EntityId::System, // Tool results are system messages
+                    content: MessageContent {
+                        text: results_text,
+                        tool_results,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+
+                me.dispatch(
+                    cx,
+                    &mut vec![
+                        ChatTask::InsertMessage(next_index, tool_message),
+                        ChatTask::Send, // Trigger a new send with the tool results
+                    ],
+                );
+            });
+        };
+
+        spawn(future);
+    }
+
     fn handle_send_task(&mut self, cx: &mut Cx) {
         // Let's start clean before starting a new stream.
         self.abort();
@@ -438,7 +615,19 @@ impl Chat {
                 }
             };
 
-            let message_stream = amortize(client.send(&bot.id, &messages_history_context));
+            let tools = if let Some(tool_manager) = context.tool_manager() {
+                match tool_manager.list_tools().await {
+                    Ok(tools) => tools,
+                    Err(e) => {
+                        eprintln!("Error listing tools: {:?}", e);
+                        Vec::new()
+                    }
+                }
+            } else {
+                Vec::new()
+            };
+
+            let message_stream = amortize(client.send(&bot.id, &messages_history_context, &tools));
             let mut message_stream = std::pin::pin!(message_stream);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
@@ -679,7 +868,7 @@ impl Chat {
                 message.set_content(content);
 
                 let index = messages.read().messages.len() - 1;
-                let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
+                let mut tasks = vec![ChatTask::UpdateMessage(index, message.clone())];
 
                 // Stick the chat to the bottom if the user didn't manually scroll.
                 if !self.user_scrolled_during_stream {
@@ -688,12 +877,30 @@ impl Chat {
 
                 self.dispatch(cx, &mut tasks);
 
-                let Some(ChatTask::UpdateMessage(_, message)) = tasks.into_iter().next() else {
+                let Some(ChatTask::UpdateMessage(_, updated_message)) = tasks.into_iter().next()
+                else {
                     // Let's abort if the tasks were modified in an unexpected way.
                     return true;
                 };
 
-                self.expected_message = Some(message);
+                if !updated_message.content.tool_calls.is_empty() {
+                    println!(
+                        "🔧 Complete tool calls received in chat widget: {} tools",
+                        updated_message.content.tool_calls.len()
+                    );
+
+                    // Mark message as not writing since tool calls are complete
+                    let mut final_message = updated_message.clone();
+                    final_message.metadata.is_writing = false;
+                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
+
+                    self.handle_tool_calls(cx, updated_message.content.tool_calls.clone());
+
+                    // Signal to stop the current stream since we're switching to tool execution
+                    return true;
+                }
+
+                self.expected_message = Some(updated_message);
 
                 false
             }

@@ -28,6 +28,7 @@ moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "m
 moly-kit = { path = "./moly-kit", features = ["full"] }
 moly-sync = { path = "./moly-sync"}
 makepad-widgets = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
+makepad-code-editor = { git = "https://github.com/wyeworks/makepad", branch = "moly" }
 unicode-segmentation = "1.10.1"
 anyhow = "1.0"
 serde_json = "1.0"

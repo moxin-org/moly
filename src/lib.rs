@@ -6,6 +6,7 @@ pub mod runtime;
 mod chat;
 mod data;
 mod landing;
+mod mcp;
 mod my_models;
 mod settings;
 mod shared;

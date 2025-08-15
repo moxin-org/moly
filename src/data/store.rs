@@ -3,6 +3,7 @@ use crate::shared::actions::ChatAction;
 
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
+use super::mcp_servers::McpServersConfig;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{ProviderFetchModelsResult, ProviderType};
@@ -420,5 +421,35 @@ impl Store {
                     .contains(&provider_name.to_lowercase())
             })
             .cloned()
+    }
+
+    pub fn get_mcp_servers_config(&self) -> &McpServersConfig {
+        &self.preferences.mcp_servers_config
+    }
+
+    pub fn get_mcp_servers_config_json(&self) -> String {
+        self.preferences.get_mcp_servers_config_json()
+    }
+
+    pub fn update_mcp_servers_from_json(&mut self, json: &str) -> Result<(), serde_json::Error> {
+        self.preferences.update_mcp_servers_from_json(json)?;
+
+        // TODO(Julian): do not invalidate the entire bot context
+        // Invalidate the bot context so it gets recreated with new MCP servers
+        if self.bot_context.is_some() {
+            self.bot_context = None;
+        }
+
+        Ok(())
+    }
+
+    pub fn update_mcp_servers_config(&mut self, config: McpServersConfig) {
+        self.preferences.update_mcp_servers_config(config);
+
+        // TODO(Julian): do not invalidate the entire bot context
+        // Invalidate the bot context so it gets recreated with new MCP servers
+        if self.bot_context.is_some() {
+            self.bot_context = None;
+        }
     }
 }

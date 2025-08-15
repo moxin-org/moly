@@ -5,6 +5,7 @@ use async_stream::stream;
 use makepad_widgets::*;
 use makepad_widgets::{Cx, LiveNew, WidgetRef};
 use reqwest::header::{HeaderMap, HeaderName};
+use rmcp::model::Tool;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{
@@ -216,6 +217,7 @@ impl BotClient for DeepInquireClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        _tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
 
