@@ -112,6 +112,14 @@ impl PartialEq for AttachmentContentHandle {
                 let b_id = b.peek(|handle| handle.id);
                 a_id == b_id
             }
+            (
+                AttachmentContentHandle::ErasedPersisted(a),
+                AttachmentContentHandle::ErasedPersisted(b),
+            ) => a == b,
+            (AttachmentContentHandle::Persisted(a), AttachmentContentHandle::Persisted(b)) => {
+                a.key == b.key
+            }
+
             _ => false,
         }
     }
