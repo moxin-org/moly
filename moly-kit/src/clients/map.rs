@@ -1,4 +1,4 @@
-use rmcp::model::Tool;
+use crate::protocol::Tool;
 
 use crate::protocol::*;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};

@@ -246,43 +246,45 @@ impl ChatScreen {
         spawn(async move {
             context.load().await;
 
-            // let mcp_manager = McpManagerClient::new();
-            // mcp_manager.add_server("test", McpTransport::Sse("http://localhost:8000/sse".to_string())).await.unwrap();
+            #[cfg(not(target_arch = "wasm32"))] {
+                // let mcp_manager = McpManagerClient::new();
+                // mcp_manager.add_server("test", McpTransport::Sse("http://localhost:8000/sse".to_string())).await.unwrap();
 
-            if let Some(tool_manager) = context.tool_manager() {
-                // Load MCP servers from configuration
-                for (server_id, server_config) in mcp_config.list_enabled_servers() {
-                    let transport = match &server_config.transport {
-                        crate::data::mcp_servers::McpServerTransport::Http { url } => {
-                            McpTransport::Http(url.clone())
-                        }
-                        crate::data::mcp_servers::McpServerTransport::Sse { url } => {
-                            McpTransport::Sse(url.clone())
-                        }
-                        crate::data::mcp_servers::McpServerTransport::Stdio {
-                            command,
-                            args,
-                            env,
-                            working_directory,
-                        } => {
-                            let mut cmd = tokio::process::Command::new(command);
-                            cmd.args(args);
-                            for (key, value) in env {
-                                cmd.env(key, value);
+                if let Some(tool_manager) = context.tool_manager() {
+                    // Load MCP servers from configuration
+                    for (server_id, server_config) in mcp_config.list_enabled_servers() {
+                        let transport = match &server_config.transport {
+                            crate::data::mcp_servers::McpServerTransport::Http { url } => {
+                                McpTransport::Http(url.clone())
                             }
-                            if let Some(dir) = working_directory {
-                                cmd.current_dir(dir);
+                            crate::data::mcp_servers::McpServerTransport::Sse { url } => {
+                                McpTransport::Sse(url.clone())
                             }
-                            McpTransport::Stdio(cmd)
-                        }
-                    };
+                            crate::data::mcp_servers::McpServerTransport::Stdio {
+                                command,
+                                args,
+                                env,
+                                working_directory,
+                            } => {
+                                let mut cmd = tokio::process::Command::new(command);
+                                cmd.args(args);
+                                for (key, value) in env {
+                                    cmd.env(key, value);
+                                }
+                                if let Some(dir) = working_directory {
+                                    cmd.current_dir(dir);
+                                }
+                                McpTransport::Stdio(cmd)
+                            }
+                        };
 
-                    match tool_manager.add_server(server_id, transport).await {
-                        Ok(()) => {
-                            println!("Successfully added MCP server: {}", server_id);
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to add MCP server '{}': {}", server_id, e);
+                        match tool_manager.add_server(server_id, transport).await {
+                            Ok(()) => {
+                                println!("Successfully added MCP server: {}", server_id);
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to add MCP server '{}': {}", server_id, e);
+                            }
                         }
                     }
                 }

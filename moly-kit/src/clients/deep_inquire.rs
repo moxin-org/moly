@@ -5,7 +5,7 @@ use async_stream::stream;
 use makepad_widgets::*;
 use makepad_widgets::{Cx, LiveNew, WidgetRef};
 use reqwest::header::{HeaderMap, HeaderName};
-use rmcp::model::Tool;
+use crate::protocol::Tool;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{

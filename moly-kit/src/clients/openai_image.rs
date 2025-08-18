@@ -3,7 +3,7 @@
 use crate::protocol::*;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use reqwest::header::{HeaderMap, HeaderName};
-use rmcp::model::Tool;
+use crate::protocol::Tool;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},

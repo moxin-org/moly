@@ -1,5 +1,5 @@
 use makepad_widgets::{Cx, LiveId, LivePtr, WidgetRef};
-use rmcp::model::Tool;
+use crate::protocol::Tool;
 
 use crate::protocol::*;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};

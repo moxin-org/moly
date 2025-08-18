@@ -1,30 +1,43 @@
+#[cfg(not(target_arch = "wasm32"))]
 use rmcp::RoleClient;
+#[cfg(not(target_arch = "wasm32"))]
 use rmcp::ServiceExt;
-use rmcp::model::Tool;
+#[cfg(not(target_arch = "wasm32"))]
 use rmcp::service::{DynService, RunningService};
+#[cfg(not(target_arch = "wasm32"))]
 use rmcp::transport::streamable_http_client::{
     StreamableHttpClientTransport, StreamableHttpClientWorker,
 };
+#[cfg(not(target_arch = "wasm32"))]
 use rmcp::transport::{SseClientTransport, TokioChildProcess};
+#[cfg(not(target_arch = "wasm32"))]
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::{Arc, Mutex};
+
+use crate::protocol::Tool;
 
 // The transport to use for the MCP server
 pub enum McpTransport {
     Http(String),                   // The URL for the HTTP endpoint (streamable)
     Sse(String),                    // The URL for the SSE endpoint
+    #[cfg(not(target_arch = "wasm32"))]
     Stdio(tokio::process::Command), // The command to launch the child process
 }
 
 // A wrapper around the service that implements Send + Sync
+#[cfg(not(target_arch = "wasm32"))]
 struct McpService {
     service: RunningService<RoleClient, Box<dyn DynService<RoleClient>>>,
 }
 
 // Safety: We control the usage of this wrapper and ensure thread safety
+#[cfg(not(target_arch = "wasm32"))]
 unsafe impl Send for McpService {}
+#[cfg(not(target_arch = "wasm32"))]
 unsafe impl Sync for McpService {}
 
+#[cfg(not(target_arch = "wasm32"))]
 impl McpService {
     fn new(service: RunningService<RoleClient, Box<dyn DynService<RoleClient>>>) -> Self {
         Self { service }
@@ -51,13 +64,19 @@ impl McpService {
 
 #[derive(Clone)]
 pub struct McpManagerClient {
+    #[cfg(not(target_arch = "wasm32"))]
     clients: Arc<Mutex<HashMap<String, Arc<McpService>>>>,
+    #[cfg(target_arch = "wasm32")]
+    _phantom: std::marker::PhantomData<()>,
 }
 
 impl McpManagerClient {
     pub fn new() -> Self {
         Self {
+            #[cfg(not(target_arch = "wasm32"))]
             clients: Arc::new(Mutex::new(HashMap::new())),
+            #[cfg(target_arch = "wasm32")]
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -66,28 +85,37 @@ impl McpManagerClient {
         id: &str,
         transport: McpTransport,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let running_service = match transport {
-            McpTransport::Http(url) => {
-                let worker = StreamableHttpClientWorker::<reqwest::Client>::new_simple(url);
-                let transport = StreamableHttpClientTransport::spawn(worker);
-                ().into_dyn().serve(transport).await?
-            }
-            McpTransport::Sse(url) => {
-                let transport = SseClientTransport::start(url).await?;
-                ().into_dyn().serve(transport).await?
-            }
-            McpTransport::Stdio(command) => {
-                let transport = TokioChildProcess::new(command)?;
-                ().into_dyn().serve(transport).await?
-            }
-        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let running_service = match transport {
+                McpTransport::Http(url) => {
+                    let worker = StreamableHttpClientWorker::<reqwest::Client>::new_simple(url);
+                    let transport = StreamableHttpClientTransport::spawn(worker);
+                    ().into_dyn().serve(transport).await?
+                }
+                McpTransport::Sse(url) => {
+                    let transport = SseClientTransport::start(url).await?;
+                    ().into_dyn().serve(transport).await?
+                }
+                McpTransport::Stdio(command) => {
+                    let transport = TokioChildProcess::new(command)?;
+                    ().into_dyn().serve(transport).await?
+                }
+            };
 
-        let service = Arc::new(McpService::new(running_service));
-        self.clients.lock().unwrap().insert(id.to_string(), service);
+            let service = Arc::new(McpService::new(running_service));
+            self.clients.lock().unwrap().insert(id.to_string(), service);
 
-        Ok(())
+            Ok(())
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = (id, transport);
+            Err("MCP servers are not yet supported in WASM builds. This feature will be available when the rmcp library adds WASM support.".into())
+        }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         let clients = {
             let clients_guard = self.clients.lock().unwrap();
@@ -101,7 +129,12 @@ impl McpManagerClient {
         for result in results {
             match result {
                 Ok(list_tools_result) => {
-                    all_tools.extend(list_tools_result.tools);
+                    // Convert rmcp tools to our unified Tool type
+                    let converted_tools: Vec<Tool> = list_tools_result.tools
+                        .into_iter()
+                        .map(|rmcp_tool| rmcp_tool.into())
+                        .collect();
+                    all_tools.extend(converted_tools);
                 }
                 Err(e) => return Err(e.into()),
             }
@@ -110,6 +143,12 @@ impl McpManagerClient {
         Ok(all_tools)
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
+        Ok(Vec::new())
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn call_tool(
         &self,
         tool_name: &str,
@@ -194,5 +233,14 @@ impl McpManagerClient {
             // All errors were "not found" errors
             Err(format!("Tool '{}' not found in any connected MCP server", tool_name).into())
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn call_tool(
+        &self,
+        tool_name: &str,
+        _arguments: serde_json::Map<String, serde_json::Value>,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        Err(format!("MCP servers are not yet supported in WASM builds. Cannot call tool '{}'", tool_name).into())
     }
 }

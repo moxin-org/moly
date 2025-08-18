@@ -1,8 +1,8 @@
 use async_stream::stream;
 use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
-use rmcp::model::Tool;
 use serde::{Deserialize, Serialize};
+use crate::protocol::Tool;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},

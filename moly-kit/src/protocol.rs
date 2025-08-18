@@ -3,7 +3,54 @@ use crate::{
     utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream},
 };
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
-use rmcp::model::Tool;
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct Tool {
+    pub name: String,
+    pub description: Option<String>,
+    /// JSON Schema object defining the expected parameters for the tool
+    #[cfg_attr(feature = "json", serde(default))]
+    pub input_schema: std::sync::Arc<serde_json::Map<String, serde_json::Value>>,
+}
+
+impl Tool {
+    pub fn new(name: String, description: Option<String>) -> Self {
+        use std::sync::Arc;
+        use serde_json::Map;
+        
+        Tool {
+            name,
+            description,
+            input_schema: Arc::new(Map::new()),
+        }
+    }
+}
+
+// Conversion traits for rmcp interop on native platforms
+#[cfg(not(target_arch = "wasm32"))]
+impl From<rmcp::model::Tool> for Tool {
+    fn from(rmcp_tool: rmcp::model::Tool) -> Self {
+        Tool {
+            name: rmcp_tool.name.into_owned(),
+            description: rmcp_tool.description.map(|d| d.into_owned()),
+            input_schema: rmcp_tool.input_schema,
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl From<Tool> for rmcp::model::Tool {
+    fn from(tool: Tool) -> Self {
+        rmcp::model::Tool {
+            name: tool.name.into(),
+            description: tool.description.map(|d| d.into()),
+            input_schema: tool.input_schema,
+            output_schema: None,
+            annotations: None,
+        }
+    }
+}
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

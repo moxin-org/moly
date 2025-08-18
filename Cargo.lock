@@ -2937,7 +2937,7 @@ dependencies = [
 [[package]]
 name = "rmcp"
 version = "0.5.0"
-source = "git+https://www.github.com/joulei/rust-sdk#b19a70f93b4542d31d2d26b87a5df52dd8d92b4e"
+source = "git+https://www.github.com/joulei/rust-sdk#02953e45e371a8fe6bef1480449fa16188fb4ccd"
 dependencies = [
  "base64",
  "chrono",
@@ -2962,7 +2962,7 @@ dependencies = [
 [[package]]
 name = "rmcp-macros"
 version = "0.5.0"
-source = "git+https://www.github.com/joulei/rust-sdk#b19a70f93b4542d31d2d26b87a5df52dd8d92b4e"
+source = "git+https://www.github.com/joulei/rust-sdk#02953e45e371a8fe6bef1480449fa16188fb4ccd"
 dependencies = [
  "darling",
  "proc-macro2",

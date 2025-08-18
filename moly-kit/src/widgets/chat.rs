@@ -393,7 +393,8 @@ impl Chat {
                     .await
                 {
                     Ok(result) => {
-                        // Convert MCP result to our ToolResult
+                        // Convert result to our ToolResult
+                        #[cfg(not(target_arch = "wasm32"))]
                         let content = match result.content {
                             Some(content_items) => {
                                 content_items
@@ -412,6 +413,10 @@ impl Chat {
                             }
                             None => "Tool executed successfully with no output".to_string(),
                         };
+
+                        #[cfg(target_arch = "wasm32")]
+                        let content = serde_json::to_string_pretty(&result)
+                            .unwrap_or_else(|_| "Tool executed successfully".to_string());
 
                         println!("Tool result: {:?}", content);
 
