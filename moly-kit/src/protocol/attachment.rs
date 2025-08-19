@@ -432,6 +432,7 @@ impl Attachment {
             .unwrap_or("application/octet-stream")
     }
 
+    /// Get the persistence key if set.
     pub fn get_persistence_key(&self) -> Option<&str> {
         match &self.content {
             Some(AttachmentContentHandle::Persisted(persisted)) => Some(&persisted.key),
@@ -440,14 +441,25 @@ impl Attachment {
         }
     }
 
+    /// Check if the attachment has a persistence key set, indicating it was persisted.
     pub fn has_persistence_key(&self) -> bool {
         self.get_persistence_key().is_some()
     }
 
+    /// Check if this attachment has a reader implementation set.
     pub fn has_persistence_reader(&self) -> bool {
         matches!(&self.content, Some(AttachmentContentHandle::Persisted(_)))
     }
 
+    /// Give this attachment a custom persistence key.
+    ///
+    /// This means you persisted this attachment somewhere and you will take care
+    /// of how it's read.
+    ///
+    /// You should set this key only after you really persisted (wrote) the attachment.
+    ///
+    /// If you call this, you should also call [`Self::set_persistence_reader`]
+    /// to configure how this attachment will be read using this key.
     pub fn set_persistence_key(&mut self, key: String) {
         match &self.content {
             Some(AttachmentContentHandle::Persisted(persisted)) => {
@@ -467,6 +479,9 @@ impl Attachment {
         }
     }
 
+    /// Gives this attachment a custom implementation to read the persisted content.
+    ///
+    /// Can only be used after setting a persistence key with [`Self::set_persistence_key`].
     pub fn set_persistence_reader(
         &mut self,
         reader: impl Fn(&str) -> BoxPlatformSendFuture<'static, std::io::Result<Arc<[u8]>>>
