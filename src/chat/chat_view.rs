@@ -318,14 +318,14 @@ impl ChatView {
             _ => (0..0, vec![]),
         };
 
-        self.handle_attachments_persistence(&mut store_chat, &range, &replacement);
+        self.handle_attachments_persistence(&store_chat, &range, &replacement);
         self.handle_store_sync(&mut store_chat, &range, &replacement);
     }
 
     /// Handle the currently complex persistence of attachments logic.
     fn handle_attachments_persistence(
         &mut self,
-        store_chat: &mut std::cell::RefMut<'_, crate::data::chats::chat::Chat>,
+        store_chat: &crate::data::chats::chat::Chat,
         range: &std::ops::Range<usize>,
         replacement: &[Message],
     ) {
@@ -466,7 +466,7 @@ impl ChatView {
 
     fn handle_store_sync(
         &mut self,
-        store_chat: &mut std::cell::RefMut<'_, crate::data::chats::chat::Chat>,
+        store_chat: &mut crate::data::chats::chat::Chat,
         range: &std::ops::Range<usize>,
         replacement: &[Message],
     ) {
