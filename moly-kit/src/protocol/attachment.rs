@@ -186,7 +186,7 @@ impl AttachmentContentHandle {
             }
             AttachmentContentHandle::ErasedPersisted(_) => Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                "Cannot read erased persisted attachment. Please restore the reader with `set_persisted_reader` first.",
+                "Cannot read erased persisted attachment. Please restore the reader with `set_persistence_reader` first.",
             )),
             AttachmentContentHandle::Persisted(persisted) => {
                 (persisted.reader)(persisted.key.as_str()).await
