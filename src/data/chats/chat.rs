@@ -1,4 +1,7 @@
-use crate::shared::utils::filesystem;
+use crate::shared::utils::{
+    attachments::{delete_attachment, persistence_reader},
+    filesystem,
+};
 use anyhow::{Result, anyhow};
 use moly_kit::{BotId, Message, utils::asynchronous::spawn};
 use moly_protocol::data::FileID;
@@ -102,7 +105,15 @@ impl Chat {
             .ok_or_else(|| anyhow!("Invalid chat file path"))?;
 
         match fs.read_json::<ChatData>(path).await {
-            Ok(data) => {
+            Ok(mut data) => {
+                for m in &mut data.messages {
+                    for a in &mut m.content.attachments {
+                        if a.has_persistence_key() {
+                            a.set_persistence_reader(persistence_reader());
+                        }
+                    }
+                }
+
                 let chat = Chat {
                     id: data.id,
                     associated_bot: data.associated_bot,
@@ -155,6 +166,24 @@ impl Chat {
         spawn(async move {
             filesystem::global().remove(&path).await.unwrap();
         });
+
+        for m in &self.messages {
+            for a in &m.content.attachments {
+                if a.has_persistence_key() {
+                    let a = a.clone();
+                    spawn(async move {
+                        if let Err(e) = delete_attachment(&a).await {
+                            ::log::error!(
+                                "Failed to delete attachment, named {}, with key {}: {}",
+                                a.name,
+                                a.get_persistence_key().unwrap(),
+                                e
+                            );
+                        }
+                    });
+                }
+            }
+        }
     }
 
     fn file_name(&self) -> String {

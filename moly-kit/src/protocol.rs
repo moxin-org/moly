@@ -11,6 +11,9 @@ use std::{
 
 mod attachment;
 pub use attachment::*;
+
+pub use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
+
 /// Upgrade types for enhanced communication modes
 #[derive(Debug, Clone, PartialEq)]
 pub enum Upgrade {
@@ -79,8 +82,6 @@ pub enum RealtimeCommand {
     /// Create a greeting response from AI
     CreateGreetingResponse,
 }
-
-use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
 #[derive(Clone, Debug)]
