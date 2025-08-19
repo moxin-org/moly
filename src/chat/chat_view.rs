@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use crate::data::chats::chat::ChatID;
 use crate::data::store::{ProviderSyncingStatus, Store};
 use crate::shared::utils::attachments::{
-    delete_attachment, generate_persisted_key, set_persistence_key_and_reader,
+    delete_attachment, generate_persistence_key, set_persistence_key_and_reader,
     write_attachment_to_key,
 };
 
@@ -394,7 +394,7 @@ impl ChatView {
             self.persisting_attachments.insert(attachment.clone());
 
             spawn(async move {
-                let key = generate_persisted_key(&attachment);
+                let key = generate_persistence_key(&attachment);
 
                 ::log::info!(
                     "Persisting attachment, named {}, with key: {}",
