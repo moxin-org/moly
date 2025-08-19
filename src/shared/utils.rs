@@ -1,4 +1,6 @@
+pub mod attachments;
 pub mod filesystem;
+pub mod unique;
 
 use anyhow::Result;
 
