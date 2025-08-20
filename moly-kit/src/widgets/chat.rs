@@ -91,6 +91,9 @@ pub enum ChatTask {
 
     /// When received back, it will deny the pending tool calls at the given index.
     DenyToolCalls(usize),
+
+    /// When received back, it will remove the message at the given index.
+    RemoveMessage(usize),
 }
 
 impl From<ChatTask> for Vec<ChatTask> {
@@ -842,6 +845,8 @@ impl Chat {
             ChatTask::ApproveToolCalls(index) => {
                 if let Some(tool_calls) = self.pending_tool_calls.remove(index) {
                     self.handle_tool_calls(cx, tool_calls);
+                    // Remove the permission request message after approval
+                    self.dispatch(cx, &mut vec![ChatTask::RemoveMessage(*index)]);
                 } else {
                     ::log::error!("No tool calls found at index: {}", index);
                 }
@@ -872,10 +877,30 @@ impl Chat {
                     
                     // Send the synthetic tool results to continue the conversation properly
                     self.dispatch(cx, &mut vec![
-                        ChatTask::InsertMessage(next_index, tool_message),
+                        ChatTask::RemoveMessage(*index), // Remove the permission request message
+                        ChatTask::InsertMessage(next_index - 1, tool_message), // Adjust index since we removed a message
                         ChatTask::Send, // Continue the conversation with the denial results
                     ]);
                 }
+            }
+            ChatTask::RemoveMessage(index) => {
+                self.messages_ref().write().messages.remove(*index);
+                
+                // Update pending_tool_calls indices that are affected by removal
+                let mut updated_pending = std::collections::HashMap::new();
+                for (idx, tool_calls) in self.pending_tool_calls.drain() {
+                    if idx < *index {
+                        // Indices before removal point stay the same
+                        updated_pending.insert(idx, tool_calls);
+                    } else if idx > *index {
+                        // Indices after removal point shift down by 1
+                        updated_pending.insert(idx - 1, tool_calls);
+                    }
+                    // Index at removal point is dropped (not re-inserted)
+                }
+                self.pending_tool_calls = updated_pending;
+                
+                self.redraw(cx);
             }
         }
     }
