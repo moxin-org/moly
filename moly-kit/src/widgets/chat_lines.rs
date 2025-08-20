@@ -207,4 +207,54 @@ live_design! {
             }
         }
     }
+
+    ToolApprovalButton = <Button> {
+        padding: {left: 15, right: 15, top: 8, bottom: 8},
+        margin: {right: 8},
+        draw_text: {
+            color: #fff
+            color_hover: #fff
+            color_focus: #fff
+        }
+        draw_bg: {
+            border_radius: 6.0
+        }
+    }
+
+    ToolApprovalActions = <View> {
+        align: {y: 0.5},
+        spacing: 8,
+        margin: {top: 8, bottom: 4},
+        approve = <ToolApprovalButton> { 
+            text: "Approve",
+            draw_bg: {color: #4CAF50, color_hover: #45a049}
+        }
+        deny = <ToolApprovalButton> { 
+            text: "Deny",
+            draw_bg: {color: #f44336, color_hover: #d32f2f}
+        }
+    }
+
+    pub ToolLine = <SystemLine> {
+        message_section = {
+            draw_bg: {color: #fff3e0}
+
+            sender = {
+                avatar = {
+                    grapheme = {draw_bg: {color: #ff9800}}
+                }
+                name = {text: "Tool Request"}
+            }
+        }
+        actions_section = {
+            tool_actions = <ToolApprovalActions> { visible: true }
+            approved_status = <Label> {
+                padding: 0
+                draw_text:{
+                    text_style: <THEME_FONT_BOLD>{font_size: 11},
+                    color: #000
+                }
+            }
+        }
+    }
 }

@@ -42,6 +42,7 @@ live_design! {
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
             SystemLine = <SystemLine> {}
+            ToolLine = <ToolLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -98,6 +99,12 @@ pub enum MessagesAction {
     /// The message at the given index should be edited, saved and the messages
     /// history should be regenerated from here.
     EditRegenerate(usize),
+
+    /// The tool request at the given index should be approved and executed.
+    ToolApprove(usize),
+
+    /// The tool request at the given index should be denied.
+    ToolDeny(usize),
 
     None,
 }
@@ -264,6 +271,23 @@ impl Messages {
                         let item = list.item(cx, index, live_id!(EndOfChat));
                         item.draw_all(cx, &mut Scope::empty());
                         self.is_list_end_drawn = true;
+                        continue;
+                    }
+
+                    // Handle tool permission requests
+                    if message.content.text.contains("**Tool Permission Required**") {
+                        let item = list.item(cx, index, live_id!(ToolLine));
+                        item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                            Some(Picture::Grapheme("🔧".into()));
+                        item.label(id!(name)).set_text(cx, "Tool Request");
+
+                        item.slot(id!(content))
+                            .current()
+                            .as_standard_message_content()
+                            .set_content(cx, &message.content);
+
+                        // Don't apply standard actions/editor for tool lines - they have their own buttons
+                        item.draw_all(cx, &mut Scope::empty());
                         continue;
                     }
 
@@ -485,6 +509,28 @@ impl Messages {
                     &scope.path,
                     MessagesAction::EditRegenerate(index),
                 );
+            }
+
+            if item.button(id!(tool_actions.approve)).clicked(actions) {
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::ToolApprove(index),
+                );
+                println!("Approved tool call at index: {}", index);
+                item.view(id!(tool_actions)).set_visible(cx, false);
+                item.label(id!(approved_status)).set_text(cx, "Approved");
+            }
+
+            if item.button(id!(tool_actions.deny)).clicked(actions) {
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::ToolDeny(index),
+                );
+                println!("Denied tool call at index: {}", index);
+                item.view(id!(tool_actions)).set_visible(cx, false);
+                item.label(id!(approved_status)).set_text(cx, "Denied");
             }
 
             if let Some(change) = item.text_input(id!(input)).changed(actions) {

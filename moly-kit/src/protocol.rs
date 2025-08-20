@@ -283,7 +283,7 @@ impl fmt::Display for BotId {
 }
 
 /// Represents a function/tool call made by the AI
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct ToolCall {
     /// Unique identifier for this tool call
