@@ -79,6 +79,8 @@ struct ServiceHandle {
 pub struct McpManagerClient {
     #[cfg(not(target_arch = "wasm32"))]
     services: Arc<Mutex<HashMap<String, ServiceHandle>>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    latest_tools: Vec<Tool>,
     #[cfg(target_arch = "wasm32")]
     _phantom: std::marker::PhantomData<()>,
 }
@@ -88,6 +90,8 @@ impl McpManagerClient {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             services: Arc::new(Mutex::new(HashMap::new())),
+            #[cfg(not(target_arch = "wasm32"))]
+            latest_tools: Vec::new(),
             #[cfg(target_arch = "wasm32")]
             _phantom: std::marker::PhantomData,
         }
@@ -159,12 +163,13 @@ impl McpManagerClient {
         #[cfg(target_arch = "wasm32")]
         {
             let _ = (id, transport);
-            Err("MCP servers are not yet supported in WASM builds. This feature will be available when the rmcp library adds WASM support.".into())
+            Err("MCP servers are not supported in web builds".into())
         }
     }
 
+    /// Lists and caches tools from all connected MCP servers.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
+    pub async fn list_tools(&mut self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         let senders = {
             let services_guard = self.services.lock().unwrap();
             services_guard
@@ -205,7 +210,12 @@ impl McpManagerClient {
             }
         }
 
+        self.latest_tools = all_tools.clone();
         Ok(all_tools)
+    }
+
+    pub fn get_latest_tools(&self) -> Vec<Tool> {
+        self.latest_tools.clone()
     }
 
     #[cfg(target_arch = "wasm32")]

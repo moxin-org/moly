@@ -188,7 +188,6 @@ impl BotClient for OpenAIImageClient {
         messages: &[Message],
         _tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
-        let _ = _tools;
         let self_clone = self.clone();
         let bot_id = bot_id.clone();
         let messages = messages.to_vec();

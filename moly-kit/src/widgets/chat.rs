@@ -1,7 +1,6 @@
 use futures::{StreamExt, stream::AbortHandle};
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
-use std::collections::HashMap;
 use utils::asynchronous::spawn;
 
 use crate::utils::asynchronous::PlatformSendStream;
@@ -633,13 +632,12 @@ impl Chat {
                 }
             };
 
-            let tools = if let Some(tool_manager) = context.tool_manager() {
-                match tool_manager.list_tools().await {
-                    Ok(tools) => tools,
-                    Err(e) => {
-                        eprintln!("Error listing tools: {:?}", e);
-                        Vec::new()
-                    }
+            let tools = if let Some(mut tool_manager) = context.tool_manager() {
+                let tools = tool_manager.get_latest_tools();
+                if tools.is_empty() {
+                    tool_manager.list_tools().await.unwrap_or_default()
+                } else {
+                    tools
                 }
             } else {
                 Vec::new()
