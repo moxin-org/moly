@@ -65,44 +65,53 @@ live_design! {
     }
 
     pub McpServers = {{McpServers}} {
-        width: 500, height: Fill
-        flow: Down, spacing: 10
-        padding: {left: 30, right: 30, bottom: 20}
-
         <View> {
-            width: Fill, height: Fill
-            padding: {bottom: 10}
-            mcp_code_view = <McpCodeView> {}
-        }
+            width: 600, height: Fill
+            flow: Down
+            padding: {left: 30, right: 30, bottom: 10}
+            align: {x: 1.0}
 
-        <View> {
-            width: Fill, height: Fit
-            align: {x: 0.0, y: 0.5}
-            connection_status = <Label> {
-                draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 10},
-                    color: #000
+            <View> {
+                width: Fill, height: Fill
+                padding: {left: 0, right: 25, top: 8, bottom: 8}
+                mcp_code_view = <McpCodeView> {}
+            }
+
+            <View> {
+                width: Fill, height: Fit
+                align: {x: 1.0, y: 0.5}
+                padding: {left: 0, right: 15, top: 8, bottom: 8}
+
+                save_button = <RoundedShadowView> {
+                    cursor: Hand
+                    margin: {left: 10, right: 10, bottom: 0, top: 0}
+                    width: Fit, height: Fit
+                    align: {x: 0.5, y: 0.5}
+                    padding: {left: 30, right: 30, bottom: 15, top: 15}
+                    draw_bg: {
+                        color: (MAIN_BG_COLOR)
+                        border_radius: 4.5,
+                        uniform shadow_color: #0002
+                        shadow_radius: 8.0,
+                        shadow_offset: vec2(0.0,-1.5)
+                    }
+                    <Label> {
+                        text: "Save and restart servers"
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 11}
+                            color: #000
+                        }
+                    }
                 }
             }
         }
-
-        save_button = <RoundedShadowView> {
-            cursor: Hand
-            margin: {left: 10, right: 10, bottom: 0, top: 10}
-            width: Fill, height: Fit
-            align: {x: 0.5, y: 0.5}
-            padding: {left: 30, right: 30, bottom: 15, top: 15}
-            draw_bg: {
-                color: (MAIN_BG_COLOR)
-                border_radius: 4.5,
-                uniform shadow_color: #0002
-                shadow_radius: 8.0,
-                shadow_offset: vec2(0.0,-1.5)
-            }
-            <Label> {
-                text: "Save"
+        
+        <View> {
+            width: Fill, height: Fit,
+            padding: {left: 0, right: 30, top: 0, bottom: 8}
+            save_status = <Label> {
                 draw_text: {
-                    text_style: <REGULAR_FONT>{font_size: 11}
+                    text_style: <BOLD_FONT>{font_size: 10},
                     color: #000
                 }
             }
@@ -160,9 +169,6 @@ impl McpServers {
 
 impl WidgetMatchEvent for McpServers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        // TODO(Julian): prevent some of the back and forth between json <> rust types
-
-        // Handle save button click
         if self.view(id!(save_button)).finger_up(actions).is_some() {
             let json_text = self.view.moly_code_view(id!(mcp_code_view)).text();
             let store = scope.data.get_mut::<Store>().unwrap();
@@ -172,12 +178,14 @@ impl WidgetMatchEvent for McpServers {
                     let config = McpServersConfig::from_json(&json_text).unwrap();
                     self.set_mcp_servers_config(cx, config);
 
-                    self.label(id!(connection_status)).set_text(cx, "Saved");
+                    self.label(id!(save_status))
+                        .set_text(cx, "");
+
                     self.redraw(cx);
                 }
                 Err(e) => {
-                    self.label(id!(connection_status))
-                        .set_text(cx, &format!("Failed to save: {}", e));
+                    self.label(id!(save_status))
+                        .set_text(cx, &format!("{}", e));
                     self.redraw(cx);
                 }
             }
@@ -185,6 +193,7 @@ impl WidgetMatchEvent for McpServers {
     }
 }
 
+/// Moly's version of Makepad's CodeView (broken upstream)
 #[derive(Live, LiveHook, Widget)]
 pub struct MolyCodeView {
     #[wrap]

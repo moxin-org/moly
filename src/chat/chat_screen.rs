@@ -254,10 +254,10 @@ impl ChatScreen {
                         if let Some(transport) = server_config.to_transport() {
                             match tool_manager.add_server(server_id, transport).await {
                                 Ok(()) => {
-                                    println!("Successfully added MCP server: {}", server_id);
+                                    ::log::debug!("Successfully added MCP server: {}", server_id);
                                 }
                                 Err(e) => {
-                                    eprintln!("Failed to add MCP server '{}': {}", server_id, e);
+                                    ::log::error!("Failed to add MCP server '{}': {}", server_id, e);
                                 }
                             }
                         }

@@ -103,6 +103,7 @@ struct OpenAIToolCall {
     pub id: String,
     #[serde(rename = "type")]
     #[serde(default)]
+    #[allow(dead_code)] // tool_type is necessary for the OpenAI, but we don't use it
     pub tool_type: String,
     pub function: OpenAIFunctionCall,
 }

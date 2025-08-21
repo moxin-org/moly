@@ -407,9 +407,7 @@ impl Chat {
                     Ok(result) => {
                         // Convert result to our ToolResult
                         #[cfg(not(target_arch = "wasm32"))]
-                        let content = match result.content {
-                            Some(content_items) => {
-                                content_items
+                        let content = result.content
                                     .iter()
                                     .filter_map(|item| {
                                         // Extract text content from the MCP result
@@ -421,10 +419,7 @@ impl Chat {
                                         }
                                     })
                                     .collect::<Vec<_>>()
-                                    .join("\n")
-                            }
-                            None => "Tool executed successfully with no output".to_string(),
-                        };
+                                    .join("\n");
 
                         #[cfg(target_arch = "wasm32")]
                         let content = serde_json::to_string_pretty(&result)
