@@ -83,9 +83,6 @@ pub enum ChatTask {
     /// The boolean indicates if the scroll was triggered by a stream or not.
     ScrollToBottom(bool),
 
-    /// When received back, it will mark tool calls as pending in the message at the given index.
-    RequestToolPermission(usize),
-
     /// When received back, it will approve and execute the tool calls in the message at the given index.
     ApproveToolCalls(usize),
 
@@ -142,7 +139,6 @@ pub struct Chat {
     /// Wether the user has scrolled during the stream of the current message.
     #[rust]
     user_scrolled_during_stream: bool,
-
 }
 
 impl Widget for Chat {
@@ -793,17 +789,6 @@ impl Chat {
                     .write()
                     .scroll_to_bottom(cx, *triggered_by_stream);
             }
-            ChatTask::RequestToolPermission(index) => {
-                // Mark the tool calls in the message as pending
-                self.messages_ref().write_with(|m| {
-                    if let Some(message) = m.messages.get_mut(*index) {
-                        for tool_call in &mut message.content.tool_calls {
-                            tool_call.permission_status = ToolCallPermissionStatus::Pending;
-                        }
-                    }
-                });
-                self.redraw(cx);
-            }
             ChatTask::ApproveToolCalls(index) => {
                 // Get the tool calls from the message and mark them as approved
                 let mut message_updated = None;
@@ -824,13 +809,13 @@ impl Chat {
                 if let Some(message) = message_updated {
                     self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
                 }
-                
+
                 if !tool_calls.is_empty() {
                     self.handle_tool_calls(cx, tool_calls);
                 } else {
                     ::log::error!("No tool calls found at index: {}", index);
                 }
-                
+
                 self.redraw(cx);
             }
             ChatTask::DenyToolCalls(index) => {
@@ -853,7 +838,7 @@ impl Chat {
                 if let Some(message) = message_updated {
                     self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
                 }
-                
+
                 if !tool_calls.is_empty() {
                     // Create synthetic tool results indicating denial to maintain conversation flow
                     let tool_results: Vec<ToolResult> = tool_calls.iter().map(|tc| {
@@ -863,9 +848,9 @@ impl Chat {
                             is_error: true,
                         }
                     }).collect();
-                    
+
                     let next_index = self.messages_ref().read().messages.len();
-                    
+
                     // Add tool result message with denial results
                     let tool_message = Message {
                         from: EntityId::System,
@@ -876,14 +861,17 @@ impl Chat {
                         },
                         ..Default::default()
                     };
-                    
+
                     // Continue the conversation with the denial results
-                    self.dispatch(cx, &mut vec![
-                        ChatTask::InsertMessage(next_index, tool_message),
-                        ChatTask::Send,
-                    ]);
+                    self.dispatch(
+                        cx,
+                        &mut vec![
+                            ChatTask::InsertMessage(next_index, tool_message),
+                            ChatTask::Send,
+                        ],
+                    );
                 }
-                
+
                 self.redraw(cx);
             }
         }
@@ -999,17 +987,11 @@ impl Chat {
                 };
 
                 if !updated_message.content.tool_calls.is_empty() {
-                    println!(
-                        "🔧 Complete tool calls received in chat widget: {} tools",
-                        updated_message.content.tool_calls.len()
-                    );
-
                     // Mark message as not writing since tool calls are complete
                     let mut final_message = updated_message.clone();
                     final_message.metadata.is_writing = false;
                     self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
-
-                    self.dispatch(cx, &mut vec![ChatTask::RequestToolPermission(index)]);
+                    // TODO: We might want to dispatch a ChatTask::RequestToolPermission(index) here
 
                     // Signal to stop the current stream since we're switching to permission request
                     return true;

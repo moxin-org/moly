@@ -274,7 +274,6 @@ impl Messages {
                         continue;
                     }
 
-
                     // Handle error messages
                     if let Some((left, right)) = message.content.text.split_once(':') {
                         if let Some("error") = left
@@ -339,48 +338,43 @@ impl Messages {
                         .map(|b| (b.name.as_str(), b.avatar.clone()))
                         .unwrap_or(("Unknown bot", Picture::Grapheme("B".into())));
 
-                    let item = if message.metadata.is_writing() && message.content.is_empty() {
-                        let item = list.item(cx, index, live_id!(LoadingLine));
-                        item.message_loading(id!(content_section.loading))
-                            .animate(cx);
-                        item
-                    } else if !message.content.tool_calls.is_empty() {
-                        // Render as ToolLine for messages with tool calls
-                        let item = list.item(cx, index, live_id!(ToolLine));
-                        item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = 
-                            Some(Picture::Grapheme("🔧".into()));
-                        item.label(id!(name)).set_text(cx, "Tool Request");
-                        
-                        // Set visibility and status based on permission status
-                        let has_pending = message.content.tool_calls.iter()
-                            .any(|tc| tc.permission_status == ToolCallPermissionStatus::Pending);
-                        let has_approved = message.content.tool_calls.iter()
-                            .any(|tc| tc.permission_status == ToolCallPermissionStatus::Approved);
-                        let has_denied = message.content.tool_calls.iter()
-                            .any(|tc| tc.permission_status == ToolCallPermissionStatus::Denied);
-                        
-                        // Show/hide tool actions based on status
-                        item.view(id!(tool_actions)).set_visible(cx, has_pending);
-                        
-                        // Set status text
-                        if has_approved {
-                            item.label(id!(approved_status)).set_text(cx, "Approved");
-                        } else if has_denied {
-                            item.label(id!(approved_status)).set_text(cx, "Denied");
-                        } else {
-                            item.label(id!(approved_status)).set_text(cx, "");
-                        }
-                        
-                        item
-                    } else {
-                        list.item(cx, index, live_id!(BotLine))
-                    };
+                    let item =
+                        if message.metadata.is_writing() && message.content.is_empty() {
+                            let item = list.item(cx, index, live_id!(LoadingLine));
+                            item.message_loading(id!(content_section.loading))
+                                .animate(cx);
+                            item
+                        } else if !message.content.tool_calls.is_empty() {
+                            // Render as ToolLine for messages with tool calls
+                            let item = list.item(cx, index, live_id!(ToolLine));
 
-                    let has_any_tool_calls = !message.content.tool_calls.is_empty();
-                    if !has_any_tool_calls {
-                        item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
-                        item.label(id!(name)).set_text(cx, name);
-                    }
+                            // Set visibility and status based on permission status
+                            let has_pending = message.content.tool_calls.iter().any(|tc| {
+                                tc.permission_status == ToolCallPermissionStatus::Pending
+                            });
+                            let has_denied =
+                                message.content.tool_calls.iter().any(|tc| {
+                                    tc.permission_status == ToolCallPermissionStatus::Denied
+                                });
+
+                            // Show/hide tool actions based on status
+                            item.view(id!(tool_actions)).set_visible(cx, has_pending);
+
+                            // Set status text, only show if denied
+                            if has_denied {
+                                item.view(id!(status_view)).set_visible(cx, true);
+                                item.label(id!(approved_status)).set_text(cx, "Denied");
+                            } else {
+                                item.view(id!(status_view)).set_visible(cx, false);
+                            }
+
+                            item
+                        } else {
+                            list.item(cx, index, live_id!(BotLine))
+                        };
+
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
+                    item.label(id!(name)).set_text(cx, name);
 
                     let mut slot = item.slot(id!(content));
                     if let Some(custom_content) = client.content_widget(
@@ -399,9 +393,11 @@ impl Messages {
                             .set_content_with_metadata(cx, &message.content, &message.metadata);
                     }
 
-                    // For messages with tool calls, don't apply standard actions/editor
+                    let has_any_tool_calls = !message.content.tool_calls.is_empty();
+                    // For messages with tool calls, don't apply standard actions/editor,
+                    // Users must be prevented from editing or deleting tool calls since most AI providers will return errors
+                    // if tool calls are not properly formatted, or are not followed by a proper tool call response.
                     if has_any_tool_calls {
-                        // Tool actions are handled specifically for ToolLine
                         item.draw_all(cx, &mut Scope::empty());
                     } else {
                         self.apply_actions_and_editor_visibility(cx, &item, index);
@@ -538,7 +534,6 @@ impl Messages {
                     &scope.path,
                     MessagesAction::ToolApprove(index),
                 );
-                println!("Approved tool call at index: {}", index);
             }
 
             if item.button(id!(tool_actions.deny)).clicked(actions) {
@@ -547,7 +542,6 @@ impl Messages {
                     &scope.path,
                     MessagesAction::ToolDeny(index),
                 );
-                println!("Denied tool call at index: {}", index);
             }
 
             if let Some(change) = item.text_input(id!(input)).changed(actions) {

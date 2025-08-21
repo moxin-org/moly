@@ -1,6 +1,6 @@
+use crate::protocol::Tool;
 #[cfg(not(target_arch = "wasm32"))]
 use base64::{Engine as _, engine::general_purpose};
-use crate::protocol::Tool;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 

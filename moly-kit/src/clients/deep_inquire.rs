@@ -1,3 +1,4 @@
+use crate::protocol::Tool;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use crate::utils::errors::enrich_http_error;
 use crate::{protocol::*, utils::sse::parse_sse};
@@ -5,7 +6,6 @@ use async_stream::stream;
 use makepad_widgets::*;
 use makepad_widgets::{Cx, LiveNew, WidgetRef};
 use reqwest::header::{HeaderMap, HeaderName};
-use crate::protocol::Tool;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{

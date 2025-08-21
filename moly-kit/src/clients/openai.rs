@@ -1,8 +1,8 @@
+use crate::protocol::Tool;
 use async_stream::stream;
 use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
-use crate::protocol::Tool;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},
@@ -580,8 +580,6 @@ impl BotClient for OpenAIClient {
                         return;
                     }
                 };
-
-
 
                 let completion: Completion = match serde_json::from_str(&event) {
                     Ok(c) => c,

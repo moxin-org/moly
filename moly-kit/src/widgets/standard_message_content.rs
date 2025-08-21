@@ -89,64 +89,62 @@ impl StandardMessageContent {
 
         let markdown = self.label(id!(markdown));
 
+        if metadata.is_writing() {
+            let text_with_typing = format!("{} {}", content.text, TYPING_INDICATOR);
+            markdown.set_text(cx, &text_with_typing);
+        } else if !content.tool_calls.is_empty() {
+            let tool_calls_text = Self::generate_tool_calls_text(content);
+            markdown.set_text(cx, &tool_calls_text);
+        } else {
+            markdown.set_text(cx, &content.text);
+        }
+    }
+
+    fn generate_tool_calls_text(content: &MessageContent) -> String {
         // Create enhanced text that includes tool calls
-        let enhanced_text = if !content.tool_calls.is_empty() {
+        if !content.tool_calls.is_empty() {
             let mut text = content.text.clone();
-            if !text.is_empty() {
-                text.push_str("\n\n");
-            }
 
             if content.tool_calls.len() == 1 {
                 let tool_call = &content.tool_calls[0];
-                let args_str = if tool_call.arguments.is_empty() {
-                    "no parameters".to_string()
-                } else {
-                    format!(
-                        "parameters: {}",
-                        tool_call
-                            .arguments
-                            .iter()
-                            .map(|(k, v)| format!("{}: {}", k, v))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                };
                 text.push_str(&format!(
-                    "🔧 **Calling tool:** `{}` with {}",
-                    tool_call.name, args_str
+                    "🔧 **Requesting permission to call:** `{}`",
+                    tool_call.name
                 ));
+
+                if !tool_call.arguments.is_empty() {
+                    let args_str = tool_call
+                        .arguments
+                        .iter()
+                        .map(|(k, v)| format!("{}: {}", k, v))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    text.push_str(&format!(" `{}` with args {}", tool_call.name, args_str));
+                };
             } else {
                 text.push_str(&format!(
-                    "🔧 **Calling {} tools:**\n",
+                    "🔧 **Requesting permission to call {} tools:**\n",
                     content.tool_calls.len()
                 ));
                 for tool_call in &content.tool_calls {
-                    let args_str = if tool_call.arguments.is_empty() {
-                        "no parameters".to_string()
-                    } else {
-                        format!(
-                            "parameters: {}",
+                    if !tool_call.arguments.is_empty() {
+                        let args_str = format!(
+                            "args: `{}`",
                             tool_call
                                 .arguments
                                 .iter()
                                 .map(|(k, v)| format!("{}: {}", k, v))
                                 .collect::<Vec<_>>()
                                 .join(", ")
-                        )
-                    };
-                    text.push_str(&format!("- `{}` with {}\n", tool_call.name, args_str));
+                        );
+                        text.push_str(&format!("- `{}` with {}\n", tool_call.name, args_str));
+                    }
                 }
             }
             text
         } else {
             content.text.clone()
-        };
-
-        if metadata.is_writing() {
-            let text_with_typing = format!("{} {}", enhanced_text, TYPING_INDICATOR);
-            markdown.set_text(cx, &text_with_typing);
-        } else {
-            markdown.set_text(cx, &enhanced_text);
         }
     }
 

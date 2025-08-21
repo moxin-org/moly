@@ -1,4 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
+use futures::channel::{mpsc, oneshot};
+#[cfg(not(target_arch = "wasm32"))]
 use rmcp::RoleClient;
 #[cfg(not(target_arch = "wasm32"))]
 use rmcp::ServiceExt;
@@ -14,8 +16,6 @@ use rmcp::transport::{SseClientTransport, TokioChildProcess};
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::{Arc, Mutex};
-#[cfg(not(target_arch = "wasm32"))]
-use futures::channel::{mpsc, oneshot};
 
 use crate::protocol::Tool;
 
@@ -37,8 +37,8 @@ type ListToolsResult = Vec<Tool>;
 
 // The transport to use for the MCP server
 pub enum McpTransport {
-    Http(String),                   // The URL for the HTTP endpoint (streamable)
-    Sse(String),                    // The URL for the SSE endpoint
+    Http(String), // The URL for the HTTP endpoint (streamable)
+    Sse(String),  // The URL for the SSE endpoint
     #[cfg(not(target_arch = "wasm32"))]
     Stdio(tokio::process::Command), // The command to launch the child process
 }
@@ -128,7 +128,11 @@ impl McpManagerClient {
                             let result = running_service.list_tools(Default::default()).await;
                             let _ = response.send(result);
                         }
-                        McpRequest::CallTool { name, arguments, response } => {
+                        McpRequest::CallTool {
+                            name,
+                            arguments,
+                            response,
+                        } => {
                             let request = rmcp::model::CallToolRequestParam {
                                 name: name.into(),
                                 arguments: Some(arguments),
@@ -145,7 +149,10 @@ impl McpManagerClient {
                 join_handle,
             };
 
-            self.services.lock().unwrap().insert(id.to_string(), service_handle);
+            self.services
+                .lock()
+                .unwrap()
+                .insert(id.to_string(), service_handle);
 
             Ok(())
         }
@@ -160,13 +167,21 @@ impl McpManagerClient {
     pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         let senders = {
             let services_guard = self.services.lock().unwrap();
-            services_guard.values().map(|handle| handle.sender.clone()).collect::<Vec<_>>()
+            services_guard
+                .values()
+                .map(|handle| handle.sender.clone())
+                .collect::<Vec<_>>()
         };
 
         let mut futures = Vec::new();
         for sender in senders {
             let (response_tx, response_rx) = oneshot::channel();
-            if sender.unbounded_send(McpRequest::ListTools { response: response_tx }).is_ok() {
+            if sender
+                .unbounded_send(McpRequest::ListTools {
+                    response: response_tx,
+                })
+                .is_ok()
+            {
                 futures.push(response_rx);
             }
         }
@@ -178,7 +193,8 @@ impl McpManagerClient {
             match result {
                 Ok(Ok(list_tools_result)) => {
                     // Convert rmcp tools to our unified Tool type
-                    let converted_tools: Vec<Tool> = list_tools_result.tools
+                    let converted_tools: Vec<Tool> = list_tools_result
+                        .tools
                         .into_iter()
                         .map(|rmcp_tool| rmcp_tool.into())
                         .collect();
@@ -205,7 +221,10 @@ impl McpManagerClient {
     ) -> Result<CallToolResult, Box<dyn std::error::Error>> {
         let senders = {
             let services_guard = self.services.lock().unwrap();
-            services_guard.values().map(|handle| handle.sender.clone()).collect::<Vec<_>>()
+            services_guard
+                .values()
+                .map(|handle| handle.sender.clone())
+                .collect::<Vec<_>>()
         };
 
         let mut tool_not_found_errors = Vec::new();
@@ -302,7 +321,11 @@ impl McpManagerClient {
         tool_name: &str,
         _arguments: serde_json::Map<String, serde_json::Value>,
     ) -> Result<CallToolResult, Box<dyn std::error::Error>> {
-        Err(format!("MCP servers are not yet supported in WASM builds. Cannot call tool '{}'", tool_name).into())
+        Err(format!(
+            "MCP servers are not yet supported in WASM builds. Cannot call tool '{}'",
+            tool_name
+        )
+        .into())
     }
 
     #[cfg(not(target_arch = "wasm32"))]

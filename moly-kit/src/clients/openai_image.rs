@@ -1,9 +1,9 @@
 //! Client based on the OpenAI one, but hits the image generation API instead.
 
+use crate::protocol::Tool;
 use crate::protocol::*;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use reqwest::header::{HeaderMap, HeaderName};
-use crate::protocol::Tool;
 use std::{
     str::FromStr,
     sync::{Arc, RwLock},

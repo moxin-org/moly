@@ -246,12 +246,12 @@ impl ChatScreen {
         spawn(async move {
             context.load().await;
 
-            #[cfg(not(target_arch = "wasm32"))] {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
                 if let Some(tool_manager) = context.tool_manager() {
                     // Load MCP servers from configuration
                     for (server_id, server_config) in mcp_config.list_enabled_servers() {
                         if let Some(transport) = server_config.to_transport() {
-
                             match tool_manager.add_server(server_id, transport).await {
                                 Ok(()) => {
                                     println!("Successfully added MCP server: {}", server_id);

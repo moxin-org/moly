@@ -16,9 +16,9 @@ pub struct Tool {
 
 impl Tool {
     pub fn new(name: String, description: Option<String>) -> Self {
-        use std::sync::Arc;
         use serde_json::Map;
-        
+        use std::sync::Arc;
+
         Tool {
             name,
             description,
