@@ -622,6 +622,7 @@ impl BotClient for OpenAIClient {
                                 id: tool_call_id.clone(),
                                 name: name.clone(),
                                 arguments,
+                                ..Default::default()
                             };
                             content.tool_calls.push(tool_call);
                         }
@@ -687,6 +688,7 @@ impl BotClient for OpenAIClient {
                                         id: tool_call_id.clone(),
                                         name: name.clone(),
                                         arguments: serde_json::Map::new(),
+                                        ..Default::default()
                                     };
                                     content.tool_calls.push(tool_call);
                                     tool_argument_buffers.remove(&tool_call_id);
@@ -700,6 +702,7 @@ impl BotClient for OpenAIClient {
                                                 id: tool_call_id.clone(),
                                                 name: name.clone(),
                                                 arguments: args,
+                                                ..Default::default()
                                             };
                                             content.tool_calls.push(tool_call);
                                             tool_argument_buffers.remove(&tool_call_id);
@@ -712,6 +715,7 @@ impl BotClient for OpenAIClient {
                                                 id: tool_call_id.clone(),
                                                 name: name.clone(),
                                                 arguments: serde_json::Map::new(),
+                                                ..Default::default()
                                             };
                                             content.tool_calls.push(tool_call);
                                             tool_argument_buffers.remove(&tool_call_id);
@@ -724,6 +728,7 @@ impl BotClient for OpenAIClient {
                                                 id: tool_call_id.clone(),
                                                 name: name.clone(),
                                                 arguments: serde_json::Map::new(),
+                                                ..Default::default()
                                             };
                                             content.tool_calls.push(tool_call);
                                             tool_argument_buffers.remove(&tool_call_id);

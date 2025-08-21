@@ -83,17 +83,14 @@ pub enum ChatTask {
     /// The boolean indicates if the scroll was triggered by a stream or not.
     ScrollToBottom(bool),
 
-    /// When received back, it will create a tool permission request message.
-    RequestToolPermission(Vec<ToolCall>),
+    /// When received back, it will mark tool calls as pending in the message at the given index.
+    RequestToolPermission(usize),
 
-    /// When received back, it will approve and execute the pending tool calls at the given index.
+    /// When received back, it will approve and execute the tool calls in the message at the given index.
     ApproveToolCalls(usize),
 
-    /// When received back, it will deny the pending tool calls at the given index.
+    /// When received back, it will deny the tool calls in the message at the given index.
     DenyToolCalls(usize),
-
-    /// When received back, it will remove the message at the given index.
-    RemoveMessage(usize),
 }
 
 impl From<ChatTask> for Vec<ChatTask> {
@@ -146,9 +143,6 @@ pub struct Chat {
     #[rust]
     user_scrolled_during_stream: bool,
 
-    /// Stores pending tool calls waiting for user approval, indexed by message index.
-    #[rust]
-    pending_tool_calls: HashMap<usize, Vec<ToolCall>>,
 }
 
 impl Widget for Chat {
@@ -799,60 +793,68 @@ impl Chat {
                     .write()
                     .scroll_to_bottom(cx, *triggered_by_stream);
             }
-            ChatTask::RequestToolPermission(tool_calls) => {
-                let next_index = self.messages_ref().read().messages.len();
-
-                // Create description of tool calls for the user
-                let tool_descriptions = tool_calls.iter()
-                    .map(|tc| {
-                        let args_preview = if tc.arguments.is_empty() {
-                            "no arguments".to_string()
-                        } else {
-                            // Show first few arguments as preview
-                            let args_str = serde_json::to_string_pretty(&tc.arguments).unwrap_or_default();
-                            if args_str.len() > 200 {
-                                format!("{}...", &args_str[..200])
-                            } else {
-                                args_str
-                            }
-                        };
-                        format!("**{}**\nArguments: {}", tc.name, args_preview)
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n\n");
-
-                let message_text = if tool_calls.len() == 1 {
-                    format!("🔧 **Tool Permission Required**\n\nThe assistant wants to execute the following tool:\n\n{}\n\nDo you want to allow this?", tool_descriptions)
-                } else {
-                    format!("🔧 **Tool Permission Required**\n\nThe assistant wants to execute {} tools:\n\n{}\n\nDo you want to allow these?", tool_calls.len(), tool_descriptions)
-                };
-
-                let message = Message {
-                    from: EntityId::App,
-                    content: MessageContent {
-                        text: message_text,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                };
-
-                // Insert the message first, then store the tool calls at the correct index
-                self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
-                
-                // Store the tool calls for later execution at the index where we just inserted
-                self.pending_tool_calls.insert(next_index, tool_calls.clone());
+            ChatTask::RequestToolPermission(index) => {
+                // Mark the tool calls in the message as pending
+                self.messages_ref().write_with(|m| {
+                    if let Some(message) = m.messages.get_mut(*index) {
+                        for tool_call in &mut message.content.tool_calls {
+                            tool_call.permission_status = ToolCallPermissionStatus::Pending;
+                        }
+                    }
+                });
+                self.redraw(cx);
             }
             ChatTask::ApproveToolCalls(index) => {
-                if let Some(tool_calls) = self.pending_tool_calls.remove(index) {
+                // Get the tool calls from the message and mark them as approved
+                let mut message_updated = None;
+                let tool_calls = self.messages_ref().write_with(|m| {
+                    if let Some(message) = m.messages.get_mut(*index) {
+                        message.update_content(|content| {
+                            for tool_call in &mut content.tool_calls {
+                                tool_call.permission_status = ToolCallPermissionStatus::Approved;
+                            }
+                        });
+                        message_updated = Some(message.clone());
+                        message.content.tool_calls.clone()
+                    } else {
+                        Vec::new()
+                    }
+                });
+
+                if let Some(message) = message_updated {
+                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
+                }
+                
+                if !tool_calls.is_empty() {
                     self.handle_tool_calls(cx, tool_calls);
-                    // Remove the permission request message after approval
-                    self.dispatch(cx, &mut vec![ChatTask::RemoveMessage(*index)]);
                 } else {
                     ::log::error!("No tool calls found at index: {}", index);
                 }
+                
+                self.redraw(cx);
             }
             ChatTask::DenyToolCalls(index) => {
-                if let Some(tool_calls) = self.pending_tool_calls.remove(index) {
+                // Get the tool calls from the message and mark them as denied
+                let mut message_updated = None;
+                let tool_calls = self.messages_ref().write_with(|m| {
+                    if let Some(message) = m.messages.get_mut(*index) {
+                        message.update_content(|content| {
+                            for tool_call in &mut content.tool_calls {
+                                tool_call.permission_status = ToolCallPermissionStatus::Denied;
+                            }
+                        });
+                        message_updated = Some(message.clone());
+                        message.content.tool_calls.clone()
+                    } else {
+                        Vec::new()
+                    }
+                });
+
+                if let Some(message) = message_updated {
+                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
+                }
+                
+                if !tool_calls.is_empty() {
                     // Create synthetic tool results indicating denial to maintain conversation flow
                     let tool_results: Vec<ToolResult> = tool_calls.iter().map(|tc| {
                         ToolResult {
@@ -875,30 +877,12 @@ impl Chat {
                         ..Default::default()
                     };
                     
-                    // Send the synthetic tool results to continue the conversation properly
+                    // Continue the conversation with the denial results
                     self.dispatch(cx, &mut vec![
-                        ChatTask::RemoveMessage(*index), // Remove the permission request message
-                        ChatTask::InsertMessage(next_index - 1, tool_message), // Adjust index since we removed a message
-                        ChatTask::Send, // Continue the conversation with the denial results
+                        ChatTask::InsertMessage(next_index, tool_message),
+                        ChatTask::Send,
                     ]);
                 }
-            }
-            ChatTask::RemoveMessage(index) => {
-                self.messages_ref().write().messages.remove(*index);
-                
-                // Update pending_tool_calls indices that are affected by removal
-                let mut updated_pending = std::collections::HashMap::new();
-                for (idx, tool_calls) in self.pending_tool_calls.drain() {
-                    if idx < *index {
-                        // Indices before removal point stay the same
-                        updated_pending.insert(idx, tool_calls);
-                    } else if idx > *index {
-                        // Indices after removal point shift down by 1
-                        updated_pending.insert(idx - 1, tool_calls);
-                    }
-                    // Index at removal point is dropped (not re-inserted)
-                }
-                self.pending_tool_calls = updated_pending;
                 
                 self.redraw(cx);
             }
@@ -941,7 +925,6 @@ impl Chat {
         self.abort_handle = None;
         self.expected_message = None;
         self.user_scrolled_during_stream = false;
-        // Note: Don't clear pending_tool_calls here - they're managed separately by tool approval/denial
         self.messages_ref().write().reset_scroll_state();
         self.prompt_input_ref().write().set_send();
         self.messages_ref().write().messages.retain_mut(|m| {
@@ -1026,9 +1009,7 @@ impl Chat {
                     final_message.metadata.is_writing = false;
                     self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
 
-                    // Instead of executing immediately, request permission from user
-                    let tool_calls = updated_message.content.tool_calls.clone();
-                    self.dispatch(cx, &mut vec![ChatTask::RequestToolPermission(tool_calls)]);
+                    self.dispatch(cx, &mut vec![ChatTask::RequestToolPermission(index)]);
 
                     // Signal to stop the current stream since we're switching to permission request
                     return true;

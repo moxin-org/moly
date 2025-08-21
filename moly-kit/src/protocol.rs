@@ -282,6 +282,19 @@ impl fmt::Display for BotId {
     }
 }
 
+/// Permission status for tool call execution
+#[derive(Clone, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum ToolCallPermissionStatus {
+    /// Waiting for user decision
+    #[default]
+    Pending,
+    /// User approved execution
+    Approved,
+    /// User denied execution
+    Denied,
+}
+
 /// Represents a function/tool call made by the AI
 #[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -292,6 +305,9 @@ pub struct ToolCall {
     pub name: String,
     /// Arguments passed to the tool (JSON)
     pub arguments: serde_json::Map<String, serde_json::Value>,
+    /// Permission status for this tool call
+    #[cfg_attr(feature = "json", serde(default))]
+    pub permission_status: ToolCallPermissionStatus,
 }
 
 /// Represents the result of a tool call execution
