@@ -425,8 +425,6 @@ impl Chat {
                         let content = serde_json::to_string_pretty(&result)
                             .unwrap_or_else(|_| "Tool executed successfully".to_string());
 
-                        println!("Tool result: {:?}", content);
-
                         tool_results.push(ToolResult {
                             tool_call_id: tool_call.id.clone(),
                             content,

@@ -136,11 +136,6 @@ impl Preferences {
         serde_json::to_string(self).unwrap()
     }
 
-    pub fn update_mcp_servers_config(&mut self, config: McpServersConfig) {
-        self.mcp_servers_config = config;
-        self.save();
-    }
-
     pub fn get_mcp_servers_config_json(&self) -> String {
         self.mcp_servers_config
             .to_json()

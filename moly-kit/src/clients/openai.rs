@@ -147,7 +147,7 @@ struct IncomingMessage {
 }
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
-struct OutcomingMessage {
+struct OutgoingMessage {
     pub content: Content,
     pub role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -156,7 +156,7 @@ struct OutcomingMessage {
     pub tool_call_id: Option<String>,
 }
 
-async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> {
+async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
     // Handle tool results specially
     if !message.content.tool_results.is_empty() {
         let role = Role::Tool;
@@ -188,7 +188,7 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
             .first()
             .map(|r| r.tool_call_id.clone());
 
-        return Ok(OutcomingMessage {
+        return Ok(OutgoingMessage {
             content,
             role,
             tool_calls: None,
@@ -259,7 +259,7 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
             None
         };
 
-    Ok(OutcomingMessage {
+    Ok(OutgoingMessage {
         content,
         role,
         tool_calls,
@@ -501,9 +501,9 @@ impl BotClient for OpenAIClient {
             .collect::<Vec<_>>();
 
         let stream = stream! {
-            let mut outgoing_messages: Vec<OutcomingMessage> = Vec::with_capacity(messages.len());
+            let mut outgoing_messages: Vec<OutgoingMessage> = Vec::with_capacity(messages.len());
             for message in messages {
-                match to_outcoming_message(message.clone()).await {
+                match to_outgoing_message(message.clone()).await {
                     Ok(outgoing_message) => outgoing_messages.push(outgoing_message),
                     Err(_) => {
                         error!("Could not convert message to outgoing format: {:?}", message);

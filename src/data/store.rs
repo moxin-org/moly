@@ -442,14 +442,4 @@ impl Store {
 
         Ok(())
     }
-
-    pub fn update_mcp_servers_config(&mut self, config: McpServersConfig) {
-        self.preferences.update_mcp_servers_config(config);
-
-        // TODO(Julian): do not invalidate the entire bot context
-        // Invalidate the bot context so it gets recreated with new MCP servers
-        if self.bot_context.is_some() {
-            self.bot_context = None;
-        }
-    }
 }
