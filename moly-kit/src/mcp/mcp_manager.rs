@@ -1,11 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 use futures::channel::{mpsc, oneshot};
 #[cfg(not(target_arch = "wasm32"))]
-use rmcp::RoleClient;
-#[cfg(not(target_arch = "wasm32"))]
 use rmcp::ServiceExt;
-#[cfg(not(target_arch = "wasm32"))]
-use rmcp::service::{DynService, RunningService};
 #[cfg(not(target_arch = "wasm32"))]
 use rmcp::transport::streamable_http_client::{
     StreamableHttpClientTransport, StreamableHttpClientWorker,
@@ -79,10 +75,7 @@ struct ServiceHandle {
 pub struct McpManagerClient {
     #[cfg(not(target_arch = "wasm32"))]
     services: Arc<Mutex<HashMap<String, ServiceHandle>>>,
-    #[cfg(not(target_arch = "wasm32"))]
     latest_tools: Vec<Tool>,
-    #[cfg(target_arch = "wasm32")]
-    _phantom: std::marker::PhantomData<()>,
 }
 
 impl McpManagerClient {
@@ -90,10 +83,7 @@ impl McpManagerClient {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             services: Arc::new(Mutex::new(HashMap::new())),
-            #[cfg(not(target_arch = "wasm32"))]
             latest_tools: Vec::new(),
-            #[cfg(target_arch = "wasm32")]
-            _phantom: std::marker::PhantomData,
         }
     }
 

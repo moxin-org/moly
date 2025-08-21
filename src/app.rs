@@ -109,10 +109,15 @@ live_design! {
         }
         <HorizontalFiller> {}
 
-        mcp_tab = <SidebarMenuButton> {
-            text: "MCP",
-            draw_icon: {
-                svg_file: (ICON_MCP),
+        mcp_tab_container = <View> {
+            width: Fit, height: Fit
+            visible: false
+
+            mcp_tab = <SidebarMenuButton> {
+                text: "MCP",
+                draw_icon: {
+                    svg_file: (ICON_MCP),
+                }
             }
         }
 
@@ -292,22 +297,45 @@ impl MatchEvent for App {
         let mut navigate_to_providers = false;
         let mut navigate_to_mcp = false;
 
-        // TODO: Replace this with a proper navigation widget.
-        if let Some(selected_tab) = self
-            .ui
-            .radio_button_set(ids!(
+        let radio_button_set;
+        // Only show the MCP tab in native builds
+        #[cfg(not(target_arch = "wasm32"))] {
+            radio_button_set = self.ui.radio_button_set(ids!(
                 sidebar_menu.chat_tab,
                 sidebar_menu.moly_server_tab,
                 sidebar_menu.mcp_tab,
                 sidebar_menu.providers_tab,
-            ))
+            ));
+            self.ui.view(id!(sidebar_menu.mcp_tab_container)).set_visible(cx, true);
+        }
+
+        #[cfg(target_arch = "wasm32")] {
+            radio_button_set = self.ui.radio_button_set(ids!(
+                sidebar_menu.chat_tab,
+                sidebar_menu.moly_server_tab,
+                sidebar_menu.providers_tab,
+            ));
+            self.ui.view(id!(sidebar_menu.mcp_tab_container)).set_visible(cx, false);
+        }
+
+        // TODO: Replace this with a proper navigation widget.
+        if let Some(selected_tab) = radio_button_set
             .selected(cx, actions)
         {
+            #[cfg(not(target_arch = "wasm32"))]
             match selected_tab {
                 0 => navigate_to_chat = true,
                 1 => navigate_to_moly_server = true,
                 2 => navigate_to_mcp = true,
                 3 => navigate_to_providers = true,
+                _ => {}
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            match selected_tab {
+                0 => navigate_to_chat = true,
+                1 => navigate_to_moly_server = true,
+                2 => navigate_to_providers = true,
                 _ => {}
             }
         }
