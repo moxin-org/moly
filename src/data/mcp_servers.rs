@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 /// Represents an input configuration for MCP servers
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,16 +20,16 @@ pub struct McpServer {
     pub command: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub env: HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub env: IndexMap<String, String>,
 
     // HTTP/SSE transport fields
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub transport_type: Option<String>,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub headers: HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub headers: IndexMap<String, String>,
 
     // Optional extras
     #[serde(
@@ -55,10 +55,10 @@ impl McpServer {
         Self {
             command: Some(command),
             args,
-            env: HashMap::new(),
+            env: IndexMap::new(),
             url: None,
             transport_type: None,
-            headers: HashMap::new(),
+            headers: IndexMap::new(),
             enabled: true,
             working_directory: None,
         }
@@ -69,10 +69,10 @@ impl McpServer {
         Self {
             command: None,
             args: Vec::new(),
-            env: HashMap::new(),
+            env: IndexMap::new(),
             url: Some(url),
             transport_type: Some("http".to_string()),
-            headers: HashMap::new(),
+            headers: IndexMap::new(),
             enabled: true,
             working_directory: None,
         }
@@ -83,10 +83,10 @@ impl McpServer {
         Self {
             command: None,
             args: Vec::new(),
-            env: HashMap::new(),
+            env: IndexMap::new(),
             url: Some(url),
             transport_type: Some("sse".to_string()),
-            headers: HashMap::new(),
+            headers: IndexMap::new(),
             enabled: true,
             working_directory: None,
         }
@@ -114,7 +114,7 @@ impl McpServer {
     }
 
     /// Set environment variables for stdio transport
-    pub fn with_env(mut self, env: HashMap<String, String>) -> Self {
+    pub fn with_env(mut self, env: IndexMap<String, String>) -> Self {
         self.env = env;
         self
     }
@@ -132,7 +132,7 @@ impl McpServer {
     }
 
     /// Set headers for HTTP/SSE transport
-    pub fn with_headers(mut self, headers: HashMap<String, String>) -> Self {
+    pub fn with_headers(mut self, headers: IndexMap<String, String>) -> Self {
         self.headers = headers;
         self
     }
@@ -178,7 +178,7 @@ impl McpServer {
 /// Represents the complete MCP servers configuration (follows MCP standard format)
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct McpServersConfig {
-    pub servers: HashMap<String, McpServer>,
+    pub servers: IndexMap<String, McpServer>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<InputConfig>,
 }
@@ -193,7 +193,7 @@ impl McpServersConfig {
     }
 
     pub fn remove_server(&mut self, id: &str) {
-        self.servers.remove(id);
+        self.servers.shift_remove(id);
     }
 
     pub fn get_server(&self, id: &str) -> Option<&McpServer> {
@@ -239,7 +239,7 @@ impl McpServersConfig {
         );
 
         // Image sorcery server with environment variable
-        let mut env = HashMap::new();
+        let mut env = IndexMap::new();
         env.insert(
             "SECRET_TOKEN".to_string(),
             "${input:secret_token}".to_string(),
