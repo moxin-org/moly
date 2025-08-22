@@ -4,21 +4,22 @@ use std::collections::VecDeque;
 pub struct TesterClient;
 
 impl BotClient for TesterClient {
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let future = futures::future::ready(ClientResult::new_ok(vec![Bot {
             id: BotId::new("tester", "tester"),
             name: "tester".to_string(),
             avatar: Picture::Grapheme("T".into()),
+            capabilities: BotCapabilities::new(),
         }]));
 
-        moly_future(future)
+        Box::pin(future)
     }
 
     fn send(
         &mut self,
         _bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let mut input = messages
             .last()
             .expect("didn't receive any messages")
@@ -68,7 +69,7 @@ impl BotClient for TesterClient {
             }
         });
 
-        moly_stream(stream)
+        Box::pin(stream)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {

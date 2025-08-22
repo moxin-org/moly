@@ -535,10 +535,11 @@ impl BotClient for OpenAIRealtimeClient {
         // belong to the provider are filtered out in Moly automatically.
         // TODO: fetch the specific supported models from the provider instead of hardcoding them here
         let supported: Vec<Bot> = [
-            "gpt-4o-realtime-preview-2025-06-03", // OpenAI
-            "Qwen/Qwen2.5-0.5B-Instruct-GGUF",    // Dora
-            "Qwen/Qwen2.5-1.5B-Instruct-GGUF",    // Dora
-            "Qwen/Qwen2.5-3B-Instruct-GGUF",      // Dora
+            "gpt-4o-realtime-preview-2025-06-03",  // OpenAI
+            "Qwen/Qwen2.5-0.5B-Instruct-GGUF",     // Dora
+            "Qwen/Qwen2.5-1.5B-Instruct-GGUF",     // Dora
+            "Qwen/Qwen2.5-3B-Instruct-GGUF",       // Dora
+            "unsloth/Qwen3-4B-Instruct-2507-GGUF", // Dora
         ]
         .into_iter()
         .map(|id| Bot {

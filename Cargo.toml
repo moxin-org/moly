@@ -18,9 +18,9 @@ description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moly_app` to avoid naming conflicts
 ## with the `moly` binary defined by the `moly-runner` crate.
-# [[bin]]
-# name = "_moly_app"
-# path = "src/main.rs"
+[[bin]]
+name = "_moly_app"
+path = "src/main.rs"
 
 
 [dependencies]
@@ -44,6 +44,7 @@ robius-url-handler = { git = "https://github.com/project-robius/robius-url-handl
 log = "0.4"
 env_logger = "0.11"
 cfg-if = "1.0.0"
+uuid = { version = "1.18.0", features = ["js", "v7"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "signal"] }
@@ -121,8 +122,14 @@ cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-p
 ## See the above paragraph comments for more info on how we create/populate the below `src` directories.
 resources = [
     { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold", target = "makepad_fonts_chinese_bold" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold_2", target = "makepad_fonts_chinese_bold_2" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular", target = "makepad_fonts_chinese_regular" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular_2", target = "makepad_fonts_chinese_regular_2" },
+    { src = "./dist/resources/makepad_fonts_emoji", target = "makepad_fonts_emoji" },
     { src = "./dist/resources/moly", target = "moly" },
     { src = "./dist/resources/moly_kit", target = "moly_kit" },
+    
 ]
 
 ## We then build the entire Moly project and set the `MAKEPAD_PACKAGE_DIR` env var to the proper value.

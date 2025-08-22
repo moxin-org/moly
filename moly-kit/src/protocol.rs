@@ -63,6 +63,9 @@ use std::{
 
 mod attachment;
 pub use attachment::*;
+
+pub use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
+
 /// Upgrade types for enhanced communication modes
 #[derive(Debug, Clone, PartialEq)]
 pub enum Upgrade {

@@ -22,10 +22,14 @@
 //! which specific build commands and configuration options should be used.
 //!
 
-use core::panic;
-use std::{ffi::OsStr, fs, path::Path, process::{Command, Stdio}};
 use cargo_metadata::MetadataCommand;
-
+use core::panic;
+use std::{
+    ffi::OsStr,
+    fs,
+    path::Path,
+    process::{Command, Stdio},
+};
 
 /// Returns the value of the `MAKEPAD_PACKAGE_DIR` environment variable
 /// that must be set for the given package format.
@@ -35,11 +39,11 @@ use cargo_metadata::MetadataCommand;
 ///     to the directory where the binary is located, which is `Moly.app/Contents/MacOS/`.
 ///     (See the `run_moly` function in `moly-runner/src/main.rs` for more details.)
 ///   * In a macOS app bundle, the resources directory is in `Moly.app/Context/Resources/`,
-///     so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources`. 
+///     so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources`.
 ///     This must be relative to the binary's location, i.e. up one parent directory.
 /// * For AppImage packages, this should be set to a relative path that goes up two parent directories
 ///   to account for the fact that AppImage binaries run in a simulated `usr/bin/` directory.
-///   * Thus, we need to get to the simulated `usr/lib/` directory for Moly's resources, 
+///   * Thus, we need to get to the simulated `usr/lib/` directory for Moly's resources,
 ///     which currently works out to `../../usr/lib/moly`.
 ///   * Note that this must be a relative path, not an absolute path.
 /// * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
@@ -60,7 +64,6 @@ fn makepad_package_dir_value(package_format: &str) -> &'static str {
     }
 }
 
-
 fn main() -> std::io::Result<()> {
     let mut is_before_packaging = false;
     let mut is_before_each_package = false;
@@ -74,8 +77,7 @@ fn main() -> std::io::Result<()> {
         if arg.contains("before-each") || arg.contains("before_each") {
             is_before_each_package = true;
         }
-        if host_os_opt.is_none() && (arg.contains("host_os") || arg.contains("host-os"))
-        {
+        if host_os_opt.is_none() && (arg.contains("host_os") || arg.contains("host-os")) {
             host_os_opt = arg
                 .split("=")
                 .last()
@@ -89,8 +91,12 @@ fn main() -> std::io::Result<()> {
     match (is_before_packaging, is_before_each_package) {
         (true, false) => before_packaging(host_os),
         (false, true) => before_each_package(host_os),
-        (true, true) => panic!("Cannot run both 'before-packaging' and 'before-each-package' commands at the same time."),
-        (false, false) => panic!("Please specify either the 'before-packaging' or 'before-each-package' command."),
+        (true, true) => panic!(
+            "Cannot run both 'before-packaging' and 'before-each-package' commands at the same time."
+        ),
+        (false, false) => {
+            panic!("Please specify either the 'before-packaging' or 'before-each-package' command.")
+        }
     }
 }
 
@@ -116,17 +122,29 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
         .exec()
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
-    let makepad_widgets_resources_dest = dist_resources_dir.join("makepad_widgets").join("resources");
+    let makepad_widgets_resources_dest =
+        dist_resources_dir.join("makepad_widgets").join("resources");
     let makepad_widgets_resources_src = {
         let makepad_widgets_package = cargo_metadata
             .packages
             .iter()
             .find(|package| package.name == "makepad-widgets")
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "makepad-widgets package not found"))?;
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "makepad-widgets package not found",
+                )
+            })?;
 
-        makepad_widgets_package.manifest_path
+        makepad_widgets_package
+            .manifest_path
             .parent()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "makepad-widgets package manifest path not found"))?
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "makepad-widgets package manifest path not found",
+                )
+            })?
             .join("resources")
     };
 
@@ -136,23 +154,77 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
             .packages
             .iter()
             .find(|package| package.name == "moly-kit")
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "moly-kit package not found"))?;
+            .ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::NotFound, "moly-kit package not found")
+            })?;
 
-        moly_kit_package.manifest_path
+        moly_kit_package
+            .manifest_path
             .parent()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "moly-kit package manifest path not found"))?
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "moly-kit package manifest path not found",
+                )
+            })?
             .join("resources")
     };
 
+    let font_packages = [
+        "makepad-fonts-chinese-bold",
+        "makepad-fonts-chinese-bold-2",
+        "makepad-fonts-chinese-regular",
+        "makepad-fonts-chinese-regular-2",
+        "makepad-fonts-emoji",
+    ];
+
+    let mut font_resources: Vec<(std::path::PathBuf, std::path::PathBuf)> = Vec::new();
+    for font_package_name in &font_packages {
+        if let Some(font_package) = cargo_metadata
+            .packages
+            .iter()
+            .find(|package| package.name == *font_package_name)
+        {
+            let font_resources_dest = dist_resources_dir
+                .join(font_package_name.replace('-', "_"))
+                .join("resources");
+            let font_resources_src = font_package
+                .manifest_path
+                .parent()
+                .ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("{} package manifest path not found", font_package_name),
+                    )
+                })?
+                .join("resources");
+
+            font_resources.push((font_resources_src.into_std_path_buf(), font_resources_dest));
+        } else {
+            println!(
+                "Warning: Font package '{}' not found in cargo metadata, skipping...",
+                font_package_name
+            );
+        }
+    }
 
     /// Copy files from source to destination recursively.
-    fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> std::io::Result<()> {
+    fn copy_recursively(
+        source: impl AsRef<Path>,
+        destination: impl AsRef<Path>,
+    ) -> std::io::Result<()> {
         if !source.as_ref().exists() {
-            println!("  --> Source directory does not exist, skipping copy: {}", source.as_ref().display());
+            println!(
+                "  --> Source directory does not exist, skipping copy: {}",
+                source.as_ref().display()
+            );
             return Ok(());
         }
         if !source.as_ref().is_dir() {
-             println!("  --> Source is not a directory, skipping copy: {}", source.as_ref().display());
+            println!(
+                "  --> Source is not a directory, skipping copy: {}",
+                source.as_ref().display()
+            );
             return Ok(());
         }
 
@@ -169,22 +241,46 @@ fn before_packaging(host_os: &str) -> std::io::Result<()> {
         Ok(())
     }
 
-    println!("Copying makepad-widgets resources...\n  --> From: {}\n      to:   {}", makepad_widgets_resources_src.as_std_path().display(), makepad_widgets_resources_dest.display());
-    copy_recursively(&makepad_widgets_resources_src, &makepad_widgets_resources_dest)?;
+    println!(
+        "Copying makepad-widgets resources...\n  --> From: {}\n      to:   {}",
+        makepad_widgets_resources_src.as_std_path().display(),
+        makepad_widgets_resources_dest.display()
+    );
+    copy_recursively(
+        &makepad_widgets_resources_src,
+        &makepad_widgets_resources_dest,
+    )?;
     println!("  --> Done!");
 
-    println!("Copying moly resources...\n  --> From {}\n      to:   {}", moly_resources_src.display(), moly_resources_dest.display());
+    println!(
+        "Copying moly resources...\n  --> From {}\n      to:   {}",
+        moly_resources_src.display(),
+        moly_resources_dest.display()
+    );
     copy_recursively(&moly_resources_src, &moly_resources_dest)?;
     println!("  --> Done!");
 
-    println!("Copying moly-kit resources...\n  --> From {}\n      to:   {}", moly_kit_resources_src.as_std_path().display(), moly_kit_resources_dest.display());
+    println!(
+        "Copying moly-kit resources...\n  --> From {}\n      to:   {}",
+        moly_kit_resources_src.as_std_path().display(),
+        moly_kit_resources_dest.display()
+    );
     copy_recursively(&moly_kit_resources_src, &moly_kit_resources_dest)?;
     println!("  --> Done!");
 
+    // Copy font resources
+    for (font_src, font_dest) in font_resources {
+        println!(
+            "Copying font resources...\n  --> From {}\n      to:   {}",
+            font_src.display(),
+            font_dest.display()
+        );
+        copy_recursively(&font_src, &font_dest)?;
+        println!("  --> Done!");
+    }
 
     Ok(())
 }
-
 
 /// The function that is run by cargo-packager's `before-each-package-command`.
 ///
@@ -196,19 +292,20 @@ fn before_each_package(host_os: &str) -> std::io::Result<()> {
 
     let package_format = format.as_str();
     println!("Running before-each-package-command for {package_format:?}");
-    match package_format         {
+    match package_format {
         "app" | "dmg" => before_each_package_macos(package_format, host_os),
-        "deb"         => before_each_package_deb(package_format, host_os),
-        "appimage"    => before_each_package_appimage(package_format, host_os),
-        "pacman"      => before_each_package_pacman(package_format, host_os),
-        "nsis"        => before_each_package_windows(package_format, host_os),
-        _other => return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Unknown/unsupported package format {_other:?}"),
-        )),
+        "deb" => before_each_package_deb(package_format, host_os),
+        "appimage" => before_each_package_appimage(package_format, host_os),
+        "pacman" => before_each_package_pacman(package_format, host_os),
+        "nsis" => before_each_package_windows(package_format, host_os),
+        _other => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Unknown/unsupported package format {_other:?}"),
+            ));
+        }
     }
 }
-
 
 /// Runs the macOS-specific build commands for "app" and "dmg" package formats.
 ///
@@ -218,13 +315,12 @@ fn before_each_package(host_os: &str) -> std::io::Result<()> {
 ///    && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moly_app;
 /// ```
 fn before_each_package_macos(package_format: &str, host_os: &str) -> std::io::Result<()> {
-    assert!(host_os == "macos", "'app' and 'dmg' packages can only be created on macOS.");
+    assert!(
+        host_os == "macos",
+        "'app' and 'dmg' packages can only be created on macOS."
+    );
 
-    cargo_build(
-        package_format,
-        host_os,
-        &["--features", "macos_bundle"],
-    )?;
+    cargo_build(package_format, host_os, &["--features", "macos_bundle"])?;
 
     // Use `install_name_tool` to add the `@executable_path` rpath to the binary.
     let install_name_tool_cmd = Command::new("install_name_tool")
@@ -235,34 +331,35 @@ fn before_each_package_macos(package_format: &str, host_os: &str) -> std::io::Re
 
     let output = install_name_tool_cmd.wait_with_output()?;
     if !output.status.success() {
-        eprintln!("Failed to run install_name_tool command: {}
+        eprintln!(
+            "Failed to run install_name_tool command: {}
             ------------------------- stderr: -------------------------
             {:?}",
             output.status,
             String::from_utf8_lossy(&output.stderr),
         );
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to run install_name_tool command for macOS"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to run install_name_tool command for macOS",
+        ));
     }
 
     Ok(())
-
 }
 
 /// Runs the Linux-specific build commands for AppImage packages.
 fn before_each_package_appimage(package_format: &str, host_os: &str) -> std::io::Result<()> {
-    assert!(host_os == "linux", "AppImage packages can only be created on Linux.");
+    assert!(
+        host_os == "linux",
+        "AppImage packages can only be created on Linux."
+    );
 
-    cargo_build(
-        package_format,
-        host_os,
-        std::iter::empty::<&str>(),
-    )?;
+    cargo_build(package_format, host_os, std::iter::empty::<&str>())?;
 
     strip_unneeded_linux_binaries(host_os)?;
 
     Ok(())
 }
-
 
 /// Runs the Linux-specific build commands for Debian `.deb` packages.
 ///
@@ -275,7 +372,10 @@ fn before_each_package_appimage(package_format: &str, host_os: &str) -> std::io:
 ///    echo "curl" >> ./dist/depends_deb.txt; \
 ///    
 fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Result<()> {
-    assert!(host_os == "linux", "'deb' packages can only be created on Linux.");
+    assert!(
+        host_os == "linux",
+        "'deb' packages can only be created on Linux."
+    );
 
     cargo_build(
         package_format,
@@ -283,7 +383,6 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
         &["--features", "reqwest/native-tls-vendored"],
     )?;
 
-    
     // Create Debian dependencies file by running `ldd` on the binary
     // and then running `dpkg -S` on each unique shared libraries outputted by `ldd`.
     let ldd_output = Command::new("ldd")
@@ -293,7 +392,8 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     let ldd_output = if ldd_output.status.success() {
         String::from_utf8_lossy(&ldd_output.stdout)
     } else {
-        eprintln!("Failed to run ldd command: {}
+        eprintln!(
+            "Failed to run ldd command: {}
             ------------------------- stderr: -------------------------
             {:?}",
             ldd_output.status,
@@ -301,20 +401,21 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
         );
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!("Failed to run ldd command on {host_os} for package format {package_format:?}")
+            format!("Failed to run ldd command on {host_os} for package format {package_format:?}"),
         ));
     };
 
     let mut dpkgs = Vec::new();
     for line_raw in ldd_output.lines() {
         let line = line_raw.trim();
-        let lib_name_opt = line.split_whitespace()
-            .next()
-            .and_then(|path| Path::new(path)
+        let lib_name_opt = line.split_whitespace().next().and_then(|path| {
+            Path::new(path)
                 .file_name()
                 .and_then(|f| f.to_str().to_owned())
-            );
-        let Some(lib_name) = lib_name_opt else { continue };
+        });
+        let Some(lib_name) = lib_name_opt else {
+            continue;
+        };
 
         let dpkg_output = Command::new("dpkg")
             .arg("-S")
@@ -328,7 +429,9 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
             continue;
         };
 
-        let Some(package_name) = dpkg_output.split(':').next() else { continue };
+        let Some(package_name) = dpkg_output.split(':').next() else {
+            continue;
+        };
         println!("Got dpkg dependency {package_name:?} from ldd output: {line:?}");
         dpkgs.push(package_name.to_string());
     }
@@ -338,17 +441,19 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     // `curl` is a fixed dependency for the moly-runner binary.
     dpkgs.push("curl".to_string());
     std::fs::write("./dist/depends_deb.txt", dpkgs.join("\n"))?;
-    
+
     strip_unneeded_linux_binaries(host_os)?;
     Ok(())
 }
-
 
 /// Runs the Linux-specific build commands for PacMan packages.
 ///
 /// This is untested and may be incomplete, e.g., dependencies are not determined.
 fn before_each_package_pacman(package_format: &str, host_os: &str) -> std::io::Result<()> {
-    assert!(host_os == "linux", "Pacman packages can only be created on Linux.");
+    assert!(
+        host_os == "linux",
+        "Pacman packages can only be created on Linux."
+    );
 
     cargo_build(
         package_format,
@@ -359,16 +464,15 @@ fn before_each_package_pacman(package_format: &str, host_os: &str) -> std::io::R
     strip_unneeded_linux_binaries(host_os)?;
     Ok(())
 }
-    
+
 /// Runs the Windows-specific build commands for WiX (`.msi`) and NSIS (`.exe`) packages.
 fn before_each_package_windows(package_format: &str, host_os: &str) -> std::io::Result<()> {
-    assert!(host_os == "windows", "'.exe' and '.msi' packages can only be created on Windows.");
+    assert!(
+        host_os == "windows",
+        "'.exe' and '.msi' packages can only be created on Windows."
+    );
 
-    cargo_build(
-        package_format,
-        host_os,
-        std::iter::empty::<&str>(),
-    )?;
+    cargo_build(package_format, host_os, std::iter::empty::<&str>())?;
 
     Ok(())
 }
@@ -383,12 +487,16 @@ where
         .arg("--workspace")
         .arg("--release")
         .args(extra_args)
-        .env("MAKEPAD_PACKAGE_DIR", makepad_package_dir_value(package_format))
+        .env(
+            "MAKEPAD_PACKAGE_DIR",
+            makepad_package_dir_value(package_format),
+        )
         .spawn()?;
 
     let output = cargo_build_cmd.wait_with_output()?;
     if !output.status.success() {
-        eprintln!("Failed to run cargo build command: {}
+        eprintln!(
+            "Failed to run cargo build command: {}
             ------------------------- stderr: -------------------------
             {:?}",
             output.status,
@@ -396,7 +504,9 @@ where
         );
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!("Failed to run cargo build command on {_host_os} for package format {package_format:?}")
+            format!(
+                "Failed to run cargo build command on {_host_os} for package format {package_format:?}"
+            ),
         ));
     }
 
@@ -405,7 +515,10 @@ where
 /// Strips unneeded symbols from the Linux binary, which is required for Debian `.deb` packages
 /// and recommended for all other Linux package formats.
 fn strip_unneeded_linux_binaries(host_os: &str) -> std::io::Result<()> {
-    assert!(host_os == "linux", "'strip --strip-unneeded' can only be run on Linux.");
+    assert!(
+        host_os == "linux",
+        "'strip --strip-unneeded' can only be run on Linux."
+    );
     let strip_cmd = Command::new("strip")
         .arg("--strip-unneeded")
         .arg("--remove-section=.comment")
@@ -416,13 +529,17 @@ fn strip_unneeded_linux_binaries(host_os: &str) -> std::io::Result<()> {
 
     let output = strip_cmd.wait_with_output()?;
     if !output.status.success() {
-        eprintln!("Failed to run strip command: {}
+        eprintln!(
+            "Failed to run strip command: {}
             ------------------------- stderr: -------------------------
             {:?}",
             output.status,
             String::from_utf8_lossy(&output.stderr),
         );
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to run strip command for Linux"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to run strip command for Linux",
+        ));
     }
 
     Ok(())

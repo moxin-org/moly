@@ -574,6 +574,7 @@ impl Realtime {
         self.transcript.clear();
 
         self.update_ui(cx);
+        self.label(id!(status_label)).set_text(cx, "Loading..."); // This will be removed by the greeting message
         self.start_audio_streaming(cx);
         self.create_greeting_response(cx);
     }
