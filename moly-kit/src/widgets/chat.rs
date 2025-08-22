@@ -9,6 +9,7 @@ use crate::utils::ui_runner::DeferWithRedrawAsync;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
 
 use crate::*;
+use crate::mcp::mcp_manager::display_name_from_namespaced;
 
 live_design!(
     use link::theme::*;
@@ -455,13 +456,14 @@ impl Chat {
                         .map(|tc| tc.name.as_str())
                         .unwrap_or("unknown");
 
+                    let display_name = display_name_from_namespaced(tool_name);
                     if result.is_error {
-                        format!("🔧 Tool '{}' failed:\n{}", tool_name, result.content)
+                        format!("🔧 Tool '{}' failed:\n{}", display_name, result.content)
                     } else {
                         let summary = Self::create_tool_output_summary(tool_name, &result.content);
                         format!(
                             "🔧 Tool '{}' executed successfully:\n{}",
-                            tool_name, summary
+                            display_name, summary
                         )
                     }
                 } else {
@@ -473,12 +475,13 @@ impl Chat {
                             .map(|tc| tc.name.as_str())
                             .unwrap_or("unknown");
 
+                        let display_name = display_name_from_namespaced(tool_name);
                         if result.is_error {
-                            text.push_str(&format!("**{}** ❌: {}\n\n", tool_name, result.content));
+                            text.push_str(&format!("**{}** ❌: {}\n\n", display_name, result.content));
                         } else {
                             let summary =
                                 Self::create_tool_output_summary(tool_name, &result.content);
-                            text.push_str(&format!("**{}** ✅: {}\n\n", tool_name, summary));
+                            text.push_str(&format!("**{}** ✅: {}\n\n", display_name, summary));
                         }
                     }
                     text
@@ -600,13 +603,8 @@ impl Chat {
                 }
             };
 
-            let tools = if let Some(mut tool_manager) = context.tool_manager() {
-                let tools = tool_manager.get_latest_tools();
-                if tools.is_empty() {
-                    tool_manager.list_tools().await.unwrap_or_default()
-                } else {
-                    tools
-                }
+            let tools = if let Some(tool_manager) = context.tool_manager() {
+                tool_manager.get_all_namespaced_tools()
             } else {
                 Vec::new()
             };
@@ -808,9 +806,10 @@ impl Chat {
                 if !tool_calls.is_empty() {
                     // Create synthetic tool results indicating denial to maintain conversation flow
                     let tool_results: Vec<ToolResult> = tool_calls.iter().map(|tc| {
+                        let display_name = display_name_from_namespaced(&tc.name);
                         ToolResult {
                             tool_call_id: tc.id.clone(),
-                            content: format!("Tool execution was denied by the user. Tool '{}' was not executed.", tc.name),
+                            content: format!("Tool execution was denied by the user. Tool '{}' was not executed.", display_name),
                             is_error: true,
                         }
                     }).collect();

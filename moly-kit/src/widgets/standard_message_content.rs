@@ -1,9 +1,8 @@
 use crate::{
-    protocol::*,
-    widgets::{
+    display_name_from_namespaced, protocol::*, widgets::{
         attachment_list::AttachmentListWidgetExt,
         attachment_viewer_modal::AttachmentViewerModalWidgetExt,
-    },
+    }
 };
 use makepad_widgets::*;
 
@@ -109,7 +108,7 @@ impl StandardMessageContent {
                 let tool_call = &content.tool_calls[0];
                 text.push_str(&format!(
                     "🔧 **Requesting permission to call:** `{}`",
-                    tool_call.name
+                    display_name_from_namespaced(&tool_call.name)
                 ));
 
                 if !tool_call.arguments.is_empty() {
@@ -138,7 +137,7 @@ impl StandardMessageContent {
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         );
-                        text.push_str(&format!("- `{}` with {}\n", tool_call.name, args_str));
+                        text.push_str(&format!("- `{}` with {}\n", display_name_from_namespaced(&tool_call.name), args_str));
                     }
                 }
             }

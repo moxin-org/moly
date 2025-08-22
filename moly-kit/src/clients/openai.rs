@@ -11,6 +11,7 @@ use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use crate::utils::{serde::deserialize_null_default, sse::parse_sse};
 use crate::{protocol::*, utils::errors::enrich_http_error};
 
+
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 struct Model {
@@ -124,7 +125,7 @@ impl From<&Tool> for FunctionTool {
         FunctionTool {
             tool_type: "function".to_string(),
             function: FunctionDefinition {
-                name: tool.name.to_string(),
+                name: tool.name.clone(),
                 description: tool.description.as_deref().unwrap_or("").to_string(),
                 parameters,
                 strict: Some(false),

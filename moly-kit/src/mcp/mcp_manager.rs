@@ -8,12 +8,104 @@ use rmcp::transport::streamable_http_client::{
 };
 #[cfg(not(target_arch = "wasm32"))]
 use rmcp::transport::{SseClientTransport, TokioChildProcess};
-#[cfg(not(target_arch = "wasm32"))]
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::{Arc, Mutex};
 
 use crate::protocol::Tool;
+
+/// Creates an OpenAI-compatible namespaced tool name using double underscores
+/// Normalizes server_id and tool_name by replacing hyphens with underscores
+fn namespaced_name(server_id: &str, tool_name: &str) -> String {
+    format!("{}__{}",
+        server_id.replace(['-'], "_"),
+        tool_name.replace(['-'], "_")
+    )
+}
+
+/// Parses a namespaced tool name into server_id and tool_name components
+/// "filesystem__read_file" -> ("filesystem", "read_file")
+pub fn parse_namespaced_tool_name(namespaced_name: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
+    let parts: Vec<&str> = namespaced_name.splitn(2, "__").collect();
+    if parts.len() != 2 {
+        return Err(format!("Invalid namespaced tool name: '{}'. Expected format 'server_id__tool_name'", namespaced_name).into());
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
+
+/// Converts a namespaced tool name to a display-friendly format for UI
+/// "filesystem__read_file" -> "filesystem: read_file"
+pub fn display_name_from_namespaced(namespaced_name: &str) -> String {
+    if let Ok((server_id, tool_name)) = parse_namespaced_tool_name(namespaced_name) {
+        format!("{}: {}", server_id, tool_name)
+    } else {
+        // Fallback to original name if parsing fails
+        namespaced_name.to_string()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ToolRegistryEntry {
+    pub server_id: String,
+    pub original_name: String,
+    pub namespaced_name: String,
+    pub schema: Tool,
+}
+
+pub struct ToolRegistry {
+    tools: HashMap<String, ToolRegistryEntry>,
+    server_tools: HashMap<String, Vec<String>>,
+}
+
+impl ToolRegistry {
+    fn new() -> Self {
+        Self {
+            tools: HashMap::new(),
+            server_tools: HashMap::new(),
+        }
+    }
+
+    fn add_server_tools(&mut self, server_id: &str, tools: Vec<Tool>) {
+        let mut tool_names = Vec::new();
+        
+        for tool in tools {
+            let namespaced_name = namespaced_name(server_id, &tool.name);
+            let original_name = tool.name.clone();
+            let entry = ToolRegistryEntry {
+                server_id: server_id.to_string(),
+                original_name: original_name.clone(),
+                namespaced_name: namespaced_name.clone(),
+                schema: tool,
+            };
+            
+            self.tools.insert(namespaced_name, entry);
+            tool_names.push(original_name);
+        }
+        
+        self.server_tools.insert(server_id.to_string(), tool_names);
+    }
+
+    fn get_tool_entry(&self, namespaced_name: &str) -> Option<&ToolRegistryEntry> {
+        self.tools.get(namespaced_name)
+    }
+
+    fn get_all_tools(&self) -> Vec<Tool> {
+        self.tools.values().map(|entry| {
+            let mut tool = entry.schema.clone();
+            tool.name = entry.namespaced_name.clone();
+            tool
+        }).collect()
+    }
+
+    fn remove_server(&mut self, server_id: &str) {
+        if let Some(tool_names) = self.server_tools.remove(server_id) {
+            for tool_name in tool_names {
+                let namespaced_name = namespaced_name(server_id, &tool_name);
+                self.tools.remove(&namespaced_name);
+            }
+        }
+    }
+}
 
 // Conditional type aliases for WASM compatibility
 #[cfg(not(target_arch = "wasm32"))]
@@ -75,6 +167,8 @@ struct ServiceHandle {
 pub struct McpManagerClient {
     #[cfg(not(target_arch = "wasm32"))]
     services: Arc<Mutex<HashMap<String, ServiceHandle>>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    registry: Arc<Mutex<ToolRegistry>>,
     latest_tools: Vec<Tool>,
 }
 
@@ -83,6 +177,8 @@ impl McpManagerClient {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             services: Arc::new(Mutex::new(HashMap::new())),
+            #[cfg(not(target_arch = "wasm32"))]
+            registry: Arc::new(Mutex::new(ToolRegistry::new())),
             latest_tools: Vec::new(),
         }
     }
@@ -148,6 +244,18 @@ impl McpManagerClient {
                 .unwrap()
                 .insert(id.to_string(), service_handle);
 
+            // Discover tools from the newly added server
+            match self.discover_tools_for_server(id).await {
+                Ok(tools) => {
+                    self.registry.lock().unwrap().add_server_tools(id, tools);
+                    ::log::debug!("Successfully discovered tools for MCP server: {}", id);
+                }
+                Err(e) => {
+                    ::log::warn!("Failed to discover tools for MCP server '{}': {}", id, e);
+                    // Don't fail the entire server addition if tool discovery fails
+                }
+            }
+
             Ok(())
         }
         #[cfg(target_arch = "wasm32")]
@@ -155,6 +263,39 @@ impl McpManagerClient {
             let _ = (id, transport);
             Err("MCP servers are not supported in web builds".into())
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn discover_tools_for_server(&self, server_id: &str) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
+        let sender = {
+            let services_guard = self.services.lock().unwrap();
+            services_guard
+                .get(server_id)
+                .map(|handle| handle.sender.clone())
+        };
+
+        let Some(sender) = sender else {
+            return Err(format!("Server '{}' not found", server_id).into());
+        };
+
+        let (response_tx, response_rx) = oneshot::channel();
+        sender
+            .unbounded_send(McpRequest::ListTools {
+                response: response_tx,
+            })
+            .map_err(|_| "Service worker disconnected")?;
+
+        let list_tools_result = response_rx
+            .await
+            .map_err(|_| "Service worker disconnected")??;
+
+        let tools: Vec<Tool> = list_tools_result
+            .tools
+            .into_iter()
+            .map(|rmcp_tool| rmcp_tool.into())
+            .collect();
+
+        Ok(tools)
     }
 
     /// Lists and caches tools from all connected MCP servers.
@@ -208,6 +349,17 @@ impl McpManagerClient {
         self.latest_tools.clone()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn get_all_namespaced_tools(&self) -> Vec<Tool> {
+        self.registry.lock().unwrap().get_all_tools()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn get_all_namespaced_tools(&self) -> Vec<Tool> {
+        Vec::new()
+    }
+
+
     #[cfg(target_arch = "wasm32")]
     pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         Ok(Vec::new())
@@ -216,58 +368,59 @@ impl McpManagerClient {
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn call_tool(
         &self,
-        tool_name: &str,
+        namespaced_tool_name: &str,
         arguments: serde_json::Map<String, serde_json::Value>,
     ) -> Result<CallToolResult, Box<dyn std::error::Error>> {
-        let senders = {
-            let services_guard = self.services.lock().unwrap();
-            services_guard
-                .values()
-                .map(|handle| handle.sender.clone())
-                .collect::<Vec<_>>()
+        // Parse the namespaced tool name to get server_id and original tool name
+        let (server_id, original_tool_name) = parse_namespaced_tool_name(namespaced_tool_name)?;
+
+        // Get the tool entry from registry for validation
+        let tool_entry = {
+            let registry = self.registry.lock().unwrap();
+            registry.get_tool_entry(namespaced_tool_name).cloned()
         };
 
-        let mut tool_not_found_errors = Vec::new();
+        let Some(_tool_entry) = tool_entry else {
+            return Err(format!("Tool '{}' not found in registry. Available tools can be retrieved with get_all_namespaced_tools()", namespaced_tool_name).into());
+        };
 
-        // Try to call the tool on each service until we find one that has it
-        for sender in senders {
-            let (response_tx, response_rx) = oneshot::channel();
-            let request = McpRequest::CallTool {
-                name: tool_name.to_string(),
-                arguments: arguments.clone(),
-                response: response_tx,
-            };
+        // Get the specific server's sender
+        let sender = {
+            let services_guard = self.services.lock().unwrap();
+            services_guard
+                .get(&server_id)
+                .map(|handle| handle.sender.clone())
+        };
 
-            if sender.unbounded_send(request).is_err() {
-                continue; // Service worker disconnected, try next one
+        let Some(sender) = sender else {
+            return Err(format!("MCP server '{}' not found or disconnected", server_id).into());
+        };
+
+        // TODO: Add argument validation against tool_entry.schema here
+
+        // Send the request to the specific server
+        let (response_tx, response_rx) = oneshot::channel();
+        let request = McpRequest::CallTool {
+            name: original_tool_name.clone(),
+            arguments,
+            response: response_tx,
+        };
+
+        sender
+            .unbounded_send(request)
+            .map_err(|_| format!("Service worker for server '{}' disconnected", server_id))?;
+
+        // Wait for response from the specific server
+        match response_rx.await {
+            Ok(Ok(result)) => Ok(result),
+            Ok(Err(e)) => {
+                let error_message = format!("Tool '{}' failed on server '{}': {}", original_tool_name, server_id, e);
+                Err(error_message.into())
             }
-
-            match response_rx.await {
-                Ok(Ok(result)) => return Ok(result),
-                Ok(Err(e)) => {
-                    // Just collect the error and try next service, or return if it's a validation/execution error
-                    let error_string = e.to_string();
-                    
-                    // If this looks like a "tool not found" error, try the next service
-                    // Otherwise, it's likely a validation or execution error that we should return immediately
-                    if error_string.contains("not found") || error_string.contains("unknown") || error_string.contains("does not exist") {
-                        tool_not_found_errors.push(error_string.clone());
-                        println!("Tool '{}' not found on this service: {}", tool_name, error_string);
-                    } else {
-                        // For any other error (validation, execution, etc.), return it directly
-                        println!("Tool '{}' error: {}", tool_name, error_string);
-                        return Err(Box::new(e));
-                    }
-                }
-                Err(_) => {
-                    // Service worker disconnected
-                    continue;
-                }
+            Err(_) => {
+                Err(format!("Service worker for server '{}' disconnected during tool execution", server_id).into())
             }
         }
-
-        // If we got here, the tool wasn't found in any service
-        Err(format!("Tool '{}' not found in any connected MCP server", tool_name).into())
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -291,6 +444,10 @@ impl McpManagerClient {
             // Wait for the worker to finish
             let _ = handle.join_handle.await;
         }
+        
+        // Remove tools from registry
+        self.registry.lock().unwrap().remove_server(id);
+        
         Ok(())
     }
 
