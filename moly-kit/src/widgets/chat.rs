@@ -433,34 +433,9 @@ impl Chat {
                     }
                     Err(e) => {
                         let error_message = e.to_string();
-                        let formatted_error = if error_message.contains("validation failed") {
-                            format!(
-                                "❌ Invalid arguments provided to tool: {}",
-                                error_message
-                                    .replace("Tool ", "")
-                                    .replace(" validation failed:", "")
-                            )
-                        } else if error_message.contains("not found") {
-                            format!(
-                                "❓ Tool not available: {}",
-                                error_message
-                                    .replace("Tool ", "")
-                                    .replace(" not found in any connected MCP server", "")
-                            )
-                        } else if error_message.contains("execution failed") {
-                            format!(
-                                "💥 Tool execution error: {}",
-                                error_message
-                                    .replace("Tool ", "")
-                                    .replace(" execution failed:", "")
-                            )
-                        } else {
-                            format!("⚠️  Tool error: {}", error_message)
-                        };
-
                         tool_results.push(ToolResult {
                             tool_call_id: tool_call.id.clone(),
-                            content: formatted_error,
+                            content: error_message,
                             is_error: true,
                         });
                     }

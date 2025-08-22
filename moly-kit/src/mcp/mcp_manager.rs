@@ -228,7 +228,6 @@ impl McpManagerClient {
         };
 
         let mut tool_not_found_errors = Vec::new();
-        let mut execution_errors = Vec::new();
 
         // Try to call the tool on each service until we find one that has it
         for sender in senders {
@@ -246,52 +245,18 @@ impl McpManagerClient {
             match response_rx.await {
                 Ok(Ok(result)) => return Ok(result),
                 Ok(Err(e)) => {
-                    // Get the error message for analysis
+                    // Just collect the error and try next service, or return if it's a validation/execution error
                     let error_string = e.to_string();
-                    let debug_string = format!("{:?}", e);
-
-                    // More sophisticated error categorization
-                    let is_not_found = error_string.contains("not found")
-                        || error_string.contains("unknown")
-                        || error_string.contains("does not exist")
-                        || debug_string.contains("not found")
-                        || debug_string.contains("unknown")
-                        || debug_string.contains("does not exist");
-
-                    let is_validation_error = error_string.contains("invalid")
-                        || error_string.contains("argument")
-                        || error_string.contains("parameter")
-                        || error_string.contains("schema")
-                        || error_string.contains("validation")
-                        || debug_string.contains("ValidationError")
-                        || debug_string.contains("InvalidInput");
-
-                    if is_not_found {
+                    
+                    // If this looks like a "tool not found" error, try the next service
+                    // Otherwise, it's likely a validation or execution error that we should return immediately
+                    if error_string.contains("not found") || error_string.contains("unknown") || error_string.contains("does not exist") {
                         tool_not_found_errors.push(error_string.clone());
-                        println!(
-                            "Tool '{}' not found on this service: {}",
-                            tool_name, error_string
-                        );
-                    } else if is_validation_error {
-                        // This is an argument validation error - tool exists but args are wrong
-                        println!(
-                            "Tool '{}' found but validation failed: {}",
-                            tool_name, error_string
-                        );
-                        return Err(format!(
-                            "Tool '{}' validation failed: {}",
-                            tool_name, error_string
-                        )
-                        .into());
+                        println!("Tool '{}' not found on this service: {}", tool_name, error_string);
                     } else {
-                        // This is some other execution error
-                        execution_errors.push(error_string.clone());
-                        println!("Tool '{}' execution error: {}", tool_name, error_string);
-                        return Err(format!(
-                            "Tool '{}' execution failed: {}",
-                            tool_name, error_string
-                        )
-                        .into());
+                        // For any other error (validation, execution, etc.), return it directly
+                        println!("Tool '{}' error: {}", tool_name, error_string);
+                        return Err(Box::new(e));
                     }
                 }
                 Err(_) => {
@@ -302,17 +267,7 @@ impl McpManagerClient {
         }
 
         // If we got here, the tool wasn't found in any service
-        if !execution_errors.is_empty() {
-            // We had execution errors, return the first one
-            Err(format!(
-                "Tool '{}' failed to execute: {}",
-                tool_name, execution_errors[0]
-            )
-            .into())
-        } else {
-            // All errors were "not found" errors
-            Err(format!("Tool '{}' not found in any connected MCP server", tool_name).into())
-        }
+        Err(format!("Tool '{}' not found in any connected MCP server", tool_name).into())
     }
 
     #[cfg(target_arch = "wasm32")]
