@@ -221,7 +221,9 @@ fn main() -> std::io::Result<()> {
     // Thus, we set the `WASMEDGE_PLUGIN_PATH` environment variable to `../Frameworks`,
     // because the run_moly() function will set the current working directory to `Contents/MacOS/`
     // within the app bundle, which is the subdirectory that contains the actual moly executables.
-    std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, "../Frameworks");
+    unsafe {
+        std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, "../Frameworks");
+    }
 
     println!(
         "Running within a macOS app bundle.
@@ -545,12 +547,16 @@ fn install_wasmedge<P: AsRef<Path>>(install_path_ref: P) -> Result<PathBuf, std:
 /// Sets the environment variables required for WasmEdge and its plugins to be found.
 fn set_env_vars<P: AsRef<Path>>(wasmedge_root_dir_path: &P) {
     let wasmedge_root_dir = wasmedge_root_dir_path.as_ref();
-    std::env::set_var(ENV_WASMEDGE_DIR, wasmedge_root_dir);
+    unsafe {
+        std::env::set_var(ENV_WASMEDGE_DIR, wasmedge_root_dir);
+    }
     prepend_env_var(ENV_PATH, wasmedge_root_dir.join("bin"));
 
     #[cfg(target_os = "windows")]
     {
-        std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, wasmedge_root_dir);
+        unsafe {
+            std::env::set_var(ENV_WASMEDGE_PLUGIN_PATH, wasmedge_root_dir);
+        }
     }
 
     #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -578,9 +584,13 @@ fn prepend_env_var(env_key: impl AsRef<OsStr>, prefix: impl AsRef<OsStr>) {
     if let Some(existing) = std::env::var_os(key) {
         let mut joined_path = std::env::join_paths([prefix.as_ref(), OsStr::new("")]).unwrap();
         joined_path.push(&existing);
-        std::env::set_var(key, joined_path);
+        unsafe {
+            std::env::set_var(key, joined_path);
+        }
     } else {
-        std::env::set_var(key, prefix.as_ref());
+        unsafe {
+            std::env::set_var(key, prefix.as_ref());
+        }
     }
 }
 
