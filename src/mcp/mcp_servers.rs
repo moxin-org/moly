@@ -105,7 +105,7 @@ live_design! {
                 }
             }
         }
-        
+
         <View> {
             width: Fill, height: Fit,
             padding: {left: 0, right: 30, top: 0, bottom: 8}
@@ -178,14 +178,12 @@ impl WidgetMatchEvent for McpServers {
                     let config = McpServersConfig::from_json(&json_text).unwrap();
                     self.set_mcp_servers_config(cx, config);
 
-                    self.label(id!(save_status))
-                        .set_text(cx, "");
+                    self.label(id!(save_status)).set_text(cx, "");
 
                     self.redraw(cx);
                 }
                 Err(e) => {
-                    self.label(id!(save_status))
-                        .set_text(cx, &format!("{}", e));
+                    self.label(id!(save_status)).set_text(cx, &format!("{}", e));
                     self.redraw(cx);
                 }
             }

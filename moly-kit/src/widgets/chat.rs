@@ -8,8 +8,8 @@ use crate::utils::makepad::EventExt;
 use crate::utils::ui_runner::DeferWithRedrawAsync;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
 
-use crate::*;
 use crate::mcp::mcp_manager::display_name_from_namespaced;
+use crate::*;
 
 live_design!(
     use link::theme::*;
@@ -408,19 +408,20 @@ impl Chat {
                     Ok(result) => {
                         // Convert result to our ToolResult
                         #[cfg(not(target_arch = "wasm32"))]
-                        let content = result.content
-                                    .iter()
-                                    .filter_map(|item| {
-                                        // Extract text content from the MCP result
-                                        // TODO: This is a simplified conversion, we might need to handle other content types
-                                        if let Ok(text) = serde_json::to_string(item) {
-                                            Some(text)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
+                        let content = result
+                            .content
+                            .iter()
+                            .filter_map(|item| {
+                                // Extract text content from the MCP result
+                                // TODO: This is a simplified conversion, we might need to handle other content types
+                                if let Ok(text) = serde_json::to_string(item) {
+                                    Some(text)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
 
                         #[cfg(target_arch = "wasm32")]
                         let content = serde_json::to_string_pretty(&result)
@@ -477,7 +478,10 @@ impl Chat {
 
                         let display_name = display_name_from_namespaced(tool_name);
                         if result.is_error {
-                            text.push_str(&format!("**{}** ❌: {}\n\n", display_name, result.content));
+                            text.push_str(&format!(
+                                "**{}** ❌: {}\n\n",
+                                display_name, result.content
+                            ));
                         } else {
                             let summary =
                                 Self::create_tool_output_summary(tool_name, &result.content);

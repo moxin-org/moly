@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 
 /// Represents an input configuration for MCP servers
 #[derive(Debug, Clone, Serialize, Deserialize)]

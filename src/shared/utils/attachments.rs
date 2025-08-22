@@ -6,6 +6,7 @@ use std::{
 };
 
 use moly_kit::protocol::*;
+use moly_kit::utils::asynchronous::BoxPlatformSendFuture;
 
 pub fn generate_persistence_key(attachment: &Attachment) -> String {
     // If `filename.a.b` this is `.b`.

@@ -4,13 +4,14 @@ use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap, str::FromStr, sync::{Arc, RwLock}
+    collections::HashMap,
+    str::FromStr,
+    sync::{Arc, RwLock},
 };
 
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use crate::utils::{serde::deserialize_null_default, sse::parse_sse};
 use crate::{protocol::*, utils::errors::enrich_http_error};
-
 
 /// A model from the models endpoint.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -109,9 +110,7 @@ impl From<&Tool> for FunctionTool {
         );
 
         // Ensure properties field exists for object schemas (OpenAI requirement)
-        if parameters_map.get("type")
-            == Some(&serde_json::Value::String("object".to_string()))
-        {
+        if parameters_map.get("type") == Some(&serde_json::Value::String("object".to_string())) {
             if !parameters_map.contains_key("properties") {
                 parameters_map.insert(
                     "properties".to_string(),
@@ -281,9 +280,7 @@ fn outgoing_tool_result_message(message: Message) -> Result<OutgoingMessage, ()>
             .content
             .tool_results
             .iter()
-            .map(|result| {
-                truncate_tool_result(&result.content)
-            })
+            .map(|result| truncate_tool_result(&result.content))
             .collect::<Vec<_>>()
             .join("\n"),
     );
@@ -305,7 +302,10 @@ fn outgoing_tool_result_message(message: Message) -> Result<OutgoingMessage, ()>
 fn truncate_tool_result(content: &str) -> String {
     const MAX_TOOL_OUTPUT_CHARS: usize = 16384; // ~4096 tokens
     if content.len() > MAX_TOOL_OUTPUT_CHARS {
-        let truncated = content.chars().take(MAX_TOOL_OUTPUT_CHARS).collect::<String>();
+        let truncated = content
+            .chars()
+            .take(MAX_TOOL_OUTPUT_CHARS)
+            .collect::<String>();
         format!("{}... [truncated]", truncated)
     } else {
         content.to_string()
@@ -329,7 +329,7 @@ fn finalize_remaining_tool_calls(
                 Ok(serde_json::Value::Object(args)) => args,
                 Ok(serde_json::Value::Null) => serde_json::Map::new(),
                 Ok(_) => serde_json::Map::new(),
-                Err(_) => serde_json::Map::new()
+                Err(_) => serde_json::Map::new(),
             }
         };
 
@@ -344,7 +344,7 @@ fn finalize_remaining_tool_calls(
             content.tool_calls.push(tool_call);
         }
     }
-    
+
     // Clear the tool names and index mapping as well
     tool_names.clear();
     tool_call_ids_by_index.clear();
@@ -545,10 +545,7 @@ impl BotClient for OpenAIClient {
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
-        let tools: Vec<FunctionTool> = tools
-            .iter()
-            .map(|t| t.into())
-            .collect();
+        let tools: Vec<FunctionTool> = tools.iter().map(|t| t.into()).collect();
 
         let stream = stream! {
             let mut outgoing_messages: Vec<OutgoingMessage> = Vec::with_capacity(messages.len());

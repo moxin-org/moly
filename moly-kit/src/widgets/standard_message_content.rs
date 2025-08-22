@@ -1,8 +1,10 @@
 use crate::{
-    display_name_from_namespaced, protocol::*, widgets::{
+    display_name_from_namespaced,
+    protocol::*,
+    widgets::{
         attachment_list::AttachmentListWidgetExt,
         attachment_viewer_modal::AttachmentViewerModalWidgetExt,
-    }
+    },
 };
 use makepad_widgets::*;
 
@@ -137,7 +139,11 @@ impl StandardMessageContent {
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         );
-                        text.push_str(&format!("- `{}` with {}\n", display_name_from_namespaced(&tool_call.name), args_str));
+                        text.push_str(&format!(
+                            "- `{}` with {}\n",
+                            display_name_from_namespaced(&tool_call.name),
+                            args_str
+                        ));
                     }
                 }
             }

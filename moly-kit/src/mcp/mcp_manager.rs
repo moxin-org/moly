@@ -17,7 +17,8 @@ use crate::protocol::Tool;
 /// Creates an OpenAI-compatible namespaced tool name using double underscores
 /// Normalizes server_id and tool_name by replacing hyphens with underscores
 fn namespaced_name(server_id: &str, tool_name: &str) -> String {
-    format!("{}__{}",
+    format!(
+        "{}__{}",
         server_id.replace(['-'], "_"),
         tool_name.replace(['-'], "_")
     )
@@ -25,10 +26,16 @@ fn namespaced_name(server_id: &str, tool_name: &str) -> String {
 
 /// Parses a namespaced tool name into server_id and tool_name components
 /// "filesystem__read_file" -> ("filesystem", "read_file")
-pub fn parse_namespaced_tool_name(namespaced_name: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
+pub fn parse_namespaced_tool_name(
+    namespaced_name: &str,
+) -> Result<(String, String), Box<dyn std::error::Error>> {
     let parts: Vec<&str> = namespaced_name.splitn(2, "__").collect();
     if parts.len() != 2 {
-        return Err(format!("Invalid namespaced tool name: '{}'. Expected format 'server_id__tool_name'", namespaced_name).into());
+        return Err(format!(
+            "Invalid namespaced tool name: '{}'. Expected format 'server_id__tool_name'",
+            namespaced_name
+        )
+        .into());
     }
     Ok((parts[0].to_string(), parts[1].to_string()))
 }
@@ -67,7 +74,7 @@ impl ToolRegistry {
 
     fn add_server_tools(&mut self, server_id: &str, tools: Vec<Tool>) {
         let mut tool_names = Vec::new();
-        
+
         for tool in tools {
             let namespaced_name = namespaced_name(server_id, &tool.name);
             let original_name = tool.name.clone();
@@ -77,11 +84,11 @@ impl ToolRegistry {
                 namespaced_name: namespaced_name.clone(),
                 schema: tool,
             };
-            
+
             self.tools.insert(namespaced_name, entry);
             tool_names.push(original_name);
         }
-        
+
         self.server_tools.insert(server_id.to_string(), tool_names);
     }
 
@@ -90,11 +97,14 @@ impl ToolRegistry {
     }
 
     fn get_all_tools(&self) -> Vec<Tool> {
-        self.tools.values().map(|entry| {
-            let mut tool = entry.schema.clone();
-            tool.name = entry.namespaced_name.clone();
-            tool
-        }).collect()
+        self.tools
+            .values()
+            .map(|entry| {
+                let mut tool = entry.schema.clone();
+                tool.name = entry.namespaced_name.clone();
+                tool
+            })
+            .collect()
     }
 
     fn remove_server(&mut self, server_id: &str) {
@@ -266,7 +276,10 @@ impl McpManagerClient {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    async fn discover_tools_for_server(&self, server_id: &str) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
+    async fn discover_tools_for_server(
+        &self,
+        server_id: &str,
+    ) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         let sender = {
             let services_guard = self.services.lock().unwrap();
             services_guard
@@ -359,7 +372,6 @@ impl McpManagerClient {
         Vec::new()
     }
 
-
     #[cfg(target_arch = "wasm32")]
     pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         Ok(Vec::new())
@@ -414,12 +426,17 @@ impl McpManagerClient {
         match response_rx.await {
             Ok(Ok(result)) => Ok(result),
             Ok(Err(e)) => {
-                let error_message = format!("Tool '{}' failed on server '{}': {}", original_tool_name, server_id, e);
+                let error_message = format!(
+                    "Tool '{}' failed on server '{}': {}",
+                    original_tool_name, server_id, e
+                );
                 Err(error_message.into())
             }
-            Err(_) => {
-                Err(format!("Service worker for server '{}' disconnected during tool execution", server_id).into())
-            }
+            Err(_) => Err(format!(
+                "Service worker for server '{}' disconnected during tool execution",
+                server_id
+            )
+            .into()),
         }
     }
 
@@ -444,10 +461,10 @@ impl McpManagerClient {
             // Wait for the worker to finish
             let _ = handle.join_handle.await;
         }
-        
+
         // Remove tools from registry
         self.registry.lock().unwrap().remove_server(id);
-        
+
         Ok(())
     }
 

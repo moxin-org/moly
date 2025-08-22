@@ -299,29 +299,33 @@ impl MatchEvent for App {
 
         let radio_button_set;
         // Only show the MCP tab in native builds
-        #[cfg(not(target_arch = "wasm32"))] {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
             radio_button_set = self.ui.radio_button_set(ids!(
                 sidebar_menu.chat_tab,
                 sidebar_menu.moly_server_tab,
                 sidebar_menu.mcp_tab,
                 sidebar_menu.providers_tab,
             ));
-            self.ui.view(id!(sidebar_menu.mcp_tab_container)).set_visible(cx, true);
+            self.ui
+                .view(id!(sidebar_menu.mcp_tab_container))
+                .set_visible(cx, true);
         }
 
-        #[cfg(target_arch = "wasm32")] {
+        #[cfg(target_arch = "wasm32")]
+        {
             radio_button_set = self.ui.radio_button_set(ids!(
                 sidebar_menu.chat_tab,
                 sidebar_menu.moly_server_tab,
                 sidebar_menu.providers_tab,
             ));
-            self.ui.view(id!(sidebar_menu.mcp_tab_container)).set_visible(cx, false);
+            self.ui
+                .view(id!(sidebar_menu.mcp_tab_container))
+                .set_visible(cx, false);
         }
 
         // TODO: Replace this with a proper navigation widget.
-        if let Some(selected_tab) = radio_button_set
-            .selected(cx, actions)
-        {
+        if let Some(selected_tab) = radio_button_set.selected(cx, actions) {
             #[cfg(not(target_arch = "wasm32"))]
             match selected_tab {
                 0 => navigate_to_chat = true,

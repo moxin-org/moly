@@ -257,7 +257,11 @@ impl ChatScreen {
                                     ::log::debug!("Successfully added MCP server: {}", server_id);
                                 }
                                 Err(e) => {
-                                    ::log::error!("Failed to add MCP server '{}': {}", server_id, e);
+                                    ::log::error!(
+                                        "Failed to add MCP server '{}': {}",
+                                        server_id,
+                                        e
+                                    );
                                 }
                             }
                         }
