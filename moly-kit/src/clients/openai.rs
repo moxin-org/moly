@@ -4,8 +4,7 @@ use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
-    str::FromStr,
-    sync::{Arc, RwLock},
+    collections::HashMap, str::FromStr, sync::{Arc, RwLock}
 };
 
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
@@ -89,11 +88,49 @@ struct FunctionDefinition {
     strict: Option<bool>,
 }
 
+/// Tool definition for OpenAI API
 #[derive(Serialize)]
 struct FunctionTool {
     #[serde(rename = "type")]
     tool_type: String,
     function: FunctionDefinition,
+}
+
+impl From<&Tool> for FunctionTool {
+    fn from(tool: &Tool) -> Self {
+        // Use the input_schema from the MCP tool, but ensure OpenAI compatibility
+        let mut parameters_map = (*tool.input_schema).clone();
+
+        // Ensure additionalProperties is set to false as required by OpenAI
+        parameters_map.insert(
+            "additionalProperties".to_string(),
+            serde_json::Value::Bool(false),
+        );
+
+        // Ensure properties field exists for object schemas (OpenAI requirement)
+        if parameters_map.get("type")
+            == Some(&serde_json::Value::String("object".to_string()))
+        {
+            if !parameters_map.contains_key("properties") {
+                parameters_map.insert(
+                    "properties".to_string(),
+                    serde_json::Value::Object(serde_json::Map::new()),
+                );
+            }
+        }
+
+        let parameters = serde_json::Value::Object(parameters_map);
+
+        FunctionTool {
+            tool_type: "function".to_string(),
+            function: FunctionDefinition {
+                name: tool.name.to_string(),
+                description: tool.description.as_deref().unwrap_or("").to_string(),
+                parameters,
+                strict: Some(false),
+            },
+        }
+    }
 }
 
 /// Tool call from OpenAI API
@@ -157,43 +194,9 @@ struct OutgoingMessage {
 }
 
 async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
-    // Handle tool results specially
+    // Handle tool results differently
     if !message.content.tool_results.is_empty() {
-        let role = Role::Tool;
-        let content = Content::Text(
-            message
-                .content
-                .tool_results
-                .iter()
-                .map(|result| {
-                    // Simple truncation: max 4096 tokens per tool result (roughly 16k characters)
-                    const MAX_TOOL_OUTPUT_CHARS: usize = 16384; // ~4096 tokens
-                    if result.content.len() > MAX_TOOL_OUTPUT_CHARS {
-                        let truncated = result
-                            .content
-                            .chars()
-                            .take(MAX_TOOL_OUTPUT_CHARS)
-                            .collect::<String>();
-                        format!("{}... [truncated]", truncated)
-                    } else {
-                        result.content.clone()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
-        );
-        let tool_call_id = message
-            .content
-            .tool_results
-            .first()
-            .map(|r| r.tool_call_id.clone());
-
-        return Ok(OutgoingMessage {
-            content,
-            role,
-            tool_calls: None,
-            tool_call_id,
-        });
+        return outgoing_tool_result_message(message);
     }
 
     let role = match message.from {
@@ -265,6 +268,85 @@ async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
         tool_calls,
         tool_call_id: None,
     })
+}
+
+/// Converts a message with tool results to an outgoing message.
+///
+/// This is used to send tool results back to the AI.
+fn outgoing_tool_result_message(message: Message) -> Result<OutgoingMessage, ()> {
+    let role = Role::Tool;
+    let content = Content::Text(
+        message
+            .content
+            .tool_results
+            .iter()
+            .map(|result| {
+                truncate_tool_result(&result.content)
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+
+    let tool_call_id = message
+        .content
+        .tool_results
+        .first()
+        .map(|r| r.tool_call_id.clone());
+
+    return Ok(OutgoingMessage {
+        content,
+        role,
+        tool_calls: None,
+        tool_call_id,
+    });
+}
+
+fn truncate_tool_result(content: &str) -> String {
+    const MAX_TOOL_OUTPUT_CHARS: usize = 16384; // ~4096 tokens
+    if content.len() > MAX_TOOL_OUTPUT_CHARS {
+        let truncated = content.chars().take(MAX_TOOL_OUTPUT_CHARS).collect::<String>();
+        format!("{}... [truncated]", truncated)
+    } else {
+        content.to_string()
+    }
+}
+
+/// Finalizes any remaining buffered tool calls when streaming completes.
+/// This processes incomplete tool calls that were being built up during streaming.
+fn finalize_remaining_tool_calls(
+    content: &mut MessageContent,
+    tool_argument_buffers: &mut HashMap<String, String>,
+    tool_names: &mut HashMap<String, String>,
+    tool_call_ids_by_index: &mut HashMap<usize, String>,
+) {
+    // Process any remaining buffered tool calls
+    for (tool_call_id, buffered_args) in tool_argument_buffers.drain() {
+        let arguments = if buffered_args.is_empty() || buffered_args == "{}" {
+            serde_json::Map::new()
+        } else {
+            match serde_json::from_str::<serde_json::Value>(&buffered_args) {
+                Ok(serde_json::Value::Object(args)) => args,
+                Ok(serde_json::Value::Null) => serde_json::Map::new(),
+                Ok(_) => serde_json::Map::new(),
+                Err(_) => serde_json::Map::new()
+            }
+        };
+
+        // Create the tool call if we have the name and it's not already created
+        if let Some(name) = tool_names.get(&tool_call_id) {
+            let tool_call = ToolCall {
+                id: tool_call_id.clone(),
+                name: name.clone(),
+                arguments,
+                ..Default::default()
+            };
+            content.tool_calls.push(tool_call);
+        }
+    }
+    
+    // Clear the tool names and index mapping as well
+    tool_names.clear();
+    tool_call_ids_by_index.clear();
 }
 
 /// Role of a message that is part of the conversation context.
@@ -462,43 +544,10 @@ impl BotClient for OpenAIClient {
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
-        let tools = tools
+        let tools: Vec<FunctionTool> = tools
             .iter()
-            .map(|t| {
-                // Use the input_schema from the MCP tool, but ensure OpenAI compatibility
-                let mut parameters_map = (*t.input_schema).clone();
-
-                // Ensure additionalProperties is set to false as required by OpenAI
-                parameters_map.insert(
-                    "additionalProperties".to_string(),
-                    serde_json::Value::Bool(false),
-                );
-
-                // Ensure properties field exists for object schemas (OpenAI requirement)
-                if parameters_map.get("type")
-                    == Some(&serde_json::Value::String("object".to_string()))
-                {
-                    if !parameters_map.contains_key("properties") {
-                        parameters_map.insert(
-                            "properties".to_string(),
-                            serde_json::Value::Object(serde_json::Map::new()),
-                        );
-                    }
-                }
-
-                let parameters = serde_json::Value::Object(parameters_map);
-
-                FunctionTool {
-                    tool_type: "function".to_string(),
-                    function: FunctionDefinition {
-                        name: t.name.to_string(),
-                        description: t.description.as_deref().unwrap_or("").to_string(),
-                        parameters,
-                        strict: Some(false),
-                    },
-                }
-            })
-            .collect::<Vec<_>>();
+            .map(|t| t.into())
+            .collect();
 
         let stream = stream! {
             let mut outgoing_messages: Vec<OutgoingMessage> = Vec::with_capacity(messages.len());
@@ -563,9 +612,9 @@ impl BotClient for OpenAIClient {
 
             let mut content = MessageContent::default();
             let mut full_text = String::default();
-                            let mut tool_argument_buffers: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-                let mut tool_names: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-                let mut tool_call_ids_by_index: std::collections::HashMap<usize, String> = std::collections::HashMap::new();
+                            let mut tool_argument_buffers: HashMap<String, String> = HashMap::new();
+                let mut tool_names: HashMap<String, String> = HashMap::new();
+                let mut tool_call_ids_by_index: HashMap<usize, String> = HashMap::new();
             let events = parse_sse(response.bytes_stream());
 
             for await event in events {
@@ -602,33 +651,12 @@ impl BotClient for OpenAIClient {
                 let mut should_yield_content = true;
 
                 if is_tool_calls_finished {
-                    // Process any remaining buffered tool calls
-                    for (tool_call_id, buffered_args) in tool_argument_buffers.drain() {
-                        let arguments = if buffered_args.is_empty() || buffered_args == "{}" {
-                            serde_json::Map::new()
-                        } else {
-                            match serde_json::from_str::<serde_json::Value>(&buffered_args) {
-                                Ok(serde_json::Value::Object(args)) => args,
-                                Ok(serde_json::Value::Null) => serde_json::Map::new(),
-                                Ok(_) => serde_json::Map::new(),
-                                Err(_) => serde_json::Map::new()
-                            }
-                        };
-
-                        // Create the tool call if we have the name and it's not already created
-                        if let Some(name) = tool_names.get(&tool_call_id) {
-                            let tool_call = ToolCall {
-                                id: tool_call_id.clone(),
-                                name: name.clone(),
-                                arguments,
-                                ..Default::default()
-                            };
-                            content.tool_calls.push(tool_call);
-                        }
-                    }
-                    // Clear the tool names and index mapping as well
-                    tool_names.clear();
-                    tool_call_ids_by_index.clear();
+                    finalize_remaining_tool_calls(
+                        &mut content,
+                        &mut tool_argument_buffers,
+                        &mut tool_names,
+                        &mut tool_call_ids_by_index,
+                    );
                 } else if !tool_argument_buffers.is_empty() || !tool_names.is_empty() {
                     // We have incomplete tool calls, don't yield content yet
                     should_yield_content = false;
@@ -681,63 +709,41 @@ impl BotClient for OpenAIClient {
 
                         // Try to parse the current buffer as complete JSON
                         if !buffer_entry.is_empty() {
-                            if buffer_entry == "{}" {
-                                if let Some(name) = tool_names.get(&tool_call_id) {
-                                    let tool_call = ToolCall {
-                                        id: tool_call_id.clone(),
-                                        name: name.clone(),
-                                        arguments: serde_json::Map::new(),
-                                        ..Default::default()
-                                    };
-                                    content.tool_calls.push(tool_call);
-                                    tool_argument_buffers.remove(&tool_call_id);
-                                    tool_names.remove(&tool_call_id);
-                                }
+                            // Determine the arguments to use based on the buffer content
+                            let arguments = if buffer_entry == "{}" {
+                                // Special case: Empty JSON object indicates a tool call with no arguments
+                                // Example: A tool like "get_weather" that takes no parameters
+                                Some(serde_json::Map::new())
                             } else {
                                 match serde_json::from_str::<serde_json::Value>(buffer_entry) {
-                                    Ok(serde_json::Value::Object(args)) => {
-                                        if let Some(name) = tool_names.get(&tool_call_id) {
-                                            let tool_call = ToolCall {
-                                                id: tool_call_id.clone(),
-                                                name: name.clone(),
-                                                arguments: args,
-                                                ..Default::default()
-                                            };
-                                            content.tool_calls.push(tool_call);
-                                            tool_argument_buffers.remove(&tool_call_id);
-                                            tool_names.remove(&tool_call_id);
-                                        }
-                                    },
-                                    Ok(serde_json::Value::Null) => {
-                                        if let Some(name) = tool_names.get(&tool_call_id) {
-                                            let tool_call = ToolCall {
-                                                id: tool_call_id.clone(),
-                                                name: name.clone(),
-                                                arguments: serde_json::Map::new(),
-                                                ..Default::default()
-                                            };
-                                            content.tool_calls.push(tool_call);
-                                            tool_argument_buffers.remove(&tool_call_id);
-                                            tool_names.remove(&tool_call_id);
-                                        }
-                                    },
-                                    Ok(_) => {
-                                        if let Some(name) = tool_names.get(&tool_call_id) {
-                                            let tool_call = ToolCall {
-                                                id: tool_call_id.clone(),
-                                                name: name.clone(),
-                                                arguments: serde_json::Map::new(),
-                                                ..Default::default()
-                                            };
-                                            content.tool_calls.push(tool_call);
-                                            tool_argument_buffers.remove(&tool_call_id);
-                                            tool_names.remove(&tool_call_id);
-                                        }
-                                    },
-                                    Err(_) => {
-                                        // Don't update tool calls yet, wait for complete arguments
-                                    }
+                                    // Successfully parsed as a JSON object with key-value pairs
+                                    // This is the normal case for tool calls with parameters
+                                    // Example: {"query": "What's the weather?", "location": "NYC"}
+                                    Ok(serde_json::Value::Object(args)) => Some(args),
+                                    // Successfully parsed as JSON null value
+                                    // Treat this the same as empty object - tool call with no arguments
+                                    Ok(serde_json::Value::Null) => Some(serde_json::Map::new()),
+                                    // Successfully parsed as some other JSON type (array, string, number, bool)
+                                    // This is unexpected for tool arguments, so we default to empty arguments for now
+                                    Ok(_) => Some(serde_json::Map::new()),
+                                    // Failed to parse as valid JSON - arguments are still incomplete
+                                    // This happens when we're in the middle of streaming and haven't
+                                    // received the complete JSON yet. Keep buffering until we can parse.
+                                    Err(_) => None,
                                 }
+                            };
+
+                            // Create and finalize the tool call if arguments are ready
+                            if let (Some(arguments), Some(name)) = (arguments, tool_names.get(&tool_call_id)) {
+                                let tool_call = ToolCall {
+                                    id: tool_call_id.clone(),
+                                    name: name.clone(),
+                                    arguments,
+                                    ..Default::default()
+                                };
+                                content.tool_calls.push(tool_call);
+                                tool_argument_buffers.remove(&tool_call_id);
+                                tool_names.remove(&tool_call_id);
                             }
                         }
                     }

@@ -120,7 +120,7 @@ impl StandardMessageContent {
                         .collect::<Vec<_>>()
                         .join(", ");
 
-                    text.push_str(&format!(" `{}` with args {}", tool_call.name, args_str));
+                    text.push_str(&format!(" with args {}", args_str));
                 };
             } else {
                 text.push_str(&format!(

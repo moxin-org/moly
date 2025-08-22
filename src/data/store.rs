@@ -434,7 +434,7 @@ impl Store {
     pub fn update_mcp_servers_from_json(&mut self, json: &str) -> Result<(), serde_json::Error> {
         self.preferences.update_mcp_servers_from_json(json)?;
 
-        // TODO(Julian): do not invalidate the entire bot context
+        // TODO: do not invalidate the entire bot context
         // Invalidate the bot context so it gets recreated with new MCP servers
         if self.bot_context.is_some() {
             self.bot_context = None;
