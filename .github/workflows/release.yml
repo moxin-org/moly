@@ -46,6 +46,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          rustflags: ""
 
       - name: Install cargo-packager
         run: |
@@ -82,6 +83,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          rustflags: ""
 
       - name: Install cargo-packager
         run: |
@@ -114,6 +116,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          rustflags: ""
 
       - name: Install cargo-packager
         run: |
