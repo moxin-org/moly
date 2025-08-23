@@ -1,4 +1,5 @@
 use moly_kit::protocol::*;
+use moly_kit::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use std::collections::VecDeque;
 
 pub struct TesterClient;
@@ -19,6 +20,7 @@ impl BotClient for TesterClient {
         &mut self,
         _bot_id: &BotId,
         messages: &[Message],
+        _tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let mut input = messages
             .last()
