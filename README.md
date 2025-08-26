@@ -34,7 +34,7 @@ The following table shows which host systems can currently be used to build Moly
 
 The Moly app supports different types of AI providers:
 1. **OpenAI-compatible AI providers**: configured through the Providers Dashboard.
-   - Support for other clients will be added to MolyKit. To create your own custom clients, checkout the MolyKit documentation.
+   - Support for other clients will be added to MolyKit. To create your own custom clients, checkout the [MolyKit documentation](https://moxin-org.github.io/moly/).
    - If you want to contribute providers, or extend the list of supported models for a given provider, see [instructions here](#contributing)
 2. **Moly Server**: a local LLM backend that allows exploring, downloading and running OSS LLMs locally. For usage and installation see [instructions here](#running-moly-with-moly-server)
 3. **MoFa Servers**: MoFa is a framework for building AI agents. Using MoFa, AI agents can be constructed via templates, and then exposed via a Dora server that is OpenAI-compatible. MoFa servers can be added to the application through the Providers Dashboard. See [instructions here](#running-moly-with-mofa).
