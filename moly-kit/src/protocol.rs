@@ -866,6 +866,10 @@ impl BotContext {
     pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
         self.0.lock().unwrap().tool_manager = Some(tool_manager);
     }
+
+    pub fn replace_tool_manager(&mut self, tool_manager: McpManagerClient) {
+        self.0.lock().unwrap().tool_manager = Some(tool_manager);
+    }
 }
 
 impl<T: BotClient + 'static> From<T> for BotContext {
