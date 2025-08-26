@@ -15,9 +15,9 @@ use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use moly_kit::utils::asynchronous::spawn;
 
 use super::providers::{Provider, ProviderConnectionStatus};
-use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 use moly_kit::mcp::mcp_manager::McpManagerClient;
 use moly_kit::protocol::BotContext;
+use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
 use makepad_widgets::*;
 use moly_kit::*;
@@ -437,12 +437,12 @@ impl Store {
     /// Returns the manager immediately, loading happens in the background
     pub fn create_and_load_mcp_tool_manager(&self, _context: BotContext) -> McpManagerClient {
         let tool_manager = McpManagerClient::new();
-        
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let mcp_config = self.get_mcp_servers_config().clone();
             let tool_manager_clone = tool_manager.clone();
-            
+
             spawn(async move {
                 // Load MCP servers from configuration
                 for (server_id, server_config) in mcp_config.list_enabled_servers() {
@@ -452,18 +452,14 @@ impl Store {
                                 ::log::debug!("Successfully added MCP server: {}", server_id);
                             }
                             Err(e) => {
-                                ::log::error!(
-                                    "Failed to add MCP server '{}': {}",
-                                    server_id,
-                                    e
-                                );
+                                ::log::error!("Failed to add MCP server '{}': {}", server_id, e);
                             }
                         }
                     }
                 }
             });
         }
-        
+
         tool_manager
     }
 

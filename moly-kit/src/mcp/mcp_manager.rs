@@ -13,18 +13,15 @@ use std::sync::{Arc, Mutex};
 
 use crate::protocol::Tool;
 
-/// Creates an OpenAI-compatible namespaced tool name using double underscores
-/// Normalizes server_id and tool_name by replacing hyphens with underscores
+/// Creates a namespaced tool name using double underscores as separator
+/// Preserves original naming including hyphens and casing
 fn namespaced_name(server_id: &str, tool_name: &str) -> String {
-    format!(
-        "{}__{}",
-        server_id.replace(['-'], "_"),
-        tool_name.replace(['-'], "_")
-    )
+    format!("{}__{}", server_id, tool_name)
 }
 
 /// Parses a namespaced tool name into server_id and tool_name components
 /// "filesystem__read_file" -> ("filesystem", "read_file")
+/// "mcp-internet-speed__test-speed" -> ("mcp-internet-speed", "test-speed")
 pub fn parse_namespaced_tool_name(
     namespaced_name: &str,
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
@@ -41,6 +38,7 @@ pub fn parse_namespaced_tool_name(
 
 /// Converts a namespaced tool name to a display-friendly format for UI
 /// "filesystem__read_file" -> "filesystem: read_file"
+/// "mcp-internet-speed__test-speed" -> "mcp-internet-speed: test-speed"
 pub fn display_name_from_namespaced(namespaced_name: &str) -> String {
     if let Ok((server_id, tool_name)) = parse_namespaced_tool_name(namespaced_name) {
         format!("{}: {}", server_id, tool_name)
