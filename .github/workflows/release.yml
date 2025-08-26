@@ -47,6 +47,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           rustflags: ""
+          cache: true
 
       - name: Install cargo-packager
         run: |
@@ -84,6 +85,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           rustflags: ""
+          cache: true
 
       - name: Install cargo-packager
         run: |
@@ -117,6 +119,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           rustflags: ""
+          cache: true
 
       - name: Install cargo-packager
         run: |
