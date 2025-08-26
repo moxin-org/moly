@@ -232,6 +232,9 @@ impl ChatScreen {
         };
 
         let mut context: BotContext = multi_client.into();
+        let tool_manager = store.create_and_load_mcp_tool_manager(context.clone());
+        context.set_tool_manager(tool_manager);
+
         store.bot_context = Some(context.clone());
         self.chats_deck(id!(chats_deck))
             .sync_bot_contexts(cx, scope);
@@ -241,6 +244,7 @@ impl ChatScreen {
         let ui = self.ui_runner();
         spawn(async move {
             context.load().await;
+
             ui.defer_with_redraw(move |me, cx, scope| {
                 me.creating_bot_context = false;
 

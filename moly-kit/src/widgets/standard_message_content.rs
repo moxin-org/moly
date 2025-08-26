@@ -1,4 +1,5 @@
 use crate::{
+    display_name_from_namespaced,
     protocol::*,
     widgets::{
         attachment_list::AttachmentListWidgetExt,
@@ -88,11 +89,67 @@ impl StandardMessageContent {
             .set_content(cx, content, metadata);
 
         let markdown = self.label(id!(markdown));
+
         if metadata.is_writing() {
             let text_with_typing = format!("{} {}", content.text, TYPING_INDICATOR);
             markdown.set_text(cx, &text_with_typing);
+        } else if !content.tool_calls.is_empty() {
+            let tool_calls_text = Self::generate_tool_calls_text(content);
+            markdown.set_text(cx, &tool_calls_text);
         } else {
             markdown.set_text(cx, &content.text);
+        }
+    }
+
+    fn generate_tool_calls_text(content: &MessageContent) -> String {
+        // Create enhanced text that includes tool calls
+        if !content.tool_calls.is_empty() {
+            let mut text = content.text.clone();
+
+            if content.tool_calls.len() == 1 {
+                let tool_call = &content.tool_calls[0];
+                text.push_str(&format!(
+                    "🔧 **Requesting permission to call:** `{}`",
+                    display_name_from_namespaced(&tool_call.name)
+                ));
+
+                if !tool_call.arguments.is_empty() {
+                    let args_str = tool_call
+                        .arguments
+                        .iter()
+                        .map(|(k, v)| format!("{}: {}", k, v))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    text.push_str(&format!(" with args {}", args_str));
+                };
+            } else {
+                text.push_str(&format!(
+                    "🔧 **Requesting permission to call {} tools:**\n",
+                    content.tool_calls.len()
+                ));
+                for tool_call in &content.tool_calls {
+                    if !tool_call.arguments.is_empty() {
+                        let args_str = format!(
+                            "args: `{}`",
+                            tool_call
+                                .arguments
+                                .iter()
+                                .map(|(k, v)| format!("{}: {}", k, v))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        );
+                        text.push_str(&format!(
+                            "- `{}` with {}\n",
+                            display_name_from_namespaced(&tool_call.name),
+                            args_str
+                        ));
+                    }
+                }
+            }
+            text
+        } else {
+            content.text.clone()
         }
     }
 

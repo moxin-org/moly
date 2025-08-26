@@ -194,4 +194,71 @@ live_design! {
             }
         }
     }
+
+    pub SystemLine = <AppLine> {
+        message_section = {
+            draw_bg: {color: #e3f2fd}
+
+            sender = {
+                avatar = {
+                    grapheme = {draw_bg: {color: #1976d2}}
+                }
+                name = {text: "System"}
+            }
+        }
+    }
+
+    ToolApprovalButton = <Button> {
+        padding: {left: 15, right: 15, top: 8, bottom: 8},
+        draw_text: {
+            text_style: <THEME_FONT_BOLD>{font_size: 10},
+            color: #fff
+            color_hover: #fff
+            color_focus: #fff
+        }
+    }
+
+    ToolApprovalActions = <View> {
+        width: Fill, height: Fit,
+        align: {y: 0.5},
+        spacing: 5,
+        padding: {bottom: 8}
+        approve = <ToolApprovalButton> {
+            text: "Approve",
+            draw_bg: {color: #4CAF50, color_hover: #45a049}
+        }
+        deny = <ToolApprovalButton> {
+            text: "Deny",
+            draw_bg: {color: #f44336, color_hover: #d32f2f}
+        }
+    }
+
+    pub ToolLine = <SystemLine> {
+        message_section = {
+            draw_bg: {color: #fff3e0}
+
+            sender = {
+                avatar = {
+                    grapheme = {draw_bg: {color: #ff9800}}
+                }
+                name = {text: "Permission Request"}
+            }
+            content_section = {
+                flow: Down
+                tool_actions = <ToolApprovalActions> { visible: false }
+                status_view = <View> {
+                    visible: false
+                    width: Fill, height: Fit,
+                    align: {x: 1.0, y: 0.5}
+                    padding: {bottom: 8, right: 10}
+                    approved_status = <Label> {
+                        draw_text: {
+                            text_style: <THEME_FONT_BOLD>{font_size: 11},
+                            color: #000
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

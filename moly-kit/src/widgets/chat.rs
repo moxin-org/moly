@@ -8,6 +8,7 @@ use crate::utils::makepad::EventExt;
 use crate::utils::ui_runner::DeferWithRedrawAsync;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
 
+use crate::mcp::mcp_manager::display_name_from_namespaced;
 use crate::*;
 
 live_design!(
@@ -81,6 +82,12 @@ pub enum ChatTask {
     ///
     /// The boolean indicates if the scroll was triggered by a stream or not.
     ScrollToBottom(bool),
+
+    /// When received back, it will approve and execute the tool calls in the message at the given index.
+    ApproveToolCalls(usize),
+
+    /// When received back, it will deny the tool calls in the message at the given index.
+    DenyToolCalls(usize),
 }
 
 impl From<ChatTask> for Vec<ChatTask> {
@@ -161,6 +168,17 @@ impl Chat {
     /// Getter to the underlying [PromptInputRef] independent of its id.
     pub fn prompt_input_ref(&self) -> PromptInputRef {
         self.prompt_input(id!(prompt))
+    }
+
+    /// Creates a simple summary of tool output
+    fn create_tool_output_summary(_tool_name: &str, content: &str) -> String {
+        // If content is very short (like a simple status message), show it
+        if content.len() <= 80 {
+            content.to_string()
+        } else {
+            // For longer content, just indicate success without showing the verbose output
+            "Output received".to_string()
+        }
     }
 
     /// Getter to the underlying [MessagesRef] independent of its id.
@@ -298,6 +316,12 @@ impl Chat {
 
                     self.dispatch(cx, &mut tasks);
                 }
+                MessagesAction::ToolApprove(index) => {
+                    self.dispatch(cx, &mut ChatTask::ApproveToolCalls(index).into());
+                }
+                MessagesAction::ToolDeny(index) => {
+                    self.dispatch(cx, &mut ChatTask::DenyToolCalls(index).into());
+                }
                 MessagesAction::None => {}
             }
         }
@@ -344,6 +368,165 @@ impl Chat {
         // Use the standard send mechanism which will return the upgrade
         // The upgrade message will be processed in handle_message_delta
         self.dispatch(cx, &mut ChatTask::Send.into());
+    }
+
+    fn handle_tool_calls(
+        &mut self,
+        _cx: &mut Cx,
+        tool_calls: Vec<ToolCall>,
+        loading_message_index: usize,
+    ) {
+        let context = self
+            .bot_context
+            .as_ref()
+            .expect("no BotContext provided")
+            .clone();
+
+        let ui = self.ui_runner();
+        let future = async move {
+            // Get the tool manager from context
+            let Some(tool_manager) = context.tool_manager() else {
+                ui.defer_with_redraw(move |me, cx, _| {
+                    let error_message = Message {
+                        from: EntityId::System,
+                        content: MessageContent {
+                            text: "Tool execution failed: Tool manager not available".to_string(),
+                            ..Default::default()
+                        },
+                        metadata: MessageMetadata {
+                            is_writing: false,
+                            ..MessageMetadata::new()
+                        },
+                        ..Default::default()
+                    };
+                    me.dispatch(
+                        cx,
+                        &mut vec![ChatTask::UpdateMessage(
+                            loading_message_index,
+                            error_message,
+                        )],
+                    );
+                });
+                return;
+            };
+
+            // Execute each tool call
+            let mut tool_results = Vec::new();
+            for tool_call in &tool_calls {
+                match tool_manager
+                    .call_tool(&tool_call.name, tool_call.arguments.clone())
+                    .await
+                {
+                    Ok(result) => {
+                        // Convert result to our ToolResult
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let content = result
+                            .content
+                            .iter()
+                            .filter_map(|item| {
+                                // Extract text content from the MCP result
+                                // TODO: This is a simplified conversion, we might need to handle other content types
+                                if let Ok(text) = serde_json::to_string(item) {
+                                    Some(text)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
+
+                        #[cfg(target_arch = "wasm32")]
+                        let content = serde_json::to_string_pretty(&result)
+                            .unwrap_or_else(|_| "Tool executed successfully".to_string());
+
+                        tool_results.push(ToolResult {
+                            tool_call_id: tool_call.id.clone(),
+                            content,
+                            is_error: false,
+                        });
+                    }
+                    Err(e) => {
+                        let error_message = e.to_string();
+                        tool_results.push(ToolResult {
+                            tool_call_id: tool_call.id.clone(),
+                            content: error_message,
+                            is_error: true,
+                        });
+                    }
+                }
+            }
+
+            // Update the loading message with tool results and trigger a new send
+            ui.defer_with_redraw(move |me, cx, _| {
+                // Create formatted text for tool results
+                let results_text = if tool_results.len() == 1 {
+                    let result = &tool_results[0];
+                    let tool_name = tool_calls
+                        .iter()
+                        .find(|tc| tc.id == result.tool_call_id)
+                        .map(|tc| tc.name.as_str())
+                        .unwrap_or("unknown");
+
+                    let display_name = display_name_from_namespaced(tool_name);
+                    if result.is_error {
+                        format!("🔧 Tool '{}' failed:\n{}", display_name, result.content)
+                    } else {
+                        let summary = Self::create_tool_output_summary(tool_name, &result.content);
+                        format!(
+                            "🔧 Tool '{}' executed successfully:\n{}",
+                            display_name, summary
+                        )
+                    }
+                } else {
+                    let mut text = format!("🔧 Executed {} tools:\n\n", tool_results.len());
+                    for result in &tool_results {
+                        let tool_name = tool_calls
+                            .iter()
+                            .find(|tc| tc.id == result.tool_call_id)
+                            .map(|tc| tc.name.as_str())
+                            .unwrap_or("unknown");
+
+                        let display_name = display_name_from_namespaced(tool_name);
+                        if result.is_error {
+                            text.push_str(&format!(
+                                "**{}** ❌: {}\n\n",
+                                display_name, result.content
+                            ));
+                        } else {
+                            let summary =
+                                Self::create_tool_output_summary(tool_name, &result.content);
+                            text.push_str(&format!("**{}** ✅: {}\n\n", display_name, summary));
+                        }
+                    }
+                    text
+                };
+
+                // Update the existing loading message with tool results
+                let updated_message = Message {
+                    from: EntityId::System, // Tool results are system messages
+                    content: MessageContent {
+                        text: results_text,
+                        tool_results,
+                        ..Default::default()
+                    },
+                    metadata: MessageMetadata {
+                        is_writing: false, // No longer loading
+                        ..MessageMetadata::new()
+                    },
+                    ..Default::default()
+                };
+
+                me.dispatch(
+                    cx,
+                    &mut vec![
+                        ChatTask::UpdateMessage(loading_message_index, updated_message),
+                        ChatTask::Send, // Trigger a new send with the tool results
+                    ],
+                );
+            });
+        };
+
+        spawn(future);
     }
 
     fn handle_send_task(&mut self, cx: &mut Cx) {
@@ -438,7 +621,13 @@ impl Chat {
                 }
             };
 
-            let message_stream = amortize(client.send(&bot.id, &messages_history_context));
+            let tools = if let Some(tool_manager) = context.tool_manager() {
+                tool_manager.get_all_namespaced_tools()
+            } else {
+                Vec::new()
+            };
+
+            let message_stream = amortize(client.send(&bot.id, &messages_history_context, &tools));
             let mut message_stream = std::pin::pin!(message_stream);
             while let Some(result) = message_stream.next().await {
                 // In theory, with the synchroneous defer, if stream messages come
@@ -582,6 +771,121 @@ impl Chat {
                     .write()
                     .scroll_to_bottom(cx, *triggered_by_stream);
             }
+            ChatTask::ApproveToolCalls(index) => {
+                // Get the tool calls from the message and mark them as approved
+                let mut message_updated = None;
+                let tool_calls = self.messages_ref().write_with(|m| {
+                    if let Some(message) = m.messages.get_mut(*index) {
+                        message.update_content(|content| {
+                            for tool_call in &mut content.tool_calls {
+                                tool_call.permission_status = ToolCallPermissionStatus::Approved;
+                            }
+                        });
+                        message_updated = Some(message.clone());
+                        message.content.tool_calls.clone()
+                    } else {
+                        Vec::new()
+                    }
+                });
+
+                if let Some(message) = message_updated {
+                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
+                }
+
+                if !tool_calls.is_empty() {
+                    // Add immediate system message with loading state
+                    let next_index = self.messages_ref().read().messages.len();
+                    let loading_text = if tool_calls.len() == 1 {
+                        format!(
+                            "Executing tool '{}'...",
+                            display_name_from_namespaced(&tool_calls[0].name)
+                        )
+                    } else {
+                        format!("Executing {} tools...", tool_calls.len())
+                    };
+
+                    let loading_message = Message {
+                        from: EntityId::System,
+                        content: MessageContent {
+                            text: loading_text,
+                            ..Default::default()
+                        },
+                        metadata: MessageMetadata {
+                            is_writing: true,
+                            ..MessageMetadata::new()
+                        },
+                        ..Default::default()
+                    };
+
+                    self.dispatch(
+                        cx,
+                        &mut vec![ChatTask::InsertMessage(next_index, loading_message)],
+                    );
+
+                    self.handle_tool_calls(cx, tool_calls, next_index);
+                } else {
+                    ::log::error!("No tool calls found at index: {}", index);
+                }
+
+                self.redraw(cx);
+            }
+            ChatTask::DenyToolCalls(index) => {
+                // Get the tool calls from the message and mark them as denied
+                let mut message_updated = None;
+                let tool_calls = self.messages_ref().write_with(|m| {
+                    if let Some(message) = m.messages.get_mut(*index) {
+                        message.update_content(|content| {
+                            for tool_call in &mut content.tool_calls {
+                                tool_call.permission_status = ToolCallPermissionStatus::Denied;
+                            }
+                        });
+                        message_updated = Some(message.clone());
+                        message.content.tool_calls.clone()
+                    } else {
+                        Vec::new()
+                    }
+                });
+
+                if let Some(message) = message_updated {
+                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
+                }
+
+                if !tool_calls.is_empty() {
+                    // Create synthetic tool results indicating denial to maintain conversation flow
+                    let tool_results: Vec<ToolResult> = tool_calls.iter().map(|tc| {
+                        let display_name = display_name_from_namespaced(&tc.name);
+                        ToolResult {
+                            tool_call_id: tc.id.clone(),
+                            content: format!("Tool execution was denied by the user. Tool '{}' was not executed.", display_name),
+                            is_error: true,
+                        }
+                    }).collect();
+
+                    let next_index = self.messages_ref().read().messages.len();
+
+                    // Add tool result message with denial results
+                    let tool_message = Message {
+                        from: EntityId::System,
+                        content: MessageContent {
+                            text: "🚫 Tool execution was denied by the user.".to_string(),
+                            tool_results,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    };
+
+                    // Continue the conversation with the denial results
+                    self.dispatch(
+                        cx,
+                        &mut vec![
+                            ChatTask::InsertMessage(next_index, tool_message),
+                            ChatTask::Send,
+                        ],
+                    );
+                }
+
+                self.redraw(cx);
+            }
         }
     }
 
@@ -679,7 +983,7 @@ impl Chat {
                 message.set_content(content);
 
                 let index = messages.read().messages.len() - 1;
-                let mut tasks = vec![ChatTask::UpdateMessage(index, message)];
+                let mut tasks = vec![ChatTask::UpdateMessage(index, message.clone())];
 
                 // Stick the chat to the bottom if the user didn't manually scroll.
                 if !self.user_scrolled_during_stream {
@@ -688,12 +992,24 @@ impl Chat {
 
                 self.dispatch(cx, &mut tasks);
 
-                let Some(ChatTask::UpdateMessage(_, message)) = tasks.into_iter().next() else {
+                let Some(ChatTask::UpdateMessage(_, updated_message)) = tasks.into_iter().next()
+                else {
                     // Let's abort if the tasks were modified in an unexpected way.
                     return true;
                 };
 
-                self.expected_message = Some(message);
+                if !updated_message.content.tool_calls.is_empty() {
+                    // Mark message as not writing since tool calls are complete
+                    let mut final_message = updated_message.clone();
+                    final_message.metadata.is_writing = false;
+                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
+                    // TODO: We might want to dispatch a ChatTask::RequestToolPermission(index) here
+
+                    // Signal to stop the current stream since we're switching to permission request
+                    return true;
+                }
+
+                self.expected_message = Some(updated_message);
 
                 false
             }

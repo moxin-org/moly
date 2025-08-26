@@ -1,3 +1,4 @@
+use crate::protocol::Tool;
 use makepad_widgets::{Cx, LiveId, LivePtr, WidgetRef};
 
 use crate::protocol::*;
@@ -33,6 +34,7 @@ impl BotClient for MultiClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let client = self
             .clients_with_bots
@@ -48,7 +50,7 @@ impl BotClient for MultiClient {
             });
 
         match client {
-            Some(mut client) => client.send(bot_id, messages),
+            Some(mut client) => client.send(bot_id, messages, tools),
             None => {
                 let bot_id_clone = bot_id.clone();
                 Box::pin(futures::stream::once(async move {

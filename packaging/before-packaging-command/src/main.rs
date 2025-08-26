@@ -109,7 +109,7 @@ fn main() -> std::io::Result<()> {
 ///    The location of the `makepad-widgets` crate is determined using `cargo-metadata`.
 /// 3. Recursively copies the Moly-specific `./resources` directory to `./dist/resources/moly/`.
 /// 4. Recursively copies the moly-kit-specific `./moly-kit/resources` directory to `./dist/resources/moly_kit/`.
-fn before_packaging(host_os: &str) -> std::io::Result<()> {
+fn before_packaging(_host_os: &str) -> std::io::Result<()> {
     let cwd = std::env::current_dir()?;
     let dist_resources_dir = cwd.join("dist").join("resources");
     fs::create_dir_all(&dist_resources_dir)?;

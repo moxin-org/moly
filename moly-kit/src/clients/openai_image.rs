@@ -1,5 +1,6 @@
 //! Client based on the OpenAI one, but hits the image generation API instead.
 
+use crate::protocol::Tool;
 use crate::protocol::*;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use reqwest::header::{HeaderMap, HeaderName};
@@ -185,6 +186,7 @@ impl BotClient for OpenAIImageClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        _tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let self_clone = self.clone();
         let bot_id = bot_id.clone();

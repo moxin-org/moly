@@ -1,8 +1,10 @@
+use crate::protocol::Tool;
 use async_stream::stream;
 use makepad_widgets::*;
 use reqwest::header::{HeaderMap, HeaderName};
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     str::FromStr,
     sync::{Arc, RwLock},
 };
@@ -79,6 +81,79 @@ impl Content {
     }
 }
 
+#[derive(Serialize)]
+struct FunctionDefinition {
+    name: String,
+    description: String,
+    parameters: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    strict: Option<bool>,
+}
+
+/// Tool definition for OpenAI API
+#[derive(Serialize)]
+struct FunctionTool {
+    #[serde(rename = "type")]
+    tool_type: String,
+    function: FunctionDefinition,
+}
+
+impl From<&Tool> for FunctionTool {
+    fn from(tool: &Tool) -> Self {
+        // Use the input_schema from the MCP tool, but ensure OpenAI compatibility
+        let mut parameters_map = (*tool.input_schema).clone();
+
+        // Ensure additionalProperties is set to false as required by OpenAI
+        parameters_map.insert(
+            "additionalProperties".to_string(),
+            serde_json::Value::Bool(false),
+        );
+
+        // Ensure properties field exists for object schemas (OpenAI requirement)
+        if parameters_map.get("type") == Some(&serde_json::Value::String("object".to_string())) {
+            if !parameters_map.contains_key("properties") {
+                parameters_map.insert(
+                    "properties".to_string(),
+                    serde_json::Value::Object(serde_json::Map::new()),
+                );
+            }
+        }
+
+        let parameters = serde_json::Value::Object(parameters_map);
+
+        FunctionTool {
+            tool_type: "function".to_string(),
+            function: FunctionDefinition {
+                name: tool.name.clone(),
+                description: tool.description.as_deref().unwrap_or("").to_string(),
+                parameters,
+                strict: Some(false),
+            },
+        }
+    }
+}
+
+/// Tool call from OpenAI API
+#[derive(Clone, Debug, Deserialize)]
+struct OpenAIToolCall {
+    #[serde(default)]
+    pub id: String,
+    #[serde(rename = "type")]
+    #[serde(default)]
+    #[allow(dead_code)] // tool_type is necessary for the OpenAI, but we don't use it
+    pub tool_type: String,
+    pub function: OpenAIFunctionCall,
+}
+
+/// Function call within a tool call
+#[derive(Clone, Debug, Deserialize)]
+struct OpenAIFunctionCall {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub arguments: String, // JSON string that needs to be parsed
+}
+
 /// Message being received by the completions endpoint.
 ///
 /// Although most OpenAI-compatible APIs return a `role` field, OpenAI itself does not.
@@ -103,15 +178,27 @@ struct IncomingMessage {
     #[serde(deserialize_with = "deserialize_null_default")]
     #[serde(alias = "reasoning_content")]
     pub reasoning: String,
+    /// Tool calls made by the assistant
+    #[serde(default)]
+    pub tool_calls: Vec<OpenAIToolCall>,
 }
 /// A message being sent to the completions endpoint.
 #[derive(Clone, Debug, Serialize)]
-struct OutcomingMessage {
+struct OutgoingMessage {
     pub content: Content,
     pub role: Role,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<serde_json::Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
-async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> {
+async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
+    // Handle tool results differently
+    if !message.content.tool_results.is_empty() {
+        return outgoing_tool_result_message(message);
+    }
+
     let role = match message.from {
         EntityId::User => Ok(Role::User),
         EntityId::System => Ok(Role::System),
@@ -158,7 +245,109 @@ async fn to_outcoming_message(message: Message) -> Result<OutcomingMessage, ()> 
         Content::Parts(parts)
     };
 
-    Ok(OutcomingMessage { content, role })
+    // Convert tool calls to OpenAI format
+    let tool_calls =
+        if !message.content.tool_calls.is_empty() {
+            Some(message.content.tool_calls.iter().map(|tc| {
+            serde_json::json!({
+                "id": tc.id,
+                "type": "function",
+                "function": {
+                    "name": tc.name,
+                    "arguments": serde_json::to_string(&tc.arguments).unwrap_or_default()
+                }
+            })
+        }).collect())
+        } else {
+            None
+        };
+
+    Ok(OutgoingMessage {
+        content,
+        role,
+        tool_calls,
+        tool_call_id: None,
+    })
+}
+
+/// Converts a message with tool results to an outgoing message.
+///
+/// This is used to send tool results back to the AI.
+fn outgoing_tool_result_message(message: Message) -> Result<OutgoingMessage, ()> {
+    let role = Role::Tool;
+    let content = Content::Text(
+        message
+            .content
+            .tool_results
+            .iter()
+            .map(|result| truncate_tool_result(&result.content))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+
+    let tool_call_id = message
+        .content
+        .tool_results
+        .first()
+        .map(|r| r.tool_call_id.clone());
+
+    return Ok(OutgoingMessage {
+        content,
+        role,
+        tool_calls: None,
+        tool_call_id,
+    });
+}
+
+fn truncate_tool_result(content: &str) -> String {
+    const MAX_TOOL_OUTPUT_CHARS: usize = 16384; // ~4096 tokens
+    if content.len() > MAX_TOOL_OUTPUT_CHARS {
+        let truncated = content
+            .chars()
+            .take(MAX_TOOL_OUTPUT_CHARS)
+            .collect::<String>();
+        format!("{}... [truncated]", truncated)
+    } else {
+        content.to_string()
+    }
+}
+
+/// Finalizes any remaining buffered tool calls when streaming completes.
+/// This processes incomplete tool calls that were being built up during streaming.
+fn finalize_remaining_tool_calls(
+    content: &mut MessageContent,
+    tool_argument_buffers: &mut HashMap<String, String>,
+    tool_names: &mut HashMap<String, String>,
+    tool_call_ids_by_index: &mut HashMap<usize, String>,
+) {
+    // Process any remaining buffered tool calls
+    for (tool_call_id, buffered_args) in tool_argument_buffers.drain() {
+        let arguments = if buffered_args.is_empty() || buffered_args == "{}" {
+            serde_json::Map::new()
+        } else {
+            match serde_json::from_str::<serde_json::Value>(&buffered_args) {
+                Ok(serde_json::Value::Object(args)) => args,
+                Ok(serde_json::Value::Null) => serde_json::Map::new(),
+                Ok(_) => serde_json::Map::new(),
+                Err(_) => serde_json::Map::new(),
+            }
+        };
+
+        // Create the tool call if we have the name and it's not already created
+        if let Some(name) = tool_names.get(&tool_call_id) {
+            let tool_call = ToolCall {
+                id: tool_call_id.clone(),
+                name: name.clone(),
+                arguments,
+                ..Default::default()
+            };
+            content.tool_calls.push(tool_call);
+        }
+    }
+
+    // Clear the tool names and index mapping as well
+    tool_names.clear();
+    tool_call_ids_by_index.clear();
 }
 
 /// Role of a message that is part of the conversation context.
@@ -173,12 +362,15 @@ enum Role {
     User,
     #[serde(rename = "assistant")]
     Assistant,
+    #[serde(rename = "tool")]
+    Tool,
 }
 
 /// The Choice object as part of a streaming response.
 #[derive(Clone, Debug, Deserialize)]
 struct Choice {
     pub delta: IncomingMessage,
+    pub finish_reason: Option<String>,
 }
 
 /// Response from the completions endpoint
@@ -344,6 +536,7 @@ impl BotClient for OpenAIClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let bot_id = bot_id.clone();
         let messages = messages.to_vec();
@@ -352,10 +545,12 @@ impl BotClient for OpenAIClient {
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
+        let tools: Vec<FunctionTool> = tools.iter().map(|t| t.into()).collect();
+
         let stream = stream! {
-            let mut outgoing_messages: Vec<OutcomingMessage> = Vec::with_capacity(messages.len());
+            let mut outgoing_messages: Vec<OutgoingMessage> = Vec::with_capacity(messages.len());
             for message in messages {
-                match to_outcoming_message(message.clone()).await {
+                match to_outgoing_message(message.clone()).await {
                     Ok(outgoing_message) => outgoing_messages.push(outgoing_message),
                     Err(_) => {
                         error!("Could not convert message to outgoing format: {:?}", message);
@@ -371,6 +566,7 @@ impl BotClient for OpenAIClient {
             let json = serde_json::json!({
                 "model": bot_id.id(),
                 "messages": outgoing_messages,
+                "tools": tools,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,
                 "stream": true
@@ -414,6 +610,9 @@ impl BotClient for OpenAIClient {
 
             let mut content = MessageContent::default();
             let mut full_text = String::default();
+                            let mut tool_argument_buffers: HashMap<String, String> = HashMap::new();
+                let mut tool_names: HashMap<String, String> = HashMap::new();
+                let mut tool_call_ids_by_index: HashMap<usize, String> = HashMap::new();
             let events = parse_sse(response.bytes_stream());
 
             for await event in events {
@@ -443,6 +642,24 @@ impl BotClient for OpenAIClient {
                     }
                 };
 
+                // Check if this chunk has finish_reason for tool_calls
+                let is_tool_calls_finished = completion.choices.iter()
+                    .any(|choice| choice.finish_reason.as_deref() == Some("tool_calls"));
+
+                let mut should_yield_content = true;
+
+                if is_tool_calls_finished {
+                    finalize_remaining_tool_calls(
+                        &mut content,
+                        &mut tool_argument_buffers,
+                        &mut tool_names,
+                        &mut tool_call_ids_by_index,
+                    );
+                } else if !tool_argument_buffers.is_empty() || !tool_names.is_empty() {
+                    // We have incomplete tool calls, don't yield content yet
+                    should_yield_content = false;
+                }
+
                 // Aggregate deltas
                 for choice in &completion.choices {
                     // Keep track of the full content as it came, without modifications.
@@ -461,6 +678,73 @@ impl BotClient for OpenAIClient {
                         // Otherwise, set the reasoning to what we extracted from the full text.
                         content.reasoning = reasoning.to_string();
                     }
+
+                    // Handle tool calls
+                    for (index, tool_call) in choice.delta.tool_calls.iter().enumerate() {
+                        // Determine the tool call ID to use
+                        let tool_call_id = if !tool_call.id.is_empty() {
+                            // This chunk has an ID, use it and store the index mapping
+                            tool_call_ids_by_index.insert(index, tool_call.id.clone());
+                            tool_call.id.clone()
+                        } else {
+                            // This chunk doesn't have an ID, look it up by index
+                            if let Some(existing_id) = tool_call_ids_by_index.get(&index) {
+                                existing_id.clone()
+                            } else {
+                                continue;
+                            }
+                        };
+
+                        // Update the argument buffer for this tool call
+                        let buffer_entry = tool_argument_buffers.entry(tool_call_id.clone()).or_default();
+                        buffer_entry.push_str(&tool_call.function.arguments);
+
+                        // If this chunk has a function name, it's the initial tool call definition
+                        // Store the name but don't add to content.tool_calls yet, wait until arguments are complete
+                        if !tool_call.function.name.is_empty() {
+                            tool_names.insert(tool_call_id.clone(), tool_call.function.name.clone());
+                        }
+
+                        // Try to parse the current buffer as complete JSON
+                        if !buffer_entry.is_empty() {
+                            // Determine the arguments to use based on the buffer content
+                            let arguments = if buffer_entry == "{}" {
+                                // Special case: Empty JSON object indicates a tool call with no arguments
+                                // Example: A tool like "get_weather" that takes no parameters
+                                Some(serde_json::Map::new())
+                            } else {
+                                match serde_json::from_str::<serde_json::Value>(buffer_entry) {
+                                    // Successfully parsed as a JSON object with key-value pairs
+                                    // This is the normal case for tool calls with parameters
+                                    // Example: {"query": "What's the weather?", "location": "NYC"}
+                                    Ok(serde_json::Value::Object(args)) => Some(args),
+                                    // Successfully parsed as JSON null value
+                                    // Treat this the same as empty object - tool call with no arguments
+                                    Ok(serde_json::Value::Null) => Some(serde_json::Map::new()),
+                                    // Successfully parsed as some other JSON type (array, string, number, bool)
+                                    // This is unexpected for tool arguments, so we default to empty arguments for now
+                                    Ok(_) => Some(serde_json::Map::new()),
+                                    // Failed to parse as valid JSON - arguments are still incomplete
+                                    // This happens when we're in the middle of streaming and haven't
+                                    // received the complete JSON yet. Keep buffering until we can parse.
+                                    Err(_) => None,
+                                }
+                            };
+
+                            // Create and finalize the tool call if arguments are ready
+                            if let (Some(arguments), Some(name)) = (arguments, tool_names.get(&tool_call_id)) {
+                                let tool_call = ToolCall {
+                                    id: tool_call_id.clone(),
+                                    name: name.clone(),
+                                    arguments,
+                                    ..Default::default()
+                                };
+                                content.tool_calls.push(tool_call);
+                                tool_argument_buffers.remove(&tool_call_id);
+                                tool_names.remove(&tool_call_id);
+                            }
+                        }
+                    }
                 }
 
                 for citation in completion.citations {
@@ -469,7 +753,9 @@ impl BotClient for OpenAIClient {
                     }
                 }
 
-                yield ClientResult::new_ok(content.clone());
+                if should_yield_content {
+                    yield ClientResult::new_ok(content.clone());
+                }
             }
         };
 

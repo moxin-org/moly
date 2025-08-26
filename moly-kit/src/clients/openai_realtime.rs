@@ -1,3 +1,5 @@
+use crate::protocol::Tool;
+#[cfg(not(target_arch = "wasm32"))]
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -495,6 +497,7 @@ impl BotClient for OpenAIRealtimeClient {
         &mut self,
         bot_id: &BotId,
         _messages: &[crate::protocol::Message],
+        _tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         // For realtime, we create a session and return the upgrade in the message content
         let future = self.create_realtime_session(bot_id);

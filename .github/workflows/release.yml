@@ -43,9 +43,11 @@ jobs:
           sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
 
       - name: Install Rust-stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache: true
 
       - name: Install cargo-packager
         run: |
@@ -79,9 +81,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust-stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache: true
 
       - name: Install cargo-packager
         run: |
@@ -111,9 +115,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust-stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache: true
 
       - name: Install cargo-packager
         run: |

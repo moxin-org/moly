@@ -3,6 +3,7 @@ use crate::shared::actions::ChatAction;
 
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
+use super::mcp_servers::McpServersConfig;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{ProviderFetchModelsResult, ProviderType};
@@ -14,6 +15,8 @@ use makepad_widgets::{Action, ActionDefaultRef, DefaultNone};
 use moly_kit::utils::asynchronous::spawn;
 
 use super::providers::{Provider, ProviderConnectionStatus};
+use moly_kit::mcp::mcp_manager::McpManagerClient;
+use moly_kit::protocol::BotContext;
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
 use makepad_widgets::*;
@@ -420,5 +423,59 @@ impl Store {
                     .contains(&provider_name.to_lowercase())
             })
             .cloned()
+    }
+
+    pub fn get_mcp_servers_config(&self) -> &McpServersConfig {
+        &self.preferences.mcp_servers_config
+    }
+
+    pub fn get_mcp_servers_config_json(&self) -> String {
+        self.preferences.get_mcp_servers_config_json()
+    }
+
+    /// Creates a new MCP tool manager and loads servers asynchronously
+    /// Returns the manager immediately, loading happens in the background
+    pub fn create_and_load_mcp_tool_manager(&self, _context: BotContext) -> McpManagerClient {
+        let tool_manager = McpManagerClient::new();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mcp_config = self.get_mcp_servers_config().clone();
+            let tool_manager_clone = tool_manager.clone();
+
+            spawn(async move {
+                // Load MCP servers from configuration
+                for (server_id, server_config) in mcp_config.list_enabled_servers() {
+                    if let Some(transport) = server_config.to_transport() {
+                        match tool_manager_clone.add_server(server_id, transport).await {
+                            Ok(()) => {
+                                ::log::debug!("Successfully added MCP server: {}", server_id);
+                            }
+                            Err(e) => {
+                                ::log::error!("Failed to add MCP server '{}': {}", server_id, e);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        tool_manager
+    }
+
+    pub fn update_mcp_servers_from_json(&mut self, json: &str) -> Result<(), serde_json::Error> {
+        self.preferences.update_mcp_servers_from_json(json)?;
+
+        // Update the tool manager in the existing bot context
+        if let Some(ref bot_context) = self.bot_context {
+            let context_clone = bot_context.clone();
+            let new_tool_manager = self.create_and_load_mcp_tool_manager(context_clone);
+            // Update the bot_context after the creation
+            if let Some(ref mut bot_context_mut) = self.bot_context {
+                bot_context_mut.replace_tool_manager(new_tool_manager);
+            }
+        }
+
+        Ok(())
     }
 }

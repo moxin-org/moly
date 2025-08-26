@@ -41,6 +41,8 @@ live_design! {
             LoadingLine = <LoadingLine> {}
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
+            SystemLine = <SystemLine> {}
+            ToolLine = <ToolLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -97,6 +99,12 @@ pub enum MessagesAction {
     /// The message at the given index should be edited, saved and the messages
     /// history should be regenerated from here.
     EditRegenerate(usize),
+
+    /// The tool request at the given index should be approved and executed.
+    ToolApprove(usize),
+
+    /// The tool request at the given index should be denied.
+    ToolDeny(usize),
 
     None,
 }
@@ -243,7 +251,30 @@ impl Messages {
 
             match &message.from {
                 EntityId::System => {
-                    // TODO: Can or should system messages be rendered?
+                    // Render system messages (tool results, etc.)
+                    let item = if message.metadata.is_writing() {
+                        // Show loading animation for system messages that are being written
+                        let item = list.item(cx, index, live_id!(LoadingLine));
+                        item.message_loading(id!(content_section.loading))
+                            .animate(cx);
+                        item
+                    } else {
+                        list.item(cx, index, live_id!(SystemLine))
+                    };
+
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                        Some(Picture::Grapheme("S".into()));
+                    item.label(id!(name)).set_text(cx, "System");
+
+                    if !message.metadata.is_writing() {
+                        item.slot(id!(content))
+                            .current()
+                            .as_standard_message_content()
+                            .set_content(cx, &message.content);
+                    }
+
+                    self.apply_actions_and_editor_visibility(cx, &item, index);
+                    item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::App => {
                     // Handle EOC marker
@@ -318,14 +349,40 @@ impl Messages {
                         .map(|b| (b.name.as_str(), b.avatar.clone()))
                         .unwrap_or(("Unknown bot", Picture::Grapheme("B".into())));
 
-                    let item = if message.metadata.is_writing() && message.content.is_empty() {
-                        let item = list.item(cx, index, live_id!(LoadingLine));
-                        item.message_loading(id!(content_section.loading))
-                            .animate(cx);
-                        item
-                    } else {
-                        list.item(cx, index, live_id!(BotLine))
-                    };
+                    let item =
+                        if message.metadata.is_writing() && message.content.is_empty() {
+                            let item = list.item(cx, index, live_id!(LoadingLine));
+                            item.message_loading(id!(content_section.loading))
+                                .animate(cx);
+                            item
+                        } else if !message.content.tool_calls.is_empty() {
+                            // Render as ToolLine for messages with tool calls
+                            let item = list.item(cx, index, live_id!(ToolLine));
+
+                            // Set visibility and status based on permission status
+                            let has_pending = message.content.tool_calls.iter().any(|tc| {
+                                tc.permission_status == ToolCallPermissionStatus::Pending
+                            });
+                            let has_denied =
+                                message.content.tool_calls.iter().any(|tc| {
+                                    tc.permission_status == ToolCallPermissionStatus::Denied
+                                });
+
+                            // Show/hide tool actions based on status
+                            item.view(id!(tool_actions)).set_visible(cx, has_pending);
+
+                            // Set status text, only show if denied
+                            if has_denied {
+                                item.view(id!(status_view)).set_visible(cx, true);
+                                item.label(id!(approved_status)).set_text(cx, "Denied");
+                            } else {
+                                item.view(id!(status_view)).set_visible(cx, false);
+                            }
+
+                            item
+                        } else {
+                            list.item(cx, index, live_id!(BotLine))
+                        };
 
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
                     item.label(id!(name)).set_text(cx, name);
@@ -347,8 +404,16 @@ impl Messages {
                             .set_content_with_metadata(cx, &message.content, &message.metadata);
                     }
 
-                    self.apply_actions_and_editor_visibility(cx, &item, index);
-                    item.draw_all(cx, &mut Scope::empty());
+                    let has_any_tool_calls = !message.content.tool_calls.is_empty();
+                    // For messages with tool calls, don't apply standard actions/editor,
+                    // Users must be prevented from editing or deleting tool calls since most AI providers will return errors
+                    // if tool calls are not properly formatted, or are not followed by a proper tool call response.
+                    if has_any_tool_calls {
+                        item.draw_all(cx, &mut Scope::empty());
+                    } else {
+                        self.apply_actions_and_editor_visibility(cx, &item, index);
+                        item.draw_all(cx, &mut Scope::empty());
+                    }
                 }
             }
         }
@@ -471,6 +536,22 @@ impl Messages {
                     self.widget_uid(),
                     &scope.path,
                     MessagesAction::EditRegenerate(index),
+                );
+            }
+
+            if item.button(id!(tool_actions.approve)).clicked(actions) {
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::ToolApprove(index),
+                );
+            }
+
+            if item.button(id!(tool_actions.deny)).clicked(actions) {
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::ToolDeny(index),
                 );
             }
 

@@ -1,3 +1,4 @@
+use crate::protocol::Tool;
 use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use crate::utils::errors::enrich_http_error;
 use crate::{protocol::*, utils::sse::parse_sse};
@@ -216,6 +217,7 @@ impl BotClient for DeepInquireClient {
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
+        _tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let inner = self.0.read().unwrap().clone();
 
