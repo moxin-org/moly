@@ -252,15 +252,26 @@ impl Messages {
             match &message.from {
                 EntityId::System => {
                     // Render system messages (tool results, etc.)
-                    let item = list.item(cx, index, live_id!(SystemLine));
+                    let item = if message.metadata.is_writing() {
+                        // Show loading animation for system messages that are being written
+                        let item = list.item(cx, index, live_id!(LoadingLine));
+                        item.message_loading(id!(content_section.loading))
+                            .animate(cx);
+                        item
+                    } else {
+                        list.item(cx, index, live_id!(SystemLine))
+                    };
+
                     item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("S".into()));
                     item.label(id!(name)).set_text(cx, "System");
 
-                    item.slot(id!(content))
-                        .current()
-                        .as_standard_message_content()
-                        .set_content(cx, &message.content);
+                    if !message.metadata.is_writing() {
+                        item.slot(id!(content))
+                            .current()
+                            .as_standard_message_content()
+                            .set_content(cx, &message.content);
+                    }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());

@@ -370,7 +370,12 @@ impl Chat {
         self.dispatch(cx, &mut ChatTask::Send.into());
     }
 
-    fn handle_tool_calls(&mut self, _cx: &mut Cx, tool_calls: Vec<ToolCall>) {
+    fn handle_tool_calls(
+        &mut self,
+        _cx: &mut Cx,
+        tool_calls: Vec<ToolCall>,
+        loading_message_index: usize,
+    ) {
         let context = self
             .bot_context
             .as_ref()
@@ -381,19 +386,26 @@ impl Chat {
         let future = async move {
             // Get the tool manager from context
             let Some(tool_manager) = context.tool_manager() else {
-                ui.defer_with_redraw(|me, cx, _| {
-                    let error_message =
-                        "Tool manager not available for executing tool calls".to_string();
-                    let next_index = me.messages_ref().read().messages.len();
-                    let message = Message {
-                        from: EntityId::App,
+                ui.defer_with_redraw(move |me, cx, _| {
+                    let error_message = Message {
+                        from: EntityId::System,
                         content: MessageContent {
-                            text: error_message,
+                            text: "Tool execution failed: Tool manager not available".to_string(),
                             ..Default::default()
+                        },
+                        metadata: MessageMetadata {
+                            is_writing: false,
+                            ..MessageMetadata::new()
                         },
                         ..Default::default()
                     };
-                    me.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
+                    me.dispatch(
+                        cx,
+                        &mut vec![ChatTask::UpdateMessage(
+                            loading_message_index,
+                            error_message,
+                        )],
+                    );
                 });
                 return;
             };
@@ -444,10 +456,8 @@ impl Chat {
                 }
             }
 
-            // Add tool results as new messages and trigger a new send
+            // Update the loading message with tool results and trigger a new send
             ui.defer_with_redraw(move |me, cx, _| {
-                let next_index = me.messages_ref().read().messages.len();
-
                 // Create formatted text for tool results
                 let results_text = if tool_results.len() == 1 {
                     let result = &tool_results[0];
@@ -491,13 +501,17 @@ impl Chat {
                     text
                 };
 
-                // Add tool result message
-                let tool_message = Message {
+                // Update the existing loading message with tool results
+                let updated_message = Message {
                     from: EntityId::System, // Tool results are system messages
                     content: MessageContent {
                         text: results_text,
                         tool_results,
                         ..Default::default()
+                    },
+                    metadata: MessageMetadata {
+                        is_writing: false, // No longer loading
+                        ..MessageMetadata::new()
                     },
                     ..Default::default()
                 };
@@ -505,7 +519,7 @@ impl Chat {
                 me.dispatch(
                     cx,
                     &mut vec![
-                        ChatTask::InsertMessage(next_index, tool_message),
+                        ChatTask::UpdateMessage(loading_message_index, updated_message),
                         ChatTask::Send, // Trigger a new send with the tool results
                     ],
                 );
@@ -779,7 +793,36 @@ impl Chat {
                 }
 
                 if !tool_calls.is_empty() {
-                    self.handle_tool_calls(cx, tool_calls);
+                    // Add immediate system message with loading state
+                    let next_index = self.messages_ref().read().messages.len();
+                    let loading_text = if tool_calls.len() == 1 {
+                        format!(
+                            "Executing tool '{}'...",
+                            display_name_from_namespaced(&tool_calls[0].name)
+                        )
+                    } else {
+                        format!("Executing {} tools...", tool_calls.len())
+                    };
+
+                    let loading_message = Message {
+                        from: EntityId::System,
+                        content: MessageContent {
+                            text: loading_text,
+                            ..Default::default()
+                        },
+                        metadata: MessageMetadata {
+                            is_writing: true,
+                            ..MessageMetadata::new()
+                        },
+                        ..Default::default()
+                    };
+
+                    self.dispatch(
+                        cx,
+                        &mut vec![ChatTask::InsertMessage(next_index, loading_message)],
+                    );
+
+                    self.handle_tool_calls(cx, tool_calls, next_index);
                 } else {
                     ::log::error!("No tool calls found at index: {}", index);
                 }
