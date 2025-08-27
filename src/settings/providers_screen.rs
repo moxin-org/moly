@@ -13,7 +13,6 @@ live_design! {
     use crate::shared::styles::*;
     use crate::shared::widgets::*;
     use crate::shared::modal::*;
-    use crate::settings::delete_server_modal::DeleteServerModal;
     use crate::settings::configure_connection_modal::ConfigureConnectionModal;
     use crate::settings::provider_view::ProviderView;
     use crate::settings::providers::Providers;
@@ -95,7 +94,7 @@ impl WidgetMatchEvent for ProvidersScreen {
         stack_navigation.handle_stack_view_actions(cx, actions);
 
         for action in actions {
-            if let ConnectionSettingsAction::ProviderSelected(address) = action.cast() {
+            if let ConnectionSettingsAction::ProviderSelected(provider_id) = action.cast() {
                 // fetch provider from store
                 let provider = scope
                     .data
@@ -103,13 +102,13 @@ impl WidgetMatchEvent for ProvidersScreen {
                     .unwrap()
                     .chats
                     .providers
-                    .get(&address);
+                    .get(&provider_id);
                 if let Some(provider) = provider {
                     self.view
                         .provider_view(id!(provider_view))
                         .set_provider(cx, provider);
                 } else {
-                    eprintln!("Provider not found: {}", address);
+                    eprintln!("Provider not found: {}", provider_id);
                 }
             }
         }

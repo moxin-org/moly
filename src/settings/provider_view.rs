@@ -142,13 +142,16 @@ live_design! {
                     }
                 }
 
-                api_host = <MolyTextInput> {
-                    width: Fill
-                    text: "https://some-api.com"
-                    is_read_only: true
-                    draw_text: {
-                        text_style: <REGULAR_FONT>{font_size: 12}
-                        color: #000
+                <View> {
+                    spacing: 10
+                    width: Fill, height: 35
+                    api_host = <MolyTextInput> {
+                        width: Fill, height: 30
+                        text: "https://some-api.com/v1"
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 12}
+                            color: #000
+                        }
                     }
                 }
             }
@@ -177,13 +180,13 @@ live_design! {
                             color: #000
                         }
                     }
-                    save_api_key = <MolyButton> {
-                        width: Fit
-                        height: 30
-                        padding: {left: 20, right: 20, top: 0, bottom: 0}
-                        text: "Save"
-                        draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
-                    }
+                    // save_api_key = <MolyButton> {
+                    //     width: Fit
+                    //     height: 30
+                    //     padding: {left: 20, right: 20, top: 0, bottom: 0}
+                    //     text: "Save"
+                    //     draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
+                    // }
                 }
                 <View> {
                     width: Fill, height: Fit
@@ -195,6 +198,14 @@ live_design! {
                         }
                     }
                 }
+            }
+
+            save_provider = <MolyButton> {
+                width: Fit
+                height: 30
+                padding: {left: 20, right: 20, top: 0, bottom: 0}
+                text: "Save"
+                draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
             }
 
             // MODELS
@@ -255,12 +266,26 @@ impl Widget for ProviderView {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let models = store.chats.get_provider_models(&self.provider.url);
+        let models = store.chats.get_provider_models(&self.provider.id);
 
         if !self.initialized {
             // Catch up with the latest provider status in the store
-            if let Some(provider) = store.chats.providers.get(&self.provider.url) {
-                self.provider = provider.clone();
+            // Try by ID first, then by URL for backward compatibility
+            let provider = store
+                .chats
+                .providers
+                .get(&self.provider.id)
+                .or_else(|| {
+                    store
+                        .chats
+                        .providers
+                        .values()
+                        .find(|p| p.url == self.provider.url)
+                })
+                .cloned();
+
+            if let Some(provider) = provider {
+                self.provider = provider;
                 self.initialized = true;
             }
         }
@@ -353,7 +378,7 @@ impl WidgetMatchEvent for ProviderView {
                     ModelEntryAction::ModelEnabledChanged(model_name, enabled) => {
                         // Update the model status in the preferences
                         store.preferences.update_model_status(
-                            &self.provider.url,
+                            &self.provider.id,
                             model_name,
                             *enabled,
                         );
@@ -373,23 +398,29 @@ impl WidgetMatchEvent for ProviderView {
             }
         }
 
-        // Handle API Key save
-        if self.button(id!(save_api_key)).clicked(actions) {
-            self.provider.api_key =
-                Some(self.view.text_input(id!(api_key)).text().trim().to_string());
+        // Handle save
+        if self.button(id!(save_provider)).clicked(actions) {
+            self.provider.url = self
+                .view
+                .text_input(id!(api_host))
+                .text()
+                .trim()
+                .to_string();
+            let api_key = self.view.text_input(id!(api_key)).text().trim().to_string();
+            if api_key.is_empty() {
+                self.provider.api_key = None;
+            } else {
+                self.provider.api_key = Some(api_key);
+            }
 
-            // Because the provider is being updated, we assume the user wants to use it.
-            // This allows the app to fetch the models from the provider and give feedback to the user.
+            // Since we auto-fetch the models upon update, also enable it
             self.provider.enabled = true;
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
-            // Update the provider in the store and preferences
-            store.insert_or_update_provider(&self.provider);
-
-            // Update the provider enabled switch
             self.check_box(id!(provider_enabled_switch))
                 .set_active(cx, true);
             // Update the UI
             self.update_connection_status(cx);
+            store.insert_or_update_provider(&self.provider);
             self.redraw(cx);
         }
 
@@ -406,7 +437,7 @@ impl WidgetMatchEvent for ProviderView {
 
         // Handle remove provider button
         if self.button(id!(remove_provider_button)).clicked(actions) {
-            store.remove_provider(&self.provider.url);
+            store.remove_provider(&self.provider.id);
             cx.action(ProviderViewAction::ProviderRemoved);
             self.redraw(cx);
         }

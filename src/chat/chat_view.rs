@@ -340,7 +340,8 @@ impl ChatView {
         // Make a list of previously PERSISTED attachments that would be lost after
         // applying the splice.
         // Focus on the range that will be replaced.
-        let attachments_to_delete = store_chat.messages[range.clone()]
+        let attachments_to_delete = store_chat.messages
+            [range.start..std::cmp::min(range.end, store_chat.messages.len())]
             .iter()
             .flat_map(|m| &m.content.attachments)
             // Focus on attachments already on disk.

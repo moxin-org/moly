@@ -69,7 +69,7 @@ impl Widget for McpScreen {
 }
 
 impl WidgetMatchEvent for McpScreen {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let stack_navigation = self.stack_navigation(id!(navigation));
         stack_navigation.handle_stack_view_actions(cx, actions);
     }

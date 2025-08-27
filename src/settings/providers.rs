@@ -242,7 +242,7 @@ struct Providers {
     #[live]
     provider_icons: Vec<LiveDependency>,
     #[rust]
-    selected_provider: Option<String>,
+    selected_provider_id: Option<String>,
 
     #[rust]
     initialized: bool,
@@ -260,11 +260,12 @@ impl Widget for Providers {
         if !self.initialized {
             if cx.display_context.is_desktop() {
                 self.initialized = true;
-                let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
-                self.selected_provider = Some(default_provider_url.clone());
+                // Use provider ID instead of URL
+                let default_provider_id = "siliconflow".to_string();
+                self.selected_provider_id = Some(default_provider_id.clone());
 
                 cx.action(ConnectionSettingsAction::ProviderSelected(
-                    default_provider_url,
+                    default_provider_id,
                 ));
             }
         }
@@ -298,7 +299,7 @@ impl Widget for Providers {
 
                         let provider = all_providers[item_id].clone();
                         let icon = self.get_provider_icon(&provider);
-                        let is_selected = self.selected_provider == Some(provider.url.clone());
+                        let is_selected = self.selected_provider_id == Some(provider.id.clone());
                         item.as_provider_item()
                             .set_provider(cx, provider, icon, is_selected);
                         item.draw_all(cx, scope);
@@ -348,8 +349,8 @@ impl WidgetMatchEvent for Providers {
 
         for action in actions {
             // Handle selected provider
-            if let ConnectionSettingsAction::ProviderSelected(provider_url) = action.cast() {
-                self.selected_provider = Some(provider_url);
+            if let ConnectionSettingsAction::ProviderSelected(provider_id) = action.cast() {
+                self.selected_provider_id = Some(provider_id);
             }
 
             // Handle modal actions
@@ -375,9 +376,9 @@ impl WidgetMatchEvent for Providers {
                 // Select another provider
                 let store = scope.data.get::<Store>().unwrap();
                 if let Some(first_provider) = store.chats.providers.values().next() {
-                    self.selected_provider = Some(first_provider.url.clone());
+                    self.selected_provider_id = Some(first_provider.id.clone());
                     cx.action(ConnectionSettingsAction::ProviderSelected(
-                        first_provider.url.clone(),
+                        first_provider.id.clone(),
                     ));
                 }
                 self.redraw(cx);
@@ -424,7 +425,7 @@ impl WidgetMatchEvent for ProviderItem {
         let was_item_clicked = self.view(id!(main_view)).finger_up(actions).is_some();
         if was_item_clicked {
             cx.action(ConnectionSettingsAction::ProviderSelected(
-                self.provider.url.clone(),
+                self.provider.id.clone(),
             ));
         }
     }

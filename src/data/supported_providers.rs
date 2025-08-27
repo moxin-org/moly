@@ -10,6 +10,9 @@ pub struct SupportedProvidersFile {
 /// Represents a supported provider, used as a template.
 #[derive(Debug, Deserialize)]
 pub struct SupportedProvider {
+    /// Unique identifier for the provider
+    #[serde(default)]
+    pub id: String,
     pub name: String,
     pub url: String,
     pub provider_type: ProviderType,
