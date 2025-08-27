@@ -214,33 +214,14 @@ impl Chats {
             ProviderFetchModelsResult::Success(provider_id, mut fetched_models) => {
                 // If the provider is part of the predefined list of supported providers,
                 // filter the fetched models to only include those that are in the supported models list.
-                // Include supported models even if they are not in the fetched models.
                 if let Some(supported_provider) =
                     super::supported_providers::load_supported_providers()
                         .iter()
                         .find(|sp| sp.id == provider_id)
                 {
                     if let Some(supported_models) = &supported_provider.supported_models {
-                        let fetched_names: std::collections::HashSet<String> =
-                            fetched_models.iter().map(|m| m.name.clone()).collect();
-
                         // Filter fetched models to only include supported ones
                         fetched_models.retain(|model| supported_models.contains(&model.name));
-
-                        let address = self.providers.get(&provider_id).unwrap().url.clone();
-
-                        // Add missing supported models
-                        for model_name in supported_models {
-                            if !fetched_names.contains(model_name) {
-                                fetched_models.push(super::providers::ProviderBot {
-                                    id: moly_kit::BotId::new(model_name, &address),
-                                    name: model_name.clone(),
-                                    description: model_name.clone(),
-                                    provider_id: provider_id.clone(),
-                                    enabled: true,
-                                });
-                            }
-                        }
                     }
                 }
 
