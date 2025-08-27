@@ -162,26 +162,30 @@ impl ModelSelectorList {
         let all_bots = store.chats.get_all_bots(true);
 
         // Group models by provider
-        let mut models_by_provider: HashMap<String, (String, Vec<ProviderBot>)> = HashMap::new();
+        let mut models_by_provider: HashMap<String, (String, String, Vec<ProviderBot>)> =
+            HashMap::new();
         for model in all_bots.iter() {
-            // Get provider name from the providers map
-            let provider_name = store
-                .chats
-                .providers
-                .get(&model.provider_url)
+            // Get provider from the providers map using URL
+            let provider = store.chats.providers.get(&model.provider_id);
+            let provider_name = provider
+                .as_ref()
                 .map(|p| p.name.clone())
                 .unwrap_or_else(|| "Unknown Provider".to_string());
+            let provider_id = provider
+                .as_ref()
+                .map(|p| p.id.clone())
+                .unwrap_or_else(|| model.provider_id.clone());
 
             models_by_provider
-                .entry(model.provider_url.clone())
-                .or_insert_with(|| (provider_name, Vec::new()))
-                .1
+                .entry(provider_id.clone())
+                .or_insert_with(|| (provider_id, provider_name, Vec::new()))
+                .2
                 .push(model.clone());
         }
 
         let mut providers: Vec<(String, String, Vec<ProviderBot>)> = models_by_provider
             .into_iter()
-            .map(|(url, (name, models))| (url, name, models))
+            .map(|(_, (id, name, models))| (id, name, models))
             .collect();
 
         // Sort providers alphabetically by name
@@ -194,7 +198,7 @@ impl ModelSelectorList {
             .collect::<Vec<_>>();
 
         // Add models grouped by provider
-        for (provider_url, provider_name, mut provider_bots) in providers {
+        for (provider_id, provider_name, mut provider_bots) in providers {
             if provider_bots.is_empty() {
                 continue;
             }
@@ -220,7 +224,7 @@ impl ModelSelectorList {
             }
 
             // Add provider section label
-            let section_id = LiveId::from_str(&provider_url);
+            let section_id = LiveId::from_str(&provider_id);
 
             let section_label = self.items.get_or_insert(cx, section_id, |cx| {
                 WidgetRef::new_from_ptr(cx, self.section_label_template)
@@ -251,7 +255,7 @@ impl ModelSelectorList {
             // Add models for this provider
             for provider_bot in provider_bots.iter() {
                 let bot_item_id =
-                    LiveId::from_str(format!("{}{}", provider_url, provider_bot.id).as_str());
+                    LiveId::from_str(format!("{}{}", provider_id, provider_bot.id).as_str());
 
                 let item_widget = self.items.get_or_insert(cx, bot_item_id, |cx| {
                     WidgetRef::new_from_ptr(cx, self.model_template)

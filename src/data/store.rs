@@ -1,4 +1,5 @@
 use crate::app::app_runner;
+use crate::data::providers::ProviderID;
 use crate::shared::actions::ChatAction;
 
 use super::chats::chat::ChatID;
@@ -248,13 +249,21 @@ impl Store {
         address.push_str(MOLY_SERVER_VERSION_EXTENSION);
 
         if !completed_download_ids.is_empty() {
-            if let Some(provider) = self.chats.providers.get(&address).cloned() {
-                if provider.provider_type == ProviderType::MolyServer && provider.enabled {
-                    self.chats.test_provider_and_fetch_models(
-                        &provider.url,
-                        &mut self.provider_syncing_status,
-                    );
-                }
+            // Find MolyServer provider
+            let provider = self
+                .chats
+                .providers
+                .values()
+                .find(|p| {
+                    p.url == address && p.provider_type == ProviderType::MolyServer && p.enabled
+                })
+                .cloned();
+
+            if let Some(provider) = provider {
+                self.chats.test_provider_and_fetch_models(
+                    &provider.id,
+                    &mut self.provider_syncing_status,
+                );
             }
         }
 
@@ -311,10 +320,15 @@ impl Store {
                 .preferences
                 .providers_preferences
                 .iter()
-                .find(|pp| pp.url == s.url);
+                .find(|pp| pp.id == s.id || (pp.id.is_empty() && pp.url == s.url));
 
             if let Some(prefs) = maybe_prefs {
                 final_list.push(Provider {
+                    id: if !prefs.id.is_empty() {
+                        prefs.id.clone()
+                    } else {
+                        s.id.clone()
+                    },
                     name: s.name.clone(),
                     url: prefs.url.clone(),
                     api_key: prefs.api_key.clone(),
@@ -327,6 +341,7 @@ impl Store {
             } else {
                 // Known from supported_providers.json but user has no preferences
                 final_list.push(Provider {
+                    id: s.id.clone(),
                     name: s.name.clone(),
                     url: s.url.clone(),
                     api_key: None,
@@ -341,23 +356,30 @@ impl Store {
 
         // Custom providers from preferences (not in the supported_providers.json)
         for pp in &self.preferences.providers_preferences {
-            let is_custom = !supported.iter().any(|sp| sp.url == pp.url);
+            let is_custom = !supported
+                .iter()
+                .any(|sp| sp.id == pp.id || (pp.id.is_empty() && sp.url == pp.url));
             if is_custom {
+                // Ensure provider has an ID
+                let mut pp_clone = pp.clone();
+                pp_clone.ensure_id();
+
                 final_list.push(Provider {
-                    name: pp.name.clone(),
-                    url: pp.url.clone(),
-                    api_key: pp.api_key.clone(),
-                    provider_type: pp.provider_type.clone(),
+                    id: pp_clone.id.clone(),
+                    name: pp_clone.name.clone(),
+                    url: pp_clone.url.clone(),
+                    api_key: pp_clone.api_key.clone(),
+                    provider_type: pp_clone.provider_type.clone(),
                     connection_status: ProviderConnectionStatus::Disconnected,
-                    enabled: pp.enabled,
+                    enabled: pp_clone.enabled,
                     models: vec![],
-                    was_customly_added: pp.was_customly_added,
+                    was_customly_added: pp_clone.was_customly_added,
                 });
             }
         }
 
         for provider in final_list {
-            self.chats.providers.insert(provider.url.clone(), provider);
+            self.chats.providers.insert(provider.id.clone(), provider);
         }
 
         self.auto_fetch_for_enabled_providers();
@@ -365,7 +387,7 @@ impl Store {
 
     fn auto_fetch_for_enabled_providers(&mut self) {
         // Automatically fetch providers that are enabled and have an API key or are MoFa servers
-        let urls_to_fetch: Vec<String> = self
+        let ids_to_fetch: Vec<String> = self
             .preferences
             .providers_preferences
             .iter()
@@ -378,13 +400,25 @@ impl Store {
                         || pp.provider_type == ProviderType::OpenAIRealtime
                         || pp.url.starts_with("http://localhost"))
             })
-            .map(|pp| pp.url.clone())
+            .map(|pp| {
+                // Ensure we have an ID to use
+                if !pp.id.is_empty() {
+                    pp.id.clone()
+                } else {
+                    // Generate ID for backward compatibility
+                    super::preferences::ProviderPreferences::generate_id_from_url_and_name(
+                        &pp.url,
+                        &pp.name,
+                        &pp.provider_type,
+                    )
+                }
+            })
             .collect();
 
         // Collect providers first to avoid borrow issues
-        let providers_to_register: Vec<Provider> = urls_to_fetch
+        let providers_to_register: Vec<Provider> = ids_to_fetch
             .iter()
-            .filter_map(|url| self.chats.providers.get(url).cloned())
+            .filter_map(|id| self.chats.providers.get(id).cloned())
             .collect();
 
         for provider in providers_to_register {
@@ -407,9 +441,9 @@ impl Store {
         }
     }
 
-    pub fn remove_provider(&mut self, url: &str) {
-        self.chats.remove_provider(url);
-        self.preferences.remove_provider(url);
+    pub fn remove_provider(&mut self, provider_id: &ProviderID) {
+        self.chats.remove_provider(provider_id);
+        self.preferences.remove_provider(provider_id);
     }
 
     pub fn get_provider_icon(&self, provider_name: &str) -> Option<LiveDependency> {

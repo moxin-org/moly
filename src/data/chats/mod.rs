@@ -12,8 +12,8 @@ use crate::shared::utils::filesystem;
 use super::moly_client::MolyClient;
 use super::preferences::Preferences;
 use super::providers::{
-    Provider, ProviderBot, ProviderClient, ProviderConnectionStatus, ProviderFetchModelsResult,
-    ProviderType, create_client_for_provider,
+    Provider, ProviderBot, ProviderConnectionStatus, ProviderFetchModelsResult, ProviderID,
+    ProviderType, fetch_models_for_provider,
 };
 use super::store::{ProviderSyncing, ProviderSyncingStatus};
 
@@ -23,9 +23,8 @@ pub struct Chats {
 
     pub available_bots: HashMap<BotId, ProviderBot>,
 
-    pub provider_clients: HashMap<String, Box<dyn ProviderClient>>,
-
-    pub providers: HashMap<String, Provider>,
+    /// Map of providers keyed by their ID
+    pub providers: HashMap<ProviderID, Provider>,
 
     /// Set it thru `set_current_chat` method to trigger side effects.
     current_chat_id: Option<ChatID>,
@@ -44,7 +43,6 @@ impl Chats {
             current_chat_id: None,
             chats_dir: PathBuf::from("chats"),
             available_bots: HashMap::new(),
-            provider_clients: HashMap::new(),
             providers: HashMap::new(),
             unknown_bot: ProviderBot::unknown(),
         }
@@ -176,14 +174,14 @@ impl Chats {
         provider: Provider,
         provider_syncing_status: &mut ProviderSyncingStatus,
     ) {
-        self.providers
-            .insert(provider.url.clone(), provider.clone());
-        self.test_provider_and_fetch_models(&provider.url, provider_syncing_status);
+        let provider_id = provider.id.clone();
+        self.providers.insert(provider.id.clone(), provider.clone());
+        self.test_provider_and_fetch_models(&provider_id, provider_syncing_status);
     }
 
     pub fn test_provider_and_fetch_models(
         &mut self,
-        address: &str,
+        provider_id: &str,
         provider_syncing_status: &mut ProviderSyncingStatus,
     ) {
         // Update syncing status
@@ -198,17 +196,8 @@ impl Chats {
             });
         }
 
-        // Use the existing client if found, otherwise create a new one
-        let client = if let Some(existing_client) = self.provider_clients.get(address) {
-            existing_client
-        } else {
-            let provider = self.providers.get(address).unwrap();
-            self.provider_clients
-                .insert(address.to_string(), create_client_for_provider(provider));
-            self.provider_clients.get(address).unwrap()
-        };
-
-        client.fetch_models();
+        let provider = self.providers.get(provider_id).unwrap();
+        fetch_models_for_provider(provider);
     }
 
     /// Handle the result of a provider fetching models operation.
@@ -222,34 +211,17 @@ impl Chats {
     ) -> bool {
         let mut fetched_from_moly_server = false;
         match result {
-            ProviderFetchModelsResult::Success(address, mut fetched_models) => {
+            ProviderFetchModelsResult::Success(provider_id, mut fetched_models) => {
                 // If the provider is part of the predefined list of supported providers,
                 // filter the fetched models to only include those that are in the supported models list.
-                // Include supported models even if they are not in the fetched models.
                 if let Some(supported_provider) =
                     super::supported_providers::load_supported_providers()
                         .iter()
-                        .find(|sp| sp.url == address)
+                        .find(|sp| sp.id == provider_id)
                 {
                     if let Some(supported_models) = &supported_provider.supported_models {
-                        let fetched_names: std::collections::HashSet<String> =
-                            fetched_models.iter().map(|m| m.name.clone()).collect();
-
                         // Filter fetched models to only include supported ones
                         fetched_models.retain(|model| supported_models.contains(&model.name));
-
-                        // Add missing supported models
-                        for model_name in supported_models {
-                            if !fetched_names.contains(model_name) {
-                                fetched_models.push(super::providers::ProviderBot {
-                                    id: moly_kit::BotId::new(model_name, &address),
-                                    name: model_name.clone(),
-                                    description: model_name.clone(),
-                                    provider_url: address.clone(),
-                                    enabled: true,
-                                });
-                            }
-                        }
                     }
                 }
 
@@ -257,7 +229,7 @@ impl Chats {
                 if let Some(pref_entry) = preferences
                     .providers_preferences
                     .iter_mut()
-                    .find(|pp| pp.url == address)
+                    .find(|pp| pp.id == provider_id)
                 {
                     for rm in &fetched_models {
                         let maybe_model = pref_entry
@@ -283,7 +255,7 @@ impl Chats {
                     if let Some(pref_entry) = preferences
                         .providers_preferences
                         .iter()
-                        .find(|pp| pp.url == address)
+                        .find(|pp| pp.id == provider_id)
                     {
                         // if there's a matching "(model_name, enabled)" in preferences, apply it
                         if let Some((_m, enabled_val)) = pref_entry
@@ -298,13 +270,13 @@ impl Chats {
                     // Add it to the provider record, only if it's not already in there
                     if !self
                         .providers
-                        .get(&address)
+                        .get(&provider_id)
                         .unwrap()
                         .models
                         .contains(&provider_bot.id)
                     {
                         self.providers
-                            .get_mut(&address)
+                            .get_mut(&provider_id)
                             .unwrap()
                             .models
                             .push(provider_bot.id.clone());
@@ -317,7 +289,7 @@ impl Chats {
                     }
                 }
 
-                if let Some(provider) = self.providers.get_mut(&address) {
+                if let Some(provider) = self.providers.get_mut(&provider_id) {
                     provider.connection_status = ProviderConnectionStatus::Connected;
                     // If the fetching was successful and the provider is MolyServer, sync status
                     if provider.provider_type == ProviderType::MolyServer {
@@ -326,8 +298,10 @@ impl Chats {
                 }
             }
             ProviderFetchModelsResult::Failure(address, error) => {
-                if let Some(provider) = self.providers.get_mut(&address) {
-                    provider.connection_status = ProviderConnectionStatus::Error(error);
+                let provider_id = address.clone();
+                if let Some(provider) = self.providers.get_mut(&provider_id) {
+                    provider.connection_status =
+                        ProviderConnectionStatus::from_client_error(&error);
                 }
             }
             _ => {}
@@ -361,53 +335,45 @@ impl Chats {
         provider: &Provider,
         provider_syncing_status: &mut ProviderSyncingStatus,
     ) {
-        // If the provider is already in the list update it, and create a new client if there's a new API key
-        if let Some(existing_provider) = self.providers.get_mut(&provider.url) {
+        // Ensure provider has an ID
+        let mut provider = provider.clone();
+        if provider.id.is_empty() {
+            // Generate ID for backward compatibility
+            provider.id = super::preferences::ProviderPreferences::generate_id_from_url_and_name(
+                &provider.url,
+                &provider.name,
+                &provider.provider_type,
+            );
+        }
+
+        // If the provider is already in the list update it
+        if let Some(existing_provider) = self.providers.get_mut(&provider.id) {
+            existing_provider.url = provider.url.clone();
             existing_provider.api_key = provider.api_key.clone();
             existing_provider.provider_type = provider.provider_type.clone();
             existing_provider.enabled = provider.enabled;
             existing_provider.models = provider.models.clone();
             existing_provider.connection_status = provider.connection_status.clone();
-            // Update the client if the API key has changed
-            if let Some(_client) = self.provider_clients.get_mut(&provider.url) {
-                // TODO: we should instead have a way to update the client api key without recreating it
-                // skipping that for now as the client will be replaced by MolyKit
-                self.provider_clients.remove(&provider.url);
-                self.provider_clients
-                    .insert(provider.url.clone(), create_client_for_provider(provider));
-            }
 
             if provider.enabled {
-                self.test_provider_and_fetch_models(&provider.url, provider_syncing_status);
+                self.test_provider_and_fetch_models(&provider.id, provider_syncing_status);
             }
         } else {
             self.register_provider(provider.clone(), provider_syncing_status);
-            self.provider_clients
-                .insert(provider.url.clone(), create_client_for_provider(provider));
         }
     }
 
-    pub fn remove_provider(&mut self, address: &str) {
-        self.provider_clients.remove(address);
+    pub fn remove_provider(&mut self, provider_id: &ProviderID) {
         self.available_bots
-            .retain(|_, model| model.provider_url != address);
-        self.providers.remove(address);
-    }
-
-    // Agents
-
-    /// Removes a MoFa server from the list of available servers.
-    pub fn remove_mofa_server(&mut self, address: &str) {
-        // self.mofa_servers.remove(&MofaServerId(address.to_string()));
-        self.provider_clients.remove(address);
-        self.available_bots
-            .retain(|_, model| model.provider_url != address);
-        self.providers.remove(address);
+            .retain(|_, model| model.provider_id != *provider_id);
+        self.providers.remove(provider_id);
     }
 
     /// Returns a list of remote models for a given server address.
-    pub fn get_provider_models(&self, server_url: &str) -> Vec<ProviderBot> {
-        if let Some(provider) = self.providers.get(server_url) {
+    pub fn get_provider_models(&self, provider_id: &ProviderID) -> Vec<ProviderBot> {
+        let provider = self.providers.get(provider_id);
+
+        if let Some(provider) = provider {
             provider
                 .models
                 .iter()
@@ -436,7 +402,7 @@ impl Chats {
 
     pub fn get_bot_provider(&self, bot_id: &BotId) -> Option<&Provider> {
         if let Some(bot) = self.available_bots.get(bot_id) {
-            self.providers.get(&bot.provider_url)
+            self.providers.get(&bot.provider_id)
         } else {
             None
         }
@@ -454,7 +420,7 @@ impl Chats {
                         || (m.enabled
                             && self
                                 .providers
-                                .get(&m.provider_url)
+                                .get(&m.provider_id)
                                 .map_or(false, |p| p.enabled)))
             })
             .cloned()
@@ -467,12 +433,12 @@ impl Chats {
     pub fn get_all_bots(&self, enabled_only: bool) -> Vec<ProviderBot> {
         self.available_bots
             .values()
-            .filter(|m| {
+            .filter(|pb| {
                 !enabled_only
-                    || (m.enabled
+                    || (pb.enabled
                         && self
                             .providers
-                            .get(&m.provider_url)
+                            .get(&pb.provider_id)
                             .map_or(false, |p| p.enabled))
             })
             .cloned()
@@ -491,7 +457,7 @@ impl Chats {
                         || (m.enabled
                             && self
                                 .providers
-                                .get(&m.provider_url)
+                                .get(&m.provider_id)
                                 .map_or(false, |p| p.enabled)))
             })
             .cloned()
@@ -500,7 +466,7 @@ impl Chats {
 
     pub fn is_agent(&self, bot_id: &BotId) -> bool {
         if let Some(provider_bot) = self.available_bots.get(bot_id) {
-            if let Some(provider) = self.providers.get(&provider_bot.provider_url) {
+            if let Some(provider) = self.providers.get(&provider_bot.provider_id) {
                 provider.provider_type == ProviderType::MoFa
             } else {
                 false
@@ -512,7 +478,7 @@ impl Chats {
 
     pub fn is_local_model(&self, bot_id: &BotId) -> bool {
         if let Some(provider_bot) = self.available_bots.get(bot_id) {
-            if let Some(provider) = self.providers.get(&provider_bot.provider_url) {
+            if let Some(provider) = self.providers.get(&provider_bot.provider_id) {
                 provider.provider_type == ProviderType::MolyServer
             } else {
                 false

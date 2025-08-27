@@ -187,12 +187,16 @@ impl EntityButton {
             avatar.set_bot(bot);
             description_label.set_text(cx, &bot.description);
 
-            let formatted_server_url = bot
-                .provider_url
-                .strip_prefix("https://")
-                .or_else(|| bot.provider_url.strip_prefix("http://"))
-                .unwrap_or(&bot.provider_url);
-            server_url.set_text(cx, formatted_server_url);
+            let provider = store.chats.providers.get(&bot.provider_id);
+
+            if let Some(provider) = provider {
+                let formatted_server_url = provider
+                    .url
+                    .strip_prefix("https://")
+                    .or_else(|| provider.url.strip_prefix("http://"))
+                    .unwrap_or(&provider.url);
+                server_url.set_text(cx, formatted_server_url);
+            }
         } else {
             avatar.set_visible(false);
             description_label.set_text(cx, "");

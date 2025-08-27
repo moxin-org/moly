@@ -38,6 +38,8 @@ live_design! {
     ICON_OPENROUTER = dep("crate://self/resources/images/providers/openrouter.png")
     ICON_MOLYSERVER = dep("crate://self/resources/images/providers/molyserver.png")
     ICON_DEEPSEEK = dep("crate://self/resources/images/providers/deepseek.png")
+    ICON_OLLAMA = dep("crate://self/resources/images/providers/ollama.png")
+    ICON_ANTHROPIC = dep("crate://self/resources/images/providers/anthropic.png")
 
     // Not making this based on <Icon> because button does not support images
     // (and these SVGs are too complex for Makepad's SVG support)
@@ -213,6 +215,8 @@ live_design! {
             (ICON_OPENROUTER),
             (ICON_MOLYSERVER),
             (ICON_DEEPSEEK),
+            (ICON_OLLAMA),
+            (ICON_ANTHROPIC),
         ]
 
         <View> {
@@ -242,7 +246,7 @@ struct Providers {
     #[live]
     provider_icons: Vec<LiveDependency>,
     #[rust]
-    selected_provider: Option<String>,
+    selected_provider_id: Option<String>,
 
     #[rust]
     initialized: bool,
@@ -260,11 +264,11 @@ impl Widget for Providers {
         if !self.initialized {
             if cx.display_context.is_desktop() {
                 self.initialized = true;
-                let default_provider_url = "https://api.siliconflow.cn/v1".to_string();
-                self.selected_provider = Some(default_provider_url.clone());
+                let default_provider_id = "anthropic".to_string();
+                self.selected_provider_id = Some(default_provider_id.clone());
 
                 cx.action(ConnectionSettingsAction::ProviderSelected(
-                    default_provider_url,
+                    default_provider_id,
                 ));
             }
         }
@@ -298,7 +302,7 @@ impl Widget for Providers {
 
                         let provider = all_providers[item_id].clone();
                         let icon = self.get_provider_icon(&provider);
-                        let is_selected = self.selected_provider == Some(provider.url.clone());
+                        let is_selected = self.selected_provider_id == Some(provider.id.clone());
                         item.as_provider_item()
                             .set_provider(cx, provider, icon, is_selected);
                         item.draw_all(cx, scope);
@@ -348,8 +352,8 @@ impl WidgetMatchEvent for Providers {
 
         for action in actions {
             // Handle selected provider
-            if let ConnectionSettingsAction::ProviderSelected(provider_url) = action.cast() {
-                self.selected_provider = Some(provider_url);
+            if let ConnectionSettingsAction::ProviderSelected(provider_id) = action.cast() {
+                self.selected_provider_id = Some(provider_id);
             }
 
             // Handle modal actions
@@ -375,9 +379,9 @@ impl WidgetMatchEvent for Providers {
                 // Select another provider
                 let store = scope.data.get::<Store>().unwrap();
                 if let Some(first_provider) = store.chats.providers.values().next() {
-                    self.selected_provider = Some(first_provider.url.clone());
+                    self.selected_provider_id = Some(first_provider.id.clone());
                     cx.action(ConnectionSettingsAction::ProviderSelected(
-                        first_provider.url.clone(),
+                        first_provider.id.clone(),
                     ));
                 }
                 self.redraw(cx);
@@ -424,7 +428,7 @@ impl WidgetMatchEvent for ProviderItem {
         let was_item_clicked = self.view(id!(main_view)).finger_up(actions).is_some();
         if was_item_clicked {
             cx.action(ConnectionSettingsAction::ProviderSelected(
-                self.provider.url.clone(),
+                self.provider.id.clone(),
             ));
         }
     }

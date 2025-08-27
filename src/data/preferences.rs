@@ -2,6 +2,7 @@ use moly_kit::{BotId, utils::asynchronous::spawn};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use crate::data::providers::ProviderID;
 use crate::shared::utils::filesystem;
 
 use super::mcp_servers::McpServersConfig;
@@ -37,7 +38,11 @@ impl Preferences {
         let preferences_path = preferences_path();
         let fs = filesystem::global();
         match fs.read_json::<Preferences>(&preferences_path).await {
-            Ok(preferences) => preferences,
+            Ok(mut preferences) => {
+                // Migrate providers without IDs
+                preferences.migrate_provider_ids();
+                preferences
+            }
             Err(_e) => {
                 log::info!("No preferences file found, a default one will be created.");
                 Preferences::default()
@@ -72,12 +77,15 @@ impl Preferences {
         if let Some(existing_provider) = self
             .providers_preferences
             .iter_mut()
-            .find(|p| p.url == provider.url)
+            .find(|p| p.id == provider.id || (p.id.is_empty() && p.url == provider.url))
         {
+            existing_provider.id = provider.id.clone();
+            existing_provider.url = provider.url.clone();
             existing_provider.api_key = provider.api_key.clone();
             existing_provider.enabled = provider.enabled;
         } else {
             self.providers_preferences.push(ProviderPreferences {
+                id: provider.id.clone(),
                 name: provider.name.clone(),
                 url: provider.url.clone(),
                 api_key: provider.api_key.clone(),
@@ -94,17 +102,22 @@ impl Preferences {
         self.save();
     }
 
-    pub fn remove_provider(&mut self, address: &str) {
-        self.providers_preferences.retain(|p| p.url != address);
+    pub fn remove_provider(&mut self, provider_id: &ProviderID) {
+        self.providers_preferences.retain(|p| &p.id != provider_id);
         self.save();
     }
 
     /// Update the enabled/disabled status of a model for a specific server
-    pub fn update_model_status(&mut self, address: &str, model_name: &str, enabled: bool) {
+    pub fn update_model_status(
+        &mut self,
+        provider_id: &ProviderID,
+        model_name: &str,
+        enabled: bool,
+    ) {
         if let Some(provider) = self
             .providers_preferences
             .iter_mut()
-            .find(|p| p.url == address)
+            .find(|p| &p.id == provider_id)
         {
             if let Some(model) = provider.models.iter_mut().find(|m| m.0 == model_name) {
                 model.1 = enabled;
@@ -148,6 +161,20 @@ impl Preferences {
         self.save();
         Ok(())
     }
+
+    /// Migrate providers without IDs by generating them from URLs
+    fn migrate_provider_ids(&mut self) {
+        let mut needs_save = false;
+        for provider in &mut self.providers_preferences {
+            if provider.id.is_empty() {
+                provider.ensure_id();
+                needs_save = true;
+            }
+        }
+        if needs_save {
+            self.save();
+        }
+    }
 }
 
 fn preferences_path() -> PathBuf {
@@ -156,6 +183,9 @@ fn preferences_path() -> PathBuf {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ProviderPreferences {
+    /// Unique identifier for the provider
+    #[serde(default)]
+    pub id: ProviderID,
     pub name: String,
     pub url: String,
     pub api_key: Option<String>,
@@ -164,6 +194,52 @@ pub struct ProviderPreferences {
     // (model_name, enabled)
     pub models: Vec<(String, bool)>,
     pub was_customly_added: bool,
+}
+
+impl ProviderPreferences {
+    /// Ensure this provider has an ID, generating one if needed
+    pub fn ensure_id(&mut self) {
+        if self.id.is_empty() {
+            self.id =
+                Self::generate_id_from_url_and_name(&self.url, &self.name, &self.provider_type);
+        }
+    }
+
+    /// Generate a stable ID from URL and name for migration
+    pub fn generate_id_from_url_and_name(
+        url: &str,
+        name: &str,
+        provider_type: &ProviderType,
+    ) -> String {
+        // For known built-in providers, use predefined IDs
+        match url {
+            "https://api.openai.com/v1" => match provider_type {
+                ProviderType::OpenAI => "openai_chat".to_string(),
+                _ => "openai_chat".to_string(),
+            },
+            "#https://api.openai.com/v1" => "openai_image".to_string(),
+            "wss://api.openai.com/v1/realtime" => "openai_realtime".to_string(),
+            "ws://127.0.0.1:8123" => "dora_realtime".to_string(),
+            "https://generativelanguage.googleapis.com/v1beta/openai" => "gemini".to_string(),
+            "http://127.0.0.1:8000/v3" => "deepinquire".to_string(),
+            "https://api.siliconflow.cn/v1" => "siliconflow".to_string(),
+            "https://openrouter.ai/api/v1" => "openrouter".to_string(),
+            "http://localhost:8765/api/v1" => "molyserver".to_string(),
+            "https://api.deepseek.com/v1" => "deepseek".to_string(),
+            _ => {
+                // For custom providers, create ID from name
+                let base = name
+                    .to_lowercase()
+                    .replace(" ", "_")
+                    .replace(|c: char| !c.is_alphanumeric() && c != '_', "");
+                if base.is_empty() {
+                    "custom_provider".to_string()
+                } else {
+                    base
+                }
+            }
+        }
+    }
 }
 
 fn default_model_downloads_dir() -> &'static Path {

@@ -1,17 +1,18 @@
+use crate::data::bot_fetcher;
 use makepad_widgets::*;
-use moly_kit::BotId;
+use moly_kit::{BotId, protocol::ClientError};
 use serde::{Deserialize, Serialize};
 
-use super::{
-    deep_inquire_client::DeepInquireClient, openai_client::OpenAIClient,
-    openai_image_client::OpenAIImageClient, openai_realtime_client::OpenAIRealtimeClient,
-};
+pub type ProviderID = String;
 
 /// Represents an AI provider
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Provider {
+    /// Unique identifier for the provider
+    #[serde(default)]
+    pub id: ProviderID,
     pub name: String,
-    /// Refered as API host in the UI, is used as an identifier for the provider
+    /// Refered as API host in the UI
     pub url: String,
     pub api_key: Option<String>,
     /// Determines the API format used by the provider
@@ -23,25 +24,9 @@ pub struct Provider {
     pub was_customly_added: bool,
 }
 
-/// Creates a client for the provider based on the provider type
-pub fn create_client_for_provider(provider: &Provider) -> Box<dyn ProviderClient> {
-    match &provider.provider_type {
-        ProviderType::OpenAI | ProviderType::MolyServer | ProviderType::MoFa => Box::new(
-            OpenAIClient::new(provider.url.clone(), provider.api_key.clone()),
-        ),
-        ProviderType::OpenAIImage => Box::new(OpenAIImageClient::new(
-            provider.url.clone(),
-            provider.api_key.clone(),
-        )),
-        ProviderType::OpenAIRealtime => {
-            let mut client = OpenAIRealtimeClient::new(provider.url.clone());
-            if let Some(key) = &provider.api_key {
-                let _ = client.set_key(key);
-            }
-            Box::new(client)
-        }
-        ProviderType::DeepInquire => Box::new(DeepInquireClient::new(provider.url.clone())),
-    }
+/// Fetch models for a provider using MolyKit clients
+pub fn fetch_models_for_provider(provider: &Provider) {
+    bot_fetcher::fetch_models_for_provider(provider);
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -49,7 +34,7 @@ pub struct ProviderBot {
     pub id: BotId,
     pub name: String,
     pub description: String,
-    pub provider_url: String,
+    pub provider_id: String,
     pub enabled: bool,
 }
 
@@ -62,7 +47,7 @@ impl ProviderBot {
             name: "Inaccesible model - check your connections".to_string(),
             description: "This model is not currently reachable, its information is not available"
                 .to_string(),
-            provider_url: "unknown".to_string(),
+            provider_id: "unknown".to_string(),
             enabled: true,
         }
     }
@@ -81,7 +66,7 @@ pub enum ProviderConnectionStatus {
     Connecting,
     Connected,
     Disconnected,
-    Error(ProviderClientError),
+    Error(String), // Store error message as string for serialization
 }
 
 impl ProviderConnectionStatus {
@@ -92,49 +77,74 @@ impl ProviderConnectionStatus {
             ProviderConnectionStatus::Disconnected => {
                 "Haven't synchronized models since app launch"
             }
-            ProviderConnectionStatus::Error(error) => error.to_human_readable(),
+            ProviderConnectionStatus::Error(error_msg) => error_msg,
         }
+    }
+
+    /// Create an error status from a ClientError with a user-friendly message
+    pub fn from_client_error(error: &ClientError) -> Self {
+        let error_msg = error.message().to_lowercase();
+        let error_string = error.to_string().to_lowercase();
+
+        let user_message = match error.kind() {
+            moly_kit::protocol::ClientErrorKind::Network => {
+                if error_msg.contains("invalid url")
+                    || error_msg.contains("invalid host")
+                    || error_msg.contains("name resolution")
+                {
+                    "Invalid URL or hostname - please check your provider configuration".to_string()
+                } else if error_msg.contains("connection refused") || error_msg.contains("refused")
+                {
+                    "Connection refused - check if the service is running and the port is correct"
+                        .to_string()
+                } else if error_msg.contains("timeout") || error_msg.contains("timed out") {
+                    "The server is taking too long to respond, please try again later".to_string()
+                } else if error_msg.contains("ssl")
+                    || error_msg.contains("tls")
+                    || error_msg.contains("certificate")
+                {
+                    "SSL/TLS connection error - check if HTTPS is required or certificate is valid"
+                        .to_string()
+                } else {
+                    "Network error - check your connection and URL".to_string()
+                }
+            }
+            moly_kit::protocol::ClientErrorKind::Format => {
+                "Something is wrong in our end, please file an issue if you think this is an error"
+                    .to_string()
+            }
+            moly_kit::protocol::ClientErrorKind::Response => {
+                if error_string.contains("401") || error_string.contains("unauthorized") {
+                    "Unauthorized, check your API key".to_string()
+                } else if error_string.contains("400") || error_string.contains("bad request") {
+                    "Something is wrong in our end, please file an issue if you think this is an error".to_string()
+                } else if error_string.contains("404") || error_string.contains("not found") {
+                    "API endpoint not found - check your URL path".to_string()
+                } else if error_string.contains("500")
+                    || error_string.contains("502")
+                    || error_string.contains("503")
+                {
+                    "We have trouble reaching the server".to_string()
+                } else if error_string.contains("403") || error_string.contains("forbidden") {
+                    "Access forbidden - check your API key permissions".to_string()
+                } else if error_string.contains("429") || error_string.contains("rate limit") {
+                    "Rate limit exceeded - please wait and try again".to_string()
+                } else {
+                    format!("Server error: {}", error.message())
+                }
+            }
+            moly_kit::protocol::ClientErrorKind::Unknown => error.message().to_string(),
+        };
+
+        ProviderConnectionStatus::Error(user_message)
     }
 }
 
 #[derive(Debug, DefaultNone, Clone)]
 pub enum ProviderFetchModelsResult {
-    Success(String, Vec<ProviderBot>),
-    Failure(String, ProviderClientError),
+    Success(ProviderID, Vec<ProviderBot>),
+    Failure(ProviderID, ClientError),
     None,
-}
-
-/// Errors that can occur when interacting with the provider client.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ProviderClientError {
-    Unauthorized,
-    BadRequest,
-    UnexpectedResponse,
-    InternalServerError,
-    Timeout,
-    Other(String),
-}
-
-impl ProviderClientError {
-    pub fn to_human_readable(&self) -> &str {
-        match self {
-            ProviderClientError::Unauthorized => "Unauthorized, check your API key",
-            ProviderClientError::BadRequest => {
-                "Something is wrong in our end, please file an issue if you think this is an error"
-            }
-            ProviderClientError::UnexpectedResponse => "Unexpected Response",
-            ProviderClientError::InternalServerError => "We have trouble reaching the server",
-            ProviderClientError::Timeout => {
-                "The server is taking too long to respond, please try again later"
-            }
-            ProviderClientError::Other(message) => message,
-        }
-    }
-}
-
-/// The behaviour that must be implemented by the provider clients.
-pub trait ProviderClient: Send + Sync {
-    fn fetch_models(&self);
 }
 
 #[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]

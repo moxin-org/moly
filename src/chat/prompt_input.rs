@@ -258,7 +258,7 @@ impl WidgetMatchEvent for PromptInput {
                 .filter(|m| terms.iter().all(|t| m.name.to_lowercase().contains(t)))
             {
                 models_by_provider
-                    .entry(model.provider_url.clone())
+                    .entry(model.provider_id.clone())
                     .or_default()
                     .push(model);
             }

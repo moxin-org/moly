@@ -309,11 +309,6 @@ impl WidgetMatchEvent for AddProviderModal {
             self.clear_error_message(cx);
             let api_host = self.text_input(id!(api_host)).text();
             let name = self.text_input(id!(name)).text();
-            // Do not create a provider if the api host is already in the list
-            if store.chats.providers.contains_key(&api_host) {
-                self.set_error_message(cx, "Provider already exists with this API host");
-                return;
-            }
 
             // Check if the provider type is selected
             if self.selected_provider.is_none() {
@@ -328,8 +323,33 @@ impl WidgetMatchEvent for AddProviderModal {
             }
 
             let api_key = self.text_input(id!(api_key)).text();
+
+            // Generate a unique ID for the custom provider
+            let provider_id = {
+                // Create a base ID from the provider name
+                let base = name
+                    .to_lowercase()
+                    .replace(" ", "_")
+                    .replace(|c: char| !c.is_alphanumeric() && c != '_', "");
+                let base = if base.is_empty() {
+                    "custom_provider".to_string()
+                } else {
+                    base
+                };
+
+                // Check if this ID already exists and append a number if needed
+                let mut id = base.clone();
+                let mut counter = 1;
+                while store.chats.providers.contains_key(&id) {
+                    id = format!("{}_{}", base, counter);
+                    counter += 1;
+                }
+                id
+            };
+
             let provider = match self.selected_provider.as_ref().unwrap() {
                 ProviderType::OpenAI => Provider {
+                    id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
                     api_key: Some(api_key.clone()),
@@ -340,6 +360,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     was_customly_added: true,
                 },
                 ProviderType::OpenAIImage => Provider {
+                    id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
                     api_key: Some(api_key.clone()),
@@ -350,6 +371,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     was_customly_added: true,
                 },
                 ProviderType::MolyServer => Provider {
+                    id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
                     api_key: Some(api_key.clone()),
@@ -360,6 +382,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     was_customly_added: true,
                 },
                 ProviderType::MoFa => Provider {
+                    id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
                     api_key: Some(api_key.clone()),
@@ -370,6 +393,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     was_customly_added: true,
                 },
                 ProviderType::DeepInquire => Provider {
+                    id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
                     api_key: Some(api_key.clone()),
@@ -380,6 +404,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     was_customly_added: true,
                 },
                 ProviderType::OpenAIRealtime => Provider {
+                    id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
                     api_key: Some(api_key.clone()),
