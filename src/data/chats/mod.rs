@@ -23,9 +23,7 @@ pub struct Chats {
 
     pub available_bots: HashMap<BotId, ProviderBot>,
 
-    // Legacy field - no longer used but kept for backward compatibility
-    // pub provider_clients: HashMap<String, Box<dyn ProviderClient>>,
-    /// Map from provider ID to provider
+    /// Map of providers keyed by their ID
     pub providers: HashMap<ProviderID, Provider>,
 
     /// Set it thru `set_current_chat` method to trigger side effects.
@@ -198,7 +196,6 @@ impl Chats {
             });
         }
 
-        // Use the new model fetcher to fetch models directly
         let provider = self.providers.get(provider_id).unwrap();
         fetch_models_for_provider(provider);
     }

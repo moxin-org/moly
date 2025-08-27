@@ -264,8 +264,7 @@ impl Widget for Providers {
         if !self.initialized {
             if cx.display_context.is_desktop() {
                 self.initialized = true;
-                // Use provider ID instead of URL
-                let default_provider_id = "siliconflow".to_string();
+                let default_provider_id = "anthropic".to_string();
                 self.selected_provider_id = Some(default_provider_id.clone());
 
                 cx.action(ConnectionSettingsAction::ProviderSelected(

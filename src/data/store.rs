@@ -249,7 +249,7 @@ impl Store {
         address.push_str(MOLY_SERVER_VERSION_EXTENSION);
 
         if !completed_download_ids.is_empty() {
-            // Find MolyServer provider by URL
+            // Find MolyServer provider
             let provider = self
                 .chats
                 .providers

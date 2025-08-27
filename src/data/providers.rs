@@ -147,11 +147,6 @@ pub enum ProviderFetchModelsResult {
     None,
 }
 
-// Legacy trait - kept for backward compatibility but no longer used
-// pub trait ProviderClient: Send + Sync {
-//     fn fetch_models(&self);
-// }
-
 #[derive(Live, LiveHook, PartialEq, Debug, LiveRead, Serialize, Deserialize, Clone)]
 pub enum ProviderType {
     #[pick]
