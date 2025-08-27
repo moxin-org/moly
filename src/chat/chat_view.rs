@@ -329,6 +329,16 @@ impl ChatView {
         range: &std::ops::Range<usize>,
         replacement: &[Message],
     ) {
+        let store_len = store_chat.messages.len();
+        let slice_start = range.start;
+        let slice_end = std::cmp::min(range.end, store_len);
+        
+        // If the range is invalid, skip attachment processing to avoid panics
+        if slice_start > slice_end {
+            ::log::error!("Invalid slice range at handle_attachments_persistence: {:?}", range);
+            return;
+        }
+        
         // Track the attachments that are in the replacement part of the splice to
         // help with next steps.
         let attachments_in_replacement = replacement
@@ -341,7 +351,7 @@ impl ChatView {
         // applying the splice.
         // Focus on the range that will be replaced.
         let attachments_to_delete = store_chat.messages
-            [range.start..std::cmp::min(range.end, store_chat.messages.len())]
+            [slice_start..slice_end]
             .iter()
             .flat_map(|m| &m.content.attachments)
             // Focus on attachments already on disk.
