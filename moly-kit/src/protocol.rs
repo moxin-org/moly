@@ -1,8 +1,7 @@
-use crate::{
-    mcp_manager::McpManagerClient,
-    utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream},
-};
+use crate::mcp_manager::McpManagerClient;
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
+
+pub use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
