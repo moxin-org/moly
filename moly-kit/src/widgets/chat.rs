@@ -593,12 +593,10 @@ impl Chat {
             };
             
             let next_index = self.messages_ref().read().messages.len();
-            // Queue task instead of dispatching to avoid nested dispatch
-            self.pending_tasks.push(ChatTask::InsertMessage(next_index, loading_message));
+            self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, loading_message)]);
         }
 
-        // Queue task instead of dispatching to avoid nested dispatch
-        self.pending_tasks.push(ChatTask::ScrollToBottom(false));
+        self.dispatch(cx, &mut vec![ChatTask::ScrollToBottom(false)]);
         self.prompt_input_ref().write().set_stop();
         self.redraw(cx);
 
