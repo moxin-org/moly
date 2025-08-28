@@ -52,7 +52,7 @@ live_design!(
 /// tasks from the group, abort the group (by clearing the tasks vector), etc.
 // TODO: Using indexes for many operations like `UpdateMessage` is not ideal. In the future
 // messages may need to have a unique identifier.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ChatTask {
     /// When received back, it will send the whole chat context to the bot.
     Send,

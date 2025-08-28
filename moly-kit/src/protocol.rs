@@ -491,6 +491,18 @@ pub struct Message {
 }
 
 impl Message {
+    /// Shorthand for constructing an app error message.
+    pub fn app_error(error: impl fmt::Display) -> Self {
+        Message {
+            from: EntityId::App,
+            content: MessageContent {
+                text: format!("Error: {}", error),
+                ..MessageContent::default()
+            },
+            ..Default::default()
+        }
+    }
+
     /// Set the content of a message as a whole (also updates metadata).
     pub fn set_content(&mut self, content: MessageContent) {
         self.update_content(|c| {
@@ -626,6 +638,7 @@ impl ClientError {
 /// It would be mistake if this contains no value and no errors at the same time.
 /// This is taken care on creation time, and it can't be modified afterwards.
 #[derive(Debug)]
+#[must_use]
 pub struct ClientResult<T> {
     errors: Vec<ClientError>,
     value: Option<T>,
