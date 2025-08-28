@@ -1,6 +1,7 @@
 use crate::mcp_manager::McpManagerClient;
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 
+// Re-export relevant, protocol related, async types.
 pub use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 
 #[derive(Clone, Debug, PartialEq)]
