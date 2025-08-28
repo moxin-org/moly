@@ -385,22 +385,10 @@ impl PromptInput {
 
         if supports_realtime {
             self.interactivity = Interactivity::Disabled;
-            self.text_input_ref().apply_over(
-                cx,
-                live! {
-                    empty_text: "Use voice call to interact with this model →"
-                },
-            );
             self.text_input_ref().set_is_read_only(cx, true);
             self.redraw(cx);
         } else {
             self.interactivity = Interactivity::Enabled;
-            self.text_input_ref().apply_over(
-                cx,
-                live! {
-                    empty_text: "Start typing..."
-                },
-            );
             self.text_input_ref().set_is_read_only(cx, false);
             self.redraw(cx);
         }
