@@ -591,9 +591,12 @@ impl Chat {
                 },
                 ..Default::default()
             };
-            
+
             let next_index = self.messages_ref().read().messages.len();
-            self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, loading_message)]);
+            self.dispatch(
+                cx,
+                &mut vec![ChatTask::InsertMessage(next_index, loading_message)],
+            );
         }
 
         self.dispatch(cx, &mut vec![ChatTask::ScrollToBottom(false)]);
