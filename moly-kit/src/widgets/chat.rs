@@ -139,6 +139,10 @@ pub struct Chat {
     /// Wether the user has scrolled during the stream of the current message.
     #[rust]
     user_scrolled_during_stream: bool,
+
+    /// Tasks queued during dispatch to avoid nested dispatch calls
+    #[rust]
+    pending_tasks: Vec<ChatTask>,
 }
 
 impl Widget for Chat {
@@ -567,20 +571,6 @@ impl Chat {
         let messages_history_context: Vec<Message> = self.messages_ref().write_with(|messages| {
             messages.bot_context = Some(context.clone());
 
-            // A hack to avoid showing a loading message for realtime assistants
-            // TODO: we should base this on upgrade rather than capabilities
-            let bot = context.get_bot(&bot_id).unwrap(); // We already checked it exists above
-            if !bot.capabilities.supports_realtime() {
-                messages.messages.push(Message {
-                    from: EntityId::Bot(bot_id.clone()),
-                    metadata: MessageMetadata {
-                        is_writing: true,
-                        ..MessageMetadata::new()
-                    },
-                    ..Default::default()
-                });
-            }
-
             messages
                 .messages
                 .iter()
@@ -589,7 +579,26 @@ impl Chat {
                 .collect()
         });
 
-        self.dispatch(cx, &mut ChatTask::ScrollToBottom(false).into());
+        // The realtime check is hack to avoid showing a loading message for realtime assistants
+        // TODO: we should base this on upgrade rather than capabilities
+        let bot = context.get_bot(&bot_id).unwrap(); // We already checked it exists above
+        if !bot.capabilities.supports_realtime() {
+            let loading_message = Message {
+                from: EntityId::Bot(bot_id.clone()),
+                metadata: MessageMetadata {
+                    is_writing: true,
+                    ..MessageMetadata::new()
+                },
+                ..Default::default()
+            };
+            
+            let next_index = self.messages_ref().read().messages.len();
+            // Queue task instead of dispatching to avoid nested dispatch
+            self.pending_tasks.push(ChatTask::InsertMessage(next_index, loading_message));
+        }
+
+        // Queue task instead of dispatching to avoid nested dispatch
+        self.pending_tasks.push(ChatTask::ScrollToBottom(false));
         self.prompt_input_ref().write().set_stop();
         self.redraw(cx);
 
@@ -688,6 +697,12 @@ impl Chat {
     /// `read_with` and `write_with` methods.
     // TODO: Mitigate interior mutability issues with many tricks or improving makepad.
     pub fn dispatch(&mut self, cx: &mut Cx, tasks: &mut Vec<ChatTask>) {
+        // Prevent nested dispatch - queue tasks if we're already dispatching
+        if self.is_hooking {
+            self.pending_tasks.extend(tasks.iter().cloned());
+            return;
+        }
+
         self.is_hooking = true;
 
         if let Some(mut hook) = self.hook_before.take() {
@@ -705,6 +720,12 @@ impl Chat {
         }
 
         self.is_hooking = false;
+
+        // Process any pending tasks that were queued during execution
+        if !self.pending_tasks.is_empty() {
+            let mut pending = std::mem::take(&mut self.pending_tasks);
+            self.dispatch(cx, &mut pending);
+        }
     }
 
     /// Performs a set of tasks in the [Chat] widget immediately.
