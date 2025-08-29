@@ -25,7 +25,6 @@ live_design! {
     ICON_TRASH = dep("crate://self/resources/images/trash_icon.png")
     ICON_REMOTE = dep("crate://self/resources/images/globe_icon.png")
     ICON_LOCAL = dep("crate://self/resources/images/laptop_icon.png")
-    ICON_SETTINGS = dep("crate://self/resources/images/settings_icon.png")
 
     ICON_SUCCESS = dep("crate://self/resources/images/circle_check_icon.png")
     ICON_LOADER = dep("crate://self/resources/images/loader_icon.png")

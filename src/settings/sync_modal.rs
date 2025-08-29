@@ -150,6 +150,29 @@ live_design! {
             }
         }
 
+        <FormGroup> {
+            padding: {top: 8, bottom: 8}
+            include_mcp_servers = <Toggle> {
+                text: "Import MCP servers (replaces existing ones)"
+                width: Fit, height: Fit
+                draw_text: {
+                    fn get_color(self) -> vec4 {
+                        return #222;
+                    }
+                    text_style: {font_size: 10}
+                }
+
+                label_walk: {
+                    margin: {left: 50}
+                }
+                draw_bg: {
+                    size: 25.
+                }
+
+                padding: {left: 5, right: 5, top: 5, bottom: 5}
+            }
+        }
+
         import = <ShadowButton> {
             label = { text: "Import" }
             width: Fill
@@ -295,6 +318,7 @@ live_design! {
 pub enum SyncModalAction {
     None,
     ModalDismissed,
+    McpServersUpdated,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -476,14 +500,24 @@ impl SyncModal {
     fn handle_import_success(&mut self, cx: &mut Cx, json: &str, scope: &mut Scope) {
         self.view(id!(status_view)).set_visible(cx, true);
         self.sync_status = SyncStatus::None;
+        let include_mcp_servers = self.check_box(id!(include_mcp_servers)).active(cx);
 
         let store = scope.data.get_mut::<Store>().unwrap();
-        match store.preferences.import_from_json(json, self.should_merge) {
+        match store
+            .preferences
+            .import_from_json(json, self.should_merge, include_mcp_servers)
+        {
             Ok(_) => {
                 self.label(id!(status_message))
                     .set_text(cx, "Import successful");
                 store.bot_context = None;
                 store.load_preference_connections();
+
+                if include_mcp_servers {
+                    store.update_mcp_tool_manager();
+                    cx.action(SyncModalAction::McpServersUpdated);
+                }
+
                 ::log::info!("Import of settings successful");
             }
             Err(e) => {

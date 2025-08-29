@@ -469,7 +469,7 @@ impl Store {
 
     /// Creates a new MCP tool manager and loads servers asynchronously
     /// Returns the manager immediately, loading happens in the background
-    pub fn create_and_load_mcp_tool_manager(&self, _context: BotContext) -> McpManagerClient {
+    pub fn create_and_load_mcp_tool_manager(&self) -> McpManagerClient {
         let tool_manager = McpManagerClient::new();
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -499,17 +499,16 @@ impl Store {
 
     pub fn update_mcp_servers_from_json(&mut self, json: &str) -> Result<(), serde_json::Error> {
         self.preferences.update_mcp_servers_from_json(json)?;
-
-        // Update the tool manager in the existing bot context
-        if let Some(ref bot_context) = self.bot_context {
-            let context_clone = bot_context.clone();
-            let new_tool_manager = self.create_and_load_mcp_tool_manager(context_clone);
-            // Update the bot_context after the creation
-            if let Some(ref mut bot_context_mut) = self.bot_context {
-                bot_context_mut.replace_tool_manager(new_tool_manager);
-            }
-        }
+        self.update_mcp_tool_manager();
 
         Ok(())
+    }
+
+    pub fn update_mcp_tool_manager(&mut self) {
+        let new_tool_manager = self.create_and_load_mcp_tool_manager();
+        // Update the bot_context after the creation
+        if let Some(ref mut bot_context_mut) = self.bot_context {
+            bot_context_mut.replace_tool_manager(new_tool_manager);
+        }
     }
 }
