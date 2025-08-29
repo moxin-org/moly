@@ -133,14 +133,26 @@ impl Preferences {
     ///
     /// If merge is true, the provider preferences will be extended with the new ones,
     /// otherwise, the existing preferences will be replaced.
-    pub fn import_from_json(&mut self, json: &str, merge: bool) -> Result<(), serde_json::Error> {
+    ///
+    /// If include_mcp_servers is true, the MCP servers will be included in the import, replacing the existing ones.
+    pub fn import_from_json(
+        &mut self,
+        json: &str,
+        merge: bool,
+        include_mcp_servers: bool,
+    ) -> Result<(), serde_json::Error> {
         let preferences = serde_json::from_str::<Preferences>(json)?;
         if merge {
             self.providers_preferences
-                .extend(preferences.providers_preferences);
+                .extend(preferences.providers_preferences.clone());
         } else {
-            *self = preferences;
+            self.providers_preferences = preferences.providers_preferences.clone();
         }
+
+        if include_mcp_servers {
+            self.mcp_servers_config = preferences.mcp_servers_config;
+        }
+
         self.save();
         Ok(())
     }

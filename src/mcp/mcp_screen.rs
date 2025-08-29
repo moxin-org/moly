@@ -11,14 +11,6 @@ live_design! {
 
     use crate::mcp::mcp_servers::McpServers;
 
-    HorizontalSeparator = <RoundedView> {
-        width: 2, height: Fill
-        show_bg: true
-        draw_bg: {
-            color: #d3d3d3
-        }
-    }
-
     pub McpScreen = {{McpScreen}} {
         width: Fill, height: Fill
         spacing: 20

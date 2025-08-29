@@ -1,4 +1,5 @@
 use crate::data::store::Store;
+use crate::settings::sync_modal::SyncModalAction;
 use makepad_code_editor::code_editor::{CodeEditorAction, KeepCursorInView};
 use makepad_code_editor::decoration::DecorationSet;
 use makepad_code_editor::{CodeDocument, CodeEditor, CodeSession};
@@ -64,55 +65,93 @@ live_design! {
         }
     }
 
-    pub McpServers = {{McpServers}} {
-        <View> {
-            width: 600, height: Fill
-            flow: Down
-            padding: {left: 30, right: 30, bottom: 10}
-            align: {x: 1.0}
-
-            <View> {
-                width: Fill, height: Fill
-                padding: {left: 0, right: 25, top: 8, bottom: 8}
+    ServersEditorWrapper = <View> {
+        <AdaptiveView> {
+            Desktop = {
                 mcp_code_view = <McpCodeView> {}
             }
+            Mobile = {
+                mcp_code_view = <MolyTextInput> {
+                    width: Fill, height: Fill
+                }
+            }
+        }
+    }
 
-            <View> {
-                width: Fill, height: Fit
-                align: {x: 1.0, y: 0.5}
-                padding: {left: 0, right: 15, top: 8, bottom: 8}
+    ServersEditor = <View> {
+        width: Fill, height: Fill
+        flow: Down
+        padding: {left: 20, right: 20, bottom: 5}
+        align: {x: 1.0}
 
-                save_button = <RoundedShadowView> {
-                    cursor: Hand
-                    margin: {left: 10, right: 10, bottom: 0, top: 0}
-                    width: Fit, height: Fit
-                    align: {x: 0.5, y: 0.5}
-                    padding: {left: 30, right: 30, bottom: 15, top: 15}
-                    draw_bg: {
-                        color: (MAIN_BG_COLOR)
-                        border_radius: 4.5,
-                        uniform shadow_color: #0002
-                        shadow_radius: 8.0,
-                        shadow_offset: vec2(0.0,-1.5)
-                    }
-                    <Label> {
-                        text: "Save and restart servers"
-                        draw_text: {
-                            text_style: <REGULAR_FONT>{font_size: 11}
-                            color: #000
-                        }
+        <View> {
+            width: Fill, height: Fill
+            padding: {left: 0, right: 25, top: 8, bottom: 8}
+            servers_editor_wrapper = <ServersEditorWrapper> {}
+        }
+
+        <View> {
+            width: Fill, height: Fit
+            align: {x: 1.0, y: 0.5}
+            padding: {left: 0, right: 15, top: 8, bottom: 8}
+
+            save_button = <RoundedShadowView> {
+                cursor: Hand
+                margin: {left: 10, right: 10, bottom: 0, top: 0}
+                width: Fit, height: Fit
+                align: {x: 0.5, y: 0.5}
+                padding: {left: 30, right: 30, bottom: 15, top: 15}
+                draw_bg: {
+                    color: (MAIN_BG_COLOR)
+                    border_radius: 4.5,
+                    uniform shadow_color: #0002
+                    shadow_radius: 8.0,
+                    shadow_offset: vec2(0.0,-1.5)
+                }
+                <Label> {
+                    text: "Save and restart servers"
+                    draw_text: {
+                        text_style: <REGULAR_FONT>{font_size: 11}
+                        color: #000
                     }
                 }
             }
         }
+    }
 
-        <View> {
-            width: Fill, height: Fit,
-            padding: {left: 0, right: 30, top: 0, bottom: 8}
-            save_status = <Label> {
-                draw_text: {
-                    text_style: <BOLD_FONT>{font_size: 10},
-                    color: #000
+    SaveStatus = <View> {
+        width: Fill, height: Fit,
+        padding: {left: 10, right: 20, top: 8, bottom: 8}
+        save_status = <Label> {
+            draw_text: {
+                text_style: <BOLD_FONT>{font_size: 10},
+                color: #000
+            }
+        }
+    }
+
+    pub McpServers = {{McpServers}} {
+        <AdaptiveView> {
+            Desktop = {
+                flow: Right
+                <ServersEditor> { width: 600 }
+                <SaveStatus> {}
+            }
+            Mobile = {
+                <ScrollYView> {
+                    width: Fill, height: Fill
+                    flow: Down
+                    padding: {left: 10}
+                    <Label> {
+                        padding: {left: 10}
+                        text: "Note that only HTTP/SSE servers are supported on mobile devices"
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 10}
+                            color: #000
+                        }
+                    }
+                    <ServersEditor> { width: Fill }
+                    <SaveStatus> {}
                 }
             }
         }
@@ -142,7 +181,9 @@ impl Widget for McpServers {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        if !self.initialized {
+        let editor = self.widget(id!(mcp_code_view));
+
+        if !self.initialized || editor.text().is_empty() {
             self.initialized = true;
             let store = scope.data.get::<Store>().unwrap();
             self.set_mcp_servers_config(cx, store.get_mcp_servers_config().clone());
@@ -161,16 +202,15 @@ impl McpServers {
             .mcp_servers_config
             .to_json()
             .unwrap_or_else(|_| "{}".to_string());
-        self.view
-            .moly_code_view(id!(mcp_code_view))
-            .set_text(cx, &display_json);
+
+        self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
     }
 }
 
 impl WidgetMatchEvent for McpServers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.view(id!(save_button)).finger_up(actions).is_some() {
-            let json_text = self.view.moly_code_view(id!(mcp_code_view)).text();
+            let json_text = self.widget(id!(mcp_code_view)).text();
             let store = scope.data.get_mut::<Store>().unwrap();
 
             match store.update_mcp_servers_from_json(&json_text) {
@@ -186,6 +226,14 @@ impl WidgetMatchEvent for McpServers {
                     self.label(id!(save_status)).set_text(cx, &format!("{}", e));
                     self.redraw(cx);
                 }
+            }
+        }
+
+        for action in actions {
+            if let SyncModalAction::McpServersUpdated = action.cast() {
+                let store = scope.data.get_mut::<Store>().unwrap();
+                self.set_mcp_servers_config(cx, store.get_mcp_servers_config().clone());
+                self.redraw(cx);
             }
         }
     }
@@ -227,6 +275,29 @@ impl Widget for MolyCodeView {
         let session = self.session.as_mut().unwrap();
 
         self.editor.draw_walk_editor(cx, session, walk);
+
+        // TODO: Support text input for mobile devices
+        // CodeEditor is not currently showing the IME on mobile devices (which also means keyboard input is ignored in simulators)
+        // and showing it manually from outside causes some issues like duplicated text input.
+
+        // Add IME support for mobile devices
+        // if cx.has_key_focus(self.editor.area()) {
+        //     // Get cursor position
+        //     if let Some(last_selection_index) = session.last_added_selection_index() {
+        //         let last_added_selection = &session.selections()[last_selection_index];
+        //         let (cursor_x, cursor_y) = session.layout().logical_to_normalized_position(
+        //             last_added_selection.cursor.position,
+        //             last_added_selection.cursor.affinity,
+        //         );
+
+        //         let cursor_pos = dvec2(cursor_x, cursor_y);
+
+        //         cx.show_text_ime(
+        //             self.editor.area(),
+        //             cursor_pos,
+        //         );
+        //     }
+        // }
 
         DrawStep::done()
     }
