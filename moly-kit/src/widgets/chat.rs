@@ -977,6 +977,7 @@ impl Chat {
                         cx,
                         EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
                     );
+                    realtime.set_bot_context(self.bot_context.clone());
 
                     let modal = self.moly_modal(id!(audio_modal));
                     modal.open(cx);

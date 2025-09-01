@@ -109,6 +109,12 @@ pub enum RealtimeEvent {
     SpeechStopped,
     /// AI response completed
     ResponseCompleted,
+    /// Function call requested by AI
+    FunctionCallRequest {
+        name: String,
+        call_id: String,
+        arguments: String,
+    },
     /// Error occurred
     Error(String),
 }
@@ -131,6 +137,11 @@ pub enum RealtimeCommand {
     },
     /// Create a greeting response from AI
     CreateGreetingResponse,
+    /// Send function call result back to AI
+    SendFunctionCallResult {
+        call_id: String,
+        output: String,
+    },
 }
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.

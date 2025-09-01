@@ -393,6 +393,9 @@ pub struct Realtime {
 
     #[rust]
     bot_entity_id: Option<EntityId>,
+
+    #[rust]
+    bot_context: Option<crate::protocol::BotContext>,
 }
 
 impl Widget for Realtime {
@@ -524,6 +527,10 @@ impl Realtime {
                     .set_labels(cx, labels);
             }
         }
+    }
+
+    pub fn set_bot_context(&mut self, bot_context: Option<crate::protocol::BotContext>) {
+        self.bot_context = bot_context;
     }
 
     fn try_start_pending_conversation(&mut self, cx: &mut Cx) {
@@ -809,6 +816,13 @@ impl Realtime {
                         }
                     }
                 }
+                RealtimeEvent::FunctionCallRequest { name, call_id, arguments } => {
+                    self.label(id!(status_label))
+                        .set_text(cx, &format!("🔧 Executing tool: {}", name));
+                    
+                    // Execute the function call
+                    self.handle_function_call(cx, name, call_id, arguments);
+                }
                 RealtimeEvent::Error(error) => {
                     ::log::debug!("Realtime API error: {}", error);
                     self.label(id!(status_label))
@@ -821,6 +835,128 @@ impl Realtime {
                 }
             }
         }
+    }
+
+    fn handle_function_call(&mut self, _cx: &mut Cx, name: String, call_id: String, arguments: String) {
+        let Some(context) = self.bot_context.as_ref().cloned() else {
+            ::log::error!("No bot context available for function call");
+            if let Some(channel) = &self.realtime_channel {
+                let error_result = serde_json::json!({
+                    "error": "Tool manager not available"
+                }).to_string();
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                        call_id,
+                        output: error_result,
+                    }
+                );
+            }
+            return;
+        };
+
+        let Some(tool_manager) = context.tool_manager() else {
+            ::log::error!("No tool manager available for function call");
+            if let Some(channel) = &self.realtime_channel {
+                let error_result = serde_json::json!({
+                    "error": "Tool manager not available"
+                }).to_string();
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                        call_id,
+                        output: error_result,
+                    }
+                );
+            }
+            return;
+        };
+
+        let channel = self.realtime_channel.clone();
+        
+        let future = async move {
+            // Parse the arguments JSON
+            let arguments_map = match serde_json::from_str::<serde_json::Value>(&arguments) {
+                Ok(serde_json::Value::Object(args)) => args,
+                Ok(_) => {
+                    ::log::error!("Function call arguments not an object: {}", arguments);
+                    if let Some(channel) = &channel {
+                        let error_result = serde_json::json!({
+                            "error": "Invalid arguments format"
+                        }).to_string();
+                        let _ = channel.command_sender.unbounded_send(
+                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                                call_id,
+                                output: error_result,
+                            }
+                        );
+                    }
+                    return;
+                }
+                Err(e) => {
+                    ::log::error!("Failed to parse function call arguments: {}", e);
+                    if let Some(channel) = &channel {
+                        let error_result = serde_json::json!({
+                            "error": format!("Failed to parse arguments: {}", e)
+                        }).to_string();
+                        let _ = channel.command_sender.unbounded_send(
+                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                                call_id,
+                                output: error_result,
+                            }
+                        );
+                    }
+                    return;
+                }
+            };
+
+            // Execute the tool call
+            match tool_manager.call_tool(&name, arguments_map).await {
+                Ok(result) => {
+                    // Convert result to JSON string
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let content = result
+                        .content
+                        .iter()
+                        .filter_map(|item| {
+                            if let Ok(text) = serde_json::to_string(item) {
+                                Some(text)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    #[cfg(target_arch = "wasm32")]
+                    let content = serde_json::to_string_pretty(&result)
+                        .unwrap_or_else(|_| "Tool executed successfully".to_string());
+
+                    if let Some(channel) = &channel {
+                        let _ = channel.command_sender.unbounded_send(
+                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                                call_id,
+                                output: content,
+                            }
+                        );
+                    }
+                }
+                Err(e) => {
+                    ::log::error!("Tool call failed: {}", e);
+                    if let Some(channel) = &channel {
+                        let error_result = serde_json::json!({
+                            "error": e.to_string()
+                        }).to_string();
+                        let _ = channel.command_sender.unbounded_send(
+                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                                call_id,
+                                output: error_result,
+                            }
+                        );
+                    }
+                }
+            }
+        };
+
+        crate::utils::asynchronous::spawn(future);
     }
 
     fn setup_audio(&mut self, cx: &mut Cx) {
@@ -1067,6 +1203,12 @@ impl RealtimeRef {
     pub fn reset_state(&mut self, cx: &mut Cx) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.reset_state(cx);
+        }
+    }
+
+    pub fn set_bot_context(&mut self, bot_context: Option<crate::protocol::BotContext>) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_bot_context(bot_context);
         }
     }
 }

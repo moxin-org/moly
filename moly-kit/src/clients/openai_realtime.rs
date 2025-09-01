@@ -27,7 +27,7 @@ pub enum OpenAIRealtimeMessage {
     #[serde(rename = "response.create")]
     ResponseCreate { response: ResponseConfig },
     #[serde(rename = "conversation.item.create")]
-    ConversationItemCreate { item: ConversationItem },
+    ConversationItemCreate { item: serde_json::Value },
     #[serde(rename = "conversation.item.truncate")]
     ConversationItemTruncate {
         item_id: String,
@@ -95,8 +95,16 @@ pub struct ConversationItem {
     #[serde(rename = "type")]
     pub item_type: String,
     pub status: Option<String>,
-    pub role: String,
-    pub content: Vec<ContentPart>,
+    pub role: Option<String>,
+    pub content: Option<Vec<ContentPart>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FunctionCallOutputItem {
+    #[serde(rename = "type")]
+    pub item_type: String,
+    pub call_id: String,
+    pub output: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -178,7 +186,15 @@ pub enum OpenAIRealtimeResponse {
         transcript: String,
     },
     #[serde(rename = "response.done")]
-    ResponseDone { response: serde_json::Value },
+    ResponseDone { response: ResponseDoneData },
+    #[serde(rename = "response.function_call_arguments.delta")]
+    ResponseFunctionCallArgumentsDelta {
+        response_id: String,
+        item_id: String,
+        output_index: u32,
+        call_id: String,
+        delta: String,
+    },
     #[serde(rename = "input_audio_buffer.speech_started")]
     InputAudioBufferSpeechStarted {
         audio_start_ms: u32,
@@ -186,6 +202,28 @@ pub enum OpenAIRealtimeResponse {
     },
     #[serde(rename = "input_audio_buffer.speech_stopped")]
     InputAudioBufferSpeechStopped { audio_end_ms: u32, item_id: String },
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ResponseDoneData {
+    pub id: String,
+    pub status: String,
+    pub output: Vec<ResponseOutputItem>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type")]
+pub enum ResponseOutputItem {
+    #[serde(rename = "function_call")]
+    FunctionCall {
+        id: String,
+        name: String,
+        call_id: String,
+        arguments: String,
+        status: String,
+    },
     #[serde(other)]
     Other,
 }
@@ -224,11 +262,13 @@ impl OpenAIRealtimeClient {
     pub fn create_realtime_session(
         &self,
         bot_id: &BotId,
+        tools: &[Tool],
     ) -> BoxPlatformSendFuture<'static, ClientResult<RealtimeChannel>> {
         let address = self.address.clone();
         let api_key = self.api_key.clone().expect("No API key provided");
 
         let bot_id = bot_id.clone();
+        let tools = tools.to_vec();
         let future = async move {
             let (event_sender, event_receiver) = futures::channel::mpsc::unbounded();
             let (command_sender, mut command_receiver) = futures::channel::mpsc::unbounded();
@@ -324,8 +364,26 @@ impl OpenAIRealtimeClient {
                                         OpenAIRealtimeResponse::InputAudioBufferSpeechStopped {
                                             ..
                                         } => Some(RealtimeEvent::SpeechStopped),
-                                        OpenAIRealtimeResponse::ResponseDone { .. } => {
-                                            Some(RealtimeEvent::ResponseCompleted)
+                                        OpenAIRealtimeResponse::ResponseDone { response } => {
+                                            // Check if the response contains function calls
+                                            let mut function_call_event = None;
+                                            for output_item in &response.output {
+                                                if let ResponseOutputItem::FunctionCall {
+                                                    name,
+                                                    call_id,
+                                                    arguments,
+                                                    ..
+                                                } = output_item
+                                                {
+                                                    function_call_event = Some(RealtimeEvent::FunctionCallRequest {
+                                                        name: name.clone(),
+                                                        call_id: call_id.clone(),
+                                                        arguments: arguments.clone(),
+                                                    });
+                                                    break;
+                                                }
+                                            }
+                                            function_call_event.or(Some(RealtimeEvent::ResponseCompleted))
                                         }
                                         OpenAIRealtimeResponse::Error { error } => {
                                             Some(RealtimeEvent::Error(error.message))
@@ -368,6 +426,37 @@ impl OpenAIRealtimeClient {
                                     voice,
                                     transcription_model
                                 );
+                                // Convert MCP tools to OpenAI realtime format
+                                let realtime_tools: Vec<serde_json::Value> = tools.iter().map(|tool| {
+                                    // Use the same conversion logic as the regular OpenAI client
+                                    let mut parameters_map = (*tool.input_schema).clone();
+                                    
+                                    // Ensure additionalProperties is set to false as required by OpenAI
+                                    parameters_map.insert(
+                                        "additionalProperties".to_string(),
+                                        serde_json::Value::Bool(false),
+                                    );
+                                    
+                                    // Ensure properties field exists for object schemas
+                                    if parameters_map.get("type") == Some(&serde_json::Value::String("object".to_string())) {
+                                        if !parameters_map.contains_key("properties") {
+                                            parameters_map.insert(
+                                                "properties".to_string(),
+                                                serde_json::Value::Object(serde_json::Map::new()),
+                                            );
+                                        }
+                                    }
+                                    
+                                    let parameters = serde_json::Value::Object(parameters_map);
+                                    
+                                    serde_json::json!({
+                                        "type": "function",
+                                        "name": tool.name,
+                                        "description": tool.description.as_deref().unwrap_or(""),
+                                        "parameters": parameters
+                                    })
+                                }).collect();
+
                                 let session_config = SessionConfig {
                                     modalities: vec!["text".to_string(), "audio".to_string()],
                                     instructions: "You are a helpful AI assistant. Respond naturally and conversationally. Always respond in the same language as the user.".to_string(),
@@ -389,8 +478,8 @@ impl OpenAIRealtimeClient {
                                         interrupt_response: true,
                                         create_response: true,
                                     }),
-                                    tools: vec![],
-                                    tool_choice: "none".to_string(),
+                                    tools: realtime_tools,
+                                    tool_choice: if tools.is_empty() { "none".to_string() } else { "auto".to_string() },
                                     temperature: 0.8,
                                     max_response_output_tokens: Some(4096),
                                 };
@@ -441,11 +530,12 @@ impl OpenAIRealtimeClient {
                                     id: None,
                                     item_type: "message".to_string(),
                                     status: None,
-                                    role: "user".to_string(),
-                                    content: vec![ContentPart::InputText { text }],
+                                    role: Some("user".to_string()),
+                                    content: Some(vec![ContentPart::InputText { text }]),
                                 };
-                                let message =
-                                    OpenAIRealtimeMessage::ConversationItemCreate { item };
+                                let message = OpenAIRealtimeMessage::ConversationItemCreate { 
+                                    item: serde_json::to_value(item).unwrap() 
+                                };
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     log::debug!("Sending text message: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
@@ -457,6 +547,41 @@ impl OpenAIRealtimeClient {
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     // log::info!("Sending truncate message: {}", json);
                                     log::debug!("Sending truncate message: {}", json);
+                                    let _ = write.send(WsMessage::Text(json)).await;
+                                }
+                            }
+                            RealtimeCommand::SendFunctionCallResult { call_id, output } => {
+                                let item = FunctionCallOutputItem {
+                                    item_type: "function_call_output".to_string(),
+                                    call_id,
+                                    output,
+                                };
+                                let message = OpenAIRealtimeMessage::ConversationItemCreate { 
+                                    item: serde_json::to_value(item).unwrap() 
+                                };
+                                if let Ok(json) = serde_json::to_string(&message) {
+                                    log::debug!("Sending function call result: {}", json);
+                                    let _ = write.send(WsMessage::Text(json)).await;
+                                }
+                                
+                                // Trigger a new response after sending function results
+                                let response_config = ResponseConfig {
+                                    modalities: vec!["text".to_string(), "audio".to_string()],
+                                    instructions: None,
+                                    voice: None,
+                                    output_audio_format: Some("pcm16".to_string()),
+                                    tools: vec![],
+                                    tool_choice: "auto".to_string(),
+                                    temperature: Some(0.8),
+                                    max_output_tokens: Some(4096),
+                                };
+                                
+                                let response_message = OpenAIRealtimeMessage::ResponseCreate {
+                                    response: response_config,
+                                };
+                                
+                                if let Ok(json) = serde_json::to_string(&response_message) {
+                                    log::debug!("Triggering response after function call: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
@@ -497,10 +622,10 @@ impl BotClient for OpenAIRealtimeClient {
         &mut self,
         bot_id: &BotId,
         _messages: &[crate::protocol::Message],
-        _tools: &[Tool],
+        tools: &[Tool],
     ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         // For realtime, we create a session and return the upgrade in the message content
-        let future = self.create_realtime_session(bot_id);
+        let future = self.create_realtime_session(bot_id, tools);
 
         let stream = async_stream::stream! {
             match future.await.into_result() {
