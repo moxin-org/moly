@@ -441,7 +441,12 @@ impl Messages {
         if self.messages.len() > 0 {
             let list = self.portal_list(id!(list));
 
-            list.smooth_scroll_to_end(cx, 100.0, None);
+            if triggered_by_stream {
+                // Use immediate scroll instead of smooth scroll to prevent continuous scroll actions
+                list.set_first_id_and_scroll(self.messages.len().saturating_sub(1), 0.0);
+            } else {
+                list.smooth_scroll_to_end(cx, 100.0, None);
+            }
             self.sticking_to_bottom = triggered_by_stream;
         }
     }
