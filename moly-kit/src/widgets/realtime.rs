@@ -103,8 +103,8 @@ live_design! {
 
         voice_selector = <SimpleDropDown> {
             margin: 5
-            labels: ["alloy", "shimmer", "ash", "ballad", "coral", "echo", "sage", "verse"]
-            values: [alloy, shimmer, ash, ballad, coral, echo, sage, verse]
+            labels: ["cedar", "marin" "alloy", "shimmer", "ash", "ballad", "coral", "echo", "sage", "verse"]
+            values: [cedar, marin, alloy, shimmer, ash, ballad, coral, echo, sage, verse]
 
             draw_text: {
                 color: #222
