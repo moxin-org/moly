@@ -304,6 +304,53 @@ live_design! {
                 }
             }
 
+            tool_permission_section = <View> {
+                visible: false
+                width: Fill, height: Fit
+                flow: Down
+                spacing: 8
+                margin: {top: 10}
+
+                tool_description = <Label> {
+                    width: Fill
+                    draw_text: {
+                        color: #222
+                        text_style: {font_size: 11}
+                    }
+                    text: ""
+                }
+
+                tool_actions = <View> {
+                    width: Fill, height: Fit
+                    align: {y: 0.5}
+                    spacing: 5
+
+                    approve_button = <Button> {
+                        padding: {left: 15, right: 15, top: 8, bottom: 8}
+                        text: "Approve"
+                        draw_text: {
+                            text_style: <THEME_FONT_BOLD>{font_size: 10}
+                            color: #fff
+                            color_hover: #fff
+                            color_focus: #fff
+                        }
+                        draw_bg: {color: #4CAF50, color_hover: #45a049}
+                    }
+
+                    deny_button = <Button> {
+                        padding: {left: 15, right: 15, top: 8, bottom: 8}
+                        text: "Deny"
+                        draw_text: {
+                            text_style: <THEME_FONT_BOLD>{font_size: 10}
+                            color: #fff
+                            color_hover: #fff
+                            color_focus: #fff
+                        }
+                        draw_bg: {color: #f44336, color_hover: #d32f2f}
+                    }
+                }
+            }
+
             start_stop_button = <RoundedShadowView> {
                 cursor: Hand
                 margin: {left: 10, right: 10, bottom: 0, top: 10}
@@ -396,6 +443,9 @@ pub struct Realtime {
 
     #[rust]
     bot_context: Option<crate::protocol::BotContext>,
+
+    #[rust]
+    pending_tool_call: Option<(String, String, String)>, // (name, call_id, arguments)
 }
 
 impl Widget for Realtime {
@@ -500,6 +550,15 @@ impl WidgetMatchEvent for Realtime {
                 self.start_conversation(cx);
             }
             self.update_ui(cx);
+        }
+
+        // Handle tool permission buttons
+        if self.button(id!(approve_button)).clicked(actions) {
+            self.approve_tool_call(cx);
+        }
+
+        if self.button(id!(deny_button)).clicked(actions) {
+            self.deny_tool_call(cx);
         }
     }
 }
@@ -621,6 +680,10 @@ impl Realtime {
         self.connection_request_sent = false;
         self.transcript.clear();
         self.label(id!(status_label)).set_text(cx, "Ready to start");
+
+        // Hide tool permission UI and clear pending tool call
+        self.view(id!(tool_permission_section)).set_visible(cx, false);
+        self.pending_tool_call = None;
 
         // Show voice selector again
         self.view(id!(voice_selector_wrapper)).set_visible(cx, true);
@@ -818,10 +881,10 @@ impl Realtime {
                 }
                 RealtimeEvent::FunctionCallRequest { name, call_id, arguments } => {
                     self.label(id!(status_label))
-                        .set_text(cx, &format!("🔧 Executing tool: {}", name));
+                        .set_text(cx, &format!("🔧 Tool permission requested: {}", name));
                     
-                    // Execute the function call
-                    self.handle_function_call(cx, name, call_id, arguments);
+                    // Show permission request instead of auto-executing
+                    self.show_tool_permission_request(cx, name, call_id, arguments);
                 }
                 RealtimeEvent::Error(error) => {
                     ::log::debug!("Realtime API error: {}", error);
@@ -835,6 +898,20 @@ impl Realtime {
                 }
             }
         }
+    }
+
+    fn show_tool_permission_request(&mut self, cx: &mut Cx, name: String, call_id: String, arguments: String) {
+        // Store the pending tool call
+        self.pending_tool_call = Some((name.clone(), call_id, arguments));
+        
+        // Show permission UI
+        self.view(id!(tool_permission_section)).set_visible(cx, true);
+        self.label(id!(tool_description)).set_text(cx, &format!("Tool '{}' is requesting permission to run", name));
+        
+        // Pause recording while waiting for permission
+        *self.is_recording.lock().unwrap() = false;
+        
+        self.view.redraw(cx);
     }
 
     fn handle_function_call(&mut self, _cx: &mut Cx, name: String, call_id: String, arguments: String) {
@@ -957,6 +1034,58 @@ impl Realtime {
         };
 
         crate::utils::asynchronous::spawn(future);
+    }
+
+    fn approve_tool_call(&mut self, cx: &mut Cx) {
+        if let Some((name, call_id, arguments)) = self.pending_tool_call.take() {
+            // Hide permission UI
+            self.view(id!(tool_permission_section)).set_visible(cx, false);
+            
+            // Update status
+            self.label(id!(status_label))
+                .set_text(cx, &format!("🔧 Executing tool: {}", name));
+            
+            // Execute the tool
+            self.handle_function_call(cx, name, call_id, arguments);
+            
+            // Resume recording if conversation is active
+            if self.conversation_active {
+                *self.is_recording.lock().unwrap() = true;
+            }
+            
+            self.view.redraw(cx);
+        }
+    }
+
+    fn deny_tool_call(&mut self, cx: &mut Cx) {
+        if let Some((name, call_id, _arguments)) = self.pending_tool_call.take() {
+            // Hide permission UI
+            self.view(id!(tool_permission_section)).set_visible(cx, false);
+            
+            // Send denial response
+            if let Some(channel) = &self.realtime_channel {
+                let denial_result = serde_json::json!({
+                    "error": "Tool execution denied by user"
+                }).to_string();
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                        call_id,
+                        output: denial_result,
+                    }
+                );
+            }
+            
+            // Update status
+            self.label(id!(status_label))
+                .set_text(cx, &format!("🚫 Tool '{}' denied", name));
+            
+            // Resume recording if conversation is active
+            if self.conversation_active {
+                *self.is_recording.lock().unwrap() = true;
+            }
+            
+            self.view.redraw(cx);
+        }
     }
 
     fn setup_audio(&mut self, cx: &mut Cx) {
