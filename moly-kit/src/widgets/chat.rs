@@ -34,7 +34,7 @@ live_design!(
             audio_modal = <MolyModal> {
                 content: <RoundedView> {
                     draw_bg: {border_radius: 10}
-                    width: 450, height: 600
+                    width: 450, height: Fit
                     align: {x: 0.5, y: 0.5}
                     realtime = <Realtime>{}
                 }

@@ -1,4 +1,5 @@
 use crate::{protocol::*, utils::makepad::events::EventExt};
+use crate::widgets::{avatar::AvatarWidgetRefExt, standard_message_content::StandardMessageContentWidgetRefExt, slot::SlotWidgetRefExt};
 use makepad_widgets::*;
 use std::sync::{Arc, Mutex};
 
@@ -6,6 +7,9 @@ live_design! {
     use link::theme::*;
     use link::shaders::*;
     use link::widgets::*;
+
+    use crate::widgets::chat_lines::*;
+    use crate::widgets::standard_message_content::*;
 
     SimpleDropDown = <DropDownFlat> {
         draw_text: {
@@ -128,8 +132,9 @@ live_design! {
         }
         flow: Down
         spacing: 20
-        width: 450, height: 600
+        width: 450, height: Fit
         align: {x: 0.5, y: 0.5}
+        padding: 10
 
         <RoundedView> {
             width: 200, height: 200
@@ -304,51 +309,9 @@ live_design! {
                 }
             }
 
-            tool_permission_section = <View> {
+            tool_permission_line = <ToolLine> {
                 visible: false
-                width: Fill, height: Fit
-                flow: Down
-                spacing: 8
-                margin: {top: 10}
-
-                tool_description = <Label> {
-                    width: Fill
-                    draw_text: {
-                        color: #222
-                        text_style: {font_size: 11}
-                    }
-                    text: ""
-                }
-
-                tool_actions = <View> {
-                    width: Fill, height: Fit
-                    align: {y: 0.5}
-                    spacing: 5
-
-                    approve_button = <Button> {
-                        padding: {left: 15, right: 15, top: 8, bottom: 8}
-                        text: "Approve"
-                        draw_text: {
-                            text_style: <THEME_FONT_BOLD>{font_size: 10}
-                            color: #fff
-                            color_hover: #fff
-                            color_focus: #fff
-                        }
-                        draw_bg: {color: #4CAF50, color_hover: #45a049}
-                    }
-
-                    deny_button = <Button> {
-                        padding: {left: 15, right: 15, top: 8, bottom: 8}
-                        text: "Deny"
-                        draw_text: {
-                            text_style: <THEME_FONT_BOLD>{font_size: 10}
-                            color: #fff
-                            color_hover: #fff
-                            color_focus: #fff
-                        }
-                        draw_bg: {color: #f44336, color_hover: #d32f2f}
-                    }
-                }
+                margin: {left: 10, right: 10, top: 10}
             }
 
             start_stop_button = <RoundedShadowView> {
@@ -552,12 +515,12 @@ impl WidgetMatchEvent for Realtime {
             self.update_ui(cx);
         }
 
-        // Handle tool permission buttons
-        if self.button(id!(approve_button)).clicked(actions) {
+        // Handle tool permission buttons from ToolLine
+        if self.view(id!(tool_permission_line)).button(id!(message_section.content_section.tool_actions.approve)).clicked(actions) {
             self.approve_tool_call(cx);
         }
 
-        if self.button(id!(deny_button)).clicked(actions) {
+        if self.view(id!(tool_permission_line)).button(id!(message_section.content_section.tool_actions.deny)).clicked(actions) {
             self.deny_tool_call(cx);
         }
     }
@@ -682,7 +645,7 @@ impl Realtime {
         self.label(id!(status_label)).set_text(cx, "Ready to start");
 
         // Hide tool permission UI and clear pending tool call
-        self.view(id!(tool_permission_section))
+        self.view(id!(tool_permission_line))
             .set_visible(cx, false);
         self.pending_tool_call = None;
 
@@ -912,17 +875,36 @@ impl Realtime {
         call_id: String,
         arguments: String,
     ) {
+        use crate::mcp::mcp_manager::display_name_from_namespaced;
+
         // Store the pending tool call
         self.pending_tool_call = Some((name.clone(), call_id, arguments));
 
-        // Show permission UI
-        self.view(id!(tool_permission_section))
-            .set_visible(cx, true);
-        self.label(id!(tool_description)).set_text(
-            cx,
-            &format!("Tool '{}' is requesting permission to run", name),
-        );
+        // Get the tool line widget
+        let tool_line = self.view(id!(tool_permission_line));
+        tool_line.set_visible(cx, true);
 
+        // Configure the tool line to match chat widget
+        let display_name = display_name_from_namespaced(&name);
+        
+        // Set avatar and name (matching chat widget style)
+        tool_line.avatar(id!(message_section.sender.avatar)).borrow_mut().unwrap().avatar = 
+            Some(crate::protocol::Picture::Grapheme("T".into()));
+        tool_line.label(id!(message_section.sender.name)).set_text(cx, "Permission Request");
+
+        // Set the tool description content
+        let content = crate::protocol::MessageContent {
+            text: format!("Tool '{}' is requesting permission to run", display_name),
+            ..Default::default()
+        };
+        tool_line.slot(id!(message_section.content_section.content))
+            .current()
+            .as_standard_message_content()
+            .set_content(cx, &content);
+
+        // Show the approval actions
+        tool_line.view(id!(message_section.content_section.tool_actions)).set_visible(cx, true);
+        
         // Pause recording while waiting for permission
         *self.is_recording.lock().unwrap() = false;
 
@@ -1021,12 +1003,14 @@ impl Realtime {
     fn approve_tool_call(&mut self, cx: &mut Cx) {
         if let Some((name, call_id, arguments)) = self.pending_tool_call.take() {
             // Hide permission UI
-            self.view(id!(tool_permission_section))
+            self.view(id!(tool_permission_line))
                 .set_visible(cx, false);
 
             // Update status
+            use crate::mcp::mcp_manager::display_name_from_namespaced;
+            let display_name = display_name_from_namespaced(&name);
             self.label(id!(status_label))
-                .set_text(cx, &format!("🔧 Executing tool: {}", name));
+                .set_text(cx, &format!("🔧 Executing tool: {}", display_name));
 
             // Execute the tool
             self.handle_function_call(cx, name, call_id, arguments);
@@ -1043,7 +1027,7 @@ impl Realtime {
     fn deny_tool_call(&mut self, cx: &mut Cx) {
         if let Some((name, call_id, _arguments)) = self.pending_tool_call.take() {
             // Hide permission UI
-            self.view(id!(tool_permission_section))
+            self.view(id!(tool_permission_line))
                 .set_visible(cx, false);
 
             // Send denial response
@@ -1061,8 +1045,10 @@ impl Realtime {
             }
 
             // Update status
+            use crate::mcp::mcp_manager::display_name_from_namespaced;
+            let display_name = display_name_from_namespaced(&name);
             self.label(id!(status_label))
-                .set_text(cx, &format!("🚫 Tool '{}' denied", name));
+                .set_text(cx, &format!("🚫 Tool '{}' denied", display_name));
 
             // Resume recording if conversation is active
             if self.conversation_active {
