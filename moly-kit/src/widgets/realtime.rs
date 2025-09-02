@@ -1,5 +1,8 @@
+use crate::widgets::{
+    avatar::AvatarWidgetRefExt, slot::SlotWidgetRefExt,
+    standard_message_content::StandardMessageContentWidgetRefExt,
+};
 use crate::{protocol::*, utils::makepad::events::EventExt};
-use crate::widgets::{avatar::AvatarWidgetRefExt, standard_message_content::StandardMessageContentWidgetRefExt, slot::SlotWidgetRefExt};
 use makepad_widgets::*;
 use std::sync::{Arc, Mutex};
 
@@ -516,11 +519,19 @@ impl WidgetMatchEvent for Realtime {
         }
 
         // Handle tool permission buttons from ToolLine
-        if self.view(id!(tool_permission_line)).button(id!(message_section.content_section.tool_actions.approve)).clicked(actions) {
+        if self
+            .view(id!(tool_permission_line))
+            .button(id!(message_section.content_section.tool_actions.approve))
+            .clicked(actions)
+        {
             self.approve_tool_call(cx);
         }
 
-        if self.view(id!(tool_permission_line)).button(id!(message_section.content_section.tool_actions.deny)).clicked(actions) {
+        if self
+            .view(id!(tool_permission_line))
+            .button(id!(message_section.content_section.tool_actions.deny))
+            .clicked(actions)
+        {
             self.deny_tool_call(cx);
         }
     }
@@ -645,8 +656,7 @@ impl Realtime {
         self.label(id!(status_label)).set_text(cx, "Ready to start");
 
         // Hide tool permission UI and clear pending tool call
-        self.view(id!(tool_permission_line))
-            .set_visible(cx, false);
+        self.view(id!(tool_permission_line)).set_visible(cx, false);
         self.pending_tool_call = None;
 
         // Show voice selector again
@@ -886,25 +896,33 @@ impl Realtime {
 
         // Configure the tool line to match chat widget
         let display_name = display_name_from_namespaced(&name);
-        
+
         // Set avatar and name (matching chat widget style)
-        tool_line.avatar(id!(message_section.sender.avatar)).borrow_mut().unwrap().avatar = 
-            Some(crate::protocol::Picture::Grapheme("T".into()));
-        tool_line.label(id!(message_section.sender.name)).set_text(cx, "Permission Request");
+        tool_line
+            .avatar(id!(message_section.sender.avatar))
+            .borrow_mut()
+            .unwrap()
+            .avatar = Some(crate::protocol::Picture::Grapheme("T".into()));
+        tool_line
+            .label(id!(message_section.sender.name))
+            .set_text(cx, "Permission Request");
 
         // Set the tool description content
         let content = crate::protocol::MessageContent {
             text: format!("Tool '{}' is requesting permission to run", display_name),
             ..Default::default()
         };
-        tool_line.slot(id!(message_section.content_section.content))
+        tool_line
+            .slot(id!(message_section.content_section.content))
             .current()
             .as_standard_message_content()
             .set_content(cx, &content);
 
         // Show the approval actions
-        tool_line.view(id!(message_section.content_section.tool_actions)).set_visible(cx, true);
-        
+        tool_line
+            .view(id!(message_section.content_section.tool_actions))
+            .set_visible(cx, true);
+
         // Pause recording while waiting for permission
         *self.is_recording.lock().unwrap() = false;
 
@@ -1003,8 +1021,7 @@ impl Realtime {
     fn approve_tool_call(&mut self, cx: &mut Cx) {
         if let Some((name, call_id, arguments)) = self.pending_tool_call.take() {
             // Hide permission UI
-            self.view(id!(tool_permission_line))
-                .set_visible(cx, false);
+            self.view(id!(tool_permission_line)).set_visible(cx, false);
 
             // Update status
             use crate::mcp::mcp_manager::display_name_from_namespaced;
@@ -1027,8 +1044,7 @@ impl Realtime {
     fn deny_tool_call(&mut self, cx: &mut Cx) {
         if let Some((name, call_id, _arguments)) = self.pending_tool_call.take() {
             // Hide permission UI
-            self.view(id!(tool_permission_line))
-                .set_visible(cx, false);
+            self.view(id!(tool_permission_line)).set_visible(cx, false);
 
             // Send denial response
             if let Some(channel) = &self.realtime_channel {
