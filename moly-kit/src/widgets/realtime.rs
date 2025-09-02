@@ -682,7 +682,8 @@ impl Realtime {
         self.label(id!(status_label)).set_text(cx, "Ready to start");
 
         // Hide tool permission UI and clear pending tool call
-        self.view(id!(tool_permission_section)).set_visible(cx, false);
+        self.view(id!(tool_permission_section))
+            .set_visible(cx, false);
         self.pending_tool_call = None;
 
         // Show voice selector again
@@ -879,10 +880,14 @@ impl Realtime {
                         }
                     }
                 }
-                RealtimeEvent::FunctionCallRequest { name, call_id, arguments } => {
+                RealtimeEvent::FunctionCallRequest {
+                    name,
+                    call_id,
+                    arguments,
+                } => {
                     self.label(id!(status_label))
                         .set_text(cx, &format!("🔧 Tool permission requested: {}", name));
-                    
+
                     // Show permission request instead of auto-executing
                     self.show_tool_permission_request(cx, name, call_id, arguments);
                 }
@@ -900,32 +905,49 @@ impl Realtime {
         }
     }
 
-    fn show_tool_permission_request(&mut self, cx: &mut Cx, name: String, call_id: String, arguments: String) {
+    fn show_tool_permission_request(
+        &mut self,
+        cx: &mut Cx,
+        name: String,
+        call_id: String,
+        arguments: String,
+    ) {
         // Store the pending tool call
         self.pending_tool_call = Some((name.clone(), call_id, arguments));
-        
+
         // Show permission UI
-        self.view(id!(tool_permission_section)).set_visible(cx, true);
-        self.label(id!(tool_description)).set_text(cx, &format!("Tool '{}' is requesting permission to run", name));
-        
+        self.view(id!(tool_permission_section))
+            .set_visible(cx, true);
+        self.label(id!(tool_description)).set_text(
+            cx,
+            &format!("Tool '{}' is requesting permission to run", name),
+        );
+
         // Pause recording while waiting for permission
         *self.is_recording.lock().unwrap() = false;
-        
+
         self.view.redraw(cx);
     }
 
-    fn handle_function_call(&mut self, _cx: &mut Cx, name: String, call_id: String, arguments: String) {
+    fn handle_function_call(
+        &mut self,
+        _cx: &mut Cx,
+        name: String,
+        call_id: String,
+        arguments: String,
+    ) {
         let Some(context) = self.bot_context.as_ref().cloned() else {
             ::log::error!("No bot context available for function call");
             if let Some(channel) = &self.realtime_channel {
                 let error_result = serde_json::json!({
                     "error": "Tool manager not available"
-                }).to_string();
+                })
+                .to_string();
                 let _ = channel.command_sender.unbounded_send(
                     crate::protocol::RealtimeCommand::SendFunctionCallResult {
                         call_id,
                         output: error_result,
-                    }
+                    },
                 );
             }
             return;
@@ -936,19 +958,20 @@ impl Realtime {
             if let Some(channel) = &self.realtime_channel {
                 let error_result = serde_json::json!({
                     "error": "Tool manager not available"
-                }).to_string();
+                })
+                .to_string();
                 let _ = channel.command_sender.unbounded_send(
                     crate::protocol::RealtimeCommand::SendFunctionCallResult {
                         call_id,
                         output: error_result,
-                    }
+                    },
                 );
             }
             return;
         };
 
         let channel = self.realtime_channel.clone();
-        
+
         let future = async move {
             // Parse the arguments JSON
             let arguments_map = match serde_json::from_str::<serde_json::Value>(&arguments) {
@@ -958,12 +981,13 @@ impl Realtime {
                     if let Some(channel) = &channel {
                         let error_result = serde_json::json!({
                             "error": "Invalid arguments format"
-                        }).to_string();
+                        })
+                        .to_string();
                         let _ = channel.command_sender.unbounded_send(
                             crate::protocol::RealtimeCommand::SendFunctionCallResult {
                                 call_id,
                                 output: error_result,
-                            }
+                            },
                         );
                     }
                     return;
@@ -973,12 +997,13 @@ impl Realtime {
                     if let Some(channel) = &channel {
                         let error_result = serde_json::json!({
                             "error": format!("Failed to parse arguments: {}", e)
-                        }).to_string();
+                        })
+                        .to_string();
                         let _ = channel.command_sender.unbounded_send(
                             crate::protocol::RealtimeCommand::SendFunctionCallResult {
                                 call_id,
                                 output: error_result,
-                            }
+                            },
                         );
                     }
                     return;
@@ -1012,7 +1037,7 @@ impl Realtime {
                             crate::protocol::RealtimeCommand::SendFunctionCallResult {
                                 call_id,
                                 output: content,
-                            }
+                            },
                         );
                     }
                 }
@@ -1021,12 +1046,13 @@ impl Realtime {
                     if let Some(channel) = &channel {
                         let error_result = serde_json::json!({
                             "error": e.to_string()
-                        }).to_string();
+                        })
+                        .to_string();
                         let _ = channel.command_sender.unbounded_send(
                             crate::protocol::RealtimeCommand::SendFunctionCallResult {
                                 call_id,
                                 output: error_result,
-                            }
+                            },
                         );
                     }
                 }
@@ -1039,20 +1065,21 @@ impl Realtime {
     fn approve_tool_call(&mut self, cx: &mut Cx) {
         if let Some((name, call_id, arguments)) = self.pending_tool_call.take() {
             // Hide permission UI
-            self.view(id!(tool_permission_section)).set_visible(cx, false);
-            
+            self.view(id!(tool_permission_section))
+                .set_visible(cx, false);
+
             // Update status
             self.label(id!(status_label))
                 .set_text(cx, &format!("🔧 Executing tool: {}", name));
-            
+
             // Execute the tool
             self.handle_function_call(cx, name, call_id, arguments);
-            
+
             // Resume recording if conversation is active
             if self.conversation_active {
                 *self.is_recording.lock().unwrap() = true;
             }
-            
+
             self.view.redraw(cx);
         }
     }
@@ -1060,30 +1087,32 @@ impl Realtime {
     fn deny_tool_call(&mut self, cx: &mut Cx) {
         if let Some((name, call_id, _arguments)) = self.pending_tool_call.take() {
             // Hide permission UI
-            self.view(id!(tool_permission_section)).set_visible(cx, false);
-            
+            self.view(id!(tool_permission_section))
+                .set_visible(cx, false);
+
             // Send denial response
             if let Some(channel) = &self.realtime_channel {
                 let denial_result = serde_json::json!({
                     "error": "Tool execution denied by user"
-                }).to_string();
+                })
+                .to_string();
                 let _ = channel.command_sender.unbounded_send(
                     crate::protocol::RealtimeCommand::SendFunctionCallResult {
                         call_id,
                         output: denial_result,
-                    }
+                    },
                 );
             }
-            
+
             // Update status
             self.label(id!(status_label))
                 .set_text(cx, &format!("🚫 Tool '{}' denied", name));
-            
+
             // Resume recording if conversation is active
             if self.conversation_active {
                 *self.is_recording.lock().unwrap() = true;
             }
-            
+
             self.view.redraw(cx);
         }
     }

@@ -430,13 +430,13 @@ impl OpenAIRealtimeClient {
                                 let realtime_tools: Vec<serde_json::Value> = tools.iter().map(|tool| {
                                     // Use the same conversion logic as the regular OpenAI client
                                     let mut parameters_map = (*tool.input_schema).clone();
-                                    
+
                                     // Ensure additionalProperties is set to false as required by OpenAI
                                     parameters_map.insert(
                                         "additionalProperties".to_string(),
                                         serde_json::Value::Bool(false),
                                     );
-                                    
+
                                     // Ensure properties field exists for object schemas
                                     if parameters_map.get("type") == Some(&serde_json::Value::String("object".to_string())) {
                                         if !parameters_map.contains_key("properties") {
@@ -446,9 +446,9 @@ impl OpenAIRealtimeClient {
                                             );
                                         }
                                     }
-                                    
+
                                     let parameters = serde_json::Value::Object(parameters_map);
-                                    
+
                                     serde_json::json!({
                                         "type": "function",
                                         "name": tool.name,
@@ -533,8 +533,8 @@ impl OpenAIRealtimeClient {
                                     role: Some("user".to_string()),
                                     content: Some(vec![ContentPart::InputText { text }]),
                                 };
-                                let message = OpenAIRealtimeMessage::ConversationItemCreate { 
-                                    item: serde_json::to_value(item).unwrap() 
+                                let message = OpenAIRealtimeMessage::ConversationItemCreate {
+                                    item: serde_json::to_value(item).unwrap(),
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     log::debug!("Sending text message: {}", json);
@@ -556,14 +556,14 @@ impl OpenAIRealtimeClient {
                                     call_id,
                                     output,
                                 };
-                                let message = OpenAIRealtimeMessage::ConversationItemCreate { 
-                                    item: serde_json::to_value(item).unwrap() 
+                                let message = OpenAIRealtimeMessage::ConversationItemCreate {
+                                    item: serde_json::to_value(item).unwrap(),
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     log::debug!("Sending function call result: {}", json);
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
-                                
+
                                 // Trigger a new response after sending function results
                                 let response_config = ResponseConfig {
                                     modalities: vec!["text".to_string(), "audio".to_string()],
@@ -575,13 +575,16 @@ impl OpenAIRealtimeClient {
                                     temperature: Some(0.8),
                                     max_output_tokens: Some(4096),
                                 };
-                                
+
                                 let response_message = OpenAIRealtimeMessage::ResponseCreate {
                                     response: response_config,
                                 };
-                                
+
                                 if let Ok(json) = serde_json::to_string(&response_message) {
-                                    log::debug!("Triggering response after function call: {}", json);
+                                    log::debug!(
+                                        "Triggering response after function call: {}",
+                                        json
+                                    );
                                     let _ = write.send(WsMessage::Text(json)).await;
                                 }
                             }
@@ -660,7 +663,7 @@ impl BotClient for OpenAIRealtimeClient {
         // belong to the provider are filtered out in Moly automatically.
         // TODO: fetch the specific supported models from the provider instead of hardcoding them here
         let supported: Vec<Bot> = [
-            "gpt-realtime",  // OpenAI
+            "gpt-realtime",                        // OpenAI
             "Qwen/Qwen2.5-0.5B-Instruct-GGUF",     // Dora
             "Qwen/Qwen2.5-1.5B-Instruct-GGUF",     // Dora
             "Qwen/Qwen2.5-3B-Instruct-GGUF",       // Dora

@@ -138,10 +138,7 @@ pub enum RealtimeCommand {
     /// Create a greeting response from AI
     CreateGreetingResponse,
     /// Send function call result back to AI
-    SendFunctionCallResult {
-        call_id: String,
-        output: String,
-    },
+    SendFunctionCallResult { call_id: String, output: String },
 }
 
 /// The picture/avatar of an entity that may be represented/encoded in different ways.
