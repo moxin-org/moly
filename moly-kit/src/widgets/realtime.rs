@@ -974,29 +974,14 @@ impl Realtime {
 
         let future = async move {
             // Parse the arguments JSON
-            let arguments_map = match serde_json::from_str::<serde_json::Value>(&arguments) {
-                Ok(serde_json::Value::Object(args)) => args,
-                Ok(_) => {
-                    ::log::error!("Function call arguments not an object: {}", arguments);
-                    if let Some(channel) = &channel {
-                        let error_result = serde_json::json!({
-                            "error": "Invalid arguments format"
-                        })
-                        .to_string();
-                        let _ = channel.command_sender.unbounded_send(
-                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
-                                call_id,
-                                output: error_result,
-                            },
-                        );
-                    }
-                    return;
-                }
+            let arguments_map = match crate::utils::tool_execution::parse_tool_arguments(&arguments)
+            {
+                Ok(args) => args,
                 Err(e) => {
                     ::log::error!("Failed to parse function call arguments: {}", e);
                     if let Some(channel) = &channel {
                         let error_result = serde_json::json!({
-                            "error": format!("Failed to parse arguments: {}", e)
+                            "error": e
                         })
                         .to_string();
                         let _ = channel.command_sender.unbounded_send(
@@ -1010,52 +995,28 @@ impl Realtime {
                 }
             };
 
-            // Execute the tool call
-            match tool_manager.call_tool(&name, arguments_map).await {
-                Ok(result) => {
-                    // Convert result to JSON string
-                    #[cfg(not(target_arch = "wasm32"))]
-                    let content = result
-                        .content
-                        .iter()
-                        .filter_map(|item| {
-                            if let Ok(text) = serde_json::to_string(item) {
-                                Some(text)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
+            // Execute the tool call using shared utility
+            let result = crate::utils::tool_execution::execute_tool_call(
+                tool_manager,
+                &name,
+                &call_id,
+                arguments_map,
+            )
+            .await;
 
-                    #[cfg(target_arch = "wasm32")]
-                    let content = serde_json::to_string_pretty(&result)
-                        .unwrap_or_else(|_| "Tool executed successfully".to_string());
+            if let Some(channel) = &channel {
+                let output = if result.is_error {
+                    serde_json::json!({
+                        "error": result.content
+                    })
+                    .to_string()
+                } else {
+                    result.content
+                };
 
-                    if let Some(channel) = &channel {
-                        let _ = channel.command_sender.unbounded_send(
-                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
-                                call_id,
-                                output: content,
-                            },
-                        );
-                    }
-                }
-                Err(e) => {
-                    ::log::error!("Tool call failed: {}", e);
-                    if let Some(channel) = &channel {
-                        let error_result = serde_json::json!({
-                            "error": e.to_string()
-                        })
-                        .to_string();
-                        let _ = channel.command_sender.unbounded_send(
-                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
-                                call_id,
-                                output: error_result,
-                            },
-                        );
-                    }
-                }
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult { call_id, output },
+                );
             }
         };
 
