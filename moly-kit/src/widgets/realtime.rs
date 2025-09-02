@@ -974,8 +974,7 @@ impl Realtime {
 
         let future = async move {
             // Parse the arguments JSON
-            let arguments_map = match crate::utils::tool_execution::parse_tool_arguments(&arguments)
-            {
+            let arguments_map = match crate::mcp::mcp_manager::parse_tool_arguments(&arguments) {
                 Ok(args) => args,
                 Err(e) => {
                     ::log::error!("Failed to parse function call arguments: {}", e);
@@ -995,14 +994,10 @@ impl Realtime {
                 }
             };
 
-            // Execute the tool call using shared utility
-            let result = crate::utils::tool_execution::execute_tool_call(
-                tool_manager,
-                &name,
-                &call_id,
-                arguments_map,
-            )
-            .await;
+            // Execute the tool call using MCP manager
+            let result = tool_manager
+                .execute_tool_call(&name, &call_id, arguments_map)
+                .await;
 
             if let Some(channel) = &channel {
                 let output = if result.is_error {

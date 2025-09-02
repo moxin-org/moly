@@ -7,11 +7,12 @@ use rmcp::{
         streamable_http_client::{StreamableHttpClientTransport, StreamableHttpClientWorker},
     },
 };
+use serde_json::{Map, Value};
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::{Arc, Mutex};
 
-use crate::protocol::Tool;
+use crate::protocol::{Tool, ToolCall, ToolResult};
 
 /// Creates a namespaced tool name using double underscores as separator
 /// Preserves original naming including hyphens and casing
@@ -45,6 +46,15 @@ pub fn display_name_from_namespaced(namespaced_name: &str) -> String {
     } else {
         // Fallback to original name if parsing fails
         namespaced_name.to_string()
+    }
+}
+
+/// Parse tool arguments from JSON string to Map
+pub fn parse_tool_arguments(arguments: &str) -> Result<Map<String, Value>, String> {
+    match serde_json::from_str::<Value>(arguments) {
+        Ok(Value::Object(args)) => Ok(args),
+        Ok(_) => Err("Arguments must be a JSON object".to_string()),
+        Err(e) => Err(format!("Failed to parse arguments: {}", e)),
     }
 }
 
@@ -288,7 +298,7 @@ impl McpManagerClient {
 
     /// Calls a tool on an MCP server.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn call_tool(
+    async fn call_tool(
         &self,
         namespaced_tool_name: &str,
         arguments: serde_json::Map<String, serde_json::Value>,
@@ -359,5 +369,76 @@ impl McpManagerClient {
     #[cfg(target_arch = "wasm32")]
     pub async fn remove_server(&self, _id: &str) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
+    }
+
+    /// Executes a tool call and returns the result
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn execute_tool_call(
+        &self,
+        tool_name: &str,
+        tool_call_id: &str,
+        arguments: Map<String, Value>,
+    ) -> ToolResult {
+        match self.call_tool(tool_name, arguments).await {
+            Ok(result) => {
+                // Convert result to content string
+                let content = result
+                    .content
+                    .iter()
+                    .filter_map(|item| {
+                        // Convert ContentPart to text - for now we just serialize it
+                        if let Ok(text) = serde_json::to_string(item) {
+                            Some(text)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                ToolResult {
+                    tool_call_id: tool_call_id.to_string(),
+                    content,
+                    is_error: false,
+                }
+            }
+            Err(e) => ToolResult {
+                tool_call_id: tool_call_id.to_string(),
+                content: e.to_string(),
+                is_error: true,
+            },
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn execute_tool_call(
+        &self,
+        tool_name: &str,
+        tool_call_id: &str,
+        _arguments: Map<String, Value>,
+    ) -> ToolResult {
+        ToolResult {
+            tool_call_id: tool_call_id.to_string(),
+            content: format!(
+                "MCP servers are not yet supported in WASM builds. Cannot call tool '{}'",
+                tool_name
+            ),
+            is_error: true,
+        }
+    }
+
+    /// Executes multiple tool calls sequentially and returns the results
+    pub async fn execute_tool_calls(&self, tool_calls: Vec<ToolCall>) -> Vec<ToolResult> {
+        let mut tool_results = Vec::new();
+
+        // Execute all tool calls sequentially
+        for tool_call in tool_calls {
+            let result = self
+                .execute_tool_call(&tool_call.name, &tool_call.id, tool_call.arguments.clone())
+                .await;
+            tool_results.push(result);
+        }
+
+        tool_results
     }
 }

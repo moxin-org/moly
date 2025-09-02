@@ -403,10 +403,8 @@ impl Chat {
                 return;
             };
 
-            // Execute tool calls using shared utility
-            let tool_results =
-                crate::utils::tool_execution::execute_tool_calls(tool_manager, tool_calls.clone())
-                    .await;
+            // Execute tool calls using MCP manager
+            let tool_results = tool_manager.execute_tool_calls(tool_calls.clone()).await;
 
             // Update the loading message with tool results and trigger a new send
             ui.defer_with_redraw(move |me, cx, _| {
