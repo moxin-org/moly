@@ -1,5 +1,9 @@
+use crate::widgets::{
+    avatar::AvatarWidgetRefExt, slot::SlotWidgetRefExt,
+    standard_message_content::StandardMessageContentWidgetRefExt,
+};
 use crate::{protocol::*, utils::makepad::events::EventExt};
-use makepad_widgets::*;
+use makepad_widgets::{makepad_platform::AudioDeviceType, *};
 use std::sync::{Arc, Mutex};
 
 live_design! {
@@ -7,7 +11,10 @@ live_design! {
     use link::shaders::*;
     use link::widgets::*;
 
-    SimpleDropDown = <DropDownFlat> {
+    use crate::widgets::chat_lines::*;
+    use crate::widgets::standard_message_content::*;
+
+    SimpleDropDown = <DropDown> {
         draw_text: {
             text_style: {font_size: 12}
             fn get_color(self) -> vec4 {
@@ -45,7 +52,7 @@ live_design! {
 
                 draw_bg: {
                     instance color: #f //(THEME_COLOR_FLOATING_BG)
-                    instance color_active: #f2 //(THEME_COLOR_CTRL_HOVER)
+                    instance color_active: #e9 //(THEME_COLOR_CTRL_HOVER)
                 }
             }
 
@@ -103,8 +110,8 @@ live_design! {
 
         voice_selector = <SimpleDropDown> {
             margin: 5
-            labels: ["alloy", "shimmer", "ash", "ballad", "coral", "echo", "sage", "verse"]
-            values: [alloy, shimmer, ash, ballad, coral, echo, sage, verse]
+            labels: ["marin", "cedar", "alloy", "shimmer", "ash", "ballad", "coral", "echo", "sage", "verse"]
+            values: [marin, cedar, alloy, shimmer, ash, ballad, coral, echo, sage, verse]
 
             draw_text: {
                 color: #222
@@ -120,6 +127,48 @@ live_design! {
         }
     }
 
+    DeviceSelector = <View> {
+        height: Fit
+        align: {x: 0.0, y: 0.5}
+        spacing: 10
+
+        label = <Label> {
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+        }
+
+        device_selector = <SimpleDropDown> {
+            margin: 5
+            labels: ["default"]
+            values: [default]
+
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+
+            popup_menu = {
+                draw_text: {
+                    color: #222
+                    text_style: {font_size: 11}
+                }
+            }
+        }
+    }
+
+    DevicesSelector = <View> {
+        height: Fit, width: Fill
+        flow: Down, spacing: 5
+        mic_selector = <DeviceSelector> {
+            label = { text: "Mic:"}
+        }
+        speaker_selector = <DeviceSelector> {
+            label = { text: "Speaker:"}
+        }
+    }
+
     pub Realtime = {{Realtime}} <RoundedView> {
         show_bg: true
         draw_bg: {
@@ -128,8 +177,9 @@ live_design! {
         }
         flow: Down
         spacing: 20
-        width: 450, height: 600
+        width: 450, height: Fit
         align: {x: 0.5, y: 0.5}
+        padding: 10
 
         <RoundedView> {
             width: 200, height: 200
@@ -256,9 +306,22 @@ live_design! {
         controls = <View> {
             width: Fill, height: Fit
             flow: Down
-            spacing: 10
+            spacing: 5
             align: {x: 0.0, y: 0.5}
             padding: 20
+
+            devices_selector = <DevicesSelector> {}
+            selected_devices_view = <View> {
+                visible: false
+                height: Fit
+                align: {x: 0.0, y: 0.5}
+                selected_devices = <Label> {
+                    draw_text: {
+                        text_style: {font_size: 11}
+                        color: #222
+                    }
+                }
+            }
 
             voice_selector_wrapper = <VoiceSelector> {}
             selected_voice_view = <View> {
@@ -272,6 +335,7 @@ live_design! {
                     }
                 }
             }
+
             <TranscriptionModelSelector> {}
 
             toggle_interruptions = <Toggle> {
@@ -302,6 +366,11 @@ live_design! {
                     color: #222
                     text_style: {font_size: 11}
                 }
+            }
+
+            tool_permission_line = <ToolLine> {
+                visible: false
+                margin: {left: 10, right: 10, top: 10}
             }
 
             start_stop_button = <RoundedShadowView> {
@@ -393,6 +462,15 @@ pub struct Realtime {
 
     #[rust]
     bot_entity_id: Option<EntityId>,
+
+    #[rust]
+    bot_context: Option<crate::protocol::BotContext>,
+
+    #[rust]
+    pending_tool_call: Option<(String, String, String)>, // (name, call_id, arguments)
+
+    #[rust]
+    audio_devices: Vec<AudioDeviceDesc>,
 }
 
 impl Widget for Realtime {
@@ -471,18 +549,72 @@ impl Widget for Realtime {
 }
 
 impl WidgetMatchEvent for Realtime {
+    /// Triggered at startup and whenever system audio devices change.
+    ///
+    /// We use it to update the list of available audio devices and select the default ones.
     fn handle_audio_devices(
         &mut self,
         cx: &mut Cx,
         devices: &AudioDevicesEvent,
         _scope: &mut Scope,
     ) {
-        // Use default input and output devices
+        let mut input_names = Vec::new();
+        let mut output_names = Vec::new();
+        let mut default_input_name = String::new();
+        let mut default_output_name = String::new();
+
+        devices
+            .descs
+            .iter()
+            .for_each(|desc| match desc.device_type {
+                AudioDeviceType::Input => {
+                    input_names.push(desc.name.clone());
+                    if desc.is_default {
+                        default_input_name = desc.name.clone();
+                    }
+                }
+                AudioDeviceType::Output => {
+                    output_names.push(desc.name.clone());
+                    if desc.is_default {
+                        default_output_name = desc.name.clone();
+                    }
+                }
+            });
+
+        let mic_dropdown = self.drop_down(id!(mic_selector.device_selector));
+        mic_dropdown.set_labels(cx, input_names.clone());
+        mic_dropdown.set_selected_by_label(&default_input_name, cx);
+
+        let speaker_dropdown = self.drop_down(id!(speaker_selector.device_selector));
+        speaker_dropdown.set_labels(cx, output_names.clone());
+        speaker_dropdown.set_selected_by_label(&default_output_name, cx);
+
+        // Automatically switch to default devices
+        // e.g. when a user connects headphones we assume they want to use them right away.
+        // Note: we do not want to automatically switch to default devices if the user has already selected a non-default device, unless
+        // the default device is new (wasn't present in the previous list)
         let default_input = devices.default_input();
         let default_output = devices.default_output();
 
-        cx.use_audio_inputs(&default_input);
-        cx.use_audio_outputs(&default_output);
+        // The default device is new, assume we want to use it
+        if !self
+            .audio_devices
+            .iter()
+            .any(|d| d.device_type == AudioDeviceType::Input && d.device_id == default_input[0])
+        {
+            cx.use_audio_inputs(&default_input);
+        }
+
+        // The default device is new, assume we want to use it
+        if !self
+            .audio_devices
+            .iter()
+            .any(|d| d.device_type == AudioDeviceType::Output && d.device_id == default_output[0])
+        {
+            cx.use_audio_outputs(&default_output);
+        }
+
+        self.audio_devices = devices.descs.clone();
     }
 
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
@@ -497,6 +629,45 @@ impl WidgetMatchEvent for Realtime {
                 self.start_conversation(cx);
             }
             self.update_ui(cx);
+        }
+
+        // Handle tool permission buttons from ToolLine
+        if self
+            .view(id!(tool_permission_line))
+            .button(id!(message_section.content_section.tool_actions.approve))
+            .clicked(actions)
+        {
+            self.approve_tool_call(cx);
+        }
+
+        if self
+            .view(id!(tool_permission_line))
+            .button(id!(message_section.content_section.tool_actions.deny))
+            .clicked(actions)
+        {
+            self.deny_tool_call(cx);
+        }
+
+        let speaker_dropdown = self.drop_down(id!(speaker_selector.device_selector));
+        if let Some(_id) = speaker_dropdown.changed(actions) {
+            let selected_device = self
+                .audio_devices
+                .iter()
+                .find(|device| device.name == speaker_dropdown.selected_label());
+            if let Some(device) = selected_device {
+                cx.use_audio_outputs(&[device.device_id]);
+            }
+        }
+
+        let microphone_dropdown = self.drop_down(id!(mic_selector.device_selector));
+        if let Some(_id) = microphone_dropdown.changed(actions) {
+            let selected_device = self
+                .audio_devices
+                .iter()
+                .find(|device| device.name == microphone_dropdown.selected_label());
+            if let Some(device) = selected_device {
+                cx.use_audio_inputs(&[device.device_id]);
+            }
         }
     }
 }
@@ -524,6 +695,10 @@ impl Realtime {
                     .set_labels(cx, labels);
             }
         }
+    }
+
+    pub fn set_bot_context(&mut self, bot_context: Option<crate::protocol::BotContext>) {
+        self.bot_context = bot_context;
     }
 
     fn try_start_pending_conversation(&mut self, cx: &mut Cx) {
@@ -614,6 +789,10 @@ impl Realtime {
         self.connection_request_sent = false;
         self.transcript.clear();
         self.label(id!(status_label)).set_text(cx, "Ready to start");
+
+        // Hide tool permission UI and clear pending tool call
+        self.view(id!(tool_permission_line)).set_visible(cx, false);
+        self.pending_tool_call = None;
 
         // Show voice selector again
         self.view(id!(voice_selector_wrapper)).set_visible(cx, true);
@@ -809,6 +988,16 @@ impl Realtime {
                         }
                     }
                 }
+                RealtimeEvent::FunctionCallRequest {
+                    name,
+                    call_id,
+                    arguments,
+                } => {
+                    self.label(id!(status_label))
+                        .set_text(cx, &format!("🔧 Tool permission requested: {}", name));
+
+                    self.show_tool_permission_request(cx, name, call_id, arguments);
+                }
                 RealtimeEvent::Error(error) => {
                     ::log::debug!("Realtime API error: {}", error);
                     self.label(id!(status_label))
@@ -820,6 +1009,197 @@ impl Realtime {
                     }
                 }
             }
+        }
+    }
+
+    fn show_tool_permission_request(
+        &mut self,
+        cx: &mut Cx,
+        name: String,
+        call_id: String,
+        arguments: String,
+    ) {
+        use crate::mcp::mcp_manager::display_name_from_namespaced;
+
+        self.pending_tool_call = Some((name.clone(), call_id, arguments));
+
+        let tool_line = self.view(id!(tool_permission_line));
+        tool_line.set_visible(cx, true);
+
+        // Configure the tool line
+        let display_name = display_name_from_namespaced(&name);
+
+        tool_line
+            .avatar(id!(message_section.sender.avatar))
+            .borrow_mut()
+            .unwrap()
+            .avatar = Some(crate::protocol::Picture::Grapheme("T".into()));
+        tool_line
+            .label(id!(message_section.sender.name))
+            .set_text(cx, "Permission Request");
+
+        let content = crate::protocol::MessageContent {
+            text: format!("Tool '{}' is requesting permission to run", display_name),
+            ..Default::default()
+        };
+        tool_line
+            .slot(id!(message_section.content_section.content))
+            .current()
+            .as_standard_message_content()
+            .set_content(cx, &content);
+
+        tool_line
+            .view(id!(message_section.content_section.tool_actions))
+            .set_visible(cx, true);
+
+        // Pause recording while waiting for permission
+        *self.is_recording.lock().unwrap() = false;
+
+        self.view.redraw(cx);
+    }
+
+    fn handle_function_call(
+        &mut self,
+        _cx: &mut Cx,
+        name: String,
+        call_id: String,
+        arguments: String,
+    ) {
+        let Some(context) = self.bot_context.as_ref().cloned() else {
+            ::log::error!("No bot context available for function call");
+            if let Some(channel) = &self.realtime_channel {
+                let error_result = serde_json::json!({
+                    "error": "Tool manager not available"
+                })
+                .to_string();
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                        call_id,
+                        output: error_result,
+                    },
+                );
+            }
+            return;
+        };
+
+        let Some(tool_manager) = context.tool_manager() else {
+            ::log::error!("No tool manager available for function call");
+            if let Some(channel) = &self.realtime_channel {
+                let error_result = serde_json::json!({
+                    "error": "Tool manager not available"
+                })
+                .to_string();
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                        call_id,
+                        output: error_result,
+                    },
+                );
+            }
+            return;
+        };
+
+        let channel = self.realtime_channel.clone();
+
+        let future = async move {
+            // Parse the arguments JSON
+            let arguments_map = match crate::mcp::mcp_manager::parse_tool_arguments(&arguments) {
+                Ok(args) => args,
+                Err(e) => {
+                    ::log::error!("Failed to parse function call arguments: {}", e);
+                    if let Some(channel) = &channel {
+                        let error_result = serde_json::json!({
+                            "error": e
+                        })
+                        .to_string();
+                        let _ = channel.command_sender.unbounded_send(
+                            crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                                call_id,
+                                output: error_result,
+                            },
+                        );
+                    }
+                    return;
+                }
+            };
+
+            let result = tool_manager
+                .execute_tool_call(&name, &call_id, arguments_map)
+                .await;
+
+            if let Some(channel) = &channel {
+                let output = if result.is_error {
+                    serde_json::json!({
+                        "error": result.content
+                    })
+                    .to_string()
+                } else {
+                    result.content
+                };
+
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult { call_id, output },
+                );
+            }
+        };
+
+        crate::utils::asynchronous::spawn(future);
+    }
+
+    fn approve_tool_call(&mut self, cx: &mut Cx) {
+        if let Some((name, call_id, arguments)) = self.pending_tool_call.take() {
+            // Hide permission UI
+            self.view(id!(tool_permission_line)).set_visible(cx, false);
+
+            // Update status
+            use crate::mcp::mcp_manager::display_name_from_namespaced;
+            let display_name = display_name_from_namespaced(&name);
+            self.label(id!(status_label))
+                .set_text(cx, &format!("🔧 Executing tool: {}", display_name));
+
+            // Execute the tool
+            self.handle_function_call(cx, name, call_id, arguments);
+
+            // Resume recording if conversation is active
+            if self.conversation_active {
+                *self.is_recording.lock().unwrap() = true;
+            }
+
+            self.view.redraw(cx);
+        }
+    }
+
+    fn deny_tool_call(&mut self, cx: &mut Cx) {
+        if let Some((name, call_id, _arguments)) = self.pending_tool_call.take() {
+            // Hide permission UI
+            self.view(id!(tool_permission_line)).set_visible(cx, false);
+
+            // Send denial response
+            if let Some(channel) = &self.realtime_channel {
+                let denial_result = serde_json::json!({
+                    "error": "Tool execution denied by user"
+                })
+                .to_string();
+                let _ = channel.command_sender.unbounded_send(
+                    crate::protocol::RealtimeCommand::SendFunctionCallResult {
+                        call_id,
+                        output: denial_result,
+                    },
+                );
+            }
+
+            // Update status
+            use crate::mcp::mcp_manager::display_name_from_namespaced;
+            let display_name = display_name_from_namespaced(&name);
+            self.label(id!(status_label))
+                .set_text(cx, &format!("🚫 Tool '{}' denied", display_name));
+
+            // Resume recording if conversation is active
+            if self.conversation_active {
+                *self.is_recording.lock().unwrap() = true;
+            }
+
+            self.view.redraw(cx);
         }
     }
 
@@ -1067,6 +1447,12 @@ impl RealtimeRef {
     pub fn reset_state(&mut self, cx: &mut Cx) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.reset_state(cx);
+        }
+    }
+
+    pub fn set_bot_context(&mut self, bot_context: Option<crate::protocol::BotContext>) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.set_bot_context(bot_context);
         }
     }
 }

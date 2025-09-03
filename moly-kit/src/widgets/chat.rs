@@ -34,7 +34,7 @@ live_design!(
             audio_modal = <MolyModal> {
                 content: <RoundedView> {
                     draw_bg: {border_radius: 10}
-                    width: 450, height: 600
+                    width: 450, height: Fit
                     align: {x: 0.5, y: 0.5}
                     realtime = <Realtime>{}
                 }
@@ -172,17 +172,6 @@ impl Chat {
     /// Getter to the underlying [PromptInputRef] independent of its id.
     pub fn prompt_input_ref(&self) -> PromptInputRef {
         self.prompt_input(id!(prompt))
-    }
-
-    /// Creates a simple summary of tool output
-    fn create_tool_output_summary(_tool_name: &str, content: &str) -> String {
-        // If content is very short (like a simple status message), show it
-        if content.len() <= 80 {
-            content.to_string()
-        } else {
-            // For longer content, just indicate success without showing the verbose output
-            "Output received".to_string()
-        }
     }
 
     /// Getter to the underlying [MessagesRef] independent of its id.
@@ -414,51 +403,8 @@ impl Chat {
                 return;
             };
 
-            // Execute each tool call
-            let mut tool_results = Vec::new();
-            for tool_call in &tool_calls {
-                match tool_manager
-                    .call_tool(&tool_call.name, tool_call.arguments.clone())
-                    .await
-                {
-                    Ok(result) => {
-                        // Convert result to our ToolResult
-                        #[cfg(not(target_arch = "wasm32"))]
-                        let content = result
-                            .content
-                            .iter()
-                            .filter_map(|item| {
-                                // Extract text content from the MCP result
-                                // TODO: This is a simplified conversion, we might need to handle other content types
-                                if let Ok(text) = serde_json::to_string(item) {
-                                    Some(text)
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .join("\n");
-
-                        #[cfg(target_arch = "wasm32")]
-                        let content = serde_json::to_string_pretty(&result)
-                            .unwrap_or_else(|_| "Tool executed successfully".to_string());
-
-                        tool_results.push(ToolResult {
-                            tool_call_id: tool_call.id.clone(),
-                            content,
-                            is_error: false,
-                        });
-                    }
-                    Err(e) => {
-                        let error_message = e.to_string();
-                        tool_results.push(ToolResult {
-                            tool_call_id: tool_call.id.clone(),
-                            content: error_message,
-                            is_error: true,
-                        });
-                    }
-                }
-            }
+            // Execute tool calls using MCP manager
+            let tool_results = tool_manager.execute_tool_calls(tool_calls.clone()).await;
 
             // Update the loading message with tool results and trigger a new send
             ui.defer_with_redraw(move |me, cx, _| {
@@ -475,7 +421,10 @@ impl Chat {
                     if result.is_error {
                         format!("🔧 Tool '{}' failed:\n{}", display_name, result.content)
                     } else {
-                        let summary = Self::create_tool_output_summary(tool_name, &result.content);
+                        let summary = crate::utils::tool_execution::create_tool_output_summary(
+                            tool_name,
+                            &result.content,
+                        );
                         format!(
                             "🔧 Tool '{}' executed successfully:\n{}",
                             display_name, summary
@@ -497,8 +446,10 @@ impl Chat {
                                 display_name, result.content
                             ));
                         } else {
-                            let summary =
-                                Self::create_tool_output_summary(tool_name, &result.content);
+                            let summary = crate::utils::tool_execution::create_tool_output_summary(
+                                tool_name,
+                                &result.content,
+                            );
                             text.push_str(&format!("**{}** ✅: {}\n\n", display_name, summary));
                         }
                     }
@@ -977,6 +928,7 @@ impl Chat {
                         cx,
                         EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
                     );
+                    realtime.set_bot_context(self.bot_context.clone());
 
                     let modal = self.moly_modal(id!(audio_modal));
                     modal.open(cx);

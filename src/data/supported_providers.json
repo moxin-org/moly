@@ -35,7 +35,7 @@
             "url": "wss://api.openai.com/v1/realtime",
             "provider_type": "OpenAIRealtime",
             "supported_models": [
-                "gpt-4o-realtime-preview-2025-06-03"
+                "gpt-realtime"
             ]
         },
         {
