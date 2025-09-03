@@ -110,8 +110,8 @@ live_design! {
 
         voice_selector = <SimpleDropDown> {
             margin: 5
-            labels: ["cedar", "marin" "alloy", "shimmer", "ash", "ballad", "coral", "echo", "sage", "verse"]
-            values: [cedar, marin, alloy, shimmer, ash, ballad, coral, echo, sage, verse]
+            labels: ["marin", "cedar", "alloy", "shimmer", "ash", "ballad", "coral", "echo", "sage", "verse"]
+            values: [marin, cedar, alloy, shimmer, ash, ballad, coral, echo, sage, verse]
 
             draw_text: {
                 color: #222
@@ -996,7 +996,6 @@ impl Realtime {
                     self.label(id!(status_label))
                         .set_text(cx, &format!("🔧 Tool permission requested: {}", name));
 
-                    // Show permission request instead of auto-executing
                     self.show_tool_permission_request(cx, name, call_id, arguments);
                 }
                 RealtimeEvent::Error(error) => {
@@ -1022,17 +1021,14 @@ impl Realtime {
     ) {
         use crate::mcp::mcp_manager::display_name_from_namespaced;
 
-        // Store the pending tool call
         self.pending_tool_call = Some((name.clone(), call_id, arguments));
 
-        // Get the tool line widget
         let tool_line = self.view(id!(tool_permission_line));
         tool_line.set_visible(cx, true);
 
-        // Configure the tool line to match chat widget
+        // Configure the tool line
         let display_name = display_name_from_namespaced(&name);
 
-        // Set avatar and name (matching chat widget style)
         tool_line
             .avatar(id!(message_section.sender.avatar))
             .borrow_mut()
@@ -1042,7 +1038,6 @@ impl Realtime {
             .label(id!(message_section.sender.name))
             .set_text(cx, "Permission Request");
 
-        // Set the tool description content
         let content = crate::protocol::MessageContent {
             text: format!("Tool '{}' is requesting permission to run", display_name),
             ..Default::default()
@@ -1053,7 +1048,6 @@ impl Realtime {
             .as_standard_message_content()
             .set_content(cx, &content);
 
-        // Show the approval actions
         tool_line
             .view(id!(message_section.content_section.tool_actions))
             .set_visible(cx, true);
@@ -1129,7 +1123,6 @@ impl Realtime {
                 }
             };
 
-            // Execute the tool call using MCP manager
             let result = tool_manager
                 .execute_tool_call(&name, &call_id, arguments_map)
                 .await;
