@@ -3,7 +3,7 @@ use crate::widgets::{
     standard_message_content::StandardMessageContentWidgetRefExt,
 };
 use crate::{protocol::*, utils::makepad::events::EventExt};
-use makepad_widgets::*;
+use makepad_widgets::{makepad_platform::AudioDeviceType, *};
 use std::sync::{Arc, Mutex};
 
 live_design! {
@@ -14,7 +14,7 @@ live_design! {
     use crate::widgets::chat_lines::*;
     use crate::widgets::standard_message_content::*;
 
-    SimpleDropDown = <DropDownFlat> {
+    SimpleDropDown = <DropDown> {
         draw_text: {
             text_style: {font_size: 12}
             fn get_color(self) -> vec4 {
@@ -52,7 +52,7 @@ live_design! {
 
                 draw_bg: {
                     instance color: #f //(THEME_COLOR_FLOATING_BG)
-                    instance color_active: #f2 //(THEME_COLOR_CTRL_HOVER)
+                    instance color_active: #e9 //(THEME_COLOR_CTRL_HOVER)
                 }
             }
 
@@ -124,6 +124,48 @@ live_design! {
                     text_style: {font_size: 11}
                 }
             }
+        }
+    }
+
+    DeviceSelector = <View> {
+        height: Fit
+        align: {x: 0.0, y: 0.5}
+        spacing: 10
+
+        label = <Label> {
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+        }
+
+        device_selector = <SimpleDropDown> {
+            margin: 5
+            labels: ["default"]
+            values: [default]
+
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+
+            popup_menu = {
+                draw_text: {
+                    color: #222
+                    text_style: {font_size: 11}
+                }
+            }
+        }
+    }
+
+    DevicesSelector = <View> {
+        height: Fit, width: Fill
+        flow: Down, spacing: 5
+        mic_selector = <DeviceSelector> {
+            label = { text: "Mic:"}
+        }
+        speaker_selector = <DeviceSelector> {
+            label = { text: "Speaker:"}
         }
     }
 
@@ -264,9 +306,22 @@ live_design! {
         controls = <View> {
             width: Fill, height: Fit
             flow: Down
-            spacing: 10
+            spacing: 5
             align: {x: 0.0, y: 0.5}
             padding: 20
+
+            devices_selector = <DevicesSelector> {}
+            selected_devices_view = <View> {
+                visible: false
+                height: Fit
+                align: {x: 0.0, y: 0.5}
+                selected_devices = <Label> {
+                    draw_text: {
+                        text_style: {font_size: 11}
+                        color: #222
+                    }
+                }
+            }
 
             voice_selector_wrapper = <VoiceSelector> {}
             selected_voice_view = <View> {
@@ -280,6 +335,7 @@ live_design! {
                     }
                 }
             }
+
             <TranscriptionModelSelector> {}
 
             toggle_interruptions = <Toggle> {
@@ -412,6 +468,9 @@ pub struct Realtime {
 
     #[rust]
     pending_tool_call: Option<(String, String, String)>, // (name, call_id, arguments)
+
+    #[rust]
+    audio_devices: Vec<AudioDeviceDesc>,
 }
 
 impl Widget for Realtime {
@@ -490,18 +549,72 @@ impl Widget for Realtime {
 }
 
 impl WidgetMatchEvent for Realtime {
+    /// Triggered at startup and whenever system audio devices change.
+    ///
+    /// We use it to update the list of available audio devices and select the default ones.
     fn handle_audio_devices(
         &mut self,
         cx: &mut Cx,
         devices: &AudioDevicesEvent,
         _scope: &mut Scope,
     ) {
-        // Use default input and output devices
+        let mut input_names = Vec::new();
+        let mut output_names = Vec::new();
+        let mut default_input_name = String::new();
+        let mut default_output_name = String::new();
+
+        devices
+            .descs
+            .iter()
+            .for_each(|desc| match desc.device_type {
+                AudioDeviceType::Input => {
+                    input_names.push(desc.name.clone());
+                    if desc.is_default {
+                        default_input_name = desc.name.clone();
+                    }
+                }
+                AudioDeviceType::Output => {
+                    output_names.push(desc.name.clone());
+                    if desc.is_default {
+                        default_output_name = desc.name.clone();
+                    }
+                }
+            });
+
+        let mic_dropdown = self.drop_down(id!(mic_selector.device_selector));
+        mic_dropdown.set_labels(cx, input_names.clone());
+        mic_dropdown.set_selected_by_label(&default_input_name, cx);
+
+        let speaker_dropdown = self.drop_down(id!(speaker_selector.device_selector));
+        speaker_dropdown.set_labels(cx, output_names.clone());
+        speaker_dropdown.set_selected_by_label(&default_output_name, cx);
+
+        // Automatically switch to default devices
+        // e.g. when a user connects headphones we assume they want to use them right away.
+        // Note: we do not want to automatically switch to default devices if the user has already selected a non-default device, unless
+        // the default device is new (wasn't present in the previous list)
         let default_input = devices.default_input();
         let default_output = devices.default_output();
 
-        cx.use_audio_inputs(&default_input);
-        cx.use_audio_outputs(&default_output);
+        // The default device is new, assume we want to use it
+        if !self
+            .audio_devices
+            .iter()
+            .any(|d| d.device_type == AudioDeviceType::Input && d.device_id == default_input[0])
+        {
+            cx.use_audio_inputs(&default_input);
+        }
+
+        // The default device is new, assume we want to use it
+        if !self
+            .audio_devices
+            .iter()
+            .any(|d| d.device_type == AudioDeviceType::Output && d.device_id == default_output[0])
+        {
+            cx.use_audio_outputs(&default_output);
+        }
+
+        self.audio_devices = devices.descs.clone();
     }
 
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
@@ -533,6 +646,28 @@ impl WidgetMatchEvent for Realtime {
             .clicked(actions)
         {
             self.deny_tool_call(cx);
+        }
+
+        let speaker_dropdown = self.drop_down(id!(speaker_selector.device_selector));
+        if let Some(_id) = speaker_dropdown.changed(actions) {
+            let selected_device = self
+                .audio_devices
+                .iter()
+                .find(|device| device.name == speaker_dropdown.selected_label());
+            if let Some(device) = selected_device {
+                cx.use_audio_outputs(&[device.device_id]);
+            }
+        }
+
+        let microphone_dropdown = self.drop_down(id!(mic_selector.device_selector));
+        if let Some(_id) = microphone_dropdown.changed(actions) {
+            let selected_device = self
+                .audio_devices
+                .iter()
+                .find(|device| device.name == microphone_dropdown.selected_label());
+            if let Some(device) = selected_device {
+                cx.use_audio_inputs(&[device.device_id]);
+            }
         }
     }
 }
