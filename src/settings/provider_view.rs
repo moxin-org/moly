@@ -268,25 +268,16 @@ impl Widget for ProviderView {
         let store = scope.data.get_mut::<Store>().unwrap();
         let models = store.chats.get_provider_models(&self.provider.id);
 
-        if !self.initialized {
-            // Catch up with the latest provider status in the store
-            // Try by ID first, then by URL for backward compatibility
-            let provider = store
-                .chats
-                .providers
-                .get(&self.provider.id)
-                .or_else(|| {
-                    store
-                        .chats
-                        .providers
-                        .values()
-                        .find(|p| p.url == self.provider.url)
-                })
-                .cloned();
+        let provider = store.chats.providers.get(&self.provider.id).cloned();
 
-            if let Some(provider) = provider {
+        if let Some(provider) = provider {
+            if !self.initialized {
+                // Full sync on first initialization
                 self.provider = provider;
                 self.initialized = true;
+            } else {
+                // Only sync the connection status on subsequent draws
+                self.provider.connection_status = provider.connection_status;
             }
         }
 

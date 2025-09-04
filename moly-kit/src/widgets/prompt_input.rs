@@ -386,6 +386,8 @@ impl PromptInput {
         if supports_realtime {
             self.interactivity = Interactivity::Disabled;
             self.text_input_ref().set_is_read_only(cx, true);
+            self.text_input_ref()
+                .set_text(cx, "For realtime models, use the audio feature ->");
             self.redraw(cx);
         } else {
             self.interactivity = Interactivity::Enabled;

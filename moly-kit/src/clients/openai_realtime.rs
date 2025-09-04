@@ -266,7 +266,14 @@ impl OpenAIRealtimeClient {
         tools: &[Tool],
     ) -> BoxPlatformSendFuture<'static, ClientResult<RealtimeChannel>> {
         let address = self.address.clone();
-        let api_key = self.api_key.clone().expect("No API key provided");
+        let is_local = address.contains("127.0.0.1") || address.contains("localhost");
+        let api_key = if is_local {
+            // Local providers like Dora don't require API key
+            String::new()
+        } else {
+            // Remote providers like OpenAI require API key
+            self.api_key.clone().expect("No API key provided")
+        };
 
         let bot_id = bot_id.clone();
         let tools = tools.to_vec();
@@ -284,24 +291,17 @@ impl OpenAIRealtimeClient {
                     address
                 };
 
-                // Use connect_async_with_config for proper header handling
-                use tokio_tungstenite::tungstenite::handshake::client::Request;
-
-                // We need to setup all of these headers manually if we want to setup our Auhtorization header.
-                let request = Request::builder()
-                    .uri(&url_str)
-                    .header("Host", "api.openai.com")
-                    .header("Authorization", format!("Bearer {}", api_key))
-                    .header("Connection", "Upgrade")
-                    .header("Upgrade", "websocket")
-                    .header("Sec-WebSocket-Version", "13")
-                    .header("OpenAI-Beta", "realtime=v1")
-                    .header(
-                        "Sec-WebSocket-Key",
-                        tokio_tungstenite::tungstenite::handshake::client::generate_key(),
-                    )
-                    .body(())
-                    .unwrap();
+                let request = match Self::build_websocket_request(&url_str, &api_key) {
+                    Ok(req) => req,
+                    Err(e) => {
+                        log::error!("Error building WebSocket request: {}", e);
+                        return ClientResult::new_err(vec![ClientError::new_with_source(
+                            ClientErrorKind::Network,
+                            "Failed to build WebSocket request".to_string(),
+                            Some(e),
+                        )]);
+                    }
+                };
 
                 let (ws_stream, _) = match tokio_tungstenite::connect_async(request).await {
                     Ok(result) => result,
@@ -670,6 +670,166 @@ fn get_time_of_day() -> String {
     }
 }
 
+impl OpenAIRealtimeClient {
+    #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
+    fn build_websocket_request(
+        url_str: &str,
+        api_key: &str,
+    ) -> Result<
+        tokio_tungstenite::tungstenite::handshake::client::Request,
+        tokio_tungstenite::tungstenite::http::Error,
+    > {
+        use tokio_tungstenite::tungstenite::handshake::client::Request;
+
+        Request::builder()
+            .uri(url_str)
+            .header("Host", "api.openai.com")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Connection", "Upgrade")
+            .header("Upgrade", "websocket")
+            .header("Sec-WebSocket-Version", "13")
+            .header("OpenAI-Beta", "realtime=v1")
+            .header(
+                "Sec-WebSocket-Key",
+                tokio_tungstenite::tungstenite::handshake::client::generate_key(),
+            )
+            .body(())
+    }
+
+    /// Test WebSocket connection to validate credentials and connectivity.
+    /// For OpenAI, this also validates the API key by sending a session update.
+    #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
+    async fn test_connection(address: &str, api_key: &str) -> ClientResult<()> {
+        use futures::{SinkExt, StreamExt};
+        use std::time::Duration;
+        use tokio_tungstenite::tungstenite::Message as WsMessage;
+
+        // Use a test model for OpenAI to avoid model-specific issues
+        let url_str = if address.starts_with("wss://api.openai.com") {
+            format!("{}?model=gpt-4o-realtime-preview", address)
+        } else {
+            address.to_string()
+        };
+
+        let request = match Self::build_websocket_request(&url_str, api_key) {
+            Ok(req) => req,
+            Err(e) => {
+                log::error!(
+                    "Error building WebSocket request headers for connection test: {}",
+                    e
+                );
+                return ClientResult::new_err(vec![ClientError::new_with_source(
+                    ClientErrorKind::Network,
+                    "Failed to build WebSocket request headers".to_string(),
+                    Some(e),
+                )]);
+            }
+        };
+
+        // Attempt connection with a short timeout
+        let connect_future = tokio_tungstenite::connect_async(request);
+        let timeout_future = tokio::time::timeout(Duration::from_secs(10), connect_future);
+
+        match timeout_future.await {
+            Ok(Ok((ws_stream, _))) => {
+                log::debug!("WebSocket connection established, validating...");
+
+                // For OpenAI, send a test session update to verify the API key
+                if address.starts_with("wss://api.openai.com") {
+                    let (mut write, mut read) = ws_stream.split();
+
+                    // Send a minimal session update
+                    let test_message = serde_json::json!({
+                        "type": "session.update",
+                        "session": {
+                            "modalities": ["text"],
+                            "instructions": "Test",
+                            "voice": "alloy",
+                            "model": "gpt-4o-realtime-preview",
+                            "input_audio_format": "pcm16",
+                            "output_audio_format": "pcm16",
+                            "tools": [],
+                            "tool_choice": "none",
+                            "temperature": 0.8
+                        }
+                    });
+
+                    if let Ok(json) = serde_json::to_string(&test_message) {
+                        let _ = write.send(WsMessage::Text(json)).await;
+                    }
+
+                    // Wait for a response with timeout
+                    let response_future =
+                        tokio::time::timeout(Duration::from_secs(5), read.next()).await;
+
+                    match response_future {
+                        Ok(Some(Ok(WsMessage::Text(text)))) => {
+                            // Check if it's an error response
+                            if text.contains("\"type\":\"error\"") {
+                                log::error!("API key validation failed: {}", text);
+
+                                // Parse the error to determine the appropriate error kind
+                                let error_kind = if text.contains("invalid_api_key")
+                                    || text.contains("unauthorized")
+                                {
+                                    // Authentication errors should be Response errors so UI shows "Unauthorized, check your API key"
+                                    ClientErrorKind::Response
+                                } else {
+                                    // Other errors remain as Network errors
+                                    ClientErrorKind::Network
+                                };
+
+                                return ClientResult::new_err(vec![ClientError::new(
+                                    error_kind,
+                                    "Invalid API key or authentication failed".to_string(),
+                                )]);
+                            }
+                            // Success - we got a non-error response
+                            log::debug!("API key validated successfully");
+                            ClientResult::new_ok(())
+                        }
+                        Ok(Some(Ok(WsMessage::Close(_)))) => {
+                            log::error!("Connection closed during API key validation");
+                            ClientResult::new_err(vec![ClientError::new(
+                                ClientErrorKind::Network,
+                                "Connection closed - likely invalid API key".to_string(),
+                            )])
+                        }
+                        _ => {
+                            // Timeout or other error
+                            log::error!("Failed to validate API key - no response received");
+                            ClientResult::new_err(vec![ClientError::new(
+                                ClientErrorKind::Network,
+                                "Failed to validate API key".to_string(),
+                            )])
+                        }
+                    }
+                } else {
+                    // For non-OpenAI providers (like Dora), just check connection
+                    log::debug!("WebSocket connection test successful for local provider");
+                    drop(ws_stream);
+                    ClientResult::new_ok(())
+                }
+            }
+            Ok(Err(e)) => {
+                log::error!("WebSocket connection test failed: {}", e);
+                ClientResult::new_err(vec![ClientError::new_with_source(
+                    ClientErrorKind::Network,
+                    "Failed to connect to realtime API".to_string(),
+                    Some(e),
+                )])
+            }
+            Err(_) => {
+                log::error!("WebSocket connection test timed out");
+                ClientResult::new_err(vec![ClientError::new(
+                    ClientErrorKind::Network,
+                    "Connection test timed out".to_string(),
+                )])
+            }
+        }
+    }
+}
+
 impl BotClient for OpenAIRealtimeClient {
     fn send(
         &mut self,
@@ -712,23 +872,59 @@ impl BotClient for OpenAIRealtimeClient {
         // Since both Dora and OpenAI are registered as supported providers in Moly, the models that don't
         // belong to the provider are filtered out in Moly automatically.
         // TODO: fetch the specific supported models from the provider instead of hardcoding them here
-        let supported: Vec<Bot> = [
-            "gpt-realtime",                        // OpenAI
-            "Qwen/Qwen2.5-0.5B-Instruct-GGUF",     // Dora
-            "Qwen/Qwen2.5-1.5B-Instruct-GGUF",     // Dora
-            "Qwen/Qwen2.5-3B-Instruct-GGUF",       // Dora
-            "unsloth/Qwen3-4B-Instruct-2507-GGUF", // Dora
-        ]
-        .into_iter()
-        .map(|id| Bot {
-            id: BotId::new(id, &self.address),
-            name: id.to_string(),
-            avatar: Picture::Grapheme("🎤".into()),
-            capabilities: BotCapabilities::new().with_capability(BotCapability::Realtime),
-        })
-        .collect();
 
-        Box::pin(futures::future::ready(ClientResult::new_ok(supported)))
+        let address = self.address.clone();
+        let api_key = self.api_key.clone();
+
+        let future = async move {
+            // Test the WebSocket connection first to validate credentials
+            #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
+            {
+                // Check if this is a local provider (Dora)
+                let is_local = address.contains("127.0.0.1") || address.contains("localhost");
+
+                if is_local {
+                    // For local providers like Dora, test without requiring API key
+                    match Self::test_connection(&address, "").await.into_result() {
+                        Ok(_) => {}
+                        Err(errors) => return ClientResult::new_err(errors),
+                    }
+                } else {
+                    // For remote providers like OpenAI, API key is required
+                    if let Some(ref key) = api_key {
+                        match Self::test_connection(&address, key).await.into_result() {
+                            Ok(_) => {}
+                            Err(errors) => return ClientResult::new_err(errors),
+                        }
+                    } else {
+                        return ClientResult::new_err(vec![ClientError::new(
+                            ClientErrorKind::Network,
+                            "API key is required for remote realtime connection".to_string(),
+                        )]);
+                    }
+                }
+            }
+
+            let supported: Vec<Bot> = [
+                "gpt-realtime",                        // OpenAI
+                "Qwen/Qwen2.5-0.5B-Instruct-GGUF",     // Dora
+                "Qwen/Qwen2.5-1.5B-Instruct-GGUF",     // Dora
+                "Qwen/Qwen2.5-3B-Instruct-GGUF",       // Dora
+                "unsloth/Qwen3-4B-Instruct-2507-GGUF", // Dora
+            ]
+            .into_iter()
+            .map(|id| Bot {
+                id: BotId::new(id, &address),
+                name: id.to_string(),
+                avatar: Picture::Grapheme("🎤".into()),
+                capabilities: BotCapabilities::new().with_capability(BotCapability::Realtime),
+            })
+            .collect();
+
+            ClientResult::new_ok(supported)
+        };
+
+        Box::pin(future)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
