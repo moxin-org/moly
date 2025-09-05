@@ -28,6 +28,14 @@ jobs:
         run: |
           cd book
           mdbook build
+      - name: Build Rust Documentation
+        run: |
+          cd moly-kit
+          cargo doc --features full --no-deps
+      - name: Copy Documentation to Book
+        run: |
+          mkdir -p book/book/docs
+          cp -r target/doc/* book/book/docs/
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
