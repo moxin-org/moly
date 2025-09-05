@@ -573,14 +573,18 @@ impl BotClient for OpenAIClient {
                 }
             }
 
-            let json = serde_json::json!({
+            let mut json = serde_json::json!({
                 "model": bot_id.id(),
                 "messages": outgoing_messages,
-                "tools": tools,
                 // Note: o1 only supports 1.0, it will error if other value is used.
                 // "temperature": 0.7,
                 "stream": true
             });
+
+            // Only include tools if there are any available
+            if !tools.is_empty() {
+                json["tools"] = serde_json::json!(tools);
+            }
 
 
             let request = inner

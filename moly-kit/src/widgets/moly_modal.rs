@@ -65,6 +65,9 @@ pub struct MolyModal {
     #[walk]
     walk: Walk,
 
+    #[live(true)]
+    dismiss_on_focus_lost: bool,
+
     #[rust]
     opened: bool,
 }
@@ -87,15 +90,17 @@ impl Widget for MolyModal {
         self.content.handle_event(cx, event, scope);
         cx.sweep_lock(self.draw_bg.area());
 
-        // Check if there was a click outside of the content (bg), then close if true.
-        let content_rec = self.content.area().rect(cx);
-        if let Hit::FingerUp(fe) =
-            event.hits_with_sweep_area(cx, self.draw_bg.area(), self.draw_bg.area())
-        {
-            if !content_rec.contains(fe.abs) {
-                let widget_uid = self.content.widget_uid();
-                cx.widget_action(widget_uid, &scope.path, MolyModalAction::Dismissed);
-                self.close(cx);
+        if self.dismiss_on_focus_lost {
+            // Check if there was a click outside of the content (bg), then close if true.
+            let content_rec = self.content.area().rect(cx);
+            if let Hit::FingerUp(fe) =
+                event.hits_with_sweep_area(cx, self.draw_bg.area(), self.draw_bg.area())
+            {
+                if !content_rec.contains(fe.abs) {
+                    let widget_uid = self.content.widget_uid();
+                    cx.widget_action(widget_uid, &scope.path, MolyModalAction::Dismissed);
+                    self.close(cx);
+                }
             }
         }
     }

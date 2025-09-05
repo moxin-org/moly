@@ -214,7 +214,7 @@ live_design! {
 
         wrapper = <RoundedView> {
             flow: Down
-            width: 420
+            width: 400
             height: Fit
             padding: 25
             spacing: 10

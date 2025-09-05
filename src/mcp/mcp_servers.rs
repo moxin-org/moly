@@ -136,8 +136,9 @@ live_design! {
         flow: Down, spacing: 10
         instructions = <Label> {
             width: Fill, height: Fit
-            text: "Add new servers by editing the list under 'servers'. You can copy paste your\nconfiguration from other applications like Clade Desktop or VSCode."
+            text: "Add new servers by editing the list under 'servers'. You can copy paste you configuration from other applications like Clade Desktop or VSCode."
             draw_text: {
+                wrap: Word
                 text_style: <REGULAR_FONT>{font_size: 11},
                 color: #000
             }
@@ -162,8 +163,10 @@ live_design! {
                     flow: Down
                     padding: {left: 10}
                     <Instructions> {
+                        width: Fill
                         padding: {left: 10}
                         <Label> {
+                            width: Fill
                             text: "Note that only HTTP/SSE servers are supported on mobile devices"
                             draw_text: {
                                 text_style: <BOLD_FONT>{font_size: 11}

@@ -392,6 +392,7 @@ impl PromptInput {
         } else {
             self.interactivity = Interactivity::Enabled;
             self.text_input_ref().set_is_read_only(cx, false);
+            self.text_input_ref().set_text(cx, "");
             self.redraw(cx);
         }
     }

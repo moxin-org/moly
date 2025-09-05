@@ -4,6 +4,7 @@ use crate::widgets::{
 };
 use crate::{protocol::*, utils::makepad::events::EventExt};
 use makepad_widgets::{makepad_platform::AudioDeviceType, *};
+use std::fs::ReadDir;
 use std::sync::{Arc, Mutex};
 
 live_design! {
@@ -13,6 +14,128 @@ live_design! {
 
     use crate::widgets::chat_lines::*;
     use crate::widgets::standard_message_content::*;
+
+    AIAnimation = <RoundedView> {
+        width: 200, height: 200
+        show_bg: true
+        // Shader based on "Branded AI assistant" by Vickone (https://www.shadertoy.com/view/tfcGD8)
+        // Licensed under CC BY-NC-SA 3.0
+        draw_bg: {
+            // Simple hash function
+            fn hash21(self, p: vec2) -> float {
+                let mut p = fract(p * vec2(234.34, 435.345));
+                p += dot(p, p + 34.23);
+                return fract(p.x * p.y);
+            }
+
+            // Simple noise function
+            fn noise(self, p: vec2) -> float {
+                let i = floor(p);
+                let f = fract(p);
+                let f_smooth = f * f * (3.0 - 2.0 * f);
+                let a = self.hash21(i);
+                let b = self.hash21(i + vec2(1.0, 0.0));
+                let c = self.hash21(i + vec2(0.0, 1.0));
+                let d = self.hash21(i + vec2(1.0, 1.0));
+                return mix(mix(a, b, f_smooth.x), mix(c, d, f_smooth.x), f_smooth.y);
+            }
+
+            // Simplified FBM (fractal brownian motion)
+            fn fbm(self, p: vec2) -> float {
+                let mut sum = 0.0;
+                let mut amp = 0.5;
+                let mut freq = 1.0;
+
+                // Unroll the loop for compatibility
+                sum += self.noise(p * freq) * amp;
+                amp *= 0.5;
+                freq *= 2.0;
+
+                sum += self.noise(p * freq) * amp;
+                amp *= 0.5;
+                freq *= 2.0;
+
+                sum += self.noise(p * freq) * amp;
+                amp *= 0.5;
+                freq *= 2.0;
+
+                sum += self.noise(p * freq) * amp;
+                amp *= 0.5;
+                freq *= 2.0;
+
+                return sum;
+            }
+
+            fn pixel(self) -> vec4 {
+                // Center and aspect-correct UV coordinates
+                let uv = (self.pos - 0.5) * 2.0;
+
+                let mut col = vec3(0.1, 0.1, 0.1);
+                // let mut col = vec3(0.0, 0.0, 0.0);
+
+                let radius = 0.3 + sin(self.time * 0.5) * 0.02;
+                let d = length(uv);
+
+                let angle = atan(uv.y, uv.x);
+                let wave = sin(angle * 3.0 + self.time) * 0.1;
+                let wave2 = cos(angle * 5.0 - self.time * 1.3) * 0.08;
+
+                let noise1 = self.fbm(uv * 3.0 + self.time * 0.1);
+                let noise2 = self.fbm(uv * 5.0 - self.time * 0.2);
+
+                let orb_color = vec3(0.2, 0.6, 1.0);
+                let orb = smoothstep(radius + wave + wave2, radius - 0.1 + wave + wave2, d);
+
+                let gradient1 = vec3(0.8, 0.2, 0.5) * sin(angle + self.time);
+                let gradient2 = vec3(0.2, 0.5, 1.0) * cos(angle - self.time * 0.7);
+
+                // Simplified particles (unrolled loop)
+                let mut particles = 0.0;
+
+                // Particle 1
+                let particle_pos1 = vec2(
+                    sin(self.time * 0.5) * 0.5,
+                    cos(self.time * 0.3) * 0.5
+                );
+                particles += smoothstep(0.05, 0.0, length(uv - particle_pos1));
+
+                // Particle 2
+                let particle_pos2 = vec2(
+                    sin(self.time * 0.7) * 0.5,
+                    cos(self.time * 0.5) * 0.5
+                );
+                particles += smoothstep(0.05, 0.0, length(uv - particle_pos2));
+
+                // Particle 3
+                let particle_pos3 = vec2(
+                    sin(self.time * 0.9) * 0.5,
+                    cos(self.time * 0.7) * 0.5
+                );
+                particles += smoothstep(0.05, 0.0, length(uv - particle_pos3));
+
+                // Combine all effects
+                col += orb * mix(orb_color, gradient1, noise1);
+                col += orb * mix(gradient2, orb_color, noise2) * 0.5;
+                col += particles * vec3(0.5, 0.8, 1.0);
+                col += exp(-d * 4.0) * vec3(0.2, 0.4, 0.8) * 0.5;
+
+                // return vec4(col, 1.0);
+
+                // Clip the final output to a circle
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                let radius = min(self.rect_size.x, self.rect_size.y) * 0.5;
+                sdf.circle(
+                    self.rect_size.x * 0.5,
+                    self.rect_size.y * 0.5,
+                    radius
+                );
+
+                sdf.fill_keep(vec4(col, 1.0));
+
+                return sdf.result;
+            }
+        }
+    }
 
     SimpleDropDown = <DropDown> {
         draw_text: {
@@ -127,10 +250,28 @@ live_design! {
         }
     }
 
+    IconButton = <Button> {
+        width: Fit, height: Fit
+        draw_text: {
+            text_style: <THEME_FONT_ICONS> {
+                font_size: 14.
+            }
+            color: #5,
+            color_hover: #2,
+            color_focus: #2
+            color_down: #5
+        }
+        draw_bg: {
+            color_down: #0000
+            border_radius: 7.
+            border_size: 0.
+        }
+    }
+
     DeviceSelector = <View> {
         height: Fit
         align: {x: 0.0, y: 0.5}
-        spacing: 10
+        spacing: 5
 
         label = <Label> {
             draw_text: {
@@ -158,11 +299,33 @@ live_design! {
         }
     }
 
+    MuteControl = <View> {
+        width: Fit, height: Fit
+        align: {x: 0.5, y: 0.5}
+        cursor: Hand
+        mute_button = <IconButton> {
+            text: ""
+        }
+        mute_status = <Label> {
+            padding: 0
+            text: "Mute"
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+        }
+    }
+
     DevicesSelector = <View> {
         height: Fit, width: Fill
         flow: Down, spacing: 5
-        mic_selector = <DeviceSelector> {
-            label = { text: "Mic:"}
+        <View> {
+            height: Fit
+            mic_selector = <DeviceSelector> {
+                width: Fit
+                label = { text: "Mic:"}
+            }
+            mute_control = <MuteControl> {}
         }
         speaker_selector = <DeviceSelector> {
             label = { text: "Speaker:"}
@@ -181,127 +344,17 @@ live_design! {
         align: {x: 0.5, y: 0.5}
         padding: 10
 
-        <RoundedView> {
-            width: 200, height: 200
-            show_bg: true
-            // Shader based on "Branded AI assistant" by Vickone (https://www.shadertoy.com/view/tfcGD8)
-            // Licensed under CC BY-NC-SA 3.0
-            draw_bg: {
-                // Simple hash function
-                fn hash21(self, p: vec2) -> float {
-                    let mut p = fract(p * vec2(234.34, 435.345));
-                    p += dot(p, p + 34.23);
-                    return fract(p.x * p.y);
-                }
+        header = <View> {
+            height: Fit
+            padding: {right: 10}
+            filler_x = <View> {height: Fit}
 
-                // Simple noise function
-                fn noise(self, p: vec2) -> float {
-                    let i = floor(p);
-                    let f = fract(p);
-                    let f_smooth = f * f * (3.0 - 2.0 * f);
-                    let a = self.hash21(i);
-                    let b = self.hash21(i + vec2(1.0, 0.0));
-                    let c = self.hash21(i + vec2(0.0, 1.0));
-                    let d = self.hash21(i + vec2(1.0, 1.0));
-                    return mix(mix(a, b, f_smooth.x), mix(c, d, f_smooth.x), f_smooth.y);
-                }
-
-                // Simplified FBM (fractal brownian motion)
-                fn fbm(self, p: vec2) -> float {
-                    let mut sum = 0.0;
-                    let mut amp = 0.5;
-                    let mut freq = 1.0;
-
-                    // Unroll the loop for compatibility
-                    sum += self.noise(p * freq) * amp;
-                    amp *= 0.5;
-                    freq *= 2.0;
-
-                    sum += self.noise(p * freq) * amp;
-                    amp *= 0.5;
-                    freq *= 2.0;
-
-                    sum += self.noise(p * freq) * amp;
-                    amp *= 0.5;
-                    freq *= 2.0;
-
-                    sum += self.noise(p * freq) * amp;
-                    amp *= 0.5;
-                    freq *= 2.0;
-
-                    return sum;
-                }
-
-                fn pixel(self) -> vec4 {
-                    // Center and aspect-correct UV coordinates
-                    let uv = (self.pos - 0.5) * 2.0;
-
-                    let mut col = vec3(0.1, 0.1, 0.1);
-                    // let mut col = vec3(0.0, 0.0, 0.0);
-
-                    let radius = 0.3 + sin(self.time * 0.5) * 0.02;
-                    let d = length(uv);
-
-                    let angle = atan(uv.y, uv.x);
-                    let wave = sin(angle * 3.0 + self.time) * 0.1;
-                    let wave2 = cos(angle * 5.0 - self.time * 1.3) * 0.08;
-
-                    let noise1 = self.fbm(uv * 3.0 + self.time * 0.1);
-                    let noise2 = self.fbm(uv * 5.0 - self.time * 0.2);
-
-                    let orb_color = vec3(0.2, 0.6, 1.0);
-                    let orb = smoothstep(radius + wave + wave2, radius - 0.1 + wave + wave2, d);
-
-                    let gradient1 = vec3(0.8, 0.2, 0.5) * sin(angle + self.time);
-                    let gradient2 = vec3(0.2, 0.5, 1.0) * cos(angle - self.time * 0.7);
-
-                    // Simplified particles (unrolled loop)
-                    let mut particles = 0.0;
-
-                    // Particle 1
-                    let particle_pos1 = vec2(
-                        sin(self.time * 0.5) * 0.5,
-                        cos(self.time * 0.3) * 0.5
-                    );
-                    particles += smoothstep(0.05, 0.0, length(uv - particle_pos1));
-
-                    // Particle 2
-                    let particle_pos2 = vec2(
-                        sin(self.time * 0.7) * 0.5,
-                        cos(self.time * 0.5) * 0.5
-                    );
-                    particles += smoothstep(0.05, 0.0, length(uv - particle_pos2));
-
-                    // Particle 3
-                    let particle_pos3 = vec2(
-                        sin(self.time * 0.9) * 0.5,
-                        cos(self.time * 0.7) * 0.5
-                    );
-                    particles += smoothstep(0.05, 0.0, length(uv - particle_pos3));
-
-                    // Combine all effects
-                    col += orb * mix(orb_color, gradient1, noise1);
-                    col += orb * mix(gradient2, orb_color, noise2) * 0.5;
-                    col += particles * vec3(0.5, 0.8, 1.0);
-                    col += exp(-d * 4.0) * vec3(0.2, 0.4, 0.8) * 0.5;
-
-                    // return vec4(col, 1.0);
-
-                    // Clip the final output to a circle
-                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                    let radius = min(self.rect_size.x, self.rect_size.y) * 0.5;
-                    sdf.circle(
-                        self.rect_size.x * 0.5,
-                        self.rect_size.y * 0.5,
-                        radius
-                    );
-
-                    sdf.fill_keep(vec4(col, 1.0));
-
-                    return sdf.result;
-                }
+            close_button = <IconButton> {
+                text: "" // fa-xmark
             }
         }
+
+        <AIAnimation> {}
 
         controls = <View> {
             width: Fill, height: Fit
@@ -398,6 +451,12 @@ live_design! {
     }
 }
 
+#[derive(Clone, Debug, DefaultNone)]
+pub enum RealtimeModalAction {
+    None,
+    DismissModal,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct Realtime {
     #[deref]
@@ -424,8 +483,13 @@ pub struct Realtime {
     #[rust]
     playback_audio: Arc<Mutex<Vec<f32>>>,
 
+    /// Whether we should record and send audio
     #[rust]
-    is_recording: Arc<Mutex<bool>>,
+    should_record: Arc<Mutex<bool>>,
+
+    /// Whether the user has muted the microphone
+    #[rust]
+    is_muted: Arc<Mutex<bool>>,
 
     #[rust]
     is_playing: Arc<Mutex<bool>>,
@@ -497,7 +561,7 @@ impl Widget for Realtime {
             // }
 
             if enabled && self.conversation_active {
-                *self.is_recording.lock().unwrap() = true;
+                *self.should_record.lock().unwrap() = true;
             }
         }
 
@@ -526,13 +590,13 @@ impl Widget for Realtime {
                     if !interruptions_enabled {
                         // Only auto-resume recording if interruptions are disabled
                         // (when interruptions are enabled, recording control is handled elsewhere)
-                        if let Ok(mut is_recording) = self.is_recording.try_lock() {
-                            if !*is_recording && self.conversation_active && !self.ai_is_responding
+                        if let Ok(mut should_record) = self.should_record.try_lock() {
+                            if !*should_record && self.conversation_active && !self.ai_is_responding
                             {
                                 ::log::debug!(
                                     "Auto-resuming recording - playback empty and interruptions disabled"
                                 );
-                                *is_recording = true;
+                                *should_record = true;
                                 self.label(id!(status_label))
                                     .set_text(cx, "🎤 Listening...");
                             }
@@ -669,6 +733,31 @@ impl WidgetMatchEvent for Realtime {
                 cx.use_audio_inputs(&[device.device_id]);
             }
         }
+
+        // Mute
+        let mute_button = self.button(id!(mute_button));
+        let mute_label = self.label(id!(mute_status));
+        if self.view(id!(mute_control)).finger_down(actions).is_some()
+            || mute_button.clicked(actions)
+        {
+            let mut is_muted = self.is_muted.lock().unwrap();
+            if *is_muted {
+                // Mic was muted, unmute and update button to "Mute"
+                *is_muted = false;
+                mute_button.set_text(cx, ""); // fa-microphone
+                mute_label.set_text(cx, "Mute");
+            } else {
+                *is_muted = true;
+                mute_button.set_text(cx, ""); // fa-microphone-slash
+                mute_label.set_text(cx, "Unmute");
+            }
+        }
+
+        // Modal close
+        if self.button(id!(close_button)).clicked(actions) {
+            self.reset_state(cx);
+            cx.action(RealtimeModalAction::DismissModal);
+        }
     }
 }
 
@@ -710,7 +799,7 @@ impl Realtime {
             self.ai_is_responding = true;
             self.user_is_interrupting = false;
             self.current_assistant_item_id = None;
-            *self.is_recording.lock().unwrap() = false;
+            *self.should_record.lock().unwrap() = false;
             self.has_sent_audio = false;
 
             // Clear previous audio
@@ -738,7 +827,7 @@ impl Realtime {
         self.ai_is_responding = true;
         self.user_is_interrupting = false;
         self.current_assistant_item_id = None;
-        *self.is_recording.lock().unwrap() = false;
+        *self.should_record.lock().unwrap() = false;
         self.has_sent_audio = false;
 
         // Clear previous audio
@@ -813,7 +902,7 @@ impl Realtime {
         self.ai_is_responding = false;
         self.user_is_interrupting = false;
         self.current_assistant_item_id = None;
-        *self.is_recording.lock().unwrap() = false;
+        *self.should_record.lock().unwrap() = false;
         *self.is_playing.lock().unwrap() = false;
 
         // Stop audio streaming timer
@@ -876,10 +965,10 @@ impl Realtime {
 
                         if !interruptions_enabled {
                             // Interruptions disabled - mute microphone during AI speech
-                            *self.is_recording.lock().unwrap() = false;
+                            *self.should_record.lock().unwrap() = false;
                         } else {
                             // Interruptions enabled - ensure recording is active for real-time interruption
-                            *self.is_recording.lock().unwrap() = true;
+                            *self.should_record.lock().unwrap() = true;
                         }
                     }
 
@@ -944,7 +1033,7 @@ impl Realtime {
 
                     // Resume recording immediately when user starts speaking
                     if self.conversation_active {
-                        *self.is_recording.lock().unwrap() = true;
+                        *self.should_record.lock().unwrap() = true;
                     }
                 }
                 RealtimeEvent::SpeechStopped => {
@@ -952,7 +1041,7 @@ impl Realtime {
 
                     // Temporarily stop recording while waiting for response
                     if self.conversation_active {
-                        *self.is_recording.lock().unwrap() = false;
+                        *self.should_record.lock().unwrap() = false;
                     }
                 }
                 RealtimeEvent::ResponseCompleted => {
@@ -969,15 +1058,15 @@ impl Realtime {
 
                         if interruptions_enabled {
                             // Allow immediate interruption
-                            *self.is_recording.lock().unwrap() = true;
+                            *self.should_record.lock().unwrap() = true;
                             status_label.set_text(cx, "✅ Response generated - 🎤 listening again");
                         } else {
                             // Without interruptions, only resume when playback buffer is truly empty
                             if self.playback_audio.lock().unwrap().is_empty() {
                                 ::log::debug!(
-                                    "Setting is_recording to true - response completed and playback empty"
+                                    "Setting should_record to true - response completed and playback empty"
                                 );
-                                *self.is_recording.lock().unwrap() = true;
+                                *self.should_record.lock().unwrap() = true;
                                 status_label
                                     .set_text(cx, "✅ Response generated - 🎤 listening again");
                             } else {
@@ -1005,7 +1094,7 @@ impl Realtime {
 
                     // Resume recording on error
                     if self.conversation_active {
-                        *self.is_recording.lock().unwrap() = true;
+                        *self.should_record.lock().unwrap() = true;
                     }
                 }
             }
@@ -1053,7 +1142,7 @@ impl Realtime {
             .set_visible(cx, true);
 
         // Pause recording while waiting for permission
-        *self.is_recording.lock().unwrap() = false;
+        *self.should_record.lock().unwrap() = false;
 
         self.view.redraw(cx);
     }
@@ -1162,7 +1251,7 @@ impl Realtime {
 
             // Resume recording if conversation is active
             if self.conversation_active {
-                *self.is_recording.lock().unwrap() = true;
+                *self.should_record.lock().unwrap() = true;
             }
 
             self.view.redraw(cx);
@@ -1196,7 +1285,7 @@ impl Realtime {
 
             // Resume recording if conversation is active
             if self.conversation_active {
-                *self.is_recording.lock().unwrap() = true;
+                *self.should_record.lock().unwrap() = true;
             }
 
             self.view.redraw(cx);
@@ -1205,19 +1294,22 @@ impl Realtime {
 
     fn setup_audio(&mut self, cx: &mut Cx) {
         let recorded_audio = self.recorded_audio.clone();
-        let is_recording = self.is_recording.clone();
+        let should_record = self.should_record.clone();
+        let is_muted = self.is_muted.clone();
 
         // Audio input callback - capture for realtime streaming
         cx.audio_input(0, move |_info, input_buffer| {
-            if let Ok(is_recording_guard) = is_recording.try_lock() {
-                if *is_recording_guard {
-                    if let Ok(mut recorded) = recorded_audio.try_lock() {
-                        let channel = input_buffer.channel(0);
+            if let Ok(should_record_guard) = should_record.try_lock() {
+                if let Ok(is_muted_guard) = is_muted.try_lock() {
+                    if *should_record_guard && !*is_muted_guard {
+                        if let Ok(mut recorded) = recorded_audio.try_lock() {
+                            let channel = input_buffer.channel(0);
 
-                        // Downsample from 48kHz to 24kHz by taking every other sample
-                        // TODO: this is a simple decimation - for better quality, we should use proper filtering
-                        for i in (0..channel.len()).step_by(2) {
-                            recorded.push(channel[i]);
+                            // Downsample from 48kHz to 24kHz by taking every other sample
+                            // TODO: this is a simple decimation - for better quality, we should use proper filtering
+                            for i in (0..channel.len()).step_by(2) {
+                                recorded.push(channel[i]);
+                            }
                         }
                     }
                 }
