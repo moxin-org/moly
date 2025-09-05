@@ -130,24 +130,45 @@ live_design! {
         }
     }
 
+    Instructions = <View> {
+        // Ideally this should be width: Fill but for some reason it won't Fill
+        width: 600, height: Fit,
+        flow: Down, spacing: 10
+        instructions = <Label> {
+            width: Fill, height: Fit
+            text: "Add new servers by editing the list under 'servers'. You can copy paste your\nconfiguration from other applications like Clade Desktop or VSCode."
+            draw_text: {
+                text_style: <REGULAR_FONT>{font_size: 11},
+                color: #000
+            }
+        }
+    }
+
     pub McpServers = {{McpServers}} {
         <AdaptiveView> {
             Desktop = {
+                width: Fill, height: Fill
                 flow: Right
                 <ServersEditor> { width: 600 }
-                <SaveStatus> {}
+                <View> {
+                    margin: {top: 10}
+                    width: Fill, height: Fill
+                    <Instructions> {}
+                    <SaveStatus> {}
+                }
             }
             Mobile = {
                 <ScrollYView> {
-                    width: Fill, height: Fill
                     flow: Down
                     padding: {left: 10}
-                    <Label> {
+                    <Instructions> {
                         padding: {left: 10}
-                        text: "Note that only HTTP/SSE servers are supported on mobile devices"
-                        draw_text: {
-                            text_style: <REGULAR_FONT>{font_size: 10}
-                            color: #000
+                        <Label> {
+                            text: "Note that only HTTP/SSE servers are supported on mobile devices"
+                            draw_text: {
+                                text_style: <BOLD_FONT>{font_size: 11}
+                                color: #FFA000
+                            }
                         }
                     }
                     <ServersEditor> { width: Fill }
