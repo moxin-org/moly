@@ -32,6 +32,7 @@ live_design!(
             flow: Overlay
 
             audio_modal = <MolyModal> {
+                dismiss_on_focus_lost: false
                 content: <RoundedView> {
                     draw_bg: {border_radius: 10}
                     width: 450, height: Fit
@@ -196,6 +197,13 @@ impl Chat {
     }
 
     fn handle_modal_dismissal(&mut self, cx: &mut Cx, event: &Event) {
+        // Check if the modal should be dismissed
+        for action in event.actions() {
+            if let RealtimeModalAction::DismissModal = action.cast() {
+                self.moly_modal(id!(audio_modal)).close(cx);
+            }
+        }
+
         // Check if the audio modal was dismissed
         if self.moly_modal(id!(audio_modal)).dismissed(event.actions()) {
             // Collect conversation messages from the realtime widget before resetting
