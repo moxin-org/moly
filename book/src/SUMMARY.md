@@ -15,3 +15,4 @@
 - [Advanced](advanced.md)
   - [Implement your own client](custom-client.md)
   - [Handle provider-specific content format](custom-content.md)
+- [Crate Documentation](crate-docs.md)
