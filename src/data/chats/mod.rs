@@ -354,6 +354,7 @@ impl Chats {
             existing_provider.enabled = provider.enabled;
             existing_provider.models = provider.models.clone();
             existing_provider.connection_status = provider.connection_status.clone();
+            existing_provider.system_prompt = provider.system_prompt.clone();
 
             if provider.enabled {
                 self.test_provider_and_fetch_models(&provider.id, provider_syncing_status);

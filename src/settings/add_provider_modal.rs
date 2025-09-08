@@ -358,6 +358,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     enabled: true,
                     models: vec![],
                     was_customly_added: true,
+                    system_prompt: None,
                 },
                 ProviderType::OpenAIImage => Provider {
                     id: provider_id,
@@ -369,6 +370,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     enabled: true,
                     models: vec![],
                     was_customly_added: true,
+                    system_prompt: None,
                 },
                 ProviderType::MolyServer => Provider {
                     id: provider_id,
@@ -380,6 +382,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     enabled: true,
                     models: vec![],
                     was_customly_added: true,
+                    system_prompt: None,
                 },
                 ProviderType::MoFa => Provider {
                     id: provider_id,
@@ -391,6 +394,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     enabled: true,
                     models: vec![],
                     was_customly_added: true,
+                    system_prompt: None,
                 },
                 ProviderType::DeepInquire => Provider {
                     id: provider_id,
@@ -402,6 +406,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     enabled: true,
                     models: vec![],
                     was_customly_added: true,
+                    system_prompt: None,
                 },
                 ProviderType::OpenAIRealtime => Provider {
                     id: provider_id,
@@ -413,6 +418,7 @@ impl WidgetMatchEvent for AddProviderModal {
                     enabled: true,
                     models: vec![],
                     was_customly_added: true,
+                    system_prompt: None,
                 },
             };
 

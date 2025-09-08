@@ -22,6 +22,9 @@ pub struct Provider {
     pub models: Vec<BotId>,
     /// Whether the provider was added by the user or not
     pub was_customly_added: bool,
+    /// Custom system prompt for the provider (currently used by Realtime providers)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
 }
 
 /// Fetch models for a provider using MolyKit clients

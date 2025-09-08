@@ -83,6 +83,7 @@ impl Preferences {
             existing_provider.url = provider.url.clone();
             existing_provider.api_key = provider.api_key.clone();
             existing_provider.enabled = provider.enabled;
+            existing_provider.system_prompt = provider.system_prompt.clone();
         } else {
             self.providers_preferences.push(ProviderPreferences {
                 id: provider.id.clone(),
@@ -97,6 +98,7 @@ impl Preferences {
                     .map(|m| (m.as_str().to_string(), true))
                     .collect(),
                 was_customly_added: provider.was_customly_added,
+                system_prompt: provider.system_prompt.clone(),
             });
         }
         self.save();
@@ -206,6 +208,9 @@ pub struct ProviderPreferences {
     // (model_name, enabled)
     pub models: Vec<(String, bool)>,
     pub was_customly_added: bool,
+    /// Custom system prompt for the provider (currently used by Realtime providers)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
 }
 
 impl ProviderPreferences {

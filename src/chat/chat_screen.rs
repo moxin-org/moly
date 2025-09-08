@@ -182,6 +182,9 @@ impl ChatScreen {
                             if let Some(key) = provider.api_key.as_ref() {
                                 let _ = client.set_key(&key);
                             }
+                            if let Some(prompt) = provider.system_prompt.as_ref() {
+                                let _ = client.set_system_prompt(&prompt);
+                            }
 
                             multi_client.add_client(Box::new(client));
                         }

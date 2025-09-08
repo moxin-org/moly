@@ -337,6 +337,7 @@ impl Store {
                     enabled: prefs.enabled,
                     models: vec![],
                     was_customly_added: prefs.was_customly_added,
+                    system_prompt: prefs.system_prompt.clone(),
                 });
             } else {
                 // Known from supported_providers.json but user has no preferences
@@ -350,6 +351,7 @@ impl Store {
                     enabled: false,
                     models: vec![],
                     was_customly_added: false,
+                    system_prompt: None,
                 });
             }
         }
@@ -374,6 +376,7 @@ impl Store {
                     enabled: pp_clone.enabled,
                     models: vec![],
                     was_customly_added: pp_clone.was_customly_added,
+                    system_prompt: pp_clone.system_prompt.clone(),
                 });
             }
         }
