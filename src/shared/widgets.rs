@@ -305,11 +305,18 @@ live_design! {
     // Customized text input
     // Removes shadows, focus highlight and the dark theme colors
     pub MolyTextInput = <TextInput> {
+        padding: 5.0
         draw_text: {
             text_style:<REGULAR_FONT>{font_size: 12},
-            fn get_color(self) -> vec4 {
-                return #555
-            }
+
+            color: #333
+            uniform color_hover: #222
+            uniform color_focus: #222
+            uniform color_down: #3
+            uniform color_disabled: #8
+            uniform color_empty: #8
+            uniform color_empty_hover: #8
+            uniform color_empty_focus: #8
         }
 
         // TODO find a way to override colors

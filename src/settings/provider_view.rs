@@ -2,7 +2,7 @@ use makepad_widgets::*;
 use moly_kit::BotId;
 
 use crate::data::{
-    providers::{Provider, ProviderConnectionStatus},
+    providers::{Provider, ProviderConnectionStatus, ProviderType},
     store::Store,
 };
 
@@ -195,6 +195,42 @@ live_design! {
                         draw_text: {
                             text_style: <BOLD_FONT>{font_size: 10},
                             color: #000
+                        }
+                    }
+                }
+            }
+
+            system_prompt_group = <FormGroup> {
+                height: Fit
+                visible: false
+                <Label> {
+                    text: "System Prompt"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 12}
+                        color: #000
+                    }
+                }
+
+                <View> {
+                    height: 85
+                    scroll_bars: <ScrollBars> {
+                        show_scroll_x: false, show_scroll_y: true
+                        scroll_bar_y: {
+                            draw_bg: {
+                                color: #D9
+                                color_hover: #888
+                                color_drag: #777
+                            }
+                        }
+                    }
+                    system_prompt = <MolyTextInput> {
+                        width: Fill, height: Fit
+                        padding: 8
+                        empty_text: "Optional: enter a custom system prompt.
+When using a custom prompt, we recommend including the language you'd like to be greeted on, knowledge cutoff, and tool usage eagerness.
+Moly automatically appends useful context to your prompt, like the time of day."
+                        draw_text: {
+                            text_style: <REGULAR_FONT>{font_size: 11}
                         }
                     }
                 }
@@ -404,6 +440,21 @@ impl WidgetMatchEvent for ProviderView {
                 self.provider.api_key = Some(api_key);
             }
 
+            // Save system prompt for Realtime providers
+            if self.provider.provider_type == ProviderType::OpenAIRealtime {
+                let system_prompt = self
+                    .view
+                    .text_input(id!(system_prompt))
+                    .text()
+                    .trim()
+                    .to_string();
+                if system_prompt.is_empty() {
+                    self.provider.system_prompt = None;
+                } else {
+                    self.provider.system_prompt = Some(system_prompt);
+                }
+            }
+
             // Since we auto-fetch the models upon update, also enable it
             self.provider.enabled = true;
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
@@ -453,6 +504,20 @@ impl ProviderViewRef {
             inner
                 .check_box(id!(provider_enabled_switch))
                 .set_active(cx, provider.enabled);
+
+            // Show/hide system prompt field for Realtime providers
+            if provider.provider_type == ProviderType::OpenAIRealtime {
+                inner.view(id!(system_prompt_group)).set_visible(cx, true);
+                if let Some(system_prompt) = &provider.system_prompt {
+                    inner
+                        .text_input(id!(system_prompt))
+                        .set_text(cx, &system_prompt);
+                } else {
+                    inner.text_input(id!(system_prompt)).set_text(cx, "");
+                }
+            } else {
+                inner.view(id!(system_prompt_group)).set_visible(cx, false);
+            }
 
             if provider.was_customly_added {
                 inner.view(id!(remove_provider_view)).set_visible(cx, true);
