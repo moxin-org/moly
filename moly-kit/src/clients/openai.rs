@@ -386,6 +386,7 @@ struct OpenAIClientInner {
     url: String,
     headers: HeaderMap,
     client: reqwest::Client,
+    tools_enabled: bool,
 }
 
 /// A client capable of interacting with Moly Server and other OpenAI-compatible APIs.
@@ -414,6 +415,7 @@ impl OpenAIClient {
             url,
             headers,
             client,
+            tools_enabled: true, // Default to enabled for backward compatibility
         }
         .into()
     }
@@ -444,6 +446,13 @@ impl OpenAIClient {
         }
 
         Ok(())
+    }
+
+    pub fn set_tools_enabled(&mut self, enabled: bool) {
+        self.0
+            .write()
+            .unwrap()
+            .tools_enabled = enabled;
     }
 }
 
@@ -555,7 +564,12 @@ impl BotClient for OpenAIClient {
         let url = format!("{}/chat/completions", inner.url);
         let headers = inner.headers;
 
-        let tools: Vec<FunctionTool> = tools.iter().map(|t| t.into()).collect();
+        // Only process tools if they are enabled for this client
+        let tools: Vec<FunctionTool> = if inner.tools_enabled {
+            tools.iter().map(|t| t.into()).collect()
+        } else {
+            Vec::new()
+        };
 
         let stream = stream! {
             let mut outgoing_messages: Vec<OutgoingMessage> = Vec::with_capacity(messages.len());

@@ -136,11 +136,38 @@ live_design! {
         flow: Down, spacing: 10
         instructions = <Label> {
             width: Fill, height: Fit
-            text: "Add new servers by editing the list under 'servers'. You can copy paste you configuration from other applications like Clade Desktop or VSCode."
+            text: "Add new servers by editing the list under 'servers'. You can copy paste you configuration from other applications like Clade Desktop or VSCode.
+You can also add an \"enabled\": false to disable the server."
+            draw_text: {
+                text_style: {font_size: 11},
+                color: #000
+            }
             draw_text: {
                 wrap: Word
                 text_style: <REGULAR_FONT>{font_size: 11},
                 color: #000
+            }
+        }
+    }
+
+    ToggleMCPWrapper = <View> {
+        width: Fit, height: Fit
+        spacing: 12
+        align: {x: 0.5, y: 0.5}
+        <Label> {
+            text: "Enable MCP Servers"
+            draw_text: {
+                text_style: <BOLD_FONT> {font_size: 11}
+                color: #000
+            }
+        }
+
+        servers_enabled_switch = <MolySwitch> {
+            // Match the default value to avoid the animation on start.
+            animator: {
+                selected = {
+                    default: on
+                }
             }
         }
     }
@@ -152,8 +179,10 @@ live_design! {
                 flow: Right
                 <ServersEditor> { width: 600 }
                 <View> {
+                    flow: Down, spacing: 10
                     margin: {top: 10}
                     width: Fill, height: Fill
+                    <ToggleMCPWrapper> {}
                     <Instructions> {}
                     <SaveStatus> {}
                 }
@@ -162,9 +191,10 @@ live_design! {
                 <ScrollYView> {
                     flow: Down
                     padding: {left: 10}
+                    <ToggleMCPWrapper> {}
                     <Instructions> {
                         width: Fill
-                        padding: {left: 10}
+                        padding: {left: 0}
                         <Label> {
                             width: Fill
                             text: "Note that only HTTP/SSE servers are supported on mobile devices"
@@ -210,7 +240,12 @@ impl Widget for McpServers {
         if !self.initialized || editor.text().is_empty() {
             self.initialized = true;
             let store = scope.data.get::<Store>().unwrap();
-            self.set_mcp_servers_config(cx, store.get_mcp_servers_config().clone());
+            let mut config = store.get_mcp_servers_config().clone();
+            
+            // Ensure the local config has the correct enabled state from Store
+            config.enabled = store.preferences.get_mcp_servers_enabled();
+            
+            self.set_mcp_servers_config(cx, config);
         }
     }
 
@@ -228,6 +263,9 @@ impl McpServers {
             .unwrap_or_else(|_| "{}".to_string());
 
         self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
+        
+        // Sync the toggle UI to match the config's enabled state
+        self.check_box(id!(servers_enabled_switch)).set_active(cx, self.mcp_servers_config.enabled);
     }
 }
 
@@ -235,22 +273,54 @@ impl WidgetMatchEvent for McpServers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.view(id!(save_button)).finger_up(actions).is_some() {
             let json_text = self.widget(id!(mcp_code_view)).text();
-            let store = scope.data.get_mut::<Store>().unwrap();
-
-            match store.update_mcp_servers_from_json(&json_text) {
-                Ok(()) => {
-                    let config = McpServersConfig::from_json(&json_text).unwrap();
-                    self.set_mcp_servers_config(cx, config);
-
-                    self.label(id!(save_status)).set_text(cx, "");
-
-                    self.redraw(cx);
+            
+            match McpServersConfig::from_json(&json_text) {
+                Ok(config) => {
+                    let store = scope.data.get_mut::<Store>().unwrap();
+                    
+                    // Update the Store with the new config (including servers)
+                    match store.update_mcp_servers_from_json(&json_text) {
+                        Ok(()) => {
+                            // Also sync the enabled flag to the Store's preferences
+                            // (in case it was changed in the JSON)
+                            store.set_mcp_servers_enabled(config.enabled);
+                            
+                            // Update our local config and UI
+                            self.set_mcp_servers_config(cx, config);
+                            
+                            self.label(id!(save_status)).set_text(cx, "");
+                            self.redraw(cx);
+                        }
+                        Err(e) => {
+                            self.label(id!(save_status)).set_text(cx, &format!("{}", e));
+                            self.redraw(cx);
+                        }
+                    }
                 }
                 Err(e) => {
-                    self.label(id!(save_status)).set_text(cx, &format!("{}", e));
+                    self.label(id!(save_status)).set_text(cx, &format!("Invalid JSON: {}", e));
                     self.redraw(cx);
                 }
             }
+        }
+
+        // Handle MCP servers enabled switch
+        let servers_enabled_switch = self.check_box(id!(servers_enabled_switch));
+        if let Some(enabled) = servers_enabled_switch.changed(actions) {
+            // Update the local config
+            self.mcp_servers_config.enabled = enabled;
+            
+            // Update the JSON display to show the new enabled state
+            let display_json = self
+                .mcp_servers_config
+                .to_json()
+                .unwrap_or_else(|_| "{}".to_string());
+            self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
+            
+            // Sync to Store
+            let store = scope.data.get_mut::<Store>().unwrap();
+            store.set_mcp_servers_enabled(enabled);
+            self.redraw(cx);
         }
 
         for action in actions {

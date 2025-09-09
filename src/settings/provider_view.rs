@@ -200,6 +200,7 @@ live_design! {
                 }
             }
 
+            // SYSTEM PROMPT
             system_prompt_group = <FormGroup> {
                 height: Fit
                 visible: false
@@ -242,6 +243,61 @@ Moly automatically appends useful context to your prompt, like the time of day."
                 padding: {left: 20, right: 20, top: 0, bottom: 0}
                 text: "Save"
                 draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
+            }
+
+
+            // TOOLS ENABLED
+            tools_form_group = <FormGroup> {
+                visible: false
+                height: Fit
+
+                <View> {
+                    width: Fill, height: 1
+                    margin: {bottom: 10}
+                    show_bg: true,
+                    draw_bg: {
+                        color: #D9D9D9
+                    }
+                }
+
+                <Label> {
+                    text: "MCP Configuration"
+                    draw_text: {
+                        text_style: <BOLD_FONT>{font_size: 12}
+                        color: #000
+                    }
+                }
+
+                <View> {
+                    flow: Right, spacing: 12
+                    width: Fit, height: Fit
+                    align: {x: 0.5, y: 0.5}
+                    <Label> {
+                        text: "Enable Tools"
+                        draw_text: {
+                            text_style: {font_size: 12}
+                            color: #000
+                        }
+                    }
+
+                    provider_tools_switch = <MolySwitch> {
+                        // Match the default value to avoid the animation on start.
+                        animator: {
+                            selected = {
+                                default: on
+                            }
+                        }
+                    }
+                }
+
+                <View> {
+                    width: Fill, height: 1
+                    margin: {top: 10}
+                    show_bg: true,
+                    draw_bg: {
+                        color: #D9D9D9
+                    }
+                }
             }
 
             // MODELS
@@ -399,6 +455,15 @@ impl WidgetMatchEvent for ProviderView {
             self.redraw(cx);
         }
 
+        // Handle tools enabled/disabled
+        let provider_tools_switch = self.check_box(id!(provider_tools_switch));
+        if let Some(tools_enabled) = provider_tools_switch.changed(actions) {
+            self.provider.tools_enabled = tools_enabled;
+            // Update the provider in store and preferences
+            store.insert_or_update_provider(&self.provider);
+            self.redraw(cx);
+        }
+
         for action in actions {
             if let Some(action) = action.downcast_ref::<ModelEntryAction>() {
                 match action {
@@ -460,6 +525,7 @@ impl WidgetMatchEvent for ProviderView {
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
             self.check_box(id!(provider_enabled_switch))
                 .set_active(cx, true);
+            // Keep the tools_enabled state as set by the user (don't change it on save)
             // Update the UI
             self.update_connection_status(cx);
             store.insert_or_update_provider(&self.provider);
@@ -504,6 +570,9 @@ impl ProviderViewRef {
             inner
                 .check_box(id!(provider_enabled_switch))
                 .set_active(cx, provider.enabled);
+            inner
+                .check_box(id!(provider_tools_switch))
+                .set_active(cx, provider.tools_enabled);
 
             // Show/hide system prompt field for Realtime providers
             if provider.provider_type == ProviderType::OpenAIRealtime {
@@ -517,6 +586,12 @@ impl ProviderViewRef {
                 }
             } else {
                 inner.view(id!(system_prompt_group)).set_visible(cx, false);
+            }
+
+            if provider.provider_type == ProviderType::OpenAIRealtime || provider.provider_type == ProviderType::OpenAI {
+                inner.view(id!(tools_form_group)).set_visible(cx, true);
+            } else {
+                inner.view(id!(tools_form_group)).set_visible(cx, false);
             }
 
             if provider.was_customly_added {

@@ -246,6 +246,7 @@ pub struct OpenAIRealtimeClient {
     address: String,
     api_key: Option<String>,
     system_prompt: Option<String>,
+    tools_enabled: bool,
 }
 
 impl OpenAIRealtimeClient {
@@ -254,6 +255,7 @@ impl OpenAIRealtimeClient {
             address,
             api_key: None,
             system_prompt: None,
+            tools_enabled: true, // Default to enabled for backward compatibility
         }
     }
 
@@ -265,6 +267,10 @@ impl OpenAIRealtimeClient {
     pub fn set_system_prompt(&mut self, prompt: &str) -> Result<(), String> {
         self.system_prompt = Some(prompt.to_string());
         Ok(())
+    }
+
+    pub fn set_tools_enabled(&mut self, enabled: bool) {
+        self.tools_enabled = enabled;
     }
 
     pub fn create_realtime_session(
@@ -283,7 +289,12 @@ impl OpenAIRealtimeClient {
         };
 
         let bot_id = bot_id.clone();
-        let tools = tools.to_vec();
+        // Only include tools if they are enabled for this client
+        let tools = if self.tools_enabled {
+            tools.to_vec()
+        } else {
+            Vec::new()
+        };
         let system_prompt = self.system_prompt.clone();
         let future = async move {
             let (event_sender, event_receiver) = futures::channel::mpsc::unbounded();

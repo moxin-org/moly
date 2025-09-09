@@ -84,6 +84,7 @@ impl Preferences {
             existing_provider.api_key = provider.api_key.clone();
             existing_provider.enabled = provider.enabled;
             existing_provider.system_prompt = provider.system_prompt.clone();
+            existing_provider.tools_enabled = provider.tools_enabled;
         } else {
             self.providers_preferences.push(ProviderPreferences {
                 id: provider.id.clone(),
@@ -99,6 +100,7 @@ impl Preferences {
                     .collect(),
                 was_customly_added: provider.was_customly_added,
                 system_prompt: provider.system_prompt.clone(),
+                tools_enabled: provider.tools_enabled,
             });
         }
         self.save();
@@ -176,6 +178,15 @@ impl Preferences {
         Ok(())
     }
 
+    pub fn set_mcp_servers_enabled(&mut self, enabled: bool) {
+        self.mcp_servers_config.enabled = enabled;
+        self.save();
+    }
+
+    pub fn get_mcp_servers_enabled(&self) -> bool {
+        self.mcp_servers_config.enabled
+    }
+
     /// Migrate providers without IDs by generating them from URLs
     fn migrate_provider_ids(&mut self) {
         let mut needs_save = false;
@@ -211,6 +222,13 @@ pub struct ProviderPreferences {
     /// Custom system prompt for the provider (currently used by Realtime providers)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_prompt: Option<String>,
+    /// Whether tools (MCP) are enabled for this provider
+    #[serde(default = "default_tools_enabled")]
+    pub tools_enabled: bool,
+}
+
+fn default_tools_enabled() -> bool {
+    true
 }
 
 impl ProviderPreferences {
