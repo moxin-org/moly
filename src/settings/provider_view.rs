@@ -588,7 +588,9 @@ impl ProviderViewRef {
                 inner.view(id!(system_prompt_group)).set_visible(cx, false);
             }
 
-            if provider.provider_type == ProviderType::OpenAIRealtime || provider.provider_type == ProviderType::OpenAI {
+            if provider.provider_type == ProviderType::OpenAIRealtime
+                || provider.provider_type == ProviderType::OpenAI
+            {
                 inner.view(id!(tools_form_group)).set_visible(cx, true);
             } else {
                 inner.view(id!(tools_form_group)).set_visible(cx, false);

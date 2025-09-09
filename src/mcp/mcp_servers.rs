@@ -137,7 +137,7 @@ live_design! {
         instructions = <Label> {
             width: Fill, height: Fit
             text: "Add new servers by editing the list under 'servers'. You can copy paste you configuration from other applications like Clade Desktop or VSCode.
-You can also add an \"enabled\": false to disable the server."
+You can also add an \"enabled\": false flag to disable a specific server."
             draw_text: {
                 text_style: {font_size: 11},
                 color: #000
@@ -241,10 +241,10 @@ impl Widget for McpServers {
             self.initialized = true;
             let store = scope.data.get::<Store>().unwrap();
             let mut config = store.get_mcp_servers_config().clone();
-            
+
             // Ensure the local config has the correct enabled state from Store
             config.enabled = store.preferences.get_mcp_servers_enabled();
-            
+
             self.set_mcp_servers_config(cx, config);
         }
     }
@@ -263,9 +263,10 @@ impl McpServers {
             .unwrap_or_else(|_| "{}".to_string());
 
         self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
-        
+
         // Sync the toggle UI to match the config's enabled state
-        self.check_box(id!(servers_enabled_switch)).set_active(cx, self.mcp_servers_config.enabled);
+        self.check_box(id!(servers_enabled_switch))
+            .set_active(cx, self.mcp_servers_config.enabled);
     }
 }
 
@@ -273,21 +274,21 @@ impl WidgetMatchEvent for McpServers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         if self.view(id!(save_button)).finger_up(actions).is_some() {
             let json_text = self.widget(id!(mcp_code_view)).text();
-            
+
             match McpServersConfig::from_json(&json_text) {
                 Ok(config) => {
                     let store = scope.data.get_mut::<Store>().unwrap();
-                    
+
                     // Update the Store with the new config (including servers)
                     match store.update_mcp_servers_from_json(&json_text) {
                         Ok(()) => {
                             // Also sync the enabled flag to the Store's preferences
                             // (in case it was changed in the JSON)
                             store.set_mcp_servers_enabled(config.enabled);
-                            
+
                             // Update our local config and UI
                             self.set_mcp_servers_config(cx, config);
-                            
+
                             self.label(id!(save_status)).set_text(cx, "");
                             self.redraw(cx);
                         }
@@ -298,7 +299,8 @@ impl WidgetMatchEvent for McpServers {
                     }
                 }
                 Err(e) => {
-                    self.label(id!(save_status)).set_text(cx, &format!("Invalid JSON: {}", e));
+                    self.label(id!(save_status))
+                        .set_text(cx, &format!("Invalid JSON: {}", e));
                     self.redraw(cx);
                 }
             }
@@ -309,14 +311,14 @@ impl WidgetMatchEvent for McpServers {
         if let Some(enabled) = servers_enabled_switch.changed(actions) {
             // Update the local config
             self.mcp_servers_config.enabled = enabled;
-            
+
             // Update the JSON display to show the new enabled state
             let display_json = self
                 .mcp_servers_config
                 .to_json()
                 .unwrap_or_else(|_| "{}".to_string());
             self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
-            
+
             // Sync to Store
             let store = scope.data.get_mut::<Store>().unwrap();
             store.set_mcp_servers_enabled(enabled);

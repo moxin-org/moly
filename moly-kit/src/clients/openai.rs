@@ -449,10 +449,7 @@ impl OpenAIClient {
     }
 
     pub fn set_tools_enabled(&mut self, enabled: bool) {
-        self.0
-            .write()
-            .unwrap()
-            .tools_enabled = enabled;
+        self.0.write().unwrap().tools_enabled = enabled;
     }
 }
 
