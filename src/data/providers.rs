@@ -25,6 +25,13 @@ pub struct Provider {
     /// Custom system prompt for the provider (currently used by Realtime providers)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_prompt: Option<String>,
+    /// Whether tools (MCP) are enabled for this provider
+    #[serde(default = "default_tools_enabled")]
+    pub tools_enabled: bool,
+}
+
+fn default_tools_enabled() -> bool {
+    true
 }
 
 /// Fetch models for a provider using MolyKit clients

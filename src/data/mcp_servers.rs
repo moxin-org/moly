@@ -49,6 +49,10 @@ fn is_default_enabled(enabled: &bool) -> bool {
     *enabled
 }
 
+fn default_mcp_servers_enabled() -> bool {
+    true
+}
+
 impl McpServer {
     /// Create a new stdio-based MCP server
     pub fn stdio(command: String, args: Vec<String>) -> Self {
@@ -176,11 +180,23 @@ impl McpServer {
 }
 
 /// Represents the complete MCP servers configuration (follows MCP standard format)
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpServersConfig {
     pub servers: IndexMap<String, McpServer>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<InputConfig>,
+    #[serde(default = "default_mcp_servers_enabled")]
+    pub enabled: bool,
+}
+
+impl Default for McpServersConfig {
+    fn default() -> Self {
+        Self {
+            servers: IndexMap::new(),
+            inputs: Vec::new(),
+            enabled: true,
+        }
+    }
 }
 
 impl McpServersConfig {

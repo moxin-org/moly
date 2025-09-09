@@ -338,6 +338,7 @@ impl Store {
                     models: vec![],
                     was_customly_added: prefs.was_customly_added,
                     system_prompt: prefs.system_prompt.clone(),
+                    tools_enabled: prefs.tools_enabled,
                 });
             } else {
                 // Known from supported_providers.json but user has no preferences
@@ -352,6 +353,7 @@ impl Store {
                     models: vec![],
                     was_customly_added: false,
                     system_prompt: None,
+                    tools_enabled: true,
                 });
             }
         }
@@ -377,6 +379,7 @@ impl Store {
                     models: vec![],
                     was_customly_added: pp_clone.was_customly_added,
                     system_prompt: pp_clone.system_prompt.clone(),
+                    tools_enabled: pp_clone.tools_enabled,
                 });
             }
         }
@@ -475,6 +478,12 @@ impl Store {
     pub fn create_and_load_mcp_tool_manager(&self) -> McpManagerClient {
         let tool_manager = McpManagerClient::new();
 
+        // Check if MCP servers are globally enabled
+        if !self.preferences.get_mcp_servers_enabled() {
+            // Return empty tool manager if globally disabled
+            return tool_manager;
+        }
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let mcp_config = self.get_mcp_servers_config().clone();
@@ -512,6 +521,14 @@ impl Store {
         // Update the bot_context after the creation
         if let Some(ref mut bot_context_mut) = self.bot_context {
             bot_context_mut.replace_tool_manager(new_tool_manager);
+        }
+    }
+
+    pub fn set_mcp_servers_enabled(&mut self, enabled: bool) {
+        self.preferences.set_mcp_servers_enabled(enabled);
+        // Recreate bot context to apply the new MCP setting
+        if let Some(_bot_context) = &self.bot_context {
+            self.bot_context = None;
         }
     }
 }
