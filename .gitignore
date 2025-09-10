@@ -7,3 +7,4 @@ preferences.json
 .DS_Store
 ignored/
 .claude
+mdbook-admonish.css
