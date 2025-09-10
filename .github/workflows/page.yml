@@ -25,6 +25,13 @@ jobs:
           mkdir mdbook
           curl -sSL $url | tar -xz --directory=./mdbook
           echo `pwd`/mdbook >> $GITHUB_PATH
+      - name: Install mdbook-admonish
+        run: |
+          cargo install mdbook-admonish --vers "1.20.0" --locked
+      - name: Setup mdbook-admonish
+        run: |
+          cd book
+          mdbook-admonish install .
       - name: Build Book
         run: |
           cd book
