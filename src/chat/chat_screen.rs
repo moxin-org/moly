@@ -177,7 +177,9 @@ impl ChatScreen {
                         multi_client.add_client(Box::new(client));
                     }
                     ProviderType::OpenAIRealtime => {
-                        if provider.enabled && provider.api_key.is_some() {
+                        let is_local = provider.url.contains("127.0.0.1")
+                            || provider.url.contains("localhost");
+                        if provider.enabled && (is_local || provider.api_key.is_some()) {
                             let client_url = provider.url.trim_start_matches('#').to_string();
                             let mut client = OpenAIRealtimeClient::new(client_url);
                             if let Some(key) = provider.api_key.as_ref() {
