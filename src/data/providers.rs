@@ -168,6 +168,19 @@ pub enum ProviderType {
     MolyServer,
 }
 
+impl ProviderType {
+    pub fn to_human_readable(&self) -> &str {
+        match self {
+            ProviderType::OpenAI => "OpenAI",
+            ProviderType::OpenAIImage => "OpenAI (Image Generation)",
+            ProviderType::OpenAIRealtime => "OpenAI (Realtime)",
+            ProviderType::MoFa => "MoFa",
+            ProviderType::DeepInquire => "DeepInquire",
+            ProviderType::MolyServer => "MolyServer",
+        }
+    }
+}
+
 impl Default for ProviderType {
     fn default() -> Self {
         ProviderType::OpenAI

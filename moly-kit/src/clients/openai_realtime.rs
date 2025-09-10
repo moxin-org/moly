@@ -960,21 +960,26 @@ impl BotClient for OpenAIRealtimeClient {
                 }
             }
 
-            let supported: Vec<Bot> = [
-                "gpt-realtime",                        // OpenAI
-                "Qwen/Qwen2.5-0.5B-Instruct-GGUF",     // Dora
-                "Qwen/Qwen2.5-1.5B-Instruct-GGUF",     // Dora
-                "Qwen/Qwen2.5-3B-Instruct-GGUF",       // Dora
-                "unsloth/Qwen3-4B-Instruct-2507-GGUF", // Dora
-            ]
-            .into_iter()
-            .map(|id| Bot {
-                id: BotId::new(id, &address),
-                name: id.to_string(),
-                avatar: Picture::Grapheme("🎤".into()),
-                capabilities: BotCapabilities::new().with_capability(BotCapability::Realtime),
-            })
-            .collect();
+            let mut models = Vec::new();
+            if address.starts_with("wss://api.openai.com") {
+                models.push("gpt-realtime");
+            } else {
+                // Dora
+                models.push("Qwen/Qwen2.5-0.5B-Instruct-GGUF");
+                models.push("Qwen/Qwen2.5-1.5B-Instruct-GGUF");
+                models.push("Qwen/Qwen2.5-3B-Instruct-GGUF");
+                models.push("unsloth/Qwen3-4B-Instruct-2507-GGUF");
+            }
+
+            let supported = models
+                .into_iter()
+                .map(|id| Bot {
+                    id: BotId::new(id, &address),
+                    name: id.to_string(),
+                    avatar: Picture::Grapheme("🎤".into()),
+                    capabilities: BotCapabilities::new().with_capability(BotCapability::Realtime),
+                })
+                .collect();
 
             ClientResult::new_ok(supported)
         };

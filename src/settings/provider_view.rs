@@ -87,12 +87,35 @@ live_design! {
 
             <FormGroup> {
                 flow: Right,
-                name = <Label> {
-                    draw_text: {
-                        text_style: <BOLD_FONT>{font_size: 15}
-                        color: #000
+                <View> {
+                    flow: Down, spacing: 8
+                    width: Fit, height: Fit
+                    name = <Label> {
+                        draw_text: {
+                            text_style: <BOLD_FONT>{font_size: 15}
+                            color: #000
+                        }
+                    }
+
+                    <View> {
+                        width: Fit, height: Fit
+                        spacing: 4
+                        <Label> {
+                            text: "Type:"
+                            draw_text: {
+                                text_style: <BOLD_FONT>{font_size: 11}
+                                color: #000
+                            }
+                        }
+                        provider_type = <Label> {
+                            draw_text: {
+                                text_style: {font_size: 11}
+                                color: #000
+                            }
+                        }
                     }
                 }
+
 
                 <View> {
                     width: Fill, height: 1
@@ -573,6 +596,9 @@ impl ProviderViewRef {
 
             inner.text_input(id!(api_host)).set_text(cx, &provider.url);
             inner.label(id!(name)).set_text(cx, &provider.name);
+            inner
+                .label(id!(provider_type))
+                .set_text(cx, &provider.provider_type.to_human_readable());
             inner
                 .check_box(id!(provider_enabled_switch))
                 .set_active(cx, provider.enabled);

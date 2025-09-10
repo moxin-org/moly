@@ -307,8 +307,8 @@ impl WidgetMatchEvent for AddProviderModal {
 
         if self.button(id!(add_server_button)).clicked(actions) {
             self.clear_error_message(cx);
-            let api_host = self.text_input(id!(api_host)).text();
-            let name = self.text_input(id!(name)).text();
+            let api_host = self.text_input(id!(api_host)).text().trim().to_string();
+            let name = self.text_input(id!(name)).text().trim().to_string();
 
             // Check if the provider type is selected
             if self.selected_provider.is_none() {
@@ -322,7 +322,7 @@ impl WidgetMatchEvent for AddProviderModal {
                 return;
             }
 
-            let api_key = self.text_input(id!(api_key)).text();
+            let api_key = self.text_input(id!(api_key)).text().trim().to_string();
 
             // Generate a unique ID for the custom provider
             let provider_id = {
@@ -352,7 +352,11 @@ impl WidgetMatchEvent for AddProviderModal {
                     id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
-                    api_key: Some(api_key.clone()),
+                    api_key: if api_key.is_empty() {
+                        None
+                    } else {
+                        Some(api_key.clone())
+                    },
                     provider_type: ProviderType::OpenAI,
                     connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: true,
@@ -365,8 +369,12 @@ impl WidgetMatchEvent for AddProviderModal {
                     id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
-                    api_key: Some(api_key.clone()),
-                    provider_type: ProviderType::OpenAI,
+                    api_key: if api_key.is_empty() {
+                        None
+                    } else {
+                        Some(api_key.clone())
+                    },
+                    provider_type: ProviderType::OpenAIImage,
                     connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: true,
                     models: vec![],
@@ -378,7 +386,11 @@ impl WidgetMatchEvent for AddProviderModal {
                     id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
-                    api_key: Some(api_key.clone()),
+                    api_key: if api_key.is_empty() {
+                        None
+                    } else {
+                        Some(api_key.clone())
+                    },
                     provider_type: ProviderType::MolyServer,
                     connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: true,
@@ -391,7 +403,11 @@ impl WidgetMatchEvent for AddProviderModal {
                     id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
-                    api_key: Some(api_key.clone()),
+                    api_key: if api_key.is_empty() {
+                        None
+                    } else {
+                        Some(api_key.clone())
+                    },
                     provider_type: ProviderType::MoFa,
                     connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: true,
@@ -404,7 +420,11 @@ impl WidgetMatchEvent for AddProviderModal {
                     id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
-                    api_key: Some(api_key.clone()),
+                    api_key: if api_key.is_empty() {
+                        None
+                    } else {
+                        Some(api_key.clone())
+                    },
                     provider_type: ProviderType::DeepInquire,
                     connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: true,
@@ -417,7 +437,11 @@ impl WidgetMatchEvent for AddProviderModal {
                     id: provider_id,
                     name: name.clone(),
                     url: api_host.clone(),
-                    api_key: Some(api_key.clone()),
+                    api_key: if api_key.is_empty() {
+                        None
+                    } else {
+                        Some(api_key.clone())
+                    },
                     provider_type: ProviderType::OpenAIRealtime,
                     connection_status: ProviderConnectionStatus::Disconnected,
                     enabled: true,
