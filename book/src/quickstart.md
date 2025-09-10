@@ -15,23 +15,6 @@ moly-kit = { git = "https://github.com/moxin-org/moly.git", features = ["full"],
 > **Tip:** Change `branch = "main"` to (for example) `tag = "v0.2.1"` if you want to
 > stay on a stable version.
 
-If you are targeting native (non-web) platforms, you will also need to add `tokio`
-to your app. Even if you don't use it directly, Moly Kit will.
-
-```shell
-cargo add tokio -F full
-```
-
-```rust
-#[tokio::main]
-async fn main() {
-    your_amazing_app::app::app_main()
-}
-```
-
-> **Note:** `tokio` is not needed if you are only targeting web platforms. More details
-> about targeting web will be covered in the [Web support](web.md) guide.
-
 ## Register widgets
 
 As with any Makepad app, we need to register the widgets we want to use in the `live_register`
