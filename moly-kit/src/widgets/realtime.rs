@@ -3,8 +3,9 @@ use crate::widgets::{
     standard_message_content::StandardMessageContentWidgetRefExt,
 };
 use crate::{protocol::*, utils::makepad::events::EventExt};
+#[cfg(any(target_os = "ios", target_os = "android"))]
+use makepad_widgets::permission::{Permission, PermissionStatus};
 use makepad_widgets::{makepad_platform::AudioDeviceType, *};
-use std::fs::ReadDir;
 use std::sync::{Arc, Mutex};
 
 live_design! {
@@ -573,6 +574,12 @@ impl Widget for Realtime {
 
         // Setup audio if needed
         if !self.audio_setup_done {
+            // if on iOS or Android, request permission to use the microphone
+            #[cfg(any(target_os = "ios", target_os = "android"))]
+            {
+                cx.request_permission(Permission::AudioInput);
+            }
+            // TODO: Check if Event::PermissionGranted is received and only setup audio if so
             self.setup_audio(cx);
         }
 

@@ -36,7 +36,7 @@ live_design! {
                         text: "",
                         draw_text: {
                             text_style: <THEME_FONT_ICONS> {
-                                font_size: 14.
+                                font_size: 16.
                             }
                             color: #000,
                             color_hover: #000,
@@ -84,7 +84,7 @@ live_design! {
                         text: ""
                         draw_text: {
                             text_style: <THEME_FONT_ICONS> {
-                                font_size: 14.
+                                font_size: 16.
                             }
                             color: #000,
                             color_hover: #000,
