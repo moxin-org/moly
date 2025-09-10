@@ -35,24 +35,25 @@ struct MyCustomClient {
 
 
 impl BotClient for MyCustomClient {
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let future = async move {
           // ... fetch our list of available models/agents ...
         };
 
-        moly_future(future)
+        Box::pin(future)
     }
 
     fn send(
         &mut self,
         bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+        tools: &[Tool],
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let stream = stream! {
           // ... write some code that yields chunks of the message content ...
         };
 
-        moly_stream(stream)
+        Box::pin(stream)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
@@ -61,21 +62,18 @@ impl BotClient for MyCustomClient {
 }
 ```
 
-We can see from these implementation template a lot of details. First of all, the async
-methods return `MolyFuture` and `MolyStream` respectively. These are basically boxed
-dynamic futures/streams with some cross-platform considerations.
+From this implementation template, we can see a lot of details. First of all, the async
+methods return `BoxPlatformSendFuture` and `BoxPlatformSendStream` respectively.
+These are basically boxed dynamic futures/streams with some cross-platform considerations.
 
-> **Note:** Boxed dynamic futures/streams are one of the things that can make async
-> code in Rust difficult to write. This is because this kind of box erases important
-> type information that Rust would normally use to make our lives 10 times easier.
->
-> However, since generics will not play well with Makepad widgets when they reach the
-> UI, dynamic dispatching is a necessary evil.
+```admonish warning
+Boxed dynamic futures/streams are one of the things that can make async
+code in Rust difficult to write. This is because this kind of box erases important
+type information that Rust would normally use to make our lives 10 times easier.
 
-
-The next thing to notice is that we can very easily create those kinds of futures/streams
-from compile-time known futures by simply wrapping them with the `moly_future(...)` and
-`moly_stream(...)` functions.
+However, since generics will not play well with Makepad widgets when they reach the
+UI, dynamic dispatching is a necessary evil.
+```
 
 We can also see these methods normally return a `ClientResult`, which is slightly different
 from Rust's standard `Result` as it can contain both successfully recovered data and multiple
@@ -91,11 +89,14 @@ something like `reqwest` to fetch some JSON from your provider with the list of 
 parse that, and return it.
 
 `send` is the method that sends a message to a model/agent. It returns a
-stream which allows you to push chunks of content in real-time. Although, you
-could also yield a single chunk from it if you don't support streaming.
+stream, where each item yielded will be a full snapshot of the message content as
+it is being streamed. In practice, this means the last item of the stream is the
+final message content.
 
+```admonish tip
 Different from `Future`s in Rust, `Stream`s are a little less mature, so creating them
 with the `async_stream` crate is advised for simplicity.
+```
 
 Note that the exact implementation of a client greatly depends on the provider you
 are trying to support, so it's difficult to make a generic guide on how to build it
@@ -109,21 +110,22 @@ with some dummy methods for a client that simply repeats the last message.
 struct EchoClient;
 
 impl BotClient for EchoClient {
-    fn bots(&self) -> MolyFuture<'static, ClientResult<Vec<Bot>>> {
+    fn bots(&self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
         let future = futures::future::ready(ClientResult::new_ok(vec![Bot {
             id: BotId::new("echo-provider", "echo-echo"),
             name: "Echo Echo".to_string(),
             avatar: Picture::Grapheme("E".into()),
         }]));
 
-        moly_future(future)
+        Box::pin(future)
     }
 
     fn send(
         &mut self,
-        _bot_id: &BotId,
+        bot_id: &BotId,
         messages: &[Message],
-    ) -> MolyStream<'static, ClientResult<MessageContent>> {
+        tools: &[Tool],
+    ) -> BoxPlatformSendStream<'static, ClientResult<MessageContent>> {
         let last = messages.last().map(|m| m.content.text.clone()).unwrap_or_default();
 
         let stream = futures::stream::once(async move {
@@ -133,7 +135,7 @@ impl BotClient for EchoClient {
             })
         });
 
-        moly_stream(stream)
+        Box::pin(stream)
     }
 
     fn clone_box(&self) -> Box<dyn BotClient> {
@@ -142,12 +144,14 @@ impl BotClient for EchoClient {
 }
 ```
 
-## Try not to use `tokio`-specific code
+```admonish warning
+Try not to use `tokio`-specific code
 
 Most relevant Tokio utilities are present in the `futures` crate, which is the base
 for most async crates out there (including Tokio).
 
-Using Tokio inside your client would make it unusable on the web.
+Using Tokio inside your client implementation would make it unusable on the web.
 
 Of course, if your custom client deals with native-specific stuff like the filesystem,
 stdio, etc., then it may be reasonable.
+```
