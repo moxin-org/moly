@@ -522,23 +522,29 @@ impl WidgetMatchEvent for ProviderView {
 
             // Since we auto-fetch the models upon update, also enable it
             self.provider.enabled = true;
+            // Clear any previous error state and set to connecting
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
             self.check_box(id!(provider_enabled_switch))
                 .set_active(cx, true);
             // Keep the tools_enabled state as set by the user (don't change it on save)
-            // Update the UI
-            self.update_connection_status(cx);
+
+            // Update the provider in the store first to ensure the connecting status is saved
             store.insert_or_update_provider(&self.provider);
+
+            // Update UI immediately to show "Connecting..." status
+            self.update_connection_status(cx);
             self.redraw(cx);
         }
 
         // Handle refresh button
         if let Some(_fe) = self.view(id!(refresh_button)).finger_up(actions) {
-            // Update the provider status in the store
+            // Clear any previous error state and set to connecting
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
+
+            // Update the provider in the store first to ensure the connecting status is saved
             store.insert_or_update_provider(&self.provider);
 
-            // Update UI
+            // Update UI immediately to show "Connecting..." status
             self.update_connection_status(cx);
             self.redraw(cx);
         }
