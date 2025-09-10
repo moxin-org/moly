@@ -29,8 +29,10 @@ That callback is what we define as a "hook". A hook not only gets notified
 of what is about to happen, but also gets mutable access to the group of tasks,
 meaning it can modify them or abort them as needed.
 
-> So, in other words, "tasks" are "units of work" that are about to be performed,
-> but we can "tamper" with them.
+```admonish note
+So, in other words, "tasks" are "units of work" that are about to be performed,
+but we can "tamper" with them.
+```
 
 ## The `set_hook_before` method
 
@@ -46,8 +48,10 @@ so modifying their data will impact how the action is executed.
 Additionally, as this is exposed as a simple mutable vector, you can `clear()` it
 to essentially prevent `Chat` from doing anything with them.
 
-> This is basically an "abort" mechanism, similar to a web browser's `preventDefault()`
-> method in `Event`.
+```admonish note
+This is basically an "abort" mechanism, similar to a web browser's `preventDefault()`
+method in `Event`.
+```
 
 Of course, you can do anything you want with this vector, like injecting more
 tasks, swapping them, etc.
@@ -62,14 +66,14 @@ impl LiveHook for YourAmazingWidget {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         // ... the previous setup code from quickstart ...
 
-        chat.write().set_hook_before(|group, chat, cx| {
+        chat.write().set_hook_before(|task_group, chat, cx| {
           // If we set this to true, the group of tasks will be cleared and
           // the default behavior will not happen.
           let mut abort = false;
 
           // We don't care about grouping right now so let's just deal with them
           // individually.
-          for task in group.iter_mut() {
+          for task in task_group.iter_mut() {
             // Let's log to the console when sending a message.
             if let ChatTask::Send = task {
               println!("A message is being sent!");
@@ -94,7 +98,7 @@ impl LiveHook for YourAmazingWidget {
           }
 
           if abort {
-            group.clear();
+            task_group.clear();
           }
         });
     }
@@ -102,6 +106,14 @@ impl LiveHook for YourAmazingWidget {
 ```
 
 Okay, that was a very comprehensive example that is worth a hundred words.
+
+```admonish tip
+You can also trigger those tasks on the `Chat` programmatically by using the
+`dispatch` and `perform` methods. The difference between both is that `dispatch`
+will go through the hook system, while `perform` will directly execute the tasks
+without going through the hook.
+```
+
 
 ## Why are tasks grouped?
 
@@ -112,9 +124,11 @@ For example, the "Save and regenerate" button will trigger two grouped tasks:
 `SetMessages` to override the message history, and then `Send` to send the history
 as it is.
 
-> Notice how `Send` doesn't take parameters, as it just sends the whole message history.
-> We try to keep task responsibilities decoupled so you don't need to handle many
-> similar tasks to handle some common/intercepted behavior.
+```admonish note
+Notice how `Send` doesn't take parameters, as it just sends the whole message history.
+We try to keep task responsibilities decoupled so you don't need to handle many
+similar tasks to handle some common/intercepted behavior.
+```
 
 If these tasks were emitted individually, then it would be difficult to inspect this
 kind of detail, and you might abort a single task that a future task was expecting
@@ -143,4 +157,4 @@ packed in a closure back to your parent widget.
 Any interaction listed and documented in the `ChatTask` enum can be worked with from
 inside the hook.
 
-You may want to read that enum's specific documentation in the crate documentation.
+You may want to read that enum's specific documentation in the [crate documentation](./crate-docs.md).

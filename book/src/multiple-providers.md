@@ -11,7 +11,7 @@ As seen before, a `BotContext` is created from one (and only one) `BotClient`.
 If we want out app to be able to use multiple clients configured in different ways
 at the same time, we will need to compose them into one.
 
-Fortunally, Moly Kit comes with a built-in client called `MultiClient`, which does
+Fortunately, Moly Kit comes with a built-in client called `MultiClient`, which does
 exactly that. `MultiClient` can take several "sub-clients" but acts as a single
 one to `BotContext`, routing requests to them accordengly.
 
