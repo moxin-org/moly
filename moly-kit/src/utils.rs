@@ -11,4 +11,3 @@ pub(crate) mod tool_execution;
 #[cfg(feature = "json")]
 pub(crate) mod serde;
 pub(crate) mod sse;
-pub(crate) mod ui_runner;

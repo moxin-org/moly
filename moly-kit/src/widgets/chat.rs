@@ -5,7 +5,7 @@ use utils::asynchronous::spawn;
 
 use crate::utils::asynchronous::PlatformSendStream;
 use crate::utils::makepad::EventExt;
-use crate::utils::ui_runner::DeferWithRedrawAsync;
+use crate::utils::makepad::ui_runner::DeferWithRedrawAsync;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
 
 use crate::mcp::mcp_manager::display_name_from_namespaced;
