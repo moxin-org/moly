@@ -73,6 +73,10 @@ Once again, we don't need to understand how a `BotClient` works (unless you need
 to implement your own) as Moly Kit already comes with some built-in ones. We can
 simply use `OpenAIClient` to interact with any OpenAI-compatible remote API.
 
+We will also need to set the "current bot" in the `Chat` widget, which is the bot
+that will respond to user messages (specified with a `BotId` type) and also trigger
+the async load of the `BotContext` once.
+
 We should ensure this configuration code runs once and before the `Chat` widget
 is used by Makepad, so a good place to write it is in Makepad's `after_new_from_doc`
 lifecycle hook. The practical tl;dr of all this theory would be simply the following:
@@ -81,14 +85,26 @@ lifecycle hook. The practical tl;dr of all this theory would be simply the follo
 use moly_kit::*;
 
 impl LiveHook for YourAmazingWidget {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
-        let mut client = OpenAIClient::new("https://api.openai.com/v1".into());
-        client.set_key("<YOUR_KEY>".into());
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        let provider = "https://api.openai.com/v1";
+        let key = "<YOUR_KEY>";
+        let model = "gpt-5-mini";
 
-        let context = BotContext::from(client);
+        let mut client = OpenAIClient::new(provider.into());
+        client.set_key(key.into());
+
+        let bot_context = BotContext::from(client);
+        let bot_id = BotId::new(model, url);
 
         let mut chat = self.chat(id!(chat));
-        chat.write().set_bot_context(context);
+        chat.write().set_bot_context(cx, Some(bot_context));
+        chat.write().set_current_bot(cx, Some(bot_id));
+
+        moly_kit::utils::asynchronous::spawn(async move {
+            for error in bot_context.load().await.into_errors() {
+                error!("Error loading bots: {error}");
+            }
+        });
     }
 }
 ```
