@@ -82,7 +82,7 @@ struct ChatControllerInner {
     state: ChatState,
     plugins: Vec<(
         ChatControllerPluginRegistrationId,
-        Arc<Mutex<Box<dyn ChatControllerPlugin>>>,
+        Box<dyn ChatControllerPlugin>,
     )>,
 }
 
@@ -97,9 +97,7 @@ impl ChatController {
         P: ChatControllerPlugin + 'static,
     {
         let id = ChatControllerPluginRegistrationId::new();
-        self.lock()
-            .plugins
-            .push((id, Arc::new(Mutex::new(Box::new(plugin)))));
+        self.lock().plugins.push((id, Box::new(plugin)));
         id
     }
 
@@ -123,10 +121,7 @@ impl ChatController {
         {
             let mut inner = self.lock();
             for (_, plugin) in &mut inner.plugins {
-                let control = plugin
-                    .lock()
-                    .unwrap()
-                    .on_state_mutation(&mut boxed_mutation);
+                let control = plugin.on_state_mutation(&mut boxed_mutation);
 
                 match control {
                     ChatControl::Continue => continue,
@@ -143,15 +138,18 @@ impl ChatController {
         F: FnMut(&mut ChatState) + Send + 'static,
     {
         let mut inner = self.lock();
-        mutation(&mut inner.state);
-        for (_, plugin) in inner.plugins.iter().cloned() {
-            plugin.lock().unwrap().on_state_change(&inner.state);
+        let ChatControllerInner { state, plugins } = &mut *inner;
+
+        mutation(state);
+
+        for (_, plugin) in plugins {
+            plugin.on_state_change(state);
         }
     }
 
     pub fn dispatch_ui_event(&mut self, event: ChatUiEvent) {
         for (_, plugin) in &mut self.lock().plugins {
-            let control = plugin.lock().unwrap().on_ui_event(&event);
+            let control = plugin.on_ui_event(&event);
             match control {
                 ChatControl::Continue => continue,
                 ChatControl::Stop => return,
