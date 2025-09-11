@@ -1,7 +1,10 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
 use crate::protocol::*;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicU64, Ordering},
+};
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -16,6 +19,7 @@ pub enum ChatControl {
 
 /// State of the chat that you should reflect in your view component/widget/element.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug)]
 pub struct ChatState {
     pub messages: Vec<Message>,
     pub prompt_input_content: MessageContent,
@@ -24,6 +28,7 @@ pub struct ChatState {
 }
 
 /// UI events that your framework of choice should feed into the [`ChatController`].
+#[derive(Clone, Debug, PartialEq)]
 pub enum ChatUiEvent {
     PromptInputContentChange(MessageContent),
     MessageEditorContentChange(MessageContent),
@@ -73,12 +78,17 @@ impl ChatControllerPluginRegistrationId {
     }
 }
 
-pub struct ChatController {
+struct ChatControllerInner {
     state: ChatState,
     plugins: Vec<(
         ChatControllerPluginRegistrationId,
-        Box<dyn ChatControllerPlugin>,
+        Arc<Mutex<Box<dyn ChatControllerPlugin>>>,
     )>,
+}
+
+#[derive(Clone)]
+pub struct ChatController {
+    inner: Arc<Mutex<ChatControllerInner>>,
 }
 
 impl ChatController {
@@ -87,28 +97,41 @@ impl ChatController {
         P: ChatControllerPlugin + 'static,
     {
         let id = ChatControllerPluginRegistrationId::new();
-        self.plugins.push((id, Box::new(plugin)));
+        self.lock()
+            .plugins
+            .push((id, Arc::new(Mutex::new(Box::new(plugin)))));
         id
     }
 
     pub fn unregister_plugin(&mut self, id: ChatControllerPluginRegistrationId) {
-        self.plugins.retain(|(plugin_id, _)| *plugin_id != id);
+        self.lock()
+            .plugins
+            .retain(|(plugin_id, _)| *plugin_id != id);
     }
 
-    pub fn state(&self) -> &ChatState {
-        &self.state
-    }
+    // pub fn state(&self) -> ChatState {
+    //     // TODO: Expensive.
+    //     self.inner().state.clone()
+    // }
 
     pub fn dispatch_state_mutation<F>(&mut self, mutation: F)
     where
         F: FnMut(&mut ChatState) + Send + 'static,
     {
         let mut boxed_mutation: ChatStateMutation = Box::new(mutation);
-        for (_, plugin) in &mut self.plugins {
-            let control = plugin.on_state_mutation(&mut boxed_mutation);
-            match control {
-                ChatControl::Continue => continue,
-                ChatControl::Stop => return,
+
+        {
+            let mut inner = self.lock();
+            for (_, plugin) in &mut inner.plugins {
+                let control = plugin
+                    .lock()
+                    .unwrap()
+                    .on_state_mutation(&mut boxed_mutation);
+
+                match control {
+                    ChatControl::Continue => continue,
+                    ChatControl::Stop => return,
+                }
             }
         }
 
@@ -119,15 +142,16 @@ impl ChatController {
     where
         F: FnMut(&mut ChatState) + Send + 'static,
     {
-        mutation(&mut self.state);
-        for (_, plugin) in &mut self.plugins {
-            plugin.on_state_change(&self.state);
+        let mut inner = self.lock();
+        mutation(&mut inner.state);
+        for (_, plugin) in inner.plugins.iter().cloned() {
+            plugin.lock().unwrap().on_state_change(&inner.state);
         }
     }
 
     pub fn dispatch_ui_event(&mut self, event: ChatUiEvent) {
-        for (_, plugin) in &mut self.plugins {
-            let control = plugin.on_ui_event(&event);
+        for (_, plugin) in &mut self.lock().plugins {
+            let control = plugin.lock().unwrap().on_ui_event(&event);
             match control {
                 ChatControl::Continue => continue,
                 ChatControl::Stop => return,
@@ -164,6 +188,10 @@ impl ChatController {
             }
             ChatUiEvent::Send => {}
         }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, ChatControllerInner> {
+        self.inner.lock().unwrap()
     }
 }
 
