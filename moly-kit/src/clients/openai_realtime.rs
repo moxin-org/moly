@@ -188,6 +188,15 @@ pub enum OpenAIRealtimeResponse {
     },
     #[serde(rename = "response.done")]
     ResponseDone { response: ResponseDoneData },
+    #[serde(rename = "response.function_call_arguments.done")]
+    ResponseFunctionCallArgumentsDone {
+        item_id: String,
+        output_index: u32,
+        sequence_number: u32,
+        call_id: String,
+        name: String,
+        arguments: String,
+    },
     #[serde(rename = "response.function_call_arguments.delta")]
     ResponseFunctionCallArgumentsDelta {
         response_id: String,
@@ -408,6 +417,13 @@ impl OpenAIRealtimeClient {
                                         OpenAIRealtimeResponse::Error { error } => {
                                             Some(RealtimeEvent::Error(error.message))
                                         }
+                                        OpenAIRealtimeResponse::ResponseFunctionCallArgumentsDone { item_id: _, output_index: _, sequence_number: _, call_id, name, arguments } => {
+                                            Some(RealtimeEvent::FunctionCallRequest {
+                                                name,
+                                                call_id: call_id,
+                                                arguments,
+                                            })
+                                        },
                                         _ => None,
                                     };
 
