@@ -11,7 +11,7 @@ exclude = ["packaging/before-packaging-command"]
 
 [package]
 name = "moly"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 rust-version = "1.85"                                                 ## required by cargo-packager
 description = "Desktop app for downloading and chatting with AI LLMs"
