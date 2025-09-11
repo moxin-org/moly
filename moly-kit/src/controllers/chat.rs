@@ -34,65 +34,65 @@ pub enum ChatUiEvent {
 /// An update to the chat state to be applied.
 pub type ChatStateMutation = Box<dyn FnMut(&mut ChatState) + Send>;
 
-/// Unique identifier for a registered callback. Can be used to unregister it later.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct CallbackId(u64);
+/// Allows to hook between dispatched events and state mutations.
+///
+/// It's the basic building block for extending [`ChatController`] beyond its
+/// default behavior.
+pub trait ChatControllerPlugin: Send {
+    /// Called when new state is available.
+    ///
+    /// Usually used to bind the controller to some view component/widget/element
+    /// in your framework of choice.
+    fn on_state_change(&mut self, _state: &ChatState) {}
 
-impl CallbackId {
+    /// Called when a UI interaction occurs.
+    ///
+    /// Note: When a UI interaction is reported depends on how the UI components/widgets/elements
+    /// that are used as your "view" are implemented.
+    fn on_ui_event(&mut self, _event: &ChatUiEvent) -> ChatControl {
+        ChatControl::Continue
+    }
+
+    /// Called with a state mutator to be applied over the current state.
+    ///
+    /// Useful for replicating state outside of the controller.
+    fn on_state_mutation(&mut self, _mutation: &mut ChatStateMutation) -> ChatControl {
+        ChatControl::Continue
+    }
+}
+
+/// Unique identifier for a registered plugin. Can be used to unregister it later.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ChatControllerPluginRegistrationId(u64);
+
+impl ChatControllerPluginRegistrationId {
     fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        CallbackId(id)
+        Self(id)
     }
 }
 
 pub struct ChatController {
     state: ChatState,
-    on_state_change_callbacks: Vec<(CallbackId, Box<dyn Fn(&ChatState) + Send>)>,
-    on_state_mutation_callbacks: Vec<(
-        CallbackId,
-        Box<dyn Fn(&mut ChatStateMutation) -> ChatControl + Send>,
+    plugins: Vec<(
+        ChatControllerPluginRegistrationId,
+        Box<dyn ChatControllerPlugin>,
     )>,
-    on_ui_event_callbacks: Vec<(CallbackId, Box<dyn Fn(&ChatUiEvent) -> ChatControl + Send>)>,
 }
 
 impl ChatController {
-    pub fn on_state_change<F>(&mut self, callback: F) -> CallbackId
+    pub fn register_plugin<P>(&mut self, plugin: P) -> ChatControllerPluginRegistrationId
     where
-        F: Fn(&ChatState) + Send + 'static,
+        P: ChatControllerPlugin + 'static,
     {
-        let id = CallbackId::new();
-        self.on_state_change_callbacks
-            .push((id, Box::new(callback)));
+        let id = ChatControllerPluginRegistrationId::new();
+        self.plugins.push((id, Box::new(plugin)));
         id
     }
 
-    pub fn on_ui_event<F>(&mut self, callback: F) -> CallbackId
-    where
-        F: Fn(&ChatUiEvent) -> ChatControl + Send + 'static,
-    {
-        let id = CallbackId::new();
-        self.on_ui_event_callbacks.push((id, Box::new(callback)));
-        id
-    }
-
-    pub fn on_state_mutation<F>(&mut self, callback: F) -> CallbackId
-    where
-        F: Fn(&mut ChatStateMutation) -> ChatControl + Send + 'static,
-    {
-        let id = CallbackId::new();
-        self.on_state_mutation_callbacks
-            .push((id, Box::new(callback)));
-        id
-    }
-
-    pub fn unregister_callback(&mut self, id: CallbackId) {
-        self.on_state_change_callbacks
-            .retain(|(callback_id, _)| *callback_id != id);
-        self.on_ui_event_callbacks
-            .retain(|(callback_id, _)| *callback_id != id);
-        self.on_state_mutation_callbacks
-            .retain(|(callback_id, _)| *callback_id != id);
+    pub fn unregister_plugin(&mut self, id: ChatControllerPluginRegistrationId) {
+        self.plugins.retain(|(plugin_id, _)| *plugin_id != id);
     }
 
     pub fn state(&self) -> &ChatState {
@@ -104,8 +104,8 @@ impl ChatController {
         F: FnMut(&mut ChatState) + Send + 'static,
     {
         let mut boxed_mutation: ChatStateMutation = Box::new(mutation);
-        for (_, callback) in &self.on_state_mutation_callbacks {
-            let control = callback(&mut boxed_mutation);
+        for (_, plugin) in &mut self.plugins {
+            let control = plugin.on_state_mutation(&mut boxed_mutation);
             match control {
                 ChatControl::Continue => continue,
                 ChatControl::Stop => return,
@@ -120,14 +120,14 @@ impl ChatController {
         F: FnMut(&mut ChatState) + Send + 'static,
     {
         mutation(&mut self.state);
-        for (_, callback) in &self.on_state_change_callbacks {
-            callback(&self.state);
+        for (_, plugin) in &mut self.plugins {
+            plugin.on_state_change(&self.state);
         }
     }
 
     pub fn dispatch_ui_event(&mut self, event: ChatUiEvent) {
-        for (_, callback) in &self.on_ui_event_callbacks {
-            let control = callback(&event);
+        for (_, plugin) in &mut self.plugins {
+            let control = plugin.on_ui_event(&event);
             match control {
                 ChatControl::Continue => continue,
                 ChatControl::Stop => return,
