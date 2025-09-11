@@ -155,14 +155,14 @@ impl AttachmentListRef {
     /// Immutable access to the underlying [[AttachmentList]].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn read(&self) -> std::cell::Ref<AttachmentList> {
+    pub fn read(&self) -> std::cell::Ref<'_, AttachmentList> {
         self.borrow().unwrap()
     }
 
     /// Mutable access to the underlying [[AttachmentList]].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn write(&mut self) -> std::cell::RefMut<AttachmentList> {
+    pub fn write(&mut self) -> std::cell::RefMut<'_, AttachmentList> {
         self.borrow_mut().unwrap()
     }
 }

@@ -145,6 +145,7 @@ impl AttachmentView {
         }
     }
 
+    #[allow(unused)]
     pub fn get_texture(&self) -> Option<Texture> {
         self.image_ref().borrow().unwrap().get_texture()
     }

@@ -402,14 +402,14 @@ impl PromptInputRef {
     /// Immutable access to the underlying [[PromptInput]].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn read(&self) -> Ref<PromptInput> {
+    pub fn read(&self) -> Ref<'_, PromptInput> {
         self.borrow().unwrap()
     }
 
     /// Mutable access to the underlying [[PromptInput]].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn write(&mut self) -> RefMut<PromptInput> {
+    pub fn write(&mut self) -> RefMut<'_, PromptInput> {
         self.borrow_mut().unwrap()
     }
 

@@ -119,6 +119,7 @@ impl ImageView {
         self.image_ref().set_texture(cx, self.texture.clone());
     }
 
+    #[allow(dead_code)]
     pub fn get_texture(&self) -> Option<Texture> {
         self.texture.clone()
     }

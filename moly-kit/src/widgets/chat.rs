@@ -1059,14 +1059,14 @@ impl ChatRef {
     /// Immutable access to the underlying [Chat].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn read(&self) -> Ref<Chat> {
+    pub fn read(&self) -> Ref<'_, Chat> {
         self.borrow().unwrap()
     }
 
     /// Mutable access to the underlying [Chat].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn write(&mut self) -> RefMut<Chat> {
+    pub fn write(&mut self) -> RefMut<'_, Chat> {
         self.borrow_mut().unwrap()
     }
 
