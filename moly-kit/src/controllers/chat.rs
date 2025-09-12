@@ -1,7 +1,10 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
 use crate::protocol::*;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    Arc, Mutex, Weak,
+    atomic::{AtomicU64, Ordering},
+};
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -16,7 +19,7 @@ pub enum ChatControl {
 
 /// State of the chat that you should reflect in your view component/widget/element.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct ChatState {
     pub messages: Vec<Message>,
     pub prompt_input_content: MessageContent,
@@ -81,9 +84,21 @@ pub struct ChatController {
         ChatControllerPluginRegistrationId,
         Box<dyn ChatControllerPlugin>,
     )>,
+    handle: Weak<Mutex<ChatController>>,
 }
 
 impl ChatController {
+    pub fn new_arc() -> Arc<Mutex<Self>> {
+        let controller = Arc::new(Mutex::new(Self {
+            state: ChatState::default(),
+            plugins: Vec::new(),
+            handle: Weak::new(),
+        }));
+
+        controller.lock().unwrap().handle = Arc::downgrade(&controller);
+        controller
+    }
+
     pub fn register_plugin<P>(&mut self, plugin: P) -> ChatControllerPluginRegistrationId
     where
         P: ChatControllerPlugin + 'static,
