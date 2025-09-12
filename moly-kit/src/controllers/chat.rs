@@ -21,18 +21,28 @@ pub enum ChatControl {
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ChatState {
+    /// The chat history sent as context to LLMs.
     pub messages: Vec<Message>,
+    /// The content to send as a new user message.
     pub prompt_input_content: MessageContent,
+    /// Indicates a message being edited.
     pub message_editor: Option<(usize, MessageContent)>,
+    /// Indicates that the LLM is still streaming the response ("writing").
     pub is_streaming: bool,
 }
 
 /// UI events that your framework of choice should feed into the [`ChatController`].
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChatUiEvent {
+    /// Triggered when the prompt input content changes (e.g. user typing,
+    /// attaching files, etc).
     PromptInputContentChange(MessageContent),
+    /// Triggered when a message editor content changes.
     MessageEditorContentChange(MessageContent),
+    /// Triggered when a message editor is shown or hidden.
     MessageEditorVisibilityChange(usize, bool),
+    /// Triggered when the user triggers sending the current chat history + prompt
+    /// if any.
     Send,
 }
 
@@ -80,14 +90,23 @@ impl ChatControllerPluginRegistrationId {
 
 pub struct ChatController {
     state: ChatState,
+    /// A list of plugins defining custom behavior.
     plugins: Vec<(
         ChatControllerPluginRegistrationId,
         Box<dyn ChatControllerPlugin>,
     )>,
+    /// Weak self-reference used by async tasks (or threads) spawned from
+    /// inside the controller.
     handle: Weak<Mutex<ChatController>>,
 }
 
 impl ChatController {
+    /// Creates a new reference-counted `ChatController`.
+    ///
+    /// This is the only public way to create a `ChatController`. A weak ref is
+    /// internally used and passed to built-in async tasks (or threads) and you
+    /// may find this useful when integrating the controller with your framework
+    /// of choice.
     pub fn new_arc() -> Arc<Mutex<Self>> {
         let controller = Arc::new(Mutex::new(Self {
             state: ChatState::default(),
@@ -99,6 +118,7 @@ impl ChatController {
         controller
     }
 
+    /// Registers a plugin to extend the controller behavior.
     pub fn register_plugin<P>(&mut self, plugin: P) -> ChatControllerPluginRegistrationId
     where
         P: ChatControllerPlugin + 'static,
@@ -108,15 +128,21 @@ impl ChatController {
         id
     }
 
+    /// Unregisters a previously registered plugin.
     pub fn unregister_plugin(&mut self, id: ChatControllerPluginRegistrationId) {
         self.plugins.retain(|(plugin_id, _)| *plugin_id != id);
     }
 
-    // pub fn state(&self) -> ChatState {
-    //     // TODO: Expensive.
-    //     self.inner().state.clone()
-    // }
+    /// Read-only access to state. Use `dispatch_state_mutation` to change it.
+    ///
+    /// If you need to bypass plugins, you can use `perform_state_mutation` instead.
+    pub fn state(&self) -> &ChatState {
+        &self.state
+    }
 
+    /// Dispatches a state mutation to be applied.
+    ///
+    /// Plugins will be called before the mutation is applied and can stop it.
     pub fn dispatch_state_mutation<F>(&mut self, mutation: F)
     where
         F: FnMut(&mut ChatState) + Send + 'static,
@@ -137,6 +163,7 @@ impl ChatController {
         self.perform_state_mutation(boxed_mutation);
     }
 
+    /// Applies a state mutation directly, bypassing plugins.
     pub fn perform_state_mutation<F>(&mut self, mut mutation: F)
     where
         F: FnMut(&mut ChatState) + Send + 'static,
@@ -148,6 +175,9 @@ impl ChatController {
         }
     }
 
+    /// Dispatches a UI event.
+    ///
+    /// Plugins will be called before the default behavior and can stop it.
     pub fn dispatch_ui_event(&mut self, event: ChatUiEvent) {
         for (_, plugin) in &mut self.plugins {
             let control = plugin.on_ui_event(&event);
@@ -159,6 +189,7 @@ impl ChatController {
         self.perform_ui_event(event);
     }
 
+    /// Performs a UI event directly, bypassing plugins.
     pub fn perform_ui_event(&mut self, event: ChatUiEvent) {
         match event {
             ChatUiEvent::PromptInputContentChange(content) => {
@@ -185,8 +216,18 @@ impl ChatController {
                     }
                 });
             }
-            ChatUiEvent::Send => {}
+            ChatUiEvent::Send => {
+                self.handle_send();
+            }
         }
+    }
+
+    fn handle_send(&mut self) {
+        if self.state.is_streaming {
+            return;
+        }
+
+        self.dispatch_state_mutation(|state| {});
     }
 }
 
