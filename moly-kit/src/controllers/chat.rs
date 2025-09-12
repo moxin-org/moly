@@ -1,10 +1,7 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
 use crate::protocol::*;
-use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -78,17 +75,12 @@ impl ChatControllerPluginRegistrationId {
     }
 }
 
-struct ChatControllerInner {
+pub struct ChatController {
     state: ChatState,
     plugins: Vec<(
         ChatControllerPluginRegistrationId,
         Box<dyn ChatControllerPlugin>,
     )>,
-}
-
-#[derive(Clone)]
-pub struct ChatController {
-    inner: Arc<Mutex<ChatControllerInner>>,
 }
 
 impl ChatController {
@@ -97,14 +89,12 @@ impl ChatController {
         P: ChatControllerPlugin + 'static,
     {
         let id = ChatControllerPluginRegistrationId::new();
-        self.lock().plugins.push((id, Box::new(plugin)));
+        self.plugins.push((id, Box::new(plugin)));
         id
     }
 
     pub fn unregister_plugin(&mut self, id: ChatControllerPluginRegistrationId) {
-        self.lock()
-            .plugins
-            .retain(|(plugin_id, _)| *plugin_id != id);
+        self.plugins.retain(|(plugin_id, _)| *plugin_id != id);
     }
 
     // pub fn state(&self) -> ChatState {
@@ -119,8 +109,7 @@ impl ChatController {
         let mut boxed_mutation: ChatStateMutation = Box::new(mutation);
 
         {
-            let mut inner = self.lock();
-            for (_, plugin) in &mut inner.plugins {
+            for (_, plugin) in &mut self.plugins {
                 let control = plugin.on_state_mutation(&mut boxed_mutation);
 
                 match control {
@@ -137,18 +126,15 @@ impl ChatController {
     where
         F: FnMut(&mut ChatState) + Send + 'static,
     {
-        let mut inner = self.lock();
-        let ChatControllerInner { state, plugins } = &mut *inner;
+        mutation(&mut self.state);
 
-        mutation(state);
-
-        for (_, plugin) in plugins {
-            plugin.on_state_change(state);
+        for (_, plugin) in &mut self.plugins {
+            plugin.on_state_change(&self.state);
         }
     }
 
     pub fn dispatch_ui_event(&mut self, event: ChatUiEvent) {
-        for (_, plugin) in &mut self.lock().plugins {
+        for (_, plugin) in &mut self.plugins {
             let control = plugin.on_ui_event(&event);
             match control {
                 ChatControl::Continue => continue,
@@ -186,10 +172,6 @@ impl ChatController {
             }
             ChatUiEvent::Send => {}
         }
-    }
-
-    fn lock(&self) -> std::sync::MutexGuard<'_, ChatControllerInner> {
-        self.inner.lock().unwrap()
     }
 }
 
