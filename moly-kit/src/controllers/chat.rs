@@ -29,6 +29,8 @@ pub struct ChatState {
     pub message_editor: Option<(usize, MessageContent)>,
     /// Indicates that the LLM is still streaming the response ("writing").
     pub is_streaming: bool,
+    /// The bot to interact with when sending messages.
+    pub bot_id: Option<BotId>,
 }
 
 /// UI events that your framework of choice should feed into the [`ChatController`].
@@ -84,7 +86,7 @@ pub trait ChatControllerPlugin: Send {
 /// the weak reference. If you do so, running futures will not be aborted when the controller
 /// is not longer needed, because a strong reference will be kept alive by the
 /// async task (or thread). This wrapper intends enforce upgrading only when needed.
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct ChatControllerAccessor {
     handle: Weak<Mutex<ChatController>>,
 }
@@ -123,6 +125,7 @@ pub struct ChatController {
     /// inside the controller.
     accessor: ChatControllerAccessor,
     send_abort_on_drop: Option<AbortOnDropHandle>,
+    client: Option<Box<dyn BotClient>>,
 }
 
 impl ChatController {
@@ -138,6 +141,7 @@ impl ChatController {
             plugins: Vec::new(),
             accessor: ChatControllerAccessor::default(),
             send_abort_on_drop: None,
+            client: None,
         }));
 
         controller.lock().unwrap().accessor.handle = Arc::downgrade(&controller);
@@ -262,6 +266,22 @@ impl ChatController {
     fn handle_send(&mut self) {
         self.abort();
 
+        let Some(client) = self.client.as_mut() else {
+            self.dispatch_state_mutation(|state| {
+                state
+                    .messages
+                    .push(Message::app_error("No bot client configured"));
+            });
+            return;
+        };
+
+        let Some(bot_id) = self.state.bot_id.as_ref() else {
+            self.dispatch_state_mutation(|state| {
+                state.messages.push(Message::app_error("No bot selected"));
+            });
+            return;
+        };
+
         // Do not proceed if None because it means it was cancelled by a plugin.
         let Some(()) = self.dispatch_state_mutation(|state| {
             state.is_streaming = true;
@@ -273,6 +293,8 @@ impl ChatController {
         }) else {
             return;
         };
+
+        let controller = self.accessor.clone();
     }
 
     /// Aborts any ongoing send operation.
