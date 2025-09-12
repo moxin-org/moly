@@ -1,6 +1,6 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
-use crate::protocol::*;
+use crate::{protocol::*, utils::asynchronous::AbortOnDropHandle};
 use std::sync::{
     Arc, Mutex, Weak,
     atomic::{AtomicU64, Ordering},
@@ -46,9 +46,6 @@ pub enum ChatUiEvent {
     Send,
 }
 
-/// An update to the chat state to be applied.
-pub type ChatStateMutation = Box<dyn FnMut(&mut ChatState) + Send>;
-
 /// Allows to hook between dispatched events and state mutations.
 ///
 /// It's the basic building block for extending [`ChatController`] beyond its
@@ -71,8 +68,35 @@ pub trait ChatControllerPlugin: Send {
     /// Called with a state mutator to be applied over the current state.
     ///
     /// Useful for replicating state outside of the controller.
-    fn on_state_mutation(&mut self, _mutation: &mut ChatStateMutation) -> ChatControl {
+    fn on_state_mutation(
+        &mut self,
+        _mutation: &mut (dyn FnMut(&mut ChatState) + Send),
+    ) -> ChatControl {
         ChatControl::Continue
+    }
+
+    // attachment handling?
+}
+
+/// Utility wrapper around a weak ref to a controller.
+///
+/// Motivation: Before spawning async tasks (or threads) you may be tempted to upgrade
+/// the weak reference. If you do so, running futures will not be aborted when the controller
+/// is not longer needed, because a strong reference will be kept alive by the
+/// async task (or thread). This wrapper intends enforce upgrading only when needed.
+#[derive(Default)]
+struct ChatControllerAccessor {
+    handle: Weak<Mutex<ChatController>>,
+}
+
+impl ChatControllerAccessor {
+    fn lock_with<F, R>(&self, f: F) -> Option<R>
+    where
+        F: FnOnce(&mut ChatController) -> R,
+    {
+        let handle = self.handle.upgrade()?;
+        let mut controller = handle.lock().ok()?;
+        Some(f(&mut controller))
     }
 }
 
@@ -97,7 +121,8 @@ pub struct ChatController {
     )>,
     /// Weak self-reference used by async tasks (or threads) spawned from
     /// inside the controller.
-    handle: Weak<Mutex<ChatController>>,
+    accessor: ChatControllerAccessor,
+    send_abort_on_drop: Option<AbortOnDropHandle>,
 }
 
 impl ChatController {
@@ -111,10 +136,11 @@ impl ChatController {
         let controller = Arc::new(Mutex::new(Self {
             state: ChatState::default(),
             plugins: Vec::new(),
-            handle: Weak::new(),
+            accessor: ChatControllerAccessor::default(),
+            send_abort_on_drop: None,
         }));
 
-        controller.lock().unwrap().handle = Arc::downgrade(&controller);
+        controller.lock().unwrap().accessor.handle = Arc::downgrade(&controller);
         controller
     }
 
@@ -143,36 +169,47 @@ impl ChatController {
     /// Dispatches a state mutation to be applied.
     ///
     /// Plugins will be called before the mutation is applied and can stop it.
-    pub fn dispatch_state_mutation<F>(&mut self, mutation: F)
+    ///
+    /// This function can return a value from the mutation closure. If a plugin
+    /// interrupts the mutation, `None` is returned.
+    ///
+    /// The controller will only run this mutation once over the state. Plugins
+    /// get access to this closure (without the return value) so they may do
+    /// additional stuff with it (e.g. replicate the mutation outside of the controller).
+    pub fn dispatch_state_mutation<F, R>(&mut self, mut mutation: F) -> Option<R>
     where
-        F: FnMut(&mut ChatState) + Send + 'static,
+        F: (FnMut(&mut ChatState) -> R) + Send + 'static,
     {
-        let mut boxed_mutation: ChatStateMutation = Box::new(mutation);
-
         {
             for (_, plugin) in &mut self.plugins {
-                let control = plugin.on_state_mutation(&mut boxed_mutation);
+                let control = plugin.on_state_mutation(&mut |state| {
+                    mutation(state);
+                });
 
                 match control {
                     ChatControl::Continue => continue,
-                    ChatControl::Stop => return,
+                    ChatControl::Stop => return None,
                 }
             }
         }
 
-        self.perform_state_mutation(boxed_mutation);
+        Some(self.perform_state_mutation(mutation))
     }
 
     /// Applies a state mutation directly, bypassing plugins.
-    pub fn perform_state_mutation<F>(&mut self, mut mutation: F)
+    ///
+    /// This function can return a value from the mutation closure.
+    pub fn perform_state_mutation<F, R>(&mut self, mut mutation: F) -> R
     where
-        F: FnMut(&mut ChatState) + Send + 'static,
+        F: (FnMut(&mut ChatState) -> R) + Send + 'static,
     {
-        mutation(&mut self.state);
+        let out = mutation(&mut self.state);
 
         for (_, plugin) in &mut self.plugins {
             plugin.on_state_change(&self.state);
         }
+
+        out
     }
 
     /// Dispatches a UI event.
@@ -223,11 +260,26 @@ impl ChatController {
     }
 
     fn handle_send(&mut self) {
-        if self.state.is_streaming {
-            return;
-        }
+        self.abort();
 
-        self.dispatch_state_mutation(|state| {});
+        // Do not proceed if None because it means it was cancelled by a plugin.
+        let Some(()) = self.dispatch_state_mutation(|state| {
+            state.is_streaming = true;
+            state.messages.push(Message {
+                from: EntityId::User,
+                content: std::mem::take(&mut state.prompt_input_content),
+                ..Default::default()
+            });
+        }) else {
+            return;
+        };
+    }
+
+    /// Aborts any ongoing send operation.
+    fn abort(&mut self) {
+        if let Some(mut handle) = self.send_abort_on_drop.take() {
+            handle.abort();
+        }
     }
 }
 
