@@ -33,12 +33,7 @@ live_design!(
 
             audio_modal = <MolyModal> {
                 dismiss_on_focus_lost: false
-                content: <RoundedView> {
-                    draw_bg: {border_radius: 10}
-                    width: 450, height: Fit
-                    align: {x: 0.5, y: 0.5}
-                    realtime = <Realtime>{}
-                }
+                content: <RealtimeContent> {}
             }
         }
     }

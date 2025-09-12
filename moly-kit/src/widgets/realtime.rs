@@ -333,6 +333,99 @@ live_design! {
         }
     }
 
+    Controls = <View> {
+        width: Fill, height: Fit
+        flow: Down
+        spacing: 10
+        align: {x: 0.0, y: 0.5}
+        padding: 20
+
+        devices_selector = <DevicesSelector> {}
+        selected_devices_view = <View> {
+            visible: false
+            height: Fit
+            align: {x: 0.0, y: 0.5}
+            selected_devices = <Label> {
+                draw_text: {
+                    text_style: {font_size: 11}
+                    color: #222
+                }
+            }
+        }
+
+        voice_selector_wrapper = <VoiceSelector> {}
+        selected_voice_view = <View> {
+            visible: false
+            height: Fit
+            align: {x: 0.0, y: 0.5}
+            selected_voice = <Label> {
+                draw_text: {
+                    text_style: {font_size: 11}
+                    color: #222
+                }
+            }
+        }
+
+        <TranscriptionModelSelector> {}
+
+        toggle_interruptions = <Toggle> {
+            text: "Allow interruptions\n(requires headphones, no AEC yet)"
+            width: Fit
+            height: Fit
+            draw_text: {
+                fn get_color(self) -> vec4 {
+                    return #222;
+                }
+                text_style: {font_size: 10}
+            }
+
+            label_walk: {
+                margin: {left: 50}
+            }
+            draw_bg: {
+                size: 25.
+            }
+
+            padding: {left: 5, right: 5, top: 5, bottom: 5}
+        }
+
+        status_label = <Label> {
+            text: "Ready to start"
+            width: Fit
+            draw_text: {
+                color: #222
+                text_style: {font_size: 11}
+            }
+        }
+
+        tool_permission_line = <ToolLine> {
+            visible: false
+            margin: {left: 10, right: 10, top: 10}
+        }
+
+        start_stop_button = <RoundedShadowView> {
+            cursor: Hand
+            margin: {left: 10, right: 10, bottom: 0, top: 10}
+            width: Fill, height: Fit
+            align: {x: 0.5, y: 0.5}
+            padding: {left: 20, right: 20, bottom: 10, top: 10}
+            draw_bg: {
+                color: #f9f9f9
+                border_radius: 4.5,
+                uniform shadow_color: #0002
+                shadow_radius: 8.0,
+                shadow_offset: vec2(0.0,-1.5)
+            }
+            stop_start_label = <Label> {
+                text: "Start"
+                draw_text: {
+                    text_style: {font_size: 11}
+                    color: #000
+                }
+            }
+        }
+    }
+
     pub Realtime = {{Realtime}} <RoundedView> {
         show_bg: true
         draw_bg: {
@@ -341,111 +434,43 @@ live_design! {
         }
         flow: Down
         spacing: 20
-        width: 450, height: Fit
-        align: {x: 0.5, y: 0.5}
+        width: Fill, height: Fill
+        align: {x: 0.5, y: 0.0}
         padding: 10
 
         header = <View> {
             height: Fit
-            padding: {right: 10}
-            filler_x = <View> {height: Fit}
+            flow: Overlay
 
+            align: {x: 1.0, y: 0.5}
             close_button = <IconButton> {
                 text: "" // fa-xmark
             }
         }
 
         <AIAnimation> {}
+        <Controls> {}
+    }
 
-        controls = <View> {
-            width: Fill, height: Fit
-            flow: Down
-            spacing: 5
-            align: {x: 0.0, y: 0.5}
-            padding: 20
+    pub RealtimeContent = <RoundedView> {
+        align: {x: 0.5, y: 0.5}
 
-            devices_selector = <DevicesSelector> {}
-            selected_devices_view = <View> {
-                visible: false
-                height: Fit
-                align: {x: 0.0, y: 0.5}
-                selected_devices = <Label> {
-                    draw_text: {
-                        text_style: {font_size: 11}
-                        color: #222
-                    }
-                }
-            }
-
-            voice_selector_wrapper = <VoiceSelector> {}
-            selected_voice_view = <View> {
-                visible: false
-                height: Fit
-                align: {x: 0.0, y: 0.5}
-                selected_voice = <Label> {
-                    draw_text: {
-                        text_style: {font_size: 11}
-                        color: #222
-                    }
-                }
-            }
-
-            <TranscriptionModelSelector> {}
-
-            toggle_interruptions = <Toggle> {
-                text: "Allow interruptions\n(requires headphones, no AEC yet)"
-                width: Fit
-                height: Fit
-                draw_text: {
-                    fn get_color(self) -> vec4 {
-                        return #222;
-                    }
-                    text_style: {font_size: 10}
-                }
-
-                label_walk: {
-                    margin: {left: 50}
-                }
-                draw_bg: {
-                    size: 25.
-                }
-
-                padding: {left: 5, right: 5, top: 5, bottom: 5}
-            }
-
-            status_label = <Label> {
-                text: "Ready to start"
-                width: Fit
-                draw_text: {
-                    color: #222
-                    text_style: {font_size: 11}
-                }
-            }
-
-            tool_permission_line = <ToolLine> {
-                visible: false
-                margin: {left: 10, right: 10, top: 10}
-            }
-
-            start_stop_button = <RoundedShadowView> {
-                cursor: Hand
-                margin: {left: 10, right: 10, bottom: 0, top: 10}
-                width: Fill, height: Fit
+        <AdaptiveView> {
+            Desktop = {
+                width: 450, height: 650
                 align: {x: 0.5, y: 0.5}
-                padding: {left: 20, right: 20, bottom: 10, top: 10}
-                draw_bg: {
-                    color: #f9f9f9
-                    border_radius: 4.5,
-                    uniform shadow_color: #0002
-                    shadow_radius: 8.0,
-                    shadow_offset: vec2(0.0,-1.5)
+
+                <CachedWidget> {
+                    realtime = <Realtime>{}
                 }
-                stop_start_label = <Label> {
-                    text: "Start"
-                    draw_text: {
-                        text_style: {font_size: 11}
-                        color: #000
-                    }
+            }
+
+            Mobile = {
+                width: Fill, height: Fill
+                align: {x: 0.5, y: 0.5}
+
+                <CachedWidget> {
+                    realtime = <Realtime>{}
                 }
             }
         }
