@@ -1,11 +1,16 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
-use crate::{protocol::*, utils::asynchronous::AbortOnDropHandle};
+use crate::{
+    McpManagerClient,
+    protocol::*,
+    utils::asynchronous::{AbortOnDropHandle, PlatformSendStream, spawn_abort_on_drop},
+};
 use std::sync::{
     Arc, Mutex, Weak,
     atomic::{AtomicU64, Ordering},
 };
 
+use futures::FutureExt;
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -127,6 +132,7 @@ pub struct ChatController {
     send_abort_on_drop: Option<AbortOnDropHandle>,
     client: Option<Box<dyn BotClient>>,
     cached_bots_result: Option<ClientResult<Vec<Bot>>>,
+    tool_manager: Option<McpManagerClient>,
 }
 
 impl ChatController {
@@ -144,6 +150,7 @@ impl ChatController {
             send_abort_on_drop: None,
             client: None,
             cached_bots_result: None,
+            tool_manager: None,
         }));
 
         controller.lock().unwrap().accessor.handle = Arc::downgrade(&controller);
@@ -268,7 +275,7 @@ impl ChatController {
     fn handle_send(&mut self) {
         self.abort();
 
-        let Some(client) = self.client.as_mut() else {
+        let Some(client) = self.client.clone() else {
             self.dispatch_state_mutation(|state| {
                 state
                     .messages
@@ -277,7 +284,7 @@ impl ChatController {
             return;
         };
 
-        let Some(bot_id) = self.state.bot_id.as_ref() else {
+        let Some(bot_id) = self.state.bot_id.clone() else {
             self.dispatch_state_mutation(|state| {
                 state.messages.push(Message::app_error("No bot selected"));
             });
@@ -286,17 +293,71 @@ impl ChatController {
 
         // Do not proceed if None because it means it was cancelled by a plugin.
         let Some(()) = self.dispatch_state_mutation(|state| {
+            let prompt_input_content = std::mem::take(&mut state.prompt_input_content);
+            if !prompt_input_content.is_empty() {
+                state.messages.push(Message {
+                    from: EntityId::User,
+                    content: prompt_input_content,
+                    ..Default::default()
+                });
+            }
             state.is_streaming = true;
-            state.messages.push(Message {
-                from: EntityId::User,
-                content: std::mem::take(&mut state.prompt_input_content),
-                ..Default::default()
-            });
         }) else {
             return;
         };
 
+        let messages_context = self
+            .state
+            .messages
+            .iter()
+            .filter(|m| m.from != EntityId::App)
+            .cloned()
+            .collect::<Vec<_>>();
+
         let controller = self.accessor.clone();
+        self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
+            let Some(bots) = controller.lock_with(|c| c.bots()) else {
+                return;
+            };
+
+            let bots = bots.await;
+            let Some(bots) = bots.into_value() else {
+                return;
+            };
+
+            let bot = bots.into_iter().find(|b| b.id == bot_id);
+            let Some(bot) = bot else {
+                return;
+            };
+
+            // The realtime check is hack to avoid showing a loading message for realtime assistants
+            // TODO: we should base this on upgrade rather than capabilities
+            if !bot.capabilities.supports_realtime() {
+                controller.lock_with(|c| {
+                    c.dispatch_state_mutation(|state| {
+                        state.messages.push(Message {
+                            from: EntityId::Bot(state.bot_id.clone().unwrap()),
+                            metadata: MessageMetadata {
+                                // TODO: Evaluate removing this from messages in favor of
+                                // `is_streaming` in the controller.
+                                is_writing: true,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        });
+                    })
+                });
+            }
+
+            let Some(tools) = controller.lock_with(|c| {
+                c.tool_manager
+                    .as_ref()
+                    .map(|tm| tm.get_all_namespaced_tools())
+                    .unwrap_or_default()
+            }) else {
+                return;
+            };
+        }));
     }
 
     /// Aborts any ongoing send operation.
@@ -319,28 +380,90 @@ impl ChatController {
     ///
     /// The response is cached the first time this resolves. If it was successful
     /// (at least partially), subsequent calls will return the cached value.
-    async fn bots(&mut self) -> ClientResult<&[Bot]> {
-        if !self
-            .cached_bots_result
-            .as_ref()
-            .map(|r| r.has_value())
-            .unwrap_or(false)
-        {
-            let Some(client) = self.client.as_mut() else {
-                return ClientError::new(
+    // TODO: Syncronize to avoid race conditions on concurrent calls.
+    fn bots(&mut self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
+        if let Some(cached) = self.cached_bots_result.as_ref() {
+            if cached.has_value() {
+                let cached = cached.clone();
+                return Box::pin(async move { cached });
+            }
+        }
+
+        let Some(client) = self.client.clone() else {
+            return Box::pin(async {
+                ClientError::new(
                     ClientErrorKind::Unknown,
                     "No bot client configured".to_string(),
                 )
-                .into();
-            };
+                .into()
+            });
+        };
 
-            self.cached_bots_result = Some(client.bots().await);
+        let controller = self.accessor.clone();
+        Box::pin(async move {
+            let result = client.bots().await;
+            controller.lock_with({
+                let result = result.clone();
+                move |c| {
+                    c.cached_bots_result = Some(result);
+                }
+            });
+            result
+        })
+    }
+}
+
+/// Util that wraps the stream of `send()` and gives you a stream less agresive to
+/// the receiver UI regardless of the streaming chunk size.
+fn amortize(
+    input: impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static,
+) -> impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static {
+    // Use utils
+    use crate::utils::string::AmortizedString;
+    use async_stream::stream;
+
+    // Stream state
+    let mut amortized_text = AmortizedString::default();
+    let mut amortized_reasoning = AmortizedString::default();
+
+    // Stream compute
+    stream! {
+        // Our wrapper stream "activates" when something comes from the underlying stream.
+        for await result in input {
+            // Transparently yield the result on error and then stop.
+            if result.has_errors() {
+                yield result;
+                return;
+            }
+
+            // Modified content that we will be yielding.
+            let mut content = result.into_value().unwrap();
+
+            // Feed the whole string into the string amortizer.
+            // Put back what has been already amortized from previous iterations.
+            let text = std::mem::take(&mut content.text);
+            amortized_text.update(text);
+            content.text = amortized_text.current().to_string();
+
+            // Same for reasoning.
+            let reasoning = std::mem::take(&mut content.reasoning);
+            amortized_reasoning.update(reasoning);
+            content.reasoning = amortized_reasoning.current().to_string();
+
+            // Prioritize yielding amortized reasoning updates first.
+            for reasoning in &mut amortized_reasoning {
+                content.reasoning = reasoning;
+                yield ClientResult::new_ok(content.clone());
+            }
+
+            // Finially, begin yielding amortized text updates.
+            // This will also include the amortized reasoning until now because we
+            // fed it back into the content.
+            for text in &mut amortized_text {
+                content.text = text;
+                yield ClientResult::new_ok(content.clone());
+            }
         }
-
-        self.cached_bots_result
-            .as_ref()
-            .unwrap()
-            .map_value(|bots| bots.as_slice())
     }
 }
 

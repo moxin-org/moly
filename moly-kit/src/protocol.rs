@@ -645,7 +645,7 @@ impl ClientError {
 ///
 /// It would be mistake if this contains no value and no errors at the same time.
 /// This is taken care on creation time, and it can't be modified afterwards.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[must_use]
 pub struct ClientResult<T> {
     errors: Vec<ClientError>,
