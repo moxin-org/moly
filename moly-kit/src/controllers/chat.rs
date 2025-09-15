@@ -126,6 +126,7 @@ pub struct ChatController {
     accessor: ChatControllerAccessor,
     send_abort_on_drop: Option<AbortOnDropHandle>,
     client: Option<Box<dyn BotClient>>,
+    cached_bots_result: Option<ClientResult<Vec<Bot>>>,
 }
 
 impl ChatController {
@@ -142,6 +143,7 @@ impl ChatController {
             accessor: ChatControllerAccessor::default(),
             send_abort_on_drop: None,
             client: None,
+            cached_bots_result: None,
         }));
 
         controller.lock().unwrap().accessor.handle = Arc::downgrade(&controller);
@@ -302,6 +304,43 @@ impl ChatController {
         if let Some(mut handle) = self.send_abort_on_drop.take() {
             handle.abort();
         }
+    }
+
+    /// Changes the client used by this controller when sending messages.
+    pub fn set_client<C>(&mut self, client: C)
+    where
+        C: BotClient + 'static,
+    {
+        self.client = Some(Box::new(client));
+        self.cached_bots_result = None;
+    }
+
+    /// Fetch the available bots from the underlying configured client.
+    ///
+    /// The response is cached the first time this resolves. If it was successful
+    /// (at least partially), subsequent calls will return the cached value.
+    async fn bots(&mut self) -> ClientResult<&[Bot]> {
+        if !self
+            .cached_bots_result
+            .as_ref()
+            .map(|r| r.has_value())
+            .unwrap_or(false)
+        {
+            let Some(client) = self.client.as_mut() else {
+                return ClientError::new(
+                    ClientErrorKind::Unknown,
+                    "No bot client configured".to_string(),
+                )
+                .into();
+            };
+
+            self.cached_bots_result = Some(client.bots().await);
+        }
+
+        self.cached_bots_result
+            .as_ref()
+            .unwrap()
+            .map_value(|bots| bots.as_slice())
     }
 }
 

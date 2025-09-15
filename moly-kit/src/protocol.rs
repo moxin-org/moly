@@ -714,6 +714,27 @@ impl<T> ClientResult<T> {
         &self.errors
     }
 
+    /// Returns the successful value and the errors list.
+    pub fn value_and_errors(&self) -> (Option<&T>, &[ClientError]) {
+        (self.value.as_ref(), &self.errors)
+    }
+
+    /// Creates a result with the given value and errors without checking the
+    /// invariant of having at least one of them.
+    ///
+    /// Warning: The main purpose of this method is to construct [`ClientResult`]s
+    /// from already existing [`ClientResult`]s that are known to be valid. Using
+    /// this without caution may lead to invalid states and panic at runtime.
+    pub fn new_unchecked(value: Option<T>, errors: Vec<ClientError>) -> Self {
+        ClientResult { value, errors }
+    }
+
+    /// Maps the successful value to another value, cloning the errors list.
+    pub fn map_value<'t, U: 't>(&'t self, f: impl FnOnce(&'t T) -> U) -> ClientResult<U> {
+        let value = self.value.as_ref().map(f);
+        ClientResult::new_unchecked(value, self.errors.clone())
+    }
+
     /// Returns true if there is a successful value.
     pub fn has_value(&self) -> bool {
         self.value.is_some()
