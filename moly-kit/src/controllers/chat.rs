@@ -10,7 +10,7 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
 };
 
-use futures::{FutureExt, StreamExt};
+use futures::StreamExt;
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -273,7 +273,8 @@ impl ChatController {
     }
 
     fn handle_send(&mut self) {
-        self.abort();
+        // Clean previous streaming artifacts if any.
+        self.clean_streaming_artifacts();
 
         let Some(mut client) = self.client.clone() else {
             self.dispatch_state_mutation(|state| {
@@ -369,14 +370,23 @@ impl ChatController {
                     break;
                 }
             }
+            controller.lock_with(|c| c.clean_streaming_artifacts());
         }));
     }
 
-    /// Aborts any ongoing send operation.
-    fn abort(&mut self) {
-        if let Some(mut handle) = self.send_abort_on_drop.take() {
-            handle.abort();
+    /// Aborts current streaming operation and cleans up artifacts.
+    fn clean_streaming_artifacts(&mut self) {
+        if self.send_abort_on_drop.is_none() {
+            return;
         }
+
+        self.send_abort_on_drop = None;
+        self.dispatch_state_mutation(|state| {
+            state.messages.retain_mut(|m| {
+                m.metadata.is_writing = false;
+                !m.content.is_empty()
+            });
+        });
     }
 
     /// Changes the client used by this controller when sending messages.
@@ -430,22 +440,28 @@ impl ChatController {
         match result.into_result() {
             Ok(content) => {
                 // Check if this is a realtime upgrade message
-                if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
+                if let Some(Upgrade::Realtime(_channel)) = &content.upgrade {
                     todo!();
                 }
 
                 // TODO: Handle unexpected message.
                 // TODO: Handle tools.
+
+                self.dispatch_state_mutation(|state| {
+                    state.messages.last_mut().unwrap().content = content.clone();
+                });
+
+                false
             }
             Err(errors) => {
                 self.dispatch_state_mutation(|state| {
                     let messages_append = errors.iter().map(|e| Message::app_error(e));
                     state.messages.extend(messages_append);
                 });
+
+                true
             }
         }
-
-        todo!()
     }
 }
 
