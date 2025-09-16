@@ -424,17 +424,23 @@ impl ChatController {
         })
     }
 
-    fn handle_message_content(&self, result: ClientResult<MessageContent>) -> bool {
+    fn handle_message_content(&mut self, result: ClientResult<MessageContent>) -> bool {
         // For simplicity, lets handle this as an standard Result, ignoring content
         // if there are errors.
         match result.into_result() {
-            Ok(content) => {}
+            Ok(content) => {
+                // Check if this is a realtime upgrade message
+                if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
+                    todo!();
+                }
+
+                // TODO: Handle unexpected message.
+                // TODO: Handle tools.
+            }
             Err(errors) => {
-                self.accessor.lock_with(|c| {
-                    c.dispatch_state_mutation(|state| {
-                        let messages_append = errors.iter().map(|e| Message::app_error(e));
-                        state.messages.extend(messages_append);
-                    });
+                self.dispatch_state_mutation(|state| {
+                    let messages_append = errors.iter().map(|e| Message::app_error(e));
+                    state.messages.extend(messages_append);
                 });
             }
         }
