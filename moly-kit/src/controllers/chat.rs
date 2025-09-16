@@ -10,7 +10,7 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
 };
 
-use futures::FutureExt;
+use futures::{FutureExt, StreamExt};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -191,7 +191,7 @@ impl ChatController {
     /// additional stuff with it (e.g. replicate the mutation outside of the controller).
     pub fn dispatch_state_mutation<F, R>(&mut self, mut mutation: F) -> Option<R>
     where
-        F: (FnMut(&mut ChatState) -> R) + Send + 'static,
+        F: (FnMut(&mut ChatState) -> R) + Send,
     {
         {
             for (_, plugin) in &mut self.plugins {
@@ -214,7 +214,7 @@ impl ChatController {
     /// This function can return a value from the mutation closure.
     pub fn perform_state_mutation<F, R>(&mut self, mut mutation: F) -> R
     where
-        F: (FnMut(&mut ChatState) -> R) + Send + 'static,
+        F: (FnMut(&mut ChatState) -> R) + Send,
     {
         let out = mutation(&mut self.state);
 
@@ -275,7 +275,7 @@ impl ChatController {
     fn handle_send(&mut self) {
         self.abort();
 
-        let Some(client) = self.client.clone() else {
+        let Some(mut client) = self.client.clone() else {
             self.dispatch_state_mutation(|state| {
                 state
                     .messages
@@ -357,6 +357,18 @@ impl ChatController {
             }) else {
                 return;
             };
+
+            let message_stream = amortize(client.send(&bot_id, &messages_context, &tools));
+            let mut message_stream = std::pin::pin!(message_stream);
+            while let Some(result) = message_stream.next().await {
+                let should_break = controller
+                    .lock_with(|c| c.handle_message_content(result))
+                    .unwrap_or(true);
+
+                if should_break {
+                    break;
+                }
+            }
         }));
     }
 
@@ -410,6 +422,24 @@ impl ChatController {
             });
             result
         })
+    }
+
+    fn handle_message_content(&self, result: ClientResult<MessageContent>) -> bool {
+        // For simplicity, lets handle this as an standard Result, ignoring content
+        // if there are errors.
+        match result.into_result() {
+            Ok(content) => {}
+            Err(errors) => {
+                self.accessor.lock_with(|c| {
+                    c.dispatch_state_mutation(|state| {
+                        let messages_append = errors.iter().map(|e| Message::app_error(e));
+                        state.messages.extend(messages_append);
+                    });
+                });
+            }
+        }
+
+        todo!()
     }
 }
 
