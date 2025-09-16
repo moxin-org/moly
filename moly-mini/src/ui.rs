@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_kit::{ChatWidgetRefExt, protocol::*};
+use moly_kit::{protocol::*, *};
 
 use crate::demo_chat::DemoChatWidgetExt;
 
