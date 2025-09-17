@@ -34,7 +34,7 @@ jobs:
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85
+          toolchain: 1.89
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
@@ -62,7 +62,7 @@ jobs:
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85
+          toolchain: 1.89
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
@@ -85,7 +85,7 @@ jobs:
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85
+          toolchain: 1.89
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
@@ -108,7 +108,7 @@ jobs:
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85
+          toolchain: 1.89
           targets: wasm32-unknown-unknown
 
       - name: Cache

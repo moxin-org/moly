@@ -29,7 +29,7 @@ jobs:
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85
+          toolchain: 1.89
           components: rustfmt
 
       - name: Check formatting
@@ -51,7 +51,7 @@ jobs:
       - name: Install Rust-stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85
+          toolchain: 1.89
           components: rustfmt
 
       - name: Cache
