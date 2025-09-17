@@ -1,5 +1,7 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
+use std::panic::Location;
+
 use crate::{
     McpManagerClient,
     protocol::*,
@@ -20,6 +22,33 @@ pub enum ChatControl {
     Stop,
 }
 
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum Status {
+    #[default]
+    Idle,
+    Working,
+    Error,
+    Success,
+}
+
+impl Status {
+    pub fn is_idle(&self) -> bool {
+        matches!(self, Status::Idle)
+    }
+
+    pub fn is_working(&self) -> bool {
+        matches!(self, Status::Working)
+    }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self, Status::Error)
+    }
+
+    pub fn is_success(&self) -> bool {
+        matches!(self, Status::Success)
+    }
+}
+
 /// State of the chat that you should reflect in your view component/widget/element.
 // TODO: Makes sense? #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -34,6 +63,7 @@ pub struct ChatState {
     pub current_bot_id: Option<BotId>,
     /// The bots that were loaded from the configured client.
     pub bots: Vec<Bot>,
+    pub load_status: Status,
 }
 
 impl ChatState {
@@ -46,12 +76,8 @@ impl ChatState {
     }
 }
 
-/// UI events that your framework of choice should feed into the [`ChatController`].
 #[derive(Clone, Debug, PartialEq)]
-pub enum ChatUiEvent {
-    /// Triggered when the prompt input content changes (e.g. user typing,
-    /// attaching files, etc).
-    PromptInputContentChange(MessageContent),
+pub enum ChatTask {
     /// The user pressed the send button to send current prompt input + message
     /// history context.
     Send,
@@ -74,11 +100,7 @@ pub trait ChatControllerPlugin: Send {
     /// in your framework of choice.
     fn on_state_change(&mut self, _state: &ChatState) {}
 
-    /// Called when a UI interaction occurs.
-    ///
-    /// Note: When a UI interaction is reported depends on how the UI components/widgets/elements
-    /// that are used as your "view" are implemented.
-    fn on_ui_event(&mut self, _event: &ChatUiEvent) -> ChatControl {
+    fn on_task(&mut self, _event: &ChatTask) -> ChatControl {
         ChatControl::Continue
     }
 
@@ -167,6 +189,10 @@ impl ChatController {
         controller
     }
 
+    pub fn builder() -> ChatControllerBuilder {
+        ChatControllerBuilder::new()
+    }
+
     /// Registers a plugin to extend the controller behavior.
     pub fn register_plugin<P>(&mut self, plugin: P) -> ChatControllerPluginRegistrationId
     where
@@ -199,10 +225,13 @@ impl ChatController {
     /// The controller will only run this mutation once over the state. Plugins
     /// get access to this closure (without the return value) so they may do
     /// additional stuff with it (e.g. replicate the mutation outside of the controller).
+    #[track_caller]
     pub fn dispatch_state_mutation<F, R>(&mut self, mut mutation: F) -> Option<R>
     where
         F: (FnMut(&mut ChatState) -> R) + Send,
     {
+        eprintln!("dispatch_state_mutation from {}", Location::caller());
+
         {
             for (_, plugin) in &mut self.plugins {
                 let control = plugin.on_state_mutation(&mut |state| {
@@ -235,35 +264,26 @@ impl ChatController {
         out
     }
 
-    /// Dispatches a UI event.
-    ///
-    /// Plugins will be called before the default behavior and can stop it.
-    pub fn dispatch_ui_event(&mut self, event: ChatUiEvent) {
+    pub fn dispatch_task(&mut self, event: ChatTask) {
         for (_, plugin) in &mut self.plugins {
-            let control = plugin.on_ui_event(&event);
+            let control = plugin.on_task(&event);
             match control {
                 ChatControl::Continue => continue,
                 ChatControl::Stop => return,
             }
         }
-        self.perform_ui_event(event);
+        self.perform_task(event);
     }
 
-    /// Performs a UI event directly, bypassing plugins.
-    pub fn perform_ui_event(&mut self, event: ChatUiEvent) {
+    pub fn perform_task(&mut self, event: ChatTask) {
         match event {
-            ChatUiEvent::PromptInputContentChange(content) => {
-                self.dispatch_state_mutation(move |state| {
-                    state.prompt_input_content = content.clone();
-                });
-            }
-            ChatUiEvent::Send => {
+            ChatTask::Send => {
                 self.handle_send();
             }
-            ChatUiEvent::Stop => {
+            ChatTask::Stop => {
                 self.clear_streaming_artifacts();
             }
-            ChatUiEvent::Load => {
+            ChatTask::Load => {
                 self.handle_load();
             }
         }
@@ -382,10 +402,17 @@ impl ChatController {
     }
 
     fn handle_load(&mut self) {
+        self.dispatch_state_mutation(|state| {
+            state.load_status = Status::Working;
+        });
+
+        eprintln!("A");
+
         let client = match self.client.clone() {
             Some(c) => c,
             None => {
                 self.dispatch_state_mutation(|state| {
+                    state.load_status = Status::Error;
                     state
                         .messages
                         .push(Message::app_error("No bot client configured"));
@@ -393,18 +420,30 @@ impl ChatController {
                 return;
             }
         };
+        eprintln!("B");
         let controller = self.accessor.clone();
         self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
+            eprintln!("D");
             let (bots, errors) = client.bots().await.into_value_and_errors();
             controller.lock_with(move |c| {
+                eprintln!("F");
                 c.dispatch_state_mutation(move |state| {
+                    if errors.is_empty() {
+                        state.load_status = Status::Success;
+                    } else {
+                        state.load_status = Status::Error;
+                    }
+
                     state.bots = bots.clone().unwrap_or_default();
                     for error in &errors {
                         state.messages.push(Message::app_error(error));
                     }
                 });
             });
+            eprintln!("E");
         }));
+
+        eprintln!("C");
     }
 
     fn handle_message_content(&mut self, result: ClientResult<MessageContent>) -> bool {
@@ -497,6 +536,34 @@ fn amortize(
                 yield ClientResult::new_ok(content.clone());
             }
         }
+    }
+}
+
+pub struct ChatControllerBuilder(Arc<Mutex<ChatController>>);
+
+impl ChatControllerBuilder {
+    pub fn new() -> Self {
+        Self(ChatController::new_arc())
+    }
+
+    pub fn with_client<C>(mut self, client: C) -> Self
+    where
+        C: BotClient + 'static,
+    {
+        self.0.lock().unwrap().set_client(client);
+        self
+    }
+
+    pub fn with_plugin<P>(mut self, plugin: P) -> Self
+    where
+        P: ChatControllerPlugin + 'static,
+    {
+        self.0.lock().unwrap().register_plugin(plugin);
+        self
+    }
+
+    pub fn build_arc(self) -> Arc<Mutex<ChatController>> {
+        self.0
     }
 }
 

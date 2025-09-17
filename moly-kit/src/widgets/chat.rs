@@ -1,4 +1,6 @@
-use crate::controllers::chat::{ChatController, ChatUiEvent};
+use crate::controllers::chat::{
+    ChatController, ChatControllerPlugin, ChatControllerPluginRegistrationId, ChatTask,
+};
 use crate::utils::makepad::EventExt;
 use crate::*;
 use makepad_widgets::*;
@@ -45,6 +47,9 @@ pub struct Chat {
 
     #[rust]
     pub controller: Option<Arc<Mutex<ChatController>>>,
+
+    #[rust]
+    plugin_id: Option<ChatControllerPluginRegistrationId>,
 }
 
 impl Widget for Chat {
@@ -65,6 +70,17 @@ impl Widget for Chat {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if self.plugin_id.is_none() {
+            let ui_runner = self.ui_runner();
+            let plugin = ChatPlugin(ui_runner);
+            let id = self.controller_lock().register_plugin(plugin);
+            self.plugin_id = Some(id);
+        }
+
+        if self.controller_lock().state().load_status.is_idle() {
+            self.controller_lock().dispatch_task(ChatTask::Load);
+        }
+
         self.deref.draw_walk(cx, scope, walk)
     }
 }
@@ -141,7 +157,7 @@ impl Chat {
 
             // self.dispatch(cx, &mut composition);
         } else if prompt.read().has_stop_task() {
-            self.controller_lock().dispatch_ui_event(ChatUiEvent::Stop);
+            self.controller_lock().dispatch_task(ChatTask::Stop);
         }
     }
 
@@ -183,5 +199,19 @@ impl ChatRef {
     /// Panics if the widget reference is empty or if it's already borrowed.
     pub fn write_with<R>(&mut self, f: impl FnOnce(&mut Chat) -> R) -> R {
         f(&mut *self.write())
+    }
+}
+
+struct ChatPlugin(UiRunner<Chat>);
+
+impl ChatControllerPlugin for ChatPlugin {
+    fn on_state_change(&mut self, state: &controllers::chat::ChatState) {
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if id > 30 {
+            return;
+        }
+        dbg!(&state.load_status);
+        self.0.defer_with_redraw(|_, _, _| {});
     }
 }
