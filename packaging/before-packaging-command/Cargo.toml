@@ -2,7 +2,7 @@
 name = "before-packaging-command"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85" ## required by cargo-packager
+rust-version = "1.89" ## required by cargo-packager
 description = "A small Rust program that is run by cargo-packager's 'before packaging' commands."
 
 [dependencies]

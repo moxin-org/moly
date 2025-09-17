@@ -3,8 +3,8 @@ use crate::widgets::{
     standard_message_content::StandardMessageContentWidgetRefExt,
 };
 use crate::{protocol::*, utils::makepad::events::EventExt};
-#[cfg(any(target_os = "ios", target_os = "android"))]
-use makepad_widgets::permission::{Permission, PermissionStatus};
+use makepad_widgets::permission::Permission;
+use makepad_widgets::permission::PermissionStatus;
 use makepad_widgets::{makepad_platform::AudioDeviceType, *};
 use std::sync::{Arc, Mutex};
 
@@ -391,10 +391,34 @@ live_design! {
 
         status_label = <Label> {
             text: "Ready to start"
-            width: Fit
+            width: Fill
             draw_text: {
                 color: #222
+                wrap: Word
                 text_style: {font_size: 11}
+            }
+        }
+
+        request_permission_button = <RoundedShadowView> {
+            visible: false
+            cursor: Hand
+            margin: {left: 10, right: 10, bottom: 0, top: 10}
+            width: Fill, height: Fit
+            align: {x: 0.5, y: 0.5}
+            padding: {left: 20, right: 20, bottom: 10, top: 10}
+            draw_bg: {
+                color: #f9f9f9
+                border_radius: 4.5,
+                uniform shadow_color: #0002
+                shadow_radius: 8.0,
+                shadow_offset: vec2(0.0,-1.5)
+            }
+            <Label> {
+                text: "Request microphone permission"
+                draw_text: {
+                    text_style: {font_size: 11}
+                    color: #000
+                }
             }
         }
 
@@ -483,6 +507,15 @@ pub enum RealtimeModalAction {
     DismissModal,
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+enum MicPermissionStatus {
+    #[default]
+    NotDetermined,
+    Requesting,
+    Granted,
+    Denied,
+}
+
 #[derive(Live, LiveHook, Widget)]
 pub struct Realtime {
     #[deref]
@@ -561,6 +594,9 @@ pub struct Realtime {
 
     #[rust]
     audio_devices: Vec<AudioDeviceDesc>,
+
+    #[rust]
+    mic_permission_status: MicPermissionStatus,
 }
 
 impl Widget for Realtime {
@@ -594,18 +630,45 @@ impl Widget for Realtime {
         // Handle realtime events
         self.handle_realtime_events(cx);
 
-        // Try to start pending conversation if we got connected
-        self.try_start_pending_conversation(cx);
+        if !self.audio_setup_done
+            && self.mic_permission_status == MicPermissionStatus::NotDetermined
+        {
+            cx.request_permission(Permission::AudioInput);
+            self.mic_permission_status = MicPermissionStatus::Requesting;
+        }
 
-        // Setup audio if needed
-        if !self.audio_setup_done {
-            // if on iOS or Android, request permission to use the microphone
-            #[cfg(any(target_os = "ios", target_os = "android"))]
-            {
-                cx.request_permission(Permission::AudioInput);
+        if !self.audio_setup_done
+            && let Event::PermissionResult(pr) = event
+        {
+            if pr.permission == Permission::AudioInput {
+                match pr.status {
+                    PermissionStatus::Granted => {
+                        self.mic_permission_status = MicPermissionStatus::Granted;
+                        self.setup_audio(cx);
+                        self.audio_setup_done = true;
+                        self.view(id!(start_stop_button)).set_visible(cx, true);
+                    }
+                    PermissionStatus::DeniedCanRetry => {
+                        self.label(id!(status_label)).set_text(cx, "⚠️ Moly needs microphone access to have realtime conversations.\nClick on the button below to trigger another request");
+                        self.view(id!(request_permission_button))
+                            .set_visible(cx, true);
+                        self.view(id!(start_stop_button)).set_visible(cx, false);
+                        self.mic_permission_status = MicPermissionStatus::Denied;
+                    }
+                    _ => {
+                        self.label(id!(status_label)).set_text(cx, "⚠️ Moly does not have access to your microphone.\nTo continue, allow Moly to access your microphone\nin your system settings\nand then restart the app.");
+                        self.view(id!(request_permission_button))
+                            .set_visible(cx, false);
+                        self.view(id!(start_stop_button)).set_visible(cx, false);
+                        self.mic_permission_status = MicPermissionStatus::Denied;
+                    }
+                }
             }
-            // TODO: Check if Event::PermissionGranted is received and only setup audio if so
-            self.setup_audio(cx);
+        }
+
+        if self.audio_setup_done {
+            // Try to start pending conversation if we got connected
+            self.try_start_pending_conversation(cx);
         }
 
         // Handle audio streaming timer
@@ -783,6 +846,15 @@ impl WidgetMatchEvent for Realtime {
                 mute_button.set_text(cx, ""); // fa-microphone-slash
                 mute_label.set_text(cx, "Unmute");
             }
+        }
+
+        // Mic permissions
+        if self
+            .view(id!(request_permission_button))
+            .finger_up(actions)
+            .is_some()
+        {
+            cx.request_permission(Permission::AudioInput);
         }
 
         // Modal close

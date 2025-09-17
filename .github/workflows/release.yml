@@ -31,7 +31,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        rust: [1.85]
+        rust: [1.89]
 
     steps:
       - name: Checkout sources
@@ -74,7 +74,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-14, macos-13]
-        rust: [1.85]
+        rust: [1.89]
 
     steps:
       - name: Checkout sources
@@ -109,7 +109,7 @@ jobs:
     if: ${{ github.event.inputs.build_windows == 'true' }}
     strategy:
       matrix:
-        rust: [1.85]
+        rust: [1.89]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4

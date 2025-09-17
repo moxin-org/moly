@@ -13,7 +13,7 @@ exclude = ["packaging/before-packaging-command"]
 name = "moly"
 version = "0.2.2"
 edition = "2024"
-rust-version = "1.85"                                                 ## required by cargo-packager
+rust-version = "1.89"                                                 ## required by cargo-packager
 description = "Desktop app for downloading and chatting with AI LLMs"
 
 ## Rename the binary to `_moly_app` to avoid naming conflicts
@@ -27,8 +27,9 @@ path = "src/main.rs"
 moly-protocol = { git = "https://github.com/moxin-org/moly-server", package = "moly-protocol" }
 moly-kit = { path = "./moly-kit", features = ["full"] }
 moly-sync = { path = "./moly-sync"}
-makepad-widgets = { git = "https://github.com/wyeworks/makepad", rev = "80e871d6b" }
-makepad-code-editor = { git = "https://github.com/wyeworks/makepad", rev = "80e871d6b" }
+makepad-widgets = { git = "https://github.com/wyeworks/makepad", rev = "f592078ae" }
+makepad-code-editor = { git = "https://github.com/wyeworks/makepad", rev = "f592078ae" }
+
 unicode-segmentation = "1.10.1"
 anyhow = "1.0"
 serde_json = "1.0"
