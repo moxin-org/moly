@@ -151,6 +151,17 @@ pub enum Picture {
     Dependency(LiveDependency),
 }
 
+impl PartialEq for Picture {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Picture::Grapheme(a), Picture::Grapheme(b)) => a == b,
+            (Picture::Image(a), Picture::Image(b)) => a == b,
+            (Picture::Dependency(a), Picture::Dependency(b)) => a.as_str() == b.as_str(),
+            _ => false,
+        }
+    }
+}
+
 /// Indentify the entities that are recognized by this crate, mainly in a chat.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -186,7 +197,7 @@ pub enum BotCapability {
 }
 
 /// Set of capabilities that a bot supports
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct BotCapabilities {
     capabilities: HashSet<BotCapability>,
@@ -229,7 +240,7 @@ impl BotCapabilities {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Bot {
     /// Unique internal identifier for the bot across all providers
     pub id: BotId,

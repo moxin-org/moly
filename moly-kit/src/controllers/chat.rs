@@ -11,8 +11,6 @@ use std::sync::{
 };
 
 use futures::StreamExt;
-#[cfg(feature = "json")]
-use serde::{Deserialize, Serialize};
 
 /// Controls if remaining callbacks and default behavior should be executed.
 ///
@@ -23,38 +21,28 @@ pub enum ChatControl {
 }
 
 /// State of the chat that you should reflect in your view component/widget/element.
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+// TODO: Makes sense? #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ChatState {
     /// The chat history sent as context to LLMs.
     pub messages: Vec<Message>,
     /// The content to send as a new user message.
     pub prompt_input_content: MessageContent,
-    /// Indicates a message being edited.
-    pub message_editor: Option<(usize, MessageContent)>,
     /// Indicates that the LLM is still streaming the response ("writing").
     pub is_streaming: bool,
     /// The bot to interact with when sending messages.
-    pub bot_id: Option<BotId>,
+    pub current_bot_id: Option<BotId>,
+    /// The bots that were loaded from the configured client.
+    pub bots: Vec<Bot>,
 }
 
 impl ChatState {
-    /// Show or hide the editor for a message.
-    ///
-    /// Limitation: Only one editor can be shown at a time. If you try to show another editor,
-    /// the previous one will be hidden. If you try to hide an editor different from the one
-    /// currently shown, nothing will happen.
-    pub fn set_message_editor_visibility(&mut self, index: usize, visible: bool) {
-        if index >= self.messages.len() {
-            return;
-        }
+    pub fn get_bot(&self, bot_id: &BotId) -> Option<&Bot> {
+        self.bots.iter().find(|b| &b.id == bot_id)
+    }
 
-        if visible {
-            let buffer = self.messages[index].content.clone();
-            self.message_editor = Some((index, buffer));
-        } else if self.message_editor.as_ref().map(|(index, _)| *index) == Some(index) {
-            self.message_editor = None;
-        }
+    pub fn get_current_bot(&self) -> Option<&Bot> {
+        self.current_bot_id.as_ref().and_then(|id| self.get_bot(id))
     }
 }
 
@@ -64,13 +52,15 @@ pub enum ChatUiEvent {
     /// Triggered when the prompt input content changes (e.g. user typing,
     /// attaching files, etc).
     PromptInputContentChange(MessageContent),
-    /// Triggered when a message editor content changes.
-    MessageEditorContentChange(MessageContent),
-    /// Triggered when a message editor is shown or hidden.
-    MessageEditorVisibilityChange(usize, bool),
-    /// Triggered when the user triggers sending the current chat history + prompt
-    /// if any.
+    /// The user pressed the send button to send current prompt input + message
+    /// history context.
     Send,
+    /// The user pressed the stop button to abort current streaming response.
+    Stop,
+    /// Should be triggered to start fetching async data (e.g. bots).
+    ///
+    /// Eventually, the state will contain the list of bots or errors as messages.
+    Load,
 }
 
 /// Allows to hook between dispatched events and state mutations.
@@ -150,8 +140,8 @@ pub struct ChatController {
     /// inside the controller.
     accessor: ChatControllerAccessor,
     send_abort_on_drop: Option<AbortOnDropHandle>,
+    load_bots_abort_on_drop: Option<AbortOnDropHandle>,
     client: Option<Box<dyn BotClient>>,
-    cached_bots_result: Option<ClientResult<Vec<Bot>>>,
     tool_manager: Option<McpManagerClient>,
 }
 
@@ -168,8 +158,8 @@ impl ChatController {
             plugins: Vec::new(),
             accessor: ChatControllerAccessor::default(),
             send_abort_on_drop: None,
+            load_bots_abort_on_drop: None,
             client: None,
-            cached_bots_result: None,
             tool_manager: None,
         }));
 
@@ -267,27 +257,14 @@ impl ChatController {
                     state.prompt_input_content = content.clone();
                 });
             }
-            ChatUiEvent::MessageEditorContentChange(content) => {
-                self.dispatch_state_mutation(move |state| {
-                    if let Some((_, editor_content)) = &mut state.message_editor {
-                        *editor_content = content.clone();
-                    }
-                });
-            }
-            ChatUiEvent::MessageEditorVisibilityChange(message_index, visible) => {
-                self.dispatch_state_mutation(move |state| {
-                    if visible {
-                        if message_index < state.messages.len() {
-                            let message = &state.messages[message_index];
-                            state.message_editor = Some((message_index, message.content.clone()));
-                        }
-                    } else {
-                        state.message_editor = None;
-                    }
-                });
-            }
             ChatUiEvent::Send => {
                 self.handle_send();
+            }
+            ChatUiEvent::Stop => {
+                self.clear_streaming_artifacts();
+            }
+            ChatUiEvent::Load => {
+                self.handle_load();
             }
         }
     }
@@ -305,7 +282,7 @@ impl ChatController {
             return;
         };
 
-        let Some(bot_id) = self.state.bot_id.clone() else {
+        let Some(bot) = self.state.get_current_bot().cloned() else {
             self.dispatch_state_mutation(|state| {
                 state.messages.push(Message::app_error("No bot selected"));
             });
@@ -337,27 +314,13 @@ impl ChatController {
 
         let controller = self.accessor.clone();
         self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
-            let Some(bots) = controller.lock_with(|c| c.bots()) else {
-                return;
-            };
-
-            let bots = bots.await;
-            let Some(bots) = bots.into_value() else {
-                return;
-            };
-
-            let bot = bots.into_iter().find(|b| b.id == bot_id);
-            let Some(bot) = bot else {
-                return;
-            };
-
             // The realtime check is hack to avoid showing a loading message for realtime assistants
             // TODO: we should base this on upgrade rather than capabilities
             if !bot.capabilities.supports_realtime() {
                 controller.lock_with(|c| {
                     c.dispatch_state_mutation(|state| {
                         state.messages.push(Message {
-                            from: EntityId::Bot(state.bot_id.clone().unwrap()),
+                            from: EntityId::Bot(state.current_bot_id.clone().unwrap()),
                             metadata: MessageMetadata {
                                 // TODO: Evaluate removing this from messages in favor of
                                 // `is_streaming` in the controller.
@@ -379,7 +342,7 @@ impl ChatController {
                 return;
             };
 
-            let message_stream = amortize(client.send(&bot_id, &messages_context, &tools));
+            let message_stream = amortize(client.send(&bot.id, &messages_context, &tools));
             let mut message_stream = std::pin::pin!(message_stream);
             while let Some(result) = message_stream.next().await {
                 let should_break = controller
@@ -409,54 +372,39 @@ impl ChatController {
         });
     }
 
-    /// Aborts the current send operation if any.
-    pub fn abort_send(&mut self) {
-        self.clear_streaming_artifacts();
-    }
-
     /// Changes the client used by this controller when sending messages.
     pub fn set_client<C>(&mut self, client: C)
     where
         C: BotClient + 'static,
     {
         self.client = Some(Box::new(client));
-        self.cached_bots_result = None;
+        self.state.bots.clear();
     }
 
-    /// Fetch the available bots from the underlying configured client.
-    ///
-    /// The response is cached the first time this resolves. If it was successful
-    /// (at least partially), subsequent calls will return the cached value.
-    // TODO: Syncronize to avoid race conditions on concurrent calls.
-    fn bots(&mut self) -> BoxPlatformSendFuture<'static, ClientResult<Vec<Bot>>> {
-        if let Some(cached) = self.cached_bots_result.as_ref() {
-            if cached.has_value() {
-                let cached = cached.clone();
-                return Box::pin(async move { cached });
+    fn handle_load(&mut self) {
+        let client = match self.client.clone() {
+            Some(c) => c,
+            None => {
+                self.dispatch_state_mutation(|state| {
+                    state
+                        .messages
+                        .push(Message::app_error("No bot client configured"));
+                });
+                return;
             }
-        }
-
-        let Some(client) = self.client.clone() else {
-            return Box::pin(async {
-                ClientError::new(
-                    ClientErrorKind::Unknown,
-                    "No bot client configured".to_string(),
-                )
-                .into()
-            });
         };
-
         let controller = self.accessor.clone();
-        Box::pin(async move {
-            let result = client.bots().await;
-            controller.lock_with({
-                let result = result.clone();
-                move |c| {
-                    c.cached_bots_result = Some(result);
-                }
+        self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
+            let (bots, errors) = client.bots().await.into_value_and_errors();
+            controller.lock_with(move |c| {
+                c.dispatch_state_mutation(move |state| {
+                    state.bots = bots.clone().unwrap_or_default();
+                    for error in &errors {
+                        state.messages.push(Message::app_error(error));
+                    }
+                });
             });
-            result
-        })
+        }));
     }
 
     fn handle_message_content(&mut self, result: ClientResult<MessageContent>) -> bool {

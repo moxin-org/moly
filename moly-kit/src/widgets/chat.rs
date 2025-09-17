@@ -1,4 +1,4 @@
-use crate::controllers::chat::ChatController;
+use crate::controllers::chat::{ChatController, ChatUiEvent};
 use crate::utils::makepad::EventExt;
 use crate::*;
 use makepad_widgets::*;
@@ -141,7 +141,7 @@ impl Chat {
 
             // self.dispatch(cx, &mut composition);
         } else if prompt.read().has_stop_task() {
-            self.controller_lock().abort_send();
+            self.controller_lock().dispatch_ui_event(ChatUiEvent::Stop);
         }
     }
 
