@@ -38,6 +38,26 @@ pub struct ChatState {
     pub bot_id: Option<BotId>,
 }
 
+impl ChatState {
+    /// Show or hide the editor for a message.
+    ///
+    /// Limitation: Only one editor can be shown at a time. If you try to show another editor,
+    /// the previous one will be hidden. If you try to hide an editor different from the one
+    /// currently shown, nothing will happen.
+    pub fn set_message_editor_visibility(&mut self, index: usize, visible: bool) {
+        if index >= self.messages.len() {
+            return;
+        }
+
+        if visible {
+            let buffer = self.messages[index].content.clone();
+            self.message_editor = Some((index, buffer));
+        } else if self.message_editor.as_ref().map(|(index, _)| *index) == Some(index) {
+            self.message_editor = None;
+        }
+    }
+}
+
 /// UI events that your framework of choice should feed into the [`ChatController`].
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChatUiEvent {
@@ -274,7 +294,7 @@ impl ChatController {
 
     fn handle_send(&mut self) {
         // Clean previous streaming artifacts if any.
-        self.clean_streaming_artifacts();
+        self.clear_streaming_artifacts();
 
         let Some(mut client) = self.client.clone() else {
             self.dispatch_state_mutation(|state| {
@@ -370,12 +390,12 @@ impl ChatController {
                     break;
                 }
             }
-            controller.lock_with(|c| c.clean_streaming_artifacts());
+            controller.lock_with(|c| c.clear_streaming_artifacts());
         }));
     }
 
     /// Aborts current streaming operation and cleans up artifacts.
-    fn clean_streaming_artifacts(&mut self) {
+    fn clear_streaming_artifacts(&mut self) {
         if self.send_abort_on_drop.is_none() {
             return;
         }
@@ -387,6 +407,11 @@ impl ChatController {
                 !m.content.is_empty()
             });
         });
+    }
+
+    /// Aborts the current send operation if any.
+    pub fn abort_send(&mut self) {
+        self.clear_streaming_artifacts();
     }
 
     /// Changes the client used by this controller when sending messages.
@@ -462,6 +487,14 @@ impl ChatController {
                 true
             }
         }
+    }
+
+    pub fn bot_client(&self) -> Option<&dyn BotClient> {
+        self.client.as_deref()
+    }
+
+    pub fn bot_client_mut(&mut self) -> Option<&mut (dyn BotClient + 'static)> {
+        self.client.as_deref_mut()
     }
 }
 

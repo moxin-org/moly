@@ -1,9 +1,11 @@
 use std::{
     cell::{Ref, RefMut},
     collections::HashMap,
+    sync::{Arc, Mutex},
 };
 
 use crate::{
+    controllers::chat::ChatController,
     protocol::*,
     utils::makepad::{EventExt, ItemsRangeIter},
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
@@ -124,13 +126,8 @@ pub struct Messages {
     #[deref]
     deref: View,
 
-    /// The list of messages rendered by this widget.
     #[rust]
-    pub messages: Vec<Message>,
-
-    /// Used to get bot information.
-    #[rust]
-    pub bot_context: Option<BotContext>,
+    pub controller: Option<Arc<Mutex<ChatController>>>,
 
     /// Registry of DSL templates used by custom content widgets.
     ///
@@ -211,33 +208,38 @@ impl Messages {
         self.is_list_end_drawn = false;
         self.visible_range = None;
 
+        let controller = self.controller_lock();
+        let client = controller.bot_client();
+        let state = controller.state();
+
         // Trick to render one more item representing the end of the chat without
         // risking a manual math bug. Removed immediately after rendering the items.
-        self.messages.push(Message {
-            from: EntityId::App,
-            // End-of-chat marker
-            content: MessageContent {
-                text: "EOC".into(),
+        // Using `perform` instead of `dispatch` to avoid involving plugins with
+        // this temporal trick.
+        controller.perform_state_mutation(|state| {
+            state.messages.push(Message {
+                from: EntityId::App,
+                // End-of-chat marker
+                content: MessageContent {
+                    text: "EOC".into(),
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
+            });
         });
 
         if self.should_defer_scroll_to_bottom {
             // Note: Not using `smooth_scroll_to_end` because it makes asumptions about the list range and the items
             // that are only true after we've updated the list through itreation on next_visible_item.
-            list_ref.set_first_id(self.messages.len().saturating_sub(1));
+            list_ref.set_first_id(state.messages.len().saturating_sub(1));
             self.should_defer_scroll_to_bottom = false;
         }
 
-        let context = self.bot_context.clone().expect("no bot client set");
-        let mut client = context.client();
-
         let mut list = list_ref.borrow_mut().unwrap();
-        list.set_item_range(cx, 0, self.messages.len());
+        list.set_item_range(cx, 0, state.messages.len());
 
         while let Some(index) = list.next_visible_item(cx) {
-            if index >= self.messages.len() {
+            if index >= state.messages.len() {
                 continue;
             }
 
@@ -247,7 +249,7 @@ impl Messages {
                 self.visible_range = Some((index, index));
             }
 
-            let message = &self.messages[index];
+            let message = &state.messages[index];
 
             match &message.from {
                 EntityId::System => {
@@ -418,10 +420,13 @@ impl Messages {
             }
         }
 
-        if let Some(message) = self.messages.pop() {
-            assert!(message.from == EntityId::App);
-            assert!(message.content.text == "EOC");
-        }
+        // Remove the EOC marker
+        controller.perform_state_mutation(|state| {
+            if let Some(message) = state.messages.pop() {
+                assert!(message.from == EntityId::App);
+                assert!(message.content.text == "EOC");
+            }
+        });
 
         self.button(id!(jump_to_bottom))
             .set_visible(cx, !self.is_at_bottom() && !self.sticking_to_bottom);
@@ -438,34 +443,19 @@ impl Messages {
 
     /// Jump to the end of the list instantly.
     pub fn scroll_to_bottom(&mut self, cx: &mut Cx, triggered_by_stream: bool) {
-        if self.messages.len() > 0 {
+        let controller = self.controller_lock();
+        let state = controller.state();
+        if state.messages.len() > 0 {
             let list = self.portal_list(id!(list));
 
             if triggered_by_stream {
                 // Use immediate scroll instead of smooth scroll to prevent continuous scroll actions
-                list.set_first_id_and_scroll(self.messages.len().saturating_sub(1), 0.0);
+                list.set_first_id_and_scroll(state.messages.len().saturating_sub(1), 0.0);
             } else {
                 list.smooth_scroll_to_end(cx, 100.0, None);
             }
+            drop(controller);
             self.sticking_to_bottom = triggered_by_stream;
-        }
-    }
-
-    /// Show or hide the editor for a message.
-    ///
-    /// Limitation: Only one editor can be shown at a time. If you try to show another editor,
-    /// the previous one will be hidden. If you try to hide an editor different from the one
-    /// currently shown, nothing will happen.
-    pub fn set_message_editor_visibility(&mut self, index: usize, visible: bool) {
-        if index >= self.messages.len() {
-            return;
-        }
-
-        if visible {
-            let buffer = self.messages[index].content.text.clone();
-            self.current_editor = Some(Editor { index, buffer });
-        } else if self.current_editor.as_ref().map(|e| e.index) == Some(index) {
-            self.current_editor = None;
         }
     }
 
@@ -622,6 +612,14 @@ impl Messages {
     pub fn reset_scroll_state(&mut self) {
         self.user_scrolled = false;
         self.sticking_to_bottom = false;
+    }
+
+    fn controller_lock(&self) -> std::sync::MutexGuard<'_, ChatController> {
+        self.controller
+            .as_ref()
+            .expect("Chat controller not set")
+            .lock()
+            .unwrap()
     }
 }
 
