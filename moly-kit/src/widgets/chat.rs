@@ -206,12 +206,6 @@ struct ChatPlugin(UiRunner<Chat>);
 
 impl ChatControllerPlugin for ChatPlugin {
     fn on_state_change(&mut self, state: &controllers::chat::ChatState) {
-        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-        let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        if id > 30 {
-            return;
-        }
-        dbg!(&state.load_status);
         self.0.defer_with_redraw(|_, _, _| {});
     }
 }

@@ -230,7 +230,7 @@ impl ChatController {
     where
         F: (FnMut(&mut ChatState) -> R) + Send,
     {
-        eprintln!("dispatch_state_mutation from {}", Location::caller());
+        log::trace!("dispatch_state_mutation from {}", Location::caller());
 
         {
             for (_, plugin) in &mut self.plugins {
@@ -406,8 +406,6 @@ impl ChatController {
             state.load_status = Status::Working;
         });
 
-        eprintln!("A");
-
         let client = match self.client.clone() {
             Some(c) => c,
             None => {
@@ -420,13 +418,11 @@ impl ChatController {
                 return;
             }
         };
-        eprintln!("B");
+
         let controller = self.accessor.clone();
         self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
-            eprintln!("D");
             let (bots, errors) = client.bots().await.into_value_and_errors();
             controller.lock_with(move |c| {
-                eprintln!("F");
                 c.dispatch_state_mutation(move |state| {
                     if errors.is_empty() {
                         state.load_status = Status::Success;
@@ -440,10 +436,7 @@ impl ChatController {
                     }
                 });
             });
-            eprintln!("E");
         }));
-
-        eprintln!("C");
     }
 
     fn handle_message_content(&mut self, result: ClientResult<MessageContent>) -> bool {
