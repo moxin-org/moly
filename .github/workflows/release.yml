@@ -19,6 +19,20 @@ on:
         description: "Build Windows"
         required: false
         default: "true"
+      build_android:
+        description: "Build Android"
+        required: false
+        default: "true"
+      build_ios:
+        description: "Build iOS (including simulator and real devices)"
+        required: false
+        type: choice
+        default: "all"
+        options:
+          - "all"
+          - "release"
+          - "simulator"
+          - "false"
       release_tags:
         description: "Release Page Tags"
         required: true
@@ -136,3 +150,142 @@ jobs:
           cd dist/
           $file=Get-ChildItem -Filter *.exe
           gh release upload ${{ github.event.inputs.release_tags }} $file.name --clobber
+  
+  build_android:
+    name: Android
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.inputs.build_android == 'true' }}
+    strategy:
+      matrix:
+        rust: [1.85]
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache: true
+
+      - name: Install cargo-makepad
+        run: |
+          cargo install --force --git https://github.com/makepad/makepad.git --branch dev cargo-makepad
+        
+      - name: Install toolchain
+        run: |
+          cargo makepad android install-toolchain
+
+      - name: Build
+        run: |
+          cargo makepad android build -p moly --release
+
+      - name: Upload Dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version')
+          cd ./target/makepad-android-apk/moly/apk
+          mv moly.apk "Moly-${VERSION}-android.apk"
+          gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-android.apk" --clobber
+
+  build_ios:
+    name: IOS
+    runs-on: macos-14
+    if: ${{ github.event.inputs.build_ios != 'false' }}
+    strategy:
+      matrix:
+        rust: [1.85]
+    
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4 
+    
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache: true
+
+      - name: Install cargo-makepad
+        run: |
+          cargo install --force --git https://github.com/makepad/makepad.git --branch dev cargo-makepad
+
+      - name: Install toolchain
+        run: |
+          cargo makepad apple ios install-toolchain
+      
+      - name: Install the Apple certificate and provisioning profile
+        if: ${{ github.event.inputs.build_ios == 'release' || github.event.inputs.build_ios == 'all' }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(security cms -D -i $PP_PATH))
+          echo "PROFILE_PATH=$PROFILE_UUID" >> $GITHUB_ENV
+
+          CERT_FINGERPRINT=$(security find-certificate -c "Apple Distribution" -a -Z $KEYCHAIN_PATH | grep SHA-1 | head -n 1 | awk '{print $3}')
+          echo "CERT_FINGERPRINT=$CERT_FINGERPRINT" >> $GITHUB_ENV
+
+      - name: Build for iOS 
+        run: |
+          sed -i '' 's/name = "_moly_app"/name = "moly"/' Cargo.toml
+          
+          if [[ "${{ github.event.inputs.build_ios }}" == "simulator" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
+            cargo makepad apple ios --org=org.moxin --app=moly run-sim -p moly --release
+          fi
+
+          if [[ "${{ github.event.inputs.build_ios }}" == "release" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
+            cargo makepad apple ios \
+              --org=org.moxin \
+              --app=moly \
+              --profile=$PROFILE_PATH \
+              --cert=$CERT_FINGERPRINT \
+              --device=IPhone \
+              run-device -p moly --release
+          fi
+      
+      - name: Upload Dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version')
+          
+          if [[ "${{ github.event.inputs.build_ios }}" == "simulator" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
+            ls ./target/makepad-apple-app/aarch64-apple-ios-sim/release
+            cd ./target/makepad-apple-app/aarch64-apple-ios-sim/release
+            zip -r "Moly-${VERSION}-ios-simulator.zip" .
+            gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios-simulator.zip" --clobber
+            cd -
+          fi
+
+          if [[ "${{ github.event.inputs.build_ios }}" == "release" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
+            cd ./target/makepad-apple-app/aarch64-apple-ios/release
+            mkdir Payload
+            cp -r moly.app Payload/
+            zip -r "Moly-${VERSION}-ios.ipa" Payload
+            gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios.ipa" --clobber
+          fi
