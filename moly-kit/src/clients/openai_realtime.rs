@@ -308,6 +308,7 @@ impl OpenAIRealtimeClient {
         let future = async move {
             let (event_sender, event_receiver) = futures::channel::mpsc::unbounded();
             let (command_sender, mut command_receiver) = futures::channel::mpsc::unbounded();
+            let is_connected = Arc::new(Mutex::new(true));
 
             #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
             {
@@ -348,6 +349,7 @@ impl OpenAIRealtimeClient {
 
                 // Spawn task to handle incoming messages
                 let event_sender_clone = event_sender.clone();
+                let is_connected_read = is_connected.clone();
                 spawn(async move {
                     while let Some(msg) = read.next().await {
                         match msg {
@@ -433,13 +435,19 @@ impl OpenAIRealtimeClient {
                                 }
                             }
                             Ok(WsMessage::Close(_)) => {
-                                log::info!("WebSocket closed");
+                                log::info!("WebSocket closed by server");
+                                *is_connected_read.lock().unwrap() = false;
+                                let _ = event_sender_clone.unbounded_send(RealtimeEvent::Error(
+                                    "Connection closed by server".to_string(),
+                                ));
                                 break;
                             }
                             Err(e) => {
-                                log::error!("WebSocket error: {}", e);
-                                let _ = event_sender_clone
-                                    .unbounded_send(RealtimeEvent::Error(e.to_string()));
+                                log::error!("WebSocket read error: {}", e);
+                                *is_connected_read.lock().unwrap() = false;
+                                let _ = event_sender_clone.unbounded_send(RealtimeEvent::Error(
+                                    format!("Connection lost: {}", e),
+                                ));
                                 break;
                             }
                             _ => {}
@@ -448,10 +456,34 @@ impl OpenAIRealtimeClient {
                 });
 
                 // Spawn task to handle outgoing commands
+                let is_connected_write = is_connected.clone();
+                let event_sender_write = event_sender.clone();
                 spawn(async move {
                     let model = bot_id.id().to_string();
+
+                    // Helper macro to send messages with error handling
+                    // Note: This is a macro because Rust closures can't return futures
+                    // that borrow from the closure itself (lifetime issue)
+                    macro_rules! send_message {
+                        ($json:expr) => {{
+                            if let Err(e) = write.send(WsMessage::Text($json)).await {
+                                log::error!("WebSocket send failed: {}", e);
+                                *is_connected_write.lock().unwrap() = false;
+                                let _ = event_sender_write.unbounded_send(RealtimeEvent::Error(
+                                    format!("Connection lost: {}", e),
+                                ));
+                                break;
+                            }
+                        }};
+                    }
+
                     // Handle commands
                     while let Some(command) = command_receiver.next().await {
+                        // Check if still connected before processing commands
+                        if !*is_connected_write.lock().unwrap() {
+                            log::warn!("Dropping command - connection lost");
+                            continue;
+                        }
                         match command {
                             RealtimeCommand::UpdateSessionConfig {
                                 voice,
@@ -535,7 +567,7 @@ impl OpenAIRealtimeClient {
 
                                 if let Ok(json) = serde_json::to_string(&session_message) {
                                     log::debug!("Sending session update: {}", json);
-                                    let _ = write.send(WsMessage::Text(json)).await;
+                                    send_message!(json);
                                 }
                             }
                             RealtimeCommand::CreateGreetingResponse => {
@@ -566,7 +598,7 @@ impl OpenAIRealtimeClient {
 
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     log::debug!("Sending greeting response: {}", json);
-                                    let _ = write.send(WsMessage::Text(json)).await;
+                                    send_message!(json);
                                 }
                             }
                             RealtimeCommand::SendAudio(audio_data) => {
@@ -576,7 +608,7 @@ impl OpenAIRealtimeClient {
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     // log::debug!("Sending audio data: {}", json);
-                                    let _ = write.send(WsMessage::Text(json)).await;
+                                    send_message!(json);
                                 }
                             }
                             RealtimeCommand::SendText(text) => {
@@ -592,16 +624,15 @@ impl OpenAIRealtimeClient {
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     log::debug!("Sending text message: {}", json);
-                                    let _ = write.send(WsMessage::Text(json)).await;
+                                    send_message!(json);
                                 }
                             }
                             RealtimeCommand::Interrupt => {
                                 // Send truncate message to interrupt current response
                                 let message = OpenAIRealtimeMessage::InputAudioBufferCommit;
                                 if let Ok(json) = serde_json::to_string(&message) {
-                                    // log::info!("Sending truncate message: {}", json);
-                                    log::debug!("Sending truncate message: {}", json);
-                                    let _ = write.send(WsMessage::Text(json)).await;
+                                    log::debug!("Sending interrupt message: {}", json);
+                                    send_message!(json);
                                 }
                             }
                             RealtimeCommand::SendFunctionCallResult { call_id, output } => {
@@ -615,7 +646,7 @@ impl OpenAIRealtimeClient {
                                 };
                                 if let Ok(json) = serde_json::to_string(&message) {
                                     log::debug!("Sending function call result: {}", json);
-                                    let _ = write.send(WsMessage::Text(json)).await;
+                                    send_message!(json);
                                 }
 
                                 // Trigger a new response after sending function results
@@ -639,11 +670,14 @@ impl OpenAIRealtimeClient {
                                         "Triggering response after function call: {}",
                                         json
                                     );
-                                    let _ = write.send(WsMessage::Text(json)).await;
+                                    send_message!(json);
                                 }
                             }
                             RealtimeCommand::StopSession => {
                                 // Close the WebSocket connection
+                                log::debug!("Closing WebSocket connection");
+                                *is_connected_write.lock().unwrap() = false;
+                                // Try to send close message but don't report errors since user initiated this
                                 let _ = write.send(WsMessage::Close(None)).await;
                                 break;
                             }
@@ -883,7 +917,11 @@ impl OpenAIRealtimeClient {
                 }
             }
             Ok(Err(e)) => {
-                log::error!("WebSocket connection test failed: {}", e);
+                log::error!(
+                    "WebSocket connection test failed for {} with error {}",
+                    url_str,
+                    e
+                );
                 ClientResult::new_err(vec![ClientError::new_with_source(
                     ClientErrorKind::Network,
                     "Failed to connect to realtime API".to_string(),

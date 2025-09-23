@@ -921,9 +921,11 @@ impl Realtime {
 
     fn start_conversation(&mut self, cx: &mut Cx) {
         if !self.is_connected {
-            // Set flag to request reconnection - Chat widget will handle this
+            // Set flag to request reconnection, Chat widget will handle this
             self.should_request_connection = true;
-            self.label(id!(status_label)).set_text(cx, "Connecting...");
+            self.connection_request_sent = false;
+            self.label(id!(status_label))
+                .set_text(cx, "Reconnecting...");
             return;
         }
 
@@ -973,15 +975,25 @@ impl Realtime {
         }
     }
 
-    fn reset_all(&mut self, cx: &mut Cx) {
+    /// Common reset logic for both user-initiated reset and connection loss
+    fn reset_conversation_state(
+        &mut self,
+        cx: &mut Cx,
+        status_message: &str,
+        allow_reconnect: bool,
+    ) {
         self.stop_conversation(cx);
 
         self.is_connected = false;
         self.has_sent_audio = false;
-        self.should_request_connection = false;
-        self.connection_request_sent = false;
+
+        if !allow_reconnect {
+            // Full reset - user clicked stop
+            self.should_request_connection = false;
+            self.connection_request_sent = false;
+        }
         self.transcript.clear();
-        self.label(id!(status_label)).set_text(cx, "Ready to start");
+        self.label(id!(status_label)).set_text(cx, status_message);
 
         // Hide tool permission UI and clear pending tool call
         self.view(id!(tool_permission_line)).set_visible(cx, false);
@@ -992,6 +1004,10 @@ impl Realtime {
         self.view(id!(selected_voice_view)).set_visible(cx, false);
 
         self.update_ui(cx);
+    }
+
+    fn reset_all(&mut self, cx: &mut Cx) {
+        self.reset_conversation_state(cx, "Ready to start", false);
 
         // Stop the session
         if let Some(channel) = &self.realtime_channel {
@@ -1015,13 +1031,13 @@ impl Realtime {
             self.audio_streaming_timer = None;
         }
 
-        // Cancel any pending audio playback
+        // Clear audio buffers
         if let Ok(mut playback) = self.playback_audio.try_lock() {
             playback.clear();
         }
-
-        self.label(id!(status_label))
-            .set_text(cx, "⏹️ Conversation stopped");
+        if let Ok(mut recorded) = self.recorded_audio.try_lock() {
+            recorded.clear();
+        }
     }
 
     fn handle_realtime_events(&mut self, cx: &mut Cx) {
@@ -1192,13 +1208,35 @@ impl Realtime {
                     self.show_tool_permission_request(cx, name, call_id, arguments);
                 }
                 RealtimeEvent::Error(error) => {
-                    ::log::debug!("Realtime API error: {}", error);
-                    self.label(id!(status_label))
-                        .set_text(cx, &format!("❌ Error: {}", error));
+                    ::log::error!("Realtime API error: {}", error);
 
-                    // Resume recording on error
-                    if self.conversation_active {
-                        *self.should_record.lock().unwrap() = true;
+                    if !self.is_connected || !self.conversation_active {
+                        ::log::debug!(
+                            "Ignoring error - already disconnected or conversation not active"
+                        );
+                        return;
+                    }
+
+                    // Check if this is a connection error
+                    if error.contains("Connection lost")
+                        || error.contains("Connection closed")
+                        || error.contains("Failed to send")
+                    {
+                        // Connection was dropped - use common reset but allow reconnection
+                        self.reset_conversation_state(
+                            cx,
+                            "❌ Connection lost. Please restart the conversation.",
+                            true, // allow_reconnect
+                        );
+                    } else {
+                        // Other types of errors - just display them
+                        self.label(id!(status_label))
+                            .set_text(cx, &format!("❌ Error: {}", error));
+
+                        // Resume recording on non-connection errors
+                        if self.conversation_active {
+                            *self.should_record.lock().unwrap() = true;
+                        }
                     }
                 }
             }
