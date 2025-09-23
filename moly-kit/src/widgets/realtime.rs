@@ -458,7 +458,7 @@ live_design! {
         }
         flow: Down
         spacing: 20
-        width: Fill, height: Fill
+        width: Fill, height: Fit
         align: {x: 0.5, y: 0.0}
         padding: 10
 
@@ -481,7 +481,7 @@ live_design! {
 
         <AdaptiveView> {
             Desktop = {
-                width: 450, height: 650
+                width: 450, height: Fit
                 align: {x: 0.5, y: 0.5}
 
                 <CachedWidget> {
