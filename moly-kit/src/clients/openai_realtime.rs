@@ -320,26 +320,14 @@ impl OpenAIRealtimeClient {
                     address
                 };
 
-                let request = match Self::build_websocket_request(&url_str, &api_key) {
-                    Ok(req) => req,
-                    Err(e) => {
-                        log::error!("Error building WebSocket request: {}", e);
-                        return ClientResult::new_err(vec![ClientError::new_with_source(
-                            ClientErrorKind::Network,
-                            "Failed to build WebSocket request".to_string(),
-                            Some(e),
-                        )]);
-                    }
-                };
-
-                let (ws_stream, _) = match tokio_tungstenite::connect_async(request).await {
+                let (ws_stream, _) = match Self::connect_with_redirects(&url_str, &api_key, 5).await
+                {
                     Ok(result) => result,
                     Err(e) => {
                         log::error!("Error connecting to OpenAI Realtime API: {}", e);
-                        return ClientResult::new_err(vec![ClientError::new_with_source(
+                        return ClientResult::new_err(vec![ClientError::new(
                             ClientErrorKind::Network,
-                            "Failed to connect to OpenAI Realtime API".to_string(),
-                            Some(e),
+                            format!("Failed to connect to OpenAI Realtime API: {}", e),
                         )]);
                     }
                 };
@@ -782,23 +770,143 @@ impl OpenAIRealtimeClient {
         api_key: &str,
     ) -> Result<
         tokio_tungstenite::tungstenite::handshake::client::Request,
-        tokio_tungstenite::tungstenite::http::Error,
+        Box<dyn std::error::Error + Send + Sync>,
     > {
         use tokio_tungstenite::tungstenite::handshake::client::Request;
 
-        Request::builder()
+        let url = url::Url::parse(url_str)?;
+        let host = url.host_str().ok_or("Invalid URL: no host found")?;
+
+        let mut builder = Request::builder()
             .uri(url_str)
-            .header("Host", "api.openai.com")
+            .header("Host", host)
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Connection", "Upgrade")
             .header("Upgrade", "websocket")
-            .header("Sec-WebSocket-Version", "13")
-            .header("OpenAI-Beta", "realtime=v1")
+            .header("Sec-WebSocket-Version", "13");
+
+        // Add OpenAI-specific header for OpenAI endpoints
+        if host.contains("openai.com") {
+            builder = builder.header("OpenAI-Beta", "realtime=v1");
+        }
+
+        builder
             .header(
                 "Sec-WebSocket-Key",
                 tokio_tungstenite::tungstenite::handshake::client::generate_key(),
             )
             .body(())
+            .map_err(|e| e.into())
+    }
+
+    #[cfg(all(feature = "realtime", not(target_arch = "wasm32")))]
+    async fn connect_with_redirects(
+        url_str: &str,
+        api_key: &str,
+        max_redirects: u8,
+    ) -> Result<
+        (
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
+            tokio_tungstenite::tungstenite::http::Response<Option<Vec<u8>>>,
+        ),
+        Box<dyn std::error::Error + Send + Sync>,
+    > {
+        use std::collections::HashSet;
+        use tokio_tungstenite::tungstenite::Error as WsError;
+
+        let mut current_url = url_str.to_string();
+        let mut visited_urls = HashSet::new();
+        let mut redirects = 0;
+
+        loop {
+            // Check for redirect loops
+            if !visited_urls.insert(current_url.clone()) {
+                return Err(
+                    format!("Redirect loop detected: already visited {}", current_url).into(),
+                );
+            }
+
+            // Check redirect limit
+            if redirects >= max_redirects {
+                return Err(format!("Too many redirects (max {})", max_redirects).into());
+            }
+
+            log::debug!("Attempting WebSocket connection to: {}", current_url);
+
+            let request = Self::build_websocket_request(&current_url, api_key)?;
+
+            match tokio_tungstenite::connect_async(request).await {
+                Ok(result) => {
+                    log::debug!(
+                        "WebSocket connection successful after {} redirects",
+                        redirects
+                    );
+                    return Ok(result);
+                }
+                Err(WsError::Http(response)) => {
+                    // Check for redirect status codes
+                    let status = response.status();
+                    if status.is_redirection() {
+                        // Extract Location header
+                        if let Some(location) = response.headers().get("location") {
+                            let location_str = location
+                                .to_str()
+                                .map_err(|e| format!("Invalid Location header: {}", e))?;
+
+                            log::info!(
+                                "Following redirect from {} to {}",
+                                current_url,
+                                location_str
+                            );
+
+                            // Handle relative vs absolute URLs
+                            if location_str.starts_with("ws://")
+                                || location_str.starts_with("wss://")
+                            {
+                                current_url = location_str.to_string();
+                            } else if location_str.starts_with("/") {
+                                // Relative path - preserve the scheme and host
+                                let base_url = url::Url::parse(&current_url)?;
+                                let new_url = url::Url::parse(&format!(
+                                    "{}://{}{}",
+                                    base_url.scheme(),
+                                    base_url.host_str().unwrap_or(""),
+                                    location_str
+                                ))?;
+                                current_url = new_url.to_string();
+                            } else {
+                                return Err(format!(
+                                    "Unsupported redirect location: {}",
+                                    location_str
+                                )
+                                .into());
+                            }
+
+                            redirects += 1;
+                            continue;
+                        } else {
+                            return Err(format!(
+                                "Redirect response {} without Location header",
+                                status.as_u16()
+                            )
+                            .into());
+                        }
+                    } else {
+                        // Non-redirect HTTP error - preserve the status code
+                        let error_msg = format!(
+                            "HTTP error: {} {}",
+                            status.as_u16(),
+                            status.canonical_reason().unwrap_or("Unknown")
+                        );
+                        log::error!("WebSocket handshake failed: {}", error_msg);
+                        return Err(error_msg.into());
+                    }
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
     }
 
     /// Test WebSocket connection to validate credentials and connectivity.
@@ -816,23 +924,8 @@ impl OpenAIRealtimeClient {
             address.to_string()
         };
 
-        let request = match Self::build_websocket_request(&url_str, api_key) {
-            Ok(req) => req,
-            Err(e) => {
-                log::error!(
-                    "Error building WebSocket request headers for connection test: {}",
-                    e
-                );
-                return ClientResult::new_err(vec![ClientError::new_with_source(
-                    ClientErrorKind::Network,
-                    "Failed to build WebSocket request headers".to_string(),
-                    Some(e),
-                )]);
-            }
-        };
-
-        // Attempt connection with a short timeout
-        let connect_future = tokio_tungstenite::connect_async(request);
+        // Attempt connection with a short timeout and redirect support
+        let connect_future = Self::connect_with_redirects(&url_str, api_key, 5);
         let timeout_future = tokio::time::timeout(Duration::from_secs(10), connect_future);
 
         match timeout_future.await {
@@ -917,15 +1010,10 @@ impl OpenAIRealtimeClient {
                 }
             }
             Ok(Err(e)) => {
-                log::error!(
-                    "WebSocket connection test failed for {} with error {}",
-                    url_str,
-                    e
-                );
-                ClientResult::new_err(vec![ClientError::new_with_source(
+                log::error!("WebSocket connection test failed with error: {}", e);
+                ClientResult::new_err(vec![ClientError::new(
                     ClientErrorKind::Network,
-                    "Failed to connect to realtime API".to_string(),
-                    Some(e),
+                    format!("Failed to connect to realtime API: {}", e),
                 )])
             }
             Err(_) => {
