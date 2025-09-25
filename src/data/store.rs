@@ -487,6 +487,7 @@ impl Store {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let mcp_config = self.get_mcp_servers_config().clone();
+            tool_manager.set_dangerous_mode_enabled(mcp_config.dangerous_mode_enabled);
             let tool_manager_clone = tool_manager.clone();
 
             spawn(async move {
@@ -518,7 +519,6 @@ impl Store {
 
     pub fn update_mcp_tool_manager(&mut self) {
         let new_tool_manager = self.create_and_load_mcp_tool_manager();
-        // Update the bot_context after the creation
         if let Some(ref mut bot_context_mut) = self.bot_context {
             bot_context_mut.replace_tool_manager(new_tool_manager);
         }
@@ -530,5 +530,11 @@ impl Store {
         if let Some(_bot_context) = &self.bot_context {
             self.bot_context = None;
         }
+    }
+
+    pub fn set_mcp_servers_dangerous_mode_enabled(&mut self, enabled: bool) {
+        self.preferences
+            .set_mcp_servers_dangerous_mode_enabled(enabled);
+        self.update_mcp_tool_manager();
     }
 }

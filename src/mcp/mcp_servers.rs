@@ -172,6 +172,45 @@ You can also add an \"enabled\": false flag to disable a specific server."
         }
     }
 
+    DangerousModeWrapper = <View> {
+        width: Fill, height: Fit
+        flow: Down, spacing: 8
+        align: {x: 0.0, y: 0.5}
+
+        <View> {
+            width: Fill, height: Fit
+            spacing: 12
+            align: {x: 0.0, y: 0.5}
+
+            <Label> {
+                text: "⚠️ Dangerous Mode"
+                draw_text: {
+                    text_style: <BOLD_FONT> {font_size: 11}
+                    color: #FF3333
+                }
+            }
+
+            dangerous_mode_switch = <MolySwitch> {
+                animator: {
+                    selected = {
+                        default: off
+                    }
+                }
+            }
+        }
+
+        <Label> {
+            text: "WARNING: This mode automatically approves ALL tool calls without asking for permission.
+Only enable if you trust all configured MCP servers completely."
+            draw_text: {
+                wrap: Word
+                text_style: <REGULAR_FONT>{font_size: 11}
+                color: #FF6666
+            }
+            width: Fill
+        }
+    }
+
     pub McpServers = {{McpServers}} {
         <AdaptiveView> {
             Desktop = {
@@ -184,6 +223,7 @@ You can also add an \"enabled\": false flag to disable a specific server."
                     width: Fill, height: Fill
                     <ToggleMCPWrapper> {}
                     <Instructions> {}
+                    <DangerousModeWrapper> {}
                     <SaveStatus> {}
                 }
             }
@@ -204,6 +244,7 @@ You can also add an \"enabled\": false flag to disable a specific server."
                             }
                         }
                     }
+                    <DangerousModeWrapper> {}
                     <ServersEditor> { width: Fill }
                     <SaveStatus> {}
                 }
@@ -245,6 +286,10 @@ impl Widget for McpServers {
             // Ensure the local config has the correct enabled state from Store
             config.enabled = store.preferences.get_mcp_servers_enabled();
 
+            // Ensure the local config has the correct dangerous mode state from Store
+            config.dangerous_mode_enabled =
+                store.preferences.get_mcp_servers_dangerous_mode_enabled();
+
             self.set_mcp_servers_config(cx, config);
         }
     }
@@ -267,6 +312,10 @@ impl McpServers {
         // Sync the toggle UI to match the config's enabled state
         self.check_box(id!(servers_enabled_switch))
             .set_active(cx, self.mcp_servers_config.enabled);
+
+        // Sync the dangerous mode toggle UI to match the config
+        self.check_box(id!(dangerous_mode_switch))
+            .set_active(cx, self.mcp_servers_config.dangerous_mode_enabled);
     }
 }
 
@@ -322,6 +371,25 @@ impl WidgetMatchEvent for McpServers {
             // Sync to Store
             let store = scope.data.get_mut::<Store>().unwrap();
             store.set_mcp_servers_enabled(enabled);
+            self.redraw(cx);
+        }
+
+        // Handle dangerous mode switch
+        let dangerous_mode_switch = self.check_box(id!(dangerous_mode_switch));
+        if let Some(enabled) = dangerous_mode_switch.changed(actions) {
+            // Update the local config
+            self.mcp_servers_config.dangerous_mode_enabled = enabled;
+
+            // Update the JSON display to show the new dangerous mode state
+            let display_json = self
+                .mcp_servers_config
+                .to_json()
+                .unwrap_or_else(|_| "{}".to_string());
+            self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
+
+            // Sync to Store
+            let store = scope.data.get_mut::<Store>().unwrap();
+            store.set_mcp_servers_dangerous_mode_enabled(enabled);
             self.redraw(cx);
         }
 
