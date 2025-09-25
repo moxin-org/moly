@@ -53,6 +53,10 @@ fn default_mcp_servers_enabled() -> bool {
     true
 }
 
+fn default_dangerous_mode_enabled() -> bool {
+    false
+}
+
 impl McpServer {
     /// Create a new stdio-based MCP server
     pub fn stdio(command: String, args: Vec<String>) -> Self {
@@ -187,6 +191,8 @@ pub struct McpServersConfig {
     pub inputs: Vec<InputConfig>,
     #[serde(default = "default_mcp_servers_enabled")]
     pub enabled: bool,
+    #[serde(default = "default_dangerous_mode_enabled")]
+    pub dangerous_mode_enabled: bool,
 }
 
 impl Default for McpServersConfig {
@@ -195,6 +201,7 @@ impl Default for McpServersConfig {
             servers: IndexMap::new(),
             inputs: Vec::new(),
             enabled: true,
+            dangerous_mode_enabled: false,
         }
     }
 }

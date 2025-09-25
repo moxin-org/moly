@@ -154,6 +154,7 @@ pub struct McpManagerClient {
     #[cfg(not(target_arch = "wasm32"))]
     registry: Arc<Mutex<ToolRegistry>>,
     latest_tools: Vec<Tool>,
+    dangerous_mode_enabled: bool,
 }
 
 impl McpManagerClient {
@@ -164,6 +165,7 @@ impl McpManagerClient {
             #[cfg(not(target_arch = "wasm32"))]
             registry: Arc::new(Mutex::new(ToolRegistry::new())),
             latest_tools: Vec::new(),
+            dangerous_mode_enabled: false,
         }
     }
 
@@ -218,6 +220,14 @@ impl McpManagerClient {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let _ = id;
         Err("MCP servers are not supported in web builds".into())
+    }
+
+    pub fn set_dangerous_mode_enabled(&mut self, enabled: bool) {
+        self.dangerous_mode_enabled = enabled;
+    }
+
+    pub fn get_dangerous_mode_enabled(&self) -> bool {
+        self.dangerous_mode_enabled
     }
 
     /// Discovers tools from an MCP server.

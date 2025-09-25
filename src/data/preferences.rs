@@ -187,6 +187,16 @@ impl Preferences {
         self.mcp_servers_config.enabled
     }
 
+    pub fn set_mcp_servers_dangerous_mode_enabled(&mut self, enabled: bool) {
+        self.mcp_servers_config.dangerous_mode_enabled = enabled;
+        self.save();
+        println!("Setting dangerous mode enabled: {}", enabled);
+    }
+
+    pub fn get_mcp_servers_dangerous_mode_enabled(&self) -> bool {
+        self.mcp_servers_config.dangerous_mode_enabled
+    }
+
     /// Migrate providers without IDs by generating them from URLs
     fn migrate_provider_ids(&mut self) {
         let mut needs_save = false;

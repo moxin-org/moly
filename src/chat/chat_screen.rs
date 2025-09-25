@@ -240,7 +240,8 @@ impl ChatScreen {
         };
 
         let mut context: BotContext = multi_client.into();
-        let tool_manager = store.create_and_load_mcp_tool_manager();
+        let mut tool_manager = store.create_and_load_mcp_tool_manager();
+        tool_manager.set_dangerous_mode_enabled(store.preferences.get_mcp_servers_dangerous_mode_enabled());
         context.set_tool_manager(tool_manager);
 
         store.bot_context = Some(context.clone());

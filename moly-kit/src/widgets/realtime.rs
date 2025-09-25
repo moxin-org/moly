@@ -1202,10 +1202,28 @@ impl Realtime {
                     call_id,
                     arguments,
                 } => {
-                    self.label(id!(status_label))
-                        .set_text(cx, &format!("🔧 Tool permission requested: {}", name));
+                    // Check if dangerous mode is enabled to auto-approve function calls
+                    let dangerous_mode_enabled = self.bot_context
+                        .as_ref()
+                        .map(|ctx| ctx.tool_manager().map(|tm| tm.get_dangerous_mode_enabled()).unwrap_or(false))
+                        .unwrap_or(false);
 
-                    self.show_tool_permission_request(cx, name, call_id, arguments);
+                    if dangerous_mode_enabled {
+                        // Auto-approve function calls in dangerous mode
+                        use crate::mcp::mcp_manager::display_name_from_namespaced;
+                        let display_name = display_name_from_namespaced(&name);
+                        self.label(id!(status_label))
+                            .set_text(cx, &format!("🔧 Auto-executing tool: {}", display_name));
+
+                        // Execute the function call directly
+                        self.handle_function_call(cx, name, call_id, arguments);
+                    } else {
+                        // Show permission request as usual
+                        self.label(id!(status_label))
+                            .set_text(cx, &format!("🔧 Tool permission requested: {}", name));
+
+                        self.show_tool_permission_request(cx, name, call_id, arguments);
+                    }
                 }
                 RealtimeEvent::Error(error) => {
                     ::log::error!("Realtime API error: {}", error);

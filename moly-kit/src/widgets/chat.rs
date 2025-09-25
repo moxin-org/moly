@@ -981,8 +981,20 @@ impl Chat {
                     final_message.metadata.is_writing = false;
                     self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
                     // TODO: We might want to dispatch a ChatTask::RequestToolPermission(index) here
+                    // Check if dangerous mode is enabled to auto-approve tool calls
+                    let dangerous_mode_enabled = self.bot_context
+                        .as_ref()
+                        .map(|ctx| ctx.tool_manager().map(|tm| tm.get_dangerous_mode_enabled()).unwrap_or(false))
+                        .unwrap_or(false);
 
-                    // Signal to stop the current stream since we're switching to permission request
+                    println!("Dangerous mode: {}", dangerous_mode_enabled);
+
+                    if dangerous_mode_enabled {
+                        // Auto-approve tool calls in dangerous mode
+                        self.dispatch(cx, &mut vec![ChatTask::ApproveToolCalls(index)]);
+                    }
+
+                    // Signal to stop the current stream since we're switching to tool execution
                     return true;
                 }
 
