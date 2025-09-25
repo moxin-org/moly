@@ -9,7 +9,7 @@ use rmcp::{
 };
 use serde_json::{Map, Value};
 use std::collections::HashMap;
-#[cfg(not(target_arch = "wasm32"))]
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::protocol::{Tool, ToolCall, ToolResult};
@@ -144,28 +144,41 @@ type McpService = RunningService<RoleClient, DynService>;
 type McpServiceHandle = Arc<McpService>;
 
 #[cfg(not(target_arch = "wasm32"))]
-type McpServiceRegistry = Arc<Mutex<HashMap<String, McpServiceHandle>>>;
+type McpServiceRegistry = HashMap<String, McpServiceHandle>;
+
+struct McpManagerInner {
+    #[cfg(not(target_arch = "wasm32"))]
+    services: Mutex<McpServiceRegistry>,
+    #[cfg(not(target_arch = "wasm32"))]
+    registry: Mutex<ToolRegistry>,
+    latest_tools: Mutex<Vec<Tool>>,
+    dangerous_mode_enabled: AtomicBool,
+}
 
 /// Manages MCP servers and provides a unified interface for tool discovery and invocation.
-#[derive(Clone)]
 pub struct McpManagerClient {
-    #[cfg(not(target_arch = "wasm32"))]
-    services: McpServiceRegistry,
-    #[cfg(not(target_arch = "wasm32"))]
-    registry: Arc<Mutex<ToolRegistry>>,
-    latest_tools: Vec<Tool>,
-    dangerous_mode_enabled: bool,
+    inner: Arc<McpManagerInner>,
+}
+
+impl Clone for McpManagerClient {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
 }
 
 impl McpManagerClient {
     pub fn new() -> Self {
         Self {
-            #[cfg(not(target_arch = "wasm32"))]
-            services: Arc::new(Mutex::new(HashMap::new())),
-            #[cfg(not(target_arch = "wasm32"))]
-            registry: Arc::new(Mutex::new(ToolRegistry::new())),
-            latest_tools: Vec::new(),
-            dangerous_mode_enabled: false,
+            inner: Arc::new(McpManagerInner {
+                #[cfg(not(target_arch = "wasm32"))]
+                services: Mutex::new(HashMap::new()),
+                #[cfg(not(target_arch = "wasm32"))]
+                registry: Mutex::new(ToolRegistry::new()),
+                latest_tools: Mutex::new(Vec::new()),
+                dangerous_mode_enabled: AtomicBool::new(false),
+            }),
         }
     }
 
@@ -192,7 +205,7 @@ impl McpManagerClient {
             }
         };
 
-        self.services
+        self.inner.services
             .lock()
             .unwrap()
             .insert(id.to_string(), Arc::new(running_service));
@@ -200,7 +213,7 @@ impl McpManagerClient {
         // Discover tools from the newly added server
         match self.discover_tools_for_server(id).await {
             Ok(tools) => {
-                self.registry.lock().unwrap().add_server_tools(id, tools);
+                self.inner.registry.lock().unwrap().add_server_tools(id, tools);
                 ::log::debug!("Successfully discovered tools for MCP server: {}", id);
             }
             Err(e) => {
@@ -222,12 +235,12 @@ impl McpManagerClient {
         Err("MCP servers are not supported in web builds".into())
     }
 
-    pub fn set_dangerous_mode_enabled(&mut self, enabled: bool) {
-        self.dangerous_mode_enabled = enabled;
+    pub fn set_dangerous_mode_enabled(&self, enabled: bool) {
+        self.inner.dangerous_mode_enabled.store(enabled, Ordering::Relaxed);
     }
 
     pub fn get_dangerous_mode_enabled(&self) -> bool {
-        self.dangerous_mode_enabled
+        self.inner.dangerous_mode_enabled.load(Ordering::Relaxed)
     }
 
     /// Discovers tools from an MCP server.
@@ -237,7 +250,7 @@ impl McpManagerClient {
         server_id: &str,
     ) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         let service = {
-            let services_guard = self.services.lock().unwrap();
+            let services_guard = self.inner.services.lock().unwrap();
             services_guard.get(server_id).map(|s| Arc::clone(s))
         };
 
@@ -258,9 +271,9 @@ impl McpManagerClient {
 
     /// Lists and caches tools from all connected MCP servers.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn list_tools(&mut self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
+    pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         let services: Vec<McpServiceHandle> = {
-            let services_guard = self.services.lock().unwrap();
+            let services_guard = self.inner.services.lock().unwrap();
             services_guard.values().map(|s| Arc::clone(s)).collect()
         };
 
@@ -283,22 +296,22 @@ impl McpManagerClient {
             }
         }
 
-        self.latest_tools = all_tools.clone();
+        *self.inner.latest_tools.lock().unwrap() = all_tools.clone();
         Ok(all_tools)
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub async fn list_tools(&mut self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
+    pub async fn list_tools(&self) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
         Ok(Vec::new())
     }
 
     pub fn get_latest_tools(&self) -> Vec<Tool> {
-        self.latest_tools.clone()
+        self.inner.latest_tools.lock().unwrap().clone()
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn get_all_namespaced_tools(&self) -> Vec<Tool> {
-        self.registry.lock().unwrap().get_all_tools()
+        self.inner.registry.lock().unwrap().get_all_tools()
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -318,7 +331,7 @@ impl McpManagerClient {
 
         // Get the tool entry from registry for validation
         let tool_entry = {
-            let registry = self.registry.lock().unwrap();
+            let registry = self.inner.registry.lock().unwrap();
             registry.get_tool_entry(namespaced_tool_name).cloned()
         };
 
@@ -328,7 +341,7 @@ impl McpManagerClient {
 
         // Get the specific server
         let service = {
-            let services_guard = self.services.lock().unwrap();
+            let services_guard = self.inner.services.lock().unwrap();
             services_guard.get(&server_id).map(|s| Arc::clone(s))
         };
 
@@ -371,8 +384,8 @@ impl McpManagerClient {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn remove_server(&self, id: &str) -> Result<(), Box<dyn std::error::Error>> {
-        self.services.lock().unwrap().remove(id);
-        self.registry.lock().unwrap().remove_server(id);
+        self.inner.services.lock().unwrap().remove(id);
+        self.inner.registry.lock().unwrap().remove_server(id);
         Ok(())
     }
 

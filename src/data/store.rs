@@ -476,7 +476,7 @@ impl Store {
     /// Creates a new MCP tool manager and loads servers asynchronously
     /// Returns the manager immediately, loading happens in the background
     pub fn create_and_load_mcp_tool_manager(&self) -> McpManagerClient {
-        let mut tool_manager = McpManagerClient::new();
+        let tool_manager = McpManagerClient::new();
 
         // Check if MCP servers are globally enabled
         if !self.preferences.get_mcp_servers_enabled() {
