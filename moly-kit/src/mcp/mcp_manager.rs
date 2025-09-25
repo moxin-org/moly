@@ -205,7 +205,8 @@ impl McpManagerClient {
             }
         };
 
-        self.inner.services
+        self.inner
+            .services
             .lock()
             .unwrap()
             .insert(id.to_string(), Arc::new(running_service));
@@ -213,7 +214,11 @@ impl McpManagerClient {
         // Discover tools from the newly added server
         match self.discover_tools_for_server(id).await {
             Ok(tools) => {
-                self.inner.registry.lock().unwrap().add_server_tools(id, tools);
+                self.inner
+                    .registry
+                    .lock()
+                    .unwrap()
+                    .add_server_tools(id, tools);
                 ::log::debug!("Successfully discovered tools for MCP server: {}", id);
             }
             Err(e) => {
@@ -236,7 +241,9 @@ impl McpManagerClient {
     }
 
     pub fn set_dangerous_mode_enabled(&self, enabled: bool) {
-        self.inner.dangerous_mode_enabled.store(enabled, Ordering::Relaxed);
+        self.inner
+            .dangerous_mode_enabled
+            .store(enabled, Ordering::Relaxed);
     }
 
     pub fn get_dangerous_mode_enabled(&self) -> bool {

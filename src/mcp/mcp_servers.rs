@@ -200,7 +200,7 @@ You can also add an \"enabled\": false flag to disable a specific server."
         }
 
         <Label> {
-            text: "WARNING: This mode automatically approves ALL tool calls without asking for permission. 
+            text: "WARNING: This mode automatically approves ALL tool calls without asking for permission.
 Only enable if you trust all configured MCP servers completely."
             draw_text: {
                 wrap: Word
@@ -287,7 +287,8 @@ impl Widget for McpServers {
             config.enabled = store.preferences.get_mcp_servers_enabled();
 
             // Ensure the local config has the correct dangerous mode state from Store
-            config.dangerous_mode_enabled = store.preferences.get_mcp_servers_dangerous_mode_enabled();
+            config.dangerous_mode_enabled =
+                store.preferences.get_mcp_servers_dangerous_mode_enabled();
 
             self.set_mcp_servers_config(cx, config);
         }

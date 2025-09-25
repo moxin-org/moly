@@ -533,7 +533,8 @@ impl Store {
     }
 
     pub fn set_mcp_servers_dangerous_mode_enabled(&mut self, enabled: bool) {
-        self.preferences.set_mcp_servers_dangerous_mode_enabled(enabled);
+        self.preferences
+            .set_mcp_servers_dangerous_mode_enabled(enabled);
         self.update_mcp_tool_manager();
     }
 }

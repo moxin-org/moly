@@ -982,9 +982,14 @@ impl Chat {
                     self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
                     // TODO: We might want to dispatch a ChatTask::RequestToolPermission(index) here
                     // Check if dangerous mode is enabled to auto-approve tool calls
-                    let dangerous_mode_enabled = self.bot_context
+                    let dangerous_mode_enabled = self
+                        .bot_context
                         .as_ref()
-                        .map(|ctx| ctx.tool_manager().map(|tm| tm.get_dangerous_mode_enabled()).unwrap_or(false))
+                        .map(|ctx| {
+                            ctx.tool_manager()
+                                .map(|tm| tm.get_dangerous_mode_enabled())
+                                .unwrap_or(false)
+                        })
                         .unwrap_or(false);
 
                     println!("Dangerous mode: {}", dangerous_mode_enabled);

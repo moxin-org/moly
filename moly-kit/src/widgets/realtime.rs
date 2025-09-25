@@ -1203,9 +1203,14 @@ impl Realtime {
                     arguments,
                 } => {
                     // Check if dangerous mode is enabled to auto-approve function calls
-                    let dangerous_mode_enabled = self.bot_context
+                    let dangerous_mode_enabled = self
+                        .bot_context
                         .as_ref()
-                        .map(|ctx| ctx.tool_manager().map(|tm| tm.get_dangerous_mode_enabled()).unwrap_or(false))
+                        .map(|ctx| {
+                            ctx.tool_manager()
+                                .map(|tm| tm.get_dangerous_mode_enabled())
+                                .unwrap_or(false)
+                        })
                         .unwrap_or(false);
 
                     if dangerous_mode_enabled {
