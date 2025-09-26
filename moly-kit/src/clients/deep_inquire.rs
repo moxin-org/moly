@@ -41,6 +41,7 @@ impl TryFrom<Message> for OutcomingMessage {
             EntityId::User => Ok(Role::User),
             EntityId::System => Ok(Role::System),
             EntityId::Bot(_) => Ok(Role::Assistant),
+            EntityId::Tool => Err(()), // DeepInquire doesn't support tool role
             EntityId::App => Err(()),
         }?;
 

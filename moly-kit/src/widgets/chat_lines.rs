@@ -233,7 +233,8 @@ live_design! {
         }
     }
 
-    pub ToolLine = <SystemLine> {
+    // Line for tool permission requests (from assistant asking to use a tool)
+    pub ToolRequestLine = <AppLine> {
         message_section = {
             draw_bg: {color: #fff3e0}
 
@@ -241,7 +242,6 @@ live_design! {
                 avatar = {
                     grapheme = {draw_bg: {color: #ff9800}}
                 }
-                name = {text: "Permission Request"}
             }
             content_section = {
                 flow: Down
@@ -257,6 +257,19 @@ live_design! {
                             color: #000
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // Line for tool execution results (EntityId::Tool)
+    pub ToolResultLine = <AppLine> {
+        message_section = {
+            draw_bg: {color: #cfe4ff}
+
+            sender = {
+                avatar = {
+                    grapheme = {draw_bg: {color: #1a5b9c}}
                 }
             }
         }
