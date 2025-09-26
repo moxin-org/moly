@@ -203,6 +203,7 @@ async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
         EntityId::User => Ok(Role::User),
         EntityId::System => Ok(Role::System),
         EntityId::Bot(_) => Ok(Role::Assistant),
+        EntityId::Tool => Ok(Role::Tool),
         EntityId::App => Err(()),
     }?;
 

@@ -42,7 +42,8 @@ live_design! {
             AppLine = <AppLine> {}
             ErrorLine = <ErrorLine> {}
             SystemLine = <SystemLine> {}
-            ToolLine = <ToolLine> {}
+            ToolRequestLine = <ToolRequestLine> {}
+            ToolResultLine = <ToolResultLine> {}
 
             // Acts as marker for:
             // - Knowing if the end of the list has been reached.
@@ -276,6 +277,32 @@ impl Messages {
                     self.apply_actions_and_editor_visibility(cx, &item, index);
                     item.draw_all(cx, &mut Scope::empty());
                 }
+                EntityId::Tool => {
+                    // Render tool execution results
+                    let item = if message.metadata.is_writing() {
+                        // Show loading animation for tool execution
+                        let item = list.item(cx, index, live_id!(LoadingLine));
+                        item.message_loading(id!(content_section.loading))
+                            .animate(cx);
+                        item
+                    } else {
+                        list.item(cx, index, live_id!(ToolResultLine))
+                    };
+
+                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                        Some(Picture::Grapheme("T".into()));
+                    item.label(id!(name)).set_text(cx, "Tool");
+
+                    if !message.metadata.is_writing() {
+                        item.slot(id!(content))
+                            .current()
+                            .as_standard_message_content()
+                            .set_content(cx, &message.content);
+                    }
+
+                    self.apply_actions_and_editor_visibility(cx, &item, index);
+                    item.draw_all(cx, &mut Scope::empty());
+                }
                 EntityId::App => {
                     // Handle EOC marker
                     if message.content.text == "EOC" {
@@ -356,8 +383,7 @@ impl Messages {
                                 .animate(cx);
                             item
                         } else if !message.content.tool_calls.is_empty() {
-                            // Render as ToolLine for messages with tool calls
-                            let item = list.item(cx, index, live_id!(ToolLine));
+                            let item = list.item(cx, index, live_id!(ToolRequestLine));
 
                             // Set visibility and status based on permission status
                             let has_pending = message.content.tool_calls.iter().any(|tc| {

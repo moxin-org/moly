@@ -384,7 +384,7 @@ impl Chat {
             let Some(tool_manager) = context.tool_manager() else {
                 ui.defer_with_redraw(move |me, cx, _| {
                     let error_message = Message {
-                        from: EntityId::System,
+                        from: EntityId::Tool,
                         content: MessageContent {
                             text: "Tool execution failed: Tool manager not available".to_string(),
                             ..Default::default()
@@ -429,7 +429,7 @@ impl Chat {
                             &result.content,
                         );
                         format!(
-                            "🔧 Tool '{}' executed successfully:\n{}",
+                            "🔧 Tool '{}' executed successfully:\n`{}`",
                             display_name, summary
                         )
                     }
@@ -453,7 +453,7 @@ impl Chat {
                                 tool_name,
                                 &result.content,
                             );
-                            text.push_str(&format!("**{}** ✅: {}\n\n", display_name, summary));
+                            text.push_str(&format!("**{}** ✅: `{}`\n\n", display_name, summary));
                         }
                     }
                     text
@@ -461,7 +461,7 @@ impl Chat {
 
                 // Update the existing loading message with tool results
                 let updated_message = Message {
-                    from: EntityId::System, // Tool results are system messages
+                    from: EntityId::Tool, // Tool results use the tool role
                     content: MessageContent {
                         text: results_text,
                         tool_results,
@@ -781,7 +781,7 @@ impl Chat {
                     };
 
                     let loading_message = Message {
-                        from: EntityId::System,
+                        from: EntityId::Tool,
                         content: MessageContent {
                             text: loading_text,
                             ..Default::default()
@@ -841,7 +841,7 @@ impl Chat {
 
                     // Add tool result message with denial results
                     let tool_message = Message {
-                        from: EntityId::System,
+                        from: EntityId::Tool,
                         content: MessageContent {
                             text: "🚫 Tool execution was denied by the user.".to_string(),
                             tool_results,
@@ -991,8 +991,6 @@ impl Chat {
                                 .unwrap_or(false)
                         })
                         .unwrap_or(false);
-
-                    println!("Dangerous mode: {}", dangerous_mode_enabled);
 
                     if dangerous_mode_enabled {
                         // Auto-approve tool calls in dangerous mode

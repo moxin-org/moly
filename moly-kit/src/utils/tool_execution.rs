@@ -11,8 +11,8 @@ pub fn create_tool_output_summary(_tool_name: &str, content: &str) -> String {
             }
             // Otherwise return a truncated pretty print
             if let Ok(pretty) = serde_json::to_string_pretty(&obj) {
-                if pretty.len() > 500 {
-                    return format!("{}...", &pretty[..500]);
+                if pretty.len() > 100 {
+                    return format!("{}...", &pretty[..100]);
                 }
                 return pretty;
             }
@@ -20,8 +20,8 @@ pub fn create_tool_output_summary(_tool_name: &str, content: &str) -> String {
     }
 
     // For non-JSON or simple text, truncate if too long
-    if content.len() > 500 {
-        format!("{}...", &content[..500])
+    if content.len() > 100 {
+        format!("{}...", &content[..100])
     } else {
         content.to_string()
     }

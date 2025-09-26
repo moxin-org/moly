@@ -165,6 +165,10 @@ pub enum EntityId {
     /// Represents a bot, which is an automated assistant of any kind (model, agent, etc).
     Bot(BotId),
 
+    /// Represents tool execution results and tool-related system messages.
+    /// Maps to the "tool" role in LLM APIs.
+    Tool,
+
     /// This app itself. Normally appears when app specific information must be displayed
     /// (like inline errors).
     ///

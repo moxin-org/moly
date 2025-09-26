@@ -422,7 +422,7 @@ live_design! {
             }
         }
 
-        tool_permission_line = <ToolLine> {
+        tool_permission_line = <ToolRequestLine> {
             visible: false
             margin: {left: 10, right: 10, top: 10}
         }
@@ -790,7 +790,7 @@ impl WidgetMatchEvent for Realtime {
             self.update_ui(cx);
         }
 
-        // Handle tool permission buttons from ToolLine
+        // Handle tool permission buttons from ToolRequestLine
         if self
             .view(id!(tool_permission_line))
             .button(id!(message_section.content_section.tool_actions.approve))
