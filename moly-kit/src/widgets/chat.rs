@@ -128,34 +128,29 @@ impl Chat {
         let prompt = self.prompt_input_ref();
 
         if prompt.read().has_send_task() {
-            // let next_index = self.messages_ref().read().messages.len();
-            // let text = prompt.text();
-            // let attachments = prompt
-            //     .read()
-            //     .attachment_list_ref()
-            //     .read()
-            //     .attachments
-            //     .clone();
-            // let mut composition = Vec::new();
+            // TODO: Decide if prompt input should be binded before.
+            let text = prompt.text();
+            let attachments = prompt
+                .read()
+                .attachment_list_ref()
+                .read()
+                .attachments
+                .clone();
 
-            // if !text.is_empty() || !attachments.is_empty() {
-            //     composition.push(ChatTask::InsertMessage(
-            //         next_index,
-            //         Message {
-            //             from: EntityId::User,
-            //             content: MessageContent {
-            //                 text,
-            //                 attachments,
-            //                 ..Default::default()
-            //             },
-            //             ..Default::default()
-            //         },
-            //     ));
-            // }
-
-            // composition.extend([ChatTask::Send, ChatTask::ClearPrompt]);
-
-            // self.dispatch(cx, &mut composition);
+            if !text.is_empty() || !attachments.is_empty() {
+                // TODO: Clearing the text was hookable before.
+                prompt.set_text(cx, "");
+                self.controller_lock()
+                    .dispatch_state_mutation(move |state| {
+                        let content = MessageContent {
+                            text: text.clone(),
+                            attachments: attachments.clone(),
+                            ..Default::default()
+                        };
+                        state.prompt_input_content = content;
+                    });
+                self.controller_lock().dispatch_task(ChatTask::Send);
+            }
         } else if prompt.read().has_stop_task() {
             self.controller_lock().dispatch_task(ChatTask::Stop);
         }

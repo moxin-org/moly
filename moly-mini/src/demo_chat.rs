@@ -108,13 +108,6 @@ impl DemoChat {
                     "deepseek/deepseek-r1",
                 ];
 
-                let ollama_whitelist = [
-                    "deepseek-r1:1.5b",
-                    "deepseek-r1:8b",
-                    "llama3.1:8b",
-                    "llama3.2:latest",
-                ];
-
                 let siliconflow_whitelist = [
                     "Pro/Qwen/Qwen2-1.5B-Instruct",
                     "Pro/deepseek-ai/DeepSeek-R1",
@@ -122,16 +115,17 @@ impl DemoChat {
                     "Qwen/Qwen2-7B-Instruct",
                 ];
 
-                let tester_whitelist = ["tester"];
-
-                openai_whitelist
+                let is_whitelisted_bot = openai_whitelist
                     .iter()
                     .chain(openai_image_whitelist.iter())
                     .chain(openrouter_whitelist.iter())
-                    .chain(ollama_whitelist.iter())
                     .chain(siliconflow_whitelist.iter())
-                    .chain(tester_whitelist.iter())
-                    .any(|s| *s == b.name.as_str())
+                    .any(|s| *s == b.name.as_str());
+
+                let is_local_bot =
+                    b.id.provider() == "tester" || b.id.provider().contains("://localhost");
+
+                is_whitelisted_bot || is_local_bot
             })
             .collect::<Vec<_>>();
 
