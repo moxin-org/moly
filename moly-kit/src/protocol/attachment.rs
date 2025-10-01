@@ -244,6 +244,20 @@ pub struct Attachment {
     content: Option<AttachmentContentHandle>,
 }
 
+// File type filters for the file picker dialog
+const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
+const SUPPORTED_DOCUMENT_EXTENSIONS: &[&str] = &["pdf", "txt", "md", "html", "htm"];
+const SUPPORTED_ALL_EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", // Images
+    "pdf", // Documents
+    "txt", "md", "html", "htm", "xml", "json", "yaml", "yml", "csv", "log", "ini", "cfg",
+    "conf", // Text files
+    "js", "ts", "tsx", "jsx", "py", "rs", "go", "java", "c", "cpp", "h", "hpp", "cs", "rb",
+    "php", // Code files
+    "swift", "kt", "scala", "r", "m", "sql", "sh", "bash", "zsh", "fish", "ps1", "bat", "cmd",
+    "css", "scss", "sass", "less", "toml", "env", // Other text formats
+];
+
 impl Attachment {
     /// Crate private utility to pick files from the file system.
     ///
@@ -257,6 +271,10 @@ impl Attachment {
             if #[cfg(target_arch = "wasm32")] {
                 crate::utils::asynchronous::spawn(async move {
                     let Some(handles) = rfd::AsyncFileDialog::new()
+                        .add_filter("Supported Files", SUPPORTED_ALL_EXTENSIONS)
+                        .add_filter("Images", SUPPORTED_IMAGE_EXTENSIONS)
+                        .add_filter("Documents", SUPPORTED_DOCUMENT_EXTENSIONS)
+                        .add_filter("All Files", &["*"])
                         .pick_files()
                         .await
                     else {
@@ -281,6 +299,10 @@ impl Attachment {
                 });
             } else if #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] {
                 let Some(paths) = rfd::FileDialog::new()
+                    .add_filter("Supported Files", SUPPORTED_ALL_EXTENSIONS)
+                    .add_filter("Images", SUPPORTED_IMAGE_EXTENSIONS)
+                    .add_filter("Documents", SUPPORTED_DOCUMENT_EXTENSIONS)
+                    .add_filter("All Files", &["*"])
                     .pick_files()
                 else {
                     cb(Err(()));
@@ -343,6 +365,10 @@ impl Attachment {
         } else {
             false
         }
+    }
+
+    pub fn is_pdf(&self) -> bool {
+        self.content_type.as_deref() == Some("application/pdf")
     }
 
     pub async fn read(&self) -> std::io::Result<Arc<[u8]>> {
