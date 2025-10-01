@@ -193,7 +193,7 @@ struct OutgoingMessage {
     pub tool_call_id: Option<String>,
 }
 
-async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
+async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, String> {
     // Handle tool results differently
     if !message.content.tool_results.is_empty() {
         return outgoing_tool_result_message(message);
@@ -204,20 +204,24 @@ async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
         EntityId::System => Ok(Role::System),
         EntityId::Bot(_) => Ok(Role::Assistant),
         EntityId::Tool => Ok(Role::Tool),
-        EntityId::App => Err(()),
+        EntityId::App => Err("App messages cannot be sent to OpenAI".to_string()),
     }?;
 
     let content = if message.content.attachments.is_empty() {
         Content::Text(message.content.text)
     } else {
         let mut parts = Vec::new();
+
         for attachment in message.content.attachments {
             if !attachment.is_available() {
                 makepad_widgets::warning!("Skipping unavailable attachment: {}", attachment.name);
                 continue;
             }
 
-            let content = attachment.read_base64().await.map_err(|_| ())?;
+            let content = attachment
+                .read_base64()
+                .await
+                .map_err(|e| format!("Failed to read attachment '{}': {}", attachment.name, e))?;
             let data_url = format!(
                 "data:{};base64,{}",
                 attachment
@@ -231,15 +235,32 @@ async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
                 parts.push(ContentPart::ImageUrl {
                     image_url: ImageUrlDetail { url: data_url },
                 });
-            } else {
+            } else if attachment.is_pdf() {
                 parts.push(ContentPart::File {
                     file: File {
                         filename: attachment.name,
                         file_data: data_url,
                     },
                 });
+            } else {
+                // For text-based files (HTML, MD, TXT, etc), decode and include as text
+                match decode_base64_to_text(&content) {
+                    Ok(text_content) => {
+                        parts.push(ContentPart::Text {
+                            text: format!("[File: {}]\n{}", attachment.name, text_content),
+                        });
+                    }
+                    Err(_) => {
+                        // This file is not text-decodable (likely binary), return error
+                        return Err(format!(
+                            "File '{}' is not supported. Only images, PDFs, and text files can be sent through the Chat Completions API.",
+                            attachment.name
+                        ));
+                    }
+                }
             }
         }
+
         parts.push(ContentPart::Text {
             text: message.content.text,
         });
@@ -274,7 +295,7 @@ async fn to_outgoing_message(message: Message) -> Result<OutgoingMessage, ()> {
 /// Converts a message with tool results to an outgoing message.
 ///
 /// This is used to send tool results back to the AI.
-fn outgoing_tool_result_message(message: Message) -> Result<OutgoingMessage, ()> {
+fn outgoing_tool_result_message(message: Message) -> Result<OutgoingMessage, String> {
     let role = Role::Tool;
     let content = Content::Text(
         message
@@ -311,6 +332,20 @@ fn truncate_tool_result(content: &str) -> String {
     } else {
         content.to_string()
     }
+}
+
+/// Decode base64-encoded content to UTF-8 text.
+/// Returns an error if the content is not valid UTF-8 text.
+fn decode_base64_to_text(base64: &str) -> Result<String, ()> {
+    use base64::Engine;
+
+    // Decode base64 to bytes
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64)
+        .map_err(|_| ())?;
+
+    // Convert bytes to UTF-8 string
+    String::from_utf8(bytes).map_err(|_| ())
 }
 
 /// Finalizes any remaining buffered tool calls when streaming completes.
@@ -574,11 +609,11 @@ impl BotClient for OpenAIClient {
             for message in messages {
                 match to_outgoing_message(message.clone()).await {
                     Ok(outgoing_message) => outgoing_messages.push(outgoing_message),
-                    Err(_) => {
-                        error!("Could not convert message to outgoing format: {:?}", message);
+                    Err(err) => {
+                        error!("Could not convert message to outgoing format: {}", err);
                         yield ClientError::new(
                             ClientErrorKind::Format,
-                            "Could not convert message to outgoing format.".into(),
+                            err,
                         ).into();
                         return;
                     }
