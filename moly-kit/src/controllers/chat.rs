@@ -15,13 +15,12 @@ use std::sync::{
 use futures::StreamExt;
 
 /// Controls if remaining callbacks and default behavior should be executed.
-///
-/// Used when hooking into UI events and state mutations.
 pub enum ChatControl {
     Continue,
     Stop,
 }
 
+/// Represents a generic status in which an operation can be.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum Status {
     #[default]
@@ -55,12 +54,8 @@ impl Status {
 pub struct ChatState {
     /// The chat history sent as context to LLMs.
     pub messages: Vec<Message>,
-    /// The content to send as a new user message.
-    pub prompt_input_content: MessageContent,
     /// Indicates that the LLM is still streaming the response ("writing").
     pub is_streaming: bool,
-    /// The bot to interact with when sending messages.
-    pub current_bot_id: Option<BotId>,
     /// The bots that were loaded from the configured client.
     pub bots: Vec<Bot>,
     pub load_status: Status,
@@ -70,18 +65,16 @@ impl ChatState {
     pub fn get_bot(&self, bot_id: &BotId) -> Option<&Bot> {
         self.bots.iter().find(|b| &b.id == bot_id)
     }
-
-    pub fn get_current_bot(&self) -> Option<&Bot> {
-        self.current_bot_id.as_ref().and_then(|id| self.get_bot(id))
-    }
 }
 
+/// Represents complex (mostly async) operations that may cause multiple mutations
+/// over time.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChatTask {
-    /// The user pressed the send button to send current prompt input + message
-    /// history context.
-    Send,
-    /// The user pressed the stop button to abort current streaming response.
+    /// Causes the whole list of messages to be sent to the specified bot and starts
+    /// the streaming response work in the background.
+    Send(BotId),
+    /// Interrupts the streaming started by `Send`.
     Stop,
     /// Should be triggered to start fetching async data (e.g. bots).
     ///
@@ -89,10 +82,10 @@ pub enum ChatTask {
     Load,
 }
 
-/// Allows to hook between dispatched events and state mutations.
+/// Allows to hook between dispatched events of any kind.
 ///
-/// It's the basic building block for extending [`ChatController`] beyond its
-/// default behavior.
+/// It's the fundamental building block for extending [`ChatController`] beyond
+/// its default behavior and integrating it with other technologies.
 pub trait ChatControllerPlugin: Send {
     /// Called when new state is available.
     ///
@@ -112,7 +105,7 @@ pub trait ChatControllerPlugin: Send {
     // attachment handling?
 }
 
-/// Utility wrapper around a weak ref to a controller.
+/// Private utility wrapper around a weak ref to a controller.
 ///
 /// Motivation: Before spawning async tasks (or threads) you may be tempted to upgrade
 /// the weak reference. If you do so, running futures will not be aborted when the controller
@@ -150,6 +143,19 @@ impl ChatControllerPluginRegistrationId {
     }
 }
 
+/// State management abstraction specialized in handling the core complex chat logic.
+///
+/// This follow a controller-like interface to be part of an MVC-like architecture.
+/// The controller receives different inputs, which causes work to happen inside, and
+/// finally causes state to be changed and notified.
+///
+/// Inputs may be state mutations (which are simply closures that are executed immediately),
+/// or tasks (more complex operations that may be async and cause multiple mutations over time).
+///
+/// The main objective of the controller is to implement default reusable behavior, but
+/// this controller idea is extended with the concept of "plugins", which have various objetives
+/// like getting notified of state changes to integrate with a view or to customize
+/// the behavior of the controller itself.
 pub struct ChatController {
     state: ChatState,
     /// A list of plugins defining custom behavior.
@@ -267,8 +273,8 @@ impl ChatController {
 
     pub fn perform_task(&mut self, event: ChatTask) {
         match event {
-            ChatTask::Send => {
-                self.handle_send();
+            ChatTask::Send(bot_id) => {
+                self.handle_send(bot_id);
             }
             ChatTask::Stop => {
                 self.clear_streaming_artifacts();
@@ -279,7 +285,7 @@ impl ChatController {
         }
     }
 
-    fn handle_send(&mut self) {
+    fn handle_send(&mut self, bot_id: BotId) {
         // Clean previous streaming artifacts if any.
         self.clear_streaming_artifacts();
 
@@ -292,22 +298,14 @@ impl ChatController {
             return;
         };
 
-        let Some(bot) = self.state.get_current_bot().cloned() else {
+        let Some(bot) = self.state.get_bot(&bot_id).cloned() else {
             self.dispatch_state_mutation(|state| {
-                state.messages.push(Message::app_error("No bot selected"));
+                state.messages.push(Message::app_error("Bot not found"));
             });
             return;
         };
 
         self.dispatch_state_mutation(|state| {
-            let prompt_input_content = std::mem::take(&mut state.prompt_input_content);
-            if !prompt_input_content.is_empty() {
-                state.messages.push(Message {
-                    from: EntityId::User,
-                    content: prompt_input_content,
-                    ..Default::default()
-                });
-            }
             state.is_streaming = true;
         });
 
@@ -327,7 +325,7 @@ impl ChatController {
                 controller.lock_with(|c| {
                     c.dispatch_state_mutation(|state| {
                         state.messages.push(Message {
-                            from: EntityId::Bot(state.current_bot_id.clone().unwrap()),
+                            from: EntityId::Bot(bot_id.clone()),
                             metadata: MessageMetadata {
                                 // TODO: Evaluate removing this from messages in favor of
                                 // `is_streaming` in the controller.
@@ -526,7 +524,7 @@ impl ChatControllerBuilder {
         Self(ChatController::new_arc())
     }
 
-    pub fn with_client<C>(mut self, client: C) -> Self
+    pub fn with_client<C>(self, client: C) -> Self
     where
         C: BotClient + 'static,
     {
@@ -534,7 +532,7 @@ impl ChatControllerBuilder {
         self
     }
 
-    pub fn with_plugin<P>(mut self, plugin: P) -> Self
+    pub fn with_plugin<P>(self, plugin: P) -> Self
     where
         P: ChatControllerPlugin + 'static,
     {
