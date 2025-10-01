@@ -137,6 +137,10 @@ impl ChatControllerAccessor {
         let mut controller = handle.lock().ok()?;
         Some(f(&mut controller))
     }
+
+    fn new(handle: Weak<Mutex<ChatController>>) -> Self {
+        Self { handle }
+    }
 }
 
 /// Unique identifier for a registered plugin. Can be used to unregister it later.
@@ -175,18 +179,17 @@ impl ChatController {
     /// may find this useful when integrating the controller with your framework
     /// of choice.
     pub fn new_arc() -> Arc<Mutex<Self>> {
-        let controller = Arc::new(Mutex::new(Self {
-            state: ChatState::default(),
-            plugins: Vec::new(),
-            accessor: ChatControllerAccessor::default(),
-            send_abort_on_drop: None,
-            load_bots_abort_on_drop: None,
-            client: None,
-            tool_manager: None,
-        }));
-
-        controller.lock().unwrap().accessor.handle = Arc::downgrade(&controller);
-        controller
+        Arc::new_cyclic(|weak| {
+            Mutex::new(Self {
+                state: ChatState::default(),
+                plugins: Vec::new(),
+                accessor: ChatControllerAccessor::new(weak.clone()),
+                send_abort_on_drop: None,
+                load_bots_abort_on_drop: None,
+                client: None,
+                tool_manager: None,
+            })
+        })
     }
 
     pub fn builder() -> ChatControllerBuilder {
