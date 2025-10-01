@@ -1,4 +1,7 @@
+use std::sync::{Arc, Mutex};
+
 use makepad_widgets::*;
+use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin, ChatTask};
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
@@ -23,7 +26,7 @@ live_design!(
         padding: 12,
         spacing: 12,
         selector = <BotSelector> {}
-        chat = <Chat> { visible: false }
+        chat = <Chat> { }
     }
 );
 
@@ -31,6 +34,9 @@ live_design!(
 pub struct DemoChat {
     #[deref]
     deref: View,
+
+    #[rust]
+    pub controller: Option<Arc<Mutex<ChatController>>>,
 }
 
 impl Widget for DemoChat {
@@ -47,7 +53,9 @@ impl Widget for DemoChat {
 
         if selector.bot_selected(actions) {
             let id = selector.selected_bot_id().expect("no bot selected");
-            chat.borrow_mut().unwrap().set_bot_id(cx, Some(id));
+            self.controller_lock().dispatch_state_mutation(|state| {
+                state.current_bot_id = Some(id.clone());
+            });
         }
     }
 
@@ -60,7 +68,7 @@ impl LiveHook for DemoChat {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
         // Setup some hooks as an example of how to use them.
         self.setup_chat_hooks();
-        self.setup_chat_bot_context(cx);
+        self.setup_chat_controller(cx);
     }
 }
 
@@ -100,13 +108,6 @@ impl DemoChat {
                     "deepseek/deepseek-r1",
                 ];
 
-                let ollama_whitelist = [
-                    "deepseek-r1:1.5b",
-                    "deepseek-r1:8b",
-                    "llama3.1:8b",
-                    "llama3.2:latest",
-                ];
-
                 let siliconflow_whitelist = [
                     "Pro/Qwen/Qwen2-1.5B-Instruct",
                     "Pro/deepseek-ai/DeepSeek-R1",
@@ -114,23 +115,24 @@ impl DemoChat {
                     "Qwen/Qwen2-7B-Instruct",
                 ];
 
-                let tester_whitelist = ["tester"];
-
-                openai_whitelist
+                let is_whitelisted_bot = openai_whitelist
                     .iter()
                     .chain(openai_image_whitelist.iter())
                     .chain(openrouter_whitelist.iter())
-                    .chain(ollama_whitelist.iter())
                     .chain(siliconflow_whitelist.iter())
-                    .chain(tester_whitelist.iter())
-                    .any(|s| *s == b.name.as_str())
+                    .any(|s| *s == b.name.as_str());
+
+                let is_local_bot =
+                    b.id.provider() == "tester" || b.id.provider().contains("://localhost");
+
+                is_whitelisted_bot || is_local_bot
             })
             .collect::<Vec<_>>();
 
         if let Some(bot) = bots.first() {
-            chat.borrow_mut()
-                .unwrap()
-                .set_bot_id(cx, Some(bot.id.clone()));
+            self.controller_lock().dispatch_state_mutation(|state| {
+                state.current_bot_id = Some(bot.id.clone());
+            });
         } else {
             eprintln!("No models available, check your API keys.");
         }
@@ -139,48 +141,48 @@ impl DemoChat {
     }
 
     fn setup_chat_hooks(&self) {
-        self.chat(id!(chat)).write_with(|chat| {
-            chat.set_hook_before(|group, chat, cx| {
-                let mut abort = false;
+        // self.chat(id!(chat)).write_with(|chat| {
+        //     chat.set_hook_before(|group, chat, cx| {
+        //         let mut abort = false;
 
-                for task in group.iter_mut() {
-                    if let ChatTask::CopyMessage(index) = task {
-                        abort = true;
+        //         for task in group.iter_mut() {
+        //             if let ChatTask::CopyMessage(index) = task {
+        //                 abort = true;
 
-                        let text = chat.messages_ref().read_with(|messages| {
-                            let text = &messages.messages[*index].content.text;
-                            format!("You copied the following text from Moly (mini): {}", text)
-                        });
+        //                 let text = chat.messages_ref().read_with(|messages| {
+        //                     let text = &messages.messages[*index].content.text;
+        //                     format!("You copied the following text from Moly (mini): {}", text)
+        //                 });
 
-                        cx.copy_to_clipboard(&text);
-                    }
+        //                 cx.copy_to_clipboard(&text);
+        //             }
 
-                    if let ChatTask::UpdateMessage(_index, message) = task {
-                        message.content.text =
-                            message.content.text.replace("ello", "3110 (hooked)");
+        //             if let ChatTask::UpdateMessage(_index, message) = task {
+        //                 message.content.text =
+        //                     message.content.text.replace("ello", "3110 (hooked)");
 
-                        if message.content.text.contains("bad word") {
-                            abort = true;
-                        }
-                    }
-                }
+        //                 if message.content.text.contains("bad word") {
+        //                     abort = true;
+        //                 }
+        //             }
+        //         }
 
-                if abort {
-                    group.clear();
-                }
-            });
+        //         if abort {
+        //             group.clear();
+        //         }
+        //     });
 
-            chat.set_hook_after(|group, _, _| {
-                for task in group.iter() {
-                    if let ChatTask::UpdateMessage(_index, message) = task {
-                        log!("Message updated after hook: {:?}", message.content);
-                    }
-                }
-            });
-        });
+        //     chat.set_hook_after(|group, _, _| {
+        //         for task in group.iter() {
+        //             if let ChatTask::UpdateMessage(_index, message) = task {
+        //                 log!("Message updated after hook: {:?}", message.content);
+        //             }
+        //         }
+        //     });
+        // });
     }
 
-    fn setup_chat_bot_context(&self, cx: &mut Cx) {
+    fn setup_chat_controller(&mut self, cx: &mut Cx) {
         let client = {
             let mut client = MultiClient::new();
 
@@ -223,33 +225,46 @@ impl DemoChat {
             client
         };
 
-        let mut context: BotContext = client.into();
-        self.chat(id!(chat))
-            .write()
-            .set_bot_context(cx, Some(context.clone()));
+        let controller = ChatController::builder()
+            .with_client(client)
+            .with_plugin(DemoChatPlugin {
+                ui: self.ui_runner(),
+                done: false,
+            })
+            .build_arc();
 
-        let ui = self.ui_runner();
-        spawn(async move {
-            let errors = context.load().await.into_errors();
+        self.controller = Some(controller.clone());
+        self.chat(id!(chat)).write().controller = Some(controller);
+    }
 
-            ui.defer_with_redraw(move |me, cx, _scope| {
-                let mut chat = me.chat(id!(chat));
-                let mut messages = chat.read().messages_ref();
+    fn controller_lock(&self) -> std::sync::MutexGuard<'_, ChatController> {
+        self.controller
+            .as_ref()
+            .expect("ChatController not initialized")
+            .lock()
+            .unwrap()
+    }
+}
 
-                me.fill_selector(cx, context.bots());
-                chat.write().visible = true;
+struct DemoChatPlugin {
+    ui: UiRunner<DemoChat>,
+    done: bool,
+}
 
-                for error in errors {
-                    messages.write().messages.push(Message {
-                        from: EntityId::App,
-                        content: MessageContent {
-                            text: error.to_string(),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    });
-                }
+impl ChatControllerPlugin for DemoChatPlugin {
+    fn on_state_change(&mut self, state: &controllers::chat::ChatState) {
+        if self.done {
+            return;
+        }
+
+        if !state.bots.is_empty() {
+            let bots = state.bots.clone();
+            self.ui.defer_with_redraw(move |widget, cx, _scope| {
+                widget.fill_selector(cx, bots);
             });
-        });
+
+            self.done = true;
+            // TODO: Unsuscribe?
+        }
     }
 }

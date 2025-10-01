@@ -151,6 +151,17 @@ pub enum Picture {
     Dependency(LiveDependency),
 }
 
+impl PartialEq for Picture {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Picture::Grapheme(a), Picture::Grapheme(b)) => a == b,
+            (Picture::Image(a), Picture::Image(b)) => a == b,
+            (Picture::Dependency(a), Picture::Dependency(b)) => a.as_str() == b.as_str(),
+            _ => false,
+        }
+    }
+}
+
 /// Indentify the entities that are recognized by this crate, mainly in a chat.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -190,7 +201,7 @@ pub enum BotCapability {
 }
 
 /// Set of capabilities that a bot supports
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct BotCapabilities {
     capabilities: HashSet<BotCapability>,
@@ -233,7 +244,7 @@ impl BotCapabilities {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Bot {
     /// Unique internal identifier for the bot across all providers
     pub id: BotId,
@@ -649,7 +660,7 @@ impl ClientError {
 ///
 /// It would be mistake if this contains no value and no errors at the same time.
 /// This is taken care on creation time, and it can't be modified afterwards.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[must_use]
 pub struct ClientResult<T> {
     errors: Vec<ClientError>,
@@ -716,6 +727,27 @@ impl<T> ClientResult<T> {
     /// Returns the errors list.
     pub fn errors(&self) -> &[ClientError] {
         &self.errors
+    }
+
+    /// Returns the successful value and the errors list.
+    pub fn value_and_errors(&self) -> (Option<&T>, &[ClientError]) {
+        (self.value.as_ref(), &self.errors)
+    }
+
+    /// Creates a result with the given value and errors without checking the
+    /// invariant of having at least one of them.
+    ///
+    /// Warning: The main purpose of this method is to construct [`ClientResult`]s
+    /// from already existing [`ClientResult`]s that are known to be valid. Using
+    /// this without caution may lead to invalid states and panic at runtime.
+    pub fn new_unchecked(value: Option<T>, errors: Vec<ClientError>) -> Self {
+        ClientResult { value, errors }
+    }
+
+    /// Maps the successful value to another value, cloning the errors list.
+    pub fn map_value<'t, U: 't>(&'t self, f: impl FnOnce(&'t T) -> U) -> ClientResult<U> {
+        let value = self.value.as_ref().map(f);
+        ClientResult::new_unchecked(value, self.errors.clone())
     }
 
     /// Returns true if there is a successful value.
@@ -854,7 +886,7 @@ impl BotContext {
     /// Fetches the bots and keeps them to be read synchronously later.
     ///
     /// It errors with whatever the underlying client errors with.
-    pub fn load(&mut self) -> BoxPlatformSendFuture<'_, ClientResult<()>> {
+    pub fn load(&mut self) -> BoxPlatformSendFuture<ClientResult<()>> {
         let future = async move {
             let result = self.client().bots().await;
             let (new_bots, errors) = result.into_value_and_errors();
