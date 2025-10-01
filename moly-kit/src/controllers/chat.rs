@@ -107,12 +107,7 @@ pub trait ChatControllerPlugin: Send {
     /// Called with a state mutator to be applied over the current state.
     ///
     /// Useful for replicating state outside of the controller.
-    fn on_state_mutation(
-        &mut self,
-        _mutation: &mut (dyn FnMut(&mut ChatState) + Send),
-    ) -> ChatControl {
-        ChatControl::Continue
-    }
+    fn on_state_mutation(&mut self, _mutation: &mut (dyn FnMut(&mut ChatState) + Send)) {}
 
     // attachment handling?
 }
@@ -220,35 +215,27 @@ impl ChatController {
 
     /// Dispatches a state mutation to be applied.
     ///
-    /// Plugins will be called before the mutation is applied and can stop it.
+    /// Plugins will be called before the mutation is applied.
     ///
-    /// This function can return a value from the mutation closure. If a plugin
-    /// interrupts the mutation, `None` is returned.
+    /// This function can return a value from the mutation closure.
     ///
     /// The controller will only run this mutation once over the state. Plugins
     /// get access to this closure (without the return value) so they may do
     /// additional stuff with it (e.g. replicate the mutation outside of the controller).
     #[track_caller]
-    pub fn dispatch_state_mutation<F, R>(&mut self, mut mutation: F) -> Option<R>
+    pub fn dispatch_state_mutation<F, R>(&mut self, mut mutation: F) -> R
     where
         F: (FnMut(&mut ChatState) -> R) + Send,
     {
         log::trace!("dispatch_state_mutation from {}", Location::caller());
 
-        {
-            for (_, plugin) in &mut self.plugins {
-                let control = plugin.on_state_mutation(&mut |state| {
-                    mutation(state);
-                });
-
-                match control {
-                    ChatControl::Continue => continue,
-                    ChatControl::Stop => return None,
-                }
-            }
+        for (_, plugin) in &mut self.plugins {
+            plugin.on_state_mutation(&mut |state| {
+                mutation(state);
+            });
         }
 
-        Some(self.perform_state_mutation(mutation))
+        self.perform_state_mutation(mutation)
     }
 
     /// Applies a state mutation directly, bypassing plugins.
@@ -312,8 +299,7 @@ impl ChatController {
             return;
         };
 
-        // Do not proceed if None because it means it was cancelled by a plugin.
-        let Some(()) = self.dispatch_state_mutation(|state| {
+        self.dispatch_state_mutation(|state| {
             let prompt_input_content = std::mem::take(&mut state.prompt_input_content);
             if !prompt_input_content.is_empty() {
                 state.messages.push(Message {
@@ -323,9 +309,7 @@ impl ChatController {
                 });
             }
             state.is_streaming = true;
-        }) else {
-            return;
-        };
+        });
 
         let messages_context = self
             .state
