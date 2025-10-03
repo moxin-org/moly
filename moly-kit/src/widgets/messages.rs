@@ -128,7 +128,8 @@ pub struct Messages {
     deref: View,
 
     #[rust]
-    chat_controller: Option<Arc<Mutex<ChatController>>>,
+    // Note: This should be `pub(crate)` but Makepad macros don't work with it.
+    pub chat_controller: Option<Arc<Mutex<ChatController>>>,
 
     /// Registry of DSL templates used by custom content widgets.
     ///
