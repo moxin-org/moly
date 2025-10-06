@@ -4,7 +4,7 @@ use std::cell::{Ref, RefMut};
 use std::sync::{Arc, Mutex};
 use utils::asynchronous::spawn;
 
-use crate::controllers::chat::{ChatController, ChatTask};
+use crate::controllers::chat::{ChatController, ChatControllerPlugin, ChatState, ChatTask};
 use crate::utils::asynchronous::PlatformSendStream;
 use crate::utils::makepad::EventExt;
 use crate::utils::makepad::ui_runner::DeferWithRedrawAsync;
@@ -64,6 +64,10 @@ pub struct Chat {
     /// Wether the user has scrolled during the stream of the current message.
     #[rust]
     user_scrolled_during_stream: bool,
+
+    /// Keep track of previous `is_streaming` state to detect changes on the plugin.
+    #[rust]
+    was_streaming: bool,
 }
 
 impl Widget for Chat {
@@ -118,7 +122,14 @@ impl Chat {
 
     fn handle_realtime(&mut self, cx: &mut Cx) {
         if self.realtime(id!(realtime)).connection_requested() {
-            self.dispatch(cx, &mut ChatTask::Send.into());
+            let bot_id = self.bot_id.clone().expect("no bot selected");
+
+            self.chat_controller
+                .as_mut()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .dispatch_task(ChatTask::Send(bot_id));
         }
     }
 
@@ -182,17 +193,20 @@ impl Chat {
     }
 
     fn handle_capabilities(&mut self, cx: &mut Cx) {
-        if let (Some(bot_context), Some(bot_id)) = (&self.bot_context, &self.bot_id) {
-            if let Some(bot) = bot_context.get_bot(bot_id) {
-                self.prompt_input_ref()
-                    .write()
-                    .set_bot_capabilities(cx, Some(bot.capabilities.clone()));
-            } else if self.bot_id.is_none() {
-                self.prompt_input_ref()
-                    .write()
-                    .set_bot_capabilities(cx, None);
-            }
-        }
+        let capabilities = self.chat_controller.as_ref().and_then(|controller| {
+            self.bot_id.as_ref().and_then(|bot_id| {
+                controller
+                    .lock()
+                    .unwrap()
+                    .state()
+                    .get_bot(bot_id)
+                    .map(|bot| bot.capabilities.clone())
+            })
+        });
+
+        self.prompt_input_ref()
+            .write()
+            .set_bot_capabilities(cx, capabilities);
     }
 
     fn handle_scrolling(&mut self) {
@@ -219,7 +233,7 @@ impl Chat {
                 continue;
             }
 
-            let chat_controller = self.chat_controller.as_mut().unwrap();
+            let chat_controller = self.chat_controller.clone().unwrap();
 
             match action.cast::<MessagesAction>() {
                 MessagesAction::Delete(index) => chat_controller
@@ -250,7 +264,7 @@ impl Chat {
                         });
                 }
                 MessagesAction::EditRegenerate(index) => {
-                    let messages =
+                    let mut messages =
                         chat_controller.lock().unwrap().state().messages[0..=index].to_vec();
 
                     let index = self
@@ -284,10 +298,10 @@ impl Chat {
                         .dispatch_task(ChatTask::Send(bot_id));
                 }
                 MessagesAction::ToolApprove(index) => {
-                    self.dispatch(cx, &mut ChatTask::ApproveToolCalls(index).into());
+                    // self.dispatch(cx, &mut ChatTask::ApproveToolCalls(index).into());
                 }
                 MessagesAction::ToolDeny(index) => {
-                    self.dispatch(cx, &mut ChatTask::DenyToolCalls(index).into());
+                    // self.dispatch(cx, &mut ChatTask::DenyToolCalls(index).into());
                 }
                 MessagesAction::None => {}
             }
@@ -332,8 +346,10 @@ impl Chat {
                 .unwrap()
                 .dispatch_task(ChatTask::Send(bot_id));
         } else if prompt.read().has_stop_task() {
-            self.abort();
-            self.redraw(cx);
+            chat_controller
+                .lock()
+                .unwrap()
+                .dispatch_task(ChatTask::Stop);
         }
     }
 
@@ -350,578 +366,416 @@ impl Chat {
             ));
     }
 
-    fn handle_tool_calls(
-        &mut self,
-        _cx: &mut Cx,
-        tool_calls: Vec<ToolCall>,
-        loading_message_index: usize,
-    ) {
-        let context = self
-            .bot_context
-            .as_ref()
-            .expect("no BotContext provided")
-            .clone();
+    // fn handle_tool_calls(
+    //     &mut self,
+    //     _cx: &mut Cx,
+    //     tool_calls: Vec<ToolCall>,
+    //     loading_message_index: usize,
+    // ) {
+    //     let context = self
+    //         .bot_context
+    //         .as_ref()
+    //         .expect("no BotContext provided")
+    //         .clone();
 
-        let ui = self.ui_runner();
-        let future = async move {
-            // Get the tool manager from context
-            let Some(tool_manager) = context.tool_manager() else {
-                ui.defer_with_redraw(move |me, cx, _| {
-                    let error_message = Message {
-                        from: EntityId::Tool,
-                        content: MessageContent {
-                            text: "Tool execution failed: Tool manager not available".to_string(),
-                            ..Default::default()
-                        },
-                        metadata: MessageMetadata {
-                            is_writing: false,
-                            ..MessageMetadata::new()
-                        },
-                        ..Default::default()
-                    };
-                    me.dispatch(
-                        cx,
-                        &mut vec![ChatTask::UpdateMessage(
-                            loading_message_index,
-                            error_message,
-                        )],
-                    );
-                });
-                return;
-            };
+    //     let ui = self.ui_runner();
+    //     let future = async move {
+    //         // Get the tool manager from context
+    //         let Some(tool_manager) = context.tool_manager() else {
+    //             ui.defer_with_redraw(move |me, cx, _| {
+    //                 let error_message = Message {
+    //                     from: EntityId::Tool,
+    //                     content: MessageContent {
+    //                         text: "Tool execution failed: Tool manager not available".to_string(),
+    //                         ..Default::default()
+    //                     },
+    //                     metadata: MessageMetadata {
+    //                         is_writing: false,
+    //                         ..MessageMetadata::new()
+    //                     },
+    //                     ..Default::default()
+    //                 };
+    //                 me.dispatch(
+    //                     cx,
+    //                     &mut vec![ChatTask::UpdateMessage(
+    //                         loading_message_index,
+    //                         error_message,
+    //                     )],
+    //                 );
+    //             });
+    //             return;
+    //         };
 
-            // Execute tool calls using MCP manager
-            let tool_results = tool_manager.execute_tool_calls(tool_calls.clone()).await;
+    //         // Execute tool calls using MCP manager
+    //         let tool_results = tool_manager.execute_tool_calls(tool_calls.clone()).await;
 
-            // Update the loading message with tool results and trigger a new send
-            ui.defer_with_redraw(move |me, cx, _| {
-                // Create formatted text for tool results
-                let results_text = if tool_results.len() == 1 {
-                    let result = &tool_results[0];
-                    let tool_name = tool_calls
-                        .iter()
-                        .find(|tc| tc.id == result.tool_call_id)
-                        .map(|tc| tc.name.as_str())
-                        .unwrap_or("unknown");
+    //         // Update the loading message with tool results and trigger a new send
+    //         ui.defer_with_redraw(move |me, cx, _| {
+    //             // Create formatted text for tool results
+    //             let results_text = if tool_results.len() == 1 {
+    //                 let result = &tool_results[0];
+    //                 let tool_name = tool_calls
+    //                     .iter()
+    //                     .find(|tc| tc.id == result.tool_call_id)
+    //                     .map(|tc| tc.name.as_str())
+    //                     .unwrap_or("unknown");
 
-                    let display_name = display_name_from_namespaced(tool_name);
-                    if result.is_error {
-                        format!("🔧 Tool '{}' failed:\n{}", display_name, result.content)
-                    } else {
-                        let summary = crate::utils::tool_execution::create_tool_output_summary(
-                            tool_name,
-                            &result.content,
-                        );
-                        format!(
-                            "🔧 Tool '{}' executed successfully:\n`{}`",
-                            display_name, summary
-                        )
-                    }
-                } else {
-                    let mut text = format!("🔧 Executed {} tools:\n\n", tool_results.len());
-                    for result in &tool_results {
-                        let tool_name = tool_calls
-                            .iter()
-                            .find(|tc| tc.id == result.tool_call_id)
-                            .map(|tc| tc.name.as_str())
-                            .unwrap_or("unknown");
+    //                 let display_name = display_name_from_namespaced(tool_name);
+    //                 if result.is_error {
+    //                     format!("🔧 Tool '{}' failed:\n{}", display_name, result.content)
+    //                 } else {
+    //                     let summary = crate::utils::tool_execution::create_tool_output_summary(
+    //                         tool_name,
+    //                         &result.content,
+    //                     );
+    //                     format!(
+    //                         "🔧 Tool '{}' executed successfully:\n`{}`",
+    //                         display_name, summary
+    //                     )
+    //                 }
+    //             } else {
+    //                 let mut text = format!("🔧 Executed {} tools:\n\n", tool_results.len());
+    //                 for result in &tool_results {
+    //                     let tool_name = tool_calls
+    //                         .iter()
+    //                         .find(|tc| tc.id == result.tool_call_id)
+    //                         .map(|tc| tc.name.as_str())
+    //                         .unwrap_or("unknown");
 
-                        let display_name = display_name_from_namespaced(tool_name);
-                        if result.is_error {
-                            text.push_str(&format!(
-                                "**{}** ❌: {}\n\n",
-                                display_name, result.content
-                            ));
-                        } else {
-                            let summary = crate::utils::tool_execution::create_tool_output_summary(
-                                tool_name,
-                                &result.content,
-                            );
-                            text.push_str(&format!("**{}** ✅: `{}`\n\n", display_name, summary));
-                        }
-                    }
-                    text
-                };
+    //                     let display_name = display_name_from_namespaced(tool_name);
+    //                     if result.is_error {
+    //                         text.push_str(&format!(
+    //                             "**{}** ❌: {}\n\n",
+    //                             display_name, result.content
+    //                         ));
+    //                     } else {
+    //                         let summary = crate::utils::tool_execution::create_tool_output_summary(
+    //                             tool_name,
+    //                             &result.content,
+    //                         );
+    //                         text.push_str(&format!("**{}** ✅: `{}`\n\n", display_name, summary));
+    //                     }
+    //                 }
+    //                 text
+    //             };
 
-                // Update the existing loading message with tool results
-                let updated_message = Message {
-                    from: EntityId::Tool, // Tool results use the tool role
-                    content: MessageContent {
-                        text: results_text,
-                        tool_results,
-                        ..Default::default()
-                    },
-                    metadata: MessageMetadata {
-                        is_writing: false, // No longer loading
-                        ..MessageMetadata::new()
-                    },
-                    ..Default::default()
-                };
+    //             // Update the existing loading message with tool results
+    //             let updated_message = Message {
+    //                 from: EntityId::Tool, // Tool results use the tool role
+    //                 content: MessageContent {
+    //                     text: results_text,
+    //                     tool_results,
+    //                     ..Default::default()
+    //                 },
+    //                 metadata: MessageMetadata {
+    //                     is_writing: false, // No longer loading
+    //                     ..MessageMetadata::new()
+    //                 },
+    //                 ..Default::default()
+    //             };
 
-                me.dispatch(
-                    cx,
-                    &mut vec![
-                        ChatTask::UpdateMessage(loading_message_index, updated_message),
-                        ChatTask::Send, // Trigger a new send with the tool results
-                    ],
-                );
-            });
-        };
+    //             me.dispatch(
+    //                 cx,
+    //                 &mut vec![
+    //                     ChatTask::UpdateMessage(loading_message_index, updated_message),
+    //                     ChatTask::Send, // Trigger a new send with the tool results
+    //                 ],
+    //             );
+    //         });
+    //     };
 
-        spawn(future);
-    }
+    //     spawn(future);
+    // }
 
-    fn handle_send_task(&mut self, cx: &mut Cx) {
-        // Let's start clean before starting a new stream.
-        self.abort();
+    // fn handle_task(&mut self, cx: &mut Cx, task: &ChatTask) {
+    //     match task {
+    //         // ChatTask::UpdateMessage(index, message) => {
+    //         //     self.messages_ref().write_with(|m| {
+    //         //         let new_message = message.clone();
+    //         //         let old_message = m.messages.get_mut(*index).expect("no message at index");
 
-        // TODO: See `bot_id` TODO.
-        let bot_id = self.bot_id.clone().expect("no bot selected");
+    //         //         *old_message = new_message;
+    //         //         m.set_message_editor_visibility(*index, false);
+    //         //     });
 
-        let context = self
-            .bot_context
-            .as_ref()
-            .expect("no BotContext provided")
-            .clone();
+    //         //     self.redraw(cx);
+    //         // }
+    //         // ChatTask::SetMessages(messages) => {
+    //         //     self.messages_ref().write_with(|m| {
+    //         //         m.messages = messages.clone();
 
-        // First check if the bot exists in the BotContext.
-        if context.get_bot(&bot_id).is_none() {
-            // Bot not found, add error message
-            let next_index = self.messages_ref().read().messages.len();
-            let error_message = format!(
-                "App error: Bot not found. The bot might have been disabled or removed. Bot ID: {}",
-                bot_id
-            );
+    //         //         if let Some(index) = m.current_editor_index() {
+    //         //             m.set_message_editor_visibility(index, false);
+    //         //         }
+    //         //     });
 
-            let message = Message {
-                from: EntityId::App,
-                content: MessageContent {
-                    text: error_message,
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
+    //         //     self.redraw(cx);
+    //         // }
+    //         // ChatTask::ScrollToBottom(triggered_by_stream) => {
+    //         //     self.messages_ref()
+    //         //         .write()
+    //         //         .scroll_to_bottom(cx, *triggered_by_stream);
+    //         // }
+    //         ChatTask::ApproveToolCalls(index) => {
+    //             // Get the tool calls from the message and mark them as approved
+    //             let mut message_updated = None;
+    //             let tool_calls = self.messages_ref().write_with(|m| {
+    //                 if let Some(message) = m.messages.get_mut(*index) {
+    //                     message.update_content(|content| {
+    //                         for tool_call in &mut content.tool_calls {
+    //                             tool_call.permission_status = ToolCallPermissionStatus::Approved;
+    //                         }
+    //                     });
+    //                     message_updated = Some(message.clone());
+    //                     message.content.tool_calls.clone()
+    //                 } else {
+    //                     Vec::new()
+    //                 }
+    //             });
 
-            self.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
-            return;
-        }
+    //             if let Some(message) = message_updated {
+    //                 self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
+    //             }
 
-        let messages_history_context: Vec<Message> = self.messages_ref().write_with(|messages| {
-            messages.bot_context = Some(context.clone());
+    //             if !tool_calls.is_empty() {
+    //                 // Add immediate system message with loading state
+    //                 let next_index = self.messages_ref().read().messages.len();
+    //                 let loading_text = if tool_calls.len() == 1 {
+    //                     format!(
+    //                         "Executing tool '{}'...",
+    //                         display_name_from_namespaced(&tool_calls[0].name)
+    //                     )
+    //                 } else {
+    //                     format!("Executing {} tools...", tool_calls.len())
+    //                 };
 
-            messages
-                .messages
-                .iter()
-                .filter(|m| m.metadata.is_idle() && m.from != EntityId::App)
-                .cloned()
-                .collect()
-        });
+    //                 let loading_message = Message {
+    //                     from: EntityId::Tool,
+    //                     content: MessageContent {
+    //                         text: loading_text,
+    //                         ..Default::default()
+    //                     },
+    //                     metadata: MessageMetadata {
+    //                         is_writing: true,
+    //                         ..MessageMetadata::new()
+    //                     },
+    //                     ..Default::default()
+    //                 };
 
-        // The realtime check is hack to avoid showing a loading message for realtime assistants
-        // TODO: we should base this on upgrade rather than capabilities
-        let bot = context.get_bot(&bot_id).unwrap(); // We already checked it exists above
-        if !bot.capabilities.supports_realtime() {
-            let loading_message = Message {
-                from: EntityId::Bot(bot_id.clone()),
-                metadata: MessageMetadata {
-                    is_writing: true,
-                    ..MessageMetadata::new()
-                },
-                ..Default::default()
-            };
+    //                 self.dispatch(
+    //                     cx,
+    //                     &mut vec![ChatTask::InsertMessage(next_index, loading_message)],
+    //                 );
 
-            let next_index = self.messages_ref().read().messages.len();
-            self.dispatch(
-                cx,
-                &mut vec![ChatTask::InsertMessage(next_index, loading_message)],
-            );
-        }
+    //                 self.handle_tool_calls(cx, tool_calls, next_index);
+    //             } else {
+    //                 ::log::error!("No tool calls found at index: {}", index);
+    //             }
 
-        self.dispatch(cx, &mut vec![ChatTask::ScrollToBottom(false)]);
-        self.prompt_input_ref().write().set_stop();
-        self.redraw(cx);
+    //             self.redraw(cx);
+    //         }
+    //         ChatTask::DenyToolCalls(index) => {
+    //             // Get the tool calls from the message and mark them as denied
+    //             let mut message_updated = None;
+    //             let tool_calls = self.messages_ref().write_with(|m| {
+    //                 if let Some(message) = m.messages.get_mut(*index) {
+    //                     message.update_content(|content| {
+    //                         for tool_call in &mut content.tool_calls {
+    //                             tool_call.permission_status = ToolCallPermissionStatus::Denied;
+    //                         }
+    //                     });
+    //                     message_updated = Some(message.clone());
+    //                     message.content.tool_calls.clone()
+    //                 } else {
+    //                     Vec::new()
+    //                 }
+    //             });
 
-        let ui = self.ui_runner();
-        let future = async move {
-            let mut client = context.client();
-            let bot = match context.get_bot(&bot_id) {
-                Some(bot) => bot,
-                None => {
-                    // This should never happen as we check above, but handle it gracefully anyway
-                    let bot_id_clone = bot_id.clone(); // Clone the bot_id for the closure
-                    ui.defer_with_redraw(move |me, cx, _| {
-                        let error_message = format!(
-                            "App error: Bot not found during stream initialization. Bot ID: {}",
-                            bot_id_clone
-                        );
-                        let next_index = me.messages_ref().read().messages.len();
-                        let message = Message {
-                            from: EntityId::App,
-                            content: MessageContent {
-                                text: error_message,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        };
-                        me.dispatch(cx, &mut vec![ChatTask::InsertMessage(next_index, message)]);
-                    });
-                    return;
-                }
-            };
+    //             if let Some(message) = message_updated {
+    //                 self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
+    //             }
 
-            let tools = if let Some(tool_manager) = context.tool_manager() {
-                tool_manager.get_all_namespaced_tools()
-            } else {
-                Vec::new()
-            };
+    //             if !tool_calls.is_empty() {
+    //                 // Create synthetic tool results indicating denial to maintain conversation flow
+    //                 let tool_results: Vec<ToolResult> = tool_calls.iter().map(|tc| {
+    //                     let display_name = display_name_from_namespaced(&tc.name);
+    //                     ToolResult {
+    //                         tool_call_id: tc.id.clone(),
+    //                         content: format!("Tool execution was denied by the user. Tool '{}' was not executed.", display_name),
+    //                         is_error: true,
+    //                     }
+    //                 }).collect();
 
-            let message_stream = amortize(client.send(&bot.id, &messages_history_context, &tools));
-            let mut message_stream = std::pin::pin!(message_stream);
-            while let Some(result) = message_stream.next().await {
-                // In theory, with the synchroneous defer, if stream messages come
-                // faster than deferred closures are executed, and one closure causes
-                // an abort, the other already deferred closures will still be executed
-                // and may cause race conditions.
-                //
-                // In practice, this never happened in my tests. But better safe than
-                // sorry. The async variant let this async context wait before processing
-                // the next delta. And also allows to stop naturally from here as well
-                // thanks to its ability to send a value back.
-                let should_break = ui
-                    .defer_with_redraw_async(move |me, cx, _| me.handle_message_delta(cx, result))
-                    .await;
+    //                 let next_index = self.messages_ref().read().messages.len();
 
-                if should_break.unwrap_or(true) {
-                    break;
-                }
-            }
-        };
+    //                 // Add tool result message with denial results
+    //                 let tool_message = Message {
+    //                     from: EntityId::Tool,
+    //                     content: MessageContent {
+    //                         text: "🚫 Tool execution was denied by the user.".to_string(),
+    //                         tool_results,
+    //                         ..Default::default()
+    //                     },
+    //                     ..Default::default()
+    //                 };
 
-        let (future, abort_handle) = futures::future::abortable(future);
-        self.abort_handle = Some(abort_handle);
+    //                 // Continue the conversation with the denial results
+    //                 self.dispatch(
+    //                     cx,
+    //                     &mut vec![
+    //                         ChatTask::InsertMessage(next_index, tool_message),
+    //                         ChatTask::Send,
+    //                     ],
+    //                 );
+    //             }
 
-        spawn(async move {
-            // The wrapper Future is only error if aborted.
-            //
-            // Cleanup caused by signaling stuff like `Chat::abort` should be done synchronously
-            // so one can abort and immediately start a new stream without race conditions.
-            //
-            // Only cleanup after natural termination of the stream should be here.
-            if future.await.is_ok() {
-                ui.defer_with_redraw(|me, _, _| me.clean_streaming_artifacts());
-            }
-        });
-    }
+    //             self.redraw(cx);
+    //         }
+    //     }
+    // }
 
-    /// Immediately remove resources/data related to the current streaming and signal
-    /// the stream to stop as soon as possible.
-    fn abort(&mut self) {
-        self.abort_handle.take().map(|handle| handle.abort());
-        self.clean_streaming_artifacts();
-    }
-
-    fn handle_task(&mut self, cx: &mut Cx, task: &ChatTask) {
-        match task {
-            ChatTask::Send => {
-                self.handle_send_task(cx);
-            }
-            ChatTask::Stop => {
-                self.handle_stop_task(cx);
-            }
-            ChatTask::UpdateMessage(index, message) => {
-                self.messages_ref().write_with(|m| {
-                    let new_message = message.clone();
-                    let old_message = m.messages.get_mut(*index).expect("no message at index");
-
-                    *old_message = new_message;
-                    m.set_message_editor_visibility(*index, false);
-                });
-
-                self.redraw(cx);
-            }
-            ChatTask::SetMessages(messages) => {
-                self.messages_ref().write_with(|m| {
-                    m.messages = messages.clone();
-
-                    if let Some(index) = m.current_editor_index() {
-                        m.set_message_editor_visibility(index, false);
-                    }
-                });
-
-                self.redraw(cx);
-            }
-            ChatTask::ScrollToBottom(triggered_by_stream) => {
-                self.messages_ref()
-                    .write()
-                    .scroll_to_bottom(cx, *triggered_by_stream);
-            }
-            ChatTask::ApproveToolCalls(index) => {
-                // Get the tool calls from the message and mark them as approved
-                let mut message_updated = None;
-                let tool_calls = self.messages_ref().write_with(|m| {
-                    if let Some(message) = m.messages.get_mut(*index) {
-                        message.update_content(|content| {
-                            for tool_call in &mut content.tool_calls {
-                                tool_call.permission_status = ToolCallPermissionStatus::Approved;
-                            }
-                        });
-                        message_updated = Some(message.clone());
-                        message.content.tool_calls.clone()
-                    } else {
-                        Vec::new()
-                    }
-                });
-
-                if let Some(message) = message_updated {
-                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
-                }
-
-                if !tool_calls.is_empty() {
-                    // Add immediate system message with loading state
-                    let next_index = self.messages_ref().read().messages.len();
-                    let loading_text = if tool_calls.len() == 1 {
-                        format!(
-                            "Executing tool '{}'...",
-                            display_name_from_namespaced(&tool_calls[0].name)
-                        )
-                    } else {
-                        format!("Executing {} tools...", tool_calls.len())
-                    };
-
-                    let loading_message = Message {
-                        from: EntityId::Tool,
-                        content: MessageContent {
-                            text: loading_text,
-                            ..Default::default()
-                        },
-                        metadata: MessageMetadata {
-                            is_writing: true,
-                            ..MessageMetadata::new()
-                        },
-                        ..Default::default()
-                    };
-
-                    self.dispatch(
-                        cx,
-                        &mut vec![ChatTask::InsertMessage(next_index, loading_message)],
-                    );
-
-                    self.handle_tool_calls(cx, tool_calls, next_index);
-                } else {
-                    ::log::error!("No tool calls found at index: {}", index);
-                }
-
-                self.redraw(cx);
-            }
-            ChatTask::DenyToolCalls(index) => {
-                // Get the tool calls from the message and mark them as denied
-                let mut message_updated = None;
-                let tool_calls = self.messages_ref().write_with(|m| {
-                    if let Some(message) = m.messages.get_mut(*index) {
-                        message.update_content(|content| {
-                            for tool_call in &mut content.tool_calls {
-                                tool_call.permission_status = ToolCallPermissionStatus::Denied;
-                            }
-                        });
-                        message_updated = Some(message.clone());
-                        message.content.tool_calls.clone()
-                    } else {
-                        Vec::new()
-                    }
-                });
-
-                if let Some(message) = message_updated {
-                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(*index, message)]);
-                }
-
-                if !tool_calls.is_empty() {
-                    // Create synthetic tool results indicating denial to maintain conversation flow
-                    let tool_results: Vec<ToolResult> = tool_calls.iter().map(|tc| {
-                        let display_name = display_name_from_namespaced(&tc.name);
-                        ToolResult {
-                            tool_call_id: tc.id.clone(),
-                            content: format!("Tool execution was denied by the user. Tool '{}' was not executed.", display_name),
-                            is_error: true,
-                        }
-                    }).collect();
-
-                    let next_index = self.messages_ref().read().messages.len();
-
-                    // Add tool result message with denial results
-                    let tool_message = Message {
-                        from: EntityId::Tool,
-                        content: MessageContent {
-                            text: "🚫 Tool execution was denied by the user.".to_string(),
-                            tool_results,
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    };
-
-                    // Continue the conversation with the denial results
-                    self.dispatch(
-                        cx,
-                        &mut vec![
-                            ChatTask::InsertMessage(next_index, tool_message),
-                            ChatTask::Send,
-                        ],
-                    );
-                }
-
-                self.redraw(cx);
-            }
-        }
-    }
-
-    /// Remove data related to current streaming, leaving everything ready for a new one.
-    ///
-    /// Called as soon as possible after streaming completes naturally or immediately when
-    /// calling [Chat::abort].
+    /// Restore to a state without streaming artifacts.
     fn clean_streaming_artifacts(&mut self) {
-        self.abort_handle = None;
-        self.expected_message = None;
         self.user_scrolled_during_stream = false;
         self.messages_ref().write().reset_scroll_state();
         self.prompt_input_ref().write().set_send();
-        self.messages_ref().write().messages.retain_mut(|m| {
-            m.metadata.is_writing = false;
-            !m.content.is_empty()
-        });
     }
 
     /// Handles a message delta from the bot.
     ///
     /// Returns true if the message delta was handled successfully.
-    fn handle_message_delta(&mut self, cx: &mut Cx, result: ClientResult<MessageContent>) -> bool {
-        let messages = self.messages_ref();
+    // fn handle_message_delta(&mut self, cx: &mut Cx, result: ClientResult<MessageContent>) -> bool {
+    //     let messages = self.messages_ref();
 
-        // For simplicity, lets handle this as an standard Result, ignoring delta
-        // if there are errors.
-        match result.into_result() {
-            Ok(content) => {
-                // Check if this is a realtime upgrade message
-                if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
-                    // Clean up any loading state since we're opening the modal instead
-                    self.clean_streaming_artifacts();
+    //     // For simplicity, lets handle this as an standard Result, ignoring delta
+    //     // if there are errors.
+    //     match result.into_result() {
+    //         Ok(content) => {
+    //             // Check if this is a realtime upgrade message
+    //             if let Some(Upgrade::Realtime(channel)) = &content.upgrade {
+    //                 // Clean up any loading state since we're opening the modal instead
+    //                 self.clean_streaming_artifacts();
 
-                    // Set up the realtime channel in the UI
-                    let mut realtime = self.realtime(id!(realtime));
-                    realtime.set_bot_entity_id(
-                        cx,
-                        EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
-                    );
-                    realtime.set_realtime_channel(channel.clone());
-                    realtime.set_bot_context(self.bot_context.clone());
+    //                 // Set up the realtime channel in the UI
+    //                 let mut realtime = self.realtime(id!(realtime));
+    //                 realtime.set_bot_entity_id(
+    //                     cx,
+    //                     EntityId::Bot(self.bot_id.clone().unwrap_or_default()),
+    //                 );
+    //                 realtime.set_realtime_channel(channel.clone());
+    //                 realtime.set_bot_context(self.bot_context.clone());
 
-                    let modal = self.moly_modal(id!(audio_modal));
-                    modal.open(cx);
+    //                 let modal = self.moly_modal(id!(audio_modal));
+    //                 modal.open(cx);
 
-                    // Skip the rest, do not add a message to the chat
-                    return true;
-                }
+    //                 // Skip the rest, do not add a message to the chat
+    //                 return true;
+    //             }
 
-                // Let's abort if we don't have where to put the delta.
-                let Some(mut message) = messages.read().messages.last().cloned() else {
-                    return true;
-                };
+    //             // Let's abort if we don't have where to put the delta.
+    //             let Some(mut message) = messages.read().messages.last().cloned() else {
+    //                 return true;
+    //             };
 
-                // Let's abort if we see we are putting delta in the wrong message.
-                if let Some(expected_message) = self.expected_message.as_ref() {
-                    if message.from != expected_message.from
-                        || message.content != expected_message.content
-                        || message.metadata.is_writing != expected_message.metadata.is_writing
-                        || message.metadata.created_at != expected_message.metadata.created_at
-                    {
-                        log!("Unexpected message to put delta in. Stopping.");
-                        return true;
-                    }
-                }
+    //             // Let's abort if we see we are putting delta in the wrong message.
+    //             if let Some(expected_message) = self.expected_message.as_ref() {
+    //                 if message.from != expected_message.from
+    //                     || message.content != expected_message.content
+    //                     || message.metadata.is_writing != expected_message.metadata.is_writing
+    //                     || message.metadata.created_at != expected_message.metadata.created_at
+    //                 {
+    //                     log!("Unexpected message to put delta in. Stopping.");
+    //                     return true;
+    //                 }
+    //             }
 
-                message.set_content(content);
+    //             message.set_content(content);
 
-                let index = messages.read().messages.len() - 1;
-                let mut tasks = vec![ChatTask::UpdateMessage(index, message.clone())];
+    //             let index = messages.read().messages.len() - 1;
+    //             let mut tasks = vec![ChatTask::UpdateMessage(index, message.clone())];
 
-                // Stick the chat to the bottom if the user didn't manually scroll.
-                if !self.user_scrolled_during_stream {
-                    tasks.push(ChatTask::ScrollToBottom(true));
-                }
+    //             // Stick the chat to the bottom if the user didn't manually scroll.
+    //             if !self.user_scrolled_during_stream {
+    //                 tasks.push(ChatTask::ScrollToBottom(true));
+    //             }
 
-                self.dispatch(cx, &mut tasks);
+    //             self.dispatch(cx, &mut tasks);
 
-                let Some(ChatTask::UpdateMessage(_, updated_message)) = tasks.into_iter().next()
-                else {
-                    // Let's abort if the tasks were modified in an unexpected way.
-                    return true;
-                };
+    //             let Some(ChatTask::UpdateMessage(_, updated_message)) = tasks.into_iter().next()
+    //             else {
+    //                 // Let's abort if the tasks were modified in an unexpected way.
+    //                 return true;
+    //             };
 
-                if !updated_message.content.tool_calls.is_empty() {
-                    // Mark message as not writing since tool calls are complete
-                    let mut final_message = updated_message.clone();
-                    final_message.metadata.is_writing = false;
-                    self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
-                    // TODO: We might want to dispatch a ChatTask::RequestToolPermission(index) here
-                    // Check if dangerous mode is enabled to auto-approve tool calls
-                    let dangerous_mode_enabled = self
-                        .bot_context
-                        .as_ref()
-                        .map(|ctx| {
-                            ctx.tool_manager()
-                                .map(|tm| tm.get_dangerous_mode_enabled())
-                                .unwrap_or(false)
-                        })
-                        .unwrap_or(false);
+    //             if !updated_message.content.tool_calls.is_empty() {
+    //                 // Mark message as not writing since tool calls are complete
+    //                 let mut final_message = updated_message.clone();
+    //                 final_message.metadata.is_writing = false;
+    //                 self.dispatch(cx, &mut vec![ChatTask::UpdateMessage(index, final_message)]);
+    //                 // TODO: We might want to dispatch a ChatTask::RequestToolPermission(index) here
+    //                 // Check if dangerous mode is enabled to auto-approve tool calls
+    //                 let dangerous_mode_enabled = self
+    //                     .bot_context
+    //                     .as_ref()
+    //                     .map(|ctx| {
+    //                         ctx.tool_manager()
+    //                             .map(|tm| tm.get_dangerous_mode_enabled())
+    //                             .unwrap_or(false)
+    //                     })
+    //                     .unwrap_or(false);
 
-                    if dangerous_mode_enabled {
-                        // Auto-approve tool calls in dangerous mode
-                        self.dispatch(cx, &mut vec![ChatTask::ApproveToolCalls(index)]);
-                    }
+    //                 if dangerous_mode_enabled {
+    //                     // Auto-approve tool calls in dangerous mode
+    //                     self.dispatch(cx, &mut vec![ChatTask::ApproveToolCalls(index)]);
+    //                 }
 
-                    // Signal to stop the current stream since we're switching to tool execution
-                    return true;
-                }
+    //                 // Signal to stop the current stream since we're switching to tool execution
+    //                 return true;
+    //             }
 
-                self.expected_message = Some(updated_message);
+    //             self.expected_message = Some(updated_message);
 
-                false
-            }
-            Err(errors) => {
-                let mut tasks = errors
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, e)| {
-                        ChatTask::InsertMessage(
-                            messages.read().messages.len() + i,
-                            Message {
-                                from: EntityId::App,
-                                content: MessageContent {
-                                    text: e.to_string(),
-                                    ..Default::default()
-                                },
-                                ..Default::default()
-                            },
-                        )
-                    })
-                    .collect::<Vec<_>>();
+    //             false
+    //         }
+    //         Err(errors) => {
+    //             let mut tasks = errors
+    //                 .into_iter()
+    //                 .enumerate()
+    //                 .map(|(i, e)| {
+    //                     ChatTask::InsertMessage(
+    //                         messages.read().messages.len() + i,
+    //                         Message {
+    //                             from: EntityId::App,
+    //                             content: MessageContent {
+    //                                 text: e.to_string(),
+    //                                 ..Default::default()
+    //                             },
+    //                             ..Default::default()
+    //                         },
+    //                     )
+    //                 })
+    //                 .collect::<Vec<_>>();
 
-                // Stick the chat to the bottom if the user didn't manually scroll.
-                if !self.user_scrolled_during_stream {
-                    tasks.push(ChatTask::ScrollToBottom(true));
-                }
+    //             // Stick the chat to the bottom if the user didn't manually scroll.
+    //             if !self.user_scrolled_during_stream {
+    //                 tasks.push(ChatTask::ScrollToBottom(true));
+    //             }
 
-                self.dispatch(cx, &mut tasks);
-                true
-            }
-        }
-    }
+    //             self.dispatch(cx, &mut tasks);
+    //             true
+    //         }
+    //     }
+    // }
 
     /// Returns true if the chat is currently streaming.
     pub fn is_streaming(&self) -> bool {
-        if let Some(message) = self.messages_ref().read().messages.last() {
-            message.metadata.is_writing
-        } else {
-            false
-        }
+        self.chat_controller
+            .as_ref()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .state()
+            .is_streaming
     }
 
     pub fn set_bot_id(&mut self, cx: &mut Cx, bot_id: Option<BotId>) {
@@ -933,13 +787,26 @@ impl Chat {
         self.bot_id.as_ref()
     }
 
-    pub fn set_bot_context(&mut self, cx: &mut Cx, bot_context: Option<BotContext>) {
-        self.bot_context = bot_context;
-        self.handle_capabilities(cx);
+    pub fn set_chat_controller(
+        &mut self,
+        _cx: &mut Cx,
+        chat_controller: Option<Arc<Mutex<ChatController>>>,
+    ) {
+        self.chat_controller = chat_controller;
+
+        if let Some(controller) = self.chat_controller.as_ref() {
+            let mut guard = controller.lock().unwrap();
+            if guard.state().bots.is_empty() {
+                guard.dispatch_task(ChatTask::Load);
+            }
+        }
+
+        // TODO: Probably doesn't make sense.
+        // self.handle_capabilities(cx);
     }
 
-    pub fn bot_context(&self) -> Option<&BotContext> {
-        self.bot_context.as_ref()
+    pub fn chat_controller(&self) -> Option<&Arc<Mutex<ChatController>>> {
+        self.chat_controller.as_ref()
     }
 }
 
@@ -975,56 +842,30 @@ impl ChatRef {
     }
 }
 
-/// Util that wraps the stream of `send()` and gives you a stream less agresive to
-/// the receiver UI regardless of the streaming chunk size.
-fn amortize(
-    input: impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static,
-) -> impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static {
-    // Use utils
-    use crate::utils::string::AmortizedString;
-    use async_stream::stream;
+struct MolyChatControllerPlugin(UiRunner<Chat>);
 
-    // Stream state
-    let mut amortized_text = AmortizedString::default();
-    let mut amortized_reasoning = AmortizedString::default();
-
-    // Stream compute
-    stream! {
-        // Our wrapper stream "activates" when something comes from the underlying stream.
-        for await result in input {
-            // Transparently yield the result on error and then stop.
-            if result.has_errors() {
-                yield result;
-                return;
+impl ChatControllerPlugin for MolyChatControllerPlugin {
+    fn on_state_change(&mut self, state: &ChatState) {
+        let is_streaming = state.is_streaming;
+        self.0.defer(move |me, cx, _| {
+            match (me.was_streaming, is_streaming) {
+                // Handle streaming started.
+                (false, true) => {
+                    me.messages_ref().write().scroll_to_bottom(cx, false);
+                    me.prompt_input_ref().write().set_stop();
+                }
+                // Handle stream interruption.
+                (true, false) => {
+                    me.clean_streaming_artifacts();
+                }
+                _ => {}
             }
 
-            // Modified content that we will be yielding.
-            let mut content = result.into_value().unwrap();
+            // Keep track of previous streaming state for next time.
+            me.was_streaming = is_streaming;
 
-            // Feed the whole string into the string amortizer.
-            // Put back what has been already amortized from previous iterations.
-            let text = std::mem::take(&mut content.text);
-            amortized_text.update(text);
-            content.text = amortized_text.current().to_string();
-
-            // Same for reasoning.
-            let reasoning = std::mem::take(&mut content.reasoning);
-            amortized_reasoning.update(reasoning);
-            content.reasoning = amortized_reasoning.current().to_string();
-
-            // Prioritize yielding amortized reasoning updates first.
-            for reasoning in &mut amortized_reasoning {
-                content.reasoning = reasoning;
-                yield ClientResult::new_ok(content.clone());
-            }
-
-            // Finially, begin yielding amortized text updates.
-            // This will also include the amortized reasoning until now because we
-            // fed it back into the content.
-            for text in &mut amortized_text {
-                content.text = text;
-                yield ClientResult::new_ok(content.clone());
-            }
-        }
+            // Explicit redraw. On every state change.
+            me.redraw(cx);
+        });
     }
 }

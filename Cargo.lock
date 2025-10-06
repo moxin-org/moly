@@ -2085,6 +2085,7 @@ dependencies = [
 name = "moly-mini"
 version = "0.2.2"
 dependencies = [
+ "env_logger",
  "futures",
  "futures-core",
  "makepad-widgets",

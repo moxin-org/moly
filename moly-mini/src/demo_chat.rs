@@ -42,7 +42,7 @@ pub struct DemoChat {
 impl Widget for DemoChat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         let selector = self.bot_selector(id!(selector));
-        let chat = self.chat(id!(chat));
+        let mut chat = self.chat(id!(chat));
 
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
@@ -53,9 +53,7 @@ impl Widget for DemoChat {
 
         if selector.bot_selected(actions) {
             let id = selector.selected_bot_id().expect("no bot selected");
-            self.controller_lock().dispatch_state_mutation(|state| {
-                state.current_bot_id = Some(id.clone());
-            });
+            chat.write().set_bot_id(cx, Some(id));
         }
     }
 
@@ -74,7 +72,7 @@ impl LiveHook for DemoChat {
 
 impl DemoChat {
     fn fill_selector(&mut self, cx: &mut Cx, bots: Vec<Bot>) {
-        let chat = self.chat(id!(chat));
+        let mut chat = self.chat(id!(chat));
 
         let bots = bots
             .into_iter()
@@ -130,9 +128,7 @@ impl DemoChat {
             .collect::<Vec<_>>();
 
         if let Some(bot) = bots.first() {
-            self.controller_lock().dispatch_state_mutation(|state| {
-                state.current_bot_id = Some(bot.id.clone());
-            });
+            chat.write().set_bot_id(cx, Some(bot.id.clone()));
         } else {
             eprintln!("No models available, check your API keys.");
         }
@@ -234,7 +230,9 @@ impl DemoChat {
             .build_arc();
 
         self.controller = Some(controller.clone());
-        self.chat(id!(chat)).write().controller = Some(controller);
+        self.chat(id!(chat))
+            .write()
+            .set_chat_controller(cx, Some(controller));
     }
 
     fn controller_lock(&self) -> std::sync::MutexGuard<'_, ChatController> {
