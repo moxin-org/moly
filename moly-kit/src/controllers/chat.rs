@@ -370,6 +370,7 @@ impl ChatController {
 
         self.send_abort_on_drop = None;
         self.dispatch_state_mutation(|state| {
+            state.is_streaming = false;
             state.messages.retain_mut(|m| {
                 m.metadata.is_writing = false;
                 !m.content.is_empty()

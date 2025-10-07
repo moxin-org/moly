@@ -877,7 +877,6 @@ impl ChatControllerPlugin for MolyChatControllerPlugin {
     fn on_state_change(&mut self, state: &ChatState) {
         let is_streaming = state.is_streaming;
         self.0.defer(move |me, cx, _| {
-            // dbg!((me.was_streaming, is_streaming));
             match (me.was_streaming, is_streaming) {
                 // Handle streaming started.
                 (false, true) => {
