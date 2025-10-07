@@ -241,7 +241,13 @@ impl ChatController {
             });
         }
 
-        self.perform_state_mutation(mutation)
+        let out = self.perform_state_mutation(mutation);
+
+        for (_, plugin) in &mut self.plugins {
+            plugin.on_state_change(&self.state);
+        }
+
+        out
     }
 
     /// Applies a state mutation directly, bypassing plugins.
@@ -251,13 +257,7 @@ impl ChatController {
     where
         F: (FnMut(&mut ChatState) -> R) + Send,
     {
-        let out = mutation(&mut self.state);
-
-        for (_, plugin) in &mut self.plugins {
-            plugin.on_state_change(&self.state);
-        }
-
-        out
+        mutation(&mut self.state)
     }
 
     pub fn dispatch_task(&mut self, event: ChatTask) {

@@ -4,7 +4,10 @@ use std::cell::{Ref, RefMut};
 use std::sync::{Arc, Mutex};
 use utils::asynchronous::spawn;
 
-use crate::controllers::chat::{ChatController, ChatControllerPlugin, ChatState, ChatTask};
+use crate::controllers::chat::{
+    ChatController, ChatControllerPlugin, ChatControllerPluginRegistrationId, ChatState, ChatTask,
+    Status,
+};
 use crate::utils::asynchronous::PlatformSendStream;
 use crate::utils::makepad::EventExt;
 use crate::utils::makepad::ui_runner::DeferWithRedrawAsync;
@@ -68,6 +71,9 @@ pub struct Chat {
     /// Keep track of previous `is_streaming` state to detect changes on the plugin.
     #[rust]
     was_streaming: bool,
+
+    #[rust]
+    plugin_id: Option<ChatControllerPluginRegistrationId>,
 }
 
 impl Widget for Chat {
@@ -792,11 +798,17 @@ impl Chat {
         _cx: &mut Cx,
         chat_controller: Option<Arc<Mutex<ChatController>>>,
     ) {
+        self.unlink_current_controller();
+
         self.chat_controller = chat_controller;
 
         if let Some(controller) = self.chat_controller.as_ref() {
             let mut guard = controller.lock().unwrap();
-            if guard.state().bots.is_empty() {
+
+            let plugin = MolyChatControllerPlugin(self.ui_runner());
+            self.plugin_id = Some(guard.register_plugin(plugin));
+
+            if guard.state().load_status == Status::Idle {
                 guard.dispatch_task(ChatTask::Load);
             }
         }
@@ -807,6 +819,17 @@ impl Chat {
 
     pub fn chat_controller(&self) -> Option<&Arc<Mutex<ChatController>>> {
         self.chat_controller.as_ref()
+    }
+
+    fn unlink_current_controller(&mut self) {
+        if let Some(plugin_id) = self.plugin_id {
+            if let Some(controller) = self.chat_controller.as_ref() {
+                controller.lock().unwrap().unregister_plugin(plugin_id);
+            }
+        }
+
+        self.chat_controller = None;
+        self.plugin_id = None;
     }
 }
 
@@ -842,12 +865,19 @@ impl ChatRef {
     }
 }
 
+impl Drop for Chat {
+    fn drop(&mut self) {
+        self.unlink_current_controller();
+    }
+}
+
 struct MolyChatControllerPlugin(UiRunner<Chat>);
 
 impl ChatControllerPlugin for MolyChatControllerPlugin {
     fn on_state_change(&mut self, state: &ChatState) {
         let is_streaming = state.is_streaming;
         self.0.defer(move |me, cx, _| {
+            // dbg!((me.was_streaming, is_streaming));
             match (me.was_streaming, is_streaming) {
                 // Handle streaming started.
                 (false, true) => {

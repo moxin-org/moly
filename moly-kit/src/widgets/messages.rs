@@ -222,7 +222,7 @@ impl Messages {
 
         // Trick to render one more item representing the end of the chat without
         // risking a manual math bug. Removed immediately after rendering the items.
-        chat_controller.dispatch_state_mutation(|state| {
+        chat_controller.perform_state_mutation(|state| {
             state.messages.push(Message {
                 from: EntityId::App,
                 // End-of-chat marker
@@ -456,7 +456,7 @@ impl Messages {
             }
         }
 
-        let message = chat_controller.dispatch_state_mutation(|state| state.messages.pop());
+        let message = chat_controller.perform_state_mutation(|state| state.messages.pop());
         if let Some(message) = message {
             assert!(message.from == EntityId::App);
             assert!(message.content.text == "EOC");
