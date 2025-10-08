@@ -4,7 +4,6 @@ resolver = "2"
 members = [
     "moly-runner",
     "moly-kit",
-    "moly-mini",
     "moly-sync",
 ]
 exclude = ["packaging/before-packaging-command"]

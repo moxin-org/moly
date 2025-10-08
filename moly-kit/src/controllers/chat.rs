@@ -298,14 +298,23 @@ impl ChatController {
             return;
         };
 
-        let Some(bot) = self.state.get_bot(&bot_id).cloned() else {
-            self.dispatch_state_mutation(|state| {
-                state.messages.push(Message::app_error("Bot not found"));
-            });
-            return;
-        };
+        // let Some(bot) = self.state.get_bot(&bot_id).cloned() else {
+        //     self.dispatch_state_mutation(|state| {
+        //         state.messages.push(Message::app_error("Bot not found"));
+        //     });
+        //     return;
+        // };
 
         self.dispatch_state_mutation(|state| {
+            state.messages.push(Message {
+                from: EntityId::Bot(bot_id.clone()),
+                content: MessageContent::default(),
+                metadata: MessageMetadata {
+                    is_writing: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
             state.is_streaming = true;
         });
 
@@ -321,22 +330,22 @@ impl ChatController {
         self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
             // The realtime check is hack to avoid showing a loading message for realtime assistants
             // TODO: we should base this on upgrade rather than capabilities
-            if !bot.capabilities.supports_realtime() {
-                controller.lock_with(|c| {
-                    c.dispatch_state_mutation(|state| {
-                        state.messages.push(Message {
-                            from: EntityId::Bot(bot_id.clone()),
-                            metadata: MessageMetadata {
-                                // TODO: Evaluate removing this from messages in favor of
-                                // `is_streaming` in the controller.
-                                is_writing: true,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        });
-                    })
-                });
-            }
+            // if !bot.capabilities.supports_realtime() {
+            //     controller.lock_with(|c| {
+            //         c.dispatch_state_mutation(|state| {
+            //             state.messages.push(Message {
+            //                 from: EntityId::Bot(bot_id.clone()),
+            //                 metadata: MessageMetadata {
+            //                     // TODO: Evaluate removing this from messages in favor of
+            //                     // `is_streaming` in the controller.
+            //                     is_writing: true,
+            //                     ..Default::default()
+            //                 },
+            //                 ..Default::default()
+            //             });
+            //         })
+            //     });
+            // }
 
             let Some(tools) = controller.lock_with(|c| {
                 c.tool_manager
@@ -347,7 +356,7 @@ impl ChatController {
                 return;
             };
 
-            let message_stream = amortize(client.send(&bot.id, &messages_context, &tools));
+            let message_stream = amortize(client.send(&bot_id, &messages_context, &tools));
             let mut message_stream = std::pin::pin!(message_stream);
             while let Some(result) = message_stream.next().await {
                 let should_break = controller
