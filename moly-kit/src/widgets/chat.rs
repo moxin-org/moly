@@ -254,18 +254,22 @@ impl Chat {
                     cx.copy_to_clipboard(text);
                 }
                 MessagesAction::EditSave(index) => {
-                    let editor_text = self
+                    let text = self
                         .messages_ref()
                         .read()
                         .current_editor_text()
                         .expect("no editor text");
+
+                    self.messages_ref()
+                        .write()
+                        .set_message_editor_visibility(index, false);
 
                     chat_controller
                         .lock()
                         .unwrap()
                         .dispatch_state_mutation(|state| {
                             state.messages[index].update_content(|content| {
-                                content.text = editor_text.clone();
+                                content.text = text.clone();
                             });
                         });
                 }
@@ -273,17 +277,15 @@ impl Chat {
                     let mut messages =
                         chat_controller.lock().unwrap().state().messages[0..=index].to_vec();
 
-                    let index = self
-                        .messages_ref()
-                        .read()
-                        .current_editor_index()
-                        .expect("no editor index");
-
                     let text = self
                         .messages_ref()
                         .read()
                         .current_editor_text()
                         .expect("no editor text");
+
+                    self.messages_ref()
+                        .write()
+                        .set_message_editor_visibility(index, false);
 
                     messages[index].update_content(|content| {
                         content.text = text;
