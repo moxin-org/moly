@@ -19,9 +19,9 @@ The following table shows which host systems can currently be used to build Moly
 | ------- | --------------- | ------- | ----- | -------------------------------------------- |
 | macOS   | macOS           | ✅       | ✅     | `.app`, [`.dmg`]                             |
 | Linux   | Linux           | ✅       | ✅     | [`.deb` (Debian dpkg)], [AppImage], [pacman] |
-| Windows | Windows (10+)   | ✅       | ✅     | `.exe` (NSIS)                                |
+| Windows | Windows (10+)   | ✅       | ✅     | [`.exe` (NSIS)]                              |
 | Any     | Web             | ✅       | ✅     | N/A                                          |
-| Any     | Android         | ✅       | ✅     | TODO                                          |
+| Any     | Android         | ✅       | ✅     | [`.apk`]                                     |
 | macOS   | iOS             | ✅       | ✅     | TODO                                          |
 
 <!-- prettier-ignore-end -->
@@ -33,6 +33,7 @@ The following table shows which host systems can currently be used to build Moly
 ![Screenshot 2025-05-14 at 11 38 52 AM](https://github.com/user-attachments/assets/7d1ddbff-2872-43fd-8408-1624d8743bd1)
 
 The Moly app supports different types of AI providers:
+
 1. **OpenAI-compatible AI providers**: configured through the Providers Dashboard.
    - Support for other clients will be added to MolyKit. To create your own custom clients, checkout the [MolyKit documentation](https://moxin-org.github.io/moly/).
    - If you want to contribute providers, or extend the list of supported models for a given provider, see [instructions here](#contributing)
@@ -46,13 +47,12 @@ While not required in order to use Moly, it can be run alongside the main Moly a
 
 ![Screenshot 2025-05-14 at 11 40 43 AM](https://github.com/user-attachments/assets/1235cc98-a175-4a8f-89a9-4789d4716189)
 
-
 ![Screenshot 2025-05-14 at 11 41 21 AM](https://github.com/user-attachments/assets/22570566-6726-488d-8b92-2282e6be78e8)
-
 
 To get started, simply download and extract the latest version for your platform from the [server releases page](https://github.com/moxin-org/moly-server/releases) and run the executable in a command line from inside the directory.
 
 Alternatively, to compile it from source, follow the [setup guide](https://github.com/moxin-org/moly-server?tab=readme-ov-file#building-and-running) and then run:
+
 ```bash
 cd moly-server/
 cargo run -p moly-server
@@ -69,16 +69,18 @@ git clone https://github.com/moxin-org/moly.git
 ```
 
 3. Run
+
 ```sh
 cargo run --release
 ```
 
 ### Linux requirements
+
 > [!IMPORTANT]
 > If your CPU does not support AVX512, then you should append the `--noavx` option onto the above command.
-To build Moly on Linux, you must install the following dependencies:
-`openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
-On a Debian-like Linux distro (e.g., Ubuntu), run the following:
+> To build Moly on Linux, you must install the following dependencies:
+> `openssl`, `clang`/`libclang`, `binfmt`, `Xcursor`/`X11`, `asound`/`pulse`.
+> On a Debian-like Linux distro (e.g., Ubuntu), run the following:
 
 ```sh
 sudo apt-get update
@@ -114,7 +116,6 @@ cargo makepad wasm --bindgen run -p moly --release
 > ```sh
 > cargo makepad wasm --strip --brotli --bindgen build -p moly --profile=small
 > ```
-
 
 ### Packaging Moly for Distribution
 
@@ -174,7 +175,7 @@ Ensure you are in the root `moly` directory, and then you can use `cargo package
 cargo packager --release --formats nsis --verbose  ## --verbose is optional
 ```
 
-After the command completes, you should see a Windows installer called `moly_*_x64-setup.exe` (replace * with version) in the `dist/` directory.
+After the command completes, you should see a Windows installer called `moly_*_x64-setup.exe` (replace \* with version) in the `dist/` directory.
 Double-click that file to install Moly on your machine, and then run it as you would a regular application.
 
 #### Packaging for macOS
@@ -220,10 +221,12 @@ You can immediately double-click the `Moly.app` bundle to run it, or you can dou
 
 If you'd like to modify the .dmg background, here is the [Google Drawings file used to generate the MacOS .dmg background image](https://docs.google.com/drawings/d/1Uq13nAsCKFrl4s16HeLqpVfQ-vbF7v2Z8HFyqgeyrbE/edit?usp=sharing).
 
-[`.dmg`]: https://support.apple.com/en-gb/guide/mac-help/mh35835/mac
-[`.deb` (Debian dpkg)]: https://www.debian.org/doc/manuals/debian-faq/pkg-basics.en.html#package
-[AppImage]: https://appimage.org/
+[`.dmg`]: https://github.com/moxin-org/moly/releases/download/v0.2.2/Moly-0.2.2-macos-arm64.dmg
+[`.deb` (Debian dpkg)]: https://github.com/moxin-org/moly/releases/download/v0.2.2/Moly-0.2.2-ubuntu-22.04-amd64.deb
+[AppImage]: https://github.com/moxin-org/moly/releases/download/v0.2.2/Moly-0.2.1-linux-x86_64.AppImage
 [pacman]: https://pacman.archlinux.page/pacman.8.html
+[`.exe` (NSIS)]: https://github.com/moxin-org/moly/releases/download/v0.2.2/Moly-0.2.2-windows-x64.exe
+[`.apk`]: https://github.com/moxin-org/moly/releases/download/v0.2.2/Moly-0.2.2-android.apk
 
 ---
 
@@ -244,8 +247,10 @@ Requires python ^3.10
 ```bash
 git clone https://github.com/moxin-org/mofa.git
 ```
+
 Install the required Python libraries, and mainly,
 the mofa library itself
+
 ```bash
 cd python && pip install -r requirements.txt && pip install -e .
 pip install dora-rs
@@ -253,23 +258,29 @@ pip install dora-rs
 
 ### 3. Run the Moly client (MoFa server for Moly)
 
-Navigate to the folder of the Dora node that implements the http server 
+Navigate to the folder of the Dora node that implements the http server
+
 ```bash
 cd examples/moly_client
 ```
+
 Run MoFa with
+
 ```
 dora up
 dora build dataflow.yml
 dora start dataflow.yml
 ```
+
 If there's any error when doing dora start, you can restart dora
+
 ```bash
 dora destroy && dora up
 ```
 
 At this point the server should be up
 You can verify it with a request for chat completion:
+
 ```bash
 curl http://localhost:8000/v1/chat/completions \
 -v -H "Content-Type: application/json" \
@@ -283,6 +294,7 @@ curl http://localhost:8000/v1/chat/completions \
 "stream": true
 }'
 ```
+
 This should return a JSON response with the completion.
 
 ### Connect Moly to MoFa
@@ -296,23 +308,29 @@ Go to the Providers Dashboard and enable the MoFa entry (or add new ones if need
 One of the easiest ways to contribute to Moly is by extending the list of predefined supported providers and their models.
 
 #### How to add a new provider:
-1.	Add the provider information to [supported_providers.json](src/data/supported_providers.json).
-   - `name`: The name to display in the UI
-   - `url`: The full API endpoint for this provider, including versioning, e.g. "https://api.openai.com/v1"
-   - `provider_type`: The type of API format that the provider uses, e.g. the `"provider_type": "OpenAI"` will use the `OpenAIClient` from MolyKit. In Moly, the mapping between supported provider types and MolyKit clients can be found in [src/chat/chat_screen.rs](src/chat/chat_screen.rs) (if you were to add a custom MolyKit client and default supported provider, you would need to extend the mapping here).
-   - `supported_models`: A list of model ids to be used as the whitelist of allowed/supported models in Moly for this provider.
 
-2.	Add a new icon for the provider under [/resources/images/providers](/resources/images/providers) (in PNG format), using the **same name** as the provider you registered in the previous step.
+1. Add the provider information to [supported_providers.json](src/data/supported_providers.json).
 
-3.	Update the providers view, importing the new image and referencing the import:
-   - At the top of the live_design!{} block, add your import, e.g.:
-   ```rs
-   ICON_GEMINI = dep("crate://self/resources/images/providers/gemini.png")
-   ```
-   - Add the icon to the list of provider_icons:
-   ```rs
-   provider_icons: [
-      ...
-      (ICON_GEMINI), // Add this line to reference the imported file.
-   ]
-   ```
+- `name`: The name to display in the UI
+- `url`: The full API endpoint for this provider, including versioning, e.g. "https://api.openai.com/v1"
+- `provider_type`: The type of API format that the provider uses, e.g. the `"provider_type": "OpenAI"` will use the `OpenAIClient` from MolyKit. In Moly, the mapping between supported provider types and MolyKit clients can be found in [src/chat/chat_screen.rs](src/chat/chat_screen.rs) (if you were to add a custom MolyKit client and default supported provider, you would need to extend the mapping here).
+- `supported_models`: A list of model ids to be used as the whitelist of allowed/supported models in Moly for this provider.
+
+2. Add a new icon for the provider under [/resources/images/providers](/resources/images/providers) (in PNG format), using the **same name** as the provider you registered in the previous step.
+
+3. Update the providers view, importing the new image and referencing the import:
+
+- At the top of the live_design!{} block, add your import, e.g.:
+
+```rs
+ICON_GEMINI = dep("crate://self/resources/images/providers/gemini.png")
+```
+
+- Add the icon to the list of provider_icons:
+
+```rs
+provider_icons: [
+   ...
+   (ICON_GEMINI), // Add this line to reference the imported file.
+]
+```
