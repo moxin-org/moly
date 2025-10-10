@@ -1473,8 +1473,9 @@ impl Realtime {
                             // Calculate downsampling ratio from input sample rate to 24kHz
                             let input_sample_rate = info.sample_rate;
                             let target_sample_rate = 24000.0;
-                            let downsample_ratio = (input_sample_rate / target_sample_rate) as usize;
-                            
+                            let downsample_ratio =
+                                (input_sample_rate / target_sample_rate) as usize;
+
                             // Downsample by taking every nth sample based on the ratio
                             // TODO: this is a simple decimation - for better quality, we should use proper filtering
                             for i in (0..channel.len()).step_by(downsample_ratio) {
@@ -1502,8 +1503,11 @@ impl Realtime {
                         let input_sample_rate = 24000.0; // Input audio sample rate
                         let output_sample_rate = info.sample_rate;
                         let upsample_ratio = (output_sample_rate / input_sample_rate) as usize;
-                        
-                        if *playing && !playback.is_empty() && *pos < playback.len() * upsample_ratio {
+
+                        if *playing
+                            && !playback.is_empty()
+                            && *pos < playback.len() * upsample_ratio
+                        {
                             // Write to all output channels (mono -> stereo if needed)
                             let frame_count = output_buffer.frame_count();
                             let channel_count = output_buffer.channel_count();
@@ -1515,8 +1519,9 @@ impl Realtime {
                                 // Assuming input audio is 24kHz, calculate the ratio dynamically
                                 let input_sample_rate = 24000.0; // Input audio sample rate
                                 let output_sample_rate = info.sample_rate;
-                                let upsample_ratio = (output_sample_rate / input_sample_rate) as usize;
-                                
+                                let upsample_ratio =
+                                    (output_sample_rate / input_sample_rate) as usize;
+
                                 let sample_idx = *pos / upsample_ratio; // Map output position to input sample
 
                                 if sample_idx < playback.len() {
