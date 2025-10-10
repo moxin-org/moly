@@ -1463,16 +1463,22 @@ impl Realtime {
         let is_muted = self.is_muted.clone();
 
         // Audio input callback - capture for realtime streaming
-        cx.audio_input(0, move |_info, input_buffer| {
+        cx.audio_input(0, move |info, input_buffer| {
             if let Ok(should_record_guard) = should_record.try_lock() {
                 if let Ok(is_muted_guard) = is_muted.try_lock() {
                     if *should_record_guard && !*is_muted_guard {
                         if let Ok(mut recorded) = recorded_audio.try_lock() {
                             let channel = input_buffer.channel(0);
 
-                            // Downsample from 48kHz to 24kHz by taking every other sample
+                            // Calculate downsampling ratio from input sample rate to 24kHz
+                            let input_sample_rate = info.sample_rate;
+                            let target_sample_rate = 24000.0;
+                            let downsample_ratio =
+                                (input_sample_rate / target_sample_rate) as usize;
+
+                            // Downsample by taking every nth sample based on the ratio
                             // TODO: this is a simple decimation - for better quality, we should use proper filtering
-                            for i in (0..channel.len()).step_by(2) {
+                            for i in (0..channel.len()).step_by(downsample_ratio) {
                                 recorded.push(channel[i]);
                             }
                         }
@@ -1486,7 +1492,7 @@ impl Realtime {
         let is_playing = self.is_playing.clone();
 
         // Audio output callback - plays AI response audio
-        cx.audio_output(0, move |_info, output_buffer| {
+        cx.audio_output(0, move |info, output_buffer| {
             // Always start with silence
             output_buffer.zero();
 
@@ -1494,7 +1500,14 @@ impl Realtime {
                 if let Ok(mut pos) = playback_position.try_lock() {
                     if let Ok(mut playing) = is_playing.try_lock() {
                         // Check if we should continue playing
-                        if *playing && !playback.is_empty() && *pos < playback.len() * 2 {
+                        let input_sample_rate = 24000.0; // Input audio sample rate
+                        let output_sample_rate = info.sample_rate;
+                        let upsample_ratio = (output_sample_rate / input_sample_rate) as usize;
+
+                        if *playing
+                            && !playback.is_empty()
+                            && *pos < playback.len() * upsample_ratio
+                        {
                             // Write to all output channels (mono -> stereo if needed)
                             let frame_count = output_buffer.frame_count();
                             let channel_count = output_buffer.channel_count();
@@ -1502,8 +1515,14 @@ impl Realtime {
                             let mut samples_to_drain = 0;
 
                             for frame_idx in 0..frame_count {
-                                // Upsample from 24kHz to 48kHz by duplicating each sample
-                                let sample_idx = *pos / 2; // Each 24kHz sample maps to 2 48kHz samples
+                                // Calculate upsampling ratio based on actual sample rates
+                                // Assuming input audio is 24kHz, calculate the ratio dynamically
+                                let input_sample_rate = 24000.0; // Input audio sample rate
+                                let output_sample_rate = info.sample_rate;
+                                let upsample_ratio =
+                                    (output_sample_rate / input_sample_rate) as usize;
+
+                                let sample_idx = *pos / upsample_ratio; // Map output position to input sample
 
                                 if sample_idx < playback.len() {
                                     let audio_sample = playback[sample_idx];
@@ -1516,8 +1535,8 @@ impl Realtime {
 
                                     *pos += 1;
 
-                                    // Track how many samples we can safely remove (every 2 pos increments = 1 sample)
-                                    if *pos % 2 == 0 {
+                                    // Track how many samples we can safely remove (every upsample_ratio pos increments = 1 sample)
+                                    if *pos % upsample_ratio == 0 {
                                         samples_to_drain += 1;
                                     }
                                 } else {
@@ -1534,7 +1553,7 @@ impl Realtime {
                             if samples_to_drain > 0 && samples_to_drain <= playback.len() {
                                 playback.drain(..samples_to_drain);
                                 // Adjust position since we removed samples from the front
-                                *pos = (*pos).saturating_sub(samples_to_drain * 2);
+                                *pos = (*pos).saturating_sub(samples_to_drain * upsample_ratio);
                                 // ::log::debug!("Drained {} samples, buffer size now: {}, pos: {}",
                                 //         samples_to_drain, playback.len(), *pos);
                             }
