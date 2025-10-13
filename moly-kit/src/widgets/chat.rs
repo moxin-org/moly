@@ -306,9 +306,19 @@ impl Chat {
                         .dispatch_task(ChatTask::Send(bot_id));
                 }
                 MessagesAction::ToolApprove(index) => {
+                    let mut lock = chat_controller.lock().unwrap();
+
+                    lock.dispatch_state_mutation(|state| state.approve_tool_calls(index));
+
+                    let tools = lock.state().messages[index].content.tool_calls.clone();
+                    lock.dispatch_task(ChatTask::Execute(tools));
                     // self.dispatch(cx, &mut ChatTask::ApproveToolCalls(index).into());
                 }
                 MessagesAction::ToolDeny(index) => {
+                    chat_controller
+                        .lock()
+                        .unwrap()
+                        .dispatch_state_mutation(|state| state.deny_tool_calls(index));
                     // self.dispatch(cx, &mut ChatTask::DenyToolCalls(index).into());
                 }
                 MessagesAction::None => {}
