@@ -53,19 +53,36 @@ jobs:
         run: |
           cargo +stable install --force --locked cargo-packager
 
+      - name: Get version
+        id: get_version
+        run: echo "version=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)" >> $GITHUB_OUTPUT
+
       - name: Build
         run: |
           cargo packager --release --verbose
           ls dist/
+
+      - name: Rename artifacts
+        run: |
+          cd dist/
+          for file in moly_*.deb; do
+            [ -f "$file" ] && mv "$file" "Moly-${{ steps.get_version.outputs.version }}-ubuntu-22.04-amd64.deb"
+          done
+          for file in moly_*.tar.gz; do
+            [ -f "$file" ] && mv "$file" "Moly-${{ steps.get_version.outputs.version }}-linux-x86_64.tar.gz"
+          done
+          for file in moly_*.AppImage; do
+            [ -f "$file" ] && mv "$file" "Moly-${{ steps.get_version.outputs.version }}-linux-x86_64.AppImage"
+          done
 
       - name: Upload Dist
         env:
           GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
-          gh release upload ${{ github.event.inputs.release_tags }} moly_*.deb --clobber
-          gh release upload ${{ github.event.inputs.release_tags }} moly_*.tar.gz --clobber
-          gh release upload ${{ github.event.inputs.release_tags }} moly_*.AppImage --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} Moly-*.deb --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} Moly-*.tar.gz --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} Moly-*.AppImage --clobber
 
   build_macos:
     name: MacOS
@@ -91,17 +108,37 @@ jobs:
         run: |
           cargo +stable install --force --locked cargo-packager
 
+      - name: Get version
+        id: get_version
+        run: echo "version=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)" >> $GITHUB_OUTPUT
+
+      - name: Get architecture
+        id: get_arch
+        run: |
+          if [[ "${{ matrix.os }}" == "macos-14" ]]; then
+            echo "arch=arm64" >> $GITHUB_OUTPUT
+          else
+            echo "arch=x86_64" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build
         run: |
           cargo packager --release --verbose
           ls dist/
+
+      - name: Rename artifacts
+        run: |
+          cd dist/
+          for file in Moly_*.dmg; do
+            [ -f "$file" ] && mv "$file" "Moly-${{ steps.get_version.outputs.version }}-macos-${{ steps.get_arch.outputs.arch }}.dmg"
+          done
 
       - name: Upload Dist
         env:
           GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
-          gh release upload ${{ github.event.inputs.release_tags }} Moly_*.dmg --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} Moly-*.dmg --clobber
 
   build_windows:
     name: Windows
@@ -125,14 +162,27 @@ jobs:
         run: |
           cargo +stable install --force --locked cargo-packager
 
+      - name: Get version
+        id: get_version
+        run: |
+          $version = Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"' | ForEach-Object { $_.Matches.Groups[1].Value }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
       - name: Build
         run: |
           cargo packager --release --formats nsis --verbose
           ls dist/
+
+      - name: Rename artifacts
+        run: |
+          cd dist
+          Get-ChildItem -Filter *.exe | ForEach-Object {
+            Rename-Item -Path $_.FullName -NewName "Moly-$($env:version)-windows-x64.exe"
+          }
+
       - name: Upload Dist
         env:
           GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           cd dist/
-          $file=Get-ChildItem -Filter *.exe
-          gh release upload ${{ github.event.inputs.release_tags }} $file.name --clobber
+          gh release upload ${{ github.event.inputs.release_tags }} Moly-*.exe --clobber
