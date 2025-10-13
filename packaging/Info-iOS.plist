@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- iOS-specific Info.plist additions to merge with Makepad's generated plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Required for App Store submission -->
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+
+    <!-- Required Bundle OS Type code -->
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <!-- Microphone access for realtime AI conversations -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Moly needs access to your microphone for realtime AI conversations.</string>
+</dict>
+</plist>
