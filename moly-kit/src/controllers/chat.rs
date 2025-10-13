@@ -119,8 +119,9 @@ pub enum ChatTask {
     /// Causes the whole list of messages to be sent to the specified bot and starts
     /// the streaming response work in the background.
     Send(BotId),
-    /// Calls the given MCP tools.
-    Execute(Vec<ToolCall>),
+    /// Calls the given MCP tools. If a bot is specified, successful tool calls
+    /// will be processed by that bot.
+    Execute(Vec<ToolCall>, Option<BotId>),
     /// Interrupts the streaming started by `Send`.
     Stop,
     /// Should be triggered to start fetching async data (e.g. bots).
@@ -331,8 +332,8 @@ impl ChatController {
             ChatTask::Load => {
                 self.handle_load();
             }
-            ChatTask::Execute(tool_calls) => {
-                self.handle_execute(tool_calls);
+            ChatTask::Execute(tool_calls, bot_id) => {
+                self.handle_execute(tool_calls, bot_id);
             }
         }
     }
@@ -536,7 +537,7 @@ impl ChatController {
         self.tool_manager = Some(tool_manager);
     }
 
-    fn handle_execute(&mut self, tool_calls: Vec<ToolCall>) {
+    fn handle_execute(&mut self, tool_calls: Vec<ToolCall>, bot_id: Option<BotId>) {
         let Some(tool_manager) = self.tool_manager.clone() else {
             self.dispatch_state_mutation(|state| {
                 state.messages.push(Message::app_error(
@@ -547,15 +548,6 @@ impl ChatController {
         };
 
         let controller = self.accessor.clone();
-
-        let loading_text = if tool_calls.len() == 1 {
-            format!(
-                "Executing tool '{}'...",
-                display_name_from_namespaced(&tool_calls[0].name)
-            )
-        } else {
-            format!("Executing {} tools...", tool_calls.len())
-        };
 
         self.dispatch_state_mutation(|state| {
             let loading_text = if tool_calls.len() == 1 {
@@ -651,6 +643,10 @@ impl ChatController {
                         ..Default::default()
                     });
                 });
+
+                if let Some(bot_id) = bot_id {
+                    c.dispatch_task(ChatTask::Send(bot_id));
+                }
             });
         }));
     }

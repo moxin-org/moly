@@ -270,7 +270,6 @@ struct DemoChatPlugin {
 impl ChatControllerPlugin for DemoChatPlugin {
     fn on_state_change(&mut self, state: &controllers::chat::ChatState) {
         self.init(state);
-        self.tools(state);
     }
 }
 
@@ -288,25 +287,6 @@ impl DemoChatPlugin {
 
             self.initialized = true;
             // TODO: Unsuscribe?
-        }
-    }
-
-    fn tools(&mut self, state: &controllers::chat::ChatState) {
-        let Some(message) = state.messages.last() else {
-            return;
-        };
-
-        if message.content.tool_results.iter().any(|tr| !tr.is_error) {
-            self.ui.defer(|widget, _, _| {
-                let bot_id = widget.chat(id!(chat)).read().bot_id().cloned();
-                widget
-                    .controller
-                    .as_ref()
-                    .unwrap()
-                    .lock()
-                    .unwrap()
-                    .dispatch_task(ChatTask::Send(bot_id.unwrap()));
-            });
         }
     }
 }
