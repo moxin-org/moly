@@ -103,7 +103,7 @@ impl Widget for ChatsDeck {
         } else {
             self.view.apply_over(
                 cx,
-                live! { padding: {top: 55, left: 0, right: 0, bottom: 0} },
+                live! { padding: {top: 55, left: 0, right: 0, bottom: 10} },
             );
         }
 

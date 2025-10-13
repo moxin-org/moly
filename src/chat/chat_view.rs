@@ -190,7 +190,7 @@ impl Widget for ChatView {
                 live! {
                     padding: {left: 10, right: 10, top: 8, bottom: 8}
                     persistent = {
-                        height: Fit
+                        height: Fill
                     }
                 },
             );

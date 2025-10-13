@@ -21,7 +21,9 @@ live_design! {
         send_icon: dep("crate://self/resources/send.svg"),
         stop_icon: dep("crate://self/resources/stop.svg"),
 
+        height: 80
         persistent = {
+            height: Fill
             padding: {top: 8, bottom: 6, left: 4, right: 10}
             draw_bg: {
                 color: #fff,
@@ -30,6 +32,7 @@ live_design! {
                 border_size: 1.0,
             }
             center = {
+                height: Fill
                 left = {
                     attach = <Button> {
                         visible: false
@@ -51,6 +54,7 @@ live_design! {
                     }
                 }
                 text_input = {
+                    height: Fill
                     empty_text: "Start typing...",
                     draw_bg: {
                         fn pixel(self) -> vec4 {
