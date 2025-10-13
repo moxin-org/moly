@@ -1,3 +1,4 @@
+use crate::protocol::todo::*;
 use crate::widgets::{
     avatar::AvatarWidgetRefExt, slot::SlotWidgetRefExt,
     standard_message_content::StandardMessageContentWidgetRefExt,
@@ -587,7 +588,7 @@ pub struct Realtime {
     bot_entity_id: Option<EntityId>,
 
     #[rust]
-    bot_context: Option<crate::protocol::BotContext>,
+    bot_context: Option<BotContext>,
 
     #[rust]
     pending_tool_call: Option<(String, String, String)>, // (name, call_id, arguments)
@@ -890,7 +891,7 @@ impl Realtime {
         }
     }
 
-    pub fn set_bot_context(&mut self, bot_context: Option<crate::protocol::BotContext>) {
+    pub fn set_bot_context(&mut self, bot_context: Option<BotContext>) {
         self.bot_context = bot_context;
     }
 
@@ -1707,7 +1708,7 @@ impl RealtimeRef {
         }
     }
 
-    pub fn set_bot_context(&mut self, bot_context: Option<crate::protocol::BotContext>) {
+    pub fn set_bot_context(&mut self, bot_context: Option<BotContext>) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.set_bot_context(bot_context);
         }

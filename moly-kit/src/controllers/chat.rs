@@ -471,6 +471,18 @@ impl ChatController {
     pub fn bot_client_mut(&mut self) -> Option<&mut (dyn BotClient + 'static)> {
         self.client.as_deref_mut()
     }
+
+    pub fn tool_manager(&self) -> Option<&McpManagerClient> {
+        self.tool_manager.as_ref()
+    }
+
+    pub fn tool_manager_mut(&mut self) -> Option<&mut McpManagerClient> {
+        self.tool_manager.as_mut()
+    }
+
+    pub fn set_tool_manager(&mut self, tool_manager: Option<McpManagerClient>) {
+        self.tool_manager = tool_manager;
+    }
 }
 
 /// Util that wraps the stream of `send()` and gives you a stream less agresive to
