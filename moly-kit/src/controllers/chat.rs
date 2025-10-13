@@ -215,6 +215,7 @@ pub struct ChatController {
     accessor: ChatControllerAccessor,
     send_abort_on_drop: Option<AbortOnDropHandle>,
     load_bots_abort_on_drop: Option<AbortOnDropHandle>,
+    execute_tools_abort_on_drop: Option<AbortOnDropHandle>,
     client: Option<Box<dyn BotClient>>,
     tool_manager: Option<McpManagerClient>,
 }
@@ -234,6 +235,7 @@ impl ChatController {
                 accessor: ChatControllerAccessor::new(weak.clone()),
                 send_abort_on_drop: None,
                 load_bots_abort_on_drop: None,
+                execute_tools_abort_on_drop: None,
                 client: None,
                 tool_manager: None,
             })
@@ -329,7 +331,9 @@ impl ChatController {
             ChatTask::Load => {
                 self.handle_load();
             }
-            ChatTask::Execute(_) => {}
+            ChatTask::Execute(tool_calls) => {
+                self.handle_execute(tool_calls);
+            }
         }
     }
 
@@ -463,7 +467,7 @@ impl ChatController {
         };
 
         let controller = self.accessor.clone();
-        self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
+        self.load_bots_abort_on_drop = Some(spawn_abort_on_drop(async move {
             let (bots, errors) = client.bots().await.into_value_and_errors();
             controller.lock_with(move |c| {
                 c.dispatch_state_mutation(move |state| {
@@ -530,6 +534,125 @@ impl ChatController {
 
     pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
         self.tool_manager = Some(tool_manager);
+    }
+
+    fn handle_execute(&mut self, tool_calls: Vec<ToolCall>) {
+        let Some(tool_manager) = self.tool_manager.clone() else {
+            self.dispatch_state_mutation(|state| {
+                state.messages.push(Message::app_error(
+                    "Tool execution failed: Tool manager not available",
+                ));
+            });
+            return;
+        };
+
+        let controller = self.accessor.clone();
+
+        let loading_text = if tool_calls.len() == 1 {
+            format!(
+                "Executing tool '{}'...",
+                display_name_from_namespaced(&tool_calls[0].name)
+            )
+        } else {
+            format!("Executing {} tools...", tool_calls.len())
+        };
+
+        self.dispatch_state_mutation(|state| {
+            let loading_text = if tool_calls.len() == 1 {
+                format!(
+                    "Executing tool '{}'...",
+                    display_name_from_namespaced(&tool_calls[0].name)
+                )
+            } else {
+                format!("Executing {} tools...", tool_calls.len())
+            };
+
+            let loading_message = Message {
+                from: EntityId::Tool,
+                content: MessageContent {
+                    text: loading_text,
+                    ..Default::default()
+                },
+                metadata: MessageMetadata {
+                    is_writing: true,
+                    ..MessageMetadata::new()
+                },
+                ..Default::default()
+            };
+
+            state.messages.push(loading_message);
+            state.is_streaming = true;
+        });
+
+        self.execute_tools_abort_on_drop = Some(spawn_abort_on_drop(async move {
+            // Execute tool calls using MCP manager
+            let tool_results = tool_manager.execute_tool_calls(tool_calls.clone()).await;
+
+            // Create formatted text for tool results
+            let results_text = if tool_results.len() == 1 {
+                let result = &tool_results[0];
+                let tool_name = tool_calls
+                    .iter()
+                    .find(|tc| tc.id == result.tool_call_id)
+                    .map(|tc| tc.name.as_str())
+                    .unwrap_or("unknown");
+
+                let display_name = display_name_from_namespaced(tool_name);
+                if result.is_error {
+                    format!("🔧 Tool '{}' failed:\n{}", display_name, result.content)
+                } else {
+                    let summary = crate::utils::tool_execution::create_tool_output_summary(
+                        tool_name,
+                        &result.content,
+                    );
+                    format!(
+                        "🔧 Tool '{}' executed successfully:\n`{}`",
+                        display_name, summary
+                    )
+                }
+            } else {
+                let mut text = format!("🔧 Executed {} tools:\n\n", tool_results.len());
+                for result in &tool_results {
+                    let tool_name = tool_calls
+                        .iter()
+                        .find(|tc| tc.id == result.tool_call_id)
+                        .map(|tc| tc.name.as_str())
+                        .unwrap_or("unknown");
+
+                    let display_name = display_name_from_namespaced(tool_name);
+                    if result.is_error {
+                        text.push_str(&format!("**{}** ❌: {}\n\n", display_name, result.content));
+                    } else {
+                        let summary = crate::utils::tool_execution::create_tool_output_summary(
+                            tool_name,
+                            &result.content,
+                        );
+                        text.push_str(&format!("**{}** ✅: `{}`\n\n", display_name, summary));
+                    }
+                }
+                text
+            };
+
+            controller.lock_with(|c| {
+                c.dispatch_state_mutation(|state| {
+                    state
+                        .messages
+                        .retain(|m| !(m.metadata.is_writing && m.from == EntityId::Tool));
+
+                    state.is_streaming = false;
+
+                    state.messages.push(Message {
+                        from: EntityId::Tool, // Tool results use the tool role
+                        content: MessageContent {
+                            text: results_text.clone(),
+                            tool_results: tool_results.clone(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    });
+                });
+            });
+        }));
     }
 }
 
