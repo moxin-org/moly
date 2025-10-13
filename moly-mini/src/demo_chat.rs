@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use makepad_widgets::*;
 use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin, ChatTask};
+use moly_kit::mcp::mcp_manager::{McpManagerClient, McpTransport};
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
@@ -221,8 +222,33 @@ impl DemoChat {
             client
         };
 
+        // Create MCP manager and configure playwright tool
+        let tool_manager = {
+            let manager = McpManagerClient::new();
+
+            // Configure playwright tool
+            let playwright_transport = {
+                let mut command = tokio::process::Command::new("zsh");
+                command.arg("/Users/wyeworks/mcp/scripts/playwright.sh");
+                McpTransport::Stdio(command)
+            };
+
+            let manager_clone = manager.clone();
+            spawn(async move {
+                if let Err(e) = manager_clone
+                    .add_server("playwright", playwright_transport)
+                    .await
+                {
+                    eprintln!("Failed to add playwright server: {}", e);
+                }
+            });
+
+            manager
+        };
+
         let controller = ChatController::builder()
             .with_client(client)
+            .with_tool_manager(tool_manager)
             .with_plugin(DemoChatPlugin {
                 ui: self.ui_runner(),
                 done: false,
@@ -233,14 +259,6 @@ impl DemoChat {
         self.chat(id!(chat))
             .write()
             .set_chat_controller(cx, Some(controller));
-    }
-
-    fn controller_lock(&self) -> std::sync::MutexGuard<'_, ChatController> {
-        self.controller
-            .as_ref()
-            .expect("ChatController not initialized")
-            .lock()
-            .unwrap()
     }
 }
 

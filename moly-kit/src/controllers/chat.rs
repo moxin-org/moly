@@ -480,8 +480,8 @@ impl ChatController {
         self.tool_manager.as_mut()
     }
 
-    pub fn set_tool_manager(&mut self, tool_manager: Option<McpManagerClient>) {
-        self.tool_manager = tool_manager;
+    pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
+        self.tool_manager = Some(tool_manager);
     }
 }
 
@@ -559,6 +559,11 @@ impl ChatControllerBuilder {
         P: ChatControllerPlugin + 'static,
     {
         self.0.lock().unwrap().register_plugin(plugin);
+        self
+    }
+
+    pub fn with_tool_manager(self, tool_manager: McpManagerClient) -> Self {
+        self.0.lock().unwrap().set_tool_manager(tool_manager);
         self
     }
 
