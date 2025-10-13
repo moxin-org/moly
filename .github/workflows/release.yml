@@ -193,11 +193,11 @@ jobs:
 
   build_ios:
     name: IOS
-    runs-on: macos-14
+    runs-on: macos-15
     if: ${{ github.event.inputs.build_ios != 'false' }}
     strategy:
       matrix:
-        rust: [1.85]
+        rust: [1.89]
     
     steps:
       - name: Checkout sources
@@ -250,10 +250,10 @@ jobs:
           CERT_FINGERPRINT=$(security find-certificate -c "Apple Distribution" -a -Z $KEYCHAIN_PATH | grep SHA-1 | head -n 1 | awk '{print $3}')
           echo "CERT_FINGERPRINT=$CERT_FINGERPRINT" >> $GITHUB_ENV
 
-      - name: Build for iOS 
+      - name: Build for iOS
         run: |
           sed -i '' 's/name = "_moly_app"/name = "moly"/' Cargo.toml
-          
+
           if [[ "${{ github.event.inputs.build_ios }}" == "simulator" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
             cargo makepad apple ios --org=org.moxin --app=moly run-sim -p moly --release
           fi
@@ -267,17 +267,27 @@ jobs:
               --device=IPhone \
               run-device -p moly --release
           fi
+
+      - name: Patch Info.plist for App Store
+        if: ${{ github.event.inputs.build_ios == 'release' || github.event.inputs.build_ios == 'all' }}
+        run: |
+          # Merge iOS-specific plist keys into the built app
+          /usr/libexec/PlistBuddy -c "Merge ./packaging/Info-iOS.plist" \
+            ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app/Info.plist
+
+          echo "Patched Info.plist contents:"
+          plutil -p ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app/Info.plist
       
-      - name: Upload Dist
+      - name: Package and Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           VERSION=$(cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version')
-          
+
           if [[ "${{ github.event.inputs.build_ios }}" == "simulator" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
             ls ./target/makepad-apple-app/aarch64-apple-ios-sim/release
             cd ./target/makepad-apple-app/aarch64-apple-ios-sim/release
-            zip -r "Moly-${VERSION}-ios-simulator.zip" .
+            zip -r "Moly-${VERSION}-ios-simulator.zip" moly.app
             gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios-simulator.zip" --clobber
             cd -
           fi
@@ -288,4 +298,31 @@ jobs:
             cp -r moly.app Payload/
             zip -r "Moly-${VERSION}-ios.ipa" Payload
             gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios.ipa" --clobber
+
+            # Save IPA path for TestFlight upload
+            echo "IPA_PATH=$(pwd)/Moly-${VERSION}-ios.ipa" >> $GITHUB_ENV
+            echo "VERSION=${VERSION}" >> $GITHUB_ENV
           fi
+
+      - name: Upload to TestFlight
+        if: ${{ github.event.inputs.build_ios == 'release' || github.event.inputs.build_ios == 'all' }}
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          # Save API key to file
+          mkdir -p ~/private_keys
+          echo "$APP_STORE_CONNECT_API_KEY" > ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+
+          # Upload to TestFlight
+          echo "Uploading Moly-${VERSION}-ios.ipa to TestFlight..."
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            --verbose
+
+          echo "✅ Successfully uploaded to TestFlight!"
+          echo "Check App Store Connect in ~30 minutes for the build to be processed."
