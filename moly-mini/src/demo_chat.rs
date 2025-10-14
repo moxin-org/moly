@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use makepad_widgets::*;
-use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin, ChatTask};
+use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin};
 use moly_kit::mcp::mcp_manager::{McpManagerClient, McpTransport};
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
@@ -11,6 +11,7 @@ use crate::tester_client::TesterClient;
 
 const OPEN_AI_KEY: Option<&str> = option_env!("OPEN_AI_KEY");
 const OPEN_AI_IMAGE_KEY: Option<&str> = option_env!("OPEN_AI_IMAGE_KEY");
+const OPEN_AI_REALTIME_KEY: Option<&str> = option_env!("OPEN_AI_REALTIME_KEY");
 const OPEN_ROUTER_KEY: Option<&str> = option_env!("OPEN_ROUTER_KEY");
 const SILICON_FLOW_KEY: Option<&str> = option_env!("SILICON_FLOW_KEY");
 
@@ -88,7 +89,9 @@ impl DemoChat {
                     "o3-mini-high",
                 ];
 
-                let openai_image_whitelist = ["dall-e-3"];
+                let openai_image_whitelist = ["dall-e-3", "gpt-image-1-mini", "gpt-image-1"];
+
+                let openai_realtime_whitelist = ["gpt-realtime", "gpt-realtime-mini"];
 
                 let openrouter_whitelist = [
                     "openai/gpt-4o",
@@ -117,6 +120,7 @@ impl DemoChat {
                 let is_whitelisted_bot = openai_whitelist
                     .iter()
                     .chain(openai_image_whitelist.iter())
+                    .chain(openai_realtime_whitelist.iter())
                     .chain(openrouter_whitelist.iter())
                     .chain(siliconflow_whitelist.iter())
                     .any(|s| *s == b.name.as_str());
@@ -193,6 +197,13 @@ impl DemoChat {
                 let mut openai_image = OpenAIImageClient::new("https://api.openai.com/v1".into());
                 let _ = openai_image.set_key(key);
                 client.add_client(Box::new(openai_image));
+            }
+
+            if let Some(key) = OPEN_AI_REALTIME_KEY {
+                let mut openai_realtime =
+                    OpenAIRealtimeClient::new("wss://api.openai.com/v1/realtime".into());
+                let _ = openai_realtime.set_key(key);
+                client.add_client(Box::new(openai_realtime));
             }
 
             // Only add OpenAI client if API key is present

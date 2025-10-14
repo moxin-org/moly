@@ -1105,6 +1105,7 @@ impl BotClient for OpenAIRealtimeClient {
             let mut models = Vec::new();
             if address.starts_with("wss://api.openai.com") {
                 models.push("gpt-realtime");
+                models.push("gpt-realtime-mini");
             } else {
                 // Dora
                 models.push("Qwen/Qwen2.5-0.5B-Instruct-GGUF");

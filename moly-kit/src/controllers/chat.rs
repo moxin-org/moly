@@ -494,7 +494,7 @@ impl ChatController {
             Ok(content) => {
                 // Check if this is a realtime upgrade message
                 if let Some(Upgrade::Realtime(_channel)) = &content.upgrade {
-                    todo!();
+                    // todo!();
                 }
 
                 // TODO: Handle unexpected message.

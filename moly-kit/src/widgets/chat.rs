@@ -908,5 +908,25 @@ impl ChatControllerPlugin for MolyChatControllerPlugin {
             // Explicit redraw. On every state change.
             me.redraw(cx);
         });
+
+        if let Some(message) = state.messages.last() {
+            if let Some(upgrade) = message.content.upgrade.clone() {
+                #[allow(irrefutable_let_patterns)]
+                if let Upgrade::Realtime(channel) = upgrade {
+                    let entity_id = message.from.clone();
+                    self.0.defer(move |me, cx, _| {
+                        me.clean_streaming_artifacts();
+
+                        // Set up the realtime channel in the UI
+                        let mut realtime = me.realtime(id!(realtime));
+                        realtime.set_bot_entity_id(cx, entity_id);
+                        realtime.set_realtime_channel(channel.clone());
+
+                        let modal = me.moly_modal(id!(audio_modal));
+                        modal.open(cx);
+                    });
+                }
+            }
+        }
     }
 }
