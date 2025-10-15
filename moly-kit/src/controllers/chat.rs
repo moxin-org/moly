@@ -7,155 +7,17 @@ use crate::{
     protocol::*,
     utils::asynchronous::{AbortOnDropHandle, PlatformSendStream, spawn_abort_on_drop},
 };
-use std::sync::{
-    Arc, Mutex, Weak,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::{Arc, Mutex, Weak};
 
 use futures::StreamExt;
 
-/// Controls if remaining callbacks and default behavior should be executed.
-pub enum ChatControl {
-    Continue,
-    Stop,
-}
+mod plugin;
+mod state;
+mod task;
 
-/// Represents a generic status in which an operation can be.
-#[derive(Clone, Debug, PartialEq, Default)]
-pub enum Status {
-    #[default]
-    Idle,
-    Working,
-    Error,
-    Success,
-}
-
-impl Status {
-    pub fn is_idle(&self) -> bool {
-        matches!(self, Status::Idle)
-    }
-
-    pub fn is_working(&self) -> bool {
-        matches!(self, Status::Working)
-    }
-
-    pub fn is_error(&self) -> bool {
-        matches!(self, Status::Error)
-    }
-
-    pub fn is_success(&self) -> bool {
-        matches!(self, Status::Success)
-    }
-}
-
-/// State of the chat that you should reflect in your view component/widget/element.
-// TODO: Makes sense? #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct ChatState {
-    /// The chat history sent as context to LLMs.
-    pub messages: Vec<Message>,
-    /// Indicates that the LLM is still streaming the response ("writing").
-    pub is_streaming: bool,
-    /// The bots that were loaded from the configured client.
-    pub bots: Vec<Bot>,
-    pub load_status: Status,
-}
-
-impl ChatState {
-    pub fn get_bot(&self, bot_id: &BotId) -> Option<&Bot> {
-        self.bots.iter().find(|b| &b.id == bot_id)
-    }
-
-    pub fn approve_tool_calls(&mut self, index: usize) {
-        self.messages[index].update_content(|content| {
-            for tool_call in &mut content.tool_calls {
-                tool_call.permission_status = ToolCallPermissionStatus::Approved;
-            }
-        });
-    }
-
-    pub fn deny_tool_calls(&mut self, index: usize) {
-        self.messages[index].update_content(|content| {
-            for tool_call in &mut content.tool_calls {
-                tool_call.permission_status = ToolCallPermissionStatus::Denied;
-            }
-        });
-
-        // Create synthetic tool results indicating denial to maintain conversation flow
-        let tool_results: Vec<ToolResult> = self.messages[index]
-            .content
-            .tool_calls
-            .iter()
-            .map(|tc| {
-                let display_name = display_name_from_namespaced(&tc.name);
-                ToolResult {
-                    tool_call_id: tc.id.clone(),
-                    content: format!(
-                        "Tool execution was denied by the user. Tool '{}' was not executed.",
-                        display_name
-                    ),
-                    is_error: true,
-                }
-            })
-            .collect();
-
-        // Add tool result message with denial results
-        self.messages.push(Message {
-            from: EntityId::Tool,
-            content: MessageContent {
-                text: "🚫 Tool execution was denied by the user.".to_string(),
-                tool_results,
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-    }
-}
-
-/// Represents complex (mostly async) operations that may cause multiple mutations
-/// over time.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ChatTask {
-    /// Causes the whole list of messages to be sent to the specified bot and starts
-    /// the streaming response work in the background.
-    Send(BotId),
-    /// Calls the given MCP tools. If a bot is specified, successful tool calls
-    /// will be processed by that bot.
-    Execute(Vec<ToolCall>, Option<BotId>),
-    /// Interrupts the streaming started by `Send`.
-    Stop,
-    /// Should be triggered to start fetching async data (e.g. bots).
-    ///
-    /// Eventually, the state will contain the list of bots or errors as messages.
-    Load,
-}
-
-/// Allows to hook between dispatched events of any kind.
-///
-/// It's the fundamental building block for extending [`ChatController`] beyond
-/// its default behavior and integrating it with other technologies.
-pub trait ChatControllerPlugin: Send {
-    /// Called when new state is available.
-    ///
-    /// Usually used to bind the controller to some view component/widget/element
-    /// in your framework of choice.
-    fn on_state_change(&mut self, _state: &ChatState) {}
-
-    fn on_task(&mut self, _event: &ChatTask) -> ChatControl {
-        ChatControl::Continue
-    }
-
-    /// Called with a state mutator to be applied over the current state.
-    ///
-    /// Useful for replicating state outside of the controller.
-    fn on_state_mutation(&mut self, _mutation: &mut (dyn FnMut(&mut ChatState) + Send)) {}
-
-    fn on_upgrade(&mut self, upgrade: Upgrade, bot_id: &BotId) -> Option<Upgrade> {
-        Some(upgrade)
-    }
-
-    // attachment handling?
-}
+pub use plugin::*;
+pub use state::*;
+pub use task::*;
 
 /// Private utility wrapper around a weak ref to a controller.
 ///
@@ -180,18 +42,6 @@ impl ChatControllerAccessor {
 
     fn new(handle: Weak<Mutex<ChatController>>) -> Self {
         Self { handle }
-    }
-}
-
-/// Unique identifier for a registered plugin. Can be used to unregister it later.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct ChatControllerPluginRegistrationId(u64);
-
-impl ChatControllerPluginRegistrationId {
-    fn new() -> Self {
-        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        Self(id)
     }
 }
 
