@@ -1,6 +1,6 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
-use std::{collections::VecDeque, panic::Location};
+use std::panic::Location;
 
 use crate::{
     McpManagerClient, display_name_from_namespaced,
@@ -61,7 +61,7 @@ impl ChatControllerAccessor {
 pub struct ChatController {
     state: ChatState,
     /// A list of plugins defining custom behavior.
-    plugins: VecDeque<(
+    plugins: Vec<(
         ChatControllerPluginRegistrationId,
         Box<dyn ChatControllerPlugin>,
     )>,
@@ -86,7 +86,7 @@ impl ChatController {
         Arc::new_cyclic(|weak| {
             Mutex::new(Self {
                 state: ChatState::default(),
-                plugins: VecDeque::new(),
+                plugins: Vec::new(),
                 accessor: ChatControllerAccessor::new(weak.clone()),
                 send_abort_on_drop: None,
                 load_bots_abort_on_drop: None,
@@ -107,7 +107,7 @@ impl ChatController {
         P: ChatControllerPlugin + 'static,
     {
         let id = ChatControllerPluginRegistrationId::new();
-        self.plugins.push_back((id, Box::new(plugin)));
+        self.plugins.push((id, Box::new(plugin)));
         id
     }
 
@@ -117,7 +117,7 @@ impl ChatController {
         P: ChatControllerPlugin + 'static,
     {
         let id = ChatControllerPluginRegistrationId::new();
-        self.plugins.push_front((id, Box::new(plugin)));
+        self.plugins.insert(0, (id, Box::new(plugin)));
         id
     }
 
@@ -162,6 +162,45 @@ impl ChatController {
         }
 
         out
+    }
+
+    #[track_caller]
+    pub fn dispatch_state_mutation_2(&mut self, mutation: &ChatStateMutation) {
+        log::trace!("dispatch_state_mutation_2 from {}", Location::caller());
+
+        for (_, plugin) in &mut self.plugins {
+            plugin.on_state_mutation(&mut |state| {
+                mutation.apply(state);
+            });
+
+            plugin.on_state_mutation_2(mutation, &self.state);
+        }
+
+        self.perform_state_mutation(|state| {
+            mutation.apply(state);
+        });
+
+        for (_, plugin) in &mut self.plugins {
+            plugin.on_state_change(&self.state);
+        }
+    }
+
+    pub fn dispatch_state_mutations_from_mutator<F>(&mut self, cb: F)
+    where
+        F: FnOnce(&mut ChatStateMutator),
+    {
+        let ChatController { state, plugins, .. } = self;
+        let mut mutator = ChatStateMutator::new(state);
+        cb(&mut mutator);
+        let mutations = mutator.finish();
+        for mutation in &mutations {
+            for (_, plugin) in plugins.iter_mut() {
+                plugin.on_state_mutation(&mut |s| {
+                    mutation.apply(s);
+                });
+                plugin.on_state_mutation_2(mutation, state);
+            }
+        }
     }
 
     /// Applies a state mutation directly, bypassing plugins.
@@ -624,6 +663,3 @@ impl ChatControllerBuilder {
         self.0
     }
 }
-
-// dispatch_ui_event, perform_ui_event, dispatch_state_mutation, perform_state_mutation
-// clipboard and fs interfaces?
