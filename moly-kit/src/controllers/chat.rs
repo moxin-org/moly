@@ -134,36 +134,21 @@ impl ChatController {
     }
 
     #[track_caller]
-    pub fn dispatch_mutation(&mut self, mutation: &ChatStateMutation) {
+    pub fn dispatch_mutations(&mut self, mutations: &[ChatStateMutation]) {
         log::trace!("dispatch_mutation from {}", Location::caller());
 
         for (_, plugin) in &mut self.plugins {
-            plugin.on_state_mutation(mutation, &self.state);
+            plugin.before_state_change(&self.state, mutations);
         }
 
-        self.perform_state_mutation(|state| {
-            mutation.apply(state);
-        });
+        for mutation in mutations {
+            self.perform_state_mutation(|state| {
+                mutation.apply(state);
+            });
+        }
 
         for (_, plugin) in &mut self.plugins {
-            plugin.on_state_change(&self.state);
-        }
-    }
-
-    pub fn dispatch_mutator<F>(&mut self, cb: F)
-    where
-        F: FnOnce(&mut ChatStateMutator),
-    {
-        let ChatController { state, plugins, .. } = self;
-        let mut mutator = ChatStateMutator::new();
-        cb(&mut mutator);
-        let mutations = mutator.finish();
-        for mutation in mutations {
-            let mutation = mutation.into_state_mutation(state);
-            for (_, plugin) in plugins.iter_mut() {
-                plugin.on_state_mutation(&mutation, state);
-            }
-            mutation.apply(state);
+            plugin.after_state_change(&self.state, mutations);
         }
     }
 
@@ -210,11 +195,11 @@ impl ChatController {
         self.clear_streaming_artifacts();
 
         let Some(mut client) = self.client.clone() else {
-            self.dispatch_mutator(|state| {
-                state.mutate_messages(|messages| {
-                    messages.push(Message::app_error("No bot client configured"));
-                });
-            });
+            self.dispatch_mutations(ListMutation::push(
+                &self.state.messages,
+                Message::app_error("No bot client configured"),
+            ));
+
             return;
         };
 
@@ -225,9 +210,10 @@ impl ChatController {
         //     return;
         // };
 
-        self.dispatch_mutator(|state| {
-            state.mutate_messages(|messages| {
-                messages.push(Message {
+        self.dispatch_mutations([
+            ListMutation::push(
+                &self.state.messages,
+                Message {
                     from: EntityId::Bot(bot_id.clone()),
                     content: MessageContent::default(),
                     metadata: MessageMetadata {
@@ -235,11 +221,11 @@ impl ChatController {
                         ..Default::default()
                     },
                     ..Default::default()
-                });
-            });
-
-            state.set_is_streaming(true);
-        });
+                },
+            )
+            .into(),
+            ChatStateMutation::SetIsStreaming(true),
+        ]);
 
         let messages_context = self
             .state
@@ -301,15 +287,15 @@ impl ChatController {
         }
 
         self.send_abort_on_drop = None;
-        self.dispatch_mutator(|state| {
-            state.set_is_streaming(false);
+        self.dispatch_mutations([
+            ChatStateMutation::SetIsStreaming(false),
             state.mutate_messages(|messages| {
                 messages.retain_mut(|m| {
                     m.metadata.is_writing = false;
                     !m.content.is_empty()
                 });
             });
-        });
+        ]);
     }
 
     /// Changes the client used by this controller when sending messages.
