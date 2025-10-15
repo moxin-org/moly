@@ -133,47 +133,12 @@ impl ChatController {
         &self.state
     }
 
-    /// Dispatches a state mutation to be applied.
-    ///
-    /// Plugins will be called before the mutation is applied.
-    ///
-    /// This function can return a value from the mutation closure.
-    ///
-    /// The controller will only run this mutation once over the state. Plugins
-    /// get access to this closure (without the return value) so they may do
-    /// additional stuff with it (e.g. replicate the mutation outside of the controller).
     #[track_caller]
-    pub fn dispatch_state_mutation<F, R>(&mut self, mut mutation: F) -> R
-    where
-        F: (FnMut(&mut ChatState) -> R) + Send,
-    {
-        log::trace!("dispatch_state_mutation from {}", Location::caller());
+    pub fn dispatch_mutation(&mut self, mutation: &ChatStateMutation) {
+        log::trace!("dispatch_mutation from {}", Location::caller());
 
         for (_, plugin) in &mut self.plugins {
-            plugin.on_state_mutation(&mut |state| {
-                mutation(state);
-            });
-        }
-
-        let out = self.perform_state_mutation(mutation);
-
-        for (_, plugin) in &mut self.plugins {
-            plugin.on_state_change(&self.state);
-        }
-
-        out
-    }
-
-    #[track_caller]
-    pub fn dispatch_state_mutation_2(&mut self, mutation: &ChatStateMutation) {
-        log::trace!("dispatch_state_mutation_2 from {}", Location::caller());
-
-        for (_, plugin) in &mut self.plugins {
-            plugin.on_state_mutation(&mut |state| {
-                mutation.apply(state);
-            });
-
-            plugin.on_state_mutation_2(mutation, &self.state);
+            plugin.on_state_mutation(mutation, &self.state);
         }
 
         self.perform_state_mutation(|state| {
@@ -185,21 +150,20 @@ impl ChatController {
         }
     }
 
-    pub fn dispatch_state_mutations_from_mutator<F>(&mut self, cb: F)
+    pub fn dispatch_mutator<F>(&mut self, cb: F)
     where
         F: FnOnce(&mut ChatStateMutator),
     {
         let ChatController { state, plugins, .. } = self;
-        let mut mutator = ChatStateMutator::new(state);
+        let mut mutator = ChatStateMutator::new();
         cb(&mut mutator);
         let mutations = mutator.finish();
-        for mutation in &mutations {
+        for mutation in mutations {
+            let mutation = mutation.into_state_mutation(state);
             for (_, plugin) in plugins.iter_mut() {
-                plugin.on_state_mutation(&mut |s| {
-                    mutation.apply(s);
-                });
-                plugin.on_state_mutation_2(mutation, state);
+                plugin.on_state_mutation(&mutation, state);
             }
+            mutation.apply(state);
         }
     }
 
@@ -246,10 +210,10 @@ impl ChatController {
         self.clear_streaming_artifacts();
 
         let Some(mut client) = self.client.clone() else {
-            self.dispatch_state_mutation(|state| {
-                state
-                    .messages
-                    .push(Message::app_error("No bot client configured"));
+            self.dispatch_mutator(|state| {
+                state.mutate_messages(|messages| {
+                    messages.push(Message::app_error("No bot client configured"));
+                });
             });
             return;
         };
@@ -261,17 +225,20 @@ impl ChatController {
         //     return;
         // };
 
-        self.dispatch_state_mutation(|state| {
-            state.messages.push(Message {
-                from: EntityId::Bot(bot_id.clone()),
-                content: MessageContent::default(),
-                metadata: MessageMetadata {
-                    is_writing: true,
+        self.dispatch_mutator(|state| {
+            state.mutate_messages(|messages| {
+                messages.push(Message {
+                    from: EntityId::Bot(bot_id.clone()),
+                    content: MessageContent::default(),
+                    metadata: MessageMetadata {
+                        is_writing: true,
+                        ..Default::default()
+                    },
                     ..Default::default()
-                },
-                ..Default::default()
+                });
             });
-            state.is_streaming = true;
+
+            state.set_is_streaming(true);
         });
 
         let messages_context = self
@@ -334,11 +301,13 @@ impl ChatController {
         }
 
         self.send_abort_on_drop = None;
-        self.dispatch_state_mutation(|state| {
-            state.is_streaming = false;
-            state.messages.retain_mut(|m| {
-                m.metadata.is_writing = false;
-                !m.content.is_empty()
+        self.dispatch_mutator(|state| {
+            state.set_is_streaming(false);
+            state.mutate_messages(|messages| {
+                messages.retain_mut(|m| {
+                    m.metadata.is_writing = false;
+                    !m.content.is_empty()
+                });
             });
         });
     }

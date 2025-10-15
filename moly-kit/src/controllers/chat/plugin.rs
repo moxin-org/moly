@@ -23,12 +23,7 @@ pub trait ChatControllerPlugin: Send {
         ChatControl::Continue
     }
 
-    /// Called with a state mutator to be applied over the current state.
-    ///
-    /// Useful for replicating state outside of the controller.
-    fn on_state_mutation(&mut self, _mutation: &mut (dyn FnMut(&mut ChatState) + Send)) {}
-
-    fn on_state_mutation_2(&mut self, _mutation: &ChatStateMutation, _state: &ChatState) {}
+    fn on_state_mutation(&mut self, _mutation: &ChatStateMutation, _state: &ChatState) {}
 
     fn on_upgrade(&mut self, upgrade: Upgrade, _bot_id: &BotId) -> Option<Upgrade> {
         Some(upgrade)

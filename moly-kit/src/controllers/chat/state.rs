@@ -1,4 +1,3 @@
-use super::plugin::*;
 use crate::{display_name_from_namespaced, protocol::*};
 
 /// Represents a generic status in which an operation can be.
@@ -129,72 +128,93 @@ impl<T: Clone> ListMutation<T> {
     }
 }
 
-pub struct ListMutator<'a, T: Clone> {
-    list: &'a [T],
-    mutations: Vec<ListMutation<T>>,
-    len: usize,
+pub(crate) enum ListMutatorMutation<T: Clone> {
+    Base(ListMutation<T>),
+    Extend(Vec<T>),
+    Update(usize, Box<dyn FnOnce(&mut T)>),
+    Set(Vec<T>),
 }
 
-impl<'a, T: Clone> ListMutator<'a, T> {
-    pub(crate) fn new(list: &'a [T]) -> Self {
+impl<T: Clone> ListMutatorMutation<T> {
+    pub(crate) fn into_list_mutations(self, list: &[T]) -> Vec<ListMutation<T>> {
+        match self {
+            ListMutatorMutation::Base(m) => vec![m],
+            ListMutatorMutation::Extend(items) => {
+                let index = list.len();
+                vec![ListMutation::Insert(index, items)]
+            }
+            ListMutatorMutation::Update(index, f) => {
+                let mut item = list[index].clone();
+                f(&mut item);
+                vec![ListMutation::Update(index, item)]
+            }
+            ListMutatorMutation::Set(items) => vec![
+                ListMutation::Remove(0, list.len()),
+                ListMutation::Insert(0, items),
+            ],
+        }
+    }
+}
+
+pub struct ListMutator<T: Clone> {
+    mutations: Vec<ListMutatorMutation<T>>,
+}
+
+impl<T: Clone> ListMutator<T> {
+    pub(crate) fn new() -> Self {
         Self {
-            list,
             mutations: Vec::new(),
-            len: list.len(),
         }
     }
 
-    pub fn extend(&mut self, index: usize, items: Vec<T>) {
-        if index > self.len {
-            panic!(
-                "Invalid insert index: {}. Maximum allowed at this point is {}",
-                index, self.len
-            );
-        }
-
-        self.len += items.len();
-        self.mutations.push(ListMutation::Insert(index, items));
-    }
-
-    pub fn remove_range(&mut self, index: usize, count: usize) {
-        if index + count > self.len {
-            panic!(
-                "Invalid remove range: {}..{}. Maximum allowed at this point is {}",
-                index,
-                index + count,
-                self.len
-            );
-        }
-
-        self.len = self.len.saturating_sub(count);
-        self.mutations.push(ListMutation::Remove(index, count));
-    }
-
-    pub fn update(&mut self, index: usize, item: T) {
-        if index >= self.len {
-            panic!(
-                "Invalid update index: {}. Maximum allowed at this point is {}",
-                index,
-                self.len.saturating_sub(1)
-            );
-        }
-
-        self.mutations.push(ListMutation::Update(index, item));
+    pub fn insert_many(&mut self, index: usize, items: Vec<T>) {
+        self.mutations
+            .push(ListMutatorMutation::Base(ListMutation::Insert(
+                index, items,
+            )));
     }
 
     pub fn insert(&mut self, index: usize, item: T) {
-        self.extend(index, vec![item]);
+        self.insert_many(index, vec![item]);
+    }
+
+    pub fn extend(&mut self, items: Vec<T>) {
+        self.mutations.push(ListMutatorMutation::Extend(items));
+    }
+
+    pub fn push(&mut self, item: T) {
+        self.extend(vec![item]);
+    }
+
+    pub fn remove_range(&mut self, index: usize, count: usize) {
+        self.mutations
+            .push(ListMutatorMutation::Base(ListMutation::Remove(
+                index, count,
+            )));
     }
 
     pub fn remove(&mut self, index: usize) {
         self.remove_range(index, 1);
     }
 
-    pub fn push(&mut self, item: T) {
-        self.extend(self.len, vec![item]);
+    pub fn update(&mut self, index: usize, item: T) {
+        self.mutations
+            .push(ListMutatorMutation::Base(ListMutation::Update(index, item)));
     }
 
-    pub(crate) fn finish(self) -> Vec<ListMutation<T>> {
+    pub fn update_with<F>(&mut self, index: usize, f: F)
+    where
+        F: FnOnce(&mut T) + 'static,
+    {
+        self.mutations
+            .push(ListMutatorMutation::Update(index, Box::new(f)));
+    }
+
+    pub fn set(&mut self, items: Vec<T>) {
+        self.mutations.push(ListMutatorMutation::Set(items));
+    }
+
+    pub(crate) fn finish(self) -> Vec<ListMutatorMutation<T>> {
         self.mutations
     }
 }
@@ -229,30 +249,95 @@ impl ChatStateMutation {
     }
 }
 
-pub struct ChatStateMutator<'a> {
-    state: &'a ChatState,
-    mutations: Vec<ChatStateMutation>,
+pub(crate) enum ChatStateMutatorMutation {
+    Base(ChatStateMutation),
+    MutateMessages(ListMutatorMutation<Message>),
+    MutateBots(ListMutatorMutation<Bot>),
 }
 
-impl<'a> ChatStateMutator<'a> {
-    pub(crate) fn new(state: &'a ChatState) -> Self {
+impl ChatStateMutatorMutation {
+    pub(crate) fn into_state_mutations(self, state: &ChatState) -> Vec<ChatStateMutation> {
+        match self {
+            ChatStateMutatorMutation::Base(m) => vec![m],
+            ChatStateMutatorMutation::MutateMessages(m) => {
+                let list_mutation = m.into_list_mutations(&state.messages);
+                vec![ChatStateMutation::MutateMessages(vec![list_mutation])]
+            }
+            ChatStateMutatorMutation::MutateBots(m) => {
+                let list_mutation = m.into_list_mutations(&state.bots);
+                vec![ChatStateMutation::MutateBots(vec![list_mutation])]
+            }
+        }
+    }
+}
+
+pub struct ChatStateMutator {
+    mutations: Vec<ChatStateMutatorMutation>,
+}
+
+impl ChatStateMutator {
+    pub(crate) fn new() -> Self {
         Self {
-            state,
             mutations: Vec::new(),
         }
     }
 
     pub fn set_is_streaming(&mut self, is_streaming: bool) {
-        self.mutations
-            .push(ChatStateMutation::SetIsStreaming(is_streaming));
+        self.mutations.push(ChatStateMutatorMutation::Base(
+            ChatStateMutation::SetIsStreaming(is_streaming),
+        ));
     }
 
     pub fn set_load_status(&mut self, status: Status) {
-        self.mutations
-            .push(ChatStateMutation::SetLoadStatus(status));
+        self.mutations.push(ChatStateMutatorMutation::Base(
+            ChatStateMutation::SetLoadStatus(status),
+        ));
     }
 
-    pub(crate) fn finish(self) -> Vec<ChatStateMutation> {
+    pub fn mutate_messages<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ListMutator<Message>),
+    {
+        let mut list_mutator = ListMutator::new();
+        f(&mut list_mutator);
+        let mutations = list_mutator.finish();
+        for m in mutations {
+            self.mutations
+                .push(ChatStateMutatorMutation::MutateMessages(m));
+        }
+    }
+
+    pub fn mutate_bots<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ListMutator<Bot>),
+    {
+        let mut list_mutator = ListMutator::new();
+        f(&mut list_mutator);
+        let mutations = list_mutator.finish();
+        for m in mutations {
+            self.mutations.push(ChatStateMutatorMutation::MutateBots(m));
+        }
+    }
+
+    pub(crate) fn finish(self) -> Vec<ChatStateMutatorMutation> {
         self.mutations
+    }
+}
+
+impl From<ListMutation<Message>> for ChatStateMutation {
+    fn from(mutation: ListMutation<Message>) -> Self {
+        ChatStateMutation::MutateMessages(vec![mutation])
+    }
+}
+
+impl From<ListMutation<Bot>> for ChatStateMutation {
+    fn from(mutation: ListMutation<Bot>) -> Self {
+        ChatStateMutation::MutateBots(vec![mutation])
+    }
+}
+
+impl From<ChatStateMutation> for Vec<ChatStateMutation> {
+    fn from(mutation: ChatStateMutation) -> Self {
+        vec![mutation]
     }
 }
