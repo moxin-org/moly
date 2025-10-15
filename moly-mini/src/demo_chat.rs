@@ -260,7 +260,7 @@ impl DemoChat {
         let controller = ChatController::builder()
             .with_client(client)
             .with_tool_manager(tool_manager)
-            .with_plugin(DemoChatPlugin {
+            .with_plugin_prepend(DemoChatPlugin {
                 ui: self.ui_runner(),
                 initialized: false,
             })

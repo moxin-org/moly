@@ -1,6 +1,6 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
-use std::panic::Location;
+use std::{collections::VecDeque, panic::Location};
 
 use crate::{
     McpManagerClient, display_name_from_namespaced,
@@ -150,6 +150,10 @@ pub trait ChatControllerPlugin: Send {
     /// Useful for replicating state outside of the controller.
     fn on_state_mutation(&mut self, _mutation: &mut (dyn FnMut(&mut ChatState) + Send)) {}
 
+    fn on_upgrade(&mut self, upgrade: Upgrade, bot_id: &BotId) -> Option<Upgrade> {
+        Some(upgrade)
+    }
+
     // attachment handling?
 }
 
@@ -207,7 +211,7 @@ impl ChatControllerPluginRegistrationId {
 pub struct ChatController {
     state: ChatState,
     /// A list of plugins defining custom behavior.
-    plugins: Vec<(
+    plugins: VecDeque<(
         ChatControllerPluginRegistrationId,
         Box<dyn ChatControllerPlugin>,
     )>,
@@ -232,7 +236,7 @@ impl ChatController {
         Arc::new_cyclic(|weak| {
             Mutex::new(Self {
                 state: ChatState::default(),
-                plugins: Vec::new(),
+                plugins: VecDeque::new(),
                 accessor: ChatControllerAccessor::new(weak.clone()),
                 send_abort_on_drop: None,
                 load_bots_abort_on_drop: None,
@@ -247,13 +251,23 @@ impl ChatController {
         ChatControllerBuilder::new()
     }
 
-    /// Registers a plugin to extend the controller behavior.
-    pub fn register_plugin<P>(&mut self, plugin: P) -> ChatControllerPluginRegistrationId
+    /// Registers a plugin to extend the controller behavior. Runs after all other plugins.
+    pub fn append_plugin<P>(&mut self, plugin: P) -> ChatControllerPluginRegistrationId
     where
         P: ChatControllerPlugin + 'static,
     {
         let id = ChatControllerPluginRegistrationId::new();
-        self.plugins.push((id, Box::new(plugin)));
+        self.plugins.push_back((id, Box::new(plugin)));
+        id
+    }
+
+    /// Registers a plugin to extend the controller behavior. Runs before all other plugins.
+    pub fn prepend_plugin<P>(&mut self, plugin: P) -> ChatControllerPluginRegistrationId
+    where
+        P: ChatControllerPlugin + 'static,
+    {
+        let id = ChatControllerPluginRegistrationId::new();
+        self.plugins.push_front((id, Box::new(plugin)));
         id
     }
 
@@ -413,7 +427,7 @@ impl ChatController {
             let mut message_stream = std::pin::pin!(message_stream);
             while let Some(result) = message_stream.next().await {
                 let should_break = controller
-                    .lock_with(|c| c.handle_message_content(result))
+                    .lock_with(|c| c.handle_message_content(result, &bot_id))
                     .unwrap_or(true);
 
                 if should_break {
@@ -487,14 +501,28 @@ impl ChatController {
         }));
     }
 
-    fn handle_message_content(&mut self, result: ClientResult<MessageContent>) -> bool {
+    fn handle_message_content(
+        &mut self,
+        result: ClientResult<MessageContent>,
+        bot_id: &BotId,
+    ) -> bool {
         // For simplicity, lets handle this as an standard Result, ignoring content
         // if there are errors.
         match result.into_result() {
-            Ok(content) => {
-                // Check if this is a realtime upgrade message
-                if let Some(Upgrade::Realtime(_channel)) = &content.upgrade {
-                    // todo!();
+            Ok(mut content) => {
+                // Take any pending upgrade from the client and abort if any.
+                match content.upgrade.take() {
+                    Some(upgrade) => {
+                        let mut upgrade = Some(upgrade);
+                        for (_, plugin) in &mut self.plugins {
+                            upgrade = plugin.on_upgrade(upgrade.unwrap(), bot_id);
+                            if upgrade.is_none() {
+                                break;
+                            }
+                        }
+                        return true;
+                    }
+                    None => {}
                 }
 
                 // TODO: Handle unexpected message.
@@ -721,11 +749,19 @@ impl ChatControllerBuilder {
         self
     }
 
-    pub fn with_plugin<P>(self, plugin: P) -> Self
+    pub fn with_plugin_append<P>(self, plugin: P) -> Self
     where
         P: ChatControllerPlugin + 'static,
     {
-        self.0.lock().unwrap().register_plugin(plugin);
+        self.0.lock().unwrap().append_plugin(plugin);
+        self
+    }
+
+    pub fn with_plugin_prepend<P>(self, plugin: P) -> Self
+    where
+        P: ChatControllerPlugin + 'static,
+    {
+        self.0.lock().unwrap().prepend_plugin(plugin);
         self
     }
 

@@ -818,7 +818,7 @@ impl Chat {
             let mut guard = controller.lock().unwrap();
 
             let plugin = MolyChatControllerPlugin(self.ui_runner());
-            self.plugin_id = Some(guard.register_plugin(plugin));
+            self.plugin_id = Some(guard.append_plugin(plugin));
 
             if guard.state().load_status == Status::Idle {
                 guard.dispatch_task(ChatTask::Load);
@@ -908,25 +908,27 @@ impl ChatControllerPlugin for MolyChatControllerPlugin {
             // Explicit redraw. On every state change.
             me.redraw(cx);
         });
+    }
 
-        if let Some(message) = state.messages.last() {
-            if let Some(upgrade) = message.content.upgrade.clone() {
-                #[allow(irrefutable_let_patterns)]
-                if let Upgrade::Realtime(channel) = upgrade {
-                    let entity_id = message.from.clone();
-                    self.0.defer(move |me, cx, _| {
-                        me.clean_streaming_artifacts();
+    fn on_upgrade(&mut self, upgrade: Upgrade, bot_id: &BotId) -> Option<Upgrade> {
+        match upgrade {
+            Upgrade::Realtime(channel) => {
+                let entity_id = EntityId::Bot(bot_id.clone());
+                self.0.defer(move |me, cx, _| {
+                    me.clean_streaming_artifacts();
 
-                        // Set up the realtime channel in the UI
-                        let mut realtime = me.realtime(id!(realtime));
-                        realtime.set_bot_entity_id(cx, entity_id);
-                        realtime.set_realtime_channel(channel.clone());
+                    // Set up the realtime channel in the UI
+                    let mut realtime = me.realtime(id!(realtime));
+                    realtime.set_bot_entity_id(cx, entity_id);
+                    realtime.set_realtime_channel(channel.clone());
 
-                        let modal = me.moly_modal(id!(audio_modal));
-                        modal.open(cx);
-                    });
-                }
+                    let modal = me.moly_modal(id!(audio_modal));
+                    modal.open(cx);
+                });
+                None
             }
+            #[allow(unreachable_patterns)]
+            upgrade => Some(upgrade),
         }
     }
 }
