@@ -17,13 +17,13 @@ pub trait ChatControllerPlugin: Send {
     ///
     /// Usually used to bind the controller to some view component/widget/element
     /// in your framework of choice.
-    fn after_state_change(&mut self, _state: &ChatState, _mutations: &[ChatStateMutation]) {}
+    fn on_state_ready(&mut self, _state: &ChatState) {}
 
     fn on_task(&mut self, _event: &ChatTask) -> ChatControl {
         ChatControl::Continue
     }
 
-    fn before_state_change(&mut self, _state: &ChatState, _mutations: &[ChatStateMutation]) {}
+    fn on_state_mutation(&mut self, _state: &ChatState, _mutation: &ChatStateMutation) {}
 
     fn on_upgrade(&mut self, upgrade: Upgrade, _bot_id: &BotId) -> Option<Upgrade> {
         Some(upgrade)

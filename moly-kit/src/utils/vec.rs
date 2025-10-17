@@ -82,10 +82,16 @@ pub enum VecMutation<T: Clone> {
     ///
     /// When analyzed as a [`VecLog`], this mutation is equivalent to an `Update`.
     UpdateLast(T),
+    /// Replaces the entire contents of the vec with the given elements.
+    ///
+    /// When analyzed as a [`VecLog`], this mutation is equivalent to a `Remove`
+    /// of the full previous contents followed by an `Insert` of the new contents.
+    Set(Vec<T>),
 }
 
 impl<T: Clone> VecMutation<T> {
-    fn apply(self, list: &mut Vec<T>) {
+    /// Apply the changes represented by this mutation to the given vec.
+    pub fn apply(self, list: &mut Vec<T>) {
         match self {
             Self::Splice(start, end, items) => {
                 list.splice(start..end, items);
@@ -136,6 +142,9 @@ impl<T: Clone> VecMutation<T> {
             }
             Self::UpdateLast(item) => {
                 *list.last_mut().unwrap() = item;
+            }
+            Self::Set(items) => {
+                *list = items;
             }
         }
     }
@@ -223,6 +232,10 @@ impl<T: Clone> VecMutation<T> {
                 &target[target.len() - 1],
                 item,
             ))),
+            Self::Set(items) => Box::new(
+                std::iter::once(VecLog::Remove(0, target.len(), target))
+                    .chain(std::iter::once(VecLog::Insert(0, items))),
+            ),
         }
     }
 }

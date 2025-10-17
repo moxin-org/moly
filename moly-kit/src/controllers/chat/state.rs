@@ -1,4 +1,4 @@
-use crate::{display_name_from_namespaced, protocol::*};
+use crate::{display_name_from_namespaced, protocol::*, utils::vec::*};
 
 /// Represents a generic status in which an operation can be.
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -92,123 +92,41 @@ impl ChatState {
     }
 }
 
-pub enum ListMutation<T: Clone> {
-    /// Adds NEW elements to the list.
-    ///
-    /// When applied, the length of the list will increase by the number of items inserted.
-    Insert(usize, Vec<T>),
-    /// Updates an EXISTING element in the list.
-    ///
-    /// When applied, the length of the list remains UNCHANGED.
-    // WARNING: Do NOT change this to be able to insert new entries. `Update` is
-    // assumed to leave the length of the list intact. There is a bug somewhere else
-    // if an `Update` is being received to a non-existing index.
-    Update(usize, T),
-    /// Removes a range of elements from the list.
-    ///
-    /// When applied, the length of the list will decrease by `count`.
-    Remove(usize, usize),
-}
-
-impl<T: Clone> ListMutation<T> {
-    fn apply(&self, list: &mut Vec<T>) {
-        match self {
-            ListMutation::Insert(index, items) => {
-                list.splice(*index..*index, items.clone());
-            }
-            ListMutation::Remove(index, count) => {
-                list.drain(*index..(*index + *count));
-            }
-            ListMutation::Update(index, item) => {
-                if let Some(elem) = list.get_mut(*index) {
-                    *elem = item.clone();
-                }
-            }
-        }
-    }
-
-    /// Shorthand for constructing a [`ListMutation::Update`] using a closure.
-    pub fn update_with(target: &[T], index: usize, updater: impl Fn(&mut T)) -> ListMutation<T> {
-        let mut item = target[index].clone();
-        updater(&mut item);
-        ListMutation::Update(index, item)
-    }
-
-    /// Shorthand to fully replace the contents of a list. Composed of 2 mutations.
-    pub fn set(new_list: Vec<T>) -> [ListMutation<T>; 2] {
-        [
-            ListMutation::Remove(0, new_list.len()),
-            ListMutation::Insert(0, new_list),
-        ]
-    }
-
-    /// Shorthand to append an item to the end of a list.
-    pub fn push(list: &[T], item: T) -> ListMutation<T> {
-        ListMutation::Insert(list.len(), vec![item])
-    }
-
-    /// Semantic list extend.
-    pub fn extend(list: &[T], items: Vec<T>) -> ListMutation<T> {
-        ListMutation::Insert(list.len(), items)
-    }
-}
-
+#[derive(Debug, Clone, PartialEq)]
 pub enum ChatStateMutation {
     SetIsStreaming(bool),
     SetLoadStatus(Status),
-    MutateMessages(Vec<ListMutation<Message>>),
-    MutateBots(Vec<ListMutation<Bot>>),
+    MutateMessages(VecMutation<Message>),
+    MutateBots(VecMutation<Bot>),
 }
 
 impl ChatStateMutation {
-    pub fn apply(&self, state: &mut ChatState) {
+    pub fn apply(self, state: &mut ChatState) {
         match self {
             ChatStateMutation::SetIsStreaming(is_streaming) => {
-                state.is_streaming = *is_streaming;
+                state.is_streaming = is_streaming;
             }
             ChatStateMutation::SetLoadStatus(status) => {
-                state.load_status = status.clone();
+                state.load_status = status;
             }
-            ChatStateMutation::MutateMessages(mutations) => {
-                for mutation in mutations {
-                    mutation.apply(&mut state.messages);
-                }
+            ChatStateMutation::MutateMessages(mutation) => {
+                mutation.apply(&mut state.messages);
             }
-            ChatStateMutation::MutateBots(mutations) => {
-                for mutation in mutations {
-                    mutation.apply(&mut state.bots);
-                }
+            ChatStateMutation::MutateBots(mutation) => {
+                mutation.apply(&mut state.bots);
             }
         }
     }
 }
 
-impl From<ListMutation<Message>> for ChatStateMutation {
-    fn from(mutation: ListMutation<Message>) -> Self {
-        ChatStateMutation::MutateMessages(vec![mutation])
+impl From<VecMutation<Message>> for ChatStateMutation {
+    fn from(mutation: VecMutation<Message>) -> Self {
+        ChatStateMutation::MutateMessages(mutation)
     }
 }
 
-impl From<ListMutation<Bot>> for ChatStateMutation {
-    fn from(mutation: ListMutation<Bot>) -> Self {
-        ChatStateMutation::MutateBots(vec![mutation])
-    }
-}
-
-impl From<ChatStateMutation> for Vec<ChatStateMutation> {
-    fn from(mutation: ChatStateMutation) -> Self {
-        vec![mutation]
-    }
-}
-
-impl From<ListMutation<Message>> for Vec<ChatStateMutation> {
-    fn from(mutation: ListMutation<Message>) -> Self {
-        vec![ChatStateMutation::MutateMessages(vec![mutation])]
-    }
-}
-
-impl From<ListMutation<Bot>> for Vec<ChatStateMutation> {
-    fn from(mutation: ListMutation<Bot>) -> Self {
-        vec![ChatStateMutation::MutateBots(vec![mutation])]
+impl From<VecMutation<Bot>> for ChatStateMutation {
+    fn from(mutation: VecMutation<Bot>) -> Self {
+        ChatStateMutation::MutateBots(mutation)
     }
 }

@@ -5,7 +5,10 @@ use std::panic::Location;
 use crate::{
     McpManagerClient, display_name_from_namespaced,
     protocol::*,
-    utils::asynchronous::{AbortOnDropHandle, PlatformSendStream, spawn_abort_on_drop},
+    utils::{
+        asynchronous::{AbortOnDropHandle, PlatformSendStream, spawn_abort_on_drop},
+        vec::VecMutation,
+    },
 };
 use std::sync::{Arc, Mutex, Weak};
 
@@ -126,55 +129,69 @@ impl ChatController {
         self.plugins.retain(|(plugin_id, _)| *plugin_id != id);
     }
 
-    /// Read-only access to state. Use `dispatch_state_mutation` to change it.
-    ///
-    /// If you need to bypass plugins, you can use `perform_state_mutation` instead.
+    /// Read-only access to state.
     pub fn state(&self) -> &ChatState {
         &self.state
     }
 
+    /// Dispatch mutations to state in a single transactional batch.
+    ///
+    /// `on_state_mutation` will be called between each mutation application. However,
+    /// `on_state_ready` will only be called once, after all mutations grouped in
+    /// this call have been applied.
+    ///
+    /// This means each reported mutation can be analyzed against the previous state
+    /// snapshot, before the final state is reported.
+    ///
+    /// At [`on_state_mutation`], any [`ListMutation`] can use `log()` against
+    /// the state snapshot without getting wrong indices.
+    ///
+    /// This also means that a "delete" may not have effect on the state reported to
+    /// `on_state_ready` if a subsequent mutation in the same batch "re-inserts" the deleted
+    /// item. This is important for plugin implementers to understand. In this example, if
+    /// your plugin has side effects over "deleted" items, it's better to simply flag
+    /// the delation on `on_state_mutation` and perform a full scan on the whole state
+    /// that is commited to `on_state_ready`.
+    ///
+    /// As the "caller" of this method, you are responsible for grouping mutations
+    /// that may alter the effect of each other.
     #[track_caller]
-    pub fn dispatch_mutations(&mut self, mutations: &[ChatStateMutation]) {
+    pub fn dispatch_mutations(&mut self, mutations: Vec<ChatStateMutation>) {
         log::trace!("dispatch_mutation from {}", Location::caller());
 
-        for (_, plugin) in &mut self.plugins {
-            plugin.before_state_change(&self.state, mutations);
-        }
-
         for mutation in mutations {
-            self.perform_state_mutation(|state| {
-                mutation.apply(state);
-            });
+            for (_, plugin) in &mut self.plugins {
+                plugin.on_state_mutation(&self.state, &mutation);
+            }
+            mutation.apply(&mut self.state);
         }
 
         for (_, plugin) in &mut self.plugins {
-            plugin.after_state_change(&self.state, mutations);
+            plugin.on_state_ready(&self.state);
         }
     }
 
-    /// Applies a state mutation directly, bypassing plugins.
+    /// Shorthand for dispatching a single mutation.
     ///
-    /// This function can return a value from the mutation closure.
-    pub fn perform_state_mutation<F, R>(&mut self, mut mutation: F) -> R
-    where
-        F: (FnMut(&mut ChatState) -> R) + Send,
-    {
-        mutation(&mut self.state)
+    /// Accepts any type that can be converted into a `ChatStateMutation`.
+    ///
+    /// See [`Self::dispatch_mutations`] for details about mutation grouping and plugin
+    /// notifications.
+    #[track_caller]
+    pub fn dispatch_mutation(&mut self, mutation: impl Into<ChatStateMutation>) {
+        self.dispatch_mutations(vec![mutation.into()]);
     }
 
-    pub fn dispatch_task(&mut self, event: ChatTask) {
+    pub fn dispatch_task(&mut self, task: ChatTask) {
         for (_, plugin) in &mut self.plugins {
-            let control = plugin.on_task(&event);
+            let control = plugin.on_task(&task);
             match control {
                 ChatControl::Continue => continue,
                 ChatControl::Stop => return,
             }
         }
-        self.perform_task(event);
-    }
 
-    pub fn perform_task(&mut self, event: ChatTask) {
-        match event {
+        match task {
             ChatTask::Send(bot_id) => {
                 self.handle_send(bot_id);
             }
@@ -195,10 +212,9 @@ impl ChatController {
         self.clear_streaming_artifacts();
 
         let Some(mut client) = self.client.clone() else {
-            self.dispatch_mutations(ListMutation::push(
-                &self.state.messages,
-                Message::app_error("No bot client configured"),
-            ));
+            self.dispatch_mutation(VecMutation::Push(Message::app_error(
+                "No bot client configured",
+            )));
 
             return;
         };
@@ -210,22 +226,17 @@ impl ChatController {
         //     return;
         // };
 
-        self.dispatch_mutations([
-            ListMutation::push(
-                &self.state.messages,
-                Message {
-                    from: EntityId::Bot(bot_id.clone()),
-                    content: MessageContent::default(),
-                    metadata: MessageMetadata {
-                        is_writing: true,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            )
-            .into(),
-            ChatStateMutation::SetIsStreaming(true),
-        ]);
+        self.dispatch_mutation(VecMutation::Push(Message {
+            from: EntityId::Bot(bot_id.clone()),
+            content: MessageContent::default(),
+            metadata: MessageMetadata {
+                is_writing: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        }));
+
+        self.dispatch_mutation(ChatStateMutation::SetIsStreaming(true));
 
         let messages_context = self
             .state
@@ -287,15 +298,31 @@ impl ChatController {
         }
 
         self.send_abort_on_drop = None;
-        self.dispatch_mutations([
-            ChatStateMutation::SetIsStreaming(false),
-            state.mutate_messages(|messages| {
-                messages.retain_mut(|m| {
-                    m.metadata.is_writing = false;
-                    !m.content.is_empty()
-                });
-            });
-        ]);
+
+        self.dispatch_mutation(ChatStateMutation::SetIsStreaming(false));
+
+        let mut updates_to_dispatch: Vec<ChatStateMutation> = Vec::new();
+        // Indices to clean last, at the end of the other mutations.
+        let mut indices_to_remove: Vec<usize> = Vec::new();
+
+        // One pass to update dirty messages while generating a list of useless ones for later.
+        for (index, message) in self.state.messages.iter().enumerate() {
+            if message.metadata.is_writing {
+                if message.content.is_empty() {
+                    indices_to_remove.push(index);
+                } else {
+                    updates_to_dispatch.push(
+                        VecMutation::update_with(&self.state.messages, index, |m| {
+                            m.metadata.is_writing = false;
+                        })
+                        .into(),
+                    );
+                }
+            }
+        }
+
+        self.dispatch_mutations(updates_to_dispatch);
+        self.dispatch_mutation(VecMutation::RemoveMany::<Message>(indices_to_remove.into()));
     }
 
     /// Changes the client used by this controller when sending messages.
@@ -308,19 +335,15 @@ impl ChatController {
     }
 
     fn handle_load(&mut self) {
-        self.dispatch_state_mutation(|state| {
-            state.load_status = Status::Working;
-        });
+        self.dispatch_mutation(ChatStateMutation::SetLoadStatus(Status::Working));
 
         let client = match self.client.clone() {
             Some(c) => c,
             None => {
-                self.dispatch_state_mutation(|state| {
-                    state.load_status = Status::Error;
-                    state
-                        .messages
-                        .push(Message::app_error("No bot client configured"));
-                });
+                self.dispatch_mutation(ChatStateMutation::SetLoadStatus(Status::Error));
+                self.dispatch_mutation(VecMutation::Push(Message::app_error(
+                    "No bot client configured",
+                )));
                 return;
             }
         };
@@ -329,18 +352,16 @@ impl ChatController {
         self.load_bots_abort_on_drop = Some(spawn_abort_on_drop(async move {
             let (bots, errors) = client.bots().await.into_value_and_errors();
             controller.lock_with(move |c| {
-                c.dispatch_state_mutation(move |state| {
-                    if errors.is_empty() {
-                        state.load_status = Status::Success;
-                    } else {
-                        state.load_status = Status::Error;
-                    }
+                if errors.is_empty() {
+                    c.dispatch_mutation(ChatStateMutation::SetLoadStatus(Status::Success));
+                } else {
+                    c.dispatch_mutation(ChatStateMutation::SetLoadStatus(Status::Error));
+                }
 
-                    state.bots = bots.clone().unwrap_or_default();
-                    for error in &errors {
-                        state.messages.push(Message::app_error(error));
-                    }
-                });
+                c.dispatch_mutation(VecMutation::Set(bots.unwrap_or_default()));
+
+                let messages = errors.into_iter().map(|e| Message::app_error(e)).collect();
+                c.dispatch_mutation(VecMutation::Extend(messages));
             });
         }));
     }
@@ -372,17 +393,20 @@ impl ChatController {
                 // TODO: Handle unexpected message.
                 // TODO: Handle tools.
 
-                self.dispatch_state_mutation(|state| {
-                    state.messages.last_mut().unwrap().content = content.clone();
-                });
+                self.dispatch_mutation(VecMutation::update_last_with(
+                    &self.state.messages,
+                    |message| {
+                        message.update_content(|c| {
+                            *c = content.clone();
+                        });
+                    },
+                ));
 
                 false
             }
             Err(errors) => {
-                self.dispatch_state_mutation(|state| {
-                    let messages_append = errors.iter().map(|e| Message::app_error(e));
-                    state.messages.extend(messages_append);
-                });
+                let messages = errors.into_iter().map(|e| Message::app_error(e)).collect();
+                self.dispatch_mutation(VecMutation::Extend(messages));
 
                 true
             }
@@ -411,42 +435,38 @@ impl ChatController {
 
     fn handle_execute(&mut self, tool_calls: Vec<ToolCall>, bot_id: Option<BotId>) {
         let Some(tool_manager) = self.tool_manager.clone() else {
-            self.dispatch_state_mutation(|state| {
-                state.messages.push(Message::app_error(
-                    "Tool execution failed: Tool manager not available",
-                ));
-            });
+            self.dispatch_mutation(VecMutation::Push(Message::app_error(
+                "Tool execution failed: Tool manager not available",
+            )));
             return;
         };
 
         let controller = self.accessor.clone();
 
-        self.dispatch_state_mutation(|state| {
-            let loading_text = if tool_calls.len() == 1 {
-                format!(
-                    "Executing tool '{}'...",
-                    display_name_from_namespaced(&tool_calls[0].name)
-                )
-            } else {
-                format!("Executing {} tools...", tool_calls.len())
-            };
+        let loading_text = if tool_calls.len() == 1 {
+            format!(
+                "Executing tool '{}'...",
+                display_name_from_namespaced(&tool_calls[0].name)
+            )
+        } else {
+            format!("Executing {} tools...", tool_calls.len())
+        };
 
-            let loading_message = Message {
-                from: EntityId::Tool,
-                content: MessageContent {
-                    text: loading_text,
-                    ..Default::default()
-                },
-                metadata: MessageMetadata {
-                    is_writing: true,
-                    ..MessageMetadata::new()
-                },
+        let loading_message = Message {
+            from: EntityId::Tool,
+            content: MessageContent {
+                text: loading_text,
                 ..Default::default()
-            };
+            },
+            metadata: MessageMetadata {
+                is_writing: true,
+                ..MessageMetadata::new()
+            },
+            ..Default::default()
+        };
 
-            state.messages.push(loading_message);
-            state.is_streaming = true;
-        });
+        self.dispatch_mutation(VecMutation::Push(loading_message));
+        self.dispatch_mutation(ChatStateMutation::SetIsStreaming(true));
 
         self.execute_tools_abort_on_drop = Some(spawn_abort_on_drop(async move {
             // Execute tool calls using MCP manager
@@ -498,23 +518,20 @@ impl ChatController {
             };
 
             controller.lock_with(|c| {
-                c.dispatch_state_mutation(|state| {
-                    state
-                        .messages
-                        .retain(|m| !(m.metadata.is_writing && m.from == EntityId::Tool));
-
-                    state.is_streaming = false;
-
-                    state.messages.push(Message {
-                        from: EntityId::Tool, // Tool results use the tool role
-                        content: MessageContent {
-                            text: results_text.clone(),
-                            tool_results: tool_results.clone(),
-                            ..Default::default()
-                        },
+                c.dispatch_mutation(ChatStateMutation::SetIsStreaming(false));
+                c.dispatch_mutation(VecMutation::remove_many_from_filter(
+                    &c.state.messages,
+                    |_, m| !(m.metadata.is_writing && m.from == EntityId::Tool),
+                ));
+                c.dispatch_mutation(VecMutation::Push(Message {
+                    from: EntityId::Tool, // Tool results use the tool role
+                    content: MessageContent {
+                        text: results_text,
+                        tool_results: tool_results,
                         ..Default::default()
-                    });
-                });
+                    },
+                    ..Default::default()
+                }));
 
                 if let Some(bot_id) = bot_id {
                     c.dispatch_task(ChatTask::Send(bot_id));

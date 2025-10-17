@@ -7,6 +7,7 @@ pub(crate) mod platform;
 pub(crate) mod scraping;
 pub(crate) mod string;
 pub(crate) mod tool_execution;
+pub mod vec;
 
 #[cfg(feature = "json")]
 pub(crate) mod serde;
