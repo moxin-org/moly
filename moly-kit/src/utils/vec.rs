@@ -152,7 +152,7 @@ impl<T: Clone> VecMutation<T> {
     /// Use a function to craft a [`VecMutation::Update`] using mutable semantics.
     ///
     /// This clones the target item on construction.
-    pub fn update_with(target: &[T], index: usize, updater: impl Fn(&mut T)) -> VecMutation<T> {
+    pub fn update_with(target: &[T], index: usize, updater: impl FnOnce(&mut T)) -> VecMutation<T> {
         let mut item = target[index].clone();
         updater(&mut item);
         VecMutation::Update(index, item)
@@ -161,7 +161,7 @@ impl<T: Clone> VecMutation<T> {
     /// Use a function to craft a [`VecMutation::UpdateLast`] using mutable semantics.
     ///
     /// This clones the target item on construction.
-    pub fn update_last_with(target: &[T], updater: impl Fn(&mut T)) -> VecMutation<T> {
+    pub fn update_last_with(target: &[T], updater: impl FnOnce(&mut T)) -> VecMutation<T> {
         let mut item = target.last().unwrap().clone();
         updater(&mut item);
         VecMutation::UpdateLast(item)
@@ -173,7 +173,7 @@ impl<T: Clone> VecMutation<T> {
     /// Read the documentation of [`VecMutation::RemoveMany`] for more details.
     pub fn remove_many_from_filter(
         target: &[T],
-        filter: impl Fn(usize, &T) -> bool,
+        mut filter: impl FnMut(usize, &T) -> bool,
     ) -> VecMutation<T> {
         let indices: Vec<usize> = target
             .iter()

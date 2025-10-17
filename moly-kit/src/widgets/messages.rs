@@ -7,7 +7,10 @@ use std::{
 use crate::{
     controllers::chat::ChatController,
     protocol::*,
-    utils::makepad::{EventExt, ItemsRangeIter},
+    utils::{
+        makepad::{EventExt, ItemsRangeIter},
+        vec::VecMutation,
+    },
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
 use makepad_code_editor::code_view::CodeViewWidgetRefExt;
@@ -222,8 +225,10 @@ impl Messages {
 
         // Trick to render one more item representing the end of the chat without
         // risking a manual math bug. Removed immediately after rendering the items.
-        chat_controller.perform_state_mutation(|state| {
-            state.messages.push(Message {
+        chat_controller
+            .dangerous_state_mut()
+            .messages
+            .push(Message {
                 from: EntityId::App,
                 // End-of-chat marker
                 content: MessageContent {
@@ -232,7 +237,6 @@ impl Messages {
                 },
                 ..Default::default()
             });
-        });
 
         if self.should_defer_scroll_to_bottom {
             // Note: Not using `smooth_scroll_to_end` because it makes asumptions about the list range and the items
@@ -456,7 +460,7 @@ impl Messages {
             }
         }
 
-        let message = chat_controller.perform_state_mutation(|state| state.messages.pop());
+        let message = chat_controller.dangerous_state_mut().messages.pop();
         if let Some(message) = message {
             assert!(message.from == EntityId::App);
             assert!(message.content.text == "EOC");
@@ -686,9 +690,7 @@ impl Messages {
             .expect("no chat controller set")
             .lock()
             .unwrap()
-            .dispatch_state_mutation(|state| {
-                state.messages = messages.clone();
-            });
+            .dispatch_mutation(VecMutation::Set(messages));
         self.should_defer_scroll_to_bottom = scroll_to_bottom;
     }
 

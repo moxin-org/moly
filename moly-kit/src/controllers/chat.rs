@@ -182,6 +182,23 @@ impl ChatController {
         self.dispatch_mutations(vec![mutation.into()]);
     }
 
+    /// Get access to state to perform arbitrary unotified mutations.
+    ///
+    /// ## Danger
+    ///
+    /// Plugins will not get notified of this, and you may cause serious inconsistencies.
+    ///
+    /// This function only exists to perform quick modifications that are reverted
+    /// almost immediately, leaving state as it was before.
+    ///
+    /// If you are using this, you should keep the lock to the controller until
+    /// you undo what you did.
+    #[track_caller]
+    pub fn dangerous_state_mut(&mut self) -> &mut ChatState {
+        log::trace!("dangerous_state_mut from {}", Location::caller());
+        &mut self.state
+    }
+
     pub fn dispatch_task(&mut self, task: ChatTask) {
         for (_, plugin) in &mut self.plugins {
             let control = plugin.on_task(&task);

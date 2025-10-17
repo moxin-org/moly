@@ -11,6 +11,7 @@ use crate::controllers::chat::{
 use crate::utils::asynchronous::PlatformSendStream;
 use crate::utils::makepad::EventExt;
 use crate::utils::makepad::ui_runner::DeferWithRedrawAsync;
+use crate::utils::vec::VecMutation;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
 
 use crate::mcp::mcp_manager::display_name_from_namespaced;
@@ -189,9 +190,7 @@ impl Chat {
                 chat_controller
                     .lock()
                     .unwrap()
-                    .dispatch_state_mutation(|state| {
-                        state.messages = all_messages.clone();
-                    });
+                    .dispatch_mutation(VecMutation::Set(all_messages));
 
                 self.messages_ref().write().scroll_to_bottom(cx, true);
             }
@@ -245,9 +244,7 @@ impl Chat {
                 MessagesAction::Delete(index) => chat_controller
                     .lock()
                     .unwrap()
-                    .dispatch_state_mutation(move |state| {
-                        state.messages.remove(index);
-                    }),
+                    .dispatch_mutation(VecMutation::<Message>::RemoveOne(index)),
                 MessagesAction::Copy(index) => {
                     let lock = chat_controller.lock().unwrap();
                     let text = &lock.state().messages[index].content.text;
@@ -264,14 +261,16 @@ impl Chat {
                         .write()
                         .set_message_editor_visibility(index, false);
 
-                    chat_controller
-                        .lock()
-                        .unwrap()
-                        .dispatch_state_mutation(|state| {
-                            state.messages[index].update_content(|content| {
-                                content.text = text.clone();
+                    let mut lock = chat_controller.lock().unwrap();
+
+                    let mutation =
+                        VecMutation::update_with(&lock.state().messages, index, |message| {
+                            message.update_content(move |content| {
+                                content.text = text;
                             });
                         });
+
+                    lock.dispatch_mutation(mutation);
                 }
                 MessagesAction::EditRegenerate(index) => {
                     let mut messages =
@@ -294,9 +293,7 @@ impl Chat {
                     chat_controller
                         .lock()
                         .unwrap()
-                        .dispatch_state_mutation(|state| {
-                            state.messages = messages.clone();
-                        });
+                        .dispatch_mutation(VecMutation::Set(messages));
 
                     let bot_id = self.bot_id.clone().expect("no bot selected");
 
@@ -308,18 +305,58 @@ impl Chat {
                 MessagesAction::ToolApprove(index) => {
                     let mut lock = chat_controller.lock().unwrap();
 
-                    lock.dispatch_state_mutation(|state| state.approve_tool_calls(index));
+                    let mut updated_message = lock.state().messages[index].clone();
+
+                    for tool_call in &mut updated_message.content.tool_calls {
+                        tool_call.permission_status = ToolCallPermissionStatus::Approved;
+                    }
+
+                    lock.dispatch_mutation(VecMutation::Update(index, updated_message));
 
                     let tools = lock.state().messages[index].content.tool_calls.clone();
                     lock.dispatch_task(ChatTask::Execute(tools, self.bot_id.clone()));
-                    // self.dispatch(cx, &mut ChatTask::ApproveToolCalls(index).into());
                 }
                 MessagesAction::ToolDeny(index) => {
-                    chat_controller
-                        .lock()
-                        .unwrap()
-                        .dispatch_state_mutation(|state| state.deny_tool_calls(index));
-                    // self.dispatch(cx, &mut ChatTask::DenyToolCalls(index).into());
+                    let mut lock = chat_controller.lock().unwrap();
+
+                    let mut updated_message = lock.state().messages[index].clone();
+
+                    updated_message.update_content(|content| {
+                        for tool_call in &mut content.tool_calls {
+                            tool_call.permission_status = ToolCallPermissionStatus::Denied;
+                        }
+                    });
+
+                    lock.dispatch_mutation(VecMutation::Update(index, updated_message));
+
+                    // Create synthetic tool results indicating denial to maintain conversation flow
+                    let tool_results: Vec<ToolResult> = lock.state().messages[index]
+                        .content
+                        .tool_calls
+                        .iter()
+                        .map(|tc| {
+                            let display_name = display_name_from_namespaced(&tc.name);
+                            ToolResult {
+                                tool_call_id: tc.id.clone(),
+                                content: format!(
+                                    "Tool execution was denied by the user. Tool '{}' was not executed.",
+                                    display_name
+                                ),
+                                is_error: true,
+                            }
+                        })
+                        .collect();
+
+                    // Add tool result message with denial results
+                    lock.dispatch_mutation(VecMutation::Push(Message {
+                        from: EntityId::Tool,
+                        content: MessageContent {
+                            text: "🚫 Tool execution was denied by the user.".to_string(),
+                            tool_results,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }));
                 }
                 MessagesAction::None => {}
             }
@@ -345,17 +382,15 @@ impl Chat {
                 chat_controller
                     .lock()
                     .unwrap()
-                    .dispatch_state_mutation(|state| {
-                        state.messages.push(Message {
-                            from: EntityId::User,
-                            content: MessageContent {
-                                text: text.clone(),
-                                attachments: attachments.clone(),
-                                ..Default::default()
-                            },
+                    .dispatch_mutation(VecMutation::Push(Message {
+                        from: EntityId::User,
+                        content: MessageContent {
+                            text,
+                            attachments,
                             ..Default::default()
-                        });
-                    });
+                        },
+                        ..Default::default()
+                    }));
             }
 
             prompt.write().reset(cx);
@@ -817,7 +852,9 @@ impl Chat {
         if let Some(controller) = self.chat_controller.as_ref() {
             let mut guard = controller.lock().unwrap();
 
-            let plugin = MolyChatControllerPlugin(self.ui_runner());
+            let plugin = MolyChatControllerPlugin {
+                ui: self.ui_runner(),
+            };
             self.plugin_id = Some(guard.append_plugin(plugin));
 
             if guard.state().load_status == Status::Idle {
@@ -883,12 +920,14 @@ impl Drop for Chat {
     }
 }
 
-struct MolyChatControllerPlugin(UiRunner<Chat>);
+struct MolyChatControllerPlugin {
+    ui: UiRunner<Chat>,
+}
 
 impl ChatControllerPlugin for MolyChatControllerPlugin {
-    fn after_state_change(&mut self, state: &ChatState) {
+    fn on_state_ready(&mut self, state: &ChatState) {
         let is_streaming = state.is_streaming;
-        self.0.defer(move |me, cx, _| {
+        self.ui.defer(move |me, cx, _| {
             match (me.was_streaming, is_streaming) {
                 // Handle streaming started.
                 (false, true) => {
@@ -914,7 +953,7 @@ impl ChatControllerPlugin for MolyChatControllerPlugin {
         match upgrade {
             Upgrade::Realtime(channel) => {
                 let entity_id = EntityId::Bot(bot_id.clone());
-                self.0.defer(move |me, cx, _| {
+                self.ui.defer(move |me, cx, _| {
                     me.clean_streaming_artifacts();
 
                     // Set up the realtime channel in the UI

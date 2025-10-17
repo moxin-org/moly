@@ -1,4 +1,4 @@
-use crate::mcp_manager::McpManagerClient;
+use crate::{display_name_from_namespaced, mcp_manager::McpManagerClient};
 use makepad_widgets::{Cx, LiveDependency, LiveId, LivePtr, WidgetRef};
 
 // Re-export relevant, protocol related, async types.

@@ -279,7 +279,7 @@ struct DemoChatPlugin {
 }
 
 impl ChatControllerPlugin for DemoChatPlugin {
-    fn on_state_change(&mut self, state: &controllers::chat::ChatState) {
+    fn on_state_ready(&mut self, state: &controllers::chat::ChatState) {
         self.init(state);
     }
 }
