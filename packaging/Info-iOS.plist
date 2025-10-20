@@ -3,16 +3,37 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Required for App Store submission -->
-    <key>CFBundleIconName</key>
-    <string>AppIcon</string>
-
     <!-- Required Bundle OS Type code -->
     <key>CFBundlePackageType</key>
     <string>APPL</string>
 
+    <!-- Marketing version (display version, should match Cargo.toml version) -->
+    <key>CFBundleShortVersionString</key>
+    <string>0.2.2</string>
+
+    <!-- Build version number (must increment for each TestFlight/App Store upload) -->
+    <key>CFBundleVersion</key>
+    <string>2</string>
+
+    <!-- Asset catalog app icon name (required for iOS 11+) -->
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+
+    <!-- Launch screen configuration (iOS 14+) -->
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIImageName</key>
+        <string>AppIcon60x60</string>
+        <key>UIColorName</key>
+        <string>LaunchScreenBackground</string>
+    </dict>
+
     <!-- Microphone access for realtime AI conversations -->
     <key>NSMicrophoneUsageDescription</key>
     <string>Moly needs access to your microphone for realtime AI conversations.</string>
+
+    <!-- App uses only standard encryption (HTTPS/TLS) - no export compliance required -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>
