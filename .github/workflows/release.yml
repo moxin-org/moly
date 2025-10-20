@@ -24,15 +24,10 @@ on:
         required: false
         default: "true"
       build_ios:
-        description: "Build iOS (including simulator and real devices)"
+        description: "Build iOS and upload to TestFlight"
         required: false
-        type: choice
-        default: "all"
-        options:
-          - "all"
-          - "release"
-          - "simulator"
-          - "false"
+        type: boolean
+        default: true
       release_tags:
         description: "Release Page Tags"
         required: true
@@ -194,7 +189,7 @@ jobs:
   build_ios:
     name: IOS
     runs-on: macos-15
-    if: ${{ github.event.inputs.build_ios != 'false' }}
+    if: ${{ github.event.inputs.build_ios == true }}
     strategy:
       matrix:
         rust: [1.89]
@@ -219,7 +214,6 @@ jobs:
           cargo makepad apple ios install-toolchain
       
       - name: Install the Apple certificate and provisioning profile
-        if: ${{ github.event.inputs.build_ios == 'release' || github.event.inputs.build_ios == 'all' }}
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
@@ -252,22 +246,15 @@ jobs:
 
       - name: Build for iOS
         run: |
-          if [[ "${{ github.event.inputs.build_ios }}" == "simulator" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
-            cargo makepad apple ios --org=org.moxin --app=moly run-sim -p moly --release
-          fi
-
-          if [[ "${{ github.event.inputs.build_ios }}" == "release" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
-            cargo makepad apple ios \
-              --org=org.moxin \
-              --app=moly \
-              --profile=$PROFILE_PATH \
-              --cert=$CERT_FINGERPRINT \
-              --device=IPhone \
-              run-device -p moly --release
-          fi
+          cargo makepad apple ios \
+            --org=org.moxin \
+            --app=moly \
+            --profile=$PROFILE_PATH \
+            --cert=$CERT_FINGERPRINT \
+            --device=IPhone \
+            run-device -p moly --release
 
       - name: Compile Asset Catalog and patch Info.plist for App Store
-        if: ${{ github.event.inputs.build_ios == 'release' || github.event.inputs.build_ios == 'all' }}
         run: |
           # Compile pre-built asset catalog into Assets.car file
           xcrun actool ./packaging/ios-icons/Assets.xcassets \
@@ -342,38 +329,26 @@ jobs:
           echo "Patched Info.plist contents:"
           plutil -p ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app/Info.plist
       
-      - name: Package and Upload to GitHub Release
+      - name: Create IPA and Upload to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
         run: |
           VERSION=$(cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version')
+          cd ./target/makepad-apple-app/aarch64-apple-ios/release
 
-          if [[ "${{ github.event.inputs.build_ios }}" == "simulator" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
-            ls ./target/makepad-apple-app/aarch64-apple-ios-sim/release
-            cd ./target/makepad-apple-app/aarch64-apple-ios-sim/release
-            zip -r "Moly-${VERSION}-ios-simulator.zip" moly.app
-            gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios-simulator.zip" --clobber
-            cd -
-          fi
+          # Use ditto to preserve macOS extended attributes (required by Apple validation)
+          ditto moly.app Payload/moly.app
 
-          if [[ "${{ github.event.inputs.build_ios }}" == "release" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
-            cd ./target/makepad-apple-app/aarch64-apple-ios/release
+          # Create IPA using ditto (preserves Info.plist extended attributes)
+          ditto -c -k --sequesterRsrc --keepParent Payload "Moly-${VERSION}-ios.ipa"
 
-            # Use ditto to preserve macOS extended attributes (required by Apple validation)
-            ditto moly.app Payload/moly.app
+          gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios.ipa" --clobber
 
-            # Create IPA using ditto (preserves Info.plist extended attributes)
-            ditto -c -k --sequesterRsrc --keepParent Payload "Moly-${VERSION}-ios.ipa"
-
-            gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios.ipa" --clobber
-
-            # Save IPA path for TestFlight upload
-            echo "IPA_PATH=$(pwd)/Moly-${VERSION}-ios.ipa" >> $GITHUB_ENV
-            echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          fi
+          # Save IPA path for TestFlight upload
+          echo "IPA_PATH=$(pwd)/Moly-${VERSION}-ios.ipa" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Upload to TestFlight
-        if: ${{ github.event.inputs.build_ios == 'release' || github.event.inputs.build_ios == 'all' }}
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
