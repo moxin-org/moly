@@ -10,15 +10,28 @@ on:
       build_ubuntu:
         description: "Build Ubuntu"
         required: false
-        default: "true"
+        type: boolean
+        default: true
       build_macos:
         description: "Build MacOS"
         required: false
-        default: "true"
+        type: boolean
+        default: true
       build_windows:
         description: "Build Windows"
         required: false
-        default: "true"
+        type: boolean
+        default: true
+      build_android:
+        description: "Build Android"
+        required: false
+        type: boolean
+        default: true
+      build_ios:
+        description: "Build iOS and upload to TestFlight"
+        required: false
+        type: boolean
+        default: true
       release_tags:
         description: "Release Page Tags"
         required: true
@@ -136,3 +149,232 @@ jobs:
           cd dist/
           $file=Get-ChildItem -Filter *.exe
           gh release upload ${{ github.event.inputs.release_tags }} $file.name --clobber
+  
+  build_android:
+    name: Android
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.inputs.build_android == 'true' }}
+    strategy:
+      matrix:
+        rust: [1.85]
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache: true
+
+      - name: Install cargo-makepad
+        run: |
+          cargo install --force --git https://github.com/makepad/makepad.git --branch dev cargo-makepad
+        
+      - name: Install toolchain
+        run: |
+          cargo makepad android install-toolchain
+
+      - name: Build
+        run: |
+          cargo makepad android build -p moly --release
+
+      - name: Upload Dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version')
+          cd ./target/makepad-android-apk/moly/apk
+          mv moly.apk "Moly-${VERSION}-android.apk"
+          gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-android.apk" --clobber
+
+  build_ios:
+    name: IOS
+    runs-on: macos-15
+    if: ${{ github.event.inputs.build_ios == 'true' }}
+    strategy:
+      matrix:
+        rust: [1.89]
+    
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4 
+    
+      - name: Install Rust-stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache: true
+
+      - name: Install cargo-makepad
+        run: |
+          cargo install --force --git https://github.com/makepad/makepad.git --branch dev cargo-makepad
+
+      - name: Install toolchain
+        run: |
+          cargo makepad apple ios install-toolchain
+      
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(security cms -D -i $PP_PATH))
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+
+          echo "PROFILE_PATH=$PROFILE_UUID" >> $GITHUB_ENV
+
+          CERT_FINGERPRINT=$(security find-certificate -c "Apple Distribution" -a -Z $KEYCHAIN_PATH | grep SHA-1 | head -n 1 | awk '{print $3}')
+          echo "CERT_FINGERPRINT=$CERT_FINGERPRINT" >> $GITHUB_ENV
+
+      - name: Build for iOS
+        run: |
+          cargo makepad apple ios \
+            --org=org.moxin \
+            --app=moly \
+            --profile=$PROFILE_PATH \
+            --cert=$CERT_FINGERPRINT \
+            --device=IPhone \
+            run-device -p moly --release
+
+      - name: Compile Asset Catalog and patch Info.plist for App Store
+        run: |
+          # Compile pre-built asset catalog into Assets.car file
+          xcrun actool ./packaging/ios-icons/Assets.xcassets \
+            --compile ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app \
+            --platform iphoneos \
+            --minimum-deployment-target 14.0 \
+            --app-icon AppIcon \
+            --output-partial-info-plist /tmp/AssetInfo.plist
+
+          # Navigate to app bundle directory
+          cd ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app
+
+          # Merge actool's generated plist (contains CFBundleIcons dictionary)
+          /usr/libexec/PlistBuddy -c "Merge /tmp/AssetInfo.plist" Info.plist
+
+          # Manually add iOS-specific keys (required by Apple for App Store submission)
+          # Note: We add them directly instead of merging packaging/Info-iOS.plist
+
+          # Add CFBundlePackageType (required)
+          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" Info.plist
+
+          # Add CFBundleIconName for asset catalog (required for iOS 11+)
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIconName AppIcon" Info.plist
+
+          # Add UILaunchScreen dictionary (required for iPad multitasking)
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen:UIImageName string AppIcon60x60" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :UILaunchScreen:UIImageName AppIcon60x60" Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen:UIColorName string LaunchScreenBackground" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :UILaunchScreen:UIColorName LaunchScreenBackground" Info.plist
+
+          # Add encryption declaration (required for TestFlight external testing)
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" Info.plist
+
+          # Set version keys (cargo-makepad generates hardcoded "1.0.0", we must override)
+          # Strip non-numeric suffixes from version (Apple requires numeric-only)
+          VERSION=$(cd $GITHUB_WORKSPACE && cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version' | sed 's/-.*$//')
+          BUILD_NUMBER="${{ github.run_number }}"  # Auto-increment using GitHub run number
+
+          echo "Setting iOS bundle versions: $VERSION (build: $BUILD_NUMBER)"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" Info.plist
+
+          # Verify all required keys are present
+          echo "✅ Bundle configuration:"
+          echo "  Version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"
+          echo "  Build: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Info.plist)"
+          echo "  Package Type: $(/usr/libexec/PlistBuddy -c 'Print :CFBundlePackageType' Info.plist)"
+          echo "  Icon Name: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' Info.plist)"
+          echo "  Encryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' Info.plist)"
+
+          # Return to workspace
+          cd $GITHUB_WORKSPACE
+
+          # Extract entitlements from provisioning profile for re-signing
+          echo "Extracting entitlements from provisioning profile..."
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_PATH}.mobileprovision
+          security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_PATH}.mobileprovision > /tmp/profile.plist
+          echo "Decoded provisioning profile to /tmp/profile.plist"
+          /usr/libexec/PlistBuddy -x -c "Print :Entitlements" /tmp/profile.plist > /tmp/entitlements.plist
+          echo "Extracted entitlements to /tmp/entitlements.plist"
+
+          # Re-sign the app after modifying Info.plist and adding asset catalog
+          # (modifying the bundle invalidates the original signature)
+          codesign --force --sign "$CERT_FINGERPRINT" \
+            --entitlements /tmp/entitlements.plist \
+            --timestamp=none \
+            ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app
+
+          # Verify the signature is valid
+          codesign -vvv ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app
+
+          echo "Patched Info.plist contents:"
+          plutil -p ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app/Info.plist
+      
+      - name: Create IPA and Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.MOLY_RELEASE }}
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version')
+          cd ./target/makepad-apple-app/aarch64-apple-ios/release
+
+          # Use ditto to preserve macOS extended attributes (required by Apple validation)
+          ditto moly.app Payload/moly.app
+
+          # Create IPA using ditto (preserves Info.plist extended attributes)
+          ditto -c -k --sequesterRsrc --keepParent Payload "Moly-${VERSION}-ios.ipa"
+
+          gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios.ipa" --clobber
+
+          # Save IPA path for TestFlight upload
+          echo "IPA_PATH=$(pwd)/Moly-${VERSION}-ios.ipa" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Upload to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          # Save API key to file
+          mkdir -p ~/private_keys
+          echo "$APP_STORE_CONNECT_API_KEY" > ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+
+          # Upload to TestFlight
+          echo "Uploading Moly-${VERSION}-ios.ipa to TestFlight..."
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            --verbose
+
+          echo "✅ Successfully uploaded to TestFlight!"
+          echo "Check App Store Connect in ~30 minutes for the build to be processed."

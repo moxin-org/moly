@@ -35,9 +35,9 @@ use std::{
 /// that must be set for the given package format.
 ///
 /// * For macOS app bundles, this should be set to `../Resources`.
-///   * This only works because the `moly-runner` binary sets the current working directory
+///   * This works because the main binary sets the current working directory
 ///     to the directory where the binary is located, which is `Moly.app/Contents/MacOS/`.
-///     (See the `run_moly` function in `moly-runner/src/main.rs` for more details.)
+///     (See the `main` function in `src/main.rs` for more details.)
 ///   * In a macOS app bundle, the resources directory is in `Moly.app/Context/Resources/`,
 ///     so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources`.
 ///     This must be relative to the binary's location, i.e. up one parent directory.
@@ -47,13 +47,13 @@ use std::{
 ///     which currently works out to `../../usr/lib/moly`.
 ///   * Note that this must be a relative path, not an absolute path.
 /// * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
-///   which is currently `/usr/lib/moly-runner`.
+///   which is currently `/usr/lib/moly`.
 ///   * This is the directory in which `dpkg` copies app resource files to
 ///     when a user installs the `.deb` package.
 /// * For Windows NSIS packages, this should be set to `.` (the current dir).
 ///  * This is because the NSIS installer script copies the resources to the same directory
-///    as the installed binaries, and our `moly-runner` app changes the current working directory
-///    to that same directory before running the main Moly binary.
+///    as the installed binaries, and the Moly app changes the current working directory
+///    to that same directory at startup.
 fn makepad_package_dir_value(package_format: &str) -> &'static str {
     match package_format {
         "app" | "dmg" => "../Resources",
@@ -311,8 +311,8 @@ fn before_each_package(host_os: &str) -> std::io::Result<()> {
 ///
 /// This function effectively runs the following shell commands:
 /// ```sh
-///    MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release --features macos_bundle \
-///    && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/_moly_app;
+///    MAKEPAD_PACKAGE_DIR=../Resources  cargo build --workspace --release \
+///    && install_name_tool -add_rpath "@executable_path/../Frameworks" ./target/release/moly;
 /// ```
 fn before_each_package_macos(package_format: &str, host_os: &str) -> std::io::Result<()> {
     assert!(
@@ -320,13 +320,13 @@ fn before_each_package_macos(package_format: &str, host_os: &str) -> std::io::Re
         "'app' and 'dmg' packages can only be created on macOS."
     );
 
-    cargo_build(package_format, host_os, &["--features", "macos_bundle"])?;
+    cargo_build(package_format, host_os, std::iter::empty::<&str>())?;
 
     // Use `install_name_tool` to add the `@executable_path` rpath to the binary.
     let install_name_tool_cmd = Command::new("install_name_tool")
         .arg("-add_rpath")
         .arg("@executable_path/../Frameworks")
-        .arg("./target/release/_moly_app")
+        .arg("./target/release/moly")
         .spawn()?;
 
     let output = install_name_tool_cmd.wait_with_output()?;
@@ -365,12 +365,11 @@ fn before_each_package_appimage(package_format: &str, host_os: &str) -> std::io:
 ///
 /// This function effectively runs the following shell commands:
 /// ```sh
-///    for path in $(ldd target/release/_moly_app | awk '{print $3}'); do \
+///    for path in $(ldd target/release/moly | awk '{print $3}'); do \
 ///        basename "$/path" ; \
 ///    done \
 ///    | xargs dpkg -S 2> /dev/null | awk '{print $1}' | awk -F ':' '{print $1}' | sort | uniq > ./dist/depends_deb.txt; \
-///    echo "curl" >> ./dist/depends_deb.txt; \
-///    
+///
 fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Result<()> {
     assert!(
         host_os == "linux",
@@ -386,7 +385,7 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     // Create Debian dependencies file by running `ldd` on the binary
     // and then running `dpkg -S` on each unique shared libraries outputted by `ldd`.
     let ldd_output = Command::new("ldd")
-        .arg("target/release/_moly_app")
+        .arg("target/release/moly")
         .output()?;
 
     let ldd_output = if ldd_output.status.success() {
@@ -438,8 +437,6 @@ fn before_each_package_deb(package_format: &str, host_os: &str) -> std::io::Resu
     dpkgs.sort();
     dpkgs.dedup();
     println!("Sorted and de-duplicated dependencies: {:#?}", dpkgs);
-    // `curl` is a fixed dependency for the moly-runner binary.
-    dpkgs.push("curl".to_string());
     std::fs::write("./dist/depends_deb.txt", dpkgs.join("\n"))?;
 
     strip_unneeded_linux_binaries(host_os)?;
@@ -523,7 +520,6 @@ fn strip_unneeded_linux_binaries(host_os: &str) -> std::io::Result<()> {
         .arg("--strip-unneeded")
         .arg("--remove-section=.comment")
         .arg("--remove-section=.note")
-        .arg("target/release/_moly_app")
         .arg("target/release/moly")
         .spawn()?;
 

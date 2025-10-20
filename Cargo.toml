@@ -2,7 +2,6 @@
 resolver = "2"
 
 members = [
-    "moly-runner",
     "moly-kit",
     "moly-mini",
     "moly-sync",
@@ -16,10 +15,8 @@ edition = "2024"
 rust-version = "1.89"                                                 ## required by cargo-packager
 description = "Desktop app for downloading and chatting with AI LLMs"
 
-## Rename the binary to `_moly_app` to avoid naming conflicts
-## with the `moly` binary defined by the `moly-runner` crate.
 [[bin]]
-name = "_moly_app"
+name = "moly"
 path = "src/main.rs"
 
 
@@ -98,15 +95,6 @@ to locally run the AI models efficiently across varying hardware.
 """
 icons = ["./packaging/app_icon128x128.png"]
 out_dir = "./dist"
-## Note: the `moly-runner` crate binary is named `moly`,
-##       while the main `moly` crate binary is named `_moly_app`.
-##       This is to avoid naming conflicts when packaging the binaries,
-##       and also ensures that the `moly-runner` binary is the "main" binary
-##       that gets executed when the user runs "moly" from the command line.
-binaries = [
-    { path = "moly", main = true },
-    { path = "_moly_app", main = false },
-]
 
 ## The below command uses cargo-metadata to determine the path of the `makepad_widgets` crate on the host build system,
 ## and copies the `makepad-widgets/resources` directory to the `./dist/resources/makepad_widgets` directory.
@@ -135,18 +123,17 @@ resources = [
 
 ## We then build the entire Moly project and set the `MAKEPAD_PACKAGE_DIR` env var to the proper value.
 ## * For macOS app bundles, this should be set to `../Resources`.
-##   This only works because the `moly-runner` binary sets the current working directory
+##   This works because the main binary sets the current working directory
 ##   to the directory where the binary is located, which is `Moly.app/Contents/MacOS/`.
-##   (See the `run_moly` function in `moly-runner/src/main.rs` for more details.)
+##   (See the `main` function in `src/main.rs` for more details.)
 ##   In a macOS app bundle, the resources directory is in `Moly.app/Context/Resources/`,
 ##   so that's why we set `MAKEPAD_PACKAGE_DIR` to `../Resources` --- it must be relative to the binary's location,
 ##   which is up one parent directory.
 ## * For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`,
-##   which is currently `/usr/lib/moly-runner`.
+##   which is currently `/usr/lib/moly`.
 ##   This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
 ##   * On Linux, we also strip the binaries of unneeded content, as required for Debian packages.
-##   * For Debian and Pacman (still a to-do!) packages, we also auto-generate the list of dependencies required by Moly,
-##     making sure to add `curl` since it is used by an invocation in `moly-runner`.
+##   * For Debian and Pacman (still a to-do!) packages, we also auto-generate the list of dependencies required by Moly.
 ##
 before-each-package-command = """
 cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-each-package
