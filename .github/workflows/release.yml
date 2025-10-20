@@ -10,19 +10,23 @@ on:
       build_ubuntu:
         description: "Build Ubuntu"
         required: false
-        default: "true"
+        type: boolean
+        default: true
       build_macos:
         description: "Build MacOS"
         required: false
-        default: "true"
+        type: boolean
+        default: true
       build_windows:
         description: "Build Windows"
         required: false
-        default: "true"
+        type: boolean
+        default: true
       build_android:
         description: "Build Android"
         required: false
-        default: "true"
+        type: boolean
+        default: true
       build_ios:
         description: "Build iOS and upload to TestFlight"
         required: false
@@ -189,7 +193,7 @@ jobs:
   build_ios:
     name: IOS
     runs-on: macos-15
-    if: ${{ github.event.inputs.build_ios == true }}
+    if: ${{ github.event.inputs.build_ios == 'true' }}
     strategy:
       matrix:
         rust: [1.89]
