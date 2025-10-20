@@ -252,8 +252,6 @@ jobs:
 
       - name: Build for iOS
         run: |
-          sed -i '' 's/name = "_moly_app"/name = "moly"/' Cargo.toml
-
           if [[ "${{ github.event.inputs.build_ios }}" == "simulator" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
             cargo makepad apple ios --org=org.moxin --app=moly run-sim -p moly --release
           fi

@@ -2,6 +2,8 @@
 
 This document provides a complete copy-paste script for building, signing, and uploading the Moly iOS app to TestFlight manually from your local machine.
 
+> **Tip:** You can create a local `build-and-upload.sh` script with your actual credentials filled in (this file is gitignored). Just copy the script below and replace the placeholders with your values.
+
 ## Prerequisites Setup
 
 Before running the script, ensure you have:
@@ -40,18 +42,12 @@ BUILD_NUMBER="<INCREMENT_THIS>"      # Increment for each TestFlight upload (e.g
 # =============================================================================
 cd moly
 
-# Temporarily rename binary for iOS build (cargo-makepad expects "moly")
-sed -i '' 's/name = "_moly_app"/name = "moly"/' Cargo.toml
-
 # Build for iOS device (will fail with "device not found" but app builds successfully)
 cargo makepad apple ios --org=org.moxin --app=moly \
   --profile=$PROFILE_UUID \
   --cert=$CERT_SHA1 \
   --device=IPhone \
   run-device -p moly --release
-
-# Restore original binary name
-git checkout Cargo.toml
 
 # =============================================================================
 # STEP 2: Compile Asset Catalog
@@ -180,9 +176,9 @@ echo "🔗 https://appstoreconnect.apple.com/apps/<YOUR_APP_ID>/testflight/ios"
    - `<INCREMENT_THIS>`: Start with 1, increment for each upload (2, 3, 4, ...)
    - `<YOUR_APP_ID>`: Your app's ID from App Store Connect (in the final URL)
 
-3. **Save the script** with your values somewhere convenient (e.g., `~/ios-build.sh`)
-4. **Make it executable**: `chmod +x ~/ios-build.sh`
-5. **Run it**: `~/ios-build.sh`
+3. **Save the script** with your values somewhere convenient (e.g., `build-and-upload.sh`)
+4. **Make it executable**: `chmod +x build-and-upload.sh`
+5. **Run it**: `build-and-upload.sh`
 
 ## Important Notes
 
