@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use moly_kit::controllers::chat::ChatTask;
 use moly_kit::protocol::Picture;
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
@@ -64,7 +65,7 @@ pub struct ChatScreen {
     first_render: bool,
 
     #[rust]
-    creating_bot_context: bool,
+    creating_clients: bool,
 }
 
 impl Widget for ChatScreen {
@@ -82,7 +83,7 @@ impl Widget for ChatScreen {
 
         let should_recreate_bot_context = store.bot_context.is_none();
 
-        if (self.first_render || should_recreate_bot_context) && !self.creating_bot_context {
+        if (self.first_render || should_recreate_bot_context) && !self.creating_clients {
             self.create_bot_context(cx, scope);
             self.first_render = false;
         }
@@ -137,6 +138,12 @@ impl WidgetMatchEvent for ChatScreen {
 impl ChatScreen {
     fn create_bot_context(&mut self, cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
+
+        let chat_controller = store
+            .chat_controller
+            .as_ref()
+            .expect("Chat controller not initialized")
+            .clone();
 
         let multi_client = {
             let mut multi_client = MultiClient::new();
@@ -239,24 +246,31 @@ impl ChatScreen {
             multi_client
         };
 
-        let mut context: BotContext = multi_client.into();
         let tool_manager = store.create_and_load_mcp_tool_manager();
         tool_manager
             .set_dangerous_mode_enabled(store.preferences.get_mcp_servers_dangerous_mode_enabled());
-        context.set_tool_manager(tool_manager);
 
-        store.bot_context = Some(context.clone());
+        chat_controller
+            .lock()
+            .unwrap()
+            .set_tool_manager(Some(tool_manager));
+
+        chat_controller
+            .lock()
+            .unwrap()
+            .dispatch_task(ChatTask::Load);
+
         self.chats_deck(id!(chats_deck))
             .sync_bot_contexts(cx, scope);
 
-        self.creating_bot_context = true;
+        self.creating_clients = true;
 
         let ui = self.ui_runner();
         spawn(async move {
             let _ = context.load().await;
 
             ui.defer_with_redraw(move |me, cx, scope| {
-                me.creating_bot_context = false;
+                me.creating_clients = false;
 
                 // Update the bot_context with loaded bots and re-sync
                 let store = scope.data.get_mut::<Store>().unwrap();

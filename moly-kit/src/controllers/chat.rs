@@ -342,13 +342,13 @@ impl ChatController {
         self.dispatch_mutation(VecMutation::RemoveMany::<Message>(indices_to_remove.into()));
     }
 
-    /// Changes the client used by this controller when sending messages.
-    pub fn set_client<C>(&mut self, client: C)
-    where
-        C: BotClient + 'static,
-    {
-        self.client = Some(Box::new(client));
-        self.state.bots.clear();
+    /// Changes the client used by this controller when sending messages and laoding bots.
+    ///
+    /// NOTE: Calling this will reset the current bots and load status.
+    pub fn set_client(&mut self, client: Option<Box<dyn BotClient>>) {
+        self.client = client;
+        self.dispatch_mutation(VecMutation::<Bot>::Clear);
+        self.dispatch_mutation(ChatStateMutation::SetLoadStatus(Status::Idle));
     }
 
     fn handle_load(&mut self) {
@@ -446,8 +446,8 @@ impl ChatController {
         self.tool_manager.as_mut()
     }
 
-    pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
-        self.tool_manager = Some(tool_manager);
+    pub fn set_tool_manager(&mut self, tool_manager: Option<McpManagerClient>) {
+        self.tool_manager = tool_manager;
     }
 
     fn handle_execute(&mut self, tool_calls: Vec<ToolCall>, bot_id: Option<BotId>) {
@@ -556,6 +556,16 @@ impl ChatController {
             });
         }));
     }
+
+    /// Shorthand for removing the client, tool manager, bots and resetting load status.
+    // NOTE: This has been added to simplify the migration for Moly, replacing all
+    // `store.bot_context = None` that were before, but is an obscure functionality.
+    pub fn reset_connections(&mut self) {
+        self.client = None;
+        self.tool_manager = None;
+        self.dispatch_mutation(VecMutation::<Bot>::Clear);
+        self.dispatch_mutation(ChatStateMutation::SetLoadStatus(Status::Idle));
+    }
 }
 
 /// Util that wraps the stream of `send()` and gives you a stream less agresive to
@@ -623,7 +633,7 @@ impl ChatControllerBuilder {
     where
         C: BotClient + 'static,
     {
-        self.0.lock().unwrap().set_client(client);
+        self.0.lock().unwrap().set_client(Some(Box::new(client)));
         self
     }
 
@@ -644,7 +654,7 @@ impl ChatControllerBuilder {
     }
 
     pub fn with_tool_manager(self, tool_manager: McpManagerClient) -> Self {
-        self.0.lock().unwrap().set_tool_manager(tool_manager);
+        self.0.lock().unwrap().set_tool_manager(Some(tool_manager));
         self
     }
 

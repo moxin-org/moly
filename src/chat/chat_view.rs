@@ -539,3 +539,9 @@ fn update_attachments_with_persisted_key<'m>(
 
     found
 }
+
+pub struct Plugin {
+    ui: UiRunner<ChatView>,
+}
+
+impl
