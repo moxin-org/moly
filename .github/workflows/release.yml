@@ -240,9 +240,10 @@ jobs:
           security list-keychain -d user -s $KEYCHAIN_PATH
 
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(security cms -D -i $PP_PATH))
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+
           echo "PROFILE_PATH=$PROFILE_UUID" >> $GITHUB_ENV
 
           CERT_FINGERPRINT=$(security find-certificate -c "Apple Distribution" -a -Z $KEYCHAIN_PATH | grep SHA-1 | head -n 1 | awk '{print $3}')
