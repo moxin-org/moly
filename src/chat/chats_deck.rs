@@ -11,6 +11,7 @@ use crate::data::chats::chat::Chat as ChatData;
 use crate::data::chats::chat::ChatID;
 use crate::data::store::Store;
 use crate::shared::actions::ChatAction;
+use crate::shared::bot_context::BotContext;
 
 live_design! {
     use link::theme::*;

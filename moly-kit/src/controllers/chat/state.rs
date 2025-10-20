@@ -1,7 +1,7 @@
-use crate::{display_name_from_namespaced, protocol::*, utils::vec::*};
+use crate::{protocol::*, utils::vec::*};
 
 /// Represents a generic status in which an operation can be.
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub enum Status {
     #[default]
     Idle,
