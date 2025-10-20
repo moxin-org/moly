@@ -32,7 +32,7 @@ pub enum VecMutation<T: Clone> {
     ///
     /// Splice is capable of both inserting and removing elements.
     ///
-    /// When analyzed as a [`VecLog`], this mutation is equivalent to a `Remove` followed by an `Insert`.
+    /// When analyzed as a [`VecEffect`], this mutation is equivalent to a `Remove` followed by an `Insert`.
     Splice(usize, usize, Vec<T>),
     /// Inserts many elements at the given index.
     ///
@@ -60,7 +60,7 @@ pub enum VecMutation<T: Clone> {
     RemoveOne(usize),
     /// Remove many sparse elements at once.
     ///
-    /// When analyzed as a [`VecLog`], this mutation is equivalent to multiple sparse `Remove`s.
+    /// When analyzed as a [`VecEffect`], this mutation is equivalent to multiple sparse `Remove`s.
     ///
     /// Note: This is more efficient than multiple `RemoveOne` mutations, as all
     /// removals are performed in a single `retain` pass. However, building the
@@ -68,7 +68,7 @@ pub enum VecMutation<T: Clone> {
     RemoveMany(IndexSet),
     /// Removes the last element from the vec.
     ///
-    /// When analyzed as a [`VecLog`], this mutation is equivalent to a `Remove`.
+    /// When analyzed as a [`VecEffect`], this mutation is equivalent to a `Remove`.
     RemoveLast,
     /// Removes all elements from the vec.
     ///
@@ -76,15 +76,15 @@ pub enum VecMutation<T: Clone> {
     Clear,
     /// Updates the element at the given index.
     ///
-    /// When analyzed as a [`VecLog`], this mutation is equivalent to an `Update`.
+    /// When analyzed as a [`VecEffect`], this mutation is equivalent to an `Update`.
     Update(usize, T),
     /// Updates the last element in the vec.
     ///
-    /// When analyzed as a [`VecLog`], this mutation is equivalent to an `Update`.
+    /// When analyzed as a [`VecEffect`], this mutation is equivalent to an `Update`.
     UpdateLast(T),
     /// Replaces the entire contents of the vec with the given elements.
     ///
-    /// When analyzed as a [`VecLog`], this mutation is equivalent to a `Remove`
+    /// When analyzed as a [`VecEffect`], this mutation is equivalent to a `Remove`
     /// of the full previous contents followed by an `Insert` of the new contents.
     Set(Vec<T>),
 }
@@ -183,58 +183,63 @@ impl<T: Clone> VecMutation<T> {
         VecMutation::RemoveMany(IndexSet::from(indices))
     }
 
-    pub fn log<'a>(&'a self, target: &'a [T]) -> Box<dyn Iterator<Item = VecLog<'a, T>> + 'a> {
+    pub fn effect<'a>(
+        &'a self,
+        target: &'a [T],
+    ) -> Box<dyn Iterator<Item = VecEffect<'a, T>> + 'a> {
         match self {
             Self::Splice(start, end, items) => Box::new(
-                std::iter::once(VecLog::Remove(*start, *end, &target[*start..*end]))
-                    .chain(std::iter::once(VecLog::Insert(*start, items))),
+                std::iter::once(VecEffect::Remove(*start, *end, &target[*start..*end]))
+                    .chain(std::iter::once(VecEffect::Insert(*start, items))),
             ),
             Self::InsertMany(index, items) => {
-                Box::new(std::iter::once(VecLog::Insert(*index, items)))
+                Box::new(std::iter::once(VecEffect::Insert(*index, items)))
             }
-            Self::InsertOne(index, item) => Box::new(std::iter::once(VecLog::Insert(
+            Self::InsertOne(index, item) => Box::new(std::iter::once(VecEffect::Insert(
                 *index,
                 std::slice::from_ref(item),
             ))),
-            Self::Extend(items) => Box::new(std::iter::once(VecLog::Insert(target.len(), items))),
-            Self::Push(item) => Box::new(std::iter::once(VecLog::Insert(
+            Self::Extend(items) => {
+                Box::new(std::iter::once(VecEffect::Insert(target.len(), items)))
+            }
+            Self::Push(item) => Box::new(std::iter::once(VecEffect::Insert(
                 target.len(),
                 std::slice::from_ref(item),
             ))),
-            Self::RemoveRange(start, end) => Box::new(std::iter::once(VecLog::Remove(
+            Self::RemoveRange(start, end) => Box::new(std::iter::once(VecEffect::Remove(
                 *start,
                 *end,
                 &target[*start..*end],
             ))),
-            Self::RemoveOne(index) => Box::new(std::iter::once(VecLog::Remove(
+            Self::RemoveOne(index) => Box::new(std::iter::once(VecEffect::Remove(
                 *index,
                 index + 1,
                 &target[*index..*index + 1],
             ))),
-            Self::RemoveMany(indices) => Box::new(
-                indices
-                    .iter()
-                    .map(move |&index| VecLog::Remove(index, index + 1, &target[index..index + 1])),
-            ),
-            Self::Clear => Box::new(std::iter::once(VecLog::Remove(0, target.len(), target))),
-            Self::RemoveLast => Box::new(std::iter::once(VecLog::Remove(
+            Self::RemoveMany(indices) => {
+                Box::new(indices.iter().map(move |&index| {
+                    VecEffect::Remove(index, index + 1, &target[index..index + 1])
+                }))
+            }
+            Self::Clear => Box::new(std::iter::once(VecEffect::Remove(0, target.len(), target))),
+            Self::RemoveLast => Box::new(std::iter::once(VecEffect::Remove(
                 target.len() - 1,
                 target.len(),
                 &target[target.len() - 1..],
             ))),
-            Self::Update(index, item) => Box::new(std::iter::once(VecLog::Update(
+            Self::Update(index, item) => Box::new(std::iter::once(VecEffect::Update(
                 *index,
                 &target[*index],
                 item,
             ))),
-            Self::UpdateLast(item) => Box::new(std::iter::once(VecLog::Update(
+            Self::UpdateLast(item) => Box::new(std::iter::once(VecEffect::Update(
                 target.len() - 1,
                 &target[target.len() - 1],
                 item,
             ))),
             Self::Set(items) => Box::new(
-                std::iter::once(VecLog::Remove(0, target.len(), target))
-                    .chain(std::iter::once(VecLog::Insert(0, items))),
+                std::iter::once(VecEffect::Remove(0, target.len(), target))
+                    .chain(std::iter::once(VecEffect::Insert(0, items))),
             ),
         }
     }
@@ -243,7 +248,7 @@ impl<T: Clone> VecMutation<T> {
 /// A primitive operation that will be performed on a `Vec<T>` as a result of a
 /// higher level and more optimized [`VecMutation`].
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum VecLog<'a, T> {
+pub enum VecEffect<'a, T> {
     /// The given NEW items will be inserted at the given index.
     ///
     /// Means the length of the list will INCREASE by the length of `items`.

@@ -873,7 +873,7 @@ impl Chat {
     fn unlink_current_controller(&mut self) {
         if let Some(plugin_id) = self.plugin_id {
             if let Some(controller) = self.chat_controller.as_ref() {
-                controller.lock().unwrap().unregister_plugin(plugin_id);
+                controller.lock().unwrap().remove_plugin(plugin_id);
             }
         }
 

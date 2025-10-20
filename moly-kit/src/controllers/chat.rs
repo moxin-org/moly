@@ -125,8 +125,21 @@ impl ChatController {
     }
 
     /// Unregisters a previously registered plugin.
-    pub fn unregister_plugin(&mut self, id: ChatControllerPluginRegistrationId) {
+    pub fn remove_plugin(&mut self, id: ChatControllerPluginRegistrationId) {
         self.plugins.retain(|(plugin_id, _)| *plugin_id != id);
+    }
+
+    pub fn plugins(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            ChatControllerPluginRegistrationId,
+            &dyn ChatControllerPlugin,
+        ),
+    > {
+        self.plugins
+            .iter()
+            .map(|(id, plugin)| (*id, plugin.as_ref()))
     }
 
     /// Read-only access to state.
