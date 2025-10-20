@@ -149,7 +149,6 @@ desktop_template = "./packaging/moly.desktop"
 section = "utils"
 
 [package.metadata.packager.macos]
-signing_identity = "Developer ID Application: Julian Montes de Oca (Y6MN6N88UF)"
 minimum_system_version = "11.0"
 infoPlistPath = "./packaging/Info.plist"
 
