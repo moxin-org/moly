@@ -142,6 +142,47 @@ impl ChatController {
             .map(|(id, plugin)| (*id, plugin.as_ref()))
     }
 
+    pub fn plugins_mut<'a>(
+        &'a mut self,
+    ) -> impl Iterator<
+        Item = (
+            ChatControllerPluginRegistrationId,
+            &'a mut dyn ChatControllerPlugin,
+        ),
+    > + 'a {
+        self.plugins
+            .iter_mut()
+            .map(|(id, plugin)| (*id, plugin.as_mut() as &mut dyn ChatControllerPlugin))
+    }
+
+    pub fn plugins_as<P>(&self) -> impl Iterator<Item = (ChatControllerPluginRegistrationId, &P)>
+    where
+        P: ChatControllerPlugin + 'static,
+    {
+        self.plugins.iter().filter_map(|(id, plugin)| {
+            if let Some(plugin) = (&*plugin as &dyn std::any::Any).downcast_ref::<P>() {
+                Some((*id, plugin))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn plugins_mut_as<P>(
+        &mut self,
+    ) -> impl Iterator<Item = (ChatControllerPluginRegistrationId, &mut P)>
+    where
+        P: ChatControllerPlugin + 'static,
+    {
+        self.plugins.iter_mut().filter_map(|(id, plugin)| {
+            if let Some(plugin) = (&mut *plugin as &mut dyn std::any::Any).downcast_mut::<P>() {
+                Some((*id, plugin))
+            } else {
+                None
+            }
+        })
+    }
+
     /// Read-only access to state.
     pub fn state(&self) -> &ChatState {
         &self.state

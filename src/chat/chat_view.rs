@@ -305,40 +305,6 @@ impl ChatView {
             }
         }
     }
-
-
-
-
-
-
-
-
-
-
-    fn handle_store_sync(
-        &mut self,
-        store_chat: &mut crate::data::chats::chat::Chat,
-        range: &std::ops::Range<usize>,
-        replacement: &[Message],
-    ) {
-        // Apply the splice to the store chat.
-        store_chat
-            .messages
-            .splice(range.clone(), replacement.iter().cloned());
-
-        // Update the title if the first message changed (due to insert or update).
-        if range.start == 0 && !replacement.is_empty() {
-            store_chat.update_title_based_on_first_message();
-        }
-
-        // Write to disk.
-        store_chat.save_and_forget();
-
-        // Keep track of whether the message was updated while the chat view was inactive
-        if !self.focused {
-            self.message_updated_while_inactive = true;
-        }
-    }
 }
 
 impl ChatViewRef {
@@ -348,6 +314,29 @@ impl ChatViewRef {
             inner
                 .model_selector(id!(model_selector))
                 .set_chat_id(chat_id);
+
+            let mut chat = inner
+                .chat(id!(chat));
+
+            let chat = chat
+                .write();
+
+            let chat_controller = chat
+                .chat_controller();
+
+            let chat_controller = chat_controller
+                .as_ref()
+                .expect("chat controller missing");
+
+            let mut chat_controller = chat_controller
+                .lock()
+                .unwrap();
+
+            for (id, plugin) in chat_controller.plugins_mut_as::<Glue>() {
+                if id == inner.plugin_id.unwrap() {
+                    plugin.chat_id = Some(chat_id);
+                }
+            }
         }
     }
 
@@ -403,25 +392,40 @@ impl Glue {
 
         let mutation = mutation.clone();
 
-        self.ui.defer(move |_, _, scope| {
+        self.ui.defer(move |chat_view, _, scope| {
             let store = scope.data.get_mut::<Store>().unwrap();
 
             let Some(store_chat) = store.chats.get_chat_by_id(chat_id) else {
                 return;
             };
+            
+            let modified_first_message = mutation.effects(&store_chat.borrow().messages).any(|effect| {
+                match effect {
+                    VecEffect::Insert(index, _) | VecEffect::Update(index, _, _) => index == 0,
+                    VecEffect::Remove(_, _, _) => false,
+                }
+            });
 
             mutation.apply(&mut store_chat.borrow_mut().messages);
+
+            if modified_first_message {
+                store_chat.borrow_mut().update_title_based_on_first_message();
+            }
+
+            // Write to disk.
+            store_chat.borrow_mut().save_and_forget();
+
+            // Keep track of whether the message was updated while the chat view was inactive
+            if !chat_view.focused {
+                chat_view.message_updated_while_inactive = true;
+            }
         });
     }
 
     fn mark_attachments(&mut self, mutation: &VecMutation<Message>, state: &ChatState) {
-        let Some(chat_id) = self.chat_id else {
-            return;
-        };
-
         self.marked_attachments.clear();
 
-        for effect in mutation.effect(&state.messages) {
+        for effect in mutation.effects(&state.messages) {
             match effect {
                 VecEffect::Insert(_, messages) => {
                     // Dev note: To make this reusable outside of Moly, attachment inserts

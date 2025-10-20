@@ -183,7 +183,7 @@ impl<T: Clone> VecMutation<T> {
         VecMutation::RemoveMany(IndexSet::from(indices))
     }
 
-    pub fn effect<'a>(
+    pub fn effects<'a>(
         &'a self,
         target: &'a [T],
     ) -> Box<dyn Iterator<Item = VecEffect<'a, T>> + 'a> {
