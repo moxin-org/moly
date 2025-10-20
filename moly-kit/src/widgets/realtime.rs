@@ -1,4 +1,4 @@
-use crate::protocol::todo::*;
+use crate::controllers::chat::ChatController;
 use crate::widgets::{
     avatar::AvatarWidgetRefExt, slot::SlotWidgetRefExt,
     standard_message_content::StandardMessageContentWidgetRefExt,
@@ -588,7 +588,7 @@ pub struct Realtime {
     bot_entity_id: Option<EntityId>,
 
     #[rust]
-    bot_context: Option<BotContext>,
+    chat_controller: Option<Arc<Mutex<ChatController>>>,
 
     #[rust]
     pending_tool_call: Option<(String, String, String)>, // (name, call_id, arguments)
@@ -891,8 +891,8 @@ impl Realtime {
         }
     }
 
-    pub fn set_bot_context(&mut self, bot_context: Option<BotContext>) {
-        self.bot_context = bot_context;
+    pub fn set_chat_controller(&mut self, chat_controller: Option<Arc<Mutex<ChatController>>>) {
+        self.chat_controller = chat_controller;
     }
 
     fn try_start_pending_conversation(&mut self, cx: &mut Cx) {
@@ -1205,10 +1205,12 @@ impl Realtime {
                 } => {
                     // Check if dangerous mode is enabled to auto-approve function calls
                     let dangerous_mode_enabled = self
-                        .bot_context
+                        .chat_controller
                         .as_ref()
                         .map(|ctx| {
-                            ctx.tool_manager()
+                            ctx.lock()
+                                .unwrap()
+                                .tool_manager()
                                 .map(|tm| tm.get_dangerous_mode_enabled())
                                 .unwrap_or(false)
                         })
@@ -1320,7 +1322,7 @@ impl Realtime {
         call_id: String,
         arguments: String,
     ) {
-        let Some(context) = self.bot_context.as_ref().cloned() else {
+        let Some(chat_controller) = self.chat_controller.as_ref().cloned() else {
             ::log::error!("No bot context available for function call");
             if let Some(channel) = &self.realtime_channel {
                 let error_result = serde_json::json!({
@@ -1337,7 +1339,7 @@ impl Realtime {
             return;
         };
 
-        let Some(tool_manager) = context.tool_manager() else {
+        let Some(tool_manager) = chat_controller.lock().unwrap().tool_manager().cloned() else {
             ::log::error!("No tool manager available for function call");
             if let Some(channel) = &self.realtime_channel {
                 let error_result = serde_json::json!({
@@ -1708,9 +1710,9 @@ impl RealtimeRef {
         }
     }
 
-    pub fn set_bot_context(&mut self, bot_context: Option<BotContext>) {
+    pub fn set_chat_controller(&mut self, chat_controller: Option<Arc<Mutex<ChatController>>>) {
         if let Some(mut inner) = self.borrow_mut() {
-            inner.set_bot_context(bot_context);
+            inner.set_chat_controller(chat_controller);
         }
     }
 }
