@@ -268,12 +268,130 @@ jobs:
               run-device -p moly --release
           fi
 
-      - name: Patch Info.plist for App Store
+      - name: Compile Asset Catalog and patch Info.plist for App Store
         if: ${{ github.event.inputs.build_ios == 'release' || github.event.inputs.build_ios == 'all' }}
         run: |
-          # Merge iOS-specific plist keys into the built app
-          /usr/libexec/PlistBuddy -c "Merge ./packaging/Info-iOS.plist" \
-            ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app/Info.plist
+          # Create asset catalog directory structure
+          mkdir -p /tmp/Assets.xcassets/AppIcon.appiconset
+
+          # Create Contents.json for the asset catalog
+          cat > /tmp/Assets.xcassets/AppIcon.appiconset/Contents.json << 'EOF'
+          {
+            "images" : [
+              {
+                "filename" : "AppIcon-60@2x.png",
+                "idiom" : "iphone",
+                "scale" : "2x",
+                "size" : "60x60"
+              },
+              {
+                "filename" : "AppIcon-60@3x.png",
+                "idiom" : "iphone",
+                "scale" : "3x",
+                "size" : "60x60"
+              },
+              {
+                "filename" : "AppIcon-76@2x.png",
+                "idiom" : "ipad",
+                "scale" : "2x",
+                "size" : "76x76"
+              },
+              {
+                "filename" : "AppIcon-83.5@2x.png",
+                "idiom" : "ipad",
+                "scale" : "2x",
+                "size" : "83.5x83.5"
+              },
+              {
+                "filename" : "AppIcon-1024.png",
+                "idiom" : "ios-marketing",
+                "scale" : "1x",
+                "size" : "1024x1024"
+              }
+            ],
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          EOF
+
+          # Copy icon files with correct naming for asset catalog
+          cp ./packaging/ios-icons/AppIcon120x120.png /tmp/Assets.xcassets/AppIcon.appiconset/AppIcon-60@2x.png
+          cp ./packaging/ios-icons/AppIcon180x180.png /tmp/Assets.xcassets/AppIcon.appiconset/AppIcon-60@3x.png
+          cp ./packaging/ios-icons/AppIcon152x152.png /tmp/Assets.xcassets/AppIcon.appiconset/AppIcon-76@2x.png
+          cp ./packaging/ios-icons/AppIcon167x167.png /tmp/Assets.xcassets/AppIcon.appiconset/AppIcon-83.5@2x.png
+          cp ./packaging/ios-icons/AppIcon1024x1024.png /tmp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
+
+          # Compile asset catalog into Assets.car file
+          xcrun actool /tmp/Assets.xcassets \
+            --compile ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app \
+            --platform iphoneos \
+            --minimum-deployment-target 14.0 \
+            --app-icon AppIcon \
+            --output-partial-info-plist /tmp/AssetInfo.plist
+
+          # Navigate to app bundle directory
+          cd ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app
+
+          # Merge actool's generated plist (contains CFBundleIcons dictionary)
+          /usr/libexec/PlistBuddy -c "Merge /tmp/AssetInfo.plist" Info.plist
+
+          # Manually add iOS-specific keys (required by Apple for App Store submission)
+          # Note: We add them directly instead of merging packaging/Info-iOS.plist
+
+          # Add CFBundlePackageType (required)
+          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" Info.plist
+
+          # Add CFBundleIconName for asset catalog (required for iOS 11+)
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIconName AppIcon" Info.plist
+
+          # Add UILaunchScreen dictionary (required for iPad multitasking)
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen:UIImageName string AppIcon60x60" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :UILaunchScreen:UIImageName AppIcon60x60" Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UILaunchScreen:UIColorName string LaunchScreenBackground" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :UILaunchScreen:UIColorName LaunchScreenBackground" Info.plist
+
+          # Add encryption declaration (required for TestFlight external testing)
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" Info.plist
+
+          # Set version keys (cargo-makepad generates hardcoded "1.0.0", we must override)
+          # Strip non-numeric suffixes from version (Apple requires numeric-only)
+          VERSION=$(cd $GITHUB_WORKSPACE && cargo metadata --no-deps --format-version 1 --frozen | jq -r '.packages[0].version' | sed 's/-.*$//')
+          BUILD_NUMBER="${{ github.run_number }}"  # Auto-increment using GitHub run number
+
+          echo "Setting iOS bundle versions: $VERSION (build: $BUILD_NUMBER)"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" Info.plist
+
+          # Verify all required keys are present
+          echo "✅ Bundle configuration:"
+          echo "  Version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"
+          echo "  Build: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Info.plist)"
+          echo "  Package Type: $(/usr/libexec/PlistBuddy -c 'Print :CFBundlePackageType' Info.plist)"
+          echo "  Icon Name: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' Info.plist)"
+          echo "  Encryption: $(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' Info.plist)"
+
+          # Return to workspace
+          cd $GITHUB_WORKSPACE
+
+          # Extract entitlements from provisioning profile for re-signing
+          security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_PATH}.mobileprovision | \
+            /usr/libexec/PlistBuddy -x -c "Print :Entitlements" /dev/stdin > /tmp/entitlements.plist
+
+          # Re-sign the app after modifying Info.plist and adding asset catalog
+          # (modifying the bundle invalidates the original signature)
+          codesign --force --deep --sign "$CERT_FINGERPRINT" \
+            --entitlements /tmp/entitlements.plist \
+            --timestamp=none \
+            ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app
+
+          # Verify the signature is valid
+          codesign -vvv ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app
 
           echo "Patched Info.plist contents:"
           plutil -p ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app/Info.plist
@@ -294,9 +412,13 @@ jobs:
 
           if [[ "${{ github.event.inputs.build_ios }}" == "release" || "${{ github.event.inputs.build_ios }}" == "all" ]]; then
             cd ./target/makepad-apple-app/aarch64-apple-ios/release
-            mkdir Payload
-            cp -r moly.app Payload/
-            zip -r "Moly-${VERSION}-ios.ipa" Payload
+
+            # Use ditto to preserve macOS extended attributes (required by Apple validation)
+            ditto moly.app Payload/moly.app
+
+            # Create IPA using ditto (preserves Info.plist extended attributes)
+            ditto -c -k --sequesterRsrc --keepParent Payload "Moly-${VERSION}-ios.ipa"
+
             gh release upload ${{ github.event.inputs.release_tags }} "Moly-${VERSION}-ios.ipa" --clobber
 
             # Save IPA path for TestFlight upload
