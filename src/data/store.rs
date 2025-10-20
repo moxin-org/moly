@@ -75,7 +75,7 @@ pub struct Store {
     pub downloads: Downloads,
     pub chats: Chats,
     pub preferences: Preferences,
-    pub chat_controller: Option<Arc<Mutex<ChatController>>>,
+    pub chat_controller: Arc<Mutex<ChatController>>,
     moly_client: MolyClient,
     pub provider_syncing_status: ProviderSyncingStatus,
 
@@ -104,7 +104,7 @@ impl Store {
                 chats,
                 moly_client,
                 preferences,
-                chat_controller: None,
+                chat_controller: ChatController::new_arc(),
                 provider_syncing_status: ProviderSyncingStatus::NotSyncing,
                 provider_icons: vec![],
             };
@@ -442,12 +442,10 @@ impl Store {
         // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
         // Update in MolyKit (to update the API key used by the client, if needed)
-        if let Some(chat_controller) = &self.chat_controller {
-            // Because MolyKit does not currently expose an API to update the clients, we'll reset the controller
-            // TODO(MolyKit): Find a better way to do this
-            chat_controller.lock().unwrap().set_client(None);
-            chat_controller.lock().unwrap().set_tool_manager(None);
-        }
+        // Because MolyKit does not currently expose an API to update the clients, we'll reset the controller
+        // TODO(MolyKit): Find a better way to do this
+        self.chat_controller.lock().unwrap().set_client(None);
+        self.chat_controller.lock().unwrap().set_tool_manager(None);
     }
 
     pub fn remove_provider(&mut self, provider_id: &ProviderID) {
@@ -522,21 +520,16 @@ impl Store {
 
     pub fn update_mcp_tool_manager(&mut self) {
         let new_tool_manager = self.create_and_load_mcp_tool_manager();
-        if let Some(ref chat_controller) = self.chat_controller {
-            chat_controller
-                .lock()
-                .unwrap()
-                .set_tool_manager(Some(new_tool_manager));
-        }
+        self.chat_controller
+            .lock()
+            .unwrap()
+            .set_tool_manager(Some(new_tool_manager));
     }
 
     pub fn set_mcp_servers_enabled(&mut self, enabled: bool) {
         self.preferences.set_mcp_servers_enabled(enabled);
-        // Recreate bot context to apply the new MCP setting
-        if let Some(ref chat_controller) = self.chat_controller {
-            chat_controller.lock().unwrap().set_client(None); // TODO: is this one necessary?
-            chat_controller.lock().unwrap().set_tool_manager(None);
-        }
+        // Reset controller to apply the new MCP setting
+        self.chat_controller.lock().unwrap().reset_connections();
     }
 
     pub fn set_mcp_servers_dangerous_mode_enabled(&mut self, enabled: bool) {
