@@ -1,8 +1,6 @@
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
 
 use makepad_widgets::*;
-use moly_kit::controllers::chat::ChatController;
 use moly_kit::*;
 
 use super::chat_view::ChatViewRef;
@@ -195,7 +193,7 @@ impl ChatsDeck {
         &mut self,
         cx: &mut Cx,
         chat: &ChatData,
-        chat_controller: Option<Arc<Mutex<ChatController>>>,
+        bot_context: Option<BotContext>,
     ) {
         let mut chat_view_to_update;
         // If the chat view already exists, update it
@@ -210,7 +208,7 @@ impl ChatsDeck {
             chat_view
                 .chat(id!(chat))
                 .write()
-                .set_chat_controller(cx, chat_controller.clone());
+                .set_bot_context(cx, bot_context);
             chat_view.as_chat_view().set_chat_id(chat.id);
 
             self.chat_view_refs

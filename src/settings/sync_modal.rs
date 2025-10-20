@@ -510,13 +510,7 @@ impl SyncModal {
             Ok(_) => {
                 self.label(id!(status_message))
                     .set_text(cx, "Import successful");
-                store
-                    .chat_controller
-                    .as_ref()
-                    .expect("Chat controller missing")
-                    .lock()
-                    .unwrap()
-                    .reset_connections();
+                store.bot_context = None;
                 store.load_preference_connections();
 
                 if include_mcp_servers {
