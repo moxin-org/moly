@@ -318,8 +318,12 @@ jobs:
           cd $GITHUB_WORKSPACE
 
           # Extract entitlements from provisioning profile for re-signing
+          echo "Extracting entitlements from provisioning profile..."
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_PATH}.mobileprovision
           security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_PATH}.mobileprovision > /tmp/profile.plist
+          echo "Decoded provisioning profile to /tmp/profile.plist"
           /usr/libexec/PlistBuddy -x -c "Print :Entitlements" /tmp/profile.plist > /tmp/entitlements.plist
+          echo "Extracted entitlements to /tmp/entitlements.plist"
 
           # Re-sign the app after modifying Info.plist and adding asset catalog
           # (modifying the bundle invalidates the original signature)
