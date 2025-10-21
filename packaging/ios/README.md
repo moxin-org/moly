@@ -75,7 +75,7 @@ For manual builds, see [MANUAL_BUILD.md](./MANUAL_BUILD.md) for a complete copy-
 
 ## Important Technical Details
 
-### Why Asset Catalog is Required
+### Asset Catalog
 
 Apple requires iOS 11+ apps to use Asset Catalogs for app icons. The `actool` command compiles PNG icons into an `Assets.car` file that satisfies Apple's requirements. Loose PNG files are no longer accepted for App Store submission.
 
@@ -94,10 +94,6 @@ Apple requires specific version formats:
 - `CFBundleVersion`: Build number (e.g., `42`, `100`)
 
 cargo-makepad generates hardcoded version `1.0.0`, so we override it using PlistBuddy after the build.
-
-### Binary Naming
-
-The main Moly app binary is named `_moly_app` in `Cargo.toml` to avoid conflicts with the `moly-runner` binary. For iOS builds, we temporarily rename it to `moly` because cargo-makepad expects this name.
 
 ### IPA Packaging
 
@@ -121,7 +117,7 @@ Run the re-signing step again. Any modification to the app bundle (adding files,
 Ensure:
 1. The asset catalog was compiled successfully (check for `Assets.car` in the app bundle)
 2. Info.plist has `CFBundleIconName = "AppIcon"`
-3. All required icon sizes exist in `packaging/ios-icons/`
+3. All required icon sizes exist in `packaging/ios/icons/`
 
 ### Upload fails with authentication errors
 

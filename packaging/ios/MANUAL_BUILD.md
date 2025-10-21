@@ -54,7 +54,7 @@ cargo makepad apple ios --org=org.moxin --app=moly \
 # =============================================================================
 
 # Compile pre-built asset catalog into Assets.car file
-xcrun actool ./packaging/ios-icons/Assets.xcassets \
+xcrun actool ./packaging/ios/icons/Assets.xcassets \
   --compile ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app \
   --platform iphoneos \
   --minimum-deployment-target 14.0 \
@@ -213,7 +213,7 @@ Error: could not find device "IPhone"
 
 **Asset catalog errors:**
 - Verify `Assets.car` exists in the app bundle after Step 2
-- Check that all icon files exist in `packaging/ios-icons/`
+- Check that all icon files exist in `packaging/ios/icons/`
 
 **Upload authentication errors:**
 - Verify API key file exists at `~/private_keys/AuthKey_<YOUR_KEY_ID>.p8`

@@ -262,7 +262,7 @@ jobs:
       - name: Compile Asset Catalog and patch Info.plist for App Store
         run: |
           # Compile pre-built asset catalog into Assets.car file
-          xcrun actool ./packaging/ios-icons/Assets.xcassets \
+          xcrun actool ./packaging/ios/icons/Assets.xcassets \
             --compile ./target/makepad-apple-app/aarch64-apple-ios/release/moly.app \
             --platform iphoneos \
             --minimum-deployment-target 14.0 \
