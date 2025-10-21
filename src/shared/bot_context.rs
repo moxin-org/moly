@@ -100,6 +100,7 @@ impl BotContext {
     /// This is a glue function while migrating away from [`BotContext`].
     pub fn synchronize_to(&self, chat_controller: &mut ChatController) {
         chat_controller.set_tool_manager(self.tool_manager());
+        chat_controller.set_client(Some(self.client()));
         chat_controller.dispatch_mutation(VecMutation::Set(self.bots().clone()));
         chat_controller.dispatch_mutation(ChatStateMutation::SetLoadStatus(
             self.0.lock().unwrap().status,

@@ -138,9 +138,10 @@ pub struct ChatView {
     // `chat_deck.rs` uses `WidgetRef::new_from_ptr` where `after_new_from_doc` is
     // not yet called and then tries to work with data from the widget, so ensuring
     // a controller is ready is necessary.
+    // Do not expose this mutably unless you handle plugin unlinking on controller swap.
     // The plugin is still constructed in `after_new_from_doc`.
     #[rust(ChatController::new_arc())]
-    pub chat_controller: Arc<Mutex<ChatController>>,
+    chat_controller: Arc<Mutex<ChatController>>,
 
     #[rust]
     message_updated_while_inactive: bool,
@@ -330,6 +331,10 @@ impl ChatView {
 
             bot_context.synchronize_to(&mut controller);
         }
+    }
+
+    pub fn chat_controller(&self) -> &Arc<Mutex<ChatController>> {
+        &self.chat_controller
     }
 }
 

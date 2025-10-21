@@ -205,7 +205,7 @@ impl ChatsDeck {
         if chat_view_to_update
             .borrow()
             .unwrap()
-            .chat_controller
+            .chat_controller()
             .lock()
             .unwrap()
             .state()
@@ -215,7 +215,7 @@ impl ChatsDeck {
             chat_view_to_update
                 .borrow()
                 .unwrap()
-                .chat_controller
+                .chat_controller()
                 .lock()
                 .unwrap()
                 .dispatch_mutation(VecMutation::Set(chat_data.messages.clone()));
