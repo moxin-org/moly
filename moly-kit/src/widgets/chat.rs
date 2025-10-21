@@ -857,9 +857,10 @@ impl Chat {
             };
             self.plugin_id = Some(guard.append_plugin(plugin));
 
-            if guard.state().load_status == Status::Idle {
-                guard.dispatch_task(ChatTask::Load);
-            }
+            // maybe not good idea to trigger a load implicitly
+            // if guard.state().load_status == Status::Idle {
+            //     guard.dispatch_task(ChatTask::Load);
+            // }
         }
 
         // TODO: Probably doesn't make sense.
