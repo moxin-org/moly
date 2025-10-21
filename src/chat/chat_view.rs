@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_kit::controllers::chat::{ChatControllerPlugin, ChatControllerPluginRegistrationId, ChatState, ChatStateMutation};
+use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin, ChatControllerPluginRegistrationId, ChatState, ChatStateMutation};
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::utils::vec::{VecEffect, VecMutation};
 use moly_kit::*;
@@ -130,7 +130,17 @@ pub struct ChatView {
     plugin_id: Option<ChatControllerPluginRegistrationId>,
 
     #[rust]
+    last_bot_context_id: Option<usize>,
+
+    #[rust]
     focused: bool,
+
+    // `chat_deck.rs` uses `WidgetRef::new_from_ptr` where `after_new_from_doc` is
+    // not yet called and then tries to work with data from the widget, so ensuring
+    // a controller is ready is necessary.
+    // The plugin is still constructed in `after_new_from_doc`.
+    #[rust(ChatController::new_arc())]
+    pub chat_controller: Arc<Mutex<ChatController>>,
 
     #[rust]
     message_updated_while_inactive: bool,
@@ -139,16 +149,7 @@ pub struct ChatView {
 impl LiveHook for ChatView {
     fn after_new_from_doc(&mut self, _cx: &mut Cx) {
         self.prompt_input(id!(chat.prompt)).write().disable();
-
-        let plugin_id = self.chat(id!(chat))
-            .write()
-            .chat_controller()
-            .as_ref()
-            .expect("chat controller missing")
-            .lock()
-            .unwrap()
-            .append_plugin(Glue::new(self.ui_runner()));
-
+        let plugin_id = self.chat_controller.lock().unwrap().append_plugin(Glue::new(self.ui_runner()));
         self.plugin_id = Some(plugin_id);
     }
 }
@@ -171,6 +172,8 @@ impl Drop for ChatView {
 
 impl Widget for ChatView {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.synchronize_bot_context_with_chat_controller(scope);
+
         self.ui_runner().handle(cx, event, scope, self);
         self.widget_match_event(cx, event, scope);
         self.view.handle_event(cx, event, scope);
@@ -180,6 +183,8 @@ impl Widget for ChatView {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.synchronize_bot_context_with_chat_controller(scope);
+
         // On mobile, only set padding on top of the prompt
         // TODO: do this with AdaptiveView instead of apply_over
         if !cx.display_context.is_desktop() && cx.display_context.is_screen_size_known() {
@@ -305,6 +310,25 @@ impl ChatView {
             }
         }
     }
+
+    pub fn synchronize_bot_context_with_chat_controller(&mut self, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+        
+        let Some(bot_context) = &store.bot_context else {
+            return;
+        };
+
+        if Some(bot_context.id()) != self.last_bot_context_id {
+            self.last_bot_context_id = Some(bot_context.id());
+
+            let chat = self.chat(id!(chat));
+            let chat = chat.read();
+            let controller = chat.chat_controller().expect("chat controller missing");
+            let mut controller = controller.lock().unwrap();
+
+            bot_context.synchronize_to(&mut controller);
+        }
+    }
 }
 
 impl ChatViewRef {
@@ -314,29 +338,6 @@ impl ChatViewRef {
             inner
                 .model_selector(id!(model_selector))
                 .set_chat_id(chat_id);
-
-            let mut chat = inner
-                .chat(id!(chat));
-
-            let chat = chat
-                .write();
-
-            let chat_controller = chat
-                .chat_controller();
-
-            let chat_controller = chat_controller
-                .as_ref()
-                .expect("chat controller missing");
-
-            let mut chat_controller = chat_controller
-                .lock()
-                .unwrap();
-
-            for (id, plugin) in chat_controller.plugins_mut_as::<Glue>() {
-                if id == inner.plugin_id.unwrap() {
-                    plugin.chat_id = Some(chat_id);
-                }
-            }
         }
     }
 
@@ -345,6 +346,8 @@ impl ChatViewRef {
             inner.focused = focused;
         }
     }
+
+    
 }
 
 #[must_use]
@@ -369,7 +372,6 @@ fn update_attachments_with_persisted_key<'m>(
 
 /// Glue between Moly and Moly Kit.
 pub struct Glue {
-    chat_id: Option<ChatID>,
     ui: UiRunner<ChatView>,
     marked_attachments: HashSet<Attachment>,
     persisting_attachments: Arc<Mutex<HashSet<Attachment>>>,
@@ -378,7 +380,6 @@ pub struct Glue {
 impl Glue {
     pub fn new(ui: UiRunner<ChatView>) -> Self {
         Self {
-            chat_id: None,
             ui,
             marked_attachments: HashSet::new(),
             persisting_attachments: Arc::new(Mutex::new(HashSet::new())),
@@ -386,16 +387,14 @@ impl Glue {
     }
 
     fn replicate_messages_mutation_to_store(&self, mutation: &VecMutation<Message>) {
-        let Some(chat_id) = self.chat_id else {
-            return;
-        };
+
 
         let mutation = mutation.clone();
 
         self.ui.defer(move |chat_view, _, scope| {
             let store = scope.data.get_mut::<Store>().unwrap();
 
-            let Some(store_chat) = store.chats.get_chat_by_id(chat_id) else {
+            let Some(store_chat) = store.chats.get_chat_by_id(chat_view.chat_id) else {
                 return;
             };
             
