@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use makepad_widgets::*;
+use moly_kit::utils::vec::VecMutation;
 use moly_kit::*;
 
 use super::chat_view::ChatViewRef;
@@ -75,19 +76,19 @@ impl Widget for ChatsDeck {
         // Sync the [BotContext] for chat views that are not currently streaming
         let store = scope.data.get_mut::<Store>().unwrap();
         for chat_view in self.chats_views_pending_sync.iter_mut() {
-            if chat_view
-                .messages(id!(chat.messages))
-                .read()
-                .messages
-                .last()
-                .unwrap()
-                .metadata
-                .is_idle()
-            {
-                chat_view
-                    .chat(id!(chat))
-                    .write()
-                    .set_bot_context(cx, store.bot_context.clone());
+            let chat = chat_view.chat(id!(chat));
+            let chat = chat.read();
+            let controller = chat
+                .chat_controller()
+                .expect("ChatController should be set");
+            let mut controller = controller.lock().unwrap();
+
+            if !controller.state().is_streaming {
+                store
+                    .bot_context
+                    .as_ref()
+                    .expect("BotContext should be set")
+                    .synchronize_to(&mut *controller);
             }
         }
     }
@@ -193,28 +194,37 @@ impl ChatsDeck {
     pub fn create_or_update_chat_view(
         &mut self,
         cx: &mut Cx,
-        chat: &ChatData,
+        chat_data: &ChatData,
         bot_context: Option<BotContext>,
     ) {
         let mut chat_view_to_update;
         // If the chat view already exists, update it
-        if let Some(chat_view) = self.chat_view_refs.get_mut(&chat.id) {
-            chat_view.set_chat_id(chat.id);
-            self.currently_visible_chat_id = Some(chat.id);
+        if let Some(chat_view) = self.chat_view_refs.get_mut(&chat_data.id) {
+            chat_view.set_chat_id(chat_data.id);
+            self.currently_visible_chat_id = Some(chat_data.id);
 
             chat_view_to_update = chat_view.clone();
         } else {
             // Create a new chat view
             let chat_view = WidgetRef::new_from_ptr(cx, self.chat_view_template);
-            chat_view
-                .chat(id!(chat))
-                .write()
-                .set_bot_context(cx, bot_context);
-            chat_view.as_chat_view().set_chat_id(chat.id);
+            bot_context
+                .as_ref()
+                .expect("BotContext should be set")
+                .synchronize_to(
+                    &mut *chat_view
+                        .chat(id!(chat))
+                        .write()
+                        .chat_controller()
+                        .expect("ChatController should be set")
+                        .lock()
+                        .unwrap(),
+                );
+
+            chat_view.as_chat_view().set_chat_id(chat_data.id);
 
             self.chat_view_refs
-                .insert(chat.id, chat_view.as_chat_view());
-            self.currently_visible_chat_id = Some(chat.id);
+                .insert(chat_data.id, chat_view.as_chat_view());
+            self.currently_visible_chat_id = Some(chat_data.id);
 
             chat_view_to_update = chat_view.as_chat_view();
         }
@@ -223,19 +233,30 @@ impl ChatsDeck {
         // If the chat is already loaded do not set the messages again, as it might cause
         // unwanted side effects, i.e. canceling any ongoing streaming response from the bot
         if chat_view_to_update
-            .messages(id!(chat.messages))
+            .chat(id!(chat))
             .read()
+            .chat_controller()
+            .expect("ChatController should be set")
+            .lock()
+            .unwrap()
+            .state()
             .messages
             .is_empty()
         {
             chat_view_to_update
-                .messages(id!(chat.messages))
-                .write()
-                .set_messages(chat.messages.clone(), true);
+                .chat(id!(chat))
+                .read()
+                .chat_controller()
+                .expect("ChatController should be set")
+                .lock()
+                .unwrap()
+                .dispatch_mutation(VecMutation::Set(chat_data.messages.clone()));
+
+            // TODO: Scroll behavior from messages_ref.set_messages(chat_data.messages.clone(), true);
         }
 
         // Set associated bot
-        if let Some(bot_id) = &chat.associated_bot {
+        if let Some(bot_id) = &chat_data.associated_bot {
             chat_view_to_update
                 .model_selector(id!(model_selector))
                 .set_currently_selected_model(cx, Some(bot_id.clone()));
@@ -248,14 +269,15 @@ impl ChatsDeck {
         // Set this chat view as focused and all other chat views as not focused
         chat_view_to_update.set_focused(true);
         for (id, chat_view) in self.chat_view_refs.iter_mut() {
-            if id != &chat.id {
+            if id != &chat_data.id {
                 chat_view.set_focused(false);
             }
         }
 
         // Update the access order
-        self.chat_view_accesed_order.retain(|id| *id != chat.id);
-        self.chat_view_accesed_order.push_back(chat.id);
+        self.chat_view_accesed_order
+            .retain(|id| *id != chat_data.id);
+        self.chat_view_accesed_order.push_back(chat_data.id);
 
         // Remove the least recently used chat view if the deck is full
         if self.chat_view_accesed_order.len() > MAX_CHAT_VIEWS {
@@ -277,15 +299,23 @@ impl ChatsDeck {
         // TODO: Focus on prompt input
     }
 
-    fn sync_bot_contexts(&mut self, cx: &mut Cx, scope: &mut Scope) {
+    fn sync_bot_contexts(&mut self, _cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
         for (_, chat_view) in self.chat_view_refs.iter_mut() {
+            let chat = chat_view.chat(id!(chat));
+            let chat = chat.read();
+            let controller = chat
+                .chat_controller()
+                .expect("ChatController should be set");
+            let mut controller = controller.lock().unwrap();
+
             // Only set the BotContext if the chat is not currently streaming, otherwise it will be interrumpted.
-            if !chat_view.chat(id!(chat)).read().is_streaming() {
-                chat_view
-                    .chat(id!(chat))
-                    .write()
-                    .set_bot_context(cx, store.bot_context.clone());
+            if !controller.state().is_streaming {
+                store
+                    .bot_context
+                    .as_ref()
+                    .expect("BotContext should be set")
+                    .synchronize_to(&mut *controller);
             } else {
                 self.chats_views_pending_sync.push(chat_view.clone());
             }
