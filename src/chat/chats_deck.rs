@@ -266,31 +266,4 @@ impl ChatsDeck {
 
         // TODO: Focus on prompt input
     }
-
-    fn sync_bot_contexts(&mut self, _cx: &mut Cx, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-        for (_, chat_view) in self.chat_view_refs.iter_mut() {
-            let controller = chat_view.borrow_mut().unwrap().chat_controller.clone();
-            let mut controller = controller.lock().unwrap();
-
-            // Only set the BotContext if the chat is not currently streaming, otherwise it will be interrumpted.
-            if !controller.state().is_streaming {
-                store
-                    .bot_context
-                    .as_ref()
-                    .expect("BotContext should be set")
-                    .synchronize_to(&mut *controller);
-            } else {
-                self.chats_views_pending_sync.push(chat_view.clone());
-            }
-        }
-    }
-}
-
-impl ChatsDeckRef {
-    pub fn sync_bot_contexts(&mut self, cx: &mut Cx, scope: &mut Scope) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.sync_bot_contexts(cx, scope);
-        }
-    }
 }
