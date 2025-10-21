@@ -147,10 +147,12 @@ pub struct ChatView {
 }
 
 impl LiveHook for ChatView {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
         self.prompt_input(id!(chat.prompt)).write().disable();
         let plugin_id = self.chat_controller.lock().unwrap().append_plugin(Glue::new(self.ui_runner()));
         self.plugin_id = Some(plugin_id);
+
+        self.chat(id!(chat)).write().set_chat_controller(cx, Some(self.chat_controller.clone()));
     }
 }
 

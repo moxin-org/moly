@@ -245,10 +245,7 @@ impl Messages {
             self.should_defer_scroll_to_bottom = false;
         }
 
-        let mut bot_client = chat_controller
-            .bot_client()
-            .expect("no bot client set")
-            .clone_box();
+        let mut bot_client = chat_controller.bot_client().map(|bc| bc.clone_box());
 
         let mut list = list_ref.borrow_mut().unwrap();
         list.set_item_range(cx, 0, chat_controller.state().messages.len());
@@ -430,12 +427,14 @@ impl Messages {
                     item.label(id!(name)).set_text(cx, name);
 
                     let mut slot = item.slot(id!(content));
-                    if let Some(custom_content) = bot_client.content_widget(
-                        cx,
-                        slot.current().clone(),
-                        &self.templates,
-                        &message.content,
-                    ) {
+                    if let Some(custom_content) = bot_client.as_mut().and_then(|bc| {
+                        bc.content_widget(
+                            cx,
+                            slot.current().clone(),
+                            &self.templates,
+                            &message.content,
+                        )
+                    }) {
                         slot.replace(custom_content);
                     } else {
                         // Since portal list may reuse widgets, we must restore
