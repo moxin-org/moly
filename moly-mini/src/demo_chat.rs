@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use makepad_widgets::*;
-use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin};
+use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin, ChatTask};
 use moly_kit::mcp::mcp_manager::{McpManagerClient, McpTransport};
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
@@ -108,6 +108,7 @@ impl DemoChat {
                     "google/gemini-2.0-flash-001",
                     "anthropic/claude-3.5-sonnet",
                     "deepseek/deepseek-r1",
+                    "mistralai/mistral-nemo",
                 ];
 
                 let siliconflow_whitelist = [
@@ -265,6 +266,8 @@ impl DemoChat {
                 initialized: false,
             })
             .build_arc();
+
+        controller.lock().unwrap().dispatch_task(ChatTask::Load);
 
         self.controller = Some(controller.clone());
         self.chat(id!(chat))

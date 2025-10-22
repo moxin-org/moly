@@ -92,6 +92,29 @@ fn spawn_impl(fut: impl Future<Output = ()> + 'static) {
     wasm_bindgen_futures::spawn_local(fut);
 }
 
+/// Cross-platform async sleep function.
+pub async fn sleep(duration: std::time::Duration) {
+    #[cfg(all(feature = "async-rt", not(target_arch = "wasm32")))]
+    {
+        tokio::time::sleep(duration).await;
+    }
+
+    #[cfg(all(feature = "async-web", target_arch = "wasm32"))]
+    {
+        wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _| {
+            web_sys::window()
+                .unwrap()
+                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                    &resolve,
+                    duration.as_millis() as i32,
+                )
+                .unwrap();
+        }))
+        .await
+        .unwrap();
+    }
+}
+
 mod abort_on_drop {
     use super::*;
 

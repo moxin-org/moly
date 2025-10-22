@@ -79,6 +79,10 @@ pub struct Chat {
 
 impl Widget for Chat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        for action in event.actions() {
+            dbg!(action);
+        }
+
         // Pass down the BotContext if not the same.
         let self_chat_controller_ptr = self.chat_controller.as_ref().map(|c| Arc::as_ptr(c));
         let messages_chat_controller_ptr = self
@@ -102,6 +106,14 @@ impl Widget for Chat {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        println!(
+            "Chat draw_walk ({})",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        );
+
         self.deref.draw_walk(cx, scope, walk)
     }
 }

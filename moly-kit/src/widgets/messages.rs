@@ -480,6 +480,7 @@ impl Messages {
 
     /// Jump to the end of the list instantly.
     pub fn scroll_to_bottom(&mut self, cx: &mut Cx, triggered_by_stream: bool) {
+        // return;
         let chat_controller = self
             .chat_controller
             .as_ref()

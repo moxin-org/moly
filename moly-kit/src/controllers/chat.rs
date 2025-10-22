@@ -313,7 +313,7 @@ impl ChatController {
             .state
             .messages
             .iter()
-            .filter(|m| m.from != EntityId::App)
+            .filter(|m| m.from != EntityId::App && !m.metadata.is_writing)
             .cloned()
             .collect::<Vec<_>>();
 
