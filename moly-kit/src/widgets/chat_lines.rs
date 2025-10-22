@@ -150,7 +150,7 @@ live_design! {
     pub LoadingLine = <BotLine> {
         message_section = {
             content_section = <View> {
-                height: Fill,
+                height: Fit,
                 padding: {left: 32}
                 loading = <MessageLoading> {}
             }

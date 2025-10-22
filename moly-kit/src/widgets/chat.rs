@@ -1,20 +1,15 @@
-use futures::{StreamExt, stream::AbortHandle};
 use makepad_widgets::*;
 use std::cell::{Ref, RefMut};
 use std::sync::{Arc, Mutex};
-use utils::asynchronous::spawn;
 
 use crate::controllers::chat::{
-    ChatController, ChatControllerPlugin, ChatControllerPluginRegistrationId, ChatState, ChatTask,
-    Status,
+    ChatController, ChatControllerPlugin, ChatControllerPluginRegistrationId, ChatState,
+    ChatStateMutation, ChatTask,
 };
-use crate::utils::asynchronous::PlatformSendStream;
+use crate::mcp::mcp_manager::display_name_from_namespaced;
 use crate::utils::makepad::EventExt;
-use crate::utils::makepad::ui_runner::DeferWithRedrawAsync;
 use crate::utils::vec::VecMutation;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
-
-use crate::mcp::mcp_manager::display_name_from_namespaced;
 use crate::*;
 
 live_design!(
@@ -65,23 +60,15 @@ pub struct Chat {
     #[live(true)]
     pub stream: bool,
 
-    /// Wether the user has scrolled during the stream of the current message.
-    #[rust]
-    user_scrolled_during_stream: bool,
-
-    /// Keep track of previous `is_streaming` state to detect changes on the plugin.
-    #[rust]
-    was_streaming: bool,
-
     #[rust]
     plugin_id: Option<ChatControllerPluginRegistrationId>,
 }
 
 impl Widget for Chat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        for action in event.actions() {
-            dbg!(action);
-        }
+        // for action in event.actions() {
+        //     dbg!(action);
+        // }
 
         // Pass down the BotContext if not the same.
         let self_chat_controller_ptr = self.chat_controller.as_ref().map(|c| Arc::as_ptr(c));
@@ -98,11 +85,11 @@ impl Widget for Chat {
 
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
+
         self.handle_messages(cx, event);
         self.handle_prompt_input(cx, event);
         self.handle_realtime(cx);
         self.handle_modal_dismissal(cx, event);
-        self.handle_scrolling();
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -139,7 +126,7 @@ impl Chat {
         }
     }
 
-    fn handle_realtime(&mut self, cx: &mut Cx) {
+    fn handle_realtime(&mut self, _cx: &mut Cx) {
         if self.realtime(id!(realtime)).connection_requested() {
             let bot_id = self.bot_id.clone().expect("no bot selected");
 
@@ -204,7 +191,7 @@ impl Chat {
                     .unwrap()
                     .dispatch_mutation(VecMutation::Set(all_messages));
 
-                self.messages_ref().write().scroll_to_bottom(cx, true);
+                self.messages_ref().write().instant_scroll_to_bottom(cx);
             }
         }
     }
@@ -224,20 +211,6 @@ impl Chat {
         self.prompt_input_ref()
             .write()
             .set_bot_capabilities(cx, capabilities);
-    }
-
-    fn handle_scrolling(&mut self) {
-        if self
-            .chat_controller
-            .as_mut()
-            .unwrap()
-            .lock()
-            .unwrap()
-            .state()
-            .is_streaming
-        {
-            self.user_scrolled_during_stream = self.messages_ref().read().user_scrolled();
-        }
     }
 
     fn handle_messages(&mut self, cx: &mut Cx, event: &Event) {
@@ -418,7 +391,7 @@ impl Chat {
         }
     }
 
-    fn handle_call(&mut self, cx: &mut Cx) {
+    fn handle_call(&mut self, _cx: &mut Cx) {
         // Use the standard send mechanism which will return the upgrade
         // The upgrade message will be processed in handle_message_delta
         self.chat_controller
@@ -699,13 +672,6 @@ impl Chat {
     //     }
     // }
 
-    /// Restore to a state without streaming artifacts.
-    fn clean_streaming_artifacts(&mut self) {
-        self.user_scrolled_during_stream = false;
-        self.messages_ref().write().reset_scroll_state();
-        self.prompt_input_ref().write().set_send();
-    }
-
     /// Handles a message delta from the bot.
     ///
     /// Returns true if the message delta was handled successfully.
@@ -864,8 +830,9 @@ impl Chat {
         if let Some(controller) = self.chat_controller.as_ref() {
             let mut guard = controller.lock().unwrap();
 
-            let plugin = MolyChatControllerPlugin {
+            let plugin = Plugin {
                 ui: self.ui_runner(),
+                relevant_mutations: vec![],
             };
             self.plugin_id = Some(guard.append_plugin(plugin));
 
@@ -892,6 +859,29 @@ impl Chat {
 
         self.chat_controller = None;
         self.plugin_id = None;
+    }
+
+    fn on_relevant_chat_controller_mutation(&mut self, cx: &mut Cx, mutation: ChatStateMutation) {
+        match mutation {
+            ChatStateMutation::SetIsStreaming(true) => {
+                self.handle_streaming_start(cx);
+            }
+            ChatStateMutation::SetIsStreaming(false) => {
+                self.handle_streaming_end(cx);
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_streaming_start(&mut self, cx: &mut Cx) {
+        self.prompt_input_ref().write().set_stop();
+        self.messages_ref().write().animated_scroll_to_bottom(cx);
+        self.redraw(cx);
+    }
+
+    fn handle_streaming_end(&mut self, cx: &mut Cx) {
+        self.prompt_input_ref().write().set_send();
+        self.redraw(cx);
     }
 }
 
@@ -933,33 +923,32 @@ impl Drop for Chat {
     }
 }
 
-struct MolyChatControllerPlugin {
+struct Plugin {
     ui: UiRunner<Chat>,
+    relevant_mutations: Vec<ChatStateMutation>,
 }
 
-impl ChatControllerPlugin for MolyChatControllerPlugin {
-    fn on_state_ready(&mut self, state: &ChatState) {
-        let is_streaming = state.is_streaming;
-        self.ui.defer(move |me, cx, _| {
-            match (me.was_streaming, is_streaming) {
-                // Handle streaming started.
-                (false, true) => {
-                    me.messages_ref().write().scroll_to_bottom(cx, false);
-                    me.prompt_input_ref().write().set_stop();
-                }
-                // Handle stream interruption.
-                (true, false) => {
-                    me.clean_streaming_artifacts();
-                }
-                _ => {}
-            }
+impl ChatControllerPlugin for Plugin {
+    fn on_state_ready(&mut self, _state: &ChatState) {
+        for mutation in self.relevant_mutations.drain(..) {
+            self.ui.defer_with_redraw(move |me, cx, _| {
+                me.on_relevant_chat_controller_mutation(cx, mutation);
+            });
+        }
 
-            // Keep track of previous streaming state for next time.
-            me.was_streaming = is_streaming;
+        // Always redraw on state change.
+        self.ui.defer_with_redraw(move |_, _, _| {});
+    }
 
-            // Explicit redraw. On every state change.
-            me.redraw(cx);
-        });
+    fn on_state_mutation(&mut self, _state: &ChatState, mutation: &ChatStateMutation) {
+        let is_relevant = match mutation {
+            ChatStateMutation::SetIsStreaming(_) => true,
+            _ => false,
+        };
+
+        if is_relevant {
+            self.relevant_mutations.push(mutation.clone());
+        }
     }
 
     fn on_upgrade(&mut self, upgrade: Upgrade, bot_id: &BotId) -> Option<Upgrade> {
@@ -967,7 +956,7 @@ impl ChatControllerPlugin for MolyChatControllerPlugin {
             Upgrade::Realtime(channel) => {
                 let entity_id = EntityId::Bot(bot_id.clone());
                 self.ui.defer(move |me, cx, _| {
-                    me.clean_streaming_artifacts();
+                    me.handle_streaming_end(cx);
 
                     // Set up the realtime channel in the UI
                     let mut realtime = me.realtime(id!(realtime));
