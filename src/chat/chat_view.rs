@@ -368,6 +368,20 @@ pub struct Glue {
     persisting_attachments: Arc<Mutex<HashSet<Attachment>>>,
 }
 
+impl ChatControllerPlugin for Glue {
+    fn on_state_mutation(&mut self,  mutation: &ChatStateMutation, state: &ChatState) {
+        if let ChatStateMutation::MutateMessages(mutation) = mutation {
+            self.replicate_messages_mutation_to_store(mutation);
+            self.mark_attachments(mutation, state);
+        }
+    }
+
+    fn on_state_ready(&mut self, state: &ChatState, _mutatins: &[ChatStateMutation]) {
+        self.sweep_attachments(state);
+    }
+}
+
+
 impl Glue {
     pub fn new(ui: UiRunner<ChatView>) -> Self {
         Self {
@@ -576,18 +590,5 @@ impl Glue {
                 }
             });
         });
-    }
-}
-
-impl ChatControllerPlugin for Glue {
-    fn on_state_mutation(&mut self, state: &ChatState, mutation: &ChatStateMutation) {
-        if let ChatStateMutation::MutateMessages(mutation) = mutation {
-            self.replicate_messages_mutation_to_store(mutation);
-            self.mark_attachments(mutation, state);
-        }
-    }
-
-    fn on_state_ready(&mut self, state: &ChatState) {
-        self.sweep_attachments(state);
     }
 }

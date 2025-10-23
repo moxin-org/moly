@@ -421,10 +421,7 @@ impl Chat {
         if let Some(controller) = self.chat_controller.as_ref() {
             let mut guard = controller.lock().unwrap();
 
-            let plugin = Plugin {
-                ui: self.ui_runner(),
-                relevant_mutations: vec![],
-            };
+            let plugin = Plugin::new(self.ui_runner());
             self.plugin_id = Some(guard.append_plugin(plugin));
         }
     }
@@ -442,21 +439,6 @@ impl Chat {
 
         self.chat_controller = None;
         self.plugin_id = None;
-    }
-
-    fn on_relevant_chat_controller_mutation(&mut self, cx: &mut Cx, mutation: ChatStateMutation) {
-        match mutation {
-            ChatStateMutation::SetIsStreaming(true) => {
-                self.handle_streaming_start(cx);
-            }
-            ChatStateMutation::SetIsStreaming(false) => {
-                self.handle_streaming_end(cx);
-            }
-            ChatStateMutation::MutateBots(_) => {
-                self.handle_capabilities(cx);
-            }
-            _ => {}
-        }
     }
 
     fn handle_streaming_start(&mut self, cx: &mut Cx) {
@@ -511,31 +493,39 @@ impl Drop for Chat {
 
 struct Plugin {
     ui: UiRunner<Chat>,
-    relevant_mutations: Vec<ChatStateMutation>,
+}
+
+impl Plugin {
+    fn new(ui: UiRunner<Chat>) -> Self {
+        Self { ui }
+    }
 }
 
 impl ChatControllerPlugin for Plugin {
-    fn on_state_ready(&mut self, _state: &ChatState) {
-        for mutation in self.relevant_mutations.drain(..) {
-            self.ui.defer_with_redraw(move |me, cx, _| {
-                me.on_relevant_chat_controller_mutation(cx, mutation);
-            });
+    fn on_state_ready(&mut self, _state: &ChatState, mutations: &[ChatStateMutation]) {
+        for mutation in mutations {
+            match mutation {
+                ChatStateMutation::SetIsStreaming(true) => {
+                    self.ui.defer(|chat, cx, _| {
+                        chat.handle_streaming_start(cx);
+                    });
+                }
+                ChatStateMutation::SetIsStreaming(false) => {
+                    self.ui.defer(|chat, cx, _| {
+                        chat.handle_streaming_end(cx);
+                    });
+                }
+                ChatStateMutation::MutateBots(_) => {
+                    self.ui.defer(|chat, cx, _| {
+                        chat.handle_capabilities(cx);
+                    });
+                }
+                _ => {}
+            }
         }
 
         // Always redraw on state change.
         self.ui.defer_with_redraw(move |_, _, _| {});
-    }
-
-    fn on_state_mutation(&mut self, _state: &ChatState, mutation: &ChatStateMutation) {
-        let is_relevant = match mutation {
-            ChatStateMutation::SetIsStreaming(_) => true,
-            ChatStateMutation::MutateBots(_) => true,
-            _ => false,
-        };
-
-        if is_relevant {
-            self.relevant_mutations.push(mutation.clone());
-        }
     }
 
     fn on_upgrade(&mut self, upgrade: Upgrade, bot_id: &BotId) -> Option<Upgrade> {

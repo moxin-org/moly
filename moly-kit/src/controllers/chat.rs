@@ -1,12 +1,10 @@
 //! Framework-agnostic state management to implement a `Chat` component/widget/element.
 
-use std::panic::Location;
-
 use crate::{
     McpManagerClient, display_name_from_namespaced,
     protocol::*,
     utils::{
-        asynchronous::{AbortOnDropHandle, PlatformSendStream, spawn_abort_on_drop},
+        asynchronous::{AbortOnDropHandle, spawn_abort_on_drop},
         vec::VecMutation,
     },
 };
@@ -17,10 +15,12 @@ use futures::StreamExt;
 mod plugin;
 mod state;
 mod task;
+mod utils;
 
 pub use plugin::*;
 pub use state::*;
 pub use task::*;
+use utils::amortize;
 
 /// Private utility wrapper around a weak ref to a controller.
 ///
@@ -211,17 +211,18 @@ impl ChatController {
     /// that may alter the effect of each other.
     #[track_caller]
     pub fn dispatch_mutations(&mut self, mutations: Vec<ChatStateMutation>) {
-        log::trace!("dispatch_mutation from {}", Location::caller());
+        // TODO: Re-enable logging when needed with an optimized std env read.
+        // log::trace!("dispatch_mutation from {}", Location::caller());
 
-        for mutation in mutations {
+        for mutation in mutations.clone() {
             for (_, plugin) in &mut self.plugins {
-                plugin.on_state_mutation(&self.state, &mutation);
+                plugin.on_state_mutation(&mutation, &self.state);
             }
             mutation.apply(&mut self.state);
         }
 
         for (_, plugin) in &mut self.plugins {
-            plugin.on_state_ready(&self.state);
+            plugin.on_state_ready(&self.state, &mutations);
         }
     }
 
@@ -249,7 +250,8 @@ impl ChatController {
     /// you undo what you did.
     #[track_caller]
     pub fn dangerous_state_mut(&mut self) -> &mut ChatState {
-        log::trace!("dangerous_state_mut from {}", Location::caller());
+        // TODO: Re-enable logging when needed with an optimized std env read.
+        // log::trace!("dangerous_state_mut from {}", Location::caller());
         &mut self.state
     }
 
@@ -580,60 +582,6 @@ impl ChatController {
                 }
             });
         }));
-    }
-}
-
-/// Util that wraps the stream of `send()` and gives you a stream less agresive to
-/// the receiver UI regardless of the streaming chunk size.
-fn amortize(
-    input: impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static,
-) -> impl PlatformSendStream<Item = ClientResult<MessageContent>> + 'static {
-    // Use utils
-    use crate::utils::string::AmortizedString;
-    use async_stream::stream;
-
-    // Stream state
-    let mut amortized_text = AmortizedString::default();
-    let mut amortized_reasoning = AmortizedString::default();
-
-    // Stream compute
-    stream! {
-        // Our wrapper stream "activates" when something comes from the underlying stream.
-        for await result in input {
-            // Transparently yield the result on error and then stop.
-            if result.has_errors() {
-                yield result;
-                return;
-            }
-
-            // Modified content that we will be yielding.
-            let mut content = result.into_value().unwrap();
-
-            // Feed the whole string into the string amortizer.
-            // Put back what has been already amortized from previous iterations.
-            let text = std::mem::take(&mut content.text);
-            amortized_text.update(text);
-            content.text = amortized_text.current().to_string();
-
-            // Same for reasoning.
-            let reasoning = std::mem::take(&mut content.reasoning);
-            amortized_reasoning.update(reasoning);
-            content.reasoning = amortized_reasoning.current().to_string();
-
-            // Prioritize yielding amortized reasoning updates first.
-            for reasoning in &mut amortized_reasoning {
-                content.reasoning = reasoning;
-                yield ClientResult::new_ok(content.clone());
-            }
-
-            // Finially, begin yielding amortized text updates.
-            // This will also include the amortized reasoning until now because we
-            // fed it back into the content.
-            for text in &mut amortized_text {
-                content.text = text;
-                yield ClientResult::new_ok(content.clone());
-            }
-        }
     }
 }
 

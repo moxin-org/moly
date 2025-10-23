@@ -257,7 +257,7 @@ impl DemoChat {
         let controller = ChatController::builder()
             .with_client(client)
             .with_tool_manager(tool_manager)
-            .with_plugin_prepend(DemoChatPlugin {
+            .with_plugin_prepend(Plugin {
                 ui: self.ui_runner(),
                 initialized: false,
             })
@@ -272,18 +272,22 @@ impl DemoChat {
     }
 }
 
-struct DemoChatPlugin {
+struct Plugin {
     ui: UiRunner<DemoChat>,
     initialized: bool,
 }
 
-impl ChatControllerPlugin for DemoChatPlugin {
-    fn on_state_ready(&mut self, state: &controllers::chat::ChatState) {
+impl ChatControllerPlugin for Plugin {
+    fn on_state_ready(
+        &mut self,
+        state: &controllers::chat::ChatState,
+        _mutations: &[controllers::chat::ChatStateMutation],
+    ) {
         self.init(state);
     }
 }
 
-impl DemoChatPlugin {
+impl Plugin {
     fn init(&mut self, state: &controllers::chat::ChatState) {
         if self.initialized {
             return;
