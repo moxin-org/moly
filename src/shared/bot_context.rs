@@ -1,4 +1,4 @@
-//! Copy paste of the legacy [`BotContext`] from Moly Kit.
+//! Glued copy paste of the legacy [`BotContext`] from Moly Kit.
 
 use moly_kit::{
     controllers::chat::{ChatController, ChatStateMutation, Status},
@@ -14,6 +14,8 @@ struct InnerBotContext {
     tool_manager: Option<McpManagerClient>,
     /// Status tracked for compatibility with [`ChatController`].
     status: Status,
+    /// [`ChatController`] "observing" this context. This is glue.
+    chat_controllers: Vec<Arc<Mutex<ChatController>>>,
 }
 
 /// A sharable wrapper around a [BotClient] that holds loadeed bots and provides
@@ -60,13 +62,17 @@ impl BotContext {
                 self.0.lock().unwrap().bots = new_bots;
             }
 
-            if errors.is_empty() {
+            let result = if errors.is_empty() {
                 self.0.lock().unwrap().status = Status::Success;
                 ClientResult::new_ok(())
             } else {
                 self.0.lock().unwrap().status = Status::Error;
                 ClientResult::new_err(errors)
-            }
+            };
+
+            self.synchronize_to_all();
+
+            result
         };
 
         Box::pin(future)
@@ -89,22 +95,50 @@ impl BotContext {
 
     pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
         self.0.lock().unwrap().tool_manager = Some(tool_manager);
+        self.synchronize_to_all();
     }
 
     pub fn replace_tool_manager(&mut self, tool_manager: McpManagerClient) {
         self.0.lock().unwrap().tool_manager = Some(tool_manager);
+        self.synchronize_to_all();
     }
 
     /// Copies the data and status from this context into the controller.
     ///
     /// This is a glue function while migrating away from [`BotContext`].
-    pub fn synchronize_to(&self, chat_controller: &mut ChatController) {
+    fn synchronize_to(&self, chat_controller: &mut ChatController) {
         chat_controller.set_tool_manager(self.tool_manager());
         chat_controller.set_client(Some(self.client()));
         chat_controller.dispatch_mutation(VecMutation::Set(self.bots().clone()));
         chat_controller.dispatch_mutation(ChatStateMutation::SetLoadStatus(
             self.0.lock().unwrap().status,
         ));
+    }
+
+    fn synchronize_to_all(&self) {
+        let controllers = self.0.lock().unwrap().chat_controllers.clone();
+        for controller in controllers {
+            let mut controller = controller.lock().unwrap();
+            self.synchronize_to(&mut controller);
+        }
+    }
+
+    pub fn add_chat_controller(&mut self, chat_controller: Arc<Mutex<ChatController>>) {
+        self.0
+            .lock()
+            .unwrap()
+            .chat_controllers
+            .push(chat_controller);
+
+        self.synchronize_to_all();
+    }
+
+    pub fn remove_chat_controller(&mut self, chat_controller: &Arc<Mutex<ChatController>>) {
+        let ptr = Arc::as_ptr(chat_controller) as usize;
+        self.0.lock().unwrap().chat_controllers.retain(|c| {
+            let c_ptr = Arc::as_ptr(c) as usize;
+            c_ptr != ptr
+        });
     }
 }
 
@@ -115,6 +149,7 @@ impl<T: BotClient + 'static> From<T> for BotContext {
             bots: Vec::new(),
             tool_manager: None,
             status: Status::Idle,
+            chat_controllers: Vec::new(),
         })))
     }
 }

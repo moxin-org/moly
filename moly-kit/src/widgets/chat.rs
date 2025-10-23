@@ -89,6 +89,13 @@ impl Widget for Chat {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        println!(
+            "chat.rs draw_walk ({})",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        );
         self.deref.draw_walk(cx, scope, walk)
     }
 }
@@ -829,9 +836,6 @@ impl Chat {
             //     guard.dispatch_task(ChatTask::Load);
             // }
         }
-
-        // TODO: Probably doesn't make sense.
-        // self.handle_capabilities(cx);
     }
 
     pub fn chat_controller(&self) -> Option<&Arc<Mutex<ChatController>>> {
@@ -856,6 +860,9 @@ impl Chat {
             }
             ChatStateMutation::SetIsStreaming(false) => {
                 self.handle_streaming_end(cx);
+            }
+            ChatStateMutation::MutateBots(_) => {
+                self.handle_capabilities(cx);
             }
             _ => {}
         }
@@ -931,6 +938,7 @@ impl ChatControllerPlugin for Plugin {
     fn on_state_mutation(&mut self, _state: &ChatState, mutation: &ChatStateMutation) {
         let is_relevant = match mutation {
             ChatStateMutation::SetIsStreaming(_) => true,
+            ChatStateMutation::MutateBots(_) => true,
             _ => false,
         };
 

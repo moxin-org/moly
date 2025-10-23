@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::data::chats::chat::ChatID;
 use crate::data::store::{ProviderSyncingStatus, Store};
+use crate::shared::bot_context::BotContext;
 use crate::shared::utils::attachments::{
     delete_attachment, generate_persistence_key, set_persistence_key_and_reader,
     write_attachment_to_key,
@@ -130,9 +131,6 @@ pub struct ChatView {
     plugin_id: Option<ChatControllerPluginRegistrationId>,
 
     #[rust]
-    last_bot_context_id: Option<usize>,
-
-    #[rust]
     focused: bool,
 
     // `chat_deck.rs` uses `WidgetRef::new_from_ptr` where `after_new_from_doc` is
@@ -142,6 +140,9 @@ pub struct ChatView {
     // The plugin is still constructed in `after_new_from_doc`.
     #[rust(ChatController::new_arc())]
     chat_controller: Arc<Mutex<ChatController>>,
+
+    #[rust]
+    bot_context: Option<BotContext>,
 
     #[rust]
     message_updated_while_inactive: bool,
@@ -170,12 +171,14 @@ impl Drop for ChatView {
                 .unwrap()
                 .remove_plugin(plugin_id);
         }
+
+        self.unbind_bot_context();
     }
 }
 
 impl Widget for ChatView {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.synchronize_bot_context_with_chat_controller(scope);
+        self.bind_bot_context(scope);
 
         self.ui_runner().handle(cx, event, scope, self);
         self.widget_match_event(cx, event, scope);
@@ -186,7 +189,7 @@ impl Widget for ChatView {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.synchronize_bot_context_with_chat_controller(scope);
+        self.bind_bot_context(scope);
 
         // On mobile, only set padding on top of the prompt
         // TODO: do this with AdaptiveView instead of apply_over
@@ -314,22 +317,23 @@ impl ChatView {
         }
     }
 
-    pub fn synchronize_bot_context_with_chat_controller(&mut self, scope: &mut Scope) {
+    pub fn bind_bot_context(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
-        
-        let Some(bot_context) = &store.bot_context else {
-            return;
-        };
 
-        if Some(bot_context.id()) != self.last_bot_context_id {
-            self.last_bot_context_id = Some(bot_context.id());
+        let store_bot_context_id = store.bot_context.as_ref().map(|bc| bc.id());
+        let self_bot_context_id = self.bot_context.as_ref().map(|bc| bc.id());
 
-            let chat = self.chat(id!(chat));
-            let chat = chat.read();
-            let controller = chat.chat_controller().expect("chat controller missing");
-            let mut controller = controller.lock().unwrap();
+        if self_bot_context_id != store_bot_context_id {
+            self.bot_context = store.bot_context.clone();
+            if let Some(bot_context) = &mut self.bot_context {
+                bot_context.add_chat_controller(self.chat_controller.clone());
+            }
+        }
+    }
 
-            bot_context.synchronize_to(&mut controller);
+    pub fn unbind_bot_context(&mut self) {
+        if let Some(mut bot_context) = self.bot_context.take() {
+            bot_context.remove_chat_controller(&self.chat_controller);
         }
     }
 

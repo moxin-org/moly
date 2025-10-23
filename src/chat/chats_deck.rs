@@ -71,25 +71,6 @@ impl Widget for ChatsDeck {
         for (_, chat_view) in self.chat_view_refs.iter_mut() {
             chat_view.handle_event(cx, event, scope);
         }
-
-        // Sync the [BotContext] for chat views that are not currently streaming
-        let store = scope.data.get_mut::<Store>().unwrap();
-        for chat_view in self.chats_views_pending_sync.iter_mut() {
-            let chat = chat_view.chat(id!(chat));
-            let chat = chat.read();
-            let controller = chat
-                .chat_controller()
-                .expect("ChatController should be set");
-            let mut controller = controller.lock().unwrap();
-
-            if !controller.state().is_streaming {
-                store
-                    .bot_context
-                    .as_ref()
-                    .expect("BotContext should be set")
-                    .synchronize_to(&mut *controller);
-            }
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
