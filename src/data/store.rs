@@ -1,6 +1,7 @@
 use crate::app::app_runner;
 use crate::data::providers::ProviderID;
 use crate::shared::actions::ChatAction;
+use crate::shared::bot_context::BotContext;
 
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
@@ -17,7 +18,6 @@ use moly_kit::utils::asynchronous::spawn;
 
 use super::providers::{Provider, ProviderConnectionStatus};
 use moly_kit::mcp::mcp_manager::McpManagerClient;
-use moly_kit::protocol::BotContext;
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
 use makepad_widgets::*;

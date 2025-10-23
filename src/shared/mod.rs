@@ -1,6 +1,7 @@
 use makepad_widgets::Cx;
 
 pub mod actions;
+pub mod bot_context;
 pub mod desktop_buttons;
 pub mod download_notification_popup;
 pub mod external_link;
