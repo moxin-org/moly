@@ -1323,7 +1323,7 @@ impl Realtime {
         arguments: String,
     ) {
         let Some(chat_controller) = self.chat_controller.as_ref().cloned() else {
-            ::log::error!("No bot context available for function call");
+            ::log::error!("No chat controller available for function call");
             if let Some(channel) = &self.realtime_channel {
                 let error_result = serde_json::json!({
                     "error": "Tool manager not available"

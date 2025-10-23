@@ -14,7 +14,7 @@ struct InnerBotContext {
     tool_manager: Option<McpManagerClient>,
     /// Status tracked for compatibility with [`ChatController`].
     status: Status,
-    /// [`ChatController`] "observing" this context. This is glue.
+    /// [`ChatController`]s "observing" this context. This is glue.
     chat_controllers: Vec<Arc<Mutex<ChatController>>>,
 }
 
@@ -51,7 +51,7 @@ impl BotContext {
     /// Fetches the bots and keeps them to be read synchronously later.
     ///
     /// It errors with whatever the underlying client errors with.
-    pub fn load(&mut self) -> BoxPlatformSendFuture<ClientResult<()>> {
+    pub fn load(&mut self) -> BoxPlatformSendFuture<'_, ClientResult<()>> {
         let future = async move {
             self.0.lock().unwrap().status = Status::Working;
 

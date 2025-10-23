@@ -66,19 +66,6 @@ pub struct Chat {
 
 impl Widget for Chat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        // Pass down the BotContext if not the same.
-        let self_chat_controller_ptr = self.chat_controller.as_ref().map(|c| Arc::as_ptr(c));
-        let messages_chat_controller_ptr = self
-            .messages_ref()
-            .read()
-            .chat_controller
-            .as_ref()
-            .map(|c| Arc::as_ptr(c));
-
-        if self_chat_controller_ptr != messages_chat_controller_ptr {
-            self.messages_ref().write().chat_controller = self.chat_controller.clone();
-        }
-
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
 
@@ -819,8 +806,11 @@ impl Chat {
         chat_controller: Option<Arc<Mutex<ChatController>>>,
     ) {
         self.unlink_current_controller();
-
         self.chat_controller = chat_controller;
+
+        self.messages_ref().write().chat_controller = self.chat_controller.clone();
+        self.realtime(id!(realtime))
+            .set_chat_controller(self.chat_controller.clone());
 
         if let Some(controller) = self.chat_controller.as_ref() {
             let mut guard = controller.lock().unwrap();

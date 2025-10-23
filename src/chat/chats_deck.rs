@@ -50,11 +50,6 @@ pub struct ChatsDeck {
     #[rust]
     currently_visible_chat_id: Option<ChatID>,
 
-    /// A list of chat views that need to be synced with the [BotContext].
-    /// This is used to avoid interrumpting the chat stream when the [BotContext] is being updated.
-    #[rust]
-    chats_views_pending_sync: Vec<ChatViewRef>,
-
     /// The template for creating new chat views.
     #[live]
     chat_view_template: Option<LivePtr>,
