@@ -236,7 +236,7 @@ impl ChatController {
         self.dispatch_mutations(vec![mutation.into()]);
     }
 
-    /// Get access to state to perform arbitrary unotified mutations.
+    /// Get access to state to perform arbitrary un-notified mutations.
     ///
     /// ## Danger
     ///
@@ -290,13 +290,6 @@ impl ChatController {
             return;
         };
 
-        // let Some(bot) = self.state.get_bot(&bot_id).cloned() else {
-        //     self.dispatch_state_mutation(|state| {
-        //         state.messages.push(Message::app_error("Bot not found"));
-        //     });
-        //     return;
-        // };
-
         self.dispatch_mutation(VecMutation::Push(Message {
             from: EntityId::Bot(bot_id.clone()),
             content: MessageContent::default(),
@@ -319,25 +312,6 @@ impl ChatController {
 
         let controller = self.accessor.clone();
         self.send_abort_on_drop = Some(spawn_abort_on_drop(async move {
-            // The realtime check is hack to avoid showing a loading message for realtime assistants
-            // TODO: we should base this on upgrade rather than capabilities
-            // if !bot.capabilities.supports_realtime() {
-            //     controller.lock_with(|c| {
-            //         c.dispatch_state_mutation(|state| {
-            //             state.messages.push(Message {
-            //                 from: EntityId::Bot(bot_id.clone()),
-            //                 metadata: MessageMetadata {
-            //                     // TODO: Evaluate removing this from messages in favor of
-            //                     // `is_streaming` in the controller.
-            //                     is_writing: true,
-            //                     ..Default::default()
-            //                 },
-            //                 ..Default::default()
-            //             });
-            //         })
-            //     });
-            // }
-
             let Some(tools) = controller.lock_with(|c| {
                 c.tool_manager
                     .as_ref()
@@ -460,9 +434,6 @@ impl ChatController {
                     }
                     None => {}
                 }
-
-                // TODO: Handle unexpected message.
-                // TODO: Handle tools.
 
                 self.dispatch_mutation(VecMutation::update_last_with(
                     &self.state.messages,
@@ -609,16 +580,6 @@ impl ChatController {
                 }
             });
         }));
-    }
-
-    /// Shorthand for removing the client, tool manager, bots and resetting load status.
-    // NOTE: This has been added to simplify the migration for Moly, replacing all
-    // `store.bot_context = None` that were before, but is an obscure functionality.
-    pub fn reset_connections(&mut self) {
-        self.client = None;
-        self.tool_manager = None;
-        self.dispatch_mutation(VecMutation::<Bot>::Clear);
-        self.dispatch_mutation(ChatStateMutation::SetLoadStatus(Status::Idle));
     }
 }
 
