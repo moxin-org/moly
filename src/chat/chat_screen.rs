@@ -91,24 +91,12 @@ impl Widget for ChatScreen {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        println!(
-            "ChatScreen draw_walk ({})",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis()
-        );
-
         self.view.draw_walk(cx, scope, walk)
     }
 }
 
 impl WidgetMatchEvent for ChatScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        for action in actions {
-            dbg!(action);
-        }
-
         if self.button(id!(new_chat_button)).clicked(&actions) {
             cx.action(ChatAction::StartWithoutEntity);
             self.stack_navigation(id!(navigation)).pop_to_root(cx);

@@ -357,26 +357,6 @@ impl ChatViewRef {
     
 }
 
-#[must_use]
-fn update_attachments_with_persisted_key<'m>(
-    messages: impl IntoIterator<Item = &'m mut Message>,
-    attachment: &Attachment,
-    persisted_key: String,
-) -> bool {
-    let mut found = false;
-
-    for message in messages {
-        for att in message.content.attachments.iter_mut() {
-            if att == attachment {
-                set_persistence_key_and_reader(att, persisted_key.clone());
-                found = true;
-            }
-        }
-    }
-
-    found
-}
-
 /// Glue between Moly and Moly Kit.
 pub struct Glue {
     ui: UiRunner<ChatView>,
@@ -546,7 +526,7 @@ impl Glue {
                 
                 {
                     // Important to hold the lock to avoid differences between reads and writes.
-                    let lock = chat_controller.lock().unwrap();
+                    let mut lock = chat_controller.lock().unwrap();
                     let mut mutations: Vec<ChatStateMutation> = Vec::new();
 
                     for (index, message) in lock.state().messages.iter().enumerate() {
@@ -564,7 +544,7 @@ impl Glue {
                         }
                     }
 
-                    chat_controller.lock().unwrap().dispatch_mutations(mutations);
+                    lock.dispatch_mutations(mutations);
                 }
 
                 persisting_attachments.lock().unwrap().remove(&attachment);
