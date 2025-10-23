@@ -605,7 +605,7 @@ impl ChatController {
                 }));
 
                 if let Some(bot_id) = bot_id {
-                    c.dispatch_task(ChatTask::Send(bot_id));
+                    // c.dispatch_task(ChatTask::Send(bot_id));
                 }
             });
         }));

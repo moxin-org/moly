@@ -267,3 +267,493 @@ pub enum VecEffect<'a, T> {
     /// Means the length of the list will DECREASE by `end - start`.
     Remove(usize, usize, &'a [T]),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{IndexSet, VecMutation};
+
+    #[test]
+    fn test_splice_replace() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::Splice(1, 3, vec![10, 20]).apply(&mut vec);
+        assert_eq!(vec, vec![1, 10, 20, 4, 5]);
+    }
+
+    #[test]
+    fn test_splice_insert_only() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::Splice(1, 1, vec![10, 20]).apply(&mut vec);
+        assert_eq!(vec, vec![1, 10, 20, 2, 3]);
+    }
+
+    #[test]
+    fn test_splice_remove_only() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::Splice(1, 4, vec![]).apply(&mut vec);
+        assert_eq!(vec, vec![1, 5]);
+    }
+
+    #[test]
+    fn test_insert_many() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::InsertMany(1, vec![10, 20, 30]).apply(&mut vec);
+        assert_eq!(vec, vec![1, 10, 20, 30, 2, 3]);
+    }
+
+    #[test]
+    fn test_insert_many_at_start() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::InsertMany(0, vec![10, 20]).apply(&mut vec);
+        assert_eq!(vec, vec![10, 20, 1, 2, 3]);
+    }
+
+    #[test]
+    fn test_insert_many_at_end() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::InsertMany(3, vec![10, 20]).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 3, 10, 20]);
+    }
+
+    #[test]
+    fn test_insert_one() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::InsertOne(1, 10).apply(&mut vec);
+        assert_eq!(vec, vec![1, 10, 2, 3]);
+    }
+
+    #[test]
+    fn test_insert_one_at_start() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::InsertOne(0, 10).apply(&mut vec);
+        assert_eq!(vec, vec![10, 1, 2, 3]);
+    }
+
+    #[test]
+    fn test_insert_one_at_end() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::InsertOne(3, 10).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 3, 10]);
+    }
+
+    #[test]
+    fn test_extend() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::Extend(vec![10, 20, 30]).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 3, 10, 20, 30]);
+    }
+
+    #[test]
+    fn test_extend_empty_vec() {
+        let mut vec: Vec<i32> = vec![];
+        VecMutation::Extend(vec![10, 20]).apply(&mut vec);
+        assert_eq!(vec, vec![10, 20]);
+    }
+
+    #[test]
+    fn test_push() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::Push(10).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 3, 10]);
+    }
+
+    #[test]
+    fn test_push_to_empty() {
+        let mut vec: Vec<i32> = vec![];
+        VecMutation::Push(10).apply(&mut vec);
+        assert_eq!(vec, vec![10]);
+    }
+
+    #[test]
+    fn test_remove_range() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::RemoveRange(1, 4).apply(&mut vec);
+        assert_eq!(vec, vec![1, 5]);
+    }
+
+    #[test]
+    fn test_remove_range_from_start() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::RemoveRange(0, 2).apply(&mut vec);
+        assert_eq!(vec, vec![3, 4, 5]);
+    }
+
+    #[test]
+    fn test_remove_range_to_end() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::RemoveRange(2, 5).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2]);
+    }
+
+    #[test]
+    fn test_remove_one() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::RemoveOne(2).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 4, 5]);
+    }
+
+    #[test]
+    fn test_remove_one_first() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::RemoveOne(0).apply(&mut vec);
+        assert_eq!(vec, vec![2, 3]);
+    }
+
+    #[test]
+    fn test_remove_one_last() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::RemoveOne(2).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2]);
+    }
+
+    #[test]
+    fn test_remove_many_sparse() {
+        let mut vec = vec![1, 2, 3, 4, 5, 6, 7];
+        let indices = IndexSet::from(vec![1, 3, 5]);
+        VecMutation::RemoveMany(indices).apply(&mut vec);
+        assert_eq!(vec, vec![1, 3, 5, 7]);
+    }
+
+    #[test]
+    fn test_remove_many_single() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        let indices = IndexSet::from(vec![2]);
+        VecMutation::RemoveMany(indices).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 4, 5]);
+    }
+
+    #[test]
+    fn test_remove_many_consecutive() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        let indices = IndexSet::from(vec![1, 2, 3]);
+        VecMutation::RemoveMany(indices).apply(&mut vec);
+        assert_eq!(vec, vec![1, 5]);
+    }
+
+    #[test]
+    fn test_remove_many_all() {
+        let mut vec = vec![1, 2, 3];
+        let indices = IndexSet::from(vec![0, 1, 2]);
+        VecMutation::RemoveMany(indices).apply(&mut vec);
+        assert_eq!(vec, Vec::<i32>::new());
+    }
+
+    #[test]
+    fn test_remove_many_empty() {
+        let mut vec = vec![1, 2, 3];
+        let indices = IndexSet::from(vec![]);
+        VecMutation::RemoveMany(indices).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_remove_many_duplicates_in_input() {
+        // IndexSet should deduplicate
+        let mut vec = vec![1, 2, 3, 4, 5];
+        let indices = IndexSet::from(vec![1, 1, 3, 3, 1]);
+        VecMutation::RemoveMany(indices).apply(&mut vec);
+        assert_eq!(vec, vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn test_remove_many_unsorted_input() {
+        // IndexSet should sort
+        let mut vec = vec![1, 2, 3, 4, 5];
+        let indices = IndexSet::from(vec![3, 1, 4]);
+        VecMutation::RemoveMany(indices).apply(&mut vec);
+        assert_eq!(vec, vec![1, 3]);
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::Clear.apply(&mut vec);
+        assert_eq!(vec, Vec::<i32>::new());
+    }
+
+    #[test]
+    fn test_clear_empty() {
+        let mut vec: Vec<i32> = vec![];
+        VecMutation::Clear.apply(&mut vec);
+        assert_eq!(vec, Vec::<i32>::new());
+    }
+
+    #[test]
+    fn test_remove_last() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::RemoveLast.apply(&mut vec);
+        assert_eq!(vec, vec![1, 2]);
+    }
+
+    #[test]
+    fn test_remove_last_single_element() {
+        let mut vec = vec![1];
+        VecMutation::RemoveLast.apply(&mut vec);
+        assert_eq!(vec, Vec::<i32>::new());
+    }
+
+    #[test]
+    fn test_update() {
+        let mut vec = vec![1, 2, 3, 4, 5];
+        VecMutation::Update(2, 100).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 100, 4, 5]);
+    }
+
+    #[test]
+    fn test_update_first() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::Update(0, 100).apply(&mut vec);
+        assert_eq!(vec, vec![100, 2, 3]);
+    }
+
+    #[test]
+    fn test_update_last() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::UpdateLast(100).apply(&mut vec);
+        assert_eq!(vec, vec![1, 2, 100]);
+    }
+
+    #[test]
+    fn test_update_last_single_element() {
+        let mut vec = vec![1];
+        VecMutation::UpdateLast(100).apply(&mut vec);
+        assert_eq!(vec, vec![100]);
+    }
+
+    #[test]
+    fn test_set() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::Set(vec![10, 20, 30, 40]).apply(&mut vec);
+        assert_eq!(vec, vec![10, 20, 30, 40]);
+    }
+
+    #[test]
+    fn test_set_empty() {
+        let mut vec = vec![1, 2, 3];
+        VecMutation::Set(vec![]).apply(&mut vec);
+        assert_eq!(vec, Vec::<i32>::new());
+    }
+
+    #[test]
+    fn test_set_to_empty() {
+        let mut vec: Vec<i32> = vec![];
+        VecMutation::Set(vec![10, 20]).apply(&mut vec);
+        assert_eq!(vec, vec![10, 20]);
+    }
+
+    #[test]
+    fn test_update_with() {
+        let vec = vec![1, 2, 3, 4, 5];
+        let mut vec_mut = vec.clone();
+        let mutation = VecMutation::update_with(&vec, 2, |x| *x *= 10);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec![1, 2, 30, 4, 5]);
+    }
+
+    #[test]
+    fn test_update_with_complex_modification() {
+        #[derive(Debug, Clone, PartialEq)]
+        struct Item {
+            id: i32,
+            value: String,
+        }
+
+        let vec = vec![
+            Item {
+                id: 1,
+                value: "a".to_string(),
+            },
+            Item {
+                id: 2,
+                value: "b".to_string(),
+            },
+            Item {
+                id: 3,
+                value: "c".to_string(),
+            },
+        ];
+        let mut vec_mut = vec.clone();
+        let mutation = VecMutation::update_with(&vec, 1, |item| {
+            item.id = 20;
+            item.value = "modified".to_string();
+        });
+        mutation.apply(&mut vec_mut);
+        assert_eq!(
+            vec_mut,
+            vec![
+                Item {
+                    id: 1,
+                    value: "a".to_string()
+                },
+                Item {
+                    id: 20,
+                    value: "modified".to_string()
+                },
+                Item {
+                    id: 3,
+                    value: "c".to_string()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_update_last_with() {
+        let vec = vec![1, 2, 3, 4, 5];
+        let mut vec_mut = vec.clone();
+        let mutation = VecMutation::update_last_with(&vec, |x| *x *= 10);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec![1, 2, 3, 4, 50]);
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_basic() {
+        let vec = vec![1, 2, 3, 4, 5, 6, 7, 8];
+        let mut vec_mut = vec.clone();
+        // Remove all even numbers
+        let mutation = VecMutation::remove_many_from_filter(&vec, |_, &item| item % 2 == 0);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec![1, 3, 5, 7]);
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_none_match() {
+        let vec = vec![1, 3, 5, 7];
+        let mut vec_mut = vec.clone();
+        // Try to remove even numbers (none exist)
+        let mutation = VecMutation::remove_many_from_filter(&vec, |_, &item| item % 2 == 0);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec![1, 3, 5, 7]);
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_all_match() {
+        let vec = vec![2, 4, 6, 8];
+        let mut vec_mut = vec.clone();
+        // Remove all even numbers (all elements)
+        let mutation = VecMutation::remove_many_from_filter(&vec, |_, &item| item % 2 == 0);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, Vec::<i32>::new());
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_by_index() {
+        let vec = vec!["a", "b", "c", "d", "e"];
+        let mut vec_mut = vec.clone();
+        // Remove items at even indices
+        let mutation = VecMutation::remove_many_from_filter(&vec, |i, _| i % 2 == 0);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec!["b", "d"]);
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_combined_criteria() {
+        let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let mut vec_mut = vec.clone();
+        // Remove items where value > 5 AND index is even
+        let mutation =
+            VecMutation::remove_many_from_filter(&vec, |i, &item| i % 2 == 0 && item > 5);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec![1, 2, 3, 4, 5, 6, 8, 10]);
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_complex_type() {
+        #[derive(Debug, Clone, PartialEq)]
+        struct Person {
+            name: String,
+            age: i32,
+        }
+
+        let vec = vec![
+            Person {
+                name: "Alice".to_string(),
+                age: 25,
+            },
+            Person {
+                name: "Bob".to_string(),
+                age: 30,
+            },
+            Person {
+                name: "Charlie".to_string(),
+                age: 35,
+            },
+            Person {
+                name: "Dave".to_string(),
+                age: 40,
+            },
+        ];
+        let mut vec_mut = vec.clone();
+        // Remove people older than 30
+        let mutation = VecMutation::remove_many_from_filter(&vec, |_, person| person.age > 30);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(
+            vec_mut,
+            vec![
+                Person {
+                    name: "Alice".to_string(),
+                    age: 25
+                },
+                Person {
+                    name: "Bob".to_string(),
+                    age: 30
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_first_and_last() {
+        let vec = vec![1, 2, 3, 4, 5];
+        let mut vec_mut = vec.clone();
+        // Remove first and last elements
+        let mutation = VecMutation::remove_many_from_filter(&vec, |i, _| i == 0 || i == 4);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec![2, 3, 4]);
+    }
+
+    #[test]
+    fn test_remove_many_from_filter_consecutive() {
+        let vec = vec![1, 2, 3, 4, 5, 6, 7];
+        let mut vec_mut = vec.clone();
+        // Remove elements at indices 2, 3, 4
+        let mutation = VecMutation::remove_many_from_filter(&vec, |i, _| i >= 2 && i <= 4);
+        mutation.apply(&mut vec_mut);
+        assert_eq!(vec_mut, vec![1, 2, 6, 7]);
+    }
+
+    #[test]
+    fn test_index_set_deduplication() {
+        let index_set = IndexSet::from(vec![3, 1, 2, 1, 3, 2]);
+        assert_eq!(&*index_set, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_index_set_sorting() {
+        let index_set = IndexSet::from(vec![5, 2, 8, 1, 9]);
+        assert_eq!(&*index_set, &[1, 2, 5, 8, 9]);
+    }
+
+    #[test]
+    fn test_index_set_empty() {
+        let index_set = IndexSet::from(vec![]);
+        let empty: &[usize] = &[];
+        assert_eq!(&*index_set, empty);
+    }
+
+    #[test]
+    fn test_index_set_single() {
+        let index_set = IndexSet::from(vec![42]);
+        assert_eq!(&*index_set, &[42]);
+    }
+
+    #[test]
+    fn test_sequential_mutations() {
+        // Test applying multiple mutations in sequence
+        let mut vec = vec![1, 2, 3];
+        VecMutation::Push(4).apply(&mut vec);
+        VecMutation::InsertOne(0, 0).apply(&mut vec);
+        VecMutation::RemoveOne(2).apply(&mut vec);
+        VecMutation::Update(1, 100).apply(&mut vec);
+        assert_eq!(vec, vec![0, 100, 3, 4]);
+    }
+}
