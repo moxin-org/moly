@@ -1,9 +1,12 @@
+[workspace]
+
 [package]
 name = "moly-mini"
 version = "0.2.2"
 edition = "2024"
 
 [dependencies]
+env_logger = "0.11.8"
 futures = "0.3.31"
 futures-core = "0.3.31"
 makepad-widgets = { git = "https://github.com/wyeworks/makepad", rev = "5c16b905a" }

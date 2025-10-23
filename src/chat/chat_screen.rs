@@ -3,12 +3,12 @@ use moly_kit::protocol::Picture;
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
-use crate::chat::chats_deck::ChatsDeckWidgetExt;
 use crate::data::providers::ProviderType;
 use crate::data::store::Store;
 use crate::settings::provider_view::ProviderViewWidgetExt;
 use crate::settings::providers::ConnectionSettingsAction;
 use crate::shared::actions::ChatAction;
+use crate::shared::bot_context::BotContext;
 
 live_design! {
     use link::theme::*;
@@ -135,7 +135,7 @@ impl WidgetMatchEvent for ChatScreen {
 }
 
 impl ChatScreen {
-    fn create_bot_context(&mut self, cx: &mut Cx, scope: &mut Scope) {
+    fn create_bot_context(&mut self, _cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         let multi_client = {
@@ -246,22 +246,14 @@ impl ChatScreen {
         context.set_tool_manager(tool_manager);
 
         store.bot_context = Some(context.clone());
-        self.chats_deck(id!(chats_deck))
-            .sync_bot_contexts(cx, scope);
 
         self.creating_bot_context = true;
 
         let ui = self.ui_runner();
         spawn(async move {
             let _ = context.load().await;
-
-            ui.defer_with_redraw(move |me, cx, scope| {
+            ui.defer_with_redraw(move |me, _cx, _scope| {
                 me.creating_bot_context = false;
-
-                // Update the bot_context with loaded bots and re-sync
-                let store = scope.data.get_mut::<Store>().unwrap();
-                store.bot_context = Some(context);
-                me.chats_deck(id!(chats_deck)).sync_bot_contexts(cx, scope);
             });
         });
     }
