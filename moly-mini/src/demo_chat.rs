@@ -80,13 +80,11 @@ impl DemoChat {
             .into_iter()
             .filter(|b| {
                 let openai_whitelist = [
-                    "gpt-4o",
-                    "gpt-4o-mini",
-                    "o1",
-                    "o1-preview",
-                    "o1-mini",
-                    "o3-mini",
-                    "o3-mini-high",
+                    "gpt-5",
+                    "gpt-5-mini",
+                    "gpt-5-nano",
+                    "o4-mini-high",
+                    "o4-mini-deep-research",
                 ];
 
                 let openai_image_whitelist = ["dall-e-3", "gpt-image-1-mini", "gpt-image-1"];
@@ -94,20 +92,18 @@ impl DemoChat {
                 let openai_realtime_whitelist = ["gpt-realtime", "gpt-realtime-mini"];
 
                 let openrouter_whitelist = [
-                    "openai/gpt-4o",
-                    "openai/gpt-4o-mini",
-                    "openai/o1",
-                    "openai/o1-preview",
-                    "openai/o1-mini",
-                    "openai/o3-mini",
-                    "openai/o3-mini-high",
-                    "perplexity/sonar",
-                    "perplexity/sonar-reasoning",
-                    "perplexity/r1-1776",
-                    "openrouter/auto",
-                    "google/gemini-2.0-flash-001",
-                    "anthropic/claude-3.5-sonnet",
-                    "deepseek/deepseek-r1",
+                    "google/gemini-2.5-flash",
+                    "google/gemini-2.5-pro",
+                    "google/gemini-2.5-flash-lite",
+                    "openai/gpt-5",
+                    "openai/gpt-5-mini",
+                    "openai/gpt-5-nano",
+                    "openai/o4-mini-high",
+                    "openai/o4-mini-deep-research",
+                    "anthropic/claude-sonnet-4.5",
+                    "anthropic/claude-haiku-4.5",
+                    "deepseek/deepseek-r1-0528",
+                    "deepseek/deepseek-chat-v3-0324",
                     "mistralai/mistral-nemo",
                 ];
 
