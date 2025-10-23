@@ -167,18 +167,21 @@ impl<T: Clone> VecMutation<T> {
         VecMutation::UpdateLast(item)
     }
 
-    /// Constructs a [`VecMutation::RemoveMany`] using filtering semantics.
+    /// Constructs a [`VecMutation::RemoveMany`] using retention semantics.
+    ///
+    /// The `retain` predicate should return `true` for elements to **keep** and `false` for elements to **remove**.
+    /// This matches the semantics of Rust's standard `Vec::retain` method.
     ///
     /// Warning: This will allocate a `Vec` to hold all the matched indices.
     /// Read the documentation of [`VecMutation::RemoveMany`] for more details.
-    pub fn remove_many_from_filter(
+    pub fn remove_many_with_retain(
         target: &[T],
-        mut filter: impl FnMut(usize, &T) -> bool,
+        mut retain: impl FnMut(usize, &T) -> bool,
     ) -> VecMutation<T> {
         let indices: Vec<usize> = target
             .iter()
             .enumerate()
-            .filter_map(|(i, item)| if filter(i, item) { Some(i) } else { None })
+            .filter_map(|(i, item)| if !retain(i, item) { Some(i) } else { None })
             .collect();
         VecMutation::RemoveMany(IndexSet::from(indices))
     }
@@ -606,58 +609,58 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_many_from_filter_basic() {
+    fn test_remove_many_with_retain_basic() {
         let vec = vec![1, 2, 3, 4, 5, 6, 7, 8];
         let mut vec_mut = vec.clone();
-        // Remove all even numbers
-        let mutation = VecMutation::remove_many_from_filter(&vec, |_, &item| item % 2 == 0);
+        // Keep odd numbers (remove even numbers)
+        let mutation = VecMutation::remove_many_with_retain(&vec, |_, &item| item % 2 != 0);
         mutation.apply(&mut vec_mut);
         assert_eq!(vec_mut, vec![1, 3, 5, 7]);
     }
 
     #[test]
-    fn test_remove_many_from_filter_none_match() {
+    fn test_remove_many_with_retain_none_removed() {
         let vec = vec![1, 3, 5, 7];
         let mut vec_mut = vec.clone();
-        // Try to remove even numbers (none exist)
-        let mutation = VecMutation::remove_many_from_filter(&vec, |_, &item| item % 2 == 0);
+        // Keep all odd numbers (all elements match)
+        let mutation = VecMutation::remove_many_with_retain(&vec, |_, &item| item % 2 != 0);
         mutation.apply(&mut vec_mut);
         assert_eq!(vec_mut, vec![1, 3, 5, 7]);
     }
 
     #[test]
-    fn test_remove_many_from_filter_all_match() {
+    fn test_remove_many_with_retain_all_removed() {
         let vec = vec![2, 4, 6, 8];
         let mut vec_mut = vec.clone();
-        // Remove all even numbers (all elements)
-        let mutation = VecMutation::remove_many_from_filter(&vec, |_, &item| item % 2 == 0);
+        // Keep only odd numbers (none exist, so remove all)
+        let mutation = VecMutation::remove_many_with_retain(&vec, |_, &item| item % 2 != 0);
         mutation.apply(&mut vec_mut);
         assert_eq!(vec_mut, Vec::<i32>::new());
     }
 
     #[test]
-    fn test_remove_many_from_filter_by_index() {
+    fn test_remove_many_with_retain_by_index() {
         let vec = vec!["a", "b", "c", "d", "e"];
         let mut vec_mut = vec.clone();
-        // Remove items at even indices
-        let mutation = VecMutation::remove_many_from_filter(&vec, |i, _| i % 2 == 0);
+        // Keep items at odd indices (remove items at even indices)
+        let mutation = VecMutation::remove_many_with_retain(&vec, |i, _| i % 2 != 0);
         mutation.apply(&mut vec_mut);
         assert_eq!(vec_mut, vec!["b", "d"]);
     }
 
     #[test]
-    fn test_remove_many_from_filter_combined_criteria() {
+    fn test_remove_many_with_retain_combined_criteria() {
         let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let mut vec_mut = vec.clone();
-        // Remove items where value > 5 AND index is even
+        // Keep items where value <= 5 OR index is odd
         let mutation =
-            VecMutation::remove_many_from_filter(&vec, |i, &item| i % 2 == 0 && item > 5);
+            VecMutation::remove_many_with_retain(&vec, |i, &item| item <= 5 || i % 2 != 0);
         mutation.apply(&mut vec_mut);
         assert_eq!(vec_mut, vec![1, 2, 3, 4, 5, 6, 8, 10]);
     }
 
     #[test]
-    fn test_remove_many_from_filter_complex_type() {
+    fn test_remove_many_with_retain_complex_type() {
         #[derive(Debug, Clone, PartialEq)]
         struct Person {
             name: String,
@@ -683,8 +686,8 @@ mod tests {
             },
         ];
         let mut vec_mut = vec.clone();
-        // Remove people older than 30
-        let mutation = VecMutation::remove_many_from_filter(&vec, |_, person| person.age > 30);
+        // Keep people 30 or younger (remove people older than 30)
+        let mutation = VecMutation::remove_many_with_retain(&vec, |_, person| person.age <= 30);
         mutation.apply(&mut vec_mut);
         assert_eq!(
             vec_mut,
@@ -702,21 +705,21 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_many_from_filter_first_and_last() {
+    fn test_remove_many_with_retain_first_and_last() {
         let vec = vec![1, 2, 3, 4, 5];
         let mut vec_mut = vec.clone();
-        // Remove first and last elements
-        let mutation = VecMutation::remove_many_from_filter(&vec, |i, _| i == 0 || i == 4);
+        // Keep middle elements (remove first and last)
+        let mutation = VecMutation::remove_many_with_retain(&vec, |i, _| i != 0 && i != 4);
         mutation.apply(&mut vec_mut);
         assert_eq!(vec_mut, vec![2, 3, 4]);
     }
 
     #[test]
-    fn test_remove_many_from_filter_consecutive() {
+    fn test_remove_many_with_retain_consecutive() {
         let vec = vec![1, 2, 3, 4, 5, 6, 7];
         let mut vec_mut = vec.clone();
-        // Remove elements at indices 2, 3, 4
-        let mutation = VecMutation::remove_many_from_filter(&vec, |i, _| i >= 2 && i <= 4);
+        // Keep elements at indices < 2 or > 4 (remove indices 2, 3, 4)
+        let mutation = VecMutation::remove_many_with_retain(&vec, |i, _| i < 2 || i > 4);
         mutation.apply(&mut vec_mut);
         assert_eq!(vec_mut, vec![1, 2, 6, 7]);
     }

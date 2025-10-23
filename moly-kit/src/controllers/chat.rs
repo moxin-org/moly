@@ -590,7 +590,7 @@ impl ChatController {
 
             controller.lock_with(|c| {
                 c.dispatch_mutation(ChatStateMutation::SetIsStreaming(false));
-                c.dispatch_mutation(VecMutation::remove_many_from_filter(
+                c.dispatch_mutation(VecMutation::remove_many_with_retain(
                     &c.state.messages,
                     |_, m| !(m.metadata.is_writing && m.from == EntityId::Tool),
                 ));
@@ -605,7 +605,7 @@ impl ChatController {
                 }));
 
                 if let Some(bot_id) = bot_id {
-                    // c.dispatch_task(ChatTask::Send(bot_id));
+                    c.dispatch_task(ChatTask::Send(bot_id));
                 }
             });
         }));
