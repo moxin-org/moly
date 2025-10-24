@@ -98,8 +98,8 @@ impl Widget for ModelSelectorItem {
 
 impl WidgetMatchEvent for ModelSelectorItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(content)).finger_down(&actions) {
-            if fd.tap_count == 1 {
+        if let Some(fd) = self.view(id!(content)).finger_up(&actions) {
+            if fd.was_tap() {
                 cx.action(ModelSelectorAction::BotSelected(
                     self.chat_id,
                     self.model.clone(),
