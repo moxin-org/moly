@@ -33,6 +33,7 @@ live_design! {
         deep_inquire_content: <DeepInquireContent> {}
 
         list = <PortalList> {
+            grab_key_focus: true
             scroll_bar: {
                 bar_size: 0.0,
             }
