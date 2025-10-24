@@ -1,11 +1,18 @@
 use makepad_widgets::*;
+use moly_kit::controllers::chat::{
+    ChatController, ChatControllerPlugin, ChatControllerPluginRegistrationId, ChatState,
+    ChatStateMutation,
+};
 use moly_kit::utils::asynchronous::spawn;
+use moly_kit::utils::vec::{VecEffect, VecMutation};
 use moly_kit::*;
 
 use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 
 use crate::data::chats::chat::ChatID;
 use crate::data::store::{ProviderSyncingStatus, Store};
+use crate::shared::bot_context::BotContext;
 use crate::shared::utils::attachments::{
     delete_attachment, generate_persistence_key, set_persistence_key_and_reader,
     write_attachment_to_key,
@@ -124,38 +131,63 @@ pub struct ChatView {
     chat_id: ChatID,
 
     #[rust]
+    plugin_id: Option<ChatControllerPluginRegistrationId>,
+
+    #[rust]
     focused: bool,
+
+    // `chat_deck.rs` uses `WidgetRef::new_from_ptr` where `after_new_from_doc` is
+    // not yet called and then tries to work with data from the widget, so ensuring
+    // a controller is ready is necessary.
+    // Do not expose this mutably unless you handle plugin unlinking on controller swap.
+    // The plugin is still constructed in `after_new_from_doc`.
+    #[rust(ChatController::new_arc())]
+    chat_controller: Arc<Mutex<ChatController>>,
+
+    #[rust]
+    bot_context: Option<BotContext>,
 
     #[rust]
     message_updated_while_inactive: bool,
-
-    #[rust]
-    persisting_attachments: HashSet<Attachment>,
 }
 
 impl LiveHook for ChatView {
-    fn after_new_from_doc(&mut self, _cx: &mut Cx) {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
         self.prompt_input(id!(chat.prompt)).write().disable();
+        let plugin_id = self
+            .chat_controller
+            .lock()
+            .unwrap()
+            .append_plugin(Glue::new(self.ui_runner()));
+        self.plugin_id = Some(plugin_id);
 
-        // Glue between Moly and Moly Kit.
-        let ui = self.ui_runner();
         self.chat(id!(chat))
             .write()
-            .set_hook_after(move |group, _, _| {
-                for task in group.iter() {
-                    // Currently, we only need to process one task at a time in
-                    // the context of our widget.
-                    let task = task.clone();
-                    ui.defer_with_redraw(move |me, cx, scope| {
-                        me.handle_chat_task(task, cx, scope);
-                    });
-                }
-            });
+            .set_chat_controller(cx, Some(self.chat_controller.clone()));
+    }
+}
+
+impl Drop for ChatView {
+    fn drop(&mut self) {
+        if let Some(plugin_id) = self.plugin_id.take() {
+            self.chat(id!(chat))
+                .write()
+                .chat_controller()
+                .as_ref()
+                .expect("chat controller missing")
+                .lock()
+                .unwrap()
+                .remove_plugin(plugin_id);
+        }
+
+        self.unbind_bot_context();
     }
 }
 
 impl Widget for ChatView {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.bind_bot_context(scope);
+
         self.ui_runner().handle(cx, event, scope, self);
         self.widget_match_event(cx, event, scope);
         self.view.handle_event(cx, event, scope);
@@ -165,6 +197,8 @@ impl Widget for ChatView {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.bind_bot_context(scope);
+
         // On mobile, only set padding on top of the prompt
         // TODO: do this with AdaptiveView instead of apply_over
         if !cx.display_context.is_desktop() && cx.display_context.is_screen_size_known() {
@@ -291,215 +325,28 @@ impl ChatView {
         }
     }
 
-    fn handle_chat_task(&mut self, task: ChatTask, _cx: &mut Cx, scope: &mut Scope) {
+    pub fn bind_bot_context(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        // Let's get the chat in the store we will apply the modifications to.
-        let Some(store_chat) = store.chats.get_chat_by_id(self.chat_id) else {
-            return;
-        };
+        let store_bot_context_id = store.bot_context.as_ref().map(|bc| bc.id());
+        let self_bot_context_id = self.bot_context.as_ref().map(|bc| bc.id());
 
-        let mut store_chat = store_chat.borrow_mut();
-
-        // Transform task operations into a single `splice` operation that can
-        // be applied to the store chat messages and is easier to analyze for
-        // attachment persistence.
-        let (range, replacement) = match task {
-            ChatTask::InsertMessage(index, message) => (index..index, vec![message]),
-            ChatTask::UpdateMessage(index, message) => {
-                if index == store_chat.messages.len() {
-                    (index..index, vec![message])
-                } else {
-                    (index..(index + 1), vec![message])
-                }
+        if self_bot_context_id != store_bot_context_id {
+            self.bot_context = store.bot_context.clone();
+            if let Some(bot_context) = &mut self.bot_context {
+                bot_context.add_chat_controller(self.chat_controller.clone());
             }
-            ChatTask::DeleteMessage(index) => (index..(index + 1), vec![]),
-            ChatTask::SetMessages(messages) => (0..store_chat.messages.len(), messages),
-            _ => (0..0, vec![]),
-        };
-
-        self.handle_attachments_persistence(&store_chat, &range, &replacement);
-        self.handle_store_sync(&mut store_chat, &range, &replacement);
-    }
-
-    /// Handle the currently complex persistence of attachments logic.
-    fn handle_attachments_persistence(
-        &mut self,
-        store_chat: &crate::data::chats::chat::Chat,
-        range: &std::ops::Range<usize>,
-        replacement: &[Message],
-    ) {
-        let store_len = store_chat.messages.len();
-        let slice_start = range.start;
-        let slice_end = std::cmp::min(range.end, store_len);
-
-        // If the range is invalid, skip attachment processing to avoid panics
-        if slice_start > slice_end {
-            ::log::error!(
-                "Invalid slice range at handle_attachments_persistence: {:?}",
-                range
-            );
-            return;
-        }
-
-        // Track the attachments that are in the replacement part of the splice to
-        // help with next steps.
-        let attachments_in_replacement = replacement
-            .iter()
-            .flat_map(|m| &m.content.attachments)
-            .cloned()
-            .collect::<HashSet<_>>();
-
-        // Make a list of previously PERSISTED attachments that would be lost after
-        // applying the splice.
-        // Focus on the range that will be replaced.
-        let attachments_to_delete = store_chat.messages[slice_start..slice_end]
-            .iter()
-            .flat_map(|m| &m.content.attachments)
-            // Focus on attachments already on disk.
-            .filter(|a| a.has_persistence_key())
-            // Only relevant if they really disappear from the replacement.
-            .filter(|a| !attachments_in_replacement.contains(a))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        // Make a list of NOT PERSISTED attachments that will be applied after
-        // after the splice.
-        let attachments_to_persist = attachments_in_replacement
-            .iter()
-            // Focus on non-persisted attachments only.
-            .filter(|a| !a.has_persistence_key())
-            // Avoid attachments already being processed.
-            .filter(|a| !self.persisting_attachments.contains(a))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        // Start deleting each removed attachment.
-        for attachment in attachments_to_delete {
-            // NOTE: This works for Moly use cases.
-            // On reusable implementation, consider an attachment being reused across
-            // messages and chats.
-            spawn(async move {
-                let key = attachment.get_persistence_key().unwrap();
-
-                ::log::info!(
-                    "Deleting persisted attachment, named {}, with key: {}",
-                    attachment.name,
-                    key
-                );
-
-                if let Err(e) = delete_attachment(&attachment).await {
-                    ::log::error!(
-                        "Failed to delete persisted attachment, named {}, with key {}: {}",
-                        attachment.name,
-                        key,
-                        e
-                    );
-                }
-            });
-        }
-
-        // Start persisting each new attachment.
-        for attachment in attachments_to_persist {
-            let ui = self.ui_runner();
-
-            // Mark the attachment as being processed to avoid re-processing it.
-            self.persisting_attachments.insert(attachment.clone());
-
-            spawn(async move {
-                let key = generate_persistence_key(&attachment);
-
-                ::log::info!(
-                    "Persisting attachment, named {}, with key: {}",
-                    attachment.name,
-                    key
-                );
-
-                if let Err(e) = write_attachment_to_key(&attachment, &key).await {
-                    // log name and key
-                    ::log::error!(
-                        "Failed to persist (read & write) attachment, named {}, with key {}: {}",
-                        attachment.name,
-                        key,
-                        e
-                    );
-
-                    // Note: Early return on failure will leave the attachment in the
-                    // processing set to avoid re-processing it in the future.
-                    return;
-                }
-
-                // Let's update the attachments back with the persisted key and reader.
-                ui.defer_with_redraw(move |me, _cx, scope| {
-                    let chat = me.chat(id!(chat));
-                    let store = scope.data.get_mut::<Store>().unwrap();
-                    let store_chat = store.chats.get_chat_by_id(me.chat_id).unwrap();
-
-                    // Let's remove the attachment from the processing set before changing it.
-                    me.persisting_attachments.remove(&attachment);
-
-                    // Apply attachment changes to messages in the chat widget.
-                    let _ = update_attachments_with_persisted_key(
-                        &mut chat.read().messages_ref().write().messages,
-                        &attachment,
-                        key.clone(),
-                    );
-
-                    // Apply attachment changes to messages in the store chat.
-                    let found = update_attachments_with_persisted_key(
-                        &mut store_chat.borrow_mut().messages,
-                        &attachment,
-                        key.clone(),
-                    );
-
-                    // If while persisting, the attachment disappeared from the
-                    // chat messages history, then delete it back from disk.
-                    if !found {
-                        ::log::info!(
-                            "Attachment with name {} and key {} disappeared after persistence. Removing it.",
-                            attachment.name,
-                            key
-                        );
-
-                        spawn(async move {
-                            if let Err(e) = delete_attachment(&attachment).await {
-                                ::log::error!(
-                                    "Failed to delete attachment that disappeared after persistence, named {}, with key {}: {}",
-                                    attachment.name,
-                                    key,
-                                    e
-                                );
-                            }
-                        });
-                    }
-                });
-            });
         }
     }
 
-    fn handle_store_sync(
-        &mut self,
-        store_chat: &mut crate::data::chats::chat::Chat,
-        range: &std::ops::Range<usize>,
-        replacement: &[Message],
-    ) {
-        // Apply the splice to the store chat.
-        store_chat
-            .messages
-            .splice(range.clone(), replacement.iter().cloned());
-
-        // Update the title if the first message changed (due to insert or update).
-        if range.start == 0 && !replacement.is_empty() {
-            store_chat.update_title_based_on_first_message();
+    pub fn unbind_bot_context(&mut self) {
+        if let Some(mut bot_context) = self.bot_context.take() {
+            bot_context.remove_chat_controller(&self.chat_controller);
         }
+    }
 
-        // Write to disk.
-        store_chat.save_and_forget();
-
-        // Keep track of whether the message was updated while the chat view was inactive
-        if !self.focused {
-            self.message_updated_while_inactive = true;
-        }
+    pub fn chat_controller(&self) -> &Arc<Mutex<ChatController>> {
+        &self.chat_controller
     }
 }
 
@@ -520,22 +367,232 @@ impl ChatViewRef {
     }
 }
 
-#[must_use]
-fn update_attachments_with_persisted_key<'m>(
-    messages: impl IntoIterator<Item = &'m mut Message>,
-    attachment: &Attachment,
-    persisted_key: String,
-) -> bool {
-    let mut found = false;
+/// Glue between Moly and Moly Kit.
+pub struct Glue {
+    ui: UiRunner<ChatView>,
+    marked_attachments: HashSet<Attachment>,
+    persisting_attachments: Arc<Mutex<HashSet<Attachment>>>,
+}
 
-    for message in messages {
-        for att in message.content.attachments.iter_mut() {
-            if att == attachment {
-                set_persistence_key_and_reader(att, persisted_key.clone());
-                found = true;
+impl ChatControllerPlugin for Glue {
+    fn on_state_mutation(&mut self, mutation: &ChatStateMutation, state: &ChatState) {
+        if let ChatStateMutation::MutateMessages(mutation) = mutation {
+            self.replicate_messages_mutation_to_store(mutation);
+            self.mark_attachments(mutation, state);
+        }
+    }
+
+    fn on_state_ready(&mut self, state: &ChatState, _mutatins: &[ChatStateMutation]) {
+        self.sweep_attachments(state);
+    }
+}
+
+impl Glue {
+    pub fn new(ui: UiRunner<ChatView>) -> Self {
+        Self {
+            ui,
+            marked_attachments: HashSet::new(),
+            persisting_attachments: Arc::new(Mutex::new(HashSet::new())),
+        }
+    }
+
+    fn replicate_messages_mutation_to_store(&self, mutation: &VecMutation<Message>) {
+        let mutation = mutation.clone();
+
+        self.ui.defer(move |chat_view, _, scope| {
+            let store = scope.data.get_mut::<Store>().unwrap();
+
+            let Some(store_chat) = store.chats.get_chat_by_id(chat_view.chat_id) else {
+                return;
+            };
+
+            let modified_first_message =
+                mutation
+                    .effects(&store_chat.borrow().messages)
+                    .any(|effect| match effect {
+                        VecEffect::Insert(index, _) | VecEffect::Update(index, _, _) => index == 0,
+                        VecEffect::Remove(_, _, _) => false,
+                    });
+
+            mutation.apply(&mut store_chat.borrow_mut().messages);
+
+            if modified_first_message {
+                store_chat
+                    .borrow_mut()
+                    .update_title_based_on_first_message();
+            }
+
+            // Write to disk.
+            store_chat.borrow_mut().save_and_forget();
+
+            // Keep track of whether the message was updated while the chat view was inactive
+            if !chat_view.focused {
+                chat_view.message_updated_while_inactive = true;
+            }
+        });
+    }
+
+    fn mark_attachments(&mut self, mutation: &VecMutation<Message>, state: &ChatState) {
+        self.marked_attachments.clear();
+
+        for effect in mutation.effects(&state.messages) {
+            match effect {
+                VecEffect::Insert(_, messages) => {
+                    // Dev note: To make this reusable outside of Moly, attachment inserts
+                    // should be treated in the same way as deletes, re-scanning to
+                    // verify an actual insert happened.
+
+                    for message in messages {
+                        for attachment in &message.content.attachments {
+                            if !attachment.has_persistence_key()
+                                && !self
+                                    .persisting_attachments
+                                    .lock()
+                                    .unwrap()
+                                    .contains(attachment)
+                            {
+                                self.persist_attachment(attachment.clone());
+                            }
+                        }
+                    }
+                }
+                VecEffect::Remove(_start, _end, removed) => {
+                    for messages in removed {
+                        for attachment in &messages.content.attachments {
+                            if attachment.has_persistence_key() {
+                                self.marked_attachments.insert(attachment.clone());
+                            }
+                        }
+                    }
+                }
+                VecEffect::Update(_index, _from, _to) => {
+                    // Dev note: To make this reusable outside of Moly, attachment updates
+                    // should be analyzed as well.
+                }
             }
         }
     }
 
-    found
+    fn sweep_attachments(&mut self, state: &ChatState) {
+        if self.marked_attachments.is_empty() {
+            return;
+        }
+
+        for message in &state.messages {
+            for attachment in &message.content.attachments {
+                self.marked_attachments.remove(attachment);
+            }
+        }
+
+        for attachment in &self.marked_attachments {
+            let attachment = attachment.clone();
+            spawn(async move {
+                let key = attachment.get_persistence_key().unwrap();
+
+                ::log::info!(
+                    "Sweeping persisted attachment, named {}, with key: {}",
+                    attachment.name,
+                    key
+                );
+
+                if let Err(e) = delete_attachment(&attachment).await {
+                    ::log::error!(
+                        "Failed to sweep persisted attachment, named {}, with key {}: {}",
+                        attachment.name,
+                        key,
+                        e
+                    );
+                }
+            });
+        }
+    }
+
+    fn persist_attachment(&self, attachment: Attachment) {
+        let ui = self.ui;
+
+        let persisting_attachments = self.persisting_attachments.clone();
+
+        // Mark the attachment as being processed to avoid re-processing it.
+        persisting_attachments
+            .lock()
+            .unwrap()
+            .insert(attachment.clone());
+
+        spawn(async move {
+            let key = generate_persistence_key(&attachment);
+
+            ::log::info!(
+                "Persisting attachment, named {}, with key: {}",
+                attachment.name,
+                key
+            );
+
+            if let Err(e) = write_attachment_to_key(&attachment, &key).await {
+                // log name and key
+                ::log::error!(
+                    "Failed to persist (read & write) attachment, named {}, with key {}: {}",
+                    attachment.name,
+                    key,
+                    e
+                );
+
+                // Note: Early return on failure will leave the attachment in the
+                // processing set to avoid re-processing it in the future.
+                return;
+            }
+
+            // Let's update the attachments back with the persisted key and reader.
+            ui.defer(move |me, _cx, _scope| {
+                let chat = me.chat(id!(chat));
+                let chat_controller = chat.read().chat_controller().expect("chat controller missing").clone();
+                let mut found = false;
+
+                {
+                    // Important to hold the lock to avoid differences between reads and writes.
+                    let mut lock = chat_controller.lock().unwrap();
+                    let mut mutations: Vec<ChatStateMutation> = Vec::new();
+
+                    for (index, message) in lock.state().messages.iter().enumerate() {
+                        if message.content.attachments.iter().any(|att| att == &attachment) {
+                            found = true;
+                            let mut updated_message = message.clone();
+
+                            for att in &mut updated_message.content.attachments {
+                                if att == &attachment {
+                                    set_persistence_key_and_reader(att, key.clone());
+                                }
+                            }
+
+                            mutations.push(VecMutation::Update(index, updated_message).into());
+                        }
+                    }
+
+                    lock.dispatch_mutations(mutations);
+                }
+
+                persisting_attachments.lock().unwrap().remove(&attachment);
+
+                // If while persisting, the attachment disappeared from the
+                // chat messages history, then delete it back from disk.
+                if !found {
+                    ::log::info!(
+                        "Attachment with name {} and key {} disappeared after persistence. Removing it.",
+                        attachment.name,
+                        key
+                    );
+
+                    spawn(async move {
+                        if let Err(e) = delete_attachment(&attachment).await {
+                            ::log::error!(
+                                "Failed to delete attachment that disappeared after persistence, named {}, with key {}: {}",
+                                attachment.name,
+                                key,
+                                e
+                            );
+                        }
+                    });
+                }
+            });
+        });
+    }
 }

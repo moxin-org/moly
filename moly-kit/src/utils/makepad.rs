@@ -2,6 +2,7 @@
 
 pub mod events;
 mod portal_list;
+pub mod ui_runner;
 
 pub use events::*;
 pub(crate) use portal_list::*;

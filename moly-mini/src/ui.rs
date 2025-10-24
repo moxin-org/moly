@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_kit::{ChatWidgetRefExt, protocol::*};
+use moly_kit::{protocol::*, *};
 
 use crate::demo_chat::DemoChatWidgetExt;
 
@@ -96,16 +96,16 @@ impl Widget for Ui {
             ])
             .take(1)
             .flatten()
-            .collect();
+            .collect::<Vec<_>>();
 
-            self.demo_chat(id!(chat_2))
-                .chat(id!(chat))
-                .borrow()
-                .unwrap()
-                .messages_ref()
-                .borrow_mut()
-                .unwrap()
-                .messages = messages;
+            // self.demo_chat(id!(chat_2))
+            //     .chat(id!(chat))
+            //     .borrow()
+            //     .unwrap()
+            //     .messages_ref()
+            //     .borrow_mut()
+            //     .unwrap()
+            //     .messages = messages;
         }
     }
 }
