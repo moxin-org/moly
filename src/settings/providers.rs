@@ -424,11 +424,12 @@ impl Widget for ProviderItem {
 
 impl WidgetMatchEvent for ProviderItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        let was_item_clicked = self.view(id!(main_view)).finger_up(actions).is_some();
-        if was_item_clicked {
-            cx.action(ConnectionSettingsAction::ProviderSelected(
-                self.provider.id.clone(),
-            ));
+        if let Some(finger_up) = self.view(id!(main_view)).finger_up(actions) {
+            if finger_up.was_tap() {
+                cx.action(ConnectionSettingsAction::ProviderSelected(
+                    self.provider.id.clone(),
+                ));
+            }
         }
     }
 }
