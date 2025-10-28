@@ -80,7 +80,9 @@ impl Widget for Ui {
                             Attachment::from_bytes(
                                 "image.png".into(),
                                 Some("image/png".into()),
-                                include_bytes!("../../packaging/Moly macOS dmg background.png"),
+                                include_bytes!(
+                                    "../../../../packaging/Moly macOS dmg background.png"
+                                ),
                             ),
                         ],
                         citations: vec![
