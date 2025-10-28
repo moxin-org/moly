@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 name = "moly-mini"
 version = "0.2.2"
