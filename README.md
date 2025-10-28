@@ -84,7 +84,7 @@ cargo run --release
 
 ```sh
 sudo apt-get update
-sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev libwayland-dev
+sudo apt-get install libssl-dev pkg-config llvm clang libclang-dev binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev libwayland-dev libxkbcommon-dev
 ```
 
 Then use `cargo` to build and run Moly:
