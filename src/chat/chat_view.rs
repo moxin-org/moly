@@ -286,28 +286,30 @@ impl ChatView {
             }
         }
 
+        let mut chat = self.chat(id!(chat));
+        let mut prompt_input = self.prompt_input(id!(chat.prompt));
+
         // If the bot is not available and we know it won't be available soon, clear the bot_id in the chat widget
         if !bot_available && store.provider_syncing_status == ProviderSyncingStatus::Synced {
-            self.chat(id!(chat)).write().set_bot_id(cx, None);
+            chat.write().set_bot_id(cx, None);
 
             self.model_selector(id!(model_selector))
                 .set_currently_selected_model(cx, None);
-        } else if bot_available && self.chat(id!(chat)).read().bot_id().is_none() {
+        } else if bot_available && chat.read().bot_id().is_none() {
             // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
             // This can happen if the bot or provider was re-enabled after being disabled while being selected
-            self.chat(id!(chat))
-                .write()
-                .set_bot_id(cx, associiated_bot_id);
+            chat.write().set_bot_id(cx, associiated_bot_id);
         }
 
         // If there is no selected bot, disable the prompt input
-        if self.chat(id!(chat)).read().bot_id().is_none()
-            || !bot_available
-            || store.provider_syncing_status != ProviderSyncingStatus::Synced
+        if !self.chat_controller.lock().unwrap().state().is_streaming
+            && (chat.read().bot_id().is_none()
+                || !bot_available
+                || store.provider_syncing_status != ProviderSyncingStatus::Synced)
         {
-            self.prompt_input(id!(chat.prompt)).write().disable();
+            prompt_input.write().disable();
         } else {
-            self.prompt_input(id!(chat.prompt)).write().enable();
+            prompt_input.write().enable();
         }
     }
 
