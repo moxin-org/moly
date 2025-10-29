@@ -398,6 +398,10 @@ impl Chat {
     }
 
     pub fn set_bot_id(&mut self, cx: &mut Cx, bot_id: Option<BotId>) {
+        if self.bot_id == bot_id {
+            return;
+        }
+
         self.bot_id = bot_id;
         self.handle_capabilities(cx);
     }
@@ -411,6 +415,12 @@ impl Chat {
         _cx: &mut Cx,
         chat_controller: Option<Arc<Mutex<ChatController>>>,
     ) {
+        if self.chat_controller.as_ref().map(Arc::as_ptr)
+            == chat_controller.as_ref().map(Arc::as_ptr)
+        {
+            return;
+        }
+
         self.unlink_current_controller();
         self.chat_controller = chat_controller;
 
