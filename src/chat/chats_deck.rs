@@ -195,8 +195,6 @@ impl ChatsDeck {
                 .lock()
                 .unwrap()
                 .dispatch_mutation(VecMutation::Set(chat_data.messages.clone()));
-
-            // TODO: Scroll behavior from messages_ref.set_messages(chat_data.messages.clone(), true);
         }
 
         // Set associated bot

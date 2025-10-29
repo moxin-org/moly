@@ -57,8 +57,6 @@ pub trait ChatControllerPlugin: Send {
     fn on_upgrade(&mut self, upgrade: Upgrade, _bot_id: &BotId) -> Option<Upgrade> {
         Some(upgrade)
     }
-
-    // attachment handling?
 }
 
 /// Unique identifier for a registered plugin. Can be used to unregister it later.

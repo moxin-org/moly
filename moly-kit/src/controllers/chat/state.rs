@@ -29,7 +29,6 @@ impl Status {
 }
 
 /// State of the chat that you should reflect in your view component/widget/element.
-// TODO: Makes sense? #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ChatState {
     /// The chat history sent as context to LLMs.
