@@ -76,13 +76,6 @@ impl Widget for Chat {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        println!(
-            "chat.rs draw_walk ({})",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis()
-        );
         self.deref.draw_walk(cx, scope, walk)
     }
 }

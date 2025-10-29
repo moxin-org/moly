@@ -1,7 +1,7 @@
 //! Glued copy paste of the legacy [`BotContext`] from Moly Kit.
 
 use moly_kit::{
-    controllers::chat::{ChatController, ChatStateMutation, ChatTask, Status},
+    controllers::chat::{ChatController, ChatStateMutation, Status},
     mcp::McpManagerClient,
     protocol::*,
     utils::vec::VecMutation,
