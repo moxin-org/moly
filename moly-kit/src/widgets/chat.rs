@@ -109,9 +109,9 @@ impl Chat {
     }
 
     fn handle_realtime(&mut self, _cx: &mut Cx) {
-        if self.realtime(id!(realtime)).connection_requested() {
-            let bot_id = self.bot_id.clone().expect("no bot selected");
-
+        if self.realtime(id!(realtime)).connection_requested()
+            && let Some(bot_id) = self.bot_id.clone()
+        {
             self.chat_controller
                 .as_mut()
                 .unwrap()
@@ -262,12 +262,12 @@ impl Chat {
                         .unwrap()
                         .dispatch_mutation(VecMutation::Set(messages));
 
-                    let bot_id = self.bot_id.clone().expect("no bot selected");
-
-                    chat_controller
-                        .lock()
-                        .unwrap()
-                        .dispatch_task(ChatTask::Send(bot_id));
+                    if let Some(bot_id) = self.bot_id.clone() {
+                        chat_controller
+                            .lock()
+                            .unwrap()
+                            .dispatch_task(ChatTask::Send(bot_id));
+                    }
                 }
                 MessagesAction::ToolApprove(index) => {
                     let mut lock = chat_controller.lock().unwrap();
@@ -334,9 +334,9 @@ impl Chat {
         let mut prompt = self.prompt_input_ref();
         let chat_controller = self.chat_controller.clone().unwrap();
 
-        if prompt.read().has_send_task() {
-            let bot_id = self.bot_id.clone().expect("no bot selected");
-
+        if prompt.read().has_send_task()
+            && let Some(bot_id) = self.bot_id.clone()
+        {
             let text = prompt.text();
             let attachments = prompt
                 .read()
@@ -375,15 +375,15 @@ impl Chat {
 
     fn handle_call(&mut self, _cx: &mut Cx) {
         // Use the standard send mechanism which will return the upgrade
-        // The upgrade message will be processed in handle_message_delta
-        self.chat_controller
-            .as_mut()
-            .unwrap()
-            .lock()
-            .unwrap()
-            .dispatch_task(ChatTask::Send(
-                self.bot_id.clone().expect("no bot selected"),
-            ));
+        // The upgrade message will be processed in the plugin.
+        if let Some(bot_id) = self.bot_id.clone() {
+            self.chat_controller
+                .as_mut()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .dispatch_task(ChatTask::Send(bot_id));
+        }
     }
 
     /// Returns true if the chat is currently streaming.
