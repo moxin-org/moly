@@ -520,7 +520,7 @@ impl Store {
     pub fn update_mcp_tool_manager(&mut self) {
         let new_tool_manager = self.create_and_load_mcp_tool_manager();
         if let Some(ref mut bot_context_mut) = self.bot_context {
-            bot_context_mut.replace_tool_manager(new_tool_manager);
+            bot_context_mut.set_tool_manager(new_tool_manager);
         }
     }
 

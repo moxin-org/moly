@@ -1,7 +1,7 @@
 //! Glued copy paste of the legacy [`BotContext`] from Moly Kit.
 
 use moly_kit::{
-    controllers::chat::{ChatController, ChatStateMutation, Status},
+    controllers::chat::{ChatController, ChatStateMutation, ChatTask, Status},
     mcp::McpManagerClient,
     protocol::*,
     utils::vec::VecMutation,
@@ -94,11 +94,6 @@ impl BotContext {
     }
 
     pub fn set_tool_manager(&mut self, tool_manager: McpManagerClient) {
-        self.0.lock().unwrap().tool_manager = Some(tool_manager);
-        self.synchronize_to_all();
-    }
-
-    pub fn replace_tool_manager(&mut self, tool_manager: McpManagerClient) {
         self.0.lock().unwrap().tool_manager = Some(tool_manager);
         self.synchronize_to_all();
     }
