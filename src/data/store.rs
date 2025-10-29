@@ -1,6 +1,7 @@
 use crate::app::app_runner;
 use crate::data::providers::ProviderID;
 use crate::shared::actions::ChatAction;
+use crate::shared::bot_context::BotContext;
 
 use super::chats::chat::ChatID;
 use super::downloads::download::DownloadFileAction;
@@ -17,7 +18,6 @@ use moly_kit::utils::asynchronous::spawn;
 
 use super::providers::{Provider, ProviderConnectionStatus};
 use moly_kit::mcp::mcp_manager::McpManagerClient;
-use moly_kit::protocol::BotContext;
 use moly_protocol::data::{Author, File, FileID, Model, ModelID, PendingDownload};
 
 use makepad_widgets::*;
@@ -520,7 +520,7 @@ impl Store {
     pub fn update_mcp_tool_manager(&mut self) {
         let new_tool_manager = self.create_and_load_mcp_tool_manager();
         if let Some(ref mut bot_context_mut) = self.bot_context {
-            bot_context_mut.replace_tool_manager(new_tool_manager);
+            bot_context_mut.set_tool_manager(new_tool_manager);
         }
     }
 

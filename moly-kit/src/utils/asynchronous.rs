@@ -92,45 +92,105 @@ fn spawn_impl(fut: impl Future<Output = ()> + 'static) {
     wasm_bindgen_futures::spawn_local(fut);
 }
 
-/// A handle that aborts its associated future when dropped.
-///
-/// Similar to https://docs.rs/tokio-util/latest/tokio_util/task/struct.AbortOnDropHandle.html
-/// but runtime agnostic.
-///
-/// This is created from the [`abort_on_drop`] function.
-///
-/// This is useful in Makepad to ensure tasks gets cancelled on widget drop instead
-/// of keep running in the background unnoticed.
-///
-/// Note: In makepad, widgets may be cached or reused causing this to not work as expected
-/// in many scenarios.
-// TODO: Consider having a shared lightweight supervisor task that awakes makepad to check
-// for responding handles through it's event system, but only if there are active tasks.
-pub struct AbortOnDropHandle(AbortHandle);
+/// Cross-platform async sleep function.
+pub async fn sleep(duration: std::time::Duration) {
+    #[cfg(all(feature = "async-rt", not(target_arch = "wasm32")))]
+    {
+        tokio::time::sleep(duration).await;
+    }
 
-impl Drop for AbortOnDropHandle {
-    fn drop(&mut self) {
-        self.abort();
+    #[cfg(all(feature = "async-web", target_arch = "wasm32"))]
+    {
+        wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _| {
+            web_sys::window()
+                .unwrap()
+                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                    &resolve,
+                    duration.as_millis() as i32,
+                )
+                .unwrap();
+        }))
+        .await
+        .unwrap();
     }
 }
 
-impl AbortOnDropHandle {
-    /// Manually aborts the future associated with this handle before it is dropped.
-    pub fn abort(&mut self) {
-        self.0.abort();
+mod abort_on_drop {
+    use super::*;
+
+    #[derive(Debug)]
+    pub struct AbortOnDropHandleInner(AbortHandle);
+
+    impl Drop for AbortOnDropHandleInner {
+        fn drop(&mut self) {
+            self.0.abort();
+        }
+    }
+
+    /// A ref counted handle that aborts its associated future when (fully) dropped.
+    ///
+    /// Similar to https://docs.rs/tokio-util/latest/tokio_util/task/struct.AbortOnDropHandle.html
+    /// but runtime agnostic and clonable.
+    ///
+    /// This is created from the [`abort_on_drop`] function.
+    ///
+    /// This is useful in Makepad to ensure tasks gets cancelled on widget drop instead
+    /// of keep running in the background unnoticed.
+    ///
+    /// Note: In makepad, widgets may be cached or reused causing this to not work as expected
+    /// in many scenarios.
+    // TODO: Consider having a shared lightweight supervisor task that awakes makepad to check
+    // for responding handles through it's event system, but only if there are active tasks.
+    #[derive(Clone, Debug)]
+    pub struct AbortOnDropHandle(std::sync::Arc<AbortOnDropHandleInner>);
+
+    impl AbortOnDropHandle {
+        /// Manually aborts the future associated with this handle.
+        pub fn abort(&mut self) {
+            self.0.0.abort();
+        }
+    }
+
+    /// Constructs a future + [`AbortOnDropHandle`] pair.
+    ///
+    /// See [`AbortOnDropHandle`] for more details.
+    #[must_use]
+    pub fn abort_on_drop<F, T>(future: F) -> (Abortable<F>, AbortOnDropHandle)
+    where
+        F: PlatformSendFuture<Output = T> + 'static,
+    {
+        let (abort_handle, abort_registration) = abortable(future);
+        (
+            abort_handle,
+            AbortOnDropHandle(std::sync::Arc::new(AbortOnDropHandleInner(
+                abort_registration,
+            ))),
+        )
+    }
+
+    impl PartialEq for AbortOnDropHandle {
+        fn eq(&self, other: &Self) -> bool {
+            std::sync::Arc::ptr_eq(&self.0, &other.0)
+        }
+    }
+
+    /// Shothand for spawning a future associated to an [`AbortOnDropHandle`].
+    ///
+    /// Note: If you need to distinguish if the future was aborted or completed,
+    /// you should use [`abort_on_drop`] and spawn the future manually instead.
+    #[must_use]
+    pub fn spawn_abort_on_drop(
+        fut: impl PlatformSendFuture<Output = ()> + 'static,
+    ) -> AbortOnDropHandle {
+        let (abortable_fut, handle) = abort_on_drop(fut);
+        spawn(async move {
+            let _ = abortable_fut.await;
+        });
+        handle
     }
 }
 
-/// Constructs a future + [`AbortOnDropHandle`] pair.
-///
-/// See [`AbortOnDropHandle`] for more details.
-pub fn abort_on_drop<F, T>(future: F) -> (Abortable<F>, AbortOnDropHandle)
-where
-    F: PlatformSendFuture<Output = T> + 'static,
-{
-    let (abort_handle, abort_registration) = abortable(future);
-    (abort_handle, AbortOnDropHandle(abort_registration))
-}
+pub use abort_on_drop::*;
 
 mod thread_token {
     use std::any::Any;

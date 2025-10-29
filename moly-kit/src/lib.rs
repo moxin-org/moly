@@ -17,6 +17,7 @@
 //! [documentation](https://moxin-org.github.io/moly).
 
 pub mod clients;
+pub mod controllers;
 pub mod mcp;
 pub mod protocol;
 pub mod utils;

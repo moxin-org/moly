@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use moly_kit::{ChatWidgetRefExt, protocol::*};
+use moly_kit::{protocol::*, *};
 
 use crate::demo_chat::DemoChatWidgetExt;
 
@@ -80,7 +80,9 @@ impl Widget for Ui {
                             Attachment::from_bytes(
                                 "image.png".into(),
                                 Some("image/png".into()),
-                                include_bytes!("../../packaging/Moly macOS dmg background.png"),
+                                include_bytes!(
+                                    "../../../../packaging/Moly macOS dmg background.png"
+                                ),
                             ),
                         ],
                         citations: vec![
@@ -96,16 +98,16 @@ impl Widget for Ui {
             ])
             .take(1)
             .flatten()
-            .collect();
+            .collect::<Vec<_>>();
 
-            self.demo_chat(id!(chat_2))
-                .chat(id!(chat))
-                .borrow()
-                .unwrap()
-                .messages_ref()
-                .borrow_mut()
-                .unwrap()
-                .messages = messages;
+            // self.demo_chat(id!(chat_2))
+            //     .chat(id!(chat))
+            //     .borrow()
+            //     .unwrap()
+            //     .messages_ref()
+            //     .borrow_mut()
+            //     .unwrap()
+            //     .messages = messages;
         }
     }
 }

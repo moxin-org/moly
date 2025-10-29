@@ -9,5 +9,6 @@ fn main() {
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     moly_mini::app::app_main()
 }
