@@ -95,9 +95,9 @@ impl AttachmentView {
             // Preserve for future comparisons.
             self.attachment = attachment;
 
-            let icon = self.label(id!(icon));
-            let tag_label = self.label(id!(tag_label));
-            let title = self.label(id!(title));
+            let icon = self.label(ids!(icon));
+            let tag_label = self.label(ids!(tag_label));
+            let title = self.label(ids!(title));
 
             self.icon_wrapper_ref().set_visible(cx, true);
             self.image_wrapper_ref().set_visible(cx, false);
@@ -155,19 +155,19 @@ impl AttachmentView {
     }
 
     fn image_ref(&self) -> ImageViewRef {
-        self.image_view(id!(image))
+        self.image_view(ids!(image))
     }
 
     fn image_wrapper_ref(&self) -> ViewRef {
-        self.view(id!(image_wrapper))
+        self.view(ids!(image_wrapper))
     }
 
     fn icon_wrapper_ref(&self) -> ViewRef {
-        self.view(id!(icon_wrapper))
+        self.view(ids!(icon_wrapper))
     }
 
     fn tag_bg_ref(&self) -> ViewRef {
-        self.view(id!(tag_bg))
+        self.view(ids!(tag_bg))
     }
 
     fn try_load_preview(&mut self) {

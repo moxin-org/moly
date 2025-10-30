@@ -134,16 +134,16 @@ impl MessageLoading {
 
         match self.current_animated_bar {
             0 => {
-                self.animator_play(cx, id!(line1.run));
-                self.animator_play(cx, id!(line3.start));
+                self.animator_play(cx, ids!(line1.run));
+                self.animator_play(cx, ids!(line3.start));
             }
             1 => {
-                self.animator_play(cx, id!(line1.start));
-                self.animator_play(cx, id!(line2.run));
+                self.animator_play(cx, ids!(line1.start));
+                self.animator_play(cx, ids!(line2.run));
             }
             2 => {
-                self.animator_play(cx, id!(line2.start));
-                self.animator_play(cx, id!(line3.run));
+                self.animator_play(cx, ids!(line2.start));
+                self.animator_play(cx, ids!(line3.run));
             }
             _ => unreachable!(),
         };

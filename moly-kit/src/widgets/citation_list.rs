@@ -36,7 +36,7 @@ pub struct CitationList {
 
 impl Widget for CitationList {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let list_uid = self.portal_list(id!(list)).widget_uid();
+        let list_uid = self.portal_list(ids!(list)).widget_uid();
         while let Some(widget) = self.deref.draw_walk(cx, scope, walk).step() {
             if widget.widget_uid() == list_uid {
                 self.draw_list(cx, &mut *widget.as_portal_list().borrow_mut().unwrap());

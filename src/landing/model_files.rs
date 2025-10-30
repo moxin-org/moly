@@ -195,7 +195,7 @@ impl Widget for ModelFiles {
         if self.animator_handle_event(cx, event).must_redraw() {
             if let Some(total_height) = self.actual_height {
                 let height = self.show_all_animation_progress * total_height;
-                self.view(id!(remaining_files_wrapper))
+                self.view(ids!(remaining_files_wrapper))
                     .apply_over(cx, live! {height: (height)});
                 self.redraw(cx);
             }
@@ -207,17 +207,17 @@ impl Widget for ModelFiles {
         let files_count = model.files.len();
         let featured_count = model.files.iter().filter(|f| f.file.featured).count();
 
-        let show_all_button = self.radio_button(id!(tab_buttons.show_all_button));
+        let show_all_button = self.radio_button(ids!(tab_buttons.show_all_button));
         show_all_button.set_text(cx, &format!("All Files ({})", files_count));
 
-        let show_all_button = self.radio_button(id!(tab_buttons.only_recommended_button));
+        let show_all_button = self.radio_button(ids!(tab_buttons.only_recommended_button));
         show_all_button.set_text(cx, &format!("Only Recommended Files ({})", featured_count));
 
         let _ = self.view.draw_walk(cx, scope, walk);
 
         // Let's remember the actual rendered height of the remaining_files element.
         if self.actual_height.is_none() {
-            self.actual_height = Some(self.model_files_list(id!(remaining_files)).get_height(cx))
+            self.actual_height = Some(self.model_files_list(ids!(remaining_files)).get_height(cx))
         }
 
         DrawStep::done()
@@ -226,19 +226,21 @@ impl Widget for ModelFiles {
 
 impl WidgetMatchEvent for ModelFiles {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let actions_tab_buttons = self.widget(id!(model_files_actions)).radio_button_set(ids!(
-            tab_buttons.show_all_button,
-            tab_buttons.only_recommended_button,
-        ));
+        let actions_tab_buttons =
+            self.widget(ids!(model_files_actions))
+                .radio_button_set(ids_array!(
+                    tab_buttons.show_all_button,
+                    tab_buttons.only_recommended_button,
+                ));
 
         if let Some(index) = actions_tab_buttons.selected(cx, actions) {
             match index {
                 0 => {
-                    self.animator_play(cx, id!(show_all.show));
+                    self.animator_play(cx, ids!(show_all.show));
                     self.redraw(cx);
                 }
                 1 => {
-                    self.animator_play(cx, id!(show_all.hide));
+                    self.animator_play(cx, ids!(show_all.hide));
                     self.redraw(cx);
                 }
                 _ => {}
@@ -250,7 +252,7 @@ impl WidgetMatchEvent for ModelFiles {
                 StoreAction::Search(_) | StoreAction::ResetSearch | StoreAction::Sort(_) => {
                     self.expand_without_animation(cx);
                     self.actual_height = None;
-                    self.radio_button(id!(show_all_button)).select(cx, scope);
+                    self.radio_button(ids!(show_all_button)).select(cx, scope);
                     self.redraw(cx);
                 }
                 _ => {}
@@ -261,7 +263,7 @@ impl WidgetMatchEvent for ModelFiles {
 
 impl ModelFiles {
     fn expand_without_animation(&mut self, cx: &mut Cx) {
-        self.view(id!(remaining_files_wrapper))
+        self.view(ids!(remaining_files_wrapper))
             .apply_over(cx, live! {height: Fit});
         self.show_all_animation_progress = 0.0;
         self.redraw(cx);

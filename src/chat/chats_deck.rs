@@ -144,7 +144,7 @@ impl WidgetMatchEvent for ChatsDeck {
                     .get_mut(&self.currently_visible_chat_id.unwrap())
                 {
                     chat_view
-                        .prompt_input(id!(prompt))
+                        .prompt_input(ids!(prompt))
                         .write()
                         .set_text(cx, event.contents());
                 }
@@ -200,10 +200,10 @@ impl ChatsDeck {
         // Set associated bot
         if let Some(bot_id) = &chat_data.associated_bot {
             chat_view_to_update
-                .model_selector(id!(model_selector))
+                .model_selector(ids!(model_selector))
                 .set_currently_selected_model(cx, Some(bot_id.clone()));
             chat_view_to_update
-                .chat(id!(chat))
+                .chat(ids!(chat))
                 .write()
                 .set_bot_id(cx, Some(bot_id.clone()));
         }
@@ -227,7 +227,7 @@ impl ChatsDeck {
             if let Some(chat_view) = self.chat_view_refs.get_mut(&least_recently_used_chat_id) {
                 let mut should_remove = true;
                 // Check if the latest message is currently being streamed
-                if chat_view.chat(id!(chat)).read().is_streaming() {
+                if chat_view.chat(ids!(chat)).read().is_streaming() {
                     should_remove = false;
                 }
 

@@ -276,7 +276,7 @@ impl Widget for McpServers {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
-        let editor = self.widget(id!(mcp_code_view));
+        let editor = self.widget(ids!(mcp_code_view));
 
         if !self.initialized || editor.text().is_empty() {
             self.initialized = true;
@@ -307,22 +307,22 @@ impl McpServers {
             .to_json()
             .unwrap_or_else(|_| "{}".to_string());
 
-        self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
+        self.widget(ids!(mcp_code_view)).set_text(cx, &display_json);
 
         // Sync the toggle UI to match the config's enabled state
-        self.check_box(id!(servers_enabled_switch))
+        self.check_box(ids!(servers_enabled_switch))
             .set_active(cx, self.mcp_servers_config.enabled);
 
         // Sync the dangerous mode toggle UI to match the config
-        self.check_box(id!(dangerous_mode_switch))
+        self.check_box(ids!(dangerous_mode_switch))
             .set_active(cx, self.mcp_servers_config.dangerous_mode_enabled);
     }
 }
 
 impl WidgetMatchEvent for McpServers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.view(id!(save_button)).finger_up(actions).is_some() {
-            let json_text = self.widget(id!(mcp_code_view)).text();
+        if self.view(ids!(save_button)).finger_up(actions).is_some() {
+            let json_text = self.widget(ids!(mcp_code_view)).text();
 
             match McpServersConfig::from_json(&json_text) {
                 Ok(config) => {
@@ -338,17 +338,18 @@ impl WidgetMatchEvent for McpServers {
                             // Update our local config and UI
                             self.set_mcp_servers_config(cx, config);
 
-                            self.label(id!(save_status)).set_text(cx, "");
+                            self.label(ids!(save_status)).set_text(cx, "");
                             self.redraw(cx);
                         }
                         Err(e) => {
-                            self.label(id!(save_status)).set_text(cx, &format!("{}", e));
+                            self.label(ids!(save_status))
+                                .set_text(cx, &format!("{}", e));
                             self.redraw(cx);
                         }
                     }
                 }
                 Err(e) => {
-                    self.label(id!(save_status))
+                    self.label(ids!(save_status))
                         .set_text(cx, &format!("Invalid JSON: {}", e));
                     self.redraw(cx);
                 }
@@ -356,7 +357,7 @@ impl WidgetMatchEvent for McpServers {
         }
 
         // Handle MCP servers enabled switch
-        let servers_enabled_switch = self.check_box(id!(servers_enabled_switch));
+        let servers_enabled_switch = self.check_box(ids!(servers_enabled_switch));
         if let Some(enabled) = servers_enabled_switch.changed(actions) {
             // Update the local config
             self.mcp_servers_config.enabled = enabled;
@@ -366,7 +367,7 @@ impl WidgetMatchEvent for McpServers {
                 .mcp_servers_config
                 .to_json()
                 .unwrap_or_else(|_| "{}".to_string());
-            self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
+            self.widget(ids!(mcp_code_view)).set_text(cx, &display_json);
 
             // Sync to Store
             let store = scope.data.get_mut::<Store>().unwrap();
@@ -375,7 +376,7 @@ impl WidgetMatchEvent for McpServers {
         }
 
         // Handle dangerous mode switch
-        let dangerous_mode_switch = self.check_box(id!(dangerous_mode_switch));
+        let dangerous_mode_switch = self.check_box(ids!(dangerous_mode_switch));
         if let Some(enabled) = dangerous_mode_switch.changed(actions) {
             // Update the local config
             self.mcp_servers_config.dangerous_mode_enabled = enabled;
@@ -385,7 +386,7 @@ impl WidgetMatchEvent for McpServers {
                 .mcp_servers_config
                 .to_json()
                 .unwrap_or_else(|_| "{}".to_string());
-            self.widget(id!(mcp_code_view)).set_text(cx, &display_json);
+            self.widget(ids!(mcp_code_view)).set_text(cx, &display_json);
 
             // Sync to Store
             let store = scope.data.get_mut::<Store>().unwrap();

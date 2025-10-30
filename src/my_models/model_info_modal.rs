@@ -190,15 +190,15 @@ impl Widget for ModelInfoModal {
         self.model_id = downloaded_file.model.id.clone();
 
         // filename
-        self.label(id!(title.filename))
+        self.label(ids!(title.filename))
             .set_text(cx, &downloaded_file.file.name);
 
         // file path
         if let Some(path) = &downloaded_file.file.downloaded_path {
-            self.html(id!(file_dir.path))
+            self.html(ids!(file_dir.path))
                 .set_text(cx, &format!("<pre>{}</pre>", path));
         } else {
-            self.view(id!(file_dir)).set_visible(cx, false);
+            self.view(ids!(file_dir)).set_visible(cx, false);
         }
 
         // metadata
@@ -206,7 +206,7 @@ impl Widget for ModelInfoModal {
             .expect("Could not serialize model data into json");
         let metadata = format!("<pre>{}</pre>", self.stringified_model_data);
 
-        self.html(id!(wrapper.body.metadata))
+        self.html(ids!(wrapper.body.metadata))
             .set_text(cx, &metadata);
 
         self.view
@@ -216,19 +216,19 @@ impl Widget for ModelInfoModal {
 
 impl WidgetMatchEvent for ModelInfoModal {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.button(id!(close_button)).clicked(actions) {
+        if self.button(ids!(close_button)).clicked(actions) {
             cx.action(ModelInfoModalAction::ModalDismissed);
         }
 
         if self
-            .button(id!(wrapper.body.actions.copy_button))
+            .button(ids!(wrapper.body.actions.copy_button))
             .clicked(actions)
         {
             cx.copy_to_clipboard(&self.stringified_model_data);
         }
 
         if self
-            .button(id!(wrapper.body.actions.external_link))
+            .button(ids!(wrapper.body.actions.external_link))
             .clicked(actions)
         {
             let model_url = hugging_face_model_url(&self.model_id);

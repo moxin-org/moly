@@ -342,11 +342,11 @@ impl WidgetMatchEvent for ModelFilesItem {
             return;
         };
 
-        if self.button(id!(download_button)).clicked(&actions) {
+        if self.button(ids!(download_button)).clicked(&actions) {
             cx.action(ModelFileItemAction::Download(file_id.clone()));
         }
 
-        if self.button(id!(start_chat_button)).clicked(&actions) {
+        if self.button(ids!(start_chat_button)).clicked(&actions) {
             let store = scope.data.get_mut::<Store>().unwrap();
             let bot_id = store.chats.get_bot_id_by_file_id(&file_id);
             if let Some(bot_id) = bot_id {
@@ -354,18 +354,18 @@ impl WidgetMatchEvent for ModelFilesItem {
             }
         }
 
-        if [id!(resume_download_button), id!(retry_download_button)]
+        if [ids!(resume_download_button), ids!(retry_download_button)]
             .iter()
             .any(|id| self.button(*id).clicked(&actions))
         {
             cx.action(DownloadAction::Play(file_id.clone()));
         }
 
-        if self.button(id!(pause_download_button)).clicked(&actions) {
+        if self.button(ids!(pause_download_button)).clicked(&actions) {
             cx.action(DownloadAction::Pause(file_id.clone()));
         }
 
-        if self.button(id!(cancel_download_button)).clicked(&actions) {
+        if self.button(ids!(cancel_download_button)).clicked(&actions) {
             cx.action(DownloadAction::Cancel(file_id.clone()));
         }
     }
@@ -380,7 +380,7 @@ impl ModelFilesItemRef {
         item_widget.file_id = Some(file.id.clone());
 
         item_widget
-            .model_files_tags(id!(tags))
+            .model_files_tags(ids!(tags))
             .set_tags(cx, &file.tags);
     }
 }

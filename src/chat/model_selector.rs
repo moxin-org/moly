@@ -262,7 +262,7 @@ impl Widget for ModelSelector {
         }
 
         if let Hit::FingerDown(fd) =
-            event.hits_with_capture_overload(cx, self.view(id!(button)).area(), true)
+            event.hits_with_capture_overload(cx, self.view(ids!(button)).area(), true)
         {
             let is_syncing = matches!(
                 store.provider_syncing_status,
@@ -272,14 +272,14 @@ impl Widget for ModelSelector {
                 self.open = !self.open;
 
                 if self.open {
-                    let button_rect = self.view(id!(button)).area().rect(cx);
+                    let button_rect = self.view(ids!(button)).area().rect(cx);
                     let coords = dvec2(
                         button_rect.pos.x - 5.0,
                         button_rect.pos.y + button_rect.size.y,
                     );
                     let modal_content_size = (button_rect.size.x + 10.0).max(360.0);
 
-                    let modal = self.modal(id!(bot_options_modal));
+                    let modal = self.modal(ids!(bot_options_modal));
                     modal.apply_over(
                         cx,
                         live! {
@@ -288,7 +288,7 @@ impl Widget for ModelSelector {
                     );
                     modal.open(cx);
 
-                    let list = self.model_selector_list(id!(list_container.list));
+                    let list = self.model_selector_list(ids!(list_container.list));
                     let height = list.get_height();
                     if height > MAX_OPTIONS_HEIGHT {
                         self.options_list_height = Some(MAX_OPTIONS_HEIGHT);
@@ -296,35 +296,35 @@ impl Widget for ModelSelector {
                         self.options_list_height = Some(height);
                     }
 
-                    self.view(id!(options)).apply_over(
+                    self.view(ids!(options)).apply_over(
                         cx,
                         live! {
                             height: Fit,
                         },
                     );
 
-                    self.animator_play(cx, id!(open.show));
+                    self.animator_play(cx, ids!(open.show));
                 } else {
                     self.hide_animation_timer = cx.start_timeout(0.3);
-                    self.animator_play(cx, id!(open.hide));
+                    self.animator_play(cx, ids!(open.hide));
                 }
             }
         }
 
         if self.hide_animation_timer.is_event(event).is_some() {
             // When closing animation is done, hide the wrapper element
-            self.view(id!(options)).apply_over(cx, live! { height: 0 });
+            self.view(ids!(options)).apply_over(cx, live! { height: 0 });
             self.redraw(cx);
         }
 
         if self.animator_handle_event(cx, event).must_redraw() {
             if let Some(total_height) = self.options_list_height {
                 let height = self.open_animation_progress * total_height;
-                self.view(id!(options.list_container))
+                self.view(ids!(options.list_container))
                     .apply_over(cx, live! {height: (height)});
 
                 let rotate_angle = self.rotate_animation_progress * std::f64::consts::PI;
-                self.view(id!(icon_drop.icon))
+                self.view(ids!(icon_drop.icon))
                     .apply_over(cx, live! {draw_bg: {rotation: (rotate_angle)}});
 
                 self.redraw(cx);
@@ -333,7 +333,7 @@ impl Widget for ModelSelector {
 
         // Trigger a redraw if the provider syncing status has changed
         if let ProviderSyncingStatus::Syncing(_syncing) = &store.provider_syncing_status {
-            self.model_selector_loading(id!(loading))
+            self.model_selector_loading(ids!(loading))
                 .show_and_animate(cx);
         }
     }
@@ -350,17 +350,17 @@ impl Widget for ModelSelector {
         // Handle syncing status
         match &syncing_status {
             ProviderSyncingStatus::Syncing(syncing) => {
-                self.model_selector_loading(id!(button.loading))
+                self.model_selector_loading(ids!(button.loading))
                     .show_and_animate(cx);
-                self.view(id!(choose)).set_visible(cx, true);
-                self.view(id!(icon_drop)).set_visible(cx, false);
-                self.view(id!(selected_bot)).set_visible(cx, false);
-                self.label(id!(choose.label)).set_text(
+                self.view(ids!(choose)).set_visible(cx, true);
+                self.view(ids!(icon_drop)).set_visible(cx, false);
+                self.view(ids!(selected_bot)).set_visible(cx, false);
+                self.label(ids!(choose.label)).set_text(
                     cx,
                     &format!("Syncing providers... {}/{}", syncing.current, syncing.total),
                 );
                 let color = vec3(0.0, 0.0, 0.0);
-                self.label(id!(choose.label)).apply_over(
+                self.label(ids!(choose.label)).apply_over(
                     cx,
                     live! {
                         draw_text: {
@@ -371,13 +371,13 @@ impl Widget for ModelSelector {
             }
             ProviderSyncingStatus::NotSyncing | ProviderSyncingStatus::Synced => {
                 // Just set the loading component to not visible since there's no hide method
-                self.view(id!(button.loading)).set_visible(cx, false);
+                self.view(ids!(button.loading)).set_visible(cx, false);
 
                 if self.currently_selected_model.is_none() {
-                    self.view(id!(choose)).set_visible(cx, true);
-                    self.view(id!(selected_bot)).set_visible(cx, false);
+                    self.view(ids!(choose)).set_visible(cx, true);
+                    self.view(ids!(selected_bot)).set_visible(cx, false);
                     let color = vec3(0.0, 0.0, 0.0);
-                    self.label(id!(choose.label)).apply_over(
+                    self.label(ids!(choose.label)).apply_over(
                         cx,
                         live! {
                             draw_text: {
@@ -388,13 +388,13 @@ impl Widget for ModelSelector {
 
                     // If there are available bots, prompt the user to choose an assistant
                     if !models.is_empty() {
-                        self.label(id!(choose.label))
+                        self.label(ids!(choose.label))
                             .set_text(cx, "Choose your AI assistant");
-                        self.view(id!(icon_drop)).set_visible(cx, true);
+                        self.view(ids!(icon_drop)).set_visible(cx, true);
                     } else {
-                        self.label(id!(choose.label))
+                        self.label(ids!(choose.label))
                             .set_text(cx, "No assistants available, check your provider settings");
-                        self.view(id!(icon_drop)).set_visible(cx, false);
+                        self.view(ids!(icon_drop)).set_visible(cx, false);
                     }
                 } else {
                     self.update_selected_model_info(cx, store);
@@ -412,8 +412,8 @@ impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let mut should_hide_options = false;
         for action in actions {
-            if let Some(text) = self.text_input(id!(options.search.input)).changed(actions) {
-                self.model_selector_list(id!(list_container.list))
+            if let Some(text) = self.text_input(ids!(options.search.input)).changed(actions) {
+                self.model_selector_list(ids!(list_container.list))
                     .set_search_filter(cx, &text);
             }
 
@@ -441,7 +441,7 @@ impl WidgetMatchEvent for ModelSelector {
                 _ => {}
             }
 
-            let modal = self.modal(id!(bot_options_modal));
+            let modal = self.modal(ids!(bot_options_modal));
             if modal.dismissed(actions) {
                 self.clear_search(cx);
             }
@@ -451,19 +451,19 @@ impl WidgetMatchEvent for ModelSelector {
 
 impl ModelSelector {
     fn clear_search(&mut self, cx: &mut Cx) {
-        self.model_selector_list(id!(list_container.list))
+        self.model_selector_list(ids!(list_container.list))
             .clear_search_filter(cx);
-        self.text_input(id!(options.search.input)).set_text(cx, "");
+        self.text_input(ids!(options.search.input)).set_text(cx, "");
         self.redraw(cx);
     }
 
     fn hide_options(&mut self, cx: &mut Cx) {
         self.open = false;
-        self.view(id!(options)).apply_over(cx, live! { height: 0 });
-        self.view(id!(icon_drop.icon))
+        self.view(ids!(options)).apply_over(cx, live! { height: 0 });
+        self.view(ids!(icon_drop.icon))
             .apply_over(cx, live! {draw_bg: {rotation: (0.0)}});
-        self.animator_cut(cx, id!(open.hide));
-        let modal = self.modal(id!(bot_options_modal));
+        self.animator_cut(cx, ids!(open.hide));
+        let modal = self.modal(ids!(bot_options_modal));
         modal.close(cx);
         self.redraw(cx);
     }
@@ -488,7 +488,7 @@ impl ModelSelector {
     }
 
     fn update_selected_model_info(&mut self, cx: &mut Cx, store: &Store) {
-        self.view(id!(choose)).set_visible(cx, false);
+        self.view(ids!(choose)).set_visible(cx, false);
 
         let associated_bot = store
             .chats
@@ -498,7 +498,7 @@ impl ModelSelector {
             let Some(bot) = store.chats.get_bot(&bot_id) else {
                 return;
             };
-            self.view(id!(icon_drop)).set_visible(cx, true);
+            self.view(ids!(icon_drop)).set_visible(cx, true);
 
             // Local model styling
             if store.chats.is_local_model(&bot_id) {
@@ -506,7 +506,7 @@ impl ModelSelector {
                 // on the fact that we use the file id as the name of the bot.
                 let file = store.downloads.get_file(&bot.name).cloned();
                 if let Some(file) = file {
-                    let selected_view = self.view(id!(selected_bot));
+                    let selected_view = self.view(ids!(selected_bot));
                     selected_view.set_visible(cx, true);
 
                     let file_size = format_model_size(file.size.trim()).unwrap_or("".into());
@@ -538,7 +538,7 @@ impl ModelSelector {
                 }
             } else {
                 // Any other model
-                let selected_view = self.view(id!(selected_bot));
+                let selected_view = self.view(ids!(selected_bot));
                 selected_view.set_visible(cx, true);
 
                 selected_view.apply_over(
@@ -567,7 +567,7 @@ impl ModelSelector {
             }
         }
 
-        self.view(id!(icon_drop)).apply_over(
+        self.view(ids!(icon_drop)).apply_over(
             cx,
             live! {
                 visible: true
@@ -577,14 +577,14 @@ impl ModelSelector {
 
     fn set_provider_icon(&mut self, cx: &mut Cx, provider_icon: Option<LiveDependency>) {
         if let Some(provider_icon) = provider_icon {
-            self.view(id!(selected_bot.provider_image_view))
+            self.view(ids!(selected_bot.provider_image_view))
                 .set_visible(cx, true);
 
             let _ = self
-                .image(id!(selected_bot.provider_image))
+                .image(ids!(selected_bot.provider_image))
                 .load_image_dep_by_path(cx, provider_icon.as_str());
         } else {
-            self.view(id!(selected_bot.provider_image_view))
+            self.view(ids!(selected_bot.provider_image_view))
                 .set_visible(cx, false);
         }
     }
@@ -604,7 +604,7 @@ impl ModelSelectorRef {
         if let Some(mut inner) = self.borrow_mut() {
             inner.chat_id = chat_id;
             inner
-                .model_selector_list(id!(list_container.list))
+                .model_selector_list(ids!(list_container.list))
                 .set_chat_id(chat_id);
         }
     }

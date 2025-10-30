@@ -226,10 +226,10 @@ impl Widget for PromptInput {
 
 impl WidgetMatchEvent for PromptInput {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let mut prompt = self.command_text_input(id!(prompt));
+        let mut prompt = self.command_text_input(ids!(prompt));
 
         if let Some(item) = prompt.item_selected(actions) {
-            let entity_button = item.entity_button(id!(button));
+            let entity_button = item.entity_button(ids!(button));
             let bot_id = entity_button.get_bot_id();
             if let Some(bot_id) = bot_id {
                 self.on_bot_selected(cx, scope, &bot_id);
@@ -285,7 +285,7 @@ impl WidgetMatchEvent for PromptInput {
                 // Add models for this provider
                 for model in models {
                     let option = WidgetRef::new_from_ptr(cx, self.entity_template);
-                    let mut entity_button = option.entity_button(id!(button));
+                    let mut entity_button = option.entity_button(ids!(button));
                     entity_button.set_bot_id(cx, &model.id);
                     entity_button.set_description_visible(cx, true);
                     prompt.add_item(option);
@@ -305,7 +305,7 @@ impl WidgetMatchEvent for PromptInput {
                 }
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
-                let mut entity_button = option.entity_button(id!(button));
+                let mut entity_button = option.entity_button(ids!(button));
                 entity_button.set_bot_id(cx, &agent.id);
                 entity_button.set_description_visible(cx, true);
                 prompt.add_item(option);
@@ -327,7 +327,7 @@ impl WidgetMatchEvent for PromptInput {
                 }
 
                 let option = WidgetRef::new_from_ptr(cx, self.entity_template);
-                let mut entity_button = option.entity_button(id!(button));
+                let mut entity_button = option.entity_button(ids!(button));
                 let bot_id = store
                     .chats
                     .available_bots
@@ -346,7 +346,7 @@ impl WidgetMatchEvent for PromptInput {
             self.on_deselected(cx);
         }
 
-        if self.button(id!(deselect_button)).clicked(actions) {
+        if self.button(ids!(deselect_button)).clicked(actions) {
             self.on_deselected(cx);
         }
 
@@ -360,7 +360,7 @@ impl WidgetMatchEvent for PromptInput {
 
             match action.cast() {
                 CaptureAction::Capture { event } => {
-                    self.command_text_input(id!(prompt))
+                    self.command_text_input(ids!(prompt))
                         .set_text(cx, event.contents());
                 }
                 _ => {}
@@ -379,26 +379,26 @@ impl PromptInput {
     fn on_bot_selected(&mut self, cx: &mut Cx, scope: &mut Scope, bot_id: &BotId) {
         let store = scope.data.get::<Store>().unwrap();
 
-        let mut agent_avatar = self.chat_agent_avatar(id!(agent_avatar));
-        let label = self.label(id!(selected_label));
+        let mut agent_avatar = self.chat_agent_avatar(ids!(agent_avatar));
+        let label = self.label(ids!(selected_label));
 
         let bot = store.chats.get_bot_or_placeholder(bot_id);
         label.set_text(cx, &bot.name);
         agent_avatar.set_visible(false);
 
         self.selected_bot = Some(bot_id.clone());
-        self.view(id!(selected_bubble)).set_visible(cx, true);
+        self.view(ids!(selected_bubble)).set_visible(cx, true);
     }
 
     fn on_deselected(&mut self, cx: &mut Cx) {
         self.selected_bot = None;
-        self.view(id!(selected_bubble)).set_visible(cx, false);
+        self.view(ids!(selected_bubble)).set_visible(cx, false);
     }
 }
 
 impl LiveHook for PromptInput {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        let prompt = self.command_text_input(id!(prompt));
+        let prompt = self.command_text_input(ids!(prompt));
         prompt.apply_over(cx, live! { trigger: "@" });
         prompt.text_input_ref().apply_over(
             cx,

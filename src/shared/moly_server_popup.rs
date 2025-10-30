@@ -146,7 +146,7 @@ impl Widget for MolyServerPopup {
 
 impl WidgetMatchEvent for MolyServerPopup {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.button(id!(close_button)).clicked(actions) {
+        if self.button(ids!(close_button)).clicked(actions) {
             cx.action(MolyServerPopupAction::CloseButtonClicked);
         }
     }

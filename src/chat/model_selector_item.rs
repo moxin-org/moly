@@ -98,7 +98,7 @@ impl Widget for ModelSelectorItem {
 
 impl WidgetMatchEvent for ModelSelectorItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(fd) = self.view(id!(content)).finger_up(&actions) {
+        if let Some(fd) = self.view(ids!(content)).finger_up(&actions) {
             if fd.was_tap() {
                 cx.action(ModelSelectorAction::BotSelected(
                     self.chat_id,

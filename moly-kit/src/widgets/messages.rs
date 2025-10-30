@@ -165,7 +165,7 @@ impl Widget for Messages {
         self.deref.handle_event(cx, event, scope);
         self.handle_list(cx, event, scope);
 
-        let jump_to_bottom = self.button(id!(jump_to_bottom));
+        let jump_to_bottom = self.button(ids!(jump_to_bottom));
 
         if jump_to_bottom.clicked(event.actions()) {
             self.animated_scroll_to_bottom(cx);
@@ -180,7 +180,7 @@ impl Widget for Messages {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let list_uid = self.portal_list(id!(list)).widget_uid();
+        let list_uid = self.portal_list(ids!(list)).widget_uid();
 
         while let Some(widget) = self.deref.draw_walk(cx, scope, walk).step() {
             if widget.widget_uid() == list_uid {
@@ -246,19 +246,19 @@ impl Messages {
                     let item = if message.metadata.is_writing() {
                         // Show loading animation for system messages that are being written
                         let item = list.item(cx, index, live_id!(LoadingLine));
-                        item.message_loading(id!(content_section.loading))
+                        item.message_loading(ids!(content_section.loading))
                             .animate(cx);
                         item
                     } else {
                         list.item(cx, index, live_id!(SystemLine))
                     };
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                    item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("S".into()));
-                    item.label(id!(name)).set_text(cx, "System");
+                    item.label(ids!(name)).set_text(cx, "System");
 
                     if !message.metadata.is_writing() {
-                        item.slot(id!(content))
+                        item.slot(ids!(content))
                             .current()
                             .as_standard_message_content()
                             .set_content(cx, &message.content);
@@ -272,19 +272,19 @@ impl Messages {
                     let item = if message.metadata.is_writing() {
                         // Show loading animation for tool execution
                         let item = list.item(cx, index, live_id!(LoadingLine));
-                        item.message_loading(id!(content_section.loading))
+                        item.message_loading(ids!(content_section.loading))
                             .animate(cx);
                         item
                     } else {
                         list.item(cx, index, live_id!(ToolResultLine))
                     };
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                    item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("T".into()));
-                    item.label(id!(name)).set_text(cx, "Tool");
+                    item.label(ids!(name)).set_text(cx, "Tool");
 
                     if !message.metadata.is_writing() {
-                        item.slot(id!(content))
+                        item.slot(ids!(content))
                             .current()
                             .as_standard_message_content()
                             .set_content(cx, &message.content);
@@ -311,15 +311,15 @@ impl Messages {
                             .as_deref()
                         {
                             let item = list.item(cx, index, live_id!(ErrorLine));
-                            item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                            item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
                                 Some(Picture::Grapheme("X".into()));
-                            item.label(id!(name)).set_text(cx, left);
+                            item.label(ids!(name)).set_text(cx, left);
 
                             let error_content = MessageContent {
                                 text: right.to_string(),
                                 ..Default::default()
                             };
-                            item.slot(id!(content))
+                            item.slot(ids!(content))
                                 .current()
                                 .as_standard_message_content()
                                 .set_content(cx, &error_content);
@@ -332,10 +332,10 @@ impl Messages {
 
                     // Handle regular app messages
                     let item = list.item(cx, index, live_id!(AppLine));
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                    item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("A".into()));
 
-                    item.slot(id!(content))
+                    item.slot(ids!(content))
                         .current()
                         .as_standard_message_content()
                         .set_content(cx, &message.content);
@@ -346,11 +346,11 @@ impl Messages {
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar =
+                    item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
                         Some(Picture::Grapheme("Y".into()));
-                    item.label(id!(name)).set_text(cx, "You");
+                    item.label(ids!(name)).set_text(cx, "You");
 
-                    item.slot(id!(content))
+                    item.slot(ids!(content))
                         .current()
                         .as_standard_message_content()
                         .set_content(cx, &message.content);
@@ -369,7 +369,7 @@ impl Messages {
                     let item =
                         if message.metadata.is_writing() && message.content.is_empty() {
                             let item = list.item(cx, index, live_id!(LoadingLine));
-                            item.message_loading(id!(content_section.loading))
+                            item.message_loading(ids!(content_section.loading))
                                 .animate(cx);
                             item
                         } else if !message.content.tool_calls.is_empty() {
@@ -385,14 +385,14 @@ impl Messages {
                                 });
 
                             // Show/hide tool actions based on status
-                            item.view(id!(tool_actions)).set_visible(cx, has_pending);
+                            item.view(ids!(tool_actions)).set_visible(cx, has_pending);
 
                             // Set status text, only show if denied
                             if has_denied {
-                                item.view(id!(status_view)).set_visible(cx, true);
-                                item.label(id!(approved_status)).set_text(cx, "Denied");
+                                item.view(ids!(status_view)).set_visible(cx, true);
+                                item.label(ids!(approved_status)).set_text(cx, "Denied");
                             } else {
-                                item.view(id!(status_view)).set_visible(cx, false);
+                                item.view(ids!(status_view)).set_visible(cx, false);
                             }
 
                             item
@@ -400,10 +400,10 @@ impl Messages {
                             list.item(cx, index, live_id!(BotLine))
                         };
 
-                    item.avatar(id!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
-                    item.label(id!(name)).set_text(cx, name);
+                    item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
+                    item.label(ids!(name)).set_text(cx, name);
 
-                    let mut slot = item.slot(id!(content));
+                    let mut slot = item.slot(ids!(content));
                     if let Some(custom_content) = bot_client.as_mut().and_then(|bc| {
                         bc.content_widget(
                             cx,
@@ -442,7 +442,7 @@ impl Messages {
             assert!(message.content.text == "EOC");
         }
 
-        self.button(id!(jump_to_bottom))
+        self.button(ids!(jump_to_bottom))
             .set_visible(cx, !self.is_at_bottom());
     }
 
@@ -459,7 +459,7 @@ impl Messages {
             .expect("no chat controller set");
 
         if chat_controller.lock().unwrap().state().messages.len() > 0 {
-            let list = self.portal_list(id!(list));
+            let list = self.portal_list(ids!(list));
 
             // Use immediate scroll instead of smooth scroll to prevent continuous scroll actions
             list.set_first_id_and_scroll(
@@ -493,7 +493,7 @@ impl Messages {
             .expect("no chat controller set");
 
         if chat_controller.lock().unwrap().state().messages.len() > 0 {
-            let list = self.portal_list(id!(list));
+            let list = self.portal_list(ids!(list));
             list.smooth_scroll_to_end(cx, 100.0, None);
         }
     }
@@ -529,8 +529,8 @@ impl Messages {
     pub fn current_editor_text(&self) -> Option<String> {
         self.current_editor
             .as_ref()
-            .and_then(|editor| self.portal_list(id!(list)).get_item(editor.index))
-            .map(|(_id, widget)| widget.text_input(id!(input)).text())
+            .and_then(|editor| self.portal_list(ids!(list)).get_item(editor.index))
+            .map(|(_id, widget)| widget.text_input(ids!(input)).text())
     }
 
     /// If currently editing a message, this will return the index of the message.
@@ -543,7 +543,7 @@ impl Messages {
             return;
         };
 
-        let list = self.portal_list(id!(list));
+        let list = self.portal_list(ids!(list));
         let range = range.0..=range.1;
 
         // Handle item actions
@@ -557,11 +557,11 @@ impl Messages {
 
             let actions = event.actions();
 
-            if item.button(id!(copy)).clicked(actions) {
+            if item.button(ids!(copy)).clicked(actions) {
                 cx.widget_action(self.widget_uid(), &scope.path, MessagesAction::Copy(index));
             }
 
-            if item.button(id!(delete)).clicked(actions) {
+            if item.button(ids!(delete)).clicked(actions) {
                 cx.widget_action(
                     self.widget_uid(),
                     &scope.path,
@@ -569,19 +569,19 @@ impl Messages {
                 );
             }
 
-            if item.button(id!(edit)).clicked(actions) {
+            if item.button(ids!(edit)).clicked(actions) {
                 self.set_message_editor_visibility(index, true);
                 self.redraw(cx);
             }
 
-            if item.button(id!(edit_actions.cancel)).clicked(actions) {
+            if item.button(ids!(edit_actions.cancel)).clicked(actions) {
                 self.set_message_editor_visibility(index, false);
                 self.redraw(cx);
             }
 
             // Being more explicit because makepad query may actually check for
             // other save button somewhere else (like in the image viewer modal).
-            if item.button(id!(edit_actions.save)).clicked(actions) {
+            if item.button(ids!(edit_actions.save)).clicked(actions) {
                 cx.widget_action(
                     self.widget_uid(),
                     &scope.path,
@@ -590,7 +590,7 @@ impl Messages {
             }
 
             if item
-                .button(id!(edit_actions.save_and_regenerate))
+                .button(ids!(edit_actions.save_and_regenerate))
                 .clicked(actions)
             {
                 cx.widget_action(
@@ -600,7 +600,7 @@ impl Messages {
                 );
             }
 
-            if item.button(id!(tool_actions.approve)).clicked(actions) {
+            if item.button(ids!(tool_actions.approve)).clicked(actions) {
                 cx.widget_action(
                     self.widget_uid(),
                     &scope.path,
@@ -608,7 +608,7 @@ impl Messages {
                 );
             }
 
-            if item.button(id!(tool_actions.deny)).clicked(actions) {
+            if item.button(ids!(tool_actions.deny)).clicked(actions) {
                 cx.widget_action(
                     self.widget_uid(),
                     &scope.path,
@@ -616,17 +616,17 @@ impl Messages {
                 );
             }
 
-            if let Some(change) = item.text_input(id!(input)).changed(actions) {
+            if let Some(change) = item.text_input(ids!(input)).changed(actions) {
                 self.current_editor.as_mut().unwrap().buffer = change;
             }
         }
 
         // Handle code copy
         // Since the Markdown widget could have multiple code blocks, we need the widget that triggered the action
-        if let Some(wa) = event.actions().widget_action(id!(copy_code_button)) {
+        if let Some(wa) = event.actions().widget_action(ids!(copy_code_button)) {
             if wa.widget().as_button().pressed(event.actions()) {
                 // nth(2) refers to the code view in the MessageMarkdown widget
-                let code_view = wa.widget_nth(2).widget(id!(code_view));
+                let code_view = wa.widget_nth(2).widget(ids!(code_view));
                 let text_to_copy = code_view.as_code_view().text();
                 cx.copy_to_clipboard(&text_to_copy);
             }
@@ -639,10 +639,10 @@ impl Messages {
         widget: &WidgetRef,
         index: usize,
     ) {
-        let editor = widget.view(id!(editor));
-        let actions = widget.view(id!(actions));
-        let edit_actions = widget.view(id!(edit_actions));
-        let content_section = widget.view(id!(content_section));
+        let editor = widget.view(ids!(editor));
+        let actions = widget.view(ids!(actions));
+        let edit_actions = widget.view(ids!(edit_actions));
+        let content_section = widget.view(ids!(content_section));
 
         let is_hovered = self.hovered_index == Some(index);
         let is_current_editor = self.current_editor.as_ref().map(|e| e.index) == Some(index);
@@ -654,7 +654,7 @@ impl Messages {
 
         if is_current_editor {
             editor
-                .text_input(id!(input))
+                .text_input(ids!(input))
                 .set_text(cx, &self.current_editor.as_ref().unwrap().buffer);
         }
     }

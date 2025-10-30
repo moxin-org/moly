@@ -95,11 +95,11 @@ pub struct AttachmentList {
 
 impl Widget for AttachmentList {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view(id!(wrapper))
+        self.view(ids!(wrapper))
             .set_visible(cx, !self.attachments.is_empty());
 
         let attachments_count = self.attachments.len();
-        let list = self.portal_list(id!(list));
+        let list = self.portal_list(ids!(list));
         while let Some(widget) = self.deref.draw_walk(cx, scope, walk).step() {
             if widget.widget_uid() == list.widget_uid() {
                 let mut list = list.borrow_mut().unwrap();
@@ -112,7 +112,7 @@ impl Widget for AttachmentList {
                     let attachment = &self.attachments[index];
                     let item = list.item(cx, index, live_id!(File));
 
-                    item.attachment_view(id!(preview))
+                    item.attachment_view(ids!(preview))
                         .borrow_mut()
                         .unwrap()
                         .set_attachment(cx, attachment.clone());

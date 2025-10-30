@@ -296,7 +296,7 @@ impl Widget for Providers {
 
                         // hide the separator for the first item
                         if item_id == 0 {
-                            item.view(id!(separator)).set_visible(cx, false);
+                            item.view(ids!(separator)).set_visible(cx, false);
                         }
 
                         let provider = all_providers[item_id].clone();
@@ -332,20 +332,20 @@ impl WidgetMatchEvent for Providers {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         // Handle modal open
         if self
-            .view(id!(add_provider_button))
+            .view(ids!(add_provider_button))
             .finger_up(actions)
             .is_some()
         {
-            let modal = self.modal(id!(add_provider_modal));
+            let modal = self.modal(ids!(add_provider_modal));
             modal.open(cx);
         }
 
         if self
-            .view(id!(open_sync_button))
+            .view(ids!(open_sync_button))
             .finger_up(actions)
             .is_some()
         {
-            let modal = self.modal(id!(sync_modal));
+            let modal = self.modal(ids!(sync_modal));
             modal.open(cx);
         }
 
@@ -357,20 +357,20 @@ impl WidgetMatchEvent for Providers {
 
             // Handle modal actions
             if let AddProviderModalAction::ModalDismissed = action.cast() {
-                self.modal(id!(add_provider_modal)).close(cx);
+                self.modal(ids!(add_provider_modal)).close(cx);
                 self.redraw(cx);
             }
 
             if let SyncModalAction::ModalDismissed = action.cast() {
-                self.modal(id!(sync_modal)).close(cx);
+                self.modal(ids!(sync_modal)).close(cx);
                 self.redraw(cx);
             }
 
             // Handle the case where the modal is dismissed by the user clicking outside the modal
             // This is a hacky way to reset the modal state because the inner content never gets to
             // hear if it was dismissed from outside.
-            if self.modal(id!(sync_modal)).dismissed(actions) {
-                self.sync_modal(id!(sync_modal_inner)).reset_state(cx);
+            if self.modal(ids!(sync_modal)).dismissed(actions) {
+                self.sync_modal(ids!(sync_modal_inner)).reset_state(cx);
             }
 
             // Handle provider removed
@@ -406,14 +406,14 @@ impl Widget for ProviderItem {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         // Update the label
-        self.label(id!(provider_name_label))
+        self.label(ids!(provider_name_label))
             .set_text(cx, &self.provider.name);
 
         let connection_status = self.provider.connection_status.clone();
         // Show connection status icons
         self.update_connection_status(cx, &connection_status);
 
-        self.view(id!(status_view)).set_visible(
+        self.view(ids!(status_view)).set_visible(
             cx,
             connection_status == ProviderConnectionStatus::Connected && self.provider.enabled,
         );
@@ -424,7 +424,7 @@ impl Widget for ProviderItem {
 
 impl WidgetMatchEvent for ProviderItem {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(finger_up) = self.view(id!(main_view)).finger_up(actions) {
+        if let Some(finger_up) = self.view(ids!(main_view)).finger_up(actions) {
             if finger_up.was_tap() {
                 cx.action(ConnectionSettingsAction::ProviderSelected(
                     self.provider.id.clone(),
@@ -441,15 +441,15 @@ impl ProviderItem {
         cx: &mut Cx,
         connection_status: &ProviderConnectionStatus,
     ) {
-        self.view(id!(connection_status_success)).set_visible(
+        self.view(ids!(connection_status_success)).set_visible(
             cx,
             *connection_status == ProviderConnectionStatus::Connected,
         );
-        self.view(id!(connection_status_failure)).set_visible(
+        self.view(ids!(connection_status_failure)).set_visible(
             cx,
             *connection_status == ProviderConnectionStatus::Disconnected,
         );
-        self.view(id!(connection_status_loading)).set_visible(
+        self.view(ids!(connection_status_loading)).set_visible(
             cx,
             *connection_status == ProviderConnectionStatus::Connecting,
         );
@@ -472,19 +472,19 @@ impl ProviderItemRef {
         // Determine whether to show image or label
         if let Some(icon) = icon_path {
             // Show the image
-            inner.view(id!(image_wrapper)).set_visible(cx, true);
-            let image = inner.image(id!(provider_icon_image));
+            inner.view(ids!(image_wrapper)).set_visible(cx, true);
+            let image = inner.image(ids!(provider_icon_image));
             let _ = image.load_image_dep_by_path(cx, icon.as_str());
 
             // Hide the label
-            let label_view = inner.view(id!(provider_icon_label));
+            let label_view = inner.view(ids!(provider_icon_label));
             label_view.set_visible(cx, false);
         } else {
             // Hide the image
-            inner.view(id!(image_wrapper)).set_visible(cx, false);
+            inner.view(ids!(image_wrapper)).set_visible(cx, false);
 
             // Show the label
-            let label_view = inner.view(id!(label_wrapper));
+            let label_view = inner.view(ids!(label_wrapper));
             label_view.set_visible(cx, true);
 
             // Get first character of the provider name
@@ -496,7 +496,7 @@ impl ProviderItemRef {
                 .unwrap_or_default();
 
             label_view
-                .label(id!(initial_label))
+                .label(ids!(initial_label))
                 .set_text(cx, &first_char);
         }
 

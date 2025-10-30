@@ -54,15 +54,15 @@ impl Widget for AttachmentViewerModal {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.deref.handle_event(cx, event, scope);
 
-        if self.button(id!(modal.save)).clicked(event.actions()) {
-            self.attachment_view(id!(attachment))
+        if self.button(ids!(modal.save)).clicked(event.actions()) {
+            self.attachment_view(ids!(attachment))
                 .borrow()
                 .unwrap()
                 .get_attachment()
                 .save();
         }
 
-        if self.button(id!(modal.close)).clicked(event.actions()) {
+        if self.button(ids!(modal.close)).clicked(event.actions()) {
             self.close(cx)
         }
     }
@@ -71,7 +71,7 @@ impl Widget for AttachmentViewerModal {
 impl AttachmentViewerModal {
     pub fn open(&mut self, cx: &mut Cx, attachment: Attachment) {
         self.modal_ref().open(cx);
-        self.attachment_view(id!(attachment))
+        self.attachment_view(ids!(attachment))
             .borrow_mut()
             .unwrap()
             .set_attachment(cx, attachment);
@@ -82,6 +82,6 @@ impl AttachmentViewerModal {
     }
 
     fn modal_ref(&self) -> MolyModalRef {
-        self.moly_modal(id!(modal))
+        self.moly_modal(ids!(modal))
     }
 }

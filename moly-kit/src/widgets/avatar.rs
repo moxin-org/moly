@@ -66,15 +66,15 @@ impl Widget for Avatar {
         if let Some(avatar) = &self.avatar {
             match avatar {
                 Picture::Grapheme(grapheme) => {
-                    self.view(id!(grapheme)).set_visible(cx, true);
-                    self.view(id!(dependency)).set_visible(cx, false);
-                    self.label(id!(label)).set_text(cx, &grapheme);
+                    self.view(ids!(grapheme)).set_visible(cx, true);
+                    self.view(ids!(dependency)).set_visible(cx, false);
+                    self.label(ids!(label)).set_text(cx, &grapheme);
                 }
                 Picture::Dependency(dependency) => {
-                    self.view(id!(dependency)).set_visible(cx, true);
-                    self.view(id!(grapheme)).set_visible(cx, false);
+                    self.view(ids!(dependency)).set_visible(cx, true);
+                    self.view(ids!(grapheme)).set_visible(cx, false);
                     let _ = self
-                        .image(id!(image))
+                        .image(ids!(image))
                         .load_image_dep_by_path(cx, dependency.as_str());
                 }
                 _ => unimplemented!(),

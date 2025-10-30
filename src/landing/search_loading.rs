@@ -133,16 +133,16 @@ impl SearchLoading {
 
         match self.current_animated_circle {
             0 => {
-                self.animator_play(cx, id!(circle1.run));
-                self.animator_play(cx, id!(circle3.start));
+                self.animator_play(cx, ids!(circle1.run));
+                self.animator_play(cx, ids!(circle3.start));
             }
             1 => {
-                self.animator_play(cx, id!(circle1.start));
-                self.animator_play(cx, id!(circle2.run));
+                self.animator_play(cx, ids!(circle1.start));
+                self.animator_play(cx, ids!(circle2.run));
             }
             2 => {
-                self.animator_play(cx, id!(circle2.start));
-                self.animator_play(cx, id!(circle3.run));
+                self.animator_play(cx, ids!(circle2.start));
+                self.animator_play(cx, ids!(circle3.run));
             }
             _ => unreachable!(),
         };

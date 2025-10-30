@@ -43,8 +43,8 @@ pub struct DemoChat {
 
 impl Widget for DemoChat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let selector = self.bot_selector(id!(selector));
-        let mut chat = self.chat(id!(chat));
+        let selector = self.bot_selector(ids!(selector));
+        let mut chat = self.chat(ids!(chat));
 
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
@@ -74,7 +74,7 @@ impl LiveHook for DemoChat {
 
 impl DemoChat {
     fn fill_selector(&mut self, cx: &mut Cx, bots: Vec<Bot>) {
-        let mut chat = self.chat(id!(chat));
+        let mut chat = self.chat(ids!(chat));
 
         let bots = bots
             .into_iter()
@@ -135,11 +135,11 @@ impl DemoChat {
             eprintln!("No models available, check your API keys.");
         }
 
-        self.bot_selector(id!(selector)).set_bots(bots);
+        self.bot_selector(ids!(selector)).set_bots(bots);
     }
 
     fn setup_chat_hooks(&self) {
-        // self.chat(id!(chat)).write_with(|chat| {
+        // self.chat(ids!(chat)).write_with(|chat| {
         //     chat.set_hook_before(|group, chat, cx| {
         //         let mut abort = false;
 
@@ -266,7 +266,7 @@ impl DemoChat {
         controller.lock().unwrap().dispatch_task(ChatTask::Load);
 
         self.controller = Some(controller.clone());
-        self.chat(id!(chat))
+        self.chat(ids!(chat))
             .write()
             .set_chat_controller(cx, Some(controller));
     }

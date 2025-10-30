@@ -84,18 +84,18 @@ impl Widget for LandingScreen {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         let search = &scope.data.get::<Store>().unwrap().search;
         if search.is_pending() || search.was_error() {
-            self.view(id!(heading_with_filters)).set_visible(cx, false);
+            self.view(ids!(heading_with_filters)).set_visible(cx, false);
         } else if let Some(keyword) = search.keyword.clone() {
-            self.view(id!(heading_with_filters)).set_visible(cx, true);
+            self.view(ids!(heading_with_filters)).set_visible(cx, true);
 
             let models = &search.models;
             let models_count = models.len();
-            self.label(id!(heading_with_filters.results))
+            self.label(ids!(heading_with_filters.results))
                 .set_text(cx, &format!("{} Results", models_count));
-            self.label(id!(heading_with_filters.keyword))
+            self.label(ids!(heading_with_filters.keyword))
                 .set_text(cx, &format!(" for \"{}\"", keyword));
         } else {
-            self.view(id!(heading_with_filters)).set_visible(cx, false);
+            self.view(ids!(heading_with_filters)).set_visible(cx, false);
         }
 
         self.view.draw_walk(cx, scope, walk)
@@ -113,7 +113,7 @@ impl WidgetMatchEvent for LandingScreen {
                 ModelListAction::ScrolledAtTop => {
                     if self.search_bar_state == SearchBarState::CollapsedWithoutFilters {
                         self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
-                        self.search_bar(id!(search_bar)).expand(cx);
+                        self.search_bar(ids!(search_bar)).expand(cx);
                         self.redraw(cx);
                     }
                 }
@@ -135,7 +135,7 @@ impl WidgetMatchEvent for LandingScreen {
 
                     if collapse {
                         let search = &scope.data.get::<Store>().unwrap().search;
-                        self.search_bar(id!(search_bar))
+                        self.search_bar(ids!(search_bar))
                             .collapse(cx, search.sorted_by);
                         self.redraw(cx);
                     }
@@ -156,7 +156,7 @@ impl WidgetMatchEvent for LandingScreen {
                 StoreAction::ResetSearch => match self.search_bar_state {
                     SearchBarState::ExpandedWithFilters | SearchBarState::CollapsedWithFilters => {
                         self.search_bar_state = SearchBarState::ExpandedWithoutFilters;
-                        self.search_bar(id!(search_bar)).expand(cx);
+                        self.search_bar(ids!(search_bar)).expand(cx);
                     }
                     _ => {}
                 },

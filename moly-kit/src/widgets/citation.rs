@@ -110,8 +110,8 @@ impl Citation {
     }
 
     fn set_initial_info(&mut self, cx: &mut Cx) {
-        let site = self.label(id!(site));
-        let title = self.label(id!(title));
+        let site = self.label(ids!(site));
+        let title = self.label(ids!(title));
         let url = self.url.as_deref().unwrap();
 
         site.set_text(cx, url);
@@ -119,8 +119,8 @@ impl Citation {
     }
 
     fn try_refine_info(&mut self, cx: &mut Cx) -> Result<(), ()> {
-        let site = self.label(id!(site));
-        let title = self.label(id!(title));
+        let site = self.label(ids!(site));
+        let title = self.label(ids!(title));
         let url = self.url.as_deref().unwrap();
 
         let url = Url::parse(url).map_err(|_| ())?;
@@ -142,7 +142,7 @@ impl Citation {
 
             if let Some(title) = extract_title(&document) {
                 ui.defer_with_redraw(move |me, cx, _| {
-                    me.label(id!(title)).set_text(cx, &title);
+                    me.label(ids!(title)).set_text(cx, &title);
                 });
             }
 

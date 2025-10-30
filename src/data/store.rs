@@ -113,7 +113,7 @@ impl Store {
 
             app_runner().defer(move |app, cx, _| {
                 app.store = Some(store);
-                app.ui.view(id!(body)).set_visible(cx, true);
+                app.ui.view(ids!(body)).set_visible(cx, true);
                 cx.redraw_all(); // app.ui.redraw(cx) doesn't work as expected on web.
             });
         })

@@ -97,20 +97,20 @@ impl Widget for ChatScreen {
 
 impl WidgetMatchEvent for ChatScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.button(id!(new_chat_button)).clicked(&actions) {
+        if self.button(ids!(new_chat_button)).clicked(&actions) {
             cx.action(ChatAction::StartWithoutEntity);
-            self.stack_navigation(id!(navigation)).pop_to_root(cx);
+            self.stack_navigation(ids!(navigation)).pop_to_root(cx);
             self.redraw(cx);
         }
 
         for action in actions {
             if let ChatAction::ChatSelected(_chat_id) = action.cast() {
-                self.stack_navigation(id!(navigation)).pop_to_root(cx);
+                self.stack_navigation(ids!(navigation)).pop_to_root(cx);
                 self.redraw(cx);
             }
 
             if let ConnectionSettingsAction::ProviderSelected(provider_id) = action.cast() {
-                self.stack_navigation(id!(navigation))
+                self.stack_navigation(ids!(navigation))
                     .push(cx, live_id!(provider_navigation_view));
 
                 let provider = scope
@@ -122,7 +122,7 @@ impl WidgetMatchEvent for ChatScreen {
                     .get(&provider_id);
                 if let Some(provider) = provider {
                     self.view
-                        .provider_view(id!(provider_view))
+                        .provider_view(ids!(provider_view))
                         .set_provider(cx, provider);
                 } else {
                     eprintln!("Provider not found: {}", provider_id);

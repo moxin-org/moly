@@ -260,15 +260,15 @@ impl Widget for ChatParams {
             let chat = chat.borrow();
             let ip = &chat.inferences_params;
 
-            let temperature = self.slider(id!(temperature));
-            let top_p = self.slider(id!(top_p));
-            let max_tokens = self.slider(id!(max_tokens));
-            let frequency_penalty = self.slider(id!(frequency_penalty));
-            let presence_penalty = self.slider(id!(presence_penalty));
-            let stop = self.text_input(id!(stop));
-            let stream = self.check_box(id!(stream));
+            let temperature = self.slider(ids!(temperature));
+            let top_p = self.slider(ids!(top_p));
+            let max_tokens = self.slider(ids!(max_tokens));
+            let frequency_penalty = self.slider(ids!(frequency_penalty));
+            let presence_penalty = self.slider(ids!(presence_penalty));
+            let stop = self.text_input(ids!(stop));
+            let stream = self.check_box(ids!(stream));
 
-            let system_prompt = self.text_input(id!(system_prompt));
+            let system_prompt = self.text_input(ids!(system_prompt));
 
             temperature.set_value(cx, ip.temperature.into());
             top_p.set_value(cx, ip.top_p.into());
@@ -310,35 +310,35 @@ impl WidgetMatchEvent for ChatParams {
 
             let ip = &mut chat.inferences_params;
 
-            if let Some(value) = self.slider(id!(temperature)).slided(&actions) {
+            if let Some(value) = self.slider(ids!(temperature)).slided(&actions) {
                 ip.temperature = value as f32;
             }
 
-            if let Some(value) = self.slider(id!(top_p)).slided(&actions) {
+            if let Some(value) = self.slider(ids!(top_p)).slided(&actions) {
                 ip.top_p = value as f32;
             }
 
-            if let Some(value) = self.slider(id!(max_tokens)).slided(&actions) {
+            if let Some(value) = self.slider(ids!(max_tokens)).slided(&actions) {
                 ip.max_tokens = value as u32;
             }
 
-            if let Some(value) = self.slider(id!(frequency_penalty)).slided(&actions) {
+            if let Some(value) = self.slider(ids!(frequency_penalty)).slided(&actions) {
                 ip.frequency_penalty = value as f32;
             }
 
-            if let Some(value) = self.slider(id!(presence_penalty)).slided(&actions) {
+            if let Some(value) = self.slider(ids!(presence_penalty)).slided(&actions) {
                 ip.presence_penalty = value as f32;
             }
 
-            if let Some(value) = self.text_input(id!(stop)).changed(&actions) {
+            if let Some(value) = self.text_input(ids!(stop)).changed(&actions) {
                 ip.stop = value;
             }
 
-            if let Some(value) = self.check_box(id!(stream)).changed(actions) {
+            if let Some(value) = self.check_box(ids!(stream)).changed(actions) {
                 ip.stream = value;
             }
 
-            if let Some(value) = self.text_input(id!(system_prompt)).changed(&actions) {
+            if let Some(value) = self.text_input(ids!(system_prompt)).changed(&actions) {
                 if value.is_empty() {
                     chat.system_prompt = None;
                 } else {
@@ -356,56 +356,56 @@ impl ChatParams {
         }
 
         self.handle_tooltip_actions_for_label(
-            id!(system_prompt_label),
+            ids!(system_prompt_label),
             "A system prompt is a fixed prompt providing context and instructions to the model. The system prompt is always included in the provided input to the LLM, regardless of the user prompt.".to_string(),
             TOOLTIP_OFFSET,
             cx, actions
         );
 
         self.handle_tooltip_actions_for_slider(
-            id!(temperature),
+            ids!(temperature),
             "Influences the randomness of the model’s output. A higher value leads to more random and diverse responses, while a lower value produces more predictable outputs.".to_string(),
             TOOLTIP_OFFSET,
             cx, actions
         );
 
         self.handle_tooltip_actions_for_slider(
-            id!(top_p),
+            ids!(top_p),
             "Top P, also known as nucleus sampling, is another parameter that influences the randomness of LLM output. This parameter determines the threshold probability for including tokens in a candidate set used by the LLM to generate output. Lower values of this parameter result in more precise and fact-based responses from the LLM, while higher values increase randomness and diversity in the generated output.".to_string(),
             TOOLTIP_OFFSET,
             cx, actions
         );
 
         self.handle_tooltip_actions_for_label(
-            id!(stream_label),
+            ids!(stream_label),
             "Streaming is the sending of words as they are created by the AI language model one at a time, so you can show them as they are being generated.".to_string(),
             TOOLTIP_OFFSET,
             cx, actions
         );
 
         self.handle_tooltip_actions_for_slider(
-            id!(max_tokens),
+            ids!(max_tokens),
             "The max tokens parameter sets the upper limit for the total number of tokens, encompassing both the input provided to the LLM as a prompt and the output tokens generated by the LLM in response to that prompt.".to_string(),
             TOOLTIP_OFFSET,
             cx, actions
         );
 
         self.handle_tooltip_actions_for_label(
-            id!(stop_label),
+            ids!(stop_label),
             "Stop sequences are used to make the model stop generating tokens at a desired point, such as the end of a sentence or a list. The model response will not contain the stop sequence and you can pass up to four stop sequences.".to_string(),
             TOOLTIP_OFFSET,
             cx, actions
         );
 
         self.handle_tooltip_actions_for_slider(
-            id!(frequency_penalty),
+            ids!(frequency_penalty),
             "This parameter is used to discourage the model from repeating the same words or phrases too frequently within the generated text. It is a value that is added to the log-probability of a token each time it occurs in the generated text. A higher frequency_penalty value will result in the model being more conservative in its use of repeated tokens.".to_string(),
             TOOLTIP_OFFSET_BOTTOM,
             cx, actions
         );
 
         self.handle_tooltip_actions_for_slider(
-            id!(presence_penalty),
+            ids!(presence_penalty),
             "This parameter is used to encourage the model to include a diverse range of tokens in the generated text. It is a value that is subtracted from the log-probability of a token each time it is generated. A higher presence_penalty value will result in the model being more likely to generate tokens that have not yet been included in the generated text.".to_string(),
             TOOLTIP_OFFSET_BOTTOM,
             cx, actions
@@ -421,7 +421,7 @@ impl ChatParams {
         actions: &Actions,
     ) {
         let slider = self.slider(slider_id);
-        let mut tooltip = self.deref.tooltip(id!(tooltip));
+        let mut tooltip = self.deref.tooltip(ids!(tooltip));
 
         if let Some(rect) = slider.label_hover_in(&actions) {
             tooltip.show_with_options(cx, rect.pos + offset, &text);
@@ -440,7 +440,7 @@ impl ChatParams {
         actions: &Actions,
     ) {
         let label = self.label(label_id);
-        let mut tooltip = self.deref.tooltip(id!(tooltip));
+        let mut tooltip = self.deref.tooltip(ids!(tooltip));
 
         if let Some(rect) = label.hover_in(&actions) {
             tooltip.show_with_options(cx, rect.pos + offset, &text);

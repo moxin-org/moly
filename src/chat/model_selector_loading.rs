@@ -157,11 +157,11 @@ impl ModelSelectorLoading {
     pub fn update_animation(&mut self, cx: &mut Cx) {
         self.visible = true;
 
-        if self.animator_in_state(cx, id!(line.restart)) {
-            self.animator_play(cx, id!(line.run));
+        if self.animator_in_state(cx, ids!(line.restart)) {
+            self.animator_play(cx, ids!(line.run));
             self.timer = cx.start_timeout(1.5);
         } else {
-            self.animator_play(cx, id!(line.restart));
+            self.animator_play(cx, ids!(line.restart));
         }
     }
 
@@ -179,7 +179,7 @@ impl ModelSelectorLoading {
         // Calculate the width - 5.0 is the multiplier (500px / 100%)
         let progress_bar_width = progress_percentage * 5.0 * 100.0;
 
-        self.view(id!(progress_container.progress_bar)).apply_over(
+        self.view(ids!(progress_container.progress_bar)).apply_over(
             cx,
             live! {
                 width: (progress_bar_width)
@@ -190,7 +190,7 @@ impl ModelSelectorLoading {
     fn complete_progress_bar(&mut self, cx: &mut Cx) {
         // Always animate to full width before disappearing
         // Set width to full 500px to ensure it completes
-        self.view(id!(progress_container.progress_bar)).apply_over(
+        self.view(ids!(progress_container.progress_bar)).apply_over(
             cx,
             live! {
                 width: 500.0
@@ -202,10 +202,10 @@ impl ModelSelectorLoading {
     }
 
     fn hide_progress_components(&mut self, cx: &mut Cx) {
-        self.view(id!(progress_container.background))
+        self.view(ids!(progress_container.background))
             .set_visible(cx, false);
 
-        self.view(id!(progress_container.progress_bar)).apply_over(
+        self.view(ids!(progress_container.progress_bar)).apply_over(
             cx,
             live! {
                 visible: false,
@@ -217,9 +217,9 @@ impl ModelSelectorLoading {
     }
 
     fn show_progress_components(&mut self, cx: &mut Cx) {
-        self.view(id!(progress_container.background))
+        self.view(ids!(progress_container.background))
             .set_visible(cx, true);
-        self.view(id!(progress_container.progress_bar))
+        self.view(ids!(progress_container.progress_bar))
             .set_visible(cx, true);
     }
 }
