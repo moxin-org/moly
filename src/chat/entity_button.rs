@@ -140,7 +140,7 @@ impl Widget for EntityButton {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         if self.server_url_visible {
-            self.view(id!(server_url)).set_visible(cx, true);
+            self.view(ids!(server_url)).set_visible(cx, true);
         }
 
         if self.should_update_bot_info && self.bot_id.is_some() {
@@ -172,10 +172,10 @@ impl EntityButton {
         let store = scope.data.get_mut::<Store>().unwrap();
         self.visible = true;
 
-        let description_label = self.label(id!(description.label));
-        let name_label = self.label(id!(caption));
-        let mut avatar = self.chat_agent_avatar(id!(agent_avatar));
-        let server_url = self.label(id!(server_url.label));
+        let description_label = self.label(ids!(description.label));
+        let name_label = self.label(ids!(caption));
+        let mut avatar = self.chat_agent_avatar(ids!(agent_avatar));
+        let server_url = self.label(ids!(server_url.label));
 
         let bot = store.chats.get_bot_or_placeholder(&bot_id);
 
@@ -210,7 +210,7 @@ impl EntityButton {
     }
 
     pub fn set_description_visible(&mut self, cx: &mut Cx, visible: bool) {
-        self.view(id!(description)).set_visible(cx, visible);
+        self.view(ids!(description)).set_visible(cx, visible);
     }
 }
 

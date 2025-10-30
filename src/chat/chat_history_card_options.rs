@@ -127,7 +127,7 @@ impl ChatHistoryCardOptionsRef {
 
 impl WidgetMatchEvent for ChatHistoryCardOptions {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.button(id!(delete_chat)).clicked(actions) {
+        if self.button(ids!(delete_chat)).clicked(actions) {
             cx.action(ChatHistoryCardAction::MenuClosed(self.chat_id));
 
             cx.action(ChatHistoryCardAction::DeleteChatOptionSelected(
@@ -135,7 +135,7 @@ impl WidgetMatchEvent for ChatHistoryCardOptions {
             ));
         }
 
-        if self.button(id!(edit_chat_name)).clicked(actions) {
+        if self.button(ids!(edit_chat_name)).clicked(actions) {
             cx.action(ChatHistoryCardAction::MenuClosed(self.chat_id));
 
             cx.action(ChatHistoryCardAction::ActivateTitleEdition(self.chat_id));

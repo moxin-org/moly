@@ -125,7 +125,7 @@ impl ImageView {
     }
 
     fn image_ref(&self) -> ImageRef {
-        self.image(id!(image))
+        self.image(ids!(image))
     }
 
     fn image_size(&self, cx: &mut Cx) -> (usize, usize) {

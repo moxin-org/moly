@@ -61,7 +61,7 @@ impl DeepInquireContent {
 
         let stages = data.stages.as_slice();
 
-        let mut stages_ui = self.view.stages(id!(stages));
+        let mut stages_ui = self.view.stages(ids!(stages));
         stages_ui.update_stages(cx, stages);
 
         // Check if there is a completion block in any of the stages
@@ -75,7 +75,7 @@ impl DeepInquireContent {
                 .iter()
                 .map(|s| s.text.clone())
                 .collect::<String>();
-            self.markdown(id!(completed_block.completed_markdown))
+            self.markdown(ids!(completed_block.completed_markdown))
                 .set_text(cx, &final_text);
         }
     }

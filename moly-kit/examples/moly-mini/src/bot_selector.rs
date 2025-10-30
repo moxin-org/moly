@@ -121,8 +121,8 @@ impl Widget for BotSelector {
                     let bot = &self.bots[index];
 
                     let item = list.item(cx, index, live_id!(Bot));
-                    item.meta(id!(bot)).set_value(bot.clone());
-                    item.button(id!(button)).set_text(cx, &bot.name);
+                    item.meta(ids!(bot)).set_value(bot.clone());
+                    item.button(ids!(button)).set_text(cx, &bot.name);
                     item.draw_all(cx, &mut Scope::empty());
                 }
             }
@@ -135,12 +135,19 @@ impl Widget for BotSelector {
 impl WidgetMatchEvent for BotSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let clicked_bot_id = self
-            .portal_list(id!(list))
+            .portal_list(ids!(list))
             .items_with_actions(actions)
             .iter()
             .find_map(|(_idx, widget)| {
-                if widget.button(id!(button)).clicked(actions) {
-                    Some(widget.meta(id!(bot)).get_value::<Bot>().unwrap().id.clone())
+                if widget.button(ids!(button)).clicked(actions) {
+                    Some(
+                        widget
+                            .meta(ids!(bot))
+                            .get_value::<Bot>()
+                            .unwrap()
+                            .id
+                            .clone(),
+                    )
                 } else {
                     None
                 }
@@ -160,10 +167,10 @@ impl WidgetMatchEvent for BotSelector {
 
 impl BotSelector {
     fn toggle_layout_mode(&mut self, cx: &mut Cx) {
-        if self.animator.animator_in_state(cx, id!(mode.collapsed)) {
-            self.animator_play(cx, id!(mode.expanded));
+        if self.animator.animator_in_state(cx, ids!(mode.collapsed)) {
+            self.animator_play(cx, ids!(mode.expanded));
         } else {
-            self.animator_play(cx, id!(mode.collapsed));
+            self.animator_play(cx, ids!(mode.collapsed));
         }
     }
 
@@ -185,7 +192,7 @@ impl BotSelector {
         let bot = self.bots.remove(index);
         self.bots.insert(0, bot);
 
-        self.portal_list(id!(list)).set_first_id_and_scroll(0, 0.);
+        self.portal_list(ids!(list)).set_first_id_and_scroll(0, 0.);
     }
 
     pub fn bot_selected(&self, actions: &Actions) -> bool {

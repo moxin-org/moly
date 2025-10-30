@@ -226,17 +226,17 @@ impl Widget for DownloadItem {
         let download = scope.data.get::<PendingDownload>().unwrap();
         self.file_id = Some(download.file.id.clone());
 
-        self.label(id!(filename))
+        self.label(ids!(filename))
             .set_text(cx, download.file.name.as_str());
 
-        self.label(id!(architecture_tag.caption))
+        self.label(ids!(architecture_tag.caption))
             .set_text(cx, download.model.architecture.as_str());
 
-        self.label(id!(params_size_tag.caption))
+        self.label(ids!(params_size_tag.caption))
             .set_text(cx, &&download.model.requires.as_str());
 
         let progress_bar_width = download.progress * 6.0; // 6.0 = 600px / 100%
-        let label = self.label(id!(progress));
+        let label = self.label(ids!(progress));
         match download.status {
             PendingDownloadsStatus::Initializing => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
@@ -248,7 +248,7 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.view(id!(progress_bar)).apply_over(
+                self.view(ids!(progress_bar)).apply_over(
                     cx,
                     live! {
                         width: (progress_bar_width)
@@ -256,10 +256,10 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.button(id!(pause_button)).set_visible(cx, false);
-                self.button(id!(play_button)).set_visible(cx, false);
-                self.button(id!(retry_button)).set_visible(cx, false);
-                self.button(id!(cancel_button)).set_visible(cx, false);
+                self.button(ids!(pause_button)).set_visible(cx, false);
+                self.button(ids!(play_button)).set_visible(cx, false);
+                self.button(ids!(retry_button)).set_visible(cx, false);
+                self.button(ids!(cancel_button)).set_visible(cx, false);
             }
             PendingDownloadsStatus::Downloading => {
                 let downloading_color = vec3(0.035, 0.572, 0.314); //#099250
@@ -271,7 +271,7 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.view(id!(progress_bar)).apply_over(
+                self.view(ids!(progress_bar)).apply_over(
                     cx,
                     live! {
                         width: (progress_bar_width)
@@ -279,10 +279,10 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.button(id!(pause_button)).set_visible(cx, true);
-                self.button(id!(play_button)).set_visible(cx, false);
-                self.button(id!(retry_button)).set_visible(cx, false);
-                self.button(id!(cancel_button)).set_visible(cx, true);
+                self.button(ids!(pause_button)).set_visible(cx, true);
+                self.button(ids!(play_button)).set_visible(cx, false);
+                self.button(ids!(retry_button)).set_visible(cx, false);
+                self.button(ids!(cancel_button)).set_visible(cx, true);
             }
             PendingDownloadsStatus::Paused => {
                 let paused_color = vec3(0.4, 0.44, 0.52); //#667085
@@ -294,7 +294,7 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.view(id!(progress_bar)).apply_over(
+                self.view(ids!(progress_bar)).apply_over(
                     cx,
                     live! {
                         width: (progress_bar_width)
@@ -302,10 +302,10 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.button(id!(pause_button)).set_visible(cx, false);
-                self.button(id!(play_button)).set_visible(cx, true);
-                self.button(id!(retry_button)).set_visible(cx, false);
-                self.button(id!(cancel_button)).set_visible(cx, true);
+                self.button(ids!(pause_button)).set_visible(cx, false);
+                self.button(ids!(play_button)).set_visible(cx, true);
+                self.button(ids!(retry_button)).set_visible(cx, false);
+                self.button(ids!(cancel_button)).set_visible(cx, true);
             }
             PendingDownloadsStatus::Error => {
                 let failed_color = vec3(0.7, 0.11, 0.09); // #B42318
@@ -317,7 +317,7 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.view(id!(progress_bar)).apply_over(
+                self.view(ids!(progress_bar)).apply_over(
                     cx,
                     live! {
                         width: (progress_bar_width)
@@ -325,10 +325,10 @@ impl Widget for DownloadItem {
                     },
                 );
 
-                self.button(id!(pause_button)).set_visible(cx, false);
-                self.button(id!(play_button)).set_visible(cx, false);
-                self.button(id!(retry_button)).set_visible(cx, true);
-                self.button(id!(cancel_button)).set_visible(cx, true);
+                self.button(ids!(pause_button)).set_visible(cx, false);
+                self.button(ids!(play_button)).set_visible(cx, false);
+                self.button(ids!(retry_button)).set_visible(cx, true);
+                self.button(ids!(cancel_button)).set_visible(cx, true);
             }
         }
 
@@ -336,7 +336,7 @@ impl Widget for DownloadItem {
         let downloaded_size = format_model_downloaded_size(&download.file.size, download.progress)
             .unwrap_or("-".to_string());
 
-        self.label(id!(downloaded_size))
+        self.label(ids!(downloaded_size))
             .set_text(cx, &format!("{} / {}", downloaded_size, total_size));
 
         self.view.draw_walk(cx, scope, walk)
@@ -353,19 +353,19 @@ impl WidgetMatchEvent for DownloadItem {
             }
         }
 
-        for button_id in [id!(play_button), id!(retry_button)] {
+        for button_id in [ids!(play_button), ids!(retry_button)] {
             if self.button(button_id).clicked(&actions) {
                 let Some(file_id) = &self.file_id else { return };
                 cx.action(DownloadAction::Play(file_id.clone()));
             }
         }
 
-        if self.button(id!(pause_button)).clicked(&actions) {
+        if self.button(ids!(pause_button)).clicked(&actions) {
             let Some(file_id) = &self.file_id else { return };
             cx.action(DownloadAction::Pause(file_id.clone()));
         }
 
-        if self.button(id!(cancel_button)).clicked(&actions) {
+        if self.button(ids!(cancel_button)).clicked(&actions) {
             let Some(file_id) = &self.file_id else { return };
             cx.action(DownloadAction::Cancel(file_id.clone()));
         }

@@ -353,10 +353,10 @@ impl WidgetMatchEvent for Stages {
                 StageViewAction::StageViewClicked(clicked_stage) => {
                     match clicked_stage {
                         StageType::Thinking => {
-                            self.stage_view(id!(content_stage)).set_active(cx, false);
+                            self.stage_view(ids!(content_stage)).set_active(cx, false);
                         }
                         StageType::Content => {
-                            self.stage_view(id!(thinking_stage)).set_active(cx, false);
+                            self.stage_view(ids!(thinking_stage)).set_active(cx, false);
                         }
                         _ => {}
                     }
@@ -379,13 +379,13 @@ impl Stages {
         for stage in stages.iter() {
             match stage.stage_type {
                 StageType::Thinking => {
-                    let mut thinking_stage = self.stage_view(id!(thinking_stage));
+                    let mut thinking_stage = self.stage_view(ids!(thinking_stage));
                     thinking_stage.set_stage(cx, &stage);
                     // Thinking streams if content stage doesn't exist yet
                     thinking_stage.set_streaming_state(cx, !has_content_stage);
                 }
                 StageType::Content => {
-                    let mut content_stage = self.stage_view(id!(content_stage));
+                    let mut content_stage = self.stage_view(ids!(content_stage));
                     content_stage.set_stage(cx, &stage);
                     // Content streams if completion stage doesn't exist yet
                     content_stage.set_streaming_state(cx, !has_completion_stage);
@@ -436,21 +436,21 @@ impl Widget for StageView {
         if self.timer.is_event(event).is_some() {
             if self.is_streaming {
                 // Cycle through animation states
-                if self.animator_in_state(cx, id!(streaming.move_up)) {
-                    self.animator_play(cx, id!(streaming.move_right));
-                } else if self.animator_in_state(cx, id!(streaming.move_right)) {
-                    self.animator_play(cx, id!(streaming.move_down));
-                } else if self.animator_in_state(cx, id!(streaming.move_down)) {
-                    self.animator_play(cx, id!(streaming.move_left));
+                if self.animator_in_state(cx, ids!(streaming.move_up)) {
+                    self.animator_play(cx, ids!(streaming.move_right));
+                } else if self.animator_in_state(cx, ids!(streaming.move_right)) {
+                    self.animator_play(cx, ids!(streaming.move_down));
+                } else if self.animator_in_state(cx, ids!(streaming.move_down)) {
+                    self.animator_play(cx, ids!(streaming.move_left));
                 } else {
                     // Assumes it's in move_left or just started
-                    self.animator_play(cx, id!(streaming.move_up));
+                    self.animator_play(cx, ids!(streaming.move_up));
                 }
                 // Restart the timer for the next step
                 self.timer = cx.start_timeout(0.4); // Match state duration
             } else {
                 // If streaming stopped while timer was pending, ensure animation is off
-                self.animator_cut(cx, id!(streaming.off));
+                self.animator_cut(cx, ids!(streaming.off));
                 if !self.timer.is_empty() {
                     cx.stop_timer(self.timer);
                     self.timer = Timer::empty(); // Clear timer
@@ -468,14 +468,14 @@ impl Widget for StageView {
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         if self.is_active {
-            self.view(id!(stage_toggle)).apply_over(
+            self.view(ids!(stage_toggle)).apply_over(
                 cx,
                 live! {
                     draw_bg: { border_size: 1 }
                 },
             );
         } else {
-            self.view(id!(stage_toggle)).apply_over(
+            self.view(ids!(stage_toggle)).apply_over(
                 cx,
                 live! {
                     draw_bg: { border_size: 0 }
@@ -483,9 +483,9 @@ impl Widget for StageView {
             );
         }
 
-        self.view(id!(expanded_stage_content))
+        self.view(ids!(expanded_stage_content))
             .set_visible(cx, self.is_active);
-        self.view(id!(stage_content_preview))
+        self.view(ids!(stage_content_preview))
             .set_visible(cx, !self.is_active);
 
         self.view.draw_walk(cx, scope, walk)
@@ -494,7 +494,7 @@ impl Widget for StageView {
 
 impl WidgetMatchEvent for StageView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(_fe) = self.view(id!(wrapper)).finger_down(actions) {
+        if let Some(_fe) = self.view(ids!(wrapper)).finger_down(actions) {
             self.is_active = !self.is_active;
 
             cx.action(StageViewAction::StageViewClicked(self.stage_type.clone()));
@@ -509,16 +509,16 @@ impl StageView {
         self.stage_type = stage.stage_type.clone();
         self.visible = true;
 
-        self.sub_stages(id!(substages))
+        self.sub_stages(ids!(substages))
             .set_substages(cx, &stage.substages);
 
         if !stage.citations.is_empty() {
-            self.view(id!(citations_view)).set_visible(cx, true);
-            let citations = self.citation_list(id!(citations_list));
+            self.view(ids!(citations_view)).set_visible(cx, true);
+            let citations = self.citation_list(ids!(citations_list));
             let mut citations = citations.borrow_mut().unwrap();
             citations.urls = stage.citations.iter().map(|a| a.url.clone()).collect();
         } else {
-            self.view(id!(citations_view)).set_visible(cx, false);
+            self.view(ids!(citations_view)).set_visible(cx, false);
         }
 
         // TODO: this should be replaced in the future by an AI-provided summary
@@ -546,10 +546,10 @@ impl StageView {
         });
 
         if let Some(stage_preview_text) = stage_preview_text {
-            self.label(id!(stage_preview_label))
+            self.label(ids!(stage_preview_label))
                 .set_text(cx, &format!("{}...", stage_preview_text));
         } else {
-            self.label(id!(stage_preview_label))
+            self.label(ids!(stage_preview_label))
                 .set_text(cx, "Loading...");
         }
 
@@ -566,12 +566,12 @@ impl StageView {
             // Start animation only if timer isn't already running
             if self.timer.is_empty() {
                 // Start the animation cycle
-                self.animator_play(cx, id!(streaming.move_up));
+                self.animator_play(cx, ids!(streaming.move_up));
                 self.timer = cx.start_timeout(0.01); // Start timer almost immediately
             }
         } else {
             // Stop animation and reset state
-            self.animator_cut(cx, id!(streaming.off)); // Go directly to off state
+            self.animator_cut(cx, ids!(streaming.off)); // Go directly to off state
             if !self.timer.is_empty() {
                 cx.stop_timer(self.timer);
                 self.timer = Timer::empty();
@@ -667,13 +667,13 @@ impl SubStages {
                 };
 
             substage_view
-                .label(id!(content_heading_label))
+                .label(ids!(content_heading_label))
                 .set_text(cx, &get_human_readable_stage_name(&substage.name));
             substage_view
-                .view(id!(citations_view))
+                .view(ids!(citations_view))
                 .set_visible(cx, false);
             substage_view
-                .markdown(id!(content_block_markdown))
+                .markdown(ids!(content_block_markdown))
                 .set_text(cx, &substage.text);
         }
     }

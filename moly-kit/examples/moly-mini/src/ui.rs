@@ -100,8 +100,8 @@ impl Widget for Ui {
             .flatten()
             .collect::<Vec<_>>();
 
-            // self.demo_chat(id!(chat_2))
-            //     .chat(id!(chat))
+            // self.demo_chat(ids!(chat_2))
+            //     .chat(ids!(chat))
             //     .borrow()
             //     .unwrap()
             //     .messages_ref()

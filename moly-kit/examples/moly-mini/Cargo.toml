@@ -7,7 +7,7 @@ edition = "2024"
 env_logger = "0.11.8"
 futures = "0.3.31"
 futures-core = "0.3.31"
-makepad-widgets = { git = "https://github.com/wyeworks/makepad", rev = "5c16b905a" }
+makepad-widgets = { git = "https://github.com/wyeworks/makepad", rev = "743585298" }
 moly-kit = { path = "../..", features = ["full"] }
 reqwest = { version = "0.12.12", features = ["json", "stream", "rustls-tls"], default-features = false }
 serde = { version = "1.0.217", features = ["derive"] }

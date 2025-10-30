@@ -213,7 +213,7 @@ impl Widget for PromptInput {
         self.deref.handle_event(cx, event, scope);
         self.ui_runner().handle(cx, event, scope, self);
 
-        if self.button(id!(attach)).clicked(event.actions()) {
+        if self.button(ids!(attach)).clicked(event.actions()) {
             let ui = self.ui_runner();
             Attachment::pick_multiple(move |result| match result {
                 Ok(attachments) => {
@@ -231,7 +231,7 @@ impl Widget for PromptInput {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let button = self.button(id!(submit));
+        let button = self.button(ids!(submit));
 
         match self.task {
             Task::Send => {
@@ -299,14 +299,14 @@ impl PromptInput {
     /// Note: To know what the button submission means, check [Self::task] or
     /// the utility methods.
     pub fn submitted(&self, actions: &Actions) -> bool {
-        let submit = self.button(id!(submit));
+        let submit = self.button(ids!(submit));
         let input = self.text_input_ref();
         (submit.clicked(actions) || input.returned(actions).is_some())
             && self.interactivity == Interactivity::Enabled
     }
 
     pub fn call_pressed(&self, actions: &Actions) -> bool {
-        self.button(id!(audio)).clicked(actions)
+        self.button(ids!(audio)).clicked(actions)
     }
 
     /// Shorthand to check if [Self::task] is set to [Task::Send].
@@ -340,7 +340,7 @@ impl PromptInput {
     }
 
     pub(crate) fn attachment_list_ref(&self) -> AttachmentListRef {
-        self.attachment_list(id!(attachments))
+        self.attachment_list(ids!(attachments))
     }
 
     /// Set the capabilities of the currently selected bot
@@ -370,7 +370,7 @@ impl PromptInput {
             target_os = "linux",
             target_arch = "wasm32"
         ))]
-        self.button(id!(attach))
+        self.button(ids!(attach))
             .set_visible(cx, supports_attachments);
 
         #[cfg(not(any(
@@ -379,13 +379,13 @@ impl PromptInput {
             target_os = "linux",
             target_arch = "wasm32"
         )))]
-        self.button(id!(attach)).set_visible(cx, false);
+        self.button(ids!(attach)).set_visible(cx, false);
 
         // Show audio/call button only if bot supports realtime, we're on a supported platform
         // and realtime feature is enabled
         #[cfg(not(target_arch = "wasm32"))]
         #[cfg(feature = "realtime")]
-        self.button(id!(audio)).set_visible(cx, supports_realtime);
+        self.button(ids!(audio)).set_visible(cx, supports_realtime);
 
         if supports_realtime {
             self.interactivity = Interactivity::Disabled;

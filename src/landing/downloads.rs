@@ -165,14 +165,14 @@ impl Widget for Downloads {
                 )
             })
             .count();
-        self.label(id!(downloading_count))
+        self.label(ids!(downloading_count))
             .set_text(cx, &format!("{} downloading", download_count));
 
         let paused_count = pending_downloads
             .iter()
             .filter(|d| matches!(d.status, PendingDownloadsStatus::Paused))
             .count();
-        self.label(id!(paused_count))
+        self.label(ids!(paused_count))
             .set_text(cx, &format!("{} paused", paused_count));
 
         let failed_count = pending_downloads
@@ -181,10 +181,10 @@ impl Widget for Downloads {
             .count();
 
         if failed_count > 0 {
-            self.label(id!(failed_count))
+            self.label(ids!(failed_count))
                 .set_text(cx, &format!("{} failed", failed_count));
         } else {
-            self.label(id!(failed_count)).set_text(cx, "");
+            self.label(ids!(failed_count)).set_text(cx, "");
         }
 
         while let Some(view_item) = self.view.draw_walk(cx, &mut Scope::empty(), walk).step() {
@@ -207,7 +207,7 @@ impl Widget for Downloads {
 
 impl WidgetMatchEvent for Downloads {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if self.button(id!(collapse)).clicked(&actions) {
+        if self.button(ids!(collapse)).clicked(&actions) {
             self.toggle_collapse(cx);
         }
     }
@@ -215,18 +215,18 @@ impl WidgetMatchEvent for Downloads {
 
 impl Downloads {
     fn toggle_collapse(&mut self, cx: &mut Cx) {
-        if self.animator.animator_in_state(cx, id!(content.collapse)) {
-            self.animator_play(cx, id!(content.expand));
+        if self.animator.animator_in_state(cx, ids!(content.collapse)) {
+            self.animator_play(cx, ids!(content.expand));
             self.set_collapse_button_open(cx, true)
         } else {
-            self.animator_play(cx, id!(content.collapse));
+            self.animator_play(cx, ids!(content.collapse));
             self.set_collapse_button_open(cx, false)
         }
     }
 
     fn set_collapse_button_open(&mut self, cx: &mut Cx, is_open: bool) {
         let rotation_angle = if is_open { 0.0 } else { 180.0 };
-        self.button(id!(collapse)).apply_over(
+        self.button(ids!(collapse)).apply_over(
             cx,
             live! {
                 draw_icon: { rotation_angle: (rotation_angle) }

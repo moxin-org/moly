@@ -205,7 +205,7 @@ impl Widget for ModelList {
                                     },
                                 );
 
-                                [id!(first), id!(second), id!(third)]
+                                [ids!(first), ids!(second), ids!(third)]
                                     .iter()
                                     .enumerate()
                                     .for_each(|(i, id)| {
@@ -217,7 +217,7 @@ impl Widget for ModelList {
                                                     show_bg: true,
                                                 },
                                             );
-                                            let mut button = cell.entity_button(id!(button));
+                                            let mut button = cell.entity_button(ids!(button));
                                             button.set_bot_id(cx, &agent.id);
                                             button.set_description_visible(cx, true);
                                         }
@@ -255,12 +255,12 @@ const SCROLLING_AT_TOP_THRESHOLD: f64 = -30.0;
 
 impl WidgetMatchEvent for ModelList {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        let portal_list = self.portal_list(id!(list));
+        let portal_list = self.portal_list(ids!(list));
 
         let clicked_entity_button = portal_list
             .items_with_actions(actions)
             .iter()
-            .map(|(_, item)| item.entity_button(id!(button)))
+            .map(|(_, item)| item.entity_button(ids!(button)))
             .find(|button| button.clicked(actions));
 
         if let Some(entity_button) = clicked_entity_button {
@@ -277,9 +277,9 @@ impl WidgetMatchEvent for ModelList {
 
             match action.cast() {
                 StoreAction::Search(_) | StoreAction::ResetSearch => {
-                    self.view(id!(search_error)).set_visible(cx, false);
-                    self.view(id!(loading)).set_visible(cx, true);
-                    self.search_loading(id!(search_loading)).animate(cx);
+                    self.view(ids!(search_error)).set_visible(cx, false);
+                    self.view(ids!(loading)).set_visible(cx, true);
+                    self.search_loading(ids!(search_loading)).animate(cx);
                     portal_list.set_first_id_and_scroll(0, 0.0);
 
                     self.redraw(cx);
@@ -304,14 +304,14 @@ impl ModelList {
     fn update_loading_and_error_message(&mut self, cx: &mut Cx, scope: &mut Scope) {
         let store = scope.data.get::<Store>().unwrap();
         let is_loading = store.search.is_pending();
-        self.view(id!(loading)).set_visible(cx, is_loading);
+        self.view(ids!(loading)).set_visible(cx, is_loading);
         if is_loading {
-            self.search_loading(id!(search_loading)).animate(cx);
+            self.search_loading(ids!(search_loading)).animate(cx);
         } else {
-            self.search_loading(id!(search_loading)).stop_animation();
+            self.search_loading(ids!(search_loading)).stop_animation();
         }
 
         let is_errored = store.search.was_error();
-        self.view(id!(search_error)).set_visible(cx, is_errored);
+        self.view(ids!(search_error)).set_visible(cx, is_errored);
     }
 }

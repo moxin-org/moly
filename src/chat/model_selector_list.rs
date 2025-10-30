@@ -229,24 +229,26 @@ impl ModelSelectorList {
             let section_label = self.items.get_or_insert(cx, section_id, |cx| {
                 WidgetRef::new_from_ptr(cx, self.section_label_template)
             });
-            section_label.label(id!(label)).set_text(cx, &provider_name);
+            section_label
+                .label(ids!(label))
+                .set_text(cx, &provider_name);
 
             let provider_icon = store.get_provider_icon(&provider_name);
             if let Some(provider_icon) = provider_icon {
                 section_label
-                    .view(id!(provider_initial_view))
+                    .view(ids!(provider_initial_view))
                     .set_visible(cx, false);
-                section_label.view(id!(image_view)).set_visible(cx, true);
+                section_label.view(ids!(image_view)).set_visible(cx, true);
                 let _ = section_label
-                    .image(id!(image))
+                    .image(ids!(image))
                     .load_image_dep_by_path(cx, provider_icon.as_str());
             } else {
-                section_label.view(id!(image_view)).set_visible(cx, false);
+                section_label.view(ids!(image_view)).set_visible(cx, false);
                 section_label
-                    .view(id!(provider_initial_view))
+                    .view(ids!(provider_initial_view))
                     .set_visible(cx, true);
                 section_label
-                    .label(id!(provider_initial_label))
+                    .label(ids!(provider_initial_label))
                     .set_text(cx, &provider_name.chars().next().unwrap().to_string());
             }
             let _ = section_label.draw_all(cx, &mut Scope::empty());
@@ -320,7 +322,7 @@ impl ModelSelectorList {
                     .set_chat_id(self.chat_id);
 
                 let _ = item_widget.draw_all(cx, &mut Scope::empty());
-                total_height += item_widget.view(id!(content)).area().rect(cx).size.y;
+                total_height += item_widget.view(ids!(content)).area().rect(cx).size.y;
             }
         }
 

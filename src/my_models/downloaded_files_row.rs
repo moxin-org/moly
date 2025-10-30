@@ -206,43 +206,39 @@ impl Widget for DownloadedFilesRow {
 
         // Name tag
         let name = human_readable_name(&downloaded_file.file.name);
-        self.label(id!(h_wrapper.model_file.h_wrapper.name_tag.name))
+        self.label(ids!(h_wrapper.model_file.h_wrapper.name_tag.name))
             .set_text(cx, &name);
 
         // Base model tag
         let base_model = dash_if_empty(&downloaded_file.model.architecture);
-        self.label(id!(h_wrapper
-            .model_file
-            .base_model_tag
-            .base_model
-            .attr_name))
-            .set_text(cx, &base_model);
+        self.label(ids!(
+            h_wrapper.model_file.base_model_tag.base_model.attr_name
+        ))
+        .set_text(cx, &base_model);
 
         // Parameters tag
         let parameters = dash_if_empty(&downloaded_file.model.size);
-        self.label(id!(h_wrapper
-            .model_file
-            .parameters_tag
-            .parameters
-            .attr_name))
-            .set_text(cx, &parameters);
+        self.label(ids!(
+            h_wrapper.model_file.parameters_tag.parameters.attr_name
+        ))
+        .set_text(cx, &parameters);
 
         // Version tag
         let filename = format!(
             "{}/{}",
             downloaded_file.model.name, downloaded_file.file.name
         );
-        self.label(id!(h_wrapper.model_file.model_version_tag.version))
+        self.label(ids!(h_wrapper.model_file.model_version_tag.version))
             .set_text(cx, &filename);
 
         // File size tag
         let file_size = format_model_size(&downloaded_file.file.size).unwrap_or("-".to_string());
-        self.label(id!(h_wrapper.file_size_tag.label))
+        self.label(ids!(h_wrapper.file_size_tag.label))
             .set_text(cx, &file_size);
 
         // Added date tag
         let formatted_date = downloaded_file.downloaded_at.format("%d/%m/%Y").to_string();
-        self.label(id!(h_wrapper.date_added_tag.label))
+        self.label(ids!(h_wrapper.date_added_tag.label))
             .set_text(cx, &formatted_date);
 
         self.view.draw_walk(cx, scope, walk)
@@ -251,7 +247,7 @@ impl Widget for DownloadedFilesRow {
 
 impl WidgetMatchEvent for DownloadedFilesRow {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.button(id!(start_chat_button)).clicked(actions) {
+        if self.button(ids!(start_chat_button)).clicked(actions) {
             if let Some(file_id) = &self.file_id {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 let bot_id = store.chats.get_bot_id_by_file_id(file_id);
@@ -261,21 +257,24 @@ impl WidgetMatchEvent for DownloadedFilesRow {
             }
         }
 
-        if self.button(id!(row_actions.info_button)).clicked(actions) {
-            self.modal(id!(info_modal)).open(cx);
+        if self.button(ids!(row_actions.info_button)).clicked(actions) {
+            self.modal(ids!(info_modal)).open(cx);
         }
 
-        if self.button(id!(row_actions.delete_button)).clicked(actions) {
-            self.modal(id!(delete_modal)).open(cx);
+        if self
+            .button(ids!(row_actions.delete_button))
+            .clicked(actions)
+        {
+            self.modal(ids!(delete_modal)).open(cx);
         }
 
         for action in actions {
             if let DeleteModelModalAction::ModalDismissed = action.cast() {
-                self.modal(id!(delete_modal)).close(cx);
+                self.modal(ids!(delete_modal)).close(cx);
             }
 
             if let ModelInfoModalAction::ModalDismissed = action.cast() {
-                self.modal(id!(info_modal)).close(cx);
+                self.modal(ids!(info_modal)).close(cx);
             }
         }
     }

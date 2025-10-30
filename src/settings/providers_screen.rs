@@ -90,7 +90,7 @@ impl Widget for ProvidersScreen {
 
 impl WidgetMatchEvent for ProvidersScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let stack_navigation = self.stack_navigation(id!(navigation));
+        let stack_navigation = self.stack_navigation(ids!(navigation));
         stack_navigation.handle_stack_view_actions(cx, actions);
 
         for action in actions {
@@ -105,7 +105,7 @@ impl WidgetMatchEvent for ProvidersScreen {
                     .get(&provider_id);
                 if let Some(provider) = provider {
                     self.view
-                        .provider_view(id!(provider_view))
+                        .provider_view(ids!(provider_view))
                         .set_provider(cx, provider);
                 } else {
                     eprintln!("Provider not found: {}", provider_id);

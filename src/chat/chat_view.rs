@@ -153,7 +153,7 @@ pub struct ChatView {
 
 impl LiveHook for ChatView {
     fn after_new_from_doc(&mut self, cx: &mut Cx) {
-        self.prompt_input(id!(chat.prompt)).write().disable();
+        self.prompt_input(ids!(chat.prompt)).write().disable();
         let plugin_id = self
             .chat_controller
             .lock()
@@ -161,7 +161,7 @@ impl LiveHook for ChatView {
             .append_plugin(Glue::new(self.ui_runner()));
         self.plugin_id = Some(plugin_id);
 
-        self.chat(id!(chat))
+        self.chat(ids!(chat))
             .write()
             .set_chat_controller(cx, Some(self.chat_controller.clone()));
     }
@@ -170,7 +170,7 @@ impl LiveHook for ChatView {
 impl Drop for ChatView {
     fn drop(&mut self) {
         if let Some(plugin_id) = self.plugin_id.take() {
-            self.chat(id!(chat))
+            self.chat(ids!(chat))
                 .write()
                 .chat_controller()
                 .as_ref()
@@ -202,7 +202,7 @@ impl Widget for ChatView {
         // On mobile, only set padding on top of the prompt
         // TODO: do this with AdaptiveView instead of apply_over
         if !cx.display_context.is_desktop() && cx.display_context.is_screen_size_known() {
-            self.prompt_input(id!(chat.prompt)).apply_over(
+            self.prompt_input(ids!(chat.prompt)).apply_over(
                 cx,
                 live! {
                     padding: {bottom: 50, left: 20, right: 20}
@@ -211,7 +211,7 @@ impl Widget for ChatView {
                     }
                 },
             );
-            self.model_selector(id!(model_selector)).apply_over(
+            self.model_selector(ids!(model_selector)).apply_over(
                 cx,
                 live! {
                     width: Fill
@@ -219,7 +219,7 @@ impl Widget for ChatView {
                 },
             );
         } else {
-            self.prompt_input(id!(chat.prompt)).apply_over(
+            self.prompt_input(ids!(chat.prompt)).apply_over(
                 cx,
                 live! {
                     padding: {left: 10, right: 10, top: 8, bottom: 8}
@@ -228,7 +228,7 @@ impl Widget for ChatView {
                     }
                 },
             );
-            self.model_selector(id!(model_selector)).apply_over(
+            self.model_selector(ids!(model_selector)).apply_over(
                 cx,
                 live! {
                     width: Fit
@@ -244,7 +244,7 @@ impl Widget for ChatView {
 impl WidgetMatchEvent for ChatView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
-        let mut chat_widget = self.chat(id!(chat));
+        let mut chat_widget = self.chat(ids!(chat));
 
         for action in actions {
             // Handle model selector actions
@@ -286,14 +286,14 @@ impl ChatView {
             }
         }
 
-        let mut chat = self.chat(id!(chat));
-        let mut prompt_input = self.prompt_input(id!(chat.prompt));
+        let mut chat = self.chat(ids!(chat));
+        let mut prompt_input = self.prompt_input(ids!(chat.prompt));
 
         // If the bot is not available and we know it won't be available soon, clear the bot_id in the chat widget
         if !bot_available && store.provider_syncing_status == ProviderSyncingStatus::Synced {
             chat.write().set_bot_id(cx, None);
 
-            self.model_selector(id!(model_selector))
+            self.model_selector(ids!(model_selector))
                 .set_currently_selected_model(cx, None);
         } else if bot_available && chat.read().bot_id().is_none() {
             // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
@@ -318,7 +318,7 @@ impl ChatView {
         if self.message_updated_while_inactive {
             // If the message is done writing, and this chat view is not focused
             // set the chat as having unread messages (show a badge on the chat history card)
-            if !self.chat(id!(chat)).read().is_streaming() && !self.focused {
+            if !self.chat(ids!(chat)).read().is_streaming() && !self.focused {
                 if let Some(chat) = store.chats.get_chat_by_id(self.chat_id) {
                     chat.borrow_mut().has_unread_messages = true;
                     self.message_updated_while_inactive = false;
@@ -357,7 +357,7 @@ impl ChatViewRef {
         if let Some(mut inner) = self.borrow_mut() {
             inner.chat_id = chat_id;
             inner
-                .model_selector(id!(model_selector))
+                .model_selector(ids!(model_selector))
                 .set_chat_id(chat_id);
         }
     }
@@ -545,7 +545,7 @@ impl Glue {
 
             // Let's update the attachments back with the persisted key and reader.
             ui.defer(move |me, _cx, _scope| {
-                let chat = me.chat(id!(chat));
+                let chat = me.chat(ids!(chat));
                 let chat_controller = chat.read().chat_controller().expect("chat controller missing").clone();
                 let mut found = false;
 

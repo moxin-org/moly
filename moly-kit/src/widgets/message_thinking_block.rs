@@ -197,7 +197,7 @@ impl Widget for MessageThinkingBlock {
 
 impl WidgetMatchEvent for MessageThinkingBlock {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
-        if let Some(_evt) = self.view(id!(collapse)).finger_up(&actions) {
+        if let Some(_evt) = self.view(ids!(collapse)).finger_up(&actions) {
             self.toggle_collapse(cx);
         }
     }
@@ -210,12 +210,12 @@ impl MessageThinkingBlock {
 
         match self.current_animated_ball {
             0 => {
-                self.animator_play(cx, id!(ball1.run));
-                self.animator_play(cx, id!(ball2.start));
+                self.animator_play(cx, ids!(ball1.run));
+                self.animator_play(cx, ids!(ball2.start));
             }
             1 => {
-                self.animator_play(cx, id!(ball1.start));
-                self.animator_play(cx, id!(ball2.run));
+                self.animator_play(cx, ids!(ball1.start));
+                self.animator_play(cx, ids!(ball2.run));
             }
             _ => unreachable!(),
         }
@@ -235,7 +235,7 @@ impl MessageThinkingBlock {
 
         self.is_visible = !content_reasoning.is_empty();
 
-        self.markdown(id!(thinking_text))
+        self.markdown(ids!(thinking_text))
             .set_text(cx, content_reasoning);
 
         let is_reasoning_ongoing =
@@ -244,15 +244,15 @@ impl MessageThinkingBlock {
         if is_reasoning_ongoing {
             if self.timer.is_empty() {
                 self.should_animate = true;
-                self.view(id!(balls)).set_visible(cx, true);
+                self.view(ids!(balls)).set_visible(cx, true);
                 self.update_animation(cx);
             }
         } else {
             self.should_animate = false;
-            self.view(id!(balls)).set_visible(cx, false);
-            self.animator_play(cx, id!(ball1.start));
-            self.animator_play(cx, id!(ball2.start));
-            self.view(id!(thinking_title)).set_text(
+            self.view(ids!(balls)).set_visible(cx, false);
+            self.animator_play(cx, ids!(ball1.start));
+            self.animator_play(cx, ids!(ball2.start));
+            self.view(ids!(thinking_title)).set_text(
                 cx,
                 &format!(
                     "Thought for {:0.2} seconds",
@@ -267,21 +267,21 @@ impl MessageThinkingBlock {
 
         if self.is_expanded {
             // Expand the content to fit the text
-            self.view(id!(content)).apply_over(
+            self.view(ids!(content)).apply_over(
                 cx,
                 live! {
                     height: Fit
                 },
             );
             // Expand the inner view to fit the content
-            self.view(id!(inner)).apply_over(
+            self.view(ids!(inner)).apply_over(
                 cx,
                 live! {
                     width: Fill
                 },
             );
             // Set a different color to the title background
-            self.view(id!(collapse)).apply_over(
+            self.view(ids!(collapse)).apply_over(
                 cx,
                 live! {
                     draw_bg: {
@@ -291,21 +291,21 @@ impl MessageThinkingBlock {
             );
         } else {
             // Collapse the content
-            self.view(id!(content)).apply_over(
+            self.view(ids!(content)).apply_over(
                 cx,
                 live! {
                     height: 0.0
                 },
             );
             // Set the inner view width back to the default
-            self.view(id!(inner)).apply_over(
+            self.view(ids!(inner)).apply_over(
                 cx,
                 live! {
                     width: 200
                 },
             );
             // Set the title background color back to the default
-            self.view(id!(collapse)).apply_over(
+            self.view(ids!(collapse)).apply_over(
                 cx,
                 live! {
                     draw_bg: {

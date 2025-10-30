@@ -399,9 +399,9 @@ impl Widget for ProviderView {
         self.update_connection_status(cx);
 
         if self.provider.enabled {
-            self.view(id!(refresh_button)).set_visible(cx, true);
+            self.view(ids!(refresh_button)).set_visible(cx, true);
         } else {
-            self.view(id!(refresh_button)).set_visible(cx, false);
+            self.view(ids!(refresh_button)).set_visible(cx, false);
         }
 
         let entries_count = models.len();
@@ -415,12 +415,12 @@ impl Widget for ProviderView {
 
                         // hide the separator for the first item
                         if item_id == 0 {
-                            item.view(id!(separator)).set_visible(cx, false);
+                            item.view(ids!(separator)).set_visible(cx, false);
                         }
 
                         let name = models[item_id].human_readable_name();
-                        item.label(id!(model_name)).set_text(cx, &name);
-                        item.check_box(id!(enabled_switch))
+                        item.label(ids!(model_name)).set_text(cx, &name);
+                        item.check_box(ids!(enabled_switch))
                             .set_active(cx, models[item_id].enabled && self.provider.enabled);
 
                         item.as_model_entry().set_model_name(&models[item_id].name);
@@ -435,7 +435,7 @@ impl Widget for ProviderView {
 
 impl ProviderView {
     fn update_connection_status(&mut self, cx: &mut Cx) {
-        let connection_status_label = self.label(id!(connection_status));
+        let connection_status_label = self.label(ids!(connection_status));
         connection_status_label.set_text(cx, &self.provider.connection_status.to_human_readable());
         let text_color = match &self.provider.connection_status {
             ProviderConnectionStatus::Connected => {
@@ -470,7 +470,7 @@ impl WidgetMatchEvent for ProviderView {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
         // Handle provider enabled/disabled
-        let provider_enabled_switch = self.check_box(id!(provider_enabled_switch));
+        let provider_enabled_switch = self.check_box(ids!(provider_enabled_switch));
         if let Some(enabled) = provider_enabled_switch.changed(actions) {
             self.provider.enabled = enabled;
             // Update the provider in store and preferences
@@ -479,7 +479,7 @@ impl WidgetMatchEvent for ProviderView {
         }
 
         // Handle tools enabled/disabled
-        let provider_tools_switch = self.check_box(id!(provider_tools_switch));
+        let provider_tools_switch = self.check_box(ids!(provider_tools_switch));
         if let Some(tools_enabled) = provider_tools_switch.changed(actions) {
             self.provider.tools_enabled = tools_enabled;
             // Update the provider in store and preferences
@@ -514,14 +514,19 @@ impl WidgetMatchEvent for ProviderView {
         }
 
         // Handle save
-        if self.button(id!(save_provider)).clicked(actions) {
+        if self.button(ids!(save_provider)).clicked(actions) {
             self.provider.url = self
                 .view
-                .text_input(id!(api_host))
+                .text_input(ids!(api_host))
                 .text()
                 .trim()
                 .to_string();
-            let api_key = self.view.text_input(id!(api_key)).text().trim().to_string();
+            let api_key = self
+                .view
+                .text_input(ids!(api_key))
+                .text()
+                .trim()
+                .to_string();
             if api_key.is_empty() {
                 self.provider.api_key = None;
             } else {
@@ -532,7 +537,7 @@ impl WidgetMatchEvent for ProviderView {
             if self.provider.provider_type == ProviderType::OpenAIRealtime {
                 let system_prompt = self
                     .view
-                    .text_input(id!(system_prompt))
+                    .text_input(ids!(system_prompt))
                     .text()
                     .trim()
                     .to_string();
@@ -547,7 +552,7 @@ impl WidgetMatchEvent for ProviderView {
             self.provider.enabled = true;
             // Clear any previous error state and set to connecting
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
-            self.check_box(id!(provider_enabled_switch))
+            self.check_box(ids!(provider_enabled_switch))
                 .set_active(cx, true);
             // Keep the tools_enabled state as set by the user (don't change it on save)
 
@@ -560,7 +565,7 @@ impl WidgetMatchEvent for ProviderView {
         }
 
         // Handle refresh button
-        if let Some(_fe) = self.view(id!(refresh_button)).finger_up(actions) {
+        if let Some(_fe) = self.view(ids!(refresh_button)).finger_up(actions) {
             // Clear any previous error state and set to connecting
             self.provider.connection_status = ProviderConnectionStatus::Connecting;
 
@@ -573,7 +578,7 @@ impl WidgetMatchEvent for ProviderView {
         }
 
         // Handle remove provider button
-        if self.button(id!(remove_provider_button)).clicked(actions) {
+        if self.button(ids!(remove_provider_button)).clicked(actions) {
             store.remove_provider(&self.provider.id);
             cx.action(ProviderViewAction::ProviderRemoved);
             self.redraw(cx);
@@ -587,51 +592,53 @@ impl ProviderViewRef {
             inner.provider = provider.clone();
 
             // Update the text inputs
-            let api_key_input = inner.text_input(id!(api_key));
+            let api_key_input = inner.text_input(ids!(api_key));
             if let Some(api_key) = &provider.api_key {
                 api_key_input.set_text(cx, &api_key);
             } else {
                 api_key_input.set_text(cx, "");
             }
 
-            inner.text_input(id!(api_host)).set_text(cx, &provider.url);
-            inner.label(id!(name)).set_text(cx, &provider.name);
+            inner.text_input(ids!(api_host)).set_text(cx, &provider.url);
+            inner.label(ids!(name)).set_text(cx, &provider.name);
             inner
-                .label(id!(provider_type))
+                .label(ids!(provider_type))
                 .set_text(cx, &provider.provider_type.to_human_readable());
             inner
-                .check_box(id!(provider_enabled_switch))
+                .check_box(ids!(provider_enabled_switch))
                 .set_active(cx, provider.enabled);
             inner
-                .check_box(id!(provider_tools_switch))
+                .check_box(ids!(provider_tools_switch))
                 .set_active(cx, provider.tools_enabled);
 
             // Show/hide system prompt field for Realtime providers
             if provider.provider_type == ProviderType::OpenAIRealtime {
-                inner.view(id!(system_prompt_group)).set_visible(cx, true);
+                inner.view(ids!(system_prompt_group)).set_visible(cx, true);
                 if let Some(system_prompt) = &provider.system_prompt {
                     inner
-                        .text_input(id!(system_prompt))
+                        .text_input(ids!(system_prompt))
                         .set_text(cx, &system_prompt);
                 } else {
-                    inner.text_input(id!(system_prompt)).set_text(cx, "");
+                    inner.text_input(ids!(system_prompt)).set_text(cx, "");
                 }
             } else {
-                inner.view(id!(system_prompt_group)).set_visible(cx, false);
+                inner.view(ids!(system_prompt_group)).set_visible(cx, false);
             }
 
             if provider.provider_type == ProviderType::OpenAIRealtime
                 || provider.provider_type == ProviderType::OpenAI
             {
-                inner.view(id!(tools_form_group)).set_visible(cx, true);
+                inner.view(ids!(tools_form_group)).set_visible(cx, true);
             } else {
-                inner.view(id!(tools_form_group)).set_visible(cx, false);
+                inner.view(ids!(tools_form_group)).set_visible(cx, false);
             }
 
             if provider.was_customly_added {
-                inner.view(id!(remove_provider_view)).set_visible(cx, true);
+                inner.view(ids!(remove_provider_view)).set_visible(cx, true);
             } else {
-                inner.view(id!(remove_provider_view)).set_visible(cx, false);
+                inner
+                    .view(ids!(remove_provider_view))
+                    .set_visible(cx, false);
             }
 
             inner.view.redraw(cx);
@@ -690,7 +697,7 @@ impl Widget for ModelEntry {
 impl WidgetMatchEvent for ModelEntry {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         // Handle the enabled switch
-        let enabled_switch = self.check_box(id!(enabled_switch));
+        let enabled_switch = self.check_box(ids!(enabled_switch));
         if let Some(change) = enabled_switch.changed(actions) {
             cx.action(ModelEntryAction::ModelEnabledChanged(
                 self.model_name.clone(),

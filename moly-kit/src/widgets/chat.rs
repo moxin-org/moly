@@ -83,12 +83,12 @@ impl Widget for Chat {
 impl Chat {
     /// Getter to the underlying [PromptInputRef] independent of its id.
     pub fn prompt_input_ref(&self) -> PromptInputRef {
-        self.prompt_input(id!(prompt))
+        self.prompt_input(ids!(prompt))
     }
 
     /// Getter to the underlying [MessagesRef] independent of its id.
     pub fn messages_ref(&self) -> MessagesRef {
-        self.messages(id!(messages))
+        self.messages(ids!(messages))
     }
 
     fn handle_prompt_input(&mut self, cx: &mut Cx, event: &Event) {
@@ -102,7 +102,7 @@ impl Chat {
     }
 
     fn handle_realtime(&mut self, _cx: &mut Cx) {
-        if self.realtime(id!(realtime)).connection_requested()
+        if self.realtime(ids!(realtime)).connection_requested()
             && let Some(bot_id) = self.bot_id.clone()
         {
             self.chat_controller
@@ -118,18 +118,21 @@ impl Chat {
         // Check if the modal should be dismissed
         for action in event.actions() {
             if let RealtimeModalAction::DismissModal = action.cast() {
-                self.moly_modal(id!(audio_modal)).close(cx);
+                self.moly_modal(ids!(audio_modal)).close(cx);
             }
         }
 
         // Check if the audio modal was dismissed
-        if self.moly_modal(id!(audio_modal)).dismissed(event.actions()) {
+        if self
+            .moly_modal(ids!(audio_modal))
+            .dismissed(event.actions())
+        {
             // Collect conversation messages from the realtime widget before resetting
             let mut conversation_messages =
-                self.realtime(id!(realtime)).take_conversation_messages();
+                self.realtime(ids!(realtime)).take_conversation_messages();
 
             // Reset realtime widget state for cleanup
-            self.realtime(id!(realtime)).reset_state(cx);
+            self.realtime(ids!(realtime)).reset_state(cx);
 
             // Add conversation messages to chat history preserving order
             if !conversation_messages.is_empty() {
@@ -418,7 +421,7 @@ impl Chat {
         self.chat_controller = chat_controller;
 
         self.messages_ref().write().chat_controller = self.chat_controller.clone();
-        self.realtime(id!(realtime))
+        self.realtime(ids!(realtime))
             .set_chat_controller(self.chat_controller.clone());
 
         if let Some(controller) = self.chat_controller.as_ref() {
@@ -539,11 +542,11 @@ impl ChatControllerPlugin for Plugin {
                     me.handle_streaming_end(cx);
 
                     // Set up the realtime channel in the UI
-                    let mut realtime = me.realtime(id!(realtime));
+                    let mut realtime = me.realtime(ids!(realtime));
                     realtime.set_bot_entity_id(cx, entity_id);
                     realtime.set_realtime_channel(channel.clone());
 
-                    let modal = me.moly_modal(id!(audio_modal));
+                    let modal = me.moly_modal(ids!(audio_modal));
                     modal.open(cx);
                 });
                 None

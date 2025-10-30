@@ -188,11 +188,11 @@ impl Widget for MyModelsScreen {
             .downloaded_files;
 
         let summary = generate_models_summary(&downloaded_files);
-        let models_summary_label = self.view.label(id!(header.models_summary));
+        let models_summary_label = self.view.label(ids!(header.models_summary));
         models_summary_label.set_text(cx, &summary);
 
         self.view
-            .button(id!(show_in_files))
+            .button(ids!(show_in_files))
             .set_text(cx, &file_manager_label());
 
         self.view.draw_walk(cx, scope, walk)
@@ -211,7 +211,7 @@ fn file_manager_label() -> String {
 
 impl WidgetMatchEvent for MyModelsScreen {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        if self.button(id!(show_in_files)).clicked(actions) {
+        if self.button(ids!(show_in_files)).clicked(actions) {
             let models_dir = &scope
                 .data
                 .get::<Store>()
@@ -231,7 +231,7 @@ impl WidgetMatchEvent for MyModelsScreen {
 
         // Commented out for now as we don't have a way to change the download location yet
         // and we don't know if we'll support it again.
-        // if self.button(id!(download_location)).clicked(actions) {
+        // if self.button(ids!(download_location)).clicked(actions) {
         //     let scope = &mut scope.data.get_mut::<Store>().unwrap();
         //     let models_dir = &scope.preferences.downloaded_files_dir;
         //     let models_uri = &format!("file:///{}", models_dir.display());
@@ -253,7 +253,7 @@ impl WidgetMatchEvent for MyModelsScreen {
         //     }
         // }
 
-        if let Some(keywords) = self.text_input(id!(search.input)).changed(actions) {
+        if let Some(keywords) = self.text_input(ids!(search.input)).changed(actions) {
             if !keywords.is_empty() {
                 cx.action(MyModelsSearchAction::Search(keywords.to_string()));
             } else {

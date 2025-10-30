@@ -148,7 +148,7 @@ impl Widget for ChatHistory {
 impl WidgetMatchEvent for ChatHistory {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         let clicked_entity_button = self
-            .portal_list(id!(list))
+            .portal_list(ids!(list))
             .items_with_actions(actions)
             .iter()
             .map(|(_, item)| item.as_entity_button())

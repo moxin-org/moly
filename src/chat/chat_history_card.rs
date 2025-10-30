@@ -305,7 +305,7 @@ impl Widget for ChatHistoryCard {
             .unwrap();
 
         if let Some(current_chat_id) = store.chats.get_current_chat_id() {
-            let content_view_highlight = self.view(id!(selected_bg));
+            let content_view_highlight = self.view(ids!(selected_bg));
 
             if current_chat_id == self.chat_id {
                 content_view_highlight.apply_over(
@@ -316,7 +316,7 @@ impl Widget for ChatHistoryCard {
                 );
             } else {
                 if chat.borrow().has_unread_messages {
-                    self.view(id!(unread_message_badge)).set_visible(cx, true);
+                    self.view(ids!(unread_message_badge)).set_visible(cx, true);
                 }
                 content_view_highlight.apply_over(
                     cx,
@@ -355,18 +355,18 @@ impl WidgetMatchEvent for ChatHistoryCard {
             TitleState::OnEdit => self.handle_title_on_edit_actions(cx, actions, scope),
         }
 
-        let chat_options_wrapper_rect = self.view(id!(chat_options_wrapper)).area().rect(cx);
-        if self.button(id!(chat_options)).clicked(actions) {
+        let chat_options_wrapper_rect = self.view(ids!(chat_options_wrapper)).area().rect(cx);
+        if self.button(ids!(chat_options)).clicked(actions) {
             let wrapper_coords = chat_options_wrapper_rect.pos;
             let coords = dvec2(
                 wrapper_coords.x - 100.,
                 wrapper_coords.y + chat_options_wrapper_rect.size.y - 12.0,
             );
 
-            self.chat_history_card_options(id!(chat_history_card_options))
+            self.chat_history_card_options(ids!(chat_history_card_options))
                 .selected(cx, self.chat_id);
 
-            let modal = self.modal(id!(chat_history_card_options_modal));
+            let modal = self.modal(ids!(chat_history_card_options_modal));
             modal.apply_over(
                 cx,
                 live! {
@@ -377,14 +377,14 @@ impl WidgetMatchEvent for ChatHistoryCard {
             return;
         }
 
-        if let Some(fe) = self.view(id!(content)).finger_down(actions) {
+        if let Some(fe) = self.view(ids!(content)).finger_down(actions) {
             if fe.tap_count == 1 {
                 let store = scope.data.get_mut::<Store>().unwrap();
                 store.chats.set_current_chat(Some(self.chat_id));
 
                 if let Some(chat) = store.chats.get_chat_by_id(self.chat_id) {
                     chat.borrow_mut().has_unread_messages = false;
-                    self.view(id!(unread_message_badge)).set_visible(cx, false);
+                    self.view(ids!(unread_message_badge)).set_visible(cx, false);
                 }
 
                 cx.action(ChatAction::ChatSelected(self.chat_id));
@@ -399,7 +399,7 @@ impl WidgetMatchEvent for ChatHistoryCard {
                     | DeleteChatModalAction::CloseButtonClicked
                     | DeleteChatModalAction::ChatDeleted
             ) {
-                self.modal(id!(delete_chat_modal)).close(cx);
+                self.modal(ids!(delete_chat_modal)).close(cx);
             }
         }
     }
@@ -414,25 +414,25 @@ impl ChatHistoryCard {
     }
 
     fn set_title_text(&mut self, cx: &mut Cx, text: &str, caption: &str) {
-        self.view.label(id!(title_label)).set_text(cx, text.trim());
+        self.view.label(ids!(title_label)).set_text(cx, text.trim());
         if let TitleState::Editable = self.title_edition_state {
             self.view
-                .text_input(id!(title_input))
+                .text_input(ids!(title_input))
                 .set_text(cx, &text.trim());
         }
-        self.label(id!(model_or_agent_name_label))
+        self.label(ids!(model_or_agent_name_label))
             .set_text(cx, &human_readable_name(caption));
     }
 
     fn update_title_visibility(&mut self, cx: &mut Cx) {
         let on_edit = matches!(self.title_edition_state, TitleState::OnEdit);
-        self.view(id!(edit_buttons)).set_visible(cx, on_edit);
-        self.view(id!(title_input_container))
+        self.view(ids!(edit_buttons)).set_visible(cx, on_edit);
+        self.view(ids!(title_input_container))
             .set_visible(cx, on_edit);
-        self.button(id!(chat_options)).set_visible(cx, !on_edit);
+        self.button(ids!(chat_options)).set_visible(cx, !on_edit);
 
         let editable = matches!(self.title_edition_state, TitleState::Editable);
-        self.view(id!(title_label_container))
+        self.view(ids!(title_label_container))
             .set_visible(cx, editable);
     }
 
@@ -466,8 +466,8 @@ impl ChatHistoryCard {
             match action.cast() {
                 ChatHistoryCardAction::MenuClosed(chat_id) => {
                     if chat_id == self.chat_id {
-                        self.button(id!(chat_options)).reset_hover(cx);
-                        self.modal(id!(chat_history_card_options_modal)).close(cx);
+                        self.button(ids!(chat_options)).reset_hover(cx);
+                        self.modal(ids!(chat_history_card_options_modal)).close(cx);
                     }
                 }
                 ChatHistoryCardAction::ActivateTitleEdition(chat_id) => {
@@ -478,10 +478,10 @@ impl ChatHistoryCard {
                 ChatHistoryCardAction::DeleteChatOptionSelected(chat_id) => {
                     if chat_id == self.chat_id {
                         let mut delete_modal_inner =
-                            self.delete_chat_modal(id!(delete_chat_modal_inner));
+                            self.delete_chat_modal(ids!(delete_chat_modal_inner));
                         delete_modal_inner.set_chat_id(self.chat_id);
 
-                        self.modal(id!(delete_chat_modal)).open(cx);
+                        self.modal(ids!(delete_chat_modal)).open(cx);
                     }
                 }
                 _ => {}
@@ -490,10 +490,10 @@ impl ChatHistoryCard {
             // If the modal is dissmised (such as, clicking outside) we need to reset the hover state
             // of the open chat options button.
             if self
-                .modal(id!(chat_history_card_options_modal))
+                .modal(ids!(chat_history_card_options_modal))
                 .dismissed(actions)
             {
-                self.button(id!(chat_options)).reset_hover(cx);
+                self.button(ids!(chat_options)).reset_hover(cx);
             }
         }
     }
@@ -501,8 +501,8 @@ impl ChatHistoryCard {
     fn handle_title_on_edit_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        if self.button(id!(save)).clicked(actions) {
-            let updated_title = self.text_input(id!(title_input)).text();
+        if self.button(ids!(save)).clicked(actions) {
+            let updated_title = self.text_input(ids!(title_input)).text();
             let chat = store
                 .chats
                 .saved_chats
@@ -518,7 +518,7 @@ impl ChatHistoryCard {
             self.transition_title_state(cx)
         }
 
-        if let Some((val, _)) = self.text_input(id!(title_input)).returned(actions) {
+        if let Some((val, _)) = self.text_input(ids!(title_input)).returned(actions) {
             let chat = store
                 .chats
                 .saved_chats
@@ -534,7 +534,7 @@ impl ChatHistoryCard {
             self.transition_title_state(cx)
         }
 
-        if self.button(id!(cancel)).clicked(actions) {
+        if self.button(ids!(cancel)).clicked(actions) {
             self.transition_title_state(cx)
         }
     }
