@@ -1,7 +1,4 @@
 //! Utilities to deal with SSE (Server-Sent Events).
-//!
-//! Note: Eventually, a proper SSE parser should be here but for now it only contains
-//! utility functions to do the parsing somewhere else.
 
 use async_stream::stream;
 use futures::Stream;
