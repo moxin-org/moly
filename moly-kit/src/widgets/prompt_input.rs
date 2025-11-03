@@ -53,8 +53,28 @@ live_design! {
         }
     }
 
+    AttachButton = <Button> {
+        visible: false
+        text: "",
+        draw_text: {
+            text_style: <THEME_FONT_ICONS> {
+                font_size: 16.
+            }
+            color: #000,
+            color_hover: #000,
+            color_focus: #000
+            color_down: #000
+        }
+        draw_bg: {
+            color_down: #0000
+            border_radius: 7.
+            border_size: 0.
+        }
+    }
+
     AudioButton = <Button> {
         visible: false
+        width: 28, height: 28
         text: ""
         draw_text: {
             text_style: <THEME_FONT_ICONS> {
@@ -75,9 +95,9 @@ live_design! {
     SendControls = <View> {
         width: Fit, height: Fit
         align: {x: 0.5, y: 0.5}
-        spacing: 5
-        submit = <SubmitButton> {}
+        spacing: 10
         audio = <AudioButton> {}
+        submit = <SubmitButton> {}
     }
 
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
@@ -104,7 +124,7 @@ live_design! {
                 height: Fit
                 text_input = {
                     height: Fit {
-                        min: 30
+                        min: 33
                         max: 180
                     }
                     width: Fill
@@ -148,28 +168,12 @@ live_design! {
                 height: Fit
                 left = <View> {
                     width: Fit, height: Fit
-                    attach = <Button> {
-                        visible: false
-                        text: "",
-                        draw_text: {
-                            text_style: <THEME_FONT_ICONS> {
-                                font_size: 16.
-                            }
-                            color: #000,
-                            color_hover: #000,
-                            color_focus: #000
-                            color_down: #000
-                        }
-                        draw_bg: {
-                            color_down: #0000
-                            border_radius: 7.
-                            border_size: 0.
-                        }
-                    }
+                    attach = <AttachButton> {}
                 }
                 // In desktop, show the send controls under the input
                 <AdaptiveView> {
                     Desktop = {
+                        width: Fill, height: Fit
                         separator = <View> { width: Fill, height: 1}
                         <SendControls> {}
                     }
