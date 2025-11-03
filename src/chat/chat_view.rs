@@ -35,7 +35,7 @@ live_design! {
     use moly_kit::widgets::prompt_input::PromptInput;
 
     PromptInputWithShadow = <PromptInput> {
-        padding: {left: 10, right: 10, top: 8, bottom: 8}
+        padding: {left: 15, right: 15, top: 8, bottom: 8}
         persistent = {
             // Shader to make the original RoundedView into a RoundedShadowView
             // (can't simply override the type of `persistent` because that removes the original children)
@@ -44,7 +44,7 @@ live_design! {
             show_bg: true,
             draw_bg: {
                 color: #fefefe
-                uniform border_radius: 5.0
+                uniform border_radius: 7.0
                 uniform border_size: 0.0
                 uniform border_color: #0000
                 uniform shadow_color: #0001
@@ -206,9 +206,6 @@ impl Widget for ChatView {
                 cx,
                 live! {
                     padding: {bottom: 50, left: 20, right: 20}
-                    persistent = {
-                        height: 80
-                    }
                 },
             );
             self.model_selector(ids!(model_selector)).apply_over(
@@ -223,9 +220,6 @@ impl Widget for ChatView {
                 cx,
                 live! {
                     padding: {left: 10, right: 10, top: 8, bottom: 8}
-                    persistent = {
-                        height: Fill
-                    }
                 },
             );
             self.model_selector(ids!(model_selector)).apply_over(
