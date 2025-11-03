@@ -17,44 +17,97 @@ live_design! {
 
     use crate::widgets::attachment_list::*;
 
+    SubmitButton = <Button> {
+        width: 28,
+        height: 28,
+        padding: {right: 2},
+        margin: {bottom: 2},
+
+        draw_icon: {
+            color: #fff
+        }
+
+        draw_bg: {
+            fn get_color(self) -> vec4 {
+                if self.enabled == 0.0 {
+                    return #D0D5DD;
+                }
+                return #000;
+            }
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                let center = self.rect_size * 0.5;
+                let radius = min(self.rect_size.x, self.rect_size.y) * 0.5;
+
+                sdf.circle(center.x, center.y, radius);
+                sdf.fill_keep(self.get_color());
+
+                return sdf.result
+            }
+        }
+        icon_walk: {
+            width: 12,
+            height: 12
+            margin: {top: 0, left: 2},
+        }
+    }
+
+    AudioButton = <Button> {
+        visible: false
+        text: ""
+        draw_text: {
+            text_style: <THEME_FONT_ICONS> {
+                font_size: 16.
+            }
+            color: #000,
+            color_hover: #000,
+            color_focus: #000
+            color_down: #000
+        }
+        draw_bg: {
+            color_down: #0000
+            border_radius: 7.
+            border_size: 0.
+        }
+    }
+
+    SendControls = <View> {
+        width: Fit, height: Fit
+        align: {x: 0.5, y: 0.5}
+        spacing: 5
+        submit = <SubmitButton> {}
+        audio = <AudioButton> {}
+    }
+
     pub PromptInput = {{PromptInput}} <CommandTextInput> {
         send_icon: dep("crate://self/resources/send.svg"),
         stop_icon: dep("crate://self/resources/stop.svg"),
 
-        height: 80
+        height: Fit { max: 350 }
         persistent = {
-            height: Fill
-            padding: {top: 8, bottom: 6, left: 4, right: 10}
+            height: Fit
+            padding: {top: 10, bottom: 10, left: 10, right: 10}
             draw_bg: {
                 color: #fff,
                 border_radius: 10.0,
                 border_color: #D0D5DD,
                 border_size: 1.0,
             }
-            center = {
-                height: Fill
-                left = {
-                    attach = <Button> {
-                        visible: false
-                        text: "",
-                        draw_text: {
-                            text_style: <THEME_FONT_ICONS> {
-                                font_size: 16.
-                            }
-                            color: #000,
-                            color_hover: #000,
-                            color_focus: #000
-                            color_down: #000
-                        }
-                        draw_bg: {
-                            color_down: #0000
-                            border_radius: 7.
-                            border_size: 0.
-                        }
-                    }
+            top = {
+                height: Fit
+                attachments = <DenseAttachmentList> {
+                    wrapper = {}
                 }
+            }
+            center = {
+                height: Fit
                 text_input = {
-                    height: Fill
+                    height: Fit {
+                        min: 30
+                        max: 180
+                    }
+                    width: Fill
                     empty_text: "Start typing...",
                     draw_bg: {
                         fn pixel(self) -> vec4 {
@@ -81,11 +134,23 @@ live_design! {
                     }
                 }
                 right = {
-                    align: {x: 0.5, y: 0.5}
-                    spacing: 5
-                    audio = <Button> {
+                    // In mobile, show the send controsl here, right to the input
+                    <AdaptiveView> {
+                        Desktop = {}
+                        Mobile = {
+                            width: Fit, height: Fit
+                            <SendControls> {}
+                        }
+                    }
+                }
+            }
+            bottom = {
+                height: Fit
+                left = <View> {
+                    width: Fit, height: Fit
+                    attach = <Button> {
                         visible: false
-                        text: ""
+                        text: "",
                         draw_text: {
                             text_style: <THEME_FONT_ICONS> {
                                 font_size: 16.
@@ -101,49 +166,14 @@ live_design! {
                             border_size: 0.
                         }
                     }
-                    submit = <Button> {
-                        width: 28,
-                        height: 28,
-                        padding: {right: 2},
-                        margin: {bottom: 2},
-
-                        draw_icon: {
-                            color: #fff
-                        }
-
-                        draw_bg: {
-                            fn get_color(self) -> vec4 {
-                                if self.enabled == 0.0 {
-                                    return #D0D5DD;
-                                }
-
-                                return #000;
-                            }
-
-                            fn pixel(self) -> vec4 {
-                                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                                let center = self.rect_size * 0.5;
-                                let radius = min(self.rect_size.x, self.rect_size.y) * 0.5;
-
-                                sdf.circle(center.x, center.y, radius);
-                                sdf.fill_keep(self.get_color());
-
-                                return sdf.result
-                            }
-                        }
-                        icon_walk: {
-                            width: 12,
-                            height: 12
-                            margin: {top: 0, left: 2},
-                        }
-                    }
                 }
-            }
-            bottom = {
-                attachments = <DenseAttachmentList> {
-                    wrapper = {
-                        margin: { top: 6 }
+                // In desktop, show the send controls under the input
+                <AdaptiveView> {
+                    Desktop = {
+                        separator = <View> { width: Fill, height: 1}
+                        <SendControls> {}
                     }
+                    Mobile = {}
                 }
             }
         }
