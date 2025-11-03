@@ -2806,6 +2806,7 @@ dependencies = [
 name = "moly-mini"
 version = "0.2.2"
 dependencies = [
+ "async-stream",
  "env_logger",
  "futures",
  "futures-core",

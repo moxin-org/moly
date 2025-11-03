@@ -4,6 +4,7 @@ version = "0.2.2"
 edition = "2024"
 
 [dependencies]
+async-stream = "0.3.6"
 env_logger = "0.11.8"
 futures = "0.3.31"
 futures-core = "0.3.31"
