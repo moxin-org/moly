@@ -7,7 +7,6 @@ use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
 use crate::bot_selector::BotSelectorWidgetExt;
-use crate::tester_client::TesterClient;
 
 const OPEN_AI_KEY: Option<&str> = option_env!("OPEN_AI_KEY");
 const OPEN_AI_IMAGE_KEY: Option<&str> = option_env!("OPEN_AI_IMAGE_KEY");

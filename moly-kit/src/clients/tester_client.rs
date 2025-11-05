@@ -1,8 +1,9 @@
+use crate::protocol::*;
+use crate::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream, sleep};
 use async_stream::stream;
-use moly_kit::protocol::*;
-use moly_kit::utils::asynchronous::{BoxPlatformSendFuture, BoxPlatformSendStream};
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::time::Duration;
 
 const HELP: &str = r#"Available commands:
 - say <text>: The bot will respond with <text>.
@@ -98,7 +99,7 @@ impl BotClient for TesterClient {
                     unreachable!();
                 }
                 Some("wait") => {
-                    moly_kit::utils::asynchronous::sleep(std::time::Duration::from_secs(2)).await;
+                    sleep(Duration::from_secs(2)).await;
                     yield ClientResult::new_ok(MessageContent {
                         text: "done waiting".into(),
                         ..Default::default()
@@ -134,7 +135,7 @@ impl BotClient for TesterClient {
                         Some(n) => {
                             let mut content = MessageContent::default();
                             for i in 1..=n {
-                                moly_kit::utils::asynchronous::sleep(std::time::Duration::from_millis(500)).await;
+                                sleep(Duration::from_millis(500)).await;
                                 write!(content.text, "This is line {i}\n\n").unwrap();
                                 yield ClientResult::new_ok(content.clone());
                             }
