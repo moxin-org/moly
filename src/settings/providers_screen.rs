@@ -63,6 +63,11 @@ live_design! {
 
             Mobile = {
                 providers = <Providers> {
+                    providers_list = {
+                        provider_item = {
+                            height: 45
+                        }
+                    }
                     width: Fill, height: Fill
                     padding: {left: 8, right: 8, top: 0, bottom: 0}
                 }
