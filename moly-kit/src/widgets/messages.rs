@@ -47,11 +47,7 @@ live_design! {
             SystemLine = <SystemLine> {}
             ToolRequestLine = <ToolRequestLine> {}
             ToolResultLine = <ToolResultLine> {}
-
-            // Acts as marker for:
-            // - Knowing if the end of the list has been reached.
-            // - To jump to bottom with proper precision.
-            EndOfChat = <View> {height: 0.1}
+            Empty = <View> { height: 0 }
         }
         <View> {
             align: {x: 1.0, y: 1.0},
@@ -158,10 +154,17 @@ pub struct Messages {
 
     #[rust]
     hovered_index: Option<usize>,
+
+    #[rust]
+    list_height: f64,
+
+    #[rust]
+    needs_extra_draw_pass: bool,
 }
 
 impl Widget for Messages {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
         self.handle_list(cx, event, scope);
 
@@ -180,12 +183,27 @@ impl Widget for Messages {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        let list_uid = self.portal_list(ids!(list)).widget_uid();
+        let list = self.portal_list(ids!(list));
+        let list_uid = list.widget_uid();
 
         while let Some(widget) = self.deref.draw_walk(cx, scope, walk).step() {
             if widget.widget_uid() == list_uid {
                 self.draw_list(cx, widget.as_portal_list());
             }
+        }
+
+        // Track the new height of the portal list, and trigger a redraw if it changed.
+        let previous_list_height = self.list_height;
+        self.list_height = list.area().rect(cx).size.y;
+
+        // Always redraw if the list height changed, no matter the previous value
+        // in this flag.
+        self.needs_extra_draw_pass =
+            self.needs_extra_draw_pass || (self.list_height != previous_list_height);
+
+        if self.needs_extra_draw_pass {
+            self.needs_extra_draw_pass = false;
+            self.ui_runner().defer_with_redraw(|_, _, _| {});
         }
 
         DrawStep::done()
@@ -206,6 +224,30 @@ impl Messages {
         // middle of the "EOC" trick. This is like doing a "transaction" during
         // the list draw.
         let mut chat_controller = chat_controller.lock().unwrap();
+
+        let last_message_index = chat_controller.state().messages.len().checked_sub(1);
+        let second_last_message_index = last_message_index.and_then(|i| i.checked_sub(1));
+
+        // On `scroll_to_bottom`, for some reason, the portal list may (or not) draw the filler
+        // element before the second last message, breaking calculations. This flag is
+        // used to detect that and act in consequence.
+        let mut did_filler_draw = false;
+
+        let mut second_last_message_height = 0.0;
+        let mut last_message_height = 0.0;
+
+        chat_controller
+            .dangerous_state_mut()
+            .messages
+            .push(Message {
+                from: EntityId::App,
+                // Extra filler blank space used by the natural scroll behavior.
+                content: MessageContent {
+                    text: "FIL".into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
 
         // Trick to render one more item representing the end of the chat without
         // risking a manual math bug. Removed immediately after rendering the items.
@@ -240,7 +282,7 @@ impl Messages {
 
             let message = &chat_controller.state().messages[index];
 
-            match &message.from {
+            let item = match &message.from {
                 EntityId::System => {
                     // Render system messages (tool results, etc.)
                     let item = if message.metadata.is_writing() {
@@ -265,7 +307,7 @@ impl Messages {
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
-                    item.draw_all(cx, &mut Scope::empty());
+                    item
                 }
                 EntityId::Tool => {
                     // Render tool execution results
@@ -291,57 +333,88 @@ impl Messages {
                     }
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
-                    item.draw_all(cx, &mut Scope::empty());
+                    item
                 }
                 EntityId::App => {
-                    // Handle EOC marker
                     if message.content.text == "EOC" {
-                        let item = list.item(cx, index, live_id!(EndOfChat));
+                        // Handle end of chat marker.
+
+                        // Acts as marker for:
+                        // - Knowing if the end of the list has been reached.
+                        // - To jump to bottom with proper precision.
+
+                        let item = list.item(cx, index, live_id!(Empty));
+                        item.apply_over(cx, live! { height: 0.1 });
                         item.draw_all(cx, &mut Scope::empty());
                         self.is_list_end_drawn = true;
-                        continue;
-                    }
+                        item
+                    } else if message.content.text == "FIL" {
+                        // Handle filler message.
 
-                    // Handle error messages
-                    if let Some((left, right)) = message.content.text.split_once(':') {
-                        if let Some("error") = left
+                        did_filler_draw = true;
+
+                        let item = list.item(cx, index, live_id!(Empty));
+
+                        const MAX_SECOND_LAST_MESSAGE_VISIBILITY: f64 = 100.0;
+                        const SECOND_LAST_MESSAGE_DRAW_GUARANTEE: f64 = 1.0;
+
+                        // On scroll to bottom:
+                        // - The user message (or any second last message) should be visible.
+                        //   - However, if the user message is too long, only the last part should be visible.
+                        //     so it doesn't hide the next (response) message.
+                        // - The bot message (or any last message) should be fully visible (but without autoscrolling).
+                        // - To allow a scroll with this characteristic, we need to reserve some empty space, that starts
+                        //   being as tall as the list itself but gets "consumed" by the last two messages as they are drawn.
+                        // - Also, since we need to be sure to draw the second last message for the calculation, we need to
+                        //   subtract a tiny bit of height so it enters in the visible area.
+                        let height = (self.list_height
+                            - last_message_height
+                            - second_last_message_height
+                                .clamp(0.0, MAX_SECOND_LAST_MESSAGE_VISIBILITY)
+                            - SECOND_LAST_MESSAGE_DRAW_GUARANTEE)
+                            .clamp(0.0, f64::INFINITY);
+
+                        item.apply_over(cx, live! { height: (height) });
+                        item
+                    } else if let Some((left, right)) = message.content.text.split_once(':')
+                        && let Some("error") = left
                             .split_whitespace()
                             .last()
                             .map(|s| s.to_lowercase())
                             .as_deref()
-                        {
-                            let item = list.item(cx, index, live_id!(ErrorLine));
-                            item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
-                                Some(Picture::Grapheme("X".into()));
-                            item.label(ids!(name)).set_text(cx, left);
+                    {
+                        // Handle error messages
 
-                            let error_content = MessageContent {
-                                text: right.to_string(),
-                                ..Default::default()
-                            };
-                            item.slot(ids!(content))
-                                .current()
-                                .as_standard_message_content()
-                                .set_content(cx, &error_content);
+                        let item = list.item(cx, index, live_id!(ErrorLine));
+                        item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
+                            Some(Picture::Grapheme("X".into()));
+                        item.label(ids!(name)).set_text(cx, left);
 
-                            self.apply_actions_and_editor_visibility(cx, &item, index);
-                            item.draw_all(cx, &mut Scope::empty());
-                            continue;
-                        }
+                        let error_content = MessageContent {
+                            text: right.to_string(),
+                            ..Default::default()
+                        };
+                        item.slot(ids!(content))
+                            .current()
+                            .as_standard_message_content()
+                            .set_content(cx, &error_content);
+
+                        self.apply_actions_and_editor_visibility(cx, &item, index);
+                        item
+                    } else {
+                        // Handle regular app messages
+                        let item = list.item(cx, index, live_id!(AppLine));
+                        item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
+                            Some(Picture::Grapheme("A".into()));
+
+                        item.slot(ids!(content))
+                            .current()
+                            .as_standard_message_content()
+                            .set_content(cx, &message.content);
+
+                        self.apply_actions_and_editor_visibility(cx, &item, index);
+                        item
                     }
-
-                    // Handle regular app messages
-                    let item = list.item(cx, index, live_id!(AppLine));
-                    item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar =
-                        Some(Picture::Grapheme("A".into()));
-
-                    item.slot(ids!(content))
-                        .current()
-                        .as_standard_message_content()
-                        .set_content(cx, &message.content);
-
-                    self.apply_actions_and_editor_visibility(cx, &item, index);
-                    item.draw_all(cx, &mut Scope::empty());
                 }
                 EntityId::User => {
                     let item = list.item(cx, index, live_id!(UserLine));
@@ -356,7 +429,7 @@ impl Messages {
                         .set_content(cx, &message.content);
 
                     self.apply_actions_and_editor_visibility(cx, &item, index);
-                    item.draw_all(cx, &mut Scope::empty());
+                    item
                 }
                 EntityId::Bot(id) => {
                     let bot = chat_controller.state().get_bot(id);
@@ -426,20 +499,39 @@ impl Messages {
                     // For messages with tool calls, don't apply standard actions/editor,
                     // Users must be prevented from editing or deleting tool calls since most AI providers will return errors
                     // if tool calls are not properly formatted, or are not followed by a proper tool call response.
-                    if has_any_tool_calls {
-                        item.draw_all(cx, &mut Scope::empty());
-                    } else {
+                    if !has_any_tool_calls {
                         self.apply_actions_and_editor_visibility(cx, &item, index);
-                        item.draw_all(cx, &mut Scope::empty());
                     }
+
+                    item
                 }
+            };
+
+            item.draw_all(cx, &mut Scope::empty());
+
+            if let Some(second_last_message_index) = second_last_message_index
+                && index == second_last_message_index
+            {
+                if did_filler_draw {
+                    self.needs_extra_draw_pass = true;
+                } else {
+                    second_last_message_height = item.area().rect(cx).size.y;
+                }
+            } else if let Some(last_message_index) = last_message_index
+                && index == last_message_index
+            {
+                last_message_height = item.area().rect(cx).size.y;
             }
         }
 
-        let message = chat_controller.dangerous_state_mut().messages.pop();
-        if let Some(message) = message {
+        if let Some(message) = chat_controller.dangerous_state_mut().messages.pop() {
             assert!(message.from == EntityId::App);
             assert!(message.content.text == "EOC");
+        }
+
+        if let Some(message) = chat_controller.dangerous_state_mut().messages.pop() {
+            assert!(message.from == EntityId::App);
+            assert!(message.content.text.starts_with("FIL"));
         }
 
         self.button(ids!(jump_to_bottom))
@@ -452,7 +544,7 @@ impl Messages {
     }
 
     /// Jump to the end of the list instantly.
-    pub fn instant_scroll_to_bottom(&mut self, _cx: &mut Cx) {
+    pub fn instant_scroll_to_bottom(&mut self, cx: &mut Cx) {
         let chat_controller = self
             .chat_controller
             .as_ref()
@@ -472,6 +564,8 @@ impl Messages {
                     .saturating_sub(1),
                 0.0,
             );
+
+            self.redraw(cx);
         }
     }
 
