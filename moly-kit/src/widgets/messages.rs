@@ -47,15 +47,7 @@ live_design! {
             SystemLine = <SystemLine> {}
             ToolRequestLine = <ToolRequestLine> {}
             ToolResultLine = <ToolResultLine> {}
-
-            Empty = <View> { width: Fill, height: 0, show_bg: true, draw_bg: {
-                color: #f86f14ff,
-            }}
-
-            // Acts as marker for:
-            // - Knowing if the end of the list has been reached.
-            // - To jump to bottom with proper precision.
-            EndOfChat = <View> {height: 0.1}
+            Empty = <View> { height: 0 }
         }
         <View> {
             align: {x: 1.0, y: 1.0},
@@ -165,6 +157,9 @@ pub struct Messages {
 
     #[rust]
     list_height: f64,
+
+    #[rust]
+    needs_extra_draw_pass: bool,
 }
 
 impl Widget for Messages {
@@ -198,9 +193,16 @@ impl Widget for Messages {
         }
 
         // Track the new height of the portal list, and trigger a redraw if it changed.
-        let mut list_height = list.area().rect(cx).size.y;
-        std::mem::swap(&mut self.list_height, &mut list_height);
-        if self.list_height != list_height {
+        let previous_list_height = self.list_height;
+        self.list_height = list.area().rect(cx).size.y;
+
+        // Always redraw if the list height changed, no matter the previous value
+        // in this flag.
+        self.needs_extra_draw_pass =
+            self.needs_extra_draw_pass || (self.list_height != previous_list_height);
+
+        if self.needs_extra_draw_pass {
+            self.needs_extra_draw_pass = false;
             self.ui_runner().defer_with_redraw(|_, _, _| {});
         }
 
@@ -223,8 +225,13 @@ impl Messages {
         // the list draw.
         let mut chat_controller = chat_controller.lock().unwrap();
 
-        let last_message_index = chat_controller.state().messages.len().saturating_sub(1);
-        let second_last_message_index = last_message_index.saturating_sub(1);
+        let last_message_index = chat_controller.state().messages.len().checked_sub(1);
+        let second_last_message_index = last_message_index.and_then(|i| i.checked_sub(1));
+
+        // On `scroll_to_bottom`, for some reason, the portal list may (or not) draw the filler
+        // element before the second last message, breaking calculations. This flag is
+        // used to detect that and act in consequence.
+        let mut did_filler_draw = false;
 
         let mut second_last_message_height = 0.0;
         let mut last_message_height = 0.0;
@@ -330,27 +337,43 @@ impl Messages {
                 }
                 EntityId::App => {
                     if message.content.text == "EOC" {
-                        // Handle end of chat marker
+                        // Handle end of chat marker.
 
-                        let item = list.item(cx, index, live_id!(EndOfChat));
+                        // Acts as marker for:
+                        // - Knowing if the end of the list has been reached.
+                        // - To jump to bottom with proper precision.
+
+                        let item = list.item(cx, index, live_id!(Empty));
+                        item.apply_over(cx, live! { height: 0.1 });
                         item.draw_all(cx, &mut Scope::empty());
                         self.is_list_end_drawn = true;
                         item
                     } else if message.content.text == "FIL" {
-                        // Handle filler message
+                        // Handle filler message.
 
-                        // TODO: Use other live id template for this.
+                        did_filler_draw = true;
+
                         let item = list.item(cx, index, live_id!(Empty));
-                        const MAX_SECOND_LAST_MESSAGE_HEIGHT: f64 = 100.0;
+
+                        const MAX_SECOND_LAST_MESSAGE_VISIBILITY: f64 = 100.0;
+                        const SECOND_LAST_MESSAGE_DRAW_GUARANTEE: f64 = 1.0;
+
+                        // On scroll to bottom:
+                        // - The user message (or any second last message) should be visible.
+                        //   - However, if the user message is too long, only the last part should be visible.
+                        //     so it doesn't hide the next (response) message.
+                        // - The bot message (or any last message) should be fully visible (but without autoscrolling).
+                        // - To allow a scroll with this characteristic, we need to reserve some empty space, that starts
+                        //   being as tall as the list itself but gets "consumed" by the last two messages as they are drawn.
+                        // - Also, since we need to be sure to draw the second last message for the calculation, we need to
+                        //   subtract a tiny bit of height so it enters in the visible area.
                         let height = (self.list_height
                             - last_message_height
-                            - second_last_message_height.clamp(89.0, 89.0))
-                        .max(0.0);
+                            - second_last_message_height
+                                .clamp(0.0, MAX_SECOND_LAST_MESSAGE_VISIBILITY)
+                            - SECOND_LAST_MESSAGE_DRAW_GUARANTEE)
+                            .clamp(0.0, f64::INFINITY);
 
-                        dbg!(self.list_height);
-                        dbg!(second_last_message_height);
-                        dbg!(last_message_height);
-                        dbg!(height);
                         item.apply_over(cx, live! { height: (height) });
                         item
                     } else if let Some((left, right)) = message.content.text.split_once(':')
@@ -486,9 +509,17 @@ impl Messages {
 
             item.draw_all(cx, &mut Scope::empty());
 
-            if index == second_last_message_index {
-                second_last_message_height = item.area().rect(cx).size.y;
-            } else if index == last_message_index {
+            if let Some(second_last_message_index) = second_last_message_index
+                && index == second_last_message_index
+            {
+                if did_filler_draw {
+                    self.needs_extra_draw_pass = true;
+                } else {
+                    second_last_message_height = item.area().rect(cx).size.y;
+                }
+            } else if let Some(last_message_index) = last_message_index
+                && index == last_message_index
+            {
                 last_message_height = item.area().rect(cx).size.y;
             }
         }
