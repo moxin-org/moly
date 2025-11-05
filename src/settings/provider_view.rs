@@ -42,10 +42,10 @@ live_design! {
 
     ModelEntry = {{ModelEntry}} {
         align: {x: 0.5, y: 0.5}
-        width: Fill, height: 60
+        width: Fill, height: 50
         flow: Down,
         separator = <View> {
-            margin: {left: 10, right: 10, top: 0, bottom: 10}
+            margin: {left: 10, right: 10, top: 0, bottom: 5}
             height: 1,
             show_bg: true,
             draw_bg: {
@@ -89,8 +89,6 @@ live_design! {
 
     pub ProviderView = {{ProviderView}}<RoundedShadowView> {
         width: Fill, height: Fill
-        // align: {x: 0.0, y: 0.0}
-        padding: {left: 30, right: 30, top: 30, bottom: 30}
         show_bg: true
         draw_bg: {
             color: (MAIN_BG_COLOR_DARK)
@@ -100,8 +98,21 @@ live_design! {
             shadow_offset: vec2(0.0,-1.5)
         }
 
-        content = <View> {
+        content = <ScrollYView> {
+            padding: 30
             flow: Down, spacing: 20
+            height: Fill
+
+            scroll_bars: {
+                scroll_bar_y: {
+                    bar_size: 7.
+                    draw_bg: {
+                        color: #d5d4d4
+                        color_hover: #b8b8b8
+                        color_drag: #a8a8a8
+                    }
+                }
+            }
 
             <FormGroup> {
                 flow: Right,
@@ -348,15 +359,13 @@ Moly automatically appends useful context to your prompt, like the time of day."
                 }
             }
 
-            models_view = <RoundedView> {
-                models_list = <PortalList> {
-                    width: Fill,
-                    height: Fill,
-                    flow: Down,
-                    spacing: 10,
+            models_list = <FlatList> {
+                width: Fill, height: Fit
+                flow: Down,
+                grab_key_focus: true,
+                drag_scrolling: true,
 
-                    model_entry = <ModelEntry> {}
-                }
+                model_entry = <ModelEntry> {}
             }
 
             remove_provider_view = <View> {
@@ -420,26 +429,32 @@ impl Widget for ProviderView {
             self.view(ids!(refresh_button)).set_visible(cx, false);
         }
 
-        let entries_count = models.len();
-        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
-            if let Some(mut list) = item.as_portal_list().borrow_mut() {
-                list.set_item_range(cx, 0, entries_count);
-                while let Some(item_id) = list.next_visible_item(cx) {
-                    if item_id < entries_count {
-                        let template = live_id!(model_entry);
-                        let item = list.item(cx, item_id, template);
+        if cx.display_context.is_desktop() {
+            self.view(ids!(content))
+                .apply_over(cx, live! { padding: 30 });
+        } else {
+            self.view(ids!(content))
+                .apply_over(cx, live! { padding: 5 });
+        }
 
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_flat_list().borrow_mut() {
+                for (idx, model) in models.iter().enumerate() {
+                    // Use model name as unique ID
+                    let item_id = LiveId::from_str(&model.name);
+
+                    if let Some(item) = list.item(cx, item_id, live_id!(model_entry)) {
                         // hide the separator for the first item
-                        if item_id == 0 {
+                        if idx == 0 {
                             item.view(ids!(separator)).set_visible(cx, false);
                         }
 
-                        let name = models[item_id].human_readable_name();
+                        let name = model.human_readable_name();
                         item.label(ids!(model_name)).set_text(cx, &name);
                         item.check_box(ids!(enabled_switch))
-                            .set_active(cx, models[item_id].enabled && self.provider.enabled);
+                            .set_active(cx, model.enabled && self.provider.enabled);
 
-                        item.as_model_entry().set_model_name(&models[item_id].name);
+                        item.as_model_entry().set_model_name(&model.name);
                         item.draw_all(cx, scope);
                     }
                 }
