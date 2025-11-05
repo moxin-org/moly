@@ -16,6 +16,24 @@ live_design! {
 
     REFRESH_ICON = dep("crate://self/resources/images/refresh_icon.png")
 
+    IconButton = <Button> {
+        width: Fit, height: Fit
+        draw_text: {
+            text_style: <THEME_FONT_ICONS> {
+                font_size: 14.
+            }
+            color: #5,
+            color_hover: #2,
+            color_focus: #2
+            color_down: #5
+        }
+        draw_bg: {
+            color_down: #0000
+            border_radius: 7.
+            border_size: 0.
+        }
+    }
+
     FormGroup = <View> {
         flow: Down
         height: Fit
@@ -190,7 +208,8 @@ live_design! {
                 }
 
                 <View> {
-                    spacing: 10
+                    spacing: 5
+                    align: {x: 0.0, y: 0.5}
                     width: Fill, height: 35
                     api_key = <MolyTextInput> {
                         empty_text: ""
@@ -203,13 +222,10 @@ live_design! {
                             color: #000
                         }
                     }
-                    // save_api_key = <MolyButton> {
-                    //     width: Fit
-                    //     height: 30
-                    //     padding: {left: 20, right: 20, top: 0, bottom: 0}
-                    //     text: "Save"
-                    //     draw_bg: { color: (CTA_BUTTON_COLOR), border_size: 0 }
-                    // }
+
+                    toggle_key_visibility = <IconButton> {
+                        text: "" // fa-eye
+                    }
                 }
                 <View> {
                     width: Fill, height: Fit
@@ -581,6 +597,18 @@ impl WidgetMatchEvent for ProviderView {
         if self.button(ids!(remove_provider_button)).clicked(actions) {
             store.remove_provider(&self.provider.id);
             cx.action(ProviderViewAction::ProviderRemoved);
+            self.redraw(cx);
+        }
+
+        // Handle toggle key visibility button
+        if self.button(ids!(toggle_key_visibility)).clicked(actions) {
+            let api_key_input = self.text_input(ids!(api_key));
+            api_key_input.set_is_password(cx, !api_key_input.is_password());
+            if api_key_input.is_password() {
+                self.button(ids!(toggle_key_visibility)).set_text(cx, ""); // fa-eye-slash
+            } else {
+                self.button(ids!(toggle_key_visibility)).set_text(cx, ""); // fa-eye
+            }
             self.redraw(cx);
         }
     }
