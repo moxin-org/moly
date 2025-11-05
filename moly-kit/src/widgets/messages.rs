@@ -7,7 +7,7 @@ use std::{
 use crate::{
     controllers::chat::ChatController,
     protocol::*,
-    utils::makepad::{EventExt, ItemsRangeIter},
+    utils::makepad::{events::EventExt, portal_list::ItemsRangeIter, ui_runner::DeferRedraw},
     widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
 };
 use makepad_code_editor::code_view::CodeViewWidgetRefExt;
@@ -203,7 +203,7 @@ impl Widget for Messages {
 
         if self.needs_extra_draw_pass {
             self.needs_extra_draw_pass = false;
-            self.ui_runner().defer_with_redraw(|_, _, _| {});
+            self.ui_runner().defer_redraw();
         }
 
         DrawStep::done()
