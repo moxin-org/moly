@@ -5,7 +5,7 @@ use std::cell::{Ref, RefMut};
 use crate::{
     Attachment,
     protocol::{BotCapabilities, BotCapability},
-    utils::makepad::EventExt,
+    utils::makepad::events::EventExt,
     widgets::attachment_list::{AttachmentListRef, AttachmentListWidgetExt},
 };
 

@@ -7,7 +7,7 @@ use crate::controllers::chat::{
     ChatStateMutation, ChatTask,
 };
 use crate::mcp::mcp_manager::display_name_from_namespaced;
-use crate::utils::makepad::EventExt;
+use crate::utils::makepad::events::EventExt;
 use crate::utils::vec::VecMutation;
 use crate::widgets::moly_modal::MolyModalWidgetExt;
 use crate::*;

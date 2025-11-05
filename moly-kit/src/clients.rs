@@ -20,3 +20,6 @@ pub mod multi;
 
 pub use map::*;
 pub mod map;
+
+pub use tester_client::*;
+pub mod tester_client;

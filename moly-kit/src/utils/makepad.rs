@@ -1,11 +1,8 @@
 //! Utilities to deal with stuff that is highly specific to Makepad.
 
 pub mod events;
-mod portal_list;
+pub mod portal_list;
 pub mod ui_runner;
-
-pub use events::*;
-pub(crate) use portal_list::*;
 
 use makepad_widgets::*;
 

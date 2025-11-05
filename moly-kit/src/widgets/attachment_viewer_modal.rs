@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 
 use crate::protocol::*;
-use crate::utils::makepad::EventExt;
+use crate::utils::makepad::events::EventExt;
 use crate::widgets::attachment_view::AttachmentViewWidgetExt;
 use crate::widgets::moly_modal::{MolyModalRef, MolyModalWidgetExt};
 

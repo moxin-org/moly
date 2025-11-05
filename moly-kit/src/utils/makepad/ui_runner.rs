@@ -6,6 +6,22 @@
 
 use makepad_widgets::{Cx, DeferWithRedraw, Scope, UiRunner, Widget};
 
+pub trait DeferRedraw<W>
+where
+    Self: Sized,
+{
+    /// Requests to do a redraw and nothing else.
+    ///
+    /// Mostly a shorthand for `defer_with_redraw` with an empty closure.
+    fn defer_redraw(self) {}
+}
+
+impl<W: Widget + 'static> DeferRedraw<W> for UiRunner<W> {
+    fn defer_redraw(self) {
+        self.defer_with_redraw(|_, _, _| {});
+    }
+}
+
 pub trait AsyncDeferCallback<T, R>:
     FnOnce(&mut T, &mut Cx, &mut Scope) -> R + Send + 'static
 where
@@ -20,7 +36,7 @@ impl<T, R: Send + 'static, F: FnOnce(&mut T, &mut Cx, &mut Scope) -> R + Send + 
 
 /// Async extension to [UiRunner], allowing to await until deferred closures are executed.
 #[allow(unused)]
-pub(crate) trait DeferAsync<T> {
+pub trait DeferAsync<T> {
     /// Awaitable variant of [UiRunner::defer].
     ///
     /// This is actually similar to [UiRunner::block_on], but can be used inside
@@ -49,7 +65,7 @@ impl<T: 'static> DeferAsync<T> for UiRunner<T> {
 
 /// Async extension to [UiRunner], allowing to await until deferred closures with
 /// redraw are executed
-pub(crate) trait DeferWithRedrawAsync<T: 'static> {
+pub trait DeferWithRedrawAsync<T: 'static> {
     /// Awaitable variant of [DeferWithRedraw::defer_with_redraw] based on [DeferAsync::defer_async].
     ///
     /// Return value behaves the same as [DeferAsync::defer_async].

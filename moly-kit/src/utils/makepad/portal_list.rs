@@ -4,14 +4,14 @@ use makepad_widgets::*;
 use std::ops::RangeBounds;
 
 /// Iterator over a subset of portal list items.
-pub(crate) struct ItemsRangeIter<R: RangeBounds<usize>> {
+pub struct ItemsRangeIter<R: RangeBounds<usize>> {
     list: PortalListRef,
     range: R,
     current: usize,
 }
 
 impl<R: RangeBounds<usize>> ItemsRangeIter<R> {
-    pub(crate) fn new(list: PortalListRef, range: R) -> Self {
+    pub fn new(list: PortalListRef, range: R) -> Self {
         let start = match range.start_bound() {
             std::ops::Bound::Included(&start) => start,
             std::ops::Bound::Excluded(&start) => start + 1,
