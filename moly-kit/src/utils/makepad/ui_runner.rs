@@ -47,7 +47,10 @@ pub trait DeferAsync<T> {
     /// The Future may give `None` if it couldn't receive a value back, because the
     /// widget coudln't execute the closure. This can happen even without errors if
     /// the widget is dropped before executing the pending closure.
-    async fn defer_async<R>(self, f: impl AsyncDeferCallback<T, R>) -> Option<R>
+    fn defer_async<R>(
+        self,
+        f: impl AsyncDeferCallback<T, R>,
+    ) -> impl std::future::Future<Output = Option<R>> + Send
     where
         R: Send + 'static,
         Self: Sized;
@@ -69,7 +72,10 @@ pub trait DeferWithRedrawAsync<T: 'static> {
     /// Awaitable variant of [DeferWithRedraw::defer_with_redraw] based on [DeferAsync::defer_async].
     ///
     /// Return value behaves the same as [DeferAsync::defer_async].
-    async fn defer_with_redraw_async<R>(self, f: impl AsyncDeferCallback<T, R>) -> Option<R>
+    fn defer_with_redraw_async<R>(
+        self,
+        f: impl AsyncDeferCallback<T, R>,
+    ) -> impl std::future::Future<Output = Option<R>> + Send
     where
         R: Send + 'static,
         Self: Sized;
