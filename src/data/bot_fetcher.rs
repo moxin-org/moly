@@ -136,7 +136,7 @@ fn fetch_models_with_client<F, M>(
 }
 
 /// Filter out non-chat models for OpenAI-compatible providers
-fn should_include_model(model_id: &str) -> bool {
+pub fn should_include_model(model_id: &str) -> bool {
     // Filter out non-chat models
     if model_id.contains("dall-e")
         || model_id.contains("whisper")

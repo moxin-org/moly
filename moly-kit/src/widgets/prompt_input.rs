@@ -16,6 +16,7 @@ live_design! {
     use link::shaders::*;
 
     use crate::widgets::attachment_list::*;
+    use crate::widgets::model_selector::*;
 
     SubmitButton = <Button> {
         width: 28,
@@ -56,21 +57,26 @@ live_design! {
     AttachButton = <Button> {
         visible: false
         text: "",
+        width: Fit,
+        height: Fit,
+        padding: {left: 8, right: 8, top: 6, bottom: 6}
         draw_text: {
             text_style: <THEME_FONT_ICONS> {
-                font_size: 16.
+                font_size: 13.
             }
-            color: #000,
-            color_hover: #000,
-            color_focus: #000
+            color: #333,
+            color_hover: #111,
+            color_focus: #111
             color_down: #000
         }
         draw_bg: {
             color_down: #0000
             border_radius: 7.
             border_size: 0.
+            color_hover: #f2
         }
     }
+
 
     AudioButton = <Button> {
         visible: false
@@ -78,11 +84,11 @@ live_design! {
         text: ""
         draw_text: {
             text_style: <THEME_FONT_ICONS> {
-                font_size: 16.
+                font_size: 13.
             }
-            color: #000,
-            color_hover: #000,
-            color_focus: #000
+            color: #333,
+            color_hover: #111,
+            color_focus: #111
             color_down: #000
         }
         draw_bg: {
@@ -124,7 +130,7 @@ live_design! {
                 height: Fit
                 text_input = {
                     height: Fit {
-                        min: 33
+                        min: 35
                         max: 180
                     }
                     width: Fill
@@ -155,30 +161,19 @@ live_design! {
                 }
                 right = {
                     // In mobile, show the send controsl here, right to the input
-                    <AdaptiveView> {
-                        Desktop = {}
-                        Mobile = {
-                            width: Fit, height: Fit
-                            <SendControls> {}
-                        }
-                    }
                 }
             }
             bottom = {
                 height: Fit
                 left = <View> {
                     width: Fit, height: Fit
+                    align: {x: 0.0, y: 0.5}
                     attach = <AttachButton> {}
+                    model_selector = <ModelSelector> {}
                 }
-                // In desktop, show the send controls under the input
-                <AdaptiveView> {
-                    Desktop = {
-                        width: Fill, height: Fit
-                        separator = <View> { width: Fill, height: 1}
-                        <SendControls> {}
-                    }
-                    Mobile = {}
-                }
+                width: Fill, height: Fit
+                separator = <View> { width: Fill, height: 1}
+                <SendControls> {}
             }
         }
     }
@@ -375,6 +370,28 @@ impl PromptInput {
 
     pub(crate) fn attachment_list_ref(&self) -> AttachmentListRef {
         self.attachment_list(ids!(attachments))
+    }
+
+    /// Set the chat controller for the model selector
+    pub fn set_chat_controller(&mut self, controller: Option<std::sync::Arc<std::sync::Mutex<crate::controllers::chat::ChatController>>>) {
+        if let Some(mut inner) = self.widget(ids!(model_selector)).borrow_mut::<crate::widgets::model_selector::ModelSelector>() {
+            inner.chat_controller = controller;
+        }
+    }
+
+    /// Set the selected bot ID in the model selector
+    pub fn set_selected_bot_id(&mut self, cx: &mut Cx, bot_id: Option<crate::protocol::BotId>) {
+        if let Some(mut inner) = self.widget(ids!(model_selector)).borrow_mut::<crate::widgets::model_selector::ModelSelector>() {
+            inner.selected_bot_id = bot_id;
+            inner.redraw(cx);
+        }
+    }
+
+    /// Get the selected bot ID from the model selector
+    pub fn selected_bot_id(&self) -> Option<crate::protocol::BotId> {
+        self.widget(ids!(model_selector))
+            .borrow::<crate::widgets::model_selector::ModelSelector>()
+            .and_then(|inner| inner.selected_bot_id.clone())
     }
 
     /// Set the capabilities of the currently selected bot

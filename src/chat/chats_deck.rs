@@ -5,7 +5,6 @@ use moly_kit::utils::vec::VecMutation;
 use moly_kit::*;
 
 use super::chat_view::ChatViewRef;
-use super::model_selector::ModelSelectorWidgetRefExt;
 use crate::chat::chat_view::ChatViewWidgetRefExt;
 use crate::data::capture::CaptureAction;
 use crate::data::chats::chat::Chat as ChatData;
@@ -25,7 +24,7 @@ live_design! {
 
     pub ChatsDeck = {{ChatsDeck}} {
         width: Fill, height: Fill
-        padding: {top: 18, bottom: 10, right: 28, left: 28},
+        padding: {top: 18, bottom: 0, right: 28, left: 28},
 
         chat_view_template: <ChatView> {}
     }
@@ -75,12 +74,12 @@ impl Widget for ChatsDeck {
         if cx.display_context.is_desktop() {
             self.view.apply_over(
                 cx,
-                live! {padding: {top: 18, bottom: 10, right: 28, left: 28} },
+                live! {padding: {top: 18, bottom: 0, right: 28, left: 28} },
             );
         } else {
             self.view.apply_over(
                 cx,
-                live! { padding: {top: 55, left: 0, right: 0, bottom: 10} },
+                live! { padding: {top: 55, left: 0, right: 0, bottom: 0} },
             );
         }
 
@@ -197,11 +196,8 @@ impl ChatsDeck {
                 .dispatch_mutation(VecMutation::Set(chat_data.messages.clone()));
         }
 
-        // Set associated bot
+        // Sync associated_bot to Chat widget, which will update ChatController
         if let Some(bot_id) = &chat_data.associated_bot {
-            chat_view_to_update
-                .model_selector(ids!(model_selector))
-                .set_currently_selected_model(cx, Some(bot_id.clone()));
             chat_view_to_update
                 .chat(ids!(chat))
                 .write()
