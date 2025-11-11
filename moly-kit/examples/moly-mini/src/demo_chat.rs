@@ -1,12 +1,13 @@
 use std::sync::{Arc, Mutex};
 
 use makepad_widgets::*;
-use moly_kit::controllers::chat::{ChatController, ChatControllerPlugin, ChatTask};
+use moly_kit::controllers::chat::{
+    ChatController, ChatControllerPlugin, ChatStateMutation, ChatTask,
+};
 use moly_kit::mcp::mcp_manager::{McpManagerClient, McpTransport};
 use moly_kit::utils::asynchronous::spawn;
+use moly_kit::utils::vec::VecMutation;
 use moly_kit::*;
-
-use crate::bot_selector::BotSelectorWidgetExt;
 
 const OPEN_AI_KEY: Option<&str> = option_env!("OPEN_AI_KEY");
 const OPEN_AI_IMAGE_KEY: Option<&str> = option_env!("OPEN_AI_IMAGE_KEY");
@@ -26,7 +27,7 @@ live_design!(
         flow: Down,
         padding: 12,
         spacing: 12,
-        selector = <BotSelector> {}
+
         chat = <Chat> { }
     }
 );
@@ -42,20 +43,12 @@ pub struct DemoChat {
 
 impl Widget for DemoChat {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        let selector = self.bot_selector(ids!(selector));
-        let mut chat = self.chat(ids!(chat));
-
         self.ui_runner().handle(cx, event, scope, self);
         self.deref.handle_event(cx, event, scope);
 
-        let Event::Actions(actions) = event else {
+        let Event::Actions(_actions) = event else {
             return;
         };
-
-        if selector.bot_selected(actions) {
-            let id = selector.selected_bot_id().expect("no bot selected");
-            chat.write().set_bot_id(cx, Some(id));
-        }
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
@@ -72,10 +65,35 @@ impl LiveHook for DemoChat {
 }
 
 impl DemoChat {
-    fn fill_selector(&mut self, cx: &mut Cx, bots: Vec<Bot>) {
-        let mut chat = self.chat(ids!(chat));
+    fn fill_selector(&mut self, _cx: &mut Cx, bots: Vec<Bot>) {
+        // ════════════════════════════════════════════════════════════════════════════════
+        // Bot Filtering Approaches in MolyKit
+        // ════════════════════════════════════════════════════════════════════════════════
+        //
+        // There are 3 ways to filter bots (from earliest to latest in the pipeline):
+        //
+        // 1. CLIENT-LEVEL (at fetch time)
+        //    - Filter bots when fetching from the provider
+        //    - Use client.set_map_bots() or filter in fetch_models_with_client()
+        //    - Example: Moly's bot_fetcher.rs filters by provider enabled status
+        //    - Best for: Provider-level filtering (e.g., only include certain providers)
+        //
+        // 2. CONTROLLER-LEVEL (anytime after initialization) ← THIS EXAMPLE
+        //    - Filter bots before setting them in ChatController
+        //    - Use VecMutation::Set(filtered_bots) which becomes ChatStateMutation::MutateBots
+        //    - Best for: Simple examples, static whitelists, one-time filtering
+        //
+        // 3. UI-LEVEL (at display time)
+        //    - Keep all bots in ChatController, filter only in the ModelSelector UI
+        //    - Implement BotFilter trait and set it on ModelSelectorList
+        //    - Example: Moly's MolyBotFilter filters by individual bot enabled status
+        //    - Best for: Dynamic filtering (e.g., user toggles), showing disabled bots differently
+        //
+        // This example uses approach #2 (controller-level) for simplicity.
+        // ════════════════════════════════════════════════════════════════════════════════
 
-        let bots = bots
+        // Filter bots to only show whitelisted and local models
+        let filtered_bots = bots
             .into_iter()
             .filter(|b| {
                 let openai_whitelist = [
@@ -128,13 +146,42 @@ impl DemoChat {
             })
             .collect::<Vec<_>>();
 
-        if let Some(bot) = bots.first() {
-            chat.write().set_bot_id(cx, Some(bot.id.clone()));
+        // Set filtered bots in the controller - the default ModelSelector will use these
+        // Note: VecMutation::Set(Vec<Bot>) automatically converts to ChatStateMutation::MutateBots
+        let mut controller = self.controller.as_ref().unwrap().lock().unwrap();
+        controller.dispatch_mutation(VecMutation::Set(filtered_bots.clone()));
+
+        // Select the first available bot
+        if let Some(bot) = filtered_bots.first() {
+            controller.dispatch_mutation(ChatStateMutation::SetBotId(Some(bot.id.clone())));
         } else {
             eprintln!("No models available, check your API keys.");
         }
 
-        self.bot_selector(ids!(selector)).set_bots(bots);
+        // ════════════════════════════════════════════════════════════════════════════════
+        // Alternative: UI-level filtering with BotFilter trait
+        // ════════════════════════════════════════════════════════════════════════════════
+        // If you want to keep ALL bots in the controller but filter only in the UI:
+        //
+        // 1. Implement BotFilter trait:
+        //    struct MyBotFilter { whitelist: Vec<String> }
+        //    impl BotFilter for MyBotFilter {
+        //        fn should_show(&self, bot: &Bot) -> bool {
+        //            self.whitelist.contains(&bot.name)
+        //        }
+        //    }
+        //
+        // 2. Set filter on ModelSelectorList:
+        //    let chat = self.chat(ids!(chat));
+        //    let mut list = chat.read().prompt_input_ref()
+        //        .widget(ids!(model_selector.options.list_container.list))
+        //        .borrow_mut::<ModelSelectorList>().unwrap();
+        //    list.filter = Some(Box::new(MyBotFilter { whitelist }));
+        //
+        // This approach is more flexible for dynamic filtering (e.g., user preferences).
+        // By Keeping the bots in the controller, MolyKit can properly include the bot
+        // names in the chat messages.
+        // ════════════════════════════════════════════════════════════════════════════════
     }
 
     fn setup_chat_hooks(&self) {

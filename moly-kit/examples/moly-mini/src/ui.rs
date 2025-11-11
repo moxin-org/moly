@@ -34,6 +34,7 @@ live_design!(
         // }
 
         body = <View> {
+            padding: {top: 40}
             // chat_1 = <DemoChat> {}
             chat_2 = <DemoChat> {}
         }
