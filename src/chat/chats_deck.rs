@@ -196,12 +196,9 @@ impl ChatsDeck {
                 .dispatch_mutation(VecMutation::Set(chat_data.messages.clone()));
         }
 
-        // Sync associated_bot to Chat widget, which will update ChatController
+        // Sync associated_bot to ChatController
         if let Some(bot_id) = &chat_data.associated_bot {
-            chat_view_to_update
-                .chat(ids!(chat))
-                .write()
-                .set_bot_id(cx, Some(bot_id.clone()));
+            chat_view_to_update.set_bot_id(Some(bot_id.clone()));
         }
 
         // Set this chat view as focused and all other chat views as not focused

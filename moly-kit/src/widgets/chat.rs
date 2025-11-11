@@ -97,7 +97,8 @@ impl Chat {
 
     fn handle_realtime(&mut self, _cx: &mut Cx) {
         if self.realtime(ids!(realtime)).connection_requested()
-            && let Some(bot_id) = self.get_bot_id_cloned()
+            && let Some(bot_id) = self.chat_controller.as_ref()
+                .and_then(|c| c.lock().unwrap().state().bot_id.clone())
         {
             self.chat_controller
                 .as_mut()
@@ -170,14 +171,11 @@ impl Chat {
 
     fn handle_capabilities(&mut self, cx: &mut Cx) {
         let capabilities = self.chat_controller.as_ref().and_then(|controller| {
-            self.bot_id().as_ref().and_then(|bot_id| {
-                controller
-                    .lock()
-                    .unwrap()
-                    .state()
-                    .get_bot(bot_id)
-                    .map(|bot| bot.capabilities.clone())
-            })
+            let lock = controller.lock().unwrap();
+            let bot_id = lock.state().bot_id.as_ref()?;
+            lock.state()
+                .get_bot(bot_id)
+                .map(|bot| bot.capabilities.clone())
         });
 
         self.prompt_input_ref()
@@ -252,7 +250,9 @@ impl Chat {
                         .unwrap()
                         .dispatch_mutation(VecMutation::Set(messages));
 
-                    if let Some(bot_id) = self.get_bot_id_cloned() {
+                    if let Some(bot_id) = self.chat_controller.as_ref()
+                        .and_then(|c| c.lock().unwrap().state().bot_id.clone())
+                    {
                         chat_controller
                             .lock()
                             .unwrap()
@@ -271,7 +271,8 @@ impl Chat {
                     lock.dispatch_mutation(VecMutation::Update(index, updated_message));
 
                     let tools = lock.state().messages[index].content.tool_calls.clone();
-                    lock.dispatch_task(ChatTask::Execute(tools, self.get_bot_id_cloned()));
+                    let bot_id = lock.state().bot_id.clone();
+                    lock.dispatch_task(ChatTask::Execute(tools, bot_id));
                 }
                 MessagesAction::ToolDeny(index) => {
                     let mut lock = chat_controller.lock().unwrap();
@@ -325,7 +326,8 @@ impl Chat {
         let chat_controller = self.chat_controller.clone().unwrap();
 
         if prompt.read().has_send_task()
-            && let Some(bot_id) = self.get_bot_id_cloned()
+            && let Some(bot_id) = self.chat_controller.as_ref()
+                .and_then(|c| c.lock().unwrap().state().bot_id.clone())
         {
             let text = prompt.text();
             let attachments = prompt
@@ -366,7 +368,9 @@ impl Chat {
     fn handle_call(&mut self, _cx: &mut Cx) {
         // Use the standard send mechanism which will return the upgrade
         // The upgrade message will be processed in the plugin.
-        if let Some(bot_id) = self.get_bot_id_cloned() {
+        if let Some(bot_id) = self.chat_controller.as_ref()
+            .and_then(|c| c.lock().unwrap().state().bot_id.clone())
+        {
             self.chat_controller
                 .as_mut()
                 .unwrap()
@@ -385,43 +389,6 @@ impl Chat {
             .unwrap()
             .state()
             .is_streaming
-    }
-
-    pub fn set_bot_id(&mut self, cx: &mut Cx, bot_id: Option<BotId>) {
-        // Get current bot_id from controller state
-        let current_bot_id = self.chat_controller
-            .as_ref()
-            .and_then(|c| c.lock().unwrap().state().bot_id.clone());
-
-        if current_bot_id == bot_id {
-            return;
-        }
-
-        // Dispatch mutation to update bot_id in controller state
-        if let Some(controller) = &self.chat_controller {
-            controller.lock().unwrap().dispatch_mutation(
-                crate::controllers::chat::ChatStateMutation::SetBotId(bot_id.clone())
-            );
-        }
-
-        // Sync the selected bot ID with the prompt input's model selector
-        self.prompt_input_ref()
-            .write()
-            .set_selected_bot_id(cx, bot_id);
-
-        self.handle_capabilities(cx);
-    }
-
-    pub fn bot_id(&self) -> Option<BotId> {
-        // Read bot_id from controller state
-        self.chat_controller
-            .as_ref()
-            .and_then(|c| c.lock().unwrap().state().bot_id.clone())
-    }
-
-    fn get_bot_id_cloned(&self) -> Option<BotId> {
-        // Alias for bot_id() for backwards compatibility
-        self.bot_id()
     }
 
     pub fn set_chat_controller(

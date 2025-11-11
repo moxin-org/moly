@@ -191,7 +191,7 @@ impl Widget for ChatView {
         self.widget_match_event(cx, event, scope);
         self.view.handle_event(cx, event, scope);
 
-        self.handle_current_bot(cx, scope);
+        self.handle_current_bot(scope);
         self.handle_unread_messages(scope);
     }
 
@@ -237,7 +237,7 @@ impl WidgetMatchEvent for ChatView {
 impl ChatView {
     // TODO: Only perform this checks after certain actions like provider sync or provider updates (e.g. disable/enable provider)
     // Refactor this to be simpler and more unified with the behavior of the model selector
-    fn handle_current_bot(&mut self, cx: &mut Cx, scope: &mut Scope) {
+    fn handle_current_bot(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
         // Read bot_id from Controller (source of truth) instead of Store to avoid race conditions
@@ -250,22 +250,34 @@ impl ChatView {
             false
         };
 
-        let mut chat = self.chat(ids!(chat));
         let mut prompt_input = self.prompt_input(ids!(chat.prompt));
 
-        // If the bot is not available and we know it won't be available soon, clear the bot_id in the chat widget
+        // Get controller state to check bot_id
+        let controller_bot_id = {
+            let controller = self.chat_controller.lock().unwrap();
+            controller.state().bot_id.clone()
+        };
+
+        // If the bot is not available and we know it won't be available soon, clear the bot_id in the controller
         if !bot_available && current_bot_id.is_some() && store.provider_syncing_status == ProviderSyncingStatus::Synced {
-            chat.write().set_bot_id(cx, None);
+            self.chat_controller
+                .lock()
+                .unwrap()
+                .dispatch_mutation(ChatStateMutation::SetBotId(None));
             // Model selector will be updated through the plugin architecture
-        } else if bot_available && chat.read().bot_id().is_none() {
-            // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
+        } else if bot_available && controller_bot_id.is_none() {
+            // If the bot is available and the controller doesn't have a bot_id, set the bot_id in the controller
             // This can happen if the bot or provider was re-enabled after being disabled while being selected
-            chat.write().set_bot_id(cx, current_bot_id);
+            self.chat_controller
+                .lock()
+                .unwrap()
+                .dispatch_mutation(ChatStateMutation::SetBotId(current_bot_id));
         }
 
         // If there is no selected bot, disable the prompt input
-        if !self.chat_controller.lock().unwrap().state().is_streaming
-            && (chat.read().bot_id().is_none()
+        let is_streaming = self.chat_controller.lock().unwrap().state().is_streaming;
+        if !is_streaming
+            && (controller_bot_id.is_none()
                 || !bot_available
                 || store.provider_syncing_status != ProviderSyncingStatus::Synced)
         {
@@ -368,6 +380,12 @@ impl ChatViewRef {
             inner.chat_id = chat_id;
             // Reset sync flag so bot_id will be synced from Store on next draw
             inner.initial_bot_synced = false;
+        }
+    }
+
+    pub fn set_bot_id(&mut self, bot_id: Option<BotId>) {
+        if let Some(inner) = self.borrow_mut() {
+            inner.chat_controller.lock().unwrap().dispatch_mutation(ChatStateMutation::SetBotId(bot_id));
         }
     }
 
