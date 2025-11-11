@@ -26,7 +26,8 @@
             "supported_models": [
                 "dall-e-2",
                 "dall-e-3",
-                "gpt-image-1"
+                "gpt-image-1",
+                "gpt-image-1-mini"
             ]
         },
         {
@@ -35,7 +36,8 @@
             "url": "wss://api.openai.com/v1/realtime",
             "provider_type": "OpenAIRealtime",
             "supported_models": [
-                "gpt-realtime"
+                "gpt-realtime",
+                "gpt-realtime-mini"
             ]
         },
         {

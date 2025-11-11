@@ -1,6 +1,8 @@
 use super::model_selector_item::ModelSelectorItemWidgetRefExt;
 use crate::{
-    GroupingFn, controllers::chat::ChatController, protocol::{Bot, BotId, Picture}
+    GroupingFn,
+    controllers::chat::ChatController,
+    protocol::{Bot, BotId, Picture},
 };
 use makepad_widgets::*;
 use std::collections::HashMap;
@@ -34,22 +36,23 @@ live_design! {
                 width: Fit, height: Fit
                 visible: false
                 icon_image = <Image> {
-                    width: 18, height: 18
+                    width: 25, height: 25
                 }
             }
 
             icon_fallback_view = <RoundedView> {
-                width: Fit, height: Fit
-                padding: {left: 5, right: 5, top: 2, bottom: 2}
+                width: 25, height: 25
                 visible: false
                 show_bg: true
                 draw_bg: {
-                    color: #37567d,
-                    border_radius: 3.0
+                    color: #344054
+                    border_radius: 6.0
                 }
+                align: {x: 0.5, y: 0.5}
+
                 icon_fallback_label = <Label> {
                     draw_text: {
-                        text_style: <THEME_FONT_BOLD>{font_size: 9.0},
+                        text_style: <THEME_FONT_BOLD>{font_size: 12.0},
                         color: #fff
                     }
                 }
@@ -193,9 +196,7 @@ impl ModelSelectorList {
                 WidgetRef::new_from_ptr(cx, self.section_label_template)
             });
 
-            section_label
-                .label(ids!(label))
-                .set_text(cx, &group_label);
+            section_label.label(ids!(label)).set_text(cx, &group_label);
 
             // Display icon if available, otherwise show fallback (first letter)
             if let Some(icon) = &group_icon {
@@ -215,10 +216,9 @@ impl ModelSelectorList {
                         section_label
                             .view(ids!(icon_fallback_view))
                             .set_visible(cx, true);
-                        section_label.label(ids!(icon_fallback_label)).set_text(
-                            cx,
-                            &group_label.chars().next().unwrap_or('?').to_string(),
-                        );
+                        section_label
+                            .label(ids!(icon_fallback_label))
+                            .set_text(cx, &group_label.chars().next().unwrap_or('?').to_string().to_uppercase());
                     }
                 }
             } else {
@@ -227,10 +227,9 @@ impl ModelSelectorList {
                 section_label
                     .view(ids!(icon_fallback_view))
                     .set_visible(cx, true);
-                section_label.label(ids!(icon_fallback_label)).set_text(
-                    cx,
-                    &group_label.chars().next().unwrap_or('?').to_string(),
-                );
+                section_label
+                    .label(ids!(icon_fallback_label))
+                    .set_text(cx, &group_label.chars().next().unwrap_or('?').to_string());
             }
 
             let _ = section_label.draw_all(cx, &mut Scope::empty());

@@ -8,8 +8,6 @@ use moly_kit::utils::vec::{VecEffect, VecMutation};
 use moly_kit::widgets::model_selector::GroupingFn;
 use moly_kit::*;
 
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
 use crate::data::chats::chat::ChatID;
 use crate::data::store::{ProviderSyncingStatus, Store};
 use crate::shared::bot_context::BotContext;
@@ -17,6 +15,8 @@ use crate::shared::utils::attachments::{
     delete_attachment, generate_persistence_key, set_persistence_key_and_reader,
     write_attachment_to_key,
 };
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 live_design! {
     use link::theme::*;
@@ -330,48 +330,49 @@ impl ChatView {
             if let Some(bot_context) = &mut self.bot_context {
                 bot_context.add_chat_controller(self.chat_controller.clone());
             }
+        }
 
-            // Build pre-computed lookup table for bot grouping
-            let mut bot_groups: HashMap<BotId, (String, String, Option<moly_kit::protocol::Picture>)> = HashMap::new();
+        // Always rebuild grouping (not just when bot_context changes) because available_bots
+        // and providers can change independently when bots are enabled/disabled or providers sync
+        let mut bot_groups: HashMap<
+            BotId,
+            (String, String, Option<moly_kit::protocol::Picture>),
+        > = HashMap::new();
 
-            for (bot_id, provider_bot) in &store.chats.available_bots {
-                if let Some(provider) = store.chats.providers.get(&provider_bot.provider_id) {
-                    if provider.enabled {
-                        let icon = store
-                            .get_provider_icon(&provider.name)
-                            .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
-                        bot_groups.insert(
-                            bot_id.clone(),
-                            (provider.id.clone(), provider.name.clone(), icon),
-                        );
-                    }
+        for (bot_id, provider_bot) in &store.chats.available_bots {
+            if let Some(provider) = store.chats.providers.get(&provider_bot.provider_id) {
+                if provider.enabled {
+                    let icon = store
+                        .get_provider_icon(&provider.name)
+                        .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
+                    bot_groups.insert(
+                        bot_id.clone(),
+                        (provider.id.clone(), provider.name.clone(), icon),
+                    );
                 }
             }
-
-            // Create grouping callback that captures the lookup table
-            let grouping_fn: GroupingFn = Arc::new(move |bot: &moly_kit::protocol::Bot| {
-                bot_groups
-                    .get(&bot.id)
-                    .cloned()
-                    .unwrap_or_else(|| {
-                        // Fallback: use provider from bot ID
-                        let provider = bot.id.provider();
-                        (
-                            provider.to_string(),
-                            provider.to_string(),
-                            Some(bot.avatar.clone()),
-                        )
-                    })
-            });
-
-            // Set grouping on the ModelSelector inside PromptInput
-            let chat = self.chat(ids!(chat));
-            chat.read()
-                .prompt_input_ref()
-                .widget(ids!(model_selector))
-                .as_model_selector()
-                .set_grouping(Some(grouping_fn));
         }
+
+        // Create grouping callback that captures the lookup table
+        let grouping_fn: GroupingFn = Arc::new(move |bot: &moly_kit::protocol::Bot| {
+            bot_groups.get(&bot.id).cloned().unwrap_or_else(|| {
+                // Fallback: use provider from bot ID
+                let provider = bot.id.provider();
+                (
+                    provider.to_string(),
+                    provider.to_string(),
+                    Some(bot.avatar.clone()),
+                )
+            })
+        });
+
+        // Set grouping on the ModelSelector inside PromptInput
+        let chat = self.chat(ids!(chat));
+        chat.read()
+            .prompt_input_ref()
+            .widget(ids!(model_selector))
+            .as_model_selector()
+            .set_grouping(Some(grouping_fn));
 
         // Always update filter (not just when bot_context changes) because available_bots
         // can change independently when bots are enabled/disabled
