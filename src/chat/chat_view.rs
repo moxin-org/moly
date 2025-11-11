@@ -188,7 +188,6 @@ impl Widget for ChatView {
         self.bind_bot_context(scope);
 
         self.ui_runner().handle(cx, event, scope, self);
-        self.widget_match_event(cx, event, scope);
         self.view.handle_event(cx, event, scope);
 
         self.handle_current_bot(scope);
@@ -223,14 +222,6 @@ impl Widget for ChatView {
         }
 
         self.view.draw_walk(cx, scope, walk)
-    }
-}
-
-impl WidgetMatchEvent for ChatView {
-    fn handle_actions(&mut self, _cx: &mut Cx, _actions: &Actions, _scope: &mut Scope) {
-        // Model selector actions are now handled through the plugin architecture:
-        // - ModelSelector dispatches ChatStateMutation::SetBotId
-        // - Glue plugin observes the mutation and syncs to Store
     }
 }
 
