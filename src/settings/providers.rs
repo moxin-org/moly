@@ -317,14 +317,25 @@ impl Providers {
     fn get_provider_icon(&self, provider: &Provider) -> Option<LiveDependency> {
         // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
         // Find a path that contains the provider name
+        let base_name = Self::normalize_provider_name(&provider.name);
+
         self.provider_icons
             .iter()
             .find(|icon| {
                 icon.as_str()
                     .to_lowercase()
-                    .contains(&provider.name.to_lowercase())
+                    .contains(&base_name.to_lowercase())
             })
             .cloned()
+    }
+
+    /// Extracts the base provider name from provider variants.
+    /// Examples: "OpenAI Realtime" -> "openai", "OpenAI Image" -> "openai"
+    fn normalize_provider_name(name: &str) -> String {
+        name.split_whitespace()
+            .next()
+            .unwrap_or(name)
+            .to_lowercase()
     }
 }
 
