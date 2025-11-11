@@ -169,7 +169,7 @@ impl BotClient for OpenAIImageClient {
 
         // Hardcoded list of OpenAI-only image generation models that are currently
         // available and supported.
-        let supported: Vec<Bot> = ["dall-e-2", "dall-e-3", "gpt-image-1", "gpt-image-1-mini"] 
+        let supported: Vec<Bot> = ["dall-e-2", "dall-e-3", "gpt-image-1", "gpt-image-1-mini"]
             .into_iter()
             .map(|id| Bot {
                 id: BotId::new(id, &inner.url),

@@ -334,22 +334,18 @@ impl ChatView {
 
         // Always rebuild grouping (not just when bot_context changes) because available_bots
         // and providers can change independently when bots are enabled/disabled or providers sync
-        let mut bot_groups: HashMap<
-            BotId,
-            (String, String, Option<moly_kit::protocol::Picture>),
-        > = HashMap::new();
+        let mut bot_groups: HashMap<BotId, (String, String, Option<moly_kit::protocol::Picture>)> =
+            HashMap::new();
 
         for (bot_id, provider_bot) in &store.chats.available_bots {
             if let Some(provider) = store.chats.providers.get(&provider_bot.provider_id) {
-                if provider.enabled {
-                    let icon = store
-                        .get_provider_icon(&provider.name)
-                        .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
-                    bot_groups.insert(
-                        bot_id.clone(),
-                        (provider.id.clone(), provider.name.clone(), icon),
-                    );
-                }
+                let icon = store
+                    .get_provider_icon(&provider.name)
+                    .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
+                bot_groups.insert(
+                    bot_id.clone(),
+                    (provider.id.clone(), provider.name.clone(), icon),
+                );
             }
         }
 

@@ -216,9 +216,15 @@ impl ModelSelectorList {
                         section_label
                             .view(ids!(icon_fallback_view))
                             .set_visible(cx, true);
-                        section_label
-                            .label(ids!(icon_fallback_label))
-                            .set_text(cx, &group_label.chars().next().unwrap_or('?').to_string().to_uppercase());
+                        section_label.label(ids!(icon_fallback_label)).set_text(
+                            cx,
+                            &group_label
+                                .chars()
+                                .next()
+                                .unwrap_or('?')
+                                .to_string()
+                                .to_uppercase(),
+                        );
                     }
                 }
             } else {
