@@ -245,7 +245,11 @@ impl ChatView {
 
         // Check if the current bot is still available in the enabled bots list
         let bot_available = if let Some(bot_id) = &current_bot_id {
-            store.chats.get_all_bots(true).iter().any(|bot| &bot.id == bot_id)
+            store
+                .chats
+                .get_all_bots(true)
+                .iter()
+                .any(|bot| &bot.id == bot_id)
         } else {
             false
         };
@@ -259,7 +263,10 @@ impl ChatView {
         };
 
         // If the bot is not available and we know it won't be available soon, clear the bot_id in the controller
-        if !bot_available && current_bot_id.is_some() && store.provider_syncing_status == ProviderSyncingStatus::Synced {
+        if !bot_available
+            && current_bot_id.is_some()
+            && store.provider_syncing_status == ProviderSyncingStatus::Synced
+        {
             self.chat_controller
                 .lock()
                 .unwrap()
@@ -338,7 +345,8 @@ impl ChatView {
             let mut grouping = MolyBotGrouping::new(store.chats.available_bots.clone());
             for (_key, provider) in store.chats.providers.iter() {
                 if provider.enabled {
-                    let icon = store.get_provider_icon(&provider.name)
+                    let icon = store
+                        .get_provider_icon(&provider.name)
                         .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
                     grouping.add_provider(provider.id.clone(), provider.name.clone(), icon);
                 }
@@ -346,7 +354,8 @@ impl ChatView {
 
             // Set grouping on the ModelSelector inside PromptInput
             let chat = self.chat(ids!(chat));
-            chat.read().prompt_input_ref()
+            chat.read()
+                .prompt_input_ref()
                 .widget(ids!(model_selector))
                 .as_model_selector()
                 .set_grouping(Some(Box::new(grouping)));
@@ -355,10 +364,15 @@ impl ChatView {
         // Always update filter (not just when bot_context changes) because available_bots
         // can change independently when bots are enabled/disabled
         let chat = self.chat(ids!(chat));
-        if let Some(mut list) = chat.read().prompt_input_ref()
+        if let Some(mut list) = chat
+            .read()
+            .prompt_input_ref()
             .widget(ids!(model_selector.options.list_container.list))
-            .borrow_mut::<moly_kit::widgets::model_selector_list::ModelSelectorList>() {
-            let filter = crate::chat::moly_bot_filter::MolyBotFilter::new(store.chats.available_bots.clone());
+            .borrow_mut::<moly_kit::widgets::model_selector_list::ModelSelectorList>()
+        {
+            let filter = crate::chat::moly_bot_filter::MolyBotFilter::new(
+                store.chats.available_bots.clone(),
+            );
             list.filter = Some(Box::new(filter));
         }
     }
@@ -385,7 +399,11 @@ impl ChatViewRef {
 
     pub fn set_bot_id(&mut self, bot_id: Option<BotId>) {
         if let Some(inner) = self.borrow_mut() {
-            inner.chat_controller.lock().unwrap().dispatch_mutation(ChatStateMutation::SetBotId(bot_id));
+            inner
+                .chat_controller
+                .lock()
+                .unwrap()
+                .dispatch_mutation(ChatStateMutation::SetBotId(bot_id));
         }
     }
 

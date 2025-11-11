@@ -1,7 +1,7 @@
 use crate::data::providers::ProviderBot;
+use moly_kit::BotId;
 use moly_kit::protocol::{Bot, Picture};
 use moly_kit::widgets::model_selector_grouping::{BotGrouping, GroupInfo};
-use moly_kit::BotId;
 use std::collections::HashMap;
 
 /// Moly-specific bot grouping that uses friendly provider names and icons

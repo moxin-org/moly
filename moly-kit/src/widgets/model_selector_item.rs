@@ -1,5 +1,5 @@
-use makepad_widgets::*;
 use crate::protocol::{Bot, BotId};
+use makepad_widgets::*;
 
 live_design! {
     use link::theme::*;

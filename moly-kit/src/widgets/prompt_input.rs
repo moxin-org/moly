@@ -373,15 +373,26 @@ impl PromptInput {
     }
 
     /// Set the chat controller for the model selector
-    pub fn set_chat_controller(&mut self, controller: Option<std::sync::Arc<std::sync::Mutex<crate::controllers::chat::ChatController>>>) {
-        if let Some(mut inner) = self.widget(ids!(model_selector)).borrow_mut::<crate::widgets::model_selector::ModelSelector>() {
+    pub fn set_chat_controller(
+        &mut self,
+        controller: Option<
+            std::sync::Arc<std::sync::Mutex<crate::controllers::chat::ChatController>>,
+        >,
+    ) {
+        if let Some(mut inner) = self
+            .widget(ids!(model_selector))
+            .borrow_mut::<crate::widgets::model_selector::ModelSelector>()
+        {
             inner.chat_controller = controller;
         }
     }
 
     /// Set the selected bot ID in the model selector
     pub fn set_selected_bot_id(&mut self, cx: &mut Cx, bot_id: Option<crate::protocol::BotId>) {
-        if let Some(mut inner) = self.widget(ids!(model_selector)).borrow_mut::<crate::widgets::model_selector::ModelSelector>() {
+        if let Some(mut inner) = self
+            .widget(ids!(model_selector))
+            .borrow_mut::<crate::widgets::model_selector::ModelSelector>()
+        {
             inner.selected_bot_id = bot_id;
             inner.redraw(cx);
         }

@@ -1,12 +1,12 @@
-use makepad_widgets::*;
-use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
+use super::model_selector_item::ModelSelectorItemWidgetRefExt;
 use crate::{
     controllers::chat::ChatController,
     protocol::{Bot, BotId, Picture},
     widgets::model_selector_grouping::{BotGrouping, DefaultBotGrouping},
 };
-use super::model_selector_item::ModelSelectorItemWidgetRefExt;
+use makepad_widgets::*;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Trait for filtering which bots to show in the model selector
 pub trait BotFilter {
@@ -169,7 +169,13 @@ impl ModelSelectorList {
             .collect();
 
         // Group bots by their group ID
-        let mut groups: HashMap<String, (crate::widgets::model_selector_grouping::GroupInfo, Vec<&Bot>)> = HashMap::new();
+        let mut groups: HashMap<
+            String,
+            (
+                crate::widgets::model_selector_grouping::GroupInfo,
+                Vec<&Bot>,
+            ),
+        > = HashMap::new();
         for bot in filtered_bots {
             let group_info = grouping.get_group_info(bot);
             groups
@@ -212,9 +218,10 @@ impl ModelSelectorList {
                         section_label
                             .view(ids!(icon_fallback_view))
                             .set_visible(cx, true);
-                        section_label
-                            .label(ids!(icon_fallback_label))
-                            .set_text(cx, &group_info.label.chars().next().unwrap_or('?').to_string());
+                        section_label.label(ids!(icon_fallback_label)).set_text(
+                            cx,
+                            &group_info.label.chars().next().unwrap_or('?').to_string(),
+                        );
                     }
                 }
             } else {
@@ -223,9 +230,10 @@ impl ModelSelectorList {
                 section_label
                     .view(ids!(icon_fallback_view))
                     .set_visible(cx, true);
-                section_label
-                    .label(ids!(icon_fallback_label))
-                    .set_text(cx, &group_info.label.chars().next().unwrap_or('?').to_string());
+                section_label.label(ids!(icon_fallback_label)).set_text(
+                    cx,
+                    &group_info.label.chars().next().unwrap_or('?').to_string(),
+                );
             }
 
             let _ = section_label.draw_all(cx, &mut Scope::empty());

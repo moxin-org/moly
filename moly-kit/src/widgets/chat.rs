@@ -97,7 +97,9 @@ impl Chat {
 
     fn handle_realtime(&mut self, _cx: &mut Cx) {
         if self.realtime(ids!(realtime)).connection_requested()
-            && let Some(bot_id) = self.chat_controller.as_ref()
+            && let Some(bot_id) = self
+                .chat_controller
+                .as_ref()
                 .and_then(|c| c.lock().unwrap().state().bot_id.clone())
         {
             self.chat_controller
@@ -250,7 +252,9 @@ impl Chat {
                         .unwrap()
                         .dispatch_mutation(VecMutation::Set(messages));
 
-                    if let Some(bot_id) = self.chat_controller.as_ref()
+                    if let Some(bot_id) = self
+                        .chat_controller
+                        .as_ref()
                         .and_then(|c| c.lock().unwrap().state().bot_id.clone())
                     {
                         chat_controller
@@ -326,7 +330,9 @@ impl Chat {
         let chat_controller = self.chat_controller.clone().unwrap();
 
         if prompt.read().has_send_task()
-            && let Some(bot_id) = self.chat_controller.as_ref()
+            && let Some(bot_id) = self
+                .chat_controller
+                .as_ref()
                 .and_then(|c| c.lock().unwrap().state().bot_id.clone())
         {
             let text = prompt.text();
@@ -368,7 +374,9 @@ impl Chat {
     fn handle_call(&mut self, _cx: &mut Cx) {
         // Use the standard send mechanism which will return the upgrade
         // The upgrade message will be processed in the plugin.
-        if let Some(bot_id) = self.chat_controller.as_ref()
+        if let Some(bot_id) = self
+            .chat_controller
+            .as_ref()
             .and_then(|c| c.lock().unwrap().state().bot_id.clone())
         {
             self.chat_controller
@@ -518,12 +526,16 @@ impl ChatControllerPlugin for Plugin {
                     let bot_id = bot_id.clone();
                     self.ui.defer(move |chat, cx, _| {
                         // Update PromptInput's selected bot
-                        chat.prompt_input_ref().write().set_selected_bot_id(cx, bot_id.clone());
+                        chat.prompt_input_ref()
+                            .write()
+                            .set_selected_bot_id(cx, bot_id.clone());
 
                         // Also directly update ModelSelector's selected_bot_id for sync
-                        if let Some(mut selector) = chat.prompt_input_ref()
+                        if let Some(mut selector) = chat
+                            .prompt_input_ref()
                             .widget(ids!(model_selector))
-                            .borrow_mut::<crate::widgets::model_selector::ModelSelector>() {
+                            .borrow_mut::<crate::widgets::model_selector::ModelSelector>()
+                        {
                             selector.selected_bot_id = bot_id.clone();
                         }
 

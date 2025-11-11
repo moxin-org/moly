@@ -14,8 +14,8 @@ pub mod model_selector;
 pub mod model_selector_item;
 pub mod model_selector_list;
 pub mod model_selector_loading;
-pub mod moly_bot_grouping;
 pub mod moly_bot_filter;
+pub mod moly_bot_grouping;
 pub mod prompt_input;
 pub mod shared;
 

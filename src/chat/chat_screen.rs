@@ -3,10 +3,10 @@ use moly_kit::protocol::Picture;
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
-use crate::data::supported_providers;
 use crate::data::bot_fetcher::should_include_model;
 use crate::data::providers::ProviderType;
 use crate::data::store::Store;
+use crate::data::supported_providers;
 use crate::settings::provider_view::ProviderViewWidgetExt;
 use crate::settings::providers::ConnectionSettingsAction;
 use crate::shared::actions::ChatAction;
@@ -177,7 +177,9 @@ impl ChatScreen {
                                 // Keep all bots (including disabled ones) so historical messages can display bot names
                                 if !available_bots_clone.is_empty() {
                                     bots.retain(|bot| {
-                                        if let Some(provider_bot) = available_bots_clone.get(&bot.id) {
+                                        if let Some(provider_bot) =
+                                            available_bots_clone.get(&bot.id)
+                                        {
                                             providers_clone
                                                 .get(&provider_bot.provider_id)
                                                 .map_or(false, |p| p.enabled)
@@ -290,7 +292,9 @@ impl ChatScreen {
                                 // Keep all bots (including disabled ones) so historical messages can display bot names
                                 if !available_bots_clone.is_empty() {
                                     bots.retain(|bot| {
-                                        if let Some(provider_bot) = available_bots_clone.get(&bot.id) {
+                                        if let Some(provider_bot) =
+                                            available_bots_clone.get(&bot.id)
+                                        {
                                             providers_clone
                                                 .get(&provider_bot.provider_id)
                                                 .map_or(false, |p| p.enabled)

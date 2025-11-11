@@ -146,6 +146,7 @@ live_design! {
             }
 
             body = {
+                keyboard_min_shift: 75,
                 flow: Overlay
                 width: Fill,
                 height: Fill,

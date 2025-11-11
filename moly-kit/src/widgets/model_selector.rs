@@ -189,14 +189,17 @@ impl Widget for ModelSelector {
                     // Selected bot is no longer available (likely disabled)
                     // Clear selection and show default prompt
                     self.selected_bot_id = None;
-                    self.button(ids!(button)).set_text(cx, "Choose an AI assistant");
+                    self.button(ids!(button))
+                        .set_text(cx, "Choose an AI assistant");
                 }
             }
         }
 
         // Update button text based on selected bot
         // Read directly from controller state for perfect sync
-        let bot_id_from_controller = self.chat_controller.as_ref()
+        let bot_id_from_controller = self
+            .chat_controller
+            .as_ref()
             .and_then(|c| c.lock().unwrap().state().bot_id.clone());
 
         // Sync our local state with controller state
@@ -211,17 +214,22 @@ impl Widget for ModelSelector {
                     self.button(ids!(button)).set_text(cx, &bot.name);
                 } else {
                     // Fallback: If bot somehow not found, show default text
-                    self.button(ids!(button)).set_text(cx, "Choose an AI assistant");
+                    self.button(ids!(button))
+                        .set_text(cx, "Choose an AI assistant");
                 }
             }
         } else {
             // No bot selected, show default text
-            self.button(ids!(button)).set_text(cx, "Choose an AI assistant");
+            self.button(ids!(button))
+                .set_text(cx, "Choose an AI assistant");
         }
 
         // Set the chat controller and selected bot ID on the list before drawing
         if let Some(controller) = &self.chat_controller {
-            if let Some(mut list) = self.widget(ids!(options.list_container.list)).borrow_mut::<ModelSelectorList>() {
+            if let Some(mut list) = self
+                .widget(ids!(options.list_container.list))
+                .borrow_mut::<ModelSelectorList>()
+            {
                 list.chat_controller = Some(controller.clone());
                 list.selected_bot_id = self.selected_bot_id.clone();
             }
@@ -234,8 +242,14 @@ impl Widget for ModelSelector {
 impl WidgetMatchEvent for ModelSelector {
     fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, _scope: &mut Scope) {
         // Handle search input changes
-        if let Some(text) = self.text_input(ids!(options.search_container.search_input)).changed(actions) {
-            if let Some(mut list) = self.widget(ids!(options.list_container.list)).borrow_mut::<ModelSelectorList>() {
+        if let Some(text) = self
+            .text_input(ids!(options.search_container.search_input))
+            .changed(actions)
+        {
+            if let Some(mut list) = self
+                .widget(ids!(options.list_container.list))
+                .borrow_mut::<ModelSelectorList>()
+            {
                 list.search_filter = text;
                 list.items.clear();
                 list.total_height = None;
@@ -250,9 +264,10 @@ impl WidgetMatchEvent for ModelSelector {
 
                     // Dispatch mutation to controller instead of using Makepad actions
                     if let Some(controller) = &self.chat_controller {
-                        controller.lock().unwrap().dispatch_mutation(
-                            ChatStateMutation::SetBotId(Some(bot_id))
-                        );
+                        controller
+                            .lock()
+                            .unwrap()
+                            .dispatch_mutation(ChatStateMutation::SetBotId(Some(bot_id)));
                     }
 
                     self.button(ids!(button)).reset_hover(cx);
@@ -274,15 +289,15 @@ impl ModelSelector {
 
         let modal_content_height = 608.0; // list height (500) + search (40) + padding (68)
         let gap = 25.0;
-        
+
         let modal_x;
         let modal_y;
         let mut bg_view_visible = false;
-        
+
         // On desktop, align left edge with button, position above with gap
         if cx.display_context.is_desktop() {
             modal_x = button_rect.pos.x - gap; //+ gap; //- button_rect.size.x - gap;
-            modal_y = button_rect.pos.y - modal_content_height - gap - 5.0// gap;
+            modal_y = button_rect.pos.y - modal_content_height - gap - 5.0 // gap;
         } else {
             // On mobile, position the modal in the horizontal center, vertical bottom of the screen
             modal_x = 0.0;
@@ -328,7 +343,7 @@ impl ModelSelector {
                 },
             );
         }
-        
+
         modal.open(cx);
     }
 
@@ -338,7 +353,10 @@ impl ModelSelector {
     }
 
     fn clear_search(&mut self, cx: &mut Cx) {
-        if let Some(mut list) = self.widget(ids!(options.list_container.list)).borrow_mut::<ModelSelectorList>() {
+        if let Some(mut list) = self
+            .widget(ids!(options.list_container.list))
+            .borrow_mut::<ModelSelectorList>()
+        {
             list.search_filter.clear();
             list.items.clear();
             list.total_height = None;
@@ -364,7 +382,8 @@ impl ModelSelectorRef {
     }
 
     pub fn selected_bot_id(&self) -> Option<BotId> {
-        self.borrow().and_then(|inner| inner.selected_bot_id.clone())
+        self.borrow()
+            .and_then(|inner| inner.selected_bot_id.clone())
     }
 
     /// Set a custom grouping provider for organizing bots in the list
@@ -374,7 +393,10 @@ impl ModelSelectorRef {
     /// provider icons, custom display names, or different grouping logic.
     pub fn set_grouping(&mut self, grouping: Option<Box<dyn BotGrouping>>) {
         if let Some(inner) = self.borrow_mut() {
-            if let Some(mut list) = inner.widget(ids!(options.list_container.list)).borrow_mut::<ModelSelectorList>() {
+            if let Some(mut list) = inner
+                .widget(ids!(options.list_container.list))
+                .borrow_mut::<ModelSelectorList>()
+            {
                 list.grouping = grouping;
             }
         }
