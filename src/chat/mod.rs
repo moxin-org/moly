@@ -11,7 +11,6 @@ pub mod delete_chat_modal;
 pub mod entity_button;
 pub mod model_info;
 pub mod moly_bot_filter;
-pub mod moly_bot_grouping;
 pub mod shared;
 
 use makepad_widgets::Cx;

@@ -1,8 +1,6 @@
 use super::model_selector_item::ModelSelectorItemWidgetRefExt;
 use crate::{
-    controllers::chat::ChatController,
-    protocol::{Bot, BotId, Picture},
-    widgets::model_selector_grouping::{BotGrouping, DefaultBotGrouping},
+    GroupingFn, controllers::chat::ChatController, protocol::{Bot, BotId, Picture}
 };
 use makepad_widgets::*;
 use std::collections::HashMap;
@@ -98,7 +96,7 @@ pub struct ModelSelectorList {
     pub chat_controller: Option<Arc<Mutex<ChatController>>>,
 
     #[rust]
-    pub grouping: Option<Box<dyn BotGrouping>>,
+    pub grouping: Option<GroupingFn>,
 
     #[rust]
     pub filter: Option<Box<dyn BotFilter>>,
@@ -135,12 +133,17 @@ impl ModelSelectorList {
     fn draw_items(&mut self, cx: &mut Cx2d, bots: &[Bot]) {
         let mut total_height = 0.0;
 
-        // Use provided grouping or default
-        let grouping: &dyn BotGrouping = self
-            .grouping
-            .as_ref()
-            .map(|g| g.as_ref())
-            .unwrap_or(&DefaultBotGrouping as &dyn BotGrouping);
+        // Default grouping function: group by provider from bot ID
+        let default_grouping: GroupingFn = Arc::new(|bot: &Bot| {
+            let provider = bot.id.provider();
+            (
+                provider.to_string(),
+                provider.to_string(),
+                Some(bot.avatar.clone()),
+            )
+        });
+
+        let grouping_fn = self.grouping.as_ref().unwrap_or(&default_grouping);
 
         // Filter bots based on search
         let terms = self
@@ -169,27 +172,21 @@ impl ModelSelectorList {
             .collect();
 
         // Group bots by their group ID
-        let mut groups: HashMap<
-            String,
-            (
-                crate::widgets::model_selector_grouping::GroupInfo,
-                Vec<&Bot>,
-            ),
-        > = HashMap::new();
+        let mut groups: HashMap<String, ((String, Option<Picture>), Vec<&Bot>)> = HashMap::new();
         for bot in filtered_bots {
-            let group_info = grouping.get_group_info(bot);
+            let (group_id, group_label, group_icon) = grouping_fn(bot);
             groups
-                .entry(group_info.id.clone())
-                .or_insert_with(|| (group_info, Vec::new()))
+                .entry(group_id)
+                .or_insert_with(|| ((group_label, group_icon), Vec::new()))
                 .1
                 .push(bot);
         }
 
-        // Sort groups and render them
+        // Sort groups alphabetically by group ID
         let mut group_list: Vec<_> = groups.into_iter().collect();
-        group_list.sort_by(|(a_id, _), (b_id, _)| grouping.compare_groups(a_id, b_id));
+        group_list.sort_by(|(a_id, _), (b_id, _)| a_id.cmp(b_id));
 
-        for (group_id, (group_info, mut group_bots)) in group_list {
+        for (group_id, ((group_label, group_icon), mut group_bots)) in group_list {
             // Render section header
             let section_id = LiveId::from_str(&format!("section_{}", group_id));
             let section_label = self.items.get_or_insert(cx, section_id, |cx| {
@@ -198,10 +195,10 @@ impl ModelSelectorList {
 
             section_label
                 .label(ids!(label))
-                .set_text(cx, &group_info.label);
+                .set_text(cx, &group_label);
 
             // Display icon if available, otherwise show fallback (first letter)
-            if let Some(icon) = &group_info.icon {
+            if let Some(icon) = &group_icon {
                 match icon {
                     Picture::Dependency(dep) => {
                         section_label
@@ -220,7 +217,7 @@ impl ModelSelectorList {
                             .set_visible(cx, true);
                         section_label.label(ids!(icon_fallback_label)).set_text(
                             cx,
-                            &group_info.label.chars().next().unwrap_or('?').to_string(),
+                            &group_label.chars().next().unwrap_or('?').to_string(),
                         );
                     }
                 }
@@ -232,7 +229,7 @@ impl ModelSelectorList {
                     .set_visible(cx, true);
                 section_label.label(ids!(icon_fallback_label)).set_text(
                     cx,
-                    &group_info.label.chars().next().unwrap_or('?').to_string(),
+                    &group_label.chars().next().unwrap_or('?').to_string(),
                 );
             }
 
@@ -291,7 +288,7 @@ impl ModelSelectorListRef {
         }
     }
 
-    pub fn set_grouping(&mut self, grouping: Option<Box<dyn BotGrouping>>) {
+    pub fn set_grouping(&mut self, grouping: Option<GroupingFn>) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.grouping = grouping;
         }

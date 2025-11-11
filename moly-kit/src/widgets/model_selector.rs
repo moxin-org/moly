@@ -2,13 +2,7 @@ use makepad_widgets::*;
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    controllers::chat::{ChatController, ChatStateMutation},
-    protocol::BotId,
-    utils::makepad::events::EventExt,
-    widgets::model_selector_grouping::BotGrouping,
-    widgets::model_selector_item::ModelSelectorItemAction,
-    widgets::model_selector_list::ModelSelectorList,
-    widgets::moly_modal::MolyModalWidgetExt,
+    Bot, Picture, controllers::chat::{ChatController, ChatStateMutation}, protocol::BotId, utils::makepad::events::EventExt, widgets::{model_selector_item::ModelSelectorItemAction, model_selector_list::ModelSelectorList, moly_modal::MolyModalWidgetExt}
 };
 
 live_design! {
@@ -386,12 +380,17 @@ impl ModelSelectorRef {
             .and_then(|inner| inner.selected_bot_id.clone())
     }
 
-    /// Set a custom grouping provider for organizing bots in the list
+    /// Set a custom grouping function for organizing bots in the list
     ///
     /// By default, bots are grouped by their provider (extracted from BotId).
-    /// Applications can provide a custom BotGrouping implementation to add
+    /// Applications can provide a custom grouping function to add
     /// provider icons, custom display names, or different grouping logic.
-    pub fn set_grouping(&mut self, grouping: Option<Box<dyn BotGrouping>>) {
+    ///
+    /// The grouping function receives a bot and returns a tuple of:
+    /// - `group_id`: Unique identifier for the group (used for deduplication and sorting)
+    /// - `group_label`: Display name for the group header
+    /// - `group_icon`: Optional icon to display next to the group label
+    pub fn set_grouping(&mut self, grouping: Option<GroupingFn>) {
         if let Some(inner) = self.borrow_mut() {
             if let Some(mut list) = inner
                 .widget(ids!(options.list_container.list))
@@ -402,3 +401,5 @@ impl ModelSelectorRef {
         }
     }
 }
+
+pub type GroupingFn = Arc<dyn Fn(&Bot) -> (String, String, Option<Picture>) + Send + Sync>;

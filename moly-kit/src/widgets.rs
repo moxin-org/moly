@@ -20,9 +20,6 @@ mod slot;
 mod standard_message_content;
 mod theme_moly_kit_light;
 
-pub mod model_selector_grouping;
-pub use model_selector_grouping::*;
-
 pub mod model_selector_list;
 pub use model_selector_list::{BotFilter, ModelSelectorList};
 
