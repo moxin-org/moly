@@ -437,3 +437,41 @@ pub struct BotGroup {
 /// model_selector.set_grouping(Some(grouping));
 /// ```
 pub type GroupingFn = Arc<dyn Fn(&Bot) -> BotGroup + Send + Sync>;
+
+/// Creates a grouping function that queries data on-demand via a lookup closure.
+///
+/// This is more efficient than capturing data in the grouping closure, as it avoids
+/// data duplication and always returns fresh results from the source.
+///
+/// # Arguments
+/// * `lookup` - A closure that takes a BotId and returns grouping information, or None for default
+///
+/// # Example
+/// ```ignore
+/// use moly_kit::widgets::model_selector::{create_lookup_grouping, BotGroup};
+///
+/// let grouping = create_lookup_grouping(|bot_id| {
+///     let provider = get_provider_for_bot(bot_id)?;
+///     Some(BotGroup {
+///         id: provider.id,
+///         label: provider.name,
+///         icon: provider.icon,
+///     })
+/// });
+/// ```
+pub fn create_lookup_grouping<F>(lookup: F) -> GroupingFn
+where
+    F: Fn(&BotId) -> Option<BotGroup> + Send + Sync + 'static,
+{
+    Arc::new(move |bot: &Bot| {
+        lookup(&bot.id).unwrap_or_else(|| {
+            // Default fallback: group by provider from bot ID
+            let provider = bot.id.provider();
+            BotGroup {
+                id: provider.to_string(),
+                label: provider.to_string(),
+                icon: Some(bot.avatar.clone()),
+            }
+        })
+    })
+}

@@ -5,7 +5,6 @@ use moly_kit::controllers::chat::{
 };
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::utils::vec::{VecEffect, VecMutation};
-use moly_kit::widgets::model_selector::GroupingFn;
 use moly_kit::*;
 
 use crate::data::chats::chat::ChatID;
@@ -141,6 +140,12 @@ pub struct ChatView {
 
     #[rust]
     bot_context: Option<BotContext>,
+
+    #[rust]
+    prev_bot_context_id: Option<usize>,
+
+    #[rust]
+    prev_available_bots_len: usize,
 
     #[rust]
     message_updated_while_inactive: bool,
@@ -332,60 +337,62 @@ impl ChatView {
             }
         }
 
-        // Always rebuild grouping (not just when bot_context changes) because available_bots
-        // and providers can change independently when bots are enabled/disabled or providers sync
-        let mut bot_groups: HashMap<BotId, moly_kit::BotGroup> = HashMap::new();
+        // Only rebuild grouping and filter when bot_context or available_bots changes
+        // This handles both intentional changes (provider enable/disable) and
+        // async loading (bots fetched after bot_context created at startup)
+        let current_bots_len = store.chats.available_bots.len();
+        if self.prev_bot_context_id != store_bot_context_id
+            || self.prev_available_bots_len != current_bots_len {
+            self.prev_bot_context_id = store_bot_context_id;
+            self.prev_available_bots_len = current_bots_len;
 
-        for (bot_id, provider_bot) in &store.chats.available_bots {
-            if let Some(provider) = store.chats.providers.get(&provider_bot.provider_id) {
-                let icon = store
-                    .get_provider_icon(&provider.name)
-                    .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
-                bot_groups.insert(
-                    bot_id.clone(),
-                    moly_kit::BotGroup {
-                        id: provider.id.clone(),
-                        label: provider.name.clone(),
-                        icon,
-                    },
-                );
-            }
-        }
+            // Build lookup table for grouping
+            let mut bot_groups: HashMap<BotId, moly_kit::BotGroup> = HashMap::new();
 
-        // Create grouping callback that captures the lookup table
-        let grouping_fn: GroupingFn = Arc::new(move |bot: &moly_kit::protocol::Bot| {
-            bot_groups.get(&bot.id).cloned().unwrap_or_else(|| {
-                // Fallback: use provider from bot ID
-                let provider = bot.id.provider();
-                moly_kit::BotGroup {
-                    id: provider.to_string(),
-                    label: provider.to_string(),
-                    icon: Some(bot.avatar.clone()),
+            for (bot_id, provider_bot) in &store.chats.available_bots {
+                if let Some(provider) = store.chats.providers.get(&provider_bot.provider_id) {
+                    let icon = store
+                        .get_provider_icon(&provider.name)
+                        .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
+                    bot_groups.insert(
+                        bot_id.clone(),
+                        moly_kit::BotGroup {
+                            id: provider.id.clone(),
+                            label: provider.name.clone(),
+                            icon,
+                        },
+                    );
                 }
-            })
-        });
+            }
 
-        // Set grouping on the ModelSelector inside PromptInput
-        let chat = self.chat(ids!(chat));
-        chat.read()
-            .prompt_input_ref()
-            .widget(ids!(model_selector))
-            .as_model_selector()
-            .set_grouping(Some(grouping_fn));
+            // Create grouping function using lookup utility
+            use moly_kit::widgets::model_selector::create_lookup_grouping;
 
-        // Always update filter (not just when bot_context changes) because available_bots
-        // can change independently when bots are enabled/disabled
-        let chat = self.chat(ids!(chat));
-        if let Some(mut list) = chat
-            .read()
-            .prompt_input_ref()
-            .widget(ids!(model_selector.options.list_container.list))
-            .borrow_mut::<moly_kit::widgets::model_selector_list::ModelSelectorList>()
-        {
-            let filter = crate::chat::moly_bot_filter::MolyBotFilter::new(
-                store.chats.available_bots.clone(),
-            );
-            list.filter = Some(Box::new(filter));
+            let grouping_fn = create_lookup_grouping(move |bot_id: &BotId| {
+                bot_groups.get(bot_id).cloned()
+            });
+
+            // Set grouping on the ModelSelector inside PromptInput
+            let chat = self.chat(ids!(chat));
+            chat.read()
+                .prompt_input_ref()
+                .widget(ids!(model_selector))
+                .as_model_selector()
+                .set_grouping(Some(grouping_fn));
+
+            // Update filter when bot_context changes
+            let chat = self.chat(ids!(chat));
+            if let Some(mut list) = chat
+                .read()
+                .prompt_input_ref()
+                .widget(ids!(model_selector.options.list_container.list))
+                .borrow_mut::<moly_kit::widgets::model_selector_list::ModelSelectorList>()
+            {
+                let filter = crate::chat::moly_bot_filter::MolyBotFilter::new(
+                    store.chats.available_bots.clone(),
+                );
+                list.filter = Some(Box::new(filter));
+            }
         }
     }
 
