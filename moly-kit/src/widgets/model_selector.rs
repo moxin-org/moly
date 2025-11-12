@@ -189,41 +189,14 @@ impl Widget for ModelSelector {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        // Check if currently selected bot is still available (not disabled)
-        if let Some(bot_id) = &self.selected_bot_id.clone() {
-            if let Some(chat_controller) = &self.chat_controller {
-                let state = chat_controller.lock().unwrap().state().clone();
-                let bot_available = state.bots.iter().any(|b| &b.id == bot_id);
-
-                if !bot_available {
-                    // Selected bot is no longer available (likely disabled)
-                    // Clear selection and show default prompt
-                    self.selected_bot_id = None;
-                    self.button(ids!(button))
-                        .set_text(cx, "Choose an AI assistant");
-                }
-            }
-        }
-
-        // Update button text based on selected bot
-        // Read directly from controller state for perfect sync
-        let bot_id_from_controller = self
-            .chat_controller
-            .as_ref()
-            .and_then(|c| c.lock().unwrap().state().bot_id.clone());
-
-        // Sync our local state with controller state
-        if self.selected_bot_id != bot_id_from_controller {
-            self.selected_bot_id = bot_id_from_controller.clone();
-        }
-
-        if let Some(bot_id) = &bot_id_from_controller {
+        // Update button text based on selected bot from controller state
+        if let Some(bot_id) = &self.selected_bot_id {
             if let Some(chat_controller) = &self.chat_controller {
                 let state = chat_controller.lock().unwrap().state().clone();
                 if let Some(bot) = state.bots.iter().find(|b| &b.id == bot_id) {
                     self.button(ids!(button)).set_text(cx, &bot.name);
                 } else {
-                    // Fallback: If bot somehow not found, show default text
+                    // Bot not found in list (e.g., disabled) - show default text
                     self.button(ids!(button))
                         .set_text(cx, "Choose an AI assistant");
                 }

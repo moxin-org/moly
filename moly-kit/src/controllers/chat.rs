@@ -265,8 +265,10 @@ impl ChatController {
         }
 
         match task {
-            ChatTask::Send(bot_id) => {
-                self.handle_send(bot_id);
+            ChatTask::Send => {
+                if let Some(bot_id) = self.state.bot_id.clone() {
+                    self.handle_send(bot_id);
+                }
             }
             ChatTask::Stop => {
                 self.clear_streaming_artifacts();
@@ -577,8 +579,8 @@ impl ChatController {
                     ..Default::default()
                 }));
 
-                if let Some(bot_id) = bot_id {
-                    c.dispatch_task(ChatTask::Send(bot_id));
+                if bot_id.is_some() {
+                    c.dispatch_task(ChatTask::Send);
                 }
             });
         }));

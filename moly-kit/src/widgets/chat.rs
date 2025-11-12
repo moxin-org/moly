@@ -97,17 +97,18 @@ impl Chat {
 
     fn handle_realtime(&mut self, _cx: &mut Cx) {
         if self.realtime(ids!(realtime)).connection_requested()
-            && let Some(bot_id) = self
+            && self
                 .chat_controller
                 .as_ref()
-                .and_then(|c| c.lock().unwrap().state().bot_id.clone())
+                .map(|c| c.lock().unwrap().state().bot_id.is_some())
+                .unwrap_or(false)
         {
             self.chat_controller
                 .as_mut()
                 .unwrap()
                 .lock()
                 .unwrap()
-                .dispatch_task(ChatTask::Send(bot_id));
+                .dispatch_task(ChatTask::Send);
         }
     }
 
@@ -252,15 +253,16 @@ impl Chat {
                         .unwrap()
                         .dispatch_mutation(VecMutation::Set(messages));
 
-                    if let Some(bot_id) = self
+                    if self
                         .chat_controller
                         .as_ref()
-                        .and_then(|c| c.lock().unwrap().state().bot_id.clone())
+                        .map(|c| c.lock().unwrap().state().bot_id.is_some())
+                        .unwrap_or(false)
                     {
                         chat_controller
                             .lock()
                             .unwrap()
-                            .dispatch_task(ChatTask::Send(bot_id));
+                            .dispatch_task(ChatTask::Send);
                     }
                 }
                 MessagesAction::ToolApprove(index) => {
@@ -330,10 +332,11 @@ impl Chat {
         let chat_controller = self.chat_controller.clone().unwrap();
 
         if prompt.read().has_send_task()
-            && let Some(bot_id) = self
+            && self
                 .chat_controller
                 .as_ref()
-                .and_then(|c| c.lock().unwrap().state().bot_id.clone())
+                .map(|c| c.lock().unwrap().state().bot_id.is_some())
+                .unwrap_or(false)
         {
             let text = prompt.text();
             let attachments = prompt
@@ -362,7 +365,7 @@ impl Chat {
             chat_controller
                 .lock()
                 .unwrap()
-                .dispatch_task(ChatTask::Send(bot_id));
+                .dispatch_task(ChatTask::Send);
         } else if prompt.read().has_stop_task() {
             chat_controller
                 .lock()
@@ -374,17 +377,18 @@ impl Chat {
     fn handle_call(&mut self, _cx: &mut Cx) {
         // Use the standard send mechanism which will return the upgrade
         // The upgrade message will be processed in the plugin.
-        if let Some(bot_id) = self
+        if self
             .chat_controller
             .as_ref()
-            .and_then(|c| c.lock().unwrap().state().bot_id.clone())
+            .map(|c| c.lock().unwrap().state().bot_id.is_some())
+            .unwrap_or(false)
         {
             self.chat_controller
                 .as_mut()
                 .unwrap()
                 .lock()
                 .unwrap()
-                .dispatch_task(ChatTask::Send(bot_id));
+                .dispatch_task(ChatTask::Send);
         }
     }
 
@@ -519,6 +523,18 @@ impl ChatControllerPlugin for Plugin {
                 }
                 ChatStateMutation::MutateBots(_) => {
                     self.ui.defer(|chat, cx, _| {
+                        // Check if currently selected bot is still in the list
+                        if let Some(controller) = &chat.chat_controller {
+                            let mut lock = controller.lock().unwrap();
+                            if let Some(bot_id) = lock.state().bot_id.clone() {
+                                let bot_still_available = lock.state().bots.iter().any(|b| &b.id == &bot_id);
+                                if !bot_still_available {
+                                    // Selected bot was removed/disabled - clear selection
+                                    lock.dispatch_mutation(ChatStateMutation::SetBotId(None));
+                                }
+                            }
+                        }
+
                         chat.handle_capabilities(cx);
                     });
                 }
