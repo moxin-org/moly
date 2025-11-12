@@ -255,6 +255,12 @@ impl DemoChat {
                 let mut openai = OpenAIClient::new(openai_url.into());
                 let _ = openai.set_key(key);
                 client.add_client(Box::new(openai));
+
+                // Realtime client
+                let openai_realtime_url = "wss://api.openai.com/v1/realtime";
+                let mut openai_realtime = OpenAIRealtimeClient::new(openai_realtime_url.into());
+                let _ = openai_realtime.set_key(key);
+                client.add_client(Box::new(openai_realtime));
             }
 
             // Only add OpenRouter client if API key is present
