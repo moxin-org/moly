@@ -79,10 +79,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
             .dispatch_mutation(VecMutation::Push(message));
 
-        controller
-            .lock()
-            .unwrap()
-            .dispatch_task(ChatTask::Send);
+        controller.lock().unwrap().dispatch_task(ChatTask::Send);
 
         while let Ok(event) = rx.recv() {
             match event {

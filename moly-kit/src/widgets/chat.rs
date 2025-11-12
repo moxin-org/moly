@@ -527,7 +527,8 @@ impl ChatControllerPlugin for Plugin {
                         if let Some(controller) = &chat.chat_controller {
                             let mut lock = controller.lock().unwrap();
                             if let Some(bot_id) = lock.state().bot_id.clone() {
-                                let bot_still_available = lock.state().bots.iter().any(|b| &b.id == &bot_id);
+                                let bot_still_available =
+                                    lock.state().bots.iter().any(|b| &b.id == &bot_id);
                                 if !bot_still_available {
                                     // Selected bot was removed/disabled - clear selection
                                     lock.dispatch_mutation(ChatStateMutation::SetBotId(None));
