@@ -391,13 +391,27 @@ impl ModelSelectorRef {
     }
 }
 
+/// Defines how a bot should be grouped in the model selector.
+///
+/// This struct is returned by the grouping function to specify:
+/// - A unique group identifier for deduplication and sorting
+/// - A display label shown in the group header
+/// - An optional icon displayed next to the group label
+#[derive(Clone, Debug)]
+pub struct BotGroup {
+    /// Unique identifier for the group (used for deduplication and sorting)
+    pub id: String,
+    /// Display name shown in the group header
+    pub label: String,
+    /// Optional icon displayed next to the group label
+    pub icon: Option<Picture>,
+}
+
 /// Callback function that determines how bots are grouped in the model selector.
 ///
 /// Applications can provide a custom grouping function to organize models by provider,
-/// capabilities, or any other criteria. The function receives a bot and returns a tuple:
-/// - `group_id`: Unique identifier for the group (used for deduplication and sorting)
-/// - `group_label`: Display name shown in the group header
-/// - `group_icon`: Optional icon displayed next to the group label
+/// capabilities, or any other criteria. The function receives a bot and returns a
+/// [`BotGroup`] that specifies how that bot should be grouped.
 ///
 /// # Default Behavior
 /// If no grouping function is provided, bots are grouped by their provider
@@ -405,7 +419,7 @@ impl ModelSelectorRef {
 ///
 /// # Example
 /// ```ignore
-/// use moly_kit::widgets::model_selector::GroupingFn;
+/// use moly_kit::widgets::model_selector::{GroupingFn, BotGroup};
 /// use std::sync::Arc;
 ///
 /// // Group by provider with custom names and icons
@@ -413,9 +427,13 @@ impl ModelSelectorRef {
 ///     let provider_id = get_provider_id(&bot.id);
 ///     let provider_name = get_friendly_name(&provider_id);
 ///     let icon = get_provider_icon(&provider_id);
-///     (provider_id, provider_name, icon)
+///     BotGroup {
+///         id: provider_id,
+///         label: provider_name,
+///         icon,
+///     }
 /// });
 ///
 /// model_selector.set_grouping(Some(grouping));
 /// ```
-pub type GroupingFn = Arc<dyn Fn(&Bot) -> (String, String, Option<Picture>) + Send + Sync>;
+pub type GroupingFn = Arc<dyn Fn(&Bot) -> BotGroup + Send + Sync>;

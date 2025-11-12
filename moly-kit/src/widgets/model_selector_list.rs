@@ -1,6 +1,6 @@
 use super::model_selector_item::ModelSelectorItemWidgetRefExt;
 use crate::{
-    GroupingFn,
+    BotGroup, GroupingFn,
     controllers::chat::ChatController,
     protocol::{Bot, BotId, Picture},
 };
@@ -139,11 +139,11 @@ impl ModelSelectorList {
         // Default grouping function: group by provider from bot ID
         let default_grouping: GroupingFn = Arc::new(|bot: &Bot| {
             let provider = bot.id.provider();
-            (
-                provider.to_string(),
-                provider.to_string(),
-                Some(bot.avatar.clone()),
-            )
+            BotGroup {
+                id: provider.to_string(),
+                label: provider.to_string(),
+                icon: Some(bot.avatar.clone()),
+            }
         });
 
         let grouping_fn = self.grouping.as_ref().unwrap_or(&default_grouping);
@@ -177,10 +177,10 @@ impl ModelSelectorList {
         // Group bots by their group ID
         let mut groups: HashMap<String, ((String, Option<Picture>), Vec<&Bot>)> = HashMap::new();
         for bot in filtered_bots {
-            let (group_id, group_label, group_icon) = grouping_fn(bot);
+            let group = grouping_fn(bot);
             groups
-                .entry(group_id)
-                .or_insert_with(|| ((group_label, group_icon), Vec::new()))
+                .entry(group.id)
+                .or_insert_with(|| ((group.label, group.icon), Vec::new()))
                 .1
                 .push(bot);
         }
