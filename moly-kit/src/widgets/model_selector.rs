@@ -84,10 +84,14 @@ live_design! {
                 draw_text: {
                     text_style: <THEME_FONT_REGULAR>{font_size: 11}
                     color: #000
-                    color_hover: #000
+                    color_hover: #98A2B3
                     color_focus: #000
                     color_empty: #98A2B3
                     color_empty_focus: #98A2B3
+                    color_empty_hover: #98A2B3
+                }
+                draw_cursor: {
+                    color: #000
                 }
                 empty_text: "Search models"
             }
@@ -99,6 +103,11 @@ live_design! {
             scroll_bars: {
                 scroll_bar_y: {
                     drag_scrolling: true,
+                    draw_bg: {
+                        color: #D9
+                        color_hover: #888
+                        color_drag: #777
+                    }
                 }
             }
 

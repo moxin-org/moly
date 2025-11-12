@@ -15,9 +15,10 @@ live_design! {
 
         show_bg: true,
         draw_bg: {
+            color: #F9
             instance hover: 0.0,
             instance selected: 0.0,
-            instance color_hover: #F9FAFB,
+            instance color_hover: #E9,
 
             fn pixel(self) -> vec4 {
                 return mix(self.color, self.color_hover, self.hover);

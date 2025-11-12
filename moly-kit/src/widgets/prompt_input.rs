@@ -154,9 +154,7 @@ live_design! {
                         color_focus: #d9e7e9
                     }
                     draw_cursor: {
-                        fn pixel(self) -> vec4 {
-                            return #bbb;
-                        }
+                        color: #000
                     }
                 }
                 right = {
