@@ -447,6 +447,9 @@ impl PromptInput {
         #[cfg(feature = "realtime")]
         self.button(ids!(audio)).set_visible(cx, supports_realtime);
 
+        // Hide send button for realtime models since audio button serves same purpose
+        self.button(ids!(submit)).set_visible(cx, !supports_realtime);
+
         if supports_realtime {
             self.interactivity = Interactivity::Disabled;
             self.text_input_ref().set_is_read_only(cx, true);
