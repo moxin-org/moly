@@ -128,10 +128,47 @@ impl Widget for MolyModal {
 }
 
 impl MolyModal {
+    #[deprecated(note = "Use open_as_dialog or open_as_popup instead")]
     pub fn open(&mut self, cx: &mut Cx) {
         self.opened = true;
         self.draw_bg.redraw(cx);
         cx.sweep_lock(self.draw_bg.area());
+    }
+
+    pub fn open_as_dialog(&mut self, cx: &mut Cx) {
+        self.apply_over(
+            cx,
+            live! {
+                align: {x: 0.5, y: 0.5}
+                content: {
+                    margin: 0,
+                }
+                bg_view: {
+                    visible: true
+                }
+            },
+        );
+
+        #[allow(deprecated)]
+        self.open(cx);
+    }
+
+    pub fn open_as_popup(&mut self, cx: &mut Cx, pos: Vec2) {
+        self.apply_over(
+            cx,
+            live! {
+                align: {x: 0.0, y: 0.0}
+                content: {
+                    margin: {left: (pos.x), top: (pos.y) }
+                }
+                bg_view: {
+                    visible: false
+                }
+            },
+        );
+
+        #[allow(deprecated)]
+        self.open(cx);
     }
 
     pub fn close(&mut self, cx: &mut Cx) {
@@ -149,9 +186,22 @@ impl MolyModal {
 }
 
 impl MolyModalRef {
+    #[deprecated(note = "Use open_as_dialog or open_as_popup instead")]
     pub fn open(&self, cx: &mut Cx) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.open(cx);
+        }
+    }
+
+    pub fn open_as_dialog(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.open_as_dialog(cx);
+        }
+    }
+
+    pub fn open_as_popup(&self, cx: &mut Cx, pos: Vec2) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.open_as_popup(cx, pos);
         }
     }
 
