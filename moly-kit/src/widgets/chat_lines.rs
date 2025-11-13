@@ -10,6 +10,7 @@ live_design! {
     use crate::widgets::message_loading::*;
     use crate::widgets::avatar::*;
     use crate::widgets::slot::*;
+    use crate::widgets::hook_view::*;
 
     Sender = <View> {
         height: Fit,
@@ -108,7 +109,7 @@ live_design! {
         }
     }
 
-    pub ChatLine = <RoundedView> {
+    pub ChatLine = <HookView> {
         flow: Down,
         height: Fit,
         margin: {left: 10, right: 10}
