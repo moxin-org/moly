@@ -11,6 +11,7 @@ live_design! {
     use crate::widgets::avatar::*;
     use crate::widgets::slot::*;
     use crate::widgets::hook_view::*;
+    use crate::widgets::moly_modal::*;
 
     Sender = <View> {
         height: Fit,
@@ -28,42 +29,50 @@ live_design! {
     }
 
     ActionButton = <Button> {
-        width: 14
-        height: 14
-        icon_walk: {width: 14, height: 14},
-        padding: 0,
-        draw_icon: {
-            color: #BDBDBD,
-            color_hover: #x0
-            color_down: #ff00
-            color_focus: #BDBDBD
-        }
+        width: Fit
+        height: Fit
+        padding: { top: 12, right: 12, bottom: 12, left: 12}
+        align: {x: 0.0, y: 0.5}
+
         draw_bg: {
-            fn pixel(self) -> vec4 {
-                return #0000
+            border_size: 0,
+            border_radius: 0
+        }
+
+        icon_walk: {width: 12, height: 12}
+        draw_icon: {
+            fn get_color(self) -> vec4 {
+                return #000;
+            }
+        }
+
+        draw_text: {
+            text_style: {font_size: 9},
+            fn get_color(self) -> vec4 {
+                return #000;
             }
         }
     }
 
-    Actions = <View> {
-        align: {y: 0.5},
-        spacing: 6,
-        copy = <ActionButton> {
-            draw_icon: {
-                svg_file: dep("crate://self/resources/copy.svg")
-            }
-        }
-        edit = <ActionButton> {
-            draw_icon: {
-                svg_file: dep("crate://self/resources/edit.svg")
-            }
-        }
-        delete = <ActionButton> {
-            draw_icon: {
-                svg_file: dep("crate://self/resources/delete.svg")
-            }
-        }
-    }
+    // Actions = <View> {
+    //     align: {y: 0.5},
+    //     spacing: 6,
+    //     copy = <ActionButton> {
+    //         draw_icon: {
+    //             svg_file: dep("crate://self/resources/copy.svg")
+    //         }
+    //     }
+    //     edit = <ActionButton> {
+    //         draw_icon: {
+    //             svg_file: dep("crate://self/resources/edit.svg")
+    //         }
+    //     }
+    //     delete = <ActionButton> {
+    //         draw_icon: {
+    //             svg_file: dep("crate://self/resources/delete.svg")
+    //         }
+    //     }
+    // }
 
     EditActionButton = <Button> {
         padding: {left: 10, right: 10, top: 4, bottom: 4},
@@ -125,10 +134,52 @@ live_design! {
             editor = <Editor> { margin: { left: 32 }, visible: false }
         }
         actions_section = <View> {
+            flow: Overlay,
             margin: {left: 32, top: 2, bottom: 5},
             height: 22,
-            actions = <Actions> { visible: false }
             edit_actions = <EditActions> { visible: false }
+            actions_modal = <MolyModal> {
+                content: <RoundedView> {
+                    width: Fit,
+                    height: Fit,
+                    flow: Down,
+
+                    draw_bg: {
+                        color: #fff,
+                        border_size: 1.0,
+                        border_color: #D0D5DD,
+                    }
+
+                    <ActionButton> {
+                        text: "Copy"
+                        draw_icon: {
+                            svg_file: dep("crate://self/resources/copy.svg")
+                        }
+                    }
+
+                    <ActionButton> {
+                        text: "Edit"
+                        draw_icon: {
+                            svg_file: dep("crate://self/resources/edit.svg")
+                        }
+                    }
+
+                    <ActionButton> {
+                        text: "Delete"
+                        draw_icon: {
+                            svg_file: dep("crate://self/resources/delete.svg")
+                            fn get_color(self) -> vec4 {
+                                return #B42318;
+                            }
+                        }
+                        draw_text: {
+                            fn get_color(self) -> vec4 {
+                                return #B42318;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

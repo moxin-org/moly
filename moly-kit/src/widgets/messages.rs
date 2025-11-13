@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::{
+    MolyModalWidgetExt,
     controllers::chat::ChatController,
     protocol::*,
     utils::makepad::{events::EventExt, portal_list::ItemsRangeIter, ui_runner::DeferRedraw},
@@ -519,6 +520,8 @@ impl Messages {
                                     "HookView right click detected in message index {} at abs pos {:?}",
                                     index, fu.abs
                                 );
+
+                                hook.moly_modal(ids!(actions_modal)).open_as_popup(cx, fu.abs.into_vec2());
                             }
                         }
                         _ => {}
