@@ -3,8 +3,10 @@ use moly_kit::protocol::Picture;
 use moly_kit::utils::asynchronous::spawn;
 use moly_kit::*;
 
+use crate::data::bot_fetcher::should_include_model;
 use crate::data::providers::ProviderType;
 use crate::data::store::Store;
+use crate::data::supported_providers;
 use crate::settings::provider_view::ProviderViewWidgetExt;
 use crate::settings::providers::ConnectionSettingsAction;
 use crate::shared::actions::ChatAction;
@@ -140,6 +142,11 @@ impl ChatScreen {
 
         let multi_client = {
             let mut multi_client = MultiClient::new();
+            let supported_providers_list = supported_providers::load_supported_providers();
+
+            // Clone store data for use in MapClient closures to check enabled status
+            let available_bots = store.chats.available_bots.clone();
+            let providers = store.chats.providers.clone();
 
             for (_key, provider) in store.chats.providers.iter() {
                 match provider.provider_type {
@@ -155,14 +162,50 @@ impl ChatScreen {
                             client.set_tools_enabled(provider.tools_enabled);
 
                             let mut client = MapClient::from(client);
-                            if let Some(icon) = store.get_provider_icon(&provider.name) {
-                                client.set_map_bots(move |mut bots| {
+
+                            // Clone supported models for this provider (if any)
+                            let supported_models = supported_providers_list
+                                .iter()
+                                .find(|sp| sp.id == provider.id)
+                                .and_then(|sp| sp.supported_models.clone());
+
+                            let icon_opt = store.get_provider_icon(&provider.name);
+                            let available_bots_clone = available_bots.clone();
+                            let providers_clone = providers.clone();
+                            client.set_map_bots(move |mut bots| {
+                                // Filter by provider enabled status only
+                                // Keep all bots (including disabled ones) so historical messages can display bot names
+                                if !available_bots_clone.is_empty() {
+                                    bots.retain(|bot| {
+                                        if let Some(provider_bot) =
+                                            available_bots_clone.get(&bot.id)
+                                        {
+                                            providers_clone
+                                                .get(&provider_bot.provider_id)
+                                                .map_or(false, |p| p.enabled)
+                                        } else {
+                                            // Bot not in available_bots yet, let it through
+                                            true
+                                        }
+                                    });
+                                }
+
+                                // Apply basic filter (non-chat models)
+                                bots.retain(|bot| should_include_model(&bot.name));
+
+                                // Apply supported models whitelist if available
+                                if let Some(ref models) = supported_models {
+                                    bots.retain(|bot| models.contains(&bot.name));
+                                }
+
+                                // Set icon if available
+                                if let Some(ref icon) = icon_opt {
                                     for bot in bots.iter_mut() {
                                         bot.avatar = Picture::Dependency(icon.clone());
                                     }
-                                    bots
-                                });
-                            }
+                                }
+                                bots
+                            });
 
                             multi_client.add_client(Box::new(client));
                         }
@@ -173,6 +216,37 @@ impl ChatScreen {
                         if let Some(key) = provider.api_key.as_ref() {
                             let _ = client.set_key(&key);
                         }
+
+                        let mut client = MapClient::from(client);
+
+                        let icon_opt = store.get_provider_icon(&provider.name);
+                        let available_bots_clone = available_bots.clone();
+                        let providers_clone = providers.clone();
+                        client.set_map_bots(move |mut bots| {
+                            // Filter by enabled status only if bot exists in available_bots
+                            // If available_bots is empty (initial load), let bots through
+                            if !available_bots_clone.is_empty() {
+                                bots.retain(|bot| {
+                                    if let Some(provider_bot) = available_bots_clone.get(&bot.id) {
+                                        provider_bot.enabled
+                                            && providers_clone
+                                                .get(&provider_bot.provider_id)
+                                                .map_or(false, |p| p.enabled)
+                                    } else {
+                                        // Bot not in available_bots yet, let it through
+                                        true
+                                    }
+                                });
+                            }
+
+                            // Set icon if available
+                            if let Some(ref icon) = icon_opt {
+                                for bot in bots.iter_mut() {
+                                    bot.avatar = Picture::Dependency(icon.clone());
+                                }
+                            }
+                            bots
+                        });
 
                         multi_client.add_client(Box::new(client));
                     }
@@ -203,14 +277,50 @@ impl ChatScreen {
                             client.set_tools_enabled(provider.tools_enabled);
 
                             let mut client = MapClient::from(client);
-                            if let Some(icon) = store.get_provider_icon(&provider.name) {
-                                client.set_map_bots(move |mut bots| {
+
+                            // Clone supported models for this provider (if any)
+                            let supported_models = supported_providers_list
+                                .iter()
+                                .find(|sp| sp.id == provider.id)
+                                .and_then(|sp| sp.supported_models.clone());
+
+                            let icon_opt = store.get_provider_icon(&provider.name);
+                            let available_bots_clone = available_bots.clone();
+                            let providers_clone = providers.clone();
+                            client.set_map_bots(move |mut bots| {
+                                // Filter by provider enabled status only
+                                // Keep all bots (including disabled ones) so historical messages can display bot names
+                                if !available_bots_clone.is_empty() {
+                                    bots.retain(|bot| {
+                                        if let Some(provider_bot) =
+                                            available_bots_clone.get(&bot.id)
+                                        {
+                                            providers_clone
+                                                .get(&provider_bot.provider_id)
+                                                .map_or(false, |p| p.enabled)
+                                        } else {
+                                            // Bot not in available_bots yet, let it through
+                                            true
+                                        }
+                                    });
+                                }
+
+                                // Apply basic filter (non-chat models)
+                                bots.retain(|bot| should_include_model(&bot.name));
+
+                                // Apply supported models whitelist if available
+                                if let Some(ref models) = supported_models {
+                                    bots.retain(|bot| models.contains(&bot.name));
+                                }
+
+                                // Set icon if available
+                                if let Some(ref icon) = icon_opt {
                                     for bot in bots.iter_mut() {
                                         bot.avatar = Picture::Dependency(icon.clone());
                                     }
-                                    bots
-                                });
-                            }
+                                }
+                                bots
+                            });
 
                             multi_client.add_client(Box::new(client));
                         }
@@ -222,14 +332,45 @@ impl ChatScreen {
                         }
 
                         let mut client = MapClient::from(client);
-                        if let Some(icon) = store.get_provider_icon(&provider.name) {
-                            client.set_map_bots(move |mut bots| {
+
+                        // Clone supported models for this provider (if any)
+                        let supported_models = supported_providers_list
+                            .iter()
+                            .find(|sp| sp.id == provider.id)
+                            .and_then(|sp| sp.supported_models.clone());
+
+                        let icon_opt = store.get_provider_icon(&provider.name);
+                        let available_bots_clone = available_bots.clone();
+                        let providers_clone = providers.clone();
+                        client.set_map_bots(move |mut bots| {
+                            // Filter by provider enabled status only
+                            // Keep all bots (including disabled ones) so historical messages can display bot names
+                            if !available_bots_clone.is_empty() {
+                                bots.retain(|bot| {
+                                    if let Some(provider_bot) = available_bots_clone.get(&bot.id) {
+                                        providers_clone
+                                            .get(&provider_bot.provider_id)
+                                            .map_or(false, |p| p.enabled)
+                                    } else {
+                                        // Bot not in available_bots yet, let it through
+                                        true
+                                    }
+                                });
+                            }
+
+                            // No basic filter for DeepInquire, just apply supported models whitelist
+                            if let Some(ref models) = supported_models {
+                                bots.retain(|bot| models.contains(&bot.name));
+                            }
+
+                            // Set icon if available
+                            if let Some(ref icon) = icon_opt {
                                 for bot in bots.iter_mut() {
                                     bot.avatar = Picture::Dependency(icon.clone());
                                 }
-                                bots
-                            });
-                        }
+                            }
+                            bots
+                        });
 
                         multi_client.add_client(Box::new(client));
                     }

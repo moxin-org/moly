@@ -436,8 +436,14 @@ impl Messages {
 
                     let (name, avatar) = bot
                         .as_ref()
-                        .map(|b| (b.name.as_str(), b.avatar.clone()))
-                        .unwrap_or(("Unknown bot", Picture::Grapheme("B".into())));
+                        .map(|b| (b.name.clone(), b.avatar.clone()))
+                        .unwrap_or_else(|| {
+                            // Fallback: extract model name from BotId
+                            let model_name = format!("{} (unavailable)", id.id());
+                            let first_char = model_name.chars().next().unwrap_or('B');
+                            let avatar = Picture::Grapheme(first_char.to_uppercase().to_string());
+                            (model_name, avatar)
+                        });
 
                     let item =
                         if message.metadata.is_writing() && message.content.is_empty() {
@@ -474,7 +480,7 @@ impl Messages {
                         };
 
                     item.avatar(ids!(avatar)).borrow_mut().unwrap().avatar = Some(avatar);
-                    item.label(ids!(name)).set_text(cx, name);
+                    item.label(ids!(name)).set_text(cx, name.as_str());
 
                     let mut slot = item.slot(ids!(content));
                     if let Some(custom_content) = bot_client.as_mut().and_then(|bc| {

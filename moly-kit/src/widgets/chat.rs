@@ -49,12 +49,6 @@ pub struct Chat {
     #[rust]
     chat_controller: Option<Arc<Mutex<ChatController>>>,
 
-    /// The id of the bot the chat will message when sending.
-    // TODO: Can this be live?
-    // TODO: Default to the first bot in [BotContext] if `None`.
-    #[rust]
-    bot_id: Option<BotId>,
-
     /// Toggles response streaming on or off. Default is on.
     // TODO: Implement this.
     #[live(true)]
@@ -103,14 +97,18 @@ impl Chat {
 
     fn handle_realtime(&mut self, _cx: &mut Cx) {
         if self.realtime(ids!(realtime)).connection_requested()
-            && let Some(bot_id) = self.bot_id.clone()
+            && self
+                .chat_controller
+                .as_ref()
+                .map(|c| c.lock().unwrap().state().bot_id.is_some())
+                .unwrap_or(false)
         {
             self.chat_controller
                 .as_mut()
                 .unwrap()
                 .lock()
                 .unwrap()
-                .dispatch_task(ChatTask::Send(bot_id));
+                .dispatch_task(ChatTask::Send);
         }
     }
 
@@ -176,14 +174,11 @@ impl Chat {
 
     fn handle_capabilities(&mut self, cx: &mut Cx) {
         let capabilities = self.chat_controller.as_ref().and_then(|controller| {
-            self.bot_id.as_ref().and_then(|bot_id| {
-                controller
-                    .lock()
-                    .unwrap()
-                    .state()
-                    .get_bot(bot_id)
-                    .map(|bot| bot.capabilities.clone())
-            })
+            let lock = controller.lock().unwrap();
+            let bot_id = lock.state().bot_id.as_ref()?;
+            lock.state()
+                .get_bot(bot_id)
+                .map(|bot| bot.capabilities.clone())
         });
 
         self.prompt_input_ref()
@@ -258,11 +253,16 @@ impl Chat {
                         .unwrap()
                         .dispatch_mutation(VecMutation::Set(messages));
 
-                    if let Some(bot_id) = self.bot_id.clone() {
+                    if self
+                        .chat_controller
+                        .as_ref()
+                        .map(|c| c.lock().unwrap().state().bot_id.is_some())
+                        .unwrap_or(false)
+                    {
                         chat_controller
                             .lock()
                             .unwrap()
-                            .dispatch_task(ChatTask::Send(bot_id));
+                            .dispatch_task(ChatTask::Send);
                     }
                 }
                 MessagesAction::ToolApprove(index) => {
@@ -277,7 +277,8 @@ impl Chat {
                     lock.dispatch_mutation(VecMutation::Update(index, updated_message));
 
                     let tools = lock.state().messages[index].content.tool_calls.clone();
-                    lock.dispatch_task(ChatTask::Execute(tools, self.bot_id.clone()));
+                    let bot_id = lock.state().bot_id.clone();
+                    lock.dispatch_task(ChatTask::Execute(tools, bot_id));
                 }
                 MessagesAction::ToolDeny(index) => {
                     let mut lock = chat_controller.lock().unwrap();
@@ -331,7 +332,11 @@ impl Chat {
         let chat_controller = self.chat_controller.clone().unwrap();
 
         if prompt.read().has_send_task()
-            && let Some(bot_id) = self.bot_id.clone()
+            && self
+                .chat_controller
+                .as_ref()
+                .map(|c| c.lock().unwrap().state().bot_id.is_some())
+                .unwrap_or(false)
         {
             let text = prompt.text();
             let attachments = prompt
@@ -360,7 +365,7 @@ impl Chat {
             chat_controller
                 .lock()
                 .unwrap()
-                .dispatch_task(ChatTask::Send(bot_id));
+                .dispatch_task(ChatTask::Send);
         } else if prompt.read().has_stop_task() {
             chat_controller
                 .lock()
@@ -372,13 +377,18 @@ impl Chat {
     fn handle_call(&mut self, _cx: &mut Cx) {
         // Use the standard send mechanism which will return the upgrade
         // The upgrade message will be processed in the plugin.
-        if let Some(bot_id) = self.bot_id.clone() {
+        if self
+            .chat_controller
+            .as_ref()
+            .map(|c| c.lock().unwrap().state().bot_id.is_some())
+            .unwrap_or(false)
+        {
             self.chat_controller
                 .as_mut()
                 .unwrap()
                 .lock()
                 .unwrap()
-                .dispatch_task(ChatTask::Send(bot_id));
+                .dispatch_task(ChatTask::Send);
         }
     }
 
@@ -391,19 +401,6 @@ impl Chat {
             .unwrap()
             .state()
             .is_streaming
-    }
-
-    pub fn set_bot_id(&mut self, cx: &mut Cx, bot_id: Option<BotId>) {
-        if self.bot_id == bot_id {
-            return;
-        }
-
-        self.bot_id = bot_id;
-        self.handle_capabilities(cx);
-    }
-
-    pub fn bot_id(&self) -> Option<&BotId> {
-        self.bot_id.as_ref()
     }
 
     pub fn set_chat_controller(
@@ -422,6 +419,9 @@ impl Chat {
 
         self.messages_ref().write().chat_controller = self.chat_controller.clone();
         self.realtime(ids!(realtime))
+            .set_chat_controller(self.chat_controller.clone());
+        self.prompt_input_ref()
+            .write()
             .set_chat_controller(self.chat_controller.clone());
 
         if let Some(controller) = self.chat_controller.as_ref() {
@@ -523,6 +523,24 @@ impl ChatControllerPlugin for Plugin {
                 }
                 ChatStateMutation::MutateBots(_) => {
                     self.ui.defer(|chat, cx, _| {
+                        // Check if currently selected bot is still in the list
+                        if let Some(controller) = &chat.chat_controller {
+                            let mut lock = controller.lock().unwrap();
+                            if let Some(bot_id) = lock.state().bot_id.clone() {
+                                let bot_still_available =
+                                    lock.state().bots.iter().any(|b| &b.id == &bot_id);
+                                if !bot_still_available {
+                                    // Selected bot was removed/disabled - clear selection
+                                    lock.dispatch_mutation(ChatStateMutation::SetBotId(None));
+                                }
+                            }
+                        }
+
+                        chat.handle_capabilities(cx);
+                    });
+                }
+                ChatStateMutation::SetBotId(_bot_id) => {
+                    self.ui.defer(move |chat, cx, _| {
                         chat.handle_capabilities(cx);
                     });
                 }

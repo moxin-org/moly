@@ -1,10 +1,10 @@
-use crate::chat::model_selector_list::ModelSelectorListAction;
 use crate::data::capture::register_capture_manager;
 use crate::data::downloads::DownloadPendingNotification;
 use crate::data::downloads::download::DownloadFileAction;
 use crate::data::moly_client::MolyClientAction;
 use crate::data::store::*;
 use crate::landing::model_files_item::ModelFileItemAction;
+use crate::my_models::delete_model_modal::DeleteModelModalAction;
 use crate::shared::actions::{ChatAction, DownloadAction};
 use crate::shared::download_notification_popup::{
     DownloadNotificationPopupAction, DownloadNotificationPopupRef,
@@ -146,6 +146,7 @@ live_design! {
             }
 
             body = {
+                keyboard_min_shift: 75,
                 flow: Overlay
                 width: Fill,
                 height: Fill,
@@ -460,7 +461,7 @@ impl App {
             match notification {
                 DownloadPendingNotification::DownloadedFile(file) => {
                     popup.set_data(cx, &file, DownloadResult::Success);
-                    cx.action(ModelSelectorListAction::AddedOrDeletedModel);
+                    cx.action(DeleteModelModalAction::ModelDeleted);
                 }
                 DownloadPendingNotification::DownloadErrored(file) => {
                     self.file_id = Some((file.id).clone());

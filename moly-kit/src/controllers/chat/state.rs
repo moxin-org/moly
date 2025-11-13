@@ -40,6 +40,8 @@ pub struct ChatState {
     /// The bots that were loaded from the configured client.
     pub bots: Vec<Bot>,
     pub load_status: Status,
+    /// The currently selected bot for this chat.
+    pub bot_id: Option<BotId>,
 }
 
 impl ChatState {
@@ -52,6 +54,7 @@ impl ChatState {
 pub enum ChatStateMutation {
     SetIsStreaming(bool),
     SetLoadStatus(Status),
+    SetBotId(Option<BotId>),
     MutateMessages(VecMutation<Message>),
     MutateBots(VecMutation<Bot>),
 }
@@ -64,6 +67,15 @@ impl ChatStateMutation {
             }
             ChatStateMutation::SetLoadStatus(status) => {
                 state.load_status = status;
+            }
+            ChatStateMutation::SetBotId(bot_id) => {
+                if let Some(ref id) = bot_id {
+                    if !state.bots.iter().any(|b| &b.id == id) {
+                        log::warn!("Attempted to set non-existent bot: {:?}", id);
+                        return;
+                    }
+                }
+                state.bot_id = bot_id;
             }
             ChatStateMutation::MutateMessages(mutation) => {
                 mutation.apply(&mut state.messages);

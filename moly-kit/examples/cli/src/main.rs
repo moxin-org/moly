@@ -50,6 +50,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         .with_plugin_append(Plugin::new(tx))
         .build_arc();
 
+    // Set the bot_id in the controller state
+    controller
+        .lock()
+        .unwrap()
+        .dispatch_mutation(ChatStateMutation::SetBotId(Some(bot_id)));
+
     loop {
         print!("> ");
         stdout().flush()?;
@@ -73,10 +79,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
             .dispatch_mutation(VecMutation::Push(message));
 
-        controller
-            .lock()
-            .unwrap()
-            .dispatch_task(ChatTask::Send(bot_id.clone()));
+        controller.lock().unwrap().dispatch_task(ChatTask::Send);
 
         while let Ok(event) = rx.recv() {
             match event {

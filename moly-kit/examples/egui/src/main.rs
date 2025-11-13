@@ -11,7 +11,7 @@ use moly_kit::{
 fn main() -> eframe::Result {
     env_logger::init();
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([400.0, 600.0]),
         ..Default::default()
     };
     eframe::run_native(
@@ -23,7 +23,6 @@ fn main() -> eframe::Result {
 
 pub struct App {
     prompt: String,
-    bot_id: BotId,
     controller: Arc<Mutex<ChatController>>,
 }
 
@@ -58,8 +57,13 @@ impl App {
             .with_plugin_append(plugin)
             .build_arc();
 
+        let bot_id = BotId::new(&model, "");
+        controller
+            .lock()
+            .unwrap()
+            .dispatch_mutation(ChatStateMutation::SetBotId(Some(bot_id.clone())));
+
         Self {
-            bot_id: BotId::new(&model, ""),
             prompt: String::new(),
             controller,
         }
@@ -100,7 +104,7 @@ impl eframe::App for App {
                     message.content.text = prompt;
 
                     controller.dispatch_mutation(VecMutation::Push(message));
-                    controller.dispatch_task(ChatTask::Send(self.bot_id.clone()));
+                    controller.dispatch_task(ChatTask::Send);
                 }
             })
         });

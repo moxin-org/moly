@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::{chat::model_selector_list::ModelSelectorListAction, data::store::Store};
+use crate::data::store::Store;
 
 use super::downloaded_files_row::DownloadedFilesRowProps;
 
@@ -136,6 +136,7 @@ live_design! {
 pub enum DeleteModelModalAction {
     None,
     ModalDismissed,
+    ModelDeleted,
 }
 
 #[derive(Live, LiveHook, Widget)]
@@ -185,7 +186,7 @@ impl WidgetMatchEvent for DeleteModelModal {
             store.delete_file(self.file_id.clone());
 
             cx.action(DeleteModelModalAction::ModalDismissed);
-            cx.action(ModelSelectorListAction::AddedOrDeletedModel);
+            cx.action(DeleteModelModalAction::ModelDeleted);
         }
 
         if self

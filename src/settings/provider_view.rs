@@ -537,6 +537,8 @@ impl WidgetMatchEvent for ProviderView {
                         {
                             model.enabled = *enabled;
                         }
+                        // Reload bot context to reflect the enabled status change
+                        store.reload_bot_context();
                         self.redraw(cx);
                     }
                     _ => {}

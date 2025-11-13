@@ -440,11 +440,9 @@ impl Store {
         // Update in preferences (persist in disk)
         self.preferences.insert_or_update_provider(provider);
         // Update in MolyKit (to update the API key used by the client, if needed)
-        if let Some(_bot_context) = &self.bot_context {
-            // Because MolyKit does not currently expose an API to update the clients, we'll remove and recreate the entire bot context
-            // TODO(MolyKit): Find a better way to do this
-            self.bot_context = None;
-        }
+        // Because MolyKit does not currently expose an API to update the clients, we'll remove and recreate the entire bot context
+        // TODO(MolyKit): Find a better way to do this
+        self.reload_bot_context();
     }
 
     pub fn remove_provider(&mut self, provider_id: &ProviderID) {
@@ -453,14 +451,14 @@ impl Store {
     }
 
     pub fn get_provider_icon(&self, provider_name: &str) -> Option<LiveDependency> {
-        // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
-        // Find a path that contains the provider name
+        let base_name = normalize_provider_name(provider_name);
+
         self.provider_icons
             .iter()
             .find(|icon| {
                 icon.as_str()
                     .to_lowercase()
-                    .contains(&provider_name.to_lowercase())
+                    .contains(&base_name.to_lowercase())
             })
             .cloned()
     }
@@ -527,9 +525,7 @@ impl Store {
     pub fn set_mcp_servers_enabled(&mut self, enabled: bool) {
         self.preferences.set_mcp_servers_enabled(enabled);
         // Recreate bot context to apply the new MCP setting
-        if let Some(_bot_context) = &self.bot_context {
-            self.bot_context = None;
-        }
+        self.reload_bot_context();
     }
 
     pub fn set_mcp_servers_dangerous_mode_enabled(&mut self, enabled: bool) {
@@ -537,4 +533,29 @@ impl Store {
             .set_mcp_servers_dangerous_mode_enabled(enabled);
         self.update_mcp_tool_manager();
     }
+
+    /// Triggers a bot context reload by clearing it.
+    /// The ChatScreen will automatically recreate it on the next event,
+    /// applying updated filters (like enabled status changes).
+    pub fn reload_bot_context(&mut self) {
+        if self.bot_context.is_some() {
+            self.bot_context = None;
+        }
+    }
+}
+
+/// Extracts the base provider name from provider variants for icon matching.
+///
+/// This allows provider variants like "OpenAI Realtime" and "OpenAI Image"
+/// to share the same icon as the base "OpenAI" provider.
+///
+/// # Examples
+/// - "OpenAI Realtime" -> "openai"
+/// - "OpenAI Image" -> "openai"
+/// - "Anthropic" -> "anthropic"
+pub fn normalize_provider_name(name: &str) -> String {
+    name.split_whitespace()
+        .next()
+        .unwrap_or(name)
+        .to_lowercase()
 }

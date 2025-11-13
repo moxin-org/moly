@@ -7,9 +7,6 @@ use moly_kit::utils::asynchronous::spawn;
 use moly_kit::utils::vec::{VecEffect, VecMutation};
 use moly_kit::*;
 
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
-
 use crate::data::chats::chat::ChatID;
 use crate::data::store::{ProviderSyncingStatus, Store};
 use crate::shared::bot_context::BotContext;
@@ -17,9 +14,8 @@ use crate::shared::utils::attachments::{
     delete_attachment, generate_persistence_key, set_persistence_key_and_reader,
     write_attachment_to_key,
 };
-
-use super::model_selector::ModelSelectorWidgetExt;
-use super::model_selector_item::ModelSelectorAction;
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 live_design! {
     use link::theme::*;
@@ -30,7 +26,6 @@ live_design! {
     use crate::chat::chat_panel::ChatPanel;
     use crate::chat::chat_history::ChatHistory;
     use crate::chat::chat_params::ChatParams;
-    use crate::chat::model_selector::ModelSelector;
     use moly_kit::widgets::chat::Chat;
     use moly_kit::widgets::prompt_input::PromptInput;
 
@@ -110,7 +105,6 @@ live_design! {
         flow: Down
         spacing: 0
 
-        model_selector = <ModelSelector> {}
         chat = <Chat> {
             messages = { padding: {left: 10, right: 10} }
             prompt = <PromptInputWithShadow> {}
@@ -148,7 +142,16 @@ pub struct ChatView {
     bot_context: Option<BotContext>,
 
     #[rust]
+    prev_bot_context_id: Option<usize>,
+
+    #[rust]
+    prev_available_bots_len: usize,
+
+    #[rust]
     message_updated_while_inactive: bool,
+
+    #[rust]
+    initial_bot_synced: bool,
 }
 
 impl LiveHook for ChatView {
@@ -189,15 +192,20 @@ impl Widget for ChatView {
         self.bind_bot_context(scope);
 
         self.ui_runner().handle(cx, event, scope, self);
-        self.widget_match_event(cx, event, scope);
         self.view.handle_event(cx, event, scope);
 
-        self.handle_current_bot(cx, scope);
+        self.handle_current_bot(scope);
         self.handle_unread_messages(scope);
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.bind_bot_context(scope);
+
+        // Sync bot_id from Store to Controller on first draw
+        if !self.initial_bot_synced {
+            self.sync_bot_from_store(scope);
+            self.initial_bot_synced = true;
+        }
 
         // On mobile, only set padding on top of the prompt
         // TODO: do this with AdaptiveView instead of apply_over
@@ -208,25 +216,11 @@ impl Widget for ChatView {
                     padding: {bottom: 50, left: 20, right: 20}
                 },
             );
-            self.model_selector(ids!(model_selector)).apply_over(
-                cx,
-                live! {
-                    width: Fill
-                    button = { width: Fill }
-                },
-            );
         } else {
             self.prompt_input(ids!(chat.prompt)).apply_over(
                 cx,
                 live! {
                     padding: {left: 10, right: 10, top: 8, bottom: 8}
-                },
-            );
-            self.model_selector(ids!(model_selector)).apply_over(
-                cx,
-                live! {
-                    width: Fit
-                    button = { width: Fit }
                 },
             );
         }
@@ -235,70 +229,77 @@ impl Widget for ChatView {
     }
 }
 
-impl WidgetMatchEvent for ChatView {
-    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions, scope: &mut Scope) {
-        let store = scope.data.get_mut::<Store>().unwrap();
-        let mut chat_widget = self.chat(ids!(chat));
-
-        for action in actions {
-            // Handle model selector actions
-            match action.cast() {
-                ModelSelectorAction::BotSelected(chat_id, bot) => {
-                    if chat_id == self.chat_id {
-                        chat_widget.write().set_bot_id(cx, Some(bot.id.clone()));
-
-                        if let Some(chat) = store.chats.get_chat_by_id(chat_id) {
-                            chat.borrow_mut().associated_bot = Some(bot.id.clone());
-                            chat.borrow().save_and_forget();
-                        }
-                        // self.focus_on_prompt_input_pending = true;
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-}
-
 impl ChatView {
     // TODO: Only perform this checks after certain actions like provider sync or provider updates (e.g. disable/enable provider)
     // Refactor this to be simpler and more unified with the behavior of the model selector
-    fn handle_current_bot(&mut self, cx: &mut Cx, scope: &mut Scope) {
+    fn handle_current_bot(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        // Check if the current chat's associated bot is still available
-        let mut bot_available = false;
-        let mut associiated_bot_id = None;
-        if let Some(chat) = store.chats.get_chat_by_id(self.chat_id) {
-            if let Some(bot_id) = &chat.borrow().associated_bot {
-                associiated_bot_id = Some(bot_id.clone());
-                bot_available = store
+        // Read bot_id from controller (runtime source of truth)
+        let controller_bot_id = self.chat_controller.lock().unwrap().state().bot_id.clone();
+
+        // Check if the controller's bot is currently available (prevents race condition with Store)
+        let controller_bot_available = if let Some(bot_id) = &controller_bot_id {
+            store
+                .chats
+                .get_all_bots(true)
+                .iter()
+                .any(|bot| &bot.id == bot_id)
+        } else {
+            false
+        };
+
+        let mut prompt_input = self.prompt_input(ids!(chat.prompt));
+
+        // CLEARING: Use controller_bot_id for availability check
+        // If the controller's bot is not available and we know it won't be available soon, clear it
+        if !controller_bot_available
+            && controller_bot_id.is_some()
+            && store.provider_syncing_status == ProviderSyncingStatus::Synced
+        {
+            // Temporarily clear controller state while provider is disabled
+            // (Store's associated_bot persists for restoration)
+            self.chat_controller
+                .lock()
+                .unwrap()
+                .dispatch_mutation(ChatStateMutation::SetBotId(None));
+        }
+        // RESTORATION: Use Store's persistent state when controller is None
+        else if controller_bot_id.is_none() {
+            // Skip restoration if bots haven't loaded yet (prevents spam during async load)
+            let controller_bots = self.chat_controller.lock().unwrap().state().bots.clone();
+            if controller_bots.is_empty() {
+                // Bots not loaded yet, will retry on next event after load completes
+                return;
+            }
+
+            // Read stored bot from Store (persistent state)
+            if let Some(stored_bot_id) = store
+                .chats
+                .get_chat_by_id(self.chat_id)
+                .and_then(|chat| chat.borrow().associated_bot.clone())
+            {
+                // Check if stored bot is available
+                let stored_bot_available = store
                     .chats
                     .get_all_bots(true)
                     .iter()
-                    .any(|bot| &bot.id == bot_id)
+                    .any(|bot| bot.id == stored_bot_id);
+
+                if stored_bot_available {
+                    self.chat_controller
+                        .lock()
+                        .unwrap()
+                        .dispatch_mutation(ChatStateMutation::SetBotId(Some(stored_bot_id)));
+                }
             }
         }
 
-        let mut chat = self.chat(ids!(chat));
-        let mut prompt_input = self.prompt_input(ids!(chat.prompt));
-
-        // If the bot is not available and we know it won't be available soon, clear the bot_id in the chat widget
-        if !bot_available && store.provider_syncing_status == ProviderSyncingStatus::Synced {
-            chat.write().set_bot_id(cx, None);
-
-            self.model_selector(ids!(model_selector))
-                .set_currently_selected_model(cx, None);
-        } else if bot_available && chat.read().bot_id().is_none() {
-            // If the bot is available and the chat widget doesn't have a bot_id, set the bot_id in the chat widget
-            // This can happen if the bot or provider was re-enabled after being disabled while being selected
-            chat.write().set_bot_id(cx, associiated_bot_id);
-        }
-
         // If there is no selected bot, disable the prompt input
-        if !self.chat_controller.lock().unwrap().state().is_streaming
-            && (chat.read().bot_id().is_none()
-                || !bot_available
+        let is_streaming = self.chat_controller.lock().unwrap().state().is_streaming;
+        if !is_streaming
+            && (controller_bot_id.is_none()
+                || !controller_bot_available
                 || store.provider_syncing_status != ProviderSyncingStatus::Synced)
         {
             prompt_input.write().disable();
@@ -321,6 +322,27 @@ impl ChatView {
         }
     }
 
+    /// Syncs the bot_id from Store's associated_bot to ChatController state.
+    /// This ensures ChatController reflects the persisted bot selection.
+    fn sync_bot_from_store(&mut self, scope: &mut Scope) {
+        let store = scope.data.get_mut::<Store>().unwrap();
+
+        if let Some(chat) = store.chats.get_chat_by_id(self.chat_id) {
+            let associated_bot = chat.borrow().associated_bot.clone();
+
+            // Get current bot_id from controller
+            let current_bot_id = self.chat_controller.lock().unwrap().state().bot_id.clone();
+
+            // Only sync if they differ to avoid unnecessary mutations
+            if current_bot_id != associated_bot {
+                self.chat_controller
+                    .lock()
+                    .unwrap()
+                    .dispatch_mutation(ChatStateMutation::SetBotId(associated_bot));
+            }
+        }
+    }
+
     pub fn bind_bot_context(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
@@ -331,6 +353,64 @@ impl ChatView {
             self.bot_context = store.bot_context.clone();
             if let Some(bot_context) = &mut self.bot_context {
                 bot_context.add_chat_controller(self.chat_controller.clone());
+            }
+        }
+
+        // Only rebuild grouping and filter when bot_context or available_bots changes
+        // This handles both intentional changes (provider enable/disable) and
+        // async loading (bots fetched after bot_context created at startup)
+        let current_bots_len = store.chats.available_bots.len();
+        if self.prev_bot_context_id != store_bot_context_id
+            || self.prev_available_bots_len != current_bots_len
+        {
+            self.prev_bot_context_id = store_bot_context_id;
+            self.prev_available_bots_len = current_bots_len;
+
+            // Build lookup table for grouping
+            let mut bot_groups: HashMap<BotId, moly_kit::BotGroup> = HashMap::new();
+
+            for (bot_id, provider_bot) in &store.chats.available_bots {
+                if let Some(provider) = store.chats.providers.get(&provider_bot.provider_id) {
+                    let icon = store
+                        .get_provider_icon(&provider.name)
+                        .map(|dep| moly_kit::protocol::Picture::Dependency(dep));
+                    bot_groups.insert(
+                        bot_id.clone(),
+                        moly_kit::BotGroup {
+                            id: provider.id.clone(),
+                            label: provider.name.clone(),
+                            icon,
+                        },
+                    );
+                }
+            }
+
+            // Create grouping function using lookup utility
+            use moly_kit::widgets::model_selector::create_lookup_grouping;
+
+            let grouping_fn =
+                create_lookup_grouping(move |bot_id: &BotId| bot_groups.get(bot_id).cloned());
+
+            // Set grouping on the ModelSelector inside PromptInput
+            let chat = self.chat(ids!(chat));
+            chat.read()
+                .prompt_input_ref()
+                .widget(ids!(model_selector))
+                .as_model_selector()
+                .set_grouping(Some(grouping_fn));
+
+            // Update filter when bot_context changes
+            let chat = self.chat(ids!(chat));
+            if let Some(mut list) = chat
+                .read()
+                .prompt_input_ref()
+                .widget(ids!(model_selector.options.list_container.list))
+                .borrow_mut::<moly_kit::widgets::model_selector_list::ModelSelectorList>()
+            {
+                let filter = crate::chat::moly_bot_filter::MolyBotFilter::new(
+                    store.chats.available_bots.clone(),
+                );
+                list.filter = Some(Box::new(filter));
             }
         }
     }
@@ -350,9 +430,18 @@ impl ChatViewRef {
     pub fn set_chat_id(&mut self, chat_id: ChatID) {
         if let Some(mut inner) = self.borrow_mut() {
             inner.chat_id = chat_id;
+            // Reset sync flag so bot_id will be synced from Store on next draw
+            inner.initial_bot_synced = false;
+        }
+    }
+
+    pub fn set_bot_id(&mut self, bot_id: Option<BotId>) {
+        if let Some(inner) = self.borrow_mut() {
             inner
-                .model_selector(ids!(model_selector))
-                .set_chat_id(chat_id);
+                .chat_controller
+                .lock()
+                .unwrap()
+                .dispatch_mutation(ChatStateMutation::SetBotId(bot_id));
         }
     }
 
@@ -372,9 +461,15 @@ pub struct Glue {
 
 impl ChatControllerPlugin for Glue {
     fn on_state_mutation(&mut self, mutation: &ChatStateMutation, state: &ChatState) {
-        if let ChatStateMutation::MutateMessages(mutation) = mutation {
-            self.replicate_messages_mutation_to_store(mutation);
-            self.mark_attachments(mutation, state);
+        match mutation {
+            ChatStateMutation::MutateMessages(mutation) => {
+                self.replicate_messages_mutation_to_store(mutation);
+                self.mark_attachments(mutation, state);
+            }
+            ChatStateMutation::SetBotId(bot_id) => {
+                self.replicate_bot_id_to_store(bot_id.clone());
+            }
+            _ => {}
         }
     }
 
@@ -425,6 +520,21 @@ impl Glue {
             if !chat_view.focused {
                 chat_view.message_updated_while_inactive = true;
             }
+        });
+    }
+
+    fn replicate_bot_id_to_store(&self, bot_id: Option<BotId>) {
+        self.ui.defer(move |chat_view, _, scope| {
+            let store = scope.data.get_mut::<Store>().unwrap();
+
+            let Some(store_chat) = store.chats.get_chat_by_id(chat_view.chat_id) else {
+                return;
+            };
+
+            store_chat.borrow_mut().associated_bot = bot_id;
+
+            // Write to disk.
+            store_chat.borrow_mut().save_and_forget();
         });
     }
 

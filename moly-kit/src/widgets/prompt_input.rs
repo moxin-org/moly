@@ -16,6 +16,7 @@ live_design! {
     use link::shaders::*;
 
     use crate::widgets::attachment_list::*;
+    use crate::widgets::model_selector::*;
 
     SubmitButton = <Button> {
         width: 28,
@@ -56,21 +57,26 @@ live_design! {
     AttachButton = <Button> {
         visible: false
         text: "",
+        width: Fit,
+        height: Fit,
+        padding: {left: 8, right: 8, top: 6, bottom: 6}
         draw_text: {
             text_style: <THEME_FONT_ICONS> {
-                font_size: 16.
+                font_size: 13.
             }
-            color: #000,
-            color_hover: #000,
-            color_focus: #000
+            color: #333,
+            color_hover: #111,
+            color_focus: #111
             color_down: #000
         }
         draw_bg: {
             color_down: #0000
             border_radius: 7.
             border_size: 0.
+            color_hover: #f2
         }
     }
+
 
     AudioButton = <Button> {
         visible: false
@@ -78,11 +84,11 @@ live_design! {
         text: ""
         draw_text: {
             text_style: <THEME_FONT_ICONS> {
-                font_size: 16.
+                font_size: 13.
             }
-            color: #000,
-            color_hover: #000,
-            color_focus: #000
+            color: #333,
+            color_hover: #111,
+            color_focus: #111
             color_down: #000
         }
         draw_bg: {
@@ -124,7 +130,7 @@ live_design! {
                 height: Fit
                 text_input = {
                     height: Fit {
-                        min: 33
+                        min: 35
                         max: 180
                     }
                     width: Fill
@@ -148,37 +154,24 @@ live_design! {
                         color_focus: #d9e7e9
                     }
                     draw_cursor: {
-                        fn pixel(self) -> vec4 {
-                            return #bbb;
-                        }
+                        color: #000
                     }
                 }
                 right = {
                     // In mobile, show the send controsl here, right to the input
-                    <AdaptiveView> {
-                        Desktop = {}
-                        Mobile = {
-                            width: Fit, height: Fit
-                            <SendControls> {}
-                        }
-                    }
                 }
             }
             bottom = {
                 height: Fit
                 left = <View> {
                     width: Fit, height: Fit
+                    align: {x: 0.0, y: 0.5}
                     attach = <AttachButton> {}
+                    model_selector = <ModelSelector> {}
                 }
-                // In desktop, show the send controls under the input
-                <AdaptiveView> {
-                    Desktop = {
-                        width: Fill, height: Fit
-                        separator = <View> { width: Fill, height: 1}
-                        <SendControls> {}
-                    }
-                    Mobile = {}
-                }
+                width: Fill, height: Fit
+                separator = <View> { width: Fill, height: 1}
+                <SendControls> {}
             }
         }
     }
@@ -377,6 +370,21 @@ impl PromptInput {
         self.attachment_list(ids!(attachments))
     }
 
+    /// Set the chat controller for the model selector
+    pub fn set_chat_controller(
+        &mut self,
+        controller: Option<
+            std::sync::Arc<std::sync::Mutex<crate::controllers::chat::ChatController>>,
+        >,
+    ) {
+        if let Some(mut inner) = self
+            .widget(ids!(model_selector))
+            .borrow_mut::<crate::widgets::model_selector::ModelSelector>()
+        {
+            inner.chat_controller = controller;
+        }
+    }
+
     /// Set the capabilities of the currently selected bot
     pub fn set_bot_capabilities(&mut self, cx: &mut Cx, capabilities: Option<BotCapabilities>) {
         self.bot_capabilities = capabilities;
@@ -421,11 +429,17 @@ impl PromptInput {
         #[cfg(feature = "realtime")]
         self.button(ids!(audio)).set_visible(cx, supports_realtime);
 
+        // Hide send button for realtime models since audio button serves same purpose
+        self.button(ids!(submit))
+            .set_visible(cx, !supports_realtime);
+
         if supports_realtime {
             self.interactivity = Interactivity::Disabled;
             self.text_input_ref().set_is_read_only(cx, true);
-            self.text_input_ref()
-                .set_text(cx, "For realtime models, use the audio feature ->");
+            self.text_input_ref().set_empty_text(
+                cx,
+                "For realtime models, use the audio feature ->".to_string(),
+            );
             self.redraw(cx);
         } else {
             self.interactivity = Interactivity::Enabled;

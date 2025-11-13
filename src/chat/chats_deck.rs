@@ -5,7 +5,6 @@ use moly_kit::utils::vec::VecMutation;
 use moly_kit::*;
 
 use super::chat_view::ChatViewRef;
-use super::model_selector::ModelSelectorWidgetRefExt;
 use crate::chat::chat_view::ChatViewWidgetRefExt;
 use crate::data::capture::CaptureAction;
 use crate::data::chats::chat::Chat as ChatData;
@@ -25,7 +24,7 @@ live_design! {
 
     pub ChatsDeck = {{ChatsDeck}} {
         width: Fill, height: Fill
-        padding: {top: 18, bottom: 10, right: 28, left: 28},
+        padding: {top: 18, bottom: 0, right: 28, left: 28},
 
         chat_view_template: <ChatView> {}
     }
@@ -36,17 +35,17 @@ pub struct ChatsDeck {
     #[deref]
     view: View,
 
-    /// All the currently existing chat views. Keyed by their corresponding ChatID.
+    /// All currently active chat instances, keyed by their corresponding ChatID.
+    /// Each chat maintains its own instance to keep background streaming alive.
     #[rust]
     chat_view_refs: HashMap<ChatID, ChatViewRef>,
 
-    /// The order in which the chat views were accessed.
-    /// Used as a simple LRU cache to determine which chat view to remove when the deck is full.
-    /// We only drop a chat view if it's not currently streaming a response from the bot.
+    /// LRU tracking for memory management.
+    /// When we exceed MAX_CHAT_VIEWS, we evict the oldest chat (unless it's streaming).
     #[rust]
-    chat_view_accesed_order: VecDeque<ChatID>,
+    chat_view_accessed_order: VecDeque<ChatID>,
 
-    /// The currently visible chat id.
+    /// The currently visible/focused chat id.
     #[rust]
     currently_visible_chat_id: Option<ChatID>,
 
@@ -55,7 +54,8 @@ pub struct ChatsDeck {
     chat_view_template: Option<LivePtr>,
 }
 
-/// The maximum number of chat views that can be displayed at once.
+/// The maximum number of chat views that can be kept alive at once.
+/// Prevents unbounded memory growth in long-running sessions.
 const MAX_CHAT_VIEWS: usize = 10;
 
 impl Widget for ChatsDeck {
@@ -63,6 +63,7 @@ impl Widget for ChatsDeck {
         self.view.handle_event(cx, event, scope);
         self.widget_match_event(cx, event, scope);
 
+        // Handle events for ALL instances to keep background activity (streaming, etc.) alive
         for (_, chat_view) in self.chat_view_refs.iter_mut() {
             chat_view.handle_event(cx, event, scope);
         }
@@ -75,17 +76,18 @@ impl Widget for ChatsDeck {
         if cx.display_context.is_desktop() {
             self.view.apply_over(
                 cx,
-                live! {padding: {top: 18, bottom: 10, right: 28, left: 28} },
+                live! {padding: {top: 18, bottom: 0, right: 28, left: 28} },
             );
         } else {
             self.view.apply_over(
                 cx,
-                live! { padding: {top: 55, left: 0, right: 0, bottom: 10} },
+                live! { padding: {top: 55, left: 0, right: 0, bottom: 0} },
             );
         }
 
         cx.begin_turtle(walk, self.layout);
 
+        // Draw only the currently visible chat
         if let Some(chat_id) = self.currently_visible_chat_id {
             if let Some(chat_view) = self.chat_view_refs.get_mut(&chat_id) {
                 let _ = chat_view.draw(cx, scope);
@@ -138,15 +140,14 @@ impl WidgetMatchEvent for ChatsDeck {
 
             // Handle Context Capture
             if let CaptureAction::Capture { event } = action.cast() {
-                // Paste the captured text into the currently selected chat
-                if let Some(chat_view) = self
-                    .chat_view_refs
-                    .get_mut(&self.currently_visible_chat_id.unwrap())
-                {
-                    chat_view
-                        .prompt_input(ids!(prompt))
-                        .write()
-                        .set_text(cx, event.contents());
+                // Paste the captured text into the currently visible chat
+                if let Some(chat_id) = self.currently_visible_chat_id {
+                    if let Some(chat_view) = self.chat_view_refs.get_mut(&chat_id) {
+                        chat_view
+                            .prompt_input(ids!(prompt))
+                            .write()
+                            .set_text(cx, event.contents());
+                    }
                 }
             }
         }
@@ -155,85 +156,75 @@ impl WidgetMatchEvent for ChatsDeck {
 
 impl ChatsDeck {
     pub fn create_or_update_chat_view(&mut self, cx: &mut Cx, chat_data: &ChatData) {
-        let mut chat_view_to_update;
-        // If the chat view already exists, update it
-        if let Some(chat_view) = self.chat_view_refs.get_mut(&chat_data.id) {
-            chat_view.set_chat_id(chat_data.id);
+        // Check if an instance already exists for this chat
+        if let Some(existing_view) = self.chat_view_refs.get_mut(&chat_data.id) {
+            // Instance exists, just make it visible and focused
             self.currently_visible_chat_id = Some(chat_data.id);
 
-            chat_view_to_update = chat_view.clone();
-        } else {
-            // Create a new chat view
-            let chat_view = WidgetRef::new_from_ptr(cx, self.chat_view_template);
+            // Update focus states
+            existing_view.set_focused(true);
+            for (id, chat_view) in self.chat_view_refs.iter_mut() {
+                if *id != chat_data.id {
+                    chat_view.set_focused(false);
+                }
+            }
 
-            chat_view.as_chat_view().set_chat_id(chat_data.id);
+            // Update LRU access order
+            self.chat_view_accessed_order
+                .retain(|id| *id != chat_data.id);
+            self.chat_view_accessed_order.push_back(chat_data.id);
 
-            self.chat_view_refs
-                .insert(chat_data.id, chat_view.as_chat_view());
-            self.currently_visible_chat_id = Some(chat_data.id);
-
-            chat_view_to_update = chat_view.as_chat_view();
+            return; // EARLY RETURN, don't recreate!
         }
 
-        // Set messages
-        // If the chat is already loaded do not set the messages again, as it might cause
-        // unwanted side effects, i.e. canceling any ongoing streaming response from the bot
-        if chat_view_to_update
+        // No existing instance, create a new one
+        let chat_view = WidgetRef::new_from_ptr(cx, self.chat_view_template);
+        let mut chat_view = chat_view.as_chat_view();
+
+        // Initialize new instance
+        chat_view.set_chat_id(chat_data.id);
+
+        // Load messages into the controller
+        chat_view
             .borrow()
             .unwrap()
             .chat_controller()
             .lock()
             .unwrap()
-            .state()
-            .messages
-            .is_empty()
-        {
-            chat_view_to_update
-                .borrow()
-                .unwrap()
-                .chat_controller()
-                .lock()
-                .unwrap()
-                .dispatch_mutation(VecMutation::Set(chat_data.messages.clone()));
-        }
+            .dispatch_mutation(VecMutation::Set(chat_data.messages.clone()));
 
-        // Set associated bot
+        // Sync associated_bot from Store to ChatController
         if let Some(bot_id) = &chat_data.associated_bot {
-            chat_view_to_update
-                .model_selector(ids!(model_selector))
-                .set_currently_selected_model(cx, Some(bot_id.clone()));
-            chat_view_to_update
-                .chat(ids!(chat))
-                .write()
-                .set_bot_id(cx, Some(bot_id.clone()));
+            chat_view.set_bot_id(Some(bot_id.clone()));
         }
 
-        // Set this chat view as focused and all other chat views as not focused
-        chat_view_to_update.set_focused(true);
-        for (id, chat_view) in self.chat_view_refs.iter_mut() {
-            if id != &chat_data.id {
-                chat_view.set_focused(false);
+        // Set as focused
+        chat_view.set_focused(true);
+
+        // Insert into HashMap
+        self.chat_view_refs.insert(chat_data.id, chat_view);
+        self.currently_visible_chat_id = Some(chat_data.id);
+
+        // Defocus other chats
+        for (id, cv) in self.chat_view_refs.iter_mut() {
+            if *id != chat_data.id {
+                cv.set_focused(false);
             }
         }
 
-        // Update the access order
-        self.chat_view_accesed_order
-            .retain(|id| *id != chat_data.id);
-        self.chat_view_accesed_order.push_back(chat_data.id);
+        // Add to LRU tracking
+        self.chat_view_accessed_order.push_back(chat_data.id);
 
-        // Remove the least recently used chat view if the deck is full
-        if self.chat_view_accesed_order.len() > MAX_CHAT_VIEWS {
-            let least_recently_used_chat_id = self.chat_view_accesed_order.pop_front().unwrap();
-            if let Some(chat_view) = self.chat_view_refs.get_mut(&least_recently_used_chat_id) {
-                let mut should_remove = true;
-                // Check if the latest message is currently being streamed
-                if chat_view.chat(ids!(chat)).read().is_streaming() {
-                    should_remove = false;
-                }
-
-                if should_remove {
-                    self.chat_view_refs.remove(&least_recently_used_chat_id);
-                    self.chat_view_accesed_order.remove(0);
+        // Evict oldest instance if we exceed max
+        if self.chat_view_accessed_order.len() > MAX_CHAT_VIEWS {
+            let oldest_id = self.chat_view_accessed_order.pop_front().unwrap();
+            if let Some(oldest_view) = self.chat_view_refs.get_mut(&oldest_id) {
+                // Don't evict if currently streaming
+                if !oldest_view.chat(ids!(chat)).read().is_streaming() {
+                    self.chat_view_refs.remove(&oldest_id);
+                } else {
+                    // Put back in queue if streaming
+                    self.chat_view_accessed_order.push_front(oldest_id);
                 }
             }
         }

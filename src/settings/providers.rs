@@ -2,7 +2,7 @@ use crate::shared::modal::ModalWidgetExt;
 use crate::{
     data::{
         providers::{Provider, ProviderConnectionStatus},
-        store::Store,
+        store::{Store, normalize_provider_name},
     },
     settings::sync_modal::{SyncModalAction, SyncModalWidgetExt},
 };
@@ -315,14 +315,14 @@ impl Widget for Providers {
 
 impl Providers {
     fn get_provider_icon(&self, provider: &Provider) -> Option<LiveDependency> {
-        // TODO: a more robust, less horrible way to programatically swap icons that are loaded as live dependencies
-        // Find a path that contains the provider name
+        let base_name = normalize_provider_name(&provider.name);
+
         self.provider_icons
             .iter()
             .find(|icon| {
                 icon.as_str()
                     .to_lowercase()
-                    .contains(&provider.name.to_lowercase())
+                    .contains(&base_name.to_lowercase())
             })
             .cloned()
     }
