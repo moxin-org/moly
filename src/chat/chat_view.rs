@@ -266,6 +266,13 @@ impl ChatView {
         }
         // RESTORATION: Use Store's persistent state when controller is None
         else if controller_bot_id.is_none() {
+            // Skip restoration if bots haven't loaded yet (prevents spam during async load)
+            let controller_bots = self.chat_controller.lock().unwrap().state().bots.clone();
+            if controller_bots.is_empty() {
+                // Bots not loaded yet, will retry on next event after load completes
+                return;
+            }
+
             // Read stored bot from Store (persistent state)
             if let Some(stored_bot_id) = store
                 .chats
