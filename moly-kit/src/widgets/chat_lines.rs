@@ -150,21 +150,21 @@ live_design! {
                         border_color: #D0D5DD,
                     }
 
-                    <ActionButton> {
+                    copy = <Button> {
                         text: "Copy"
                         draw_icon: {
                             svg_file: dep("crate://self/resources/copy.svg")
                         }
                     }
 
-                    <ActionButton> {
+                    edit = <Button> {
                         text: "Edit"
                         draw_icon: {
                             svg_file: dep("crate://self/resources/edit.svg")
                         }
                     }
 
-                    <ActionButton> {
+                    delete = <Button> {
                         text: "Delete"
                         draw_icon: {
                             svg_file: dep("crate://self/resources/delete.svg")

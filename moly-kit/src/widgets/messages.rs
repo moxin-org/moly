@@ -157,9 +157,6 @@ pub struct Messages {
     visible_range: Option<(usize, usize)>,
 
     #[rust]
-    hovered_index: Option<usize>,
-
-    #[rust]
     list_height: f64,
 
     #[rust]
@@ -310,7 +307,7 @@ impl Messages {
                             .set_content(cx, &message.content);
                     }
 
-                    self.apply_actions_and_editor_visibility(cx, &item, index);
+                    self.apply_editor_visibility(cx, &item, index);
                     item
                 }
                 EntityId::Tool => {
@@ -336,7 +333,7 @@ impl Messages {
                             .set_content(cx, &message.content);
                     }
 
-                    self.apply_actions_and_editor_visibility(cx, &item, index);
+                    self.apply_editor_visibility(cx, &item, index);
                     item
                 }
                 EntityId::App => {
@@ -403,7 +400,7 @@ impl Messages {
                             .as_standard_message_content()
                             .set_content(cx, &error_content);
 
-                        self.apply_actions_and_editor_visibility(cx, &item, index);
+                        self.apply_editor_visibility(cx, &item, index);
                         item
                     } else {
                         // Handle regular app messages
@@ -416,7 +413,7 @@ impl Messages {
                             .as_standard_message_content()
                             .set_content(cx, &message.content);
 
-                        self.apply_actions_and_editor_visibility(cx, &item, index);
+                        self.apply_editor_visibility(cx, &item, index);
                         item
                     }
                 }
@@ -432,7 +429,7 @@ impl Messages {
                         .as_standard_message_content()
                         .set_content(cx, &message.content);
 
-                    self.apply_actions_and_editor_visibility(cx, &item, index);
+                    self.apply_editor_visibility(cx, &item, index);
                     item
                 }
                 EntityId::Bot(id) => {
@@ -504,7 +501,7 @@ impl Messages {
                     // Users must be prevented from editing or deleting tool calls since most AI providers will return errors
                     // if tool calls are not properly formatted, or are not followed by a proper tool call response.
                     if !has_any_tool_calls {
-                        self.apply_actions_and_editor_visibility(cx, &item, index);
+                        self.apply_editor_visibility(cx, &item, index);
                     }
 
                     item
@@ -512,7 +509,11 @@ impl Messages {
             };
 
             if let Some(mut hook_view) = item.as_hook_view().borrow_mut() {
-                hook_view.on_after_event(move |hook, cx, event, _scope| {
+                let messages_widget_uid = self.widget_uid();
+                hook_view.on_after_event(move |hook, cx, event, scope| {
+                    let modal = hook.moly_modal(ids!(actions_modal));
+                    let copy_button = hook.button(ids!(copy));
+
                     match event.hits(cx, hook.area()) {
                         Hit::FingerUp(fu) => {
                             if let Some(mouse_button) = fu.mouse_button() && mouse_button.is_secondary() && fu.was_tap() {
@@ -521,10 +522,23 @@ impl Messages {
                                     index, fu.abs
                                 );
 
-                                hook.moly_modal(ids!(actions_modal)).open_as_popup(cx, fu.abs.into_vec2());
+                                let modal = hook.moly_modal(ids!(actions_modal));
+                                modal.open_as_popup(cx, fu.abs.into_vec2());
                             }
                         }
                         _ => {}
+                    }
+
+                    for widget_action in event.widget_actions() {
+                        println!("Widget action in HookView: {:?}", widget_action);
+                    }
+                    if hook.button(ids!(copy)).clicked(event.actions()) {
+                        println!(
+                            "Copy action selected for message index {}",
+                            index
+                        );
+                        cx.widget_action(messages_widget_uid, &scope.path, MessagesAction::Copy(index));
+                        modal.close(cx);
                     }
                 });
             }
@@ -664,31 +678,7 @@ impl Messages {
 
         // Handle item actions
         for (index, item) in ItemsRangeIter::new(list, range) {
-            if let Event::MouseMove(event) = event {
-                if item.area().rect(cx).contains(event.abs) {
-                    self.hovered_index = Some(index);
-                    item.redraw(cx);
-                }
-            }
-
             let actions = event.actions();
-
-            if item.button(ids!(copy)).clicked(actions) {
-                cx.widget_action(self.widget_uid(), &scope.path, MessagesAction::Copy(index));
-            }
-
-            if item.button(ids!(delete)).clicked(actions) {
-                cx.widget_action(
-                    self.widget_uid(),
-                    &scope.path,
-                    MessagesAction::Delete(index),
-                );
-            }
-
-            if item.button(ids!(edit)).clicked(actions) {
-                self.set_message_editor_visibility(index, true);
-                self.redraw(cx);
-            }
 
             if item.button(ids!(edit_actions.cancel)).clicked(actions) {
                 self.set_message_editor_visibility(index, false);
@@ -749,23 +739,15 @@ impl Messages {
         }
     }
 
-    fn apply_actions_and_editor_visibility(
-        &mut self,
-        cx: &mut Cx,
-        widget: &WidgetRef,
-        index: usize,
-    ) {
+    fn apply_editor_visibility(&mut self, cx: &mut Cx, widget: &WidgetRef, index: usize) {
         let editor = widget.view(ids!(editor));
-        let actions = widget.view(ids!(actions));
         let edit_actions = widget.view(ids!(edit_actions));
         let content_section = widget.view(ids!(content_section));
 
-        let is_hovered = self.hovered_index == Some(index);
         let is_current_editor = self.current_editor.as_ref().map(|e| e.index) == Some(index);
 
         edit_actions.set_visible(cx, is_current_editor);
         editor.set_visible(cx, is_current_editor);
-        actions.set_visible(cx, !is_current_editor && is_hovered);
         content_section.set_visible(cx, !is_current_editor);
 
         if is_current_editor {
