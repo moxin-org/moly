@@ -71,7 +71,7 @@ impl ChatStateMutation {
             ChatStateMutation::SetBotId(bot_id) => {
                 if let Some(ref id) = bot_id {
                     if !state.bots.iter().any(|b| &b.id == id) {
-                        log::error!("Attempted to set non-existent bot: {:?}", id);
+                        log::warn!("Attempted to set non-existent bot: {:?}", id);
                         return;
                     }
                 }

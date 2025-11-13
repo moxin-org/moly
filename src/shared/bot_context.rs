@@ -125,7 +125,10 @@ impl BotContext {
             .chat_controllers
             .push(chat_controller);
 
-        self.synchronize_to_all();
+        // Only sync if bots are already loaded
+        if !self.0.lock().unwrap().bots.is_empty() {
+            self.synchronize_to_all();
+        }
     }
 
     pub fn remove_chat_controller(&mut self, chat_controller: &Arc<Mutex<ChatController>>) {
