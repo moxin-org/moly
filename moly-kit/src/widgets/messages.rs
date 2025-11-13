@@ -516,8 +516,12 @@ impl Messages {
                                 && mouse_button.is_secondary()
                                 && fu.was_tap()
                             {
-                                hook.moly_modal(ids!(actions_modal))
-                                    .open_as_popup(cx, fu.abs.into_vec2());
+                                if cx.display_context.is_desktop() {
+                                    hook.moly_modal(ids!(actions_modal))
+                                        .open_as_popup(cx, fu.abs.into_vec2());
+                                } else {
+                                    hook.moly_modal(ids!(actions_modal)).open_as_dialog(cx);
+                                }
                             }
                         }
                         _ => {}
