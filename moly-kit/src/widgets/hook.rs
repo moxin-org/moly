@@ -1,6 +1,6 @@
-//! A view that allows hooking into Makepad's lifecycle with closures.
+//! A widget that allows hooking into Makepad's lifecycle with closures.
 //!
-//! If you don't want to have a [`View`]-like wrapper, use [`crate::widgets::Hook`] instead.
+//! Use [`crate::widgets::HookView`] instead if you need [`View`]'s behavior.
 
 use makepad_widgets::*;
 
@@ -8,13 +8,14 @@ live_design! {
     use link::theme::*;
     use link::widgets::*;
 
-    pub HookView = {{HookView}} {}
+    pub Hook = {{Hook}} {}
 }
 
 #[derive(Live, Widget, LiveHook)]
-pub struct HookView {
-    #[deref]
-    pub deref: View,
+pub struct Hook {
+    #[wrap]
+    #[live]
+    pub wrap: WidgetRef,
 
     #[rust]
     on_before_event: Option<Box<dyn FnMut(&mut Self, &mut Cx, &Event, &mut Scope)>>,
@@ -23,9 +24,9 @@ pub struct HookView {
     on_after_event: Option<Box<dyn FnMut(&mut Self, &mut Cx, &Event, &mut Scope)>>,
 }
 
-impl Widget for HookView {
+impl Widget for Hook {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.deref.draw_walk(cx, scope, walk)
+        self.wrap.draw_walk(cx, scope, walk)
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
@@ -34,7 +35,7 @@ impl Widget for HookView {
             self.on_before_event = Some(on_before_event);
         }
 
-        self.deref.handle_event(cx, event, scope);
+        self.wrap.handle_event(cx, event, scope);
 
         if let Some(mut on_after_event) = self.on_after_event.take() {
             on_after_event(self, cx, event, scope);
@@ -43,7 +44,7 @@ impl Widget for HookView {
     }
 }
 
-impl HookView {
+impl Hook {
     pub fn on_before_event(
         &mut self,
         f: impl FnMut(&mut Self, &mut Cx, &Event, &mut Scope) + 'static,
@@ -61,18 +62,18 @@ impl HookView {
     }
 }
 
-impl HookViewRef {
-    /// Immutable access to the underlying [`HookView`].
+impl HookRef {
+    /// Immutable access to the underlying [`Hook`].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn read(&self) -> std::cell::Ref<'_, HookView> {
+    pub fn read(&self) -> std::cell::Ref<'_, Hook> {
         self.borrow().unwrap()
     }
 
-    /// Mutable access to the underlying [`HookView`].
+    /// Mutable access to the underlying [`Hook`].
     ///
     /// Panics if the widget reference is empty or if it's already borrowed.
-    pub fn write(&mut self) -> std::cell::RefMut<'_, HookView> {
+    pub fn write(&mut self) -> std::cell::RefMut<'_, Hook> {
         self.borrow_mut().unwrap()
     }
 }

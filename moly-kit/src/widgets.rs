@@ -11,6 +11,7 @@ mod avatar;
 mod chat_lines;
 mod citation;
 pub(crate) mod citation_list;
+mod hook;
 mod hook_view;
 mod image_view;
 mod message_loading;
