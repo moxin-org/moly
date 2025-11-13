@@ -8,7 +8,10 @@ use crate::{
     controllers::chat::ChatController,
     protocol::*,
     utils::makepad::{events::EventExt, portal_list::ItemsRangeIter, ui_runner::DeferRedraw},
-    widgets::{avatar::AvatarWidgetRefExt, message_loading::MessageLoadingWidgetRefExt},
+    widgets::{
+        avatar::AvatarWidgetRefExt, hook_view::HookViewWidgetRefExt,
+        message_loading::MessageLoadingWidgetRefExt,
+    },
 };
 use makepad_code_editor::code_view::CodeViewWidgetRefExt;
 use makepad_widgets::*;
@@ -506,6 +509,22 @@ impl Messages {
                     item
                 }
             };
+
+            if let Some(mut hook_view) = item.as_hook_view().borrow_mut() {
+                hook_view.on_after_event(move |hook, cx, event, _scope| {
+                    match event.hits(cx, hook.area()) {
+                        Hit::FingerUp(fu) => {
+                            if let Some(mouse_button) = fu.mouse_button() && mouse_button.is_secondary() && fu.was_tap() {
+                                println!(
+                                    "HookView right click detected in message index {} at abs pos {:?}",
+                                    index, fu.abs
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
+                });
+            }
 
             item.draw_all(cx, &mut Scope::empty());
 
