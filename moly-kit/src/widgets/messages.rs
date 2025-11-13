@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    MolyModalWidgetExt,
+    MolyModalWidgetExt, MolyModalWidgetRefExt,
     controllers::chat::ChatController,
     protocol::*,
     utils::makepad::{events::EventExt, portal_list::ItemsRangeIter, ui_runner::DeferRedraw},
@@ -509,47 +509,18 @@ impl Messages {
             };
 
             if let Some(mut hook_view) = item.as_hook_view().borrow_mut() {
-                let ui = self.ui_runner();
-                hook_view.on_after_event(move |hook, cx, event, scope| {
-                    let modal = hook.moly_modal(ids!(actions_modal));
-                    let copy_button = hook.button(ids!(copy));
-                    let edit_button = hook.button(ids!(edit));
-                    let delete_button = hook.button(ids!(delete));
-
+                hook_view.on_after_event(move |hook, cx, event, _scope| {
                     match event.hits(cx, hook.area()) {
                         Hit::FingerUp(fu) => {
                             if let Some(mouse_button) = fu.mouse_button()
                                 && mouse_button.is_secondary()
                                 && fu.was_tap()
                             {
-                                modal.open_as_popup(cx, fu.abs.into_vec2());
+                                hook.moly_modal(ids!(actions_modal))
+                                    .open_as_popup(cx, fu.abs.into_vec2());
                             }
                         }
                         _ => {}
-                    }
-
-                    let messages_action = if copy_button.clicked(event.actions()) {
-                        Some(MessagesAction::Copy(index))
-                    } else if delete_button.clicked(event.actions()) {
-                        Some(MessagesAction::Delete(index))
-                    } else if edit_button.clicked(event.actions()) {
-                        Some(MessagesAction::EditSave(index))
-                    } else {
-                        None
-                    };
-
-                    if let Some(action) = messages_action {
-                        ui.defer(move |me, cx, scope| {
-                            cx.widget_action(me.widget_uid(), &scope.path, action);
-                        });
-                        modal.close(cx);
-                    }
-
-                    if edit_button.clicked(event.actions()) {
-                        ui.defer_with_redraw(move |me, _, _| {
-                            me.set_message_editor_visibility(index, true);
-                        });
-                        modal.close(cx);
                     }
                 });
             }
@@ -690,6 +661,26 @@ impl Messages {
         // Handle item actions
         for (index, item) in ItemsRangeIter::new(list, range) {
             let actions = event.actions();
+
+            if item.button(ids!(copy)).clicked(actions) {
+                item.moly_modal(ids!(actions_modal)).close(cx);
+                cx.widget_action(self.widget_uid(), &scope.path, MessagesAction::Copy(index));
+            }
+
+            if item.button(ids!(delete)).clicked(actions) {
+                item.moly_modal(ids!(actions_modal)).close(cx);
+                cx.widget_action(
+                    self.widget_uid(),
+                    &scope.path,
+                    MessagesAction::Delete(index),
+                );
+            }
+
+            if item.button(ids!(edit)).clicked(actions) {
+                item.moly_modal(ids!(actions_modal)).close(cx);
+                self.set_message_editor_visibility(index, true);
+                self.redraw(cx);
+            }
 
             if item.button(ids!(edit_actions.cancel)).clicked(actions) {
                 self.set_message_editor_visibility(index, false);
