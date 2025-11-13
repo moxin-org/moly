@@ -26,7 +26,6 @@ live_design! {
         width: Fit,
         height: Fit,
         padding: {left: 8, right: 8, top: 6, bottom: 6}
-        // reset_hover_on_click: true
 
         draw_bg: {
             color_down: #0000
@@ -282,7 +281,7 @@ impl ModelSelector {
 
         // On desktop, align left edge with button, position above with gap
         if cx.display_context.is_desktop() {
-            modal_x = button_rect.pos.x - gap; //+ gap; //- button_rect.size.x - gap;
+            modal_x = button_rect.pos.x - gap;
             modal_y = button_rect.pos.y - modal_content_height - gap - 5.0 // gap;
         } else {
             // On mobile, position the modal in the horizontal center, vertical bottom of the screen
@@ -290,11 +289,6 @@ impl ModelSelector {
             modal_y = cx.display_context.screen_size.y - modal_content_height - 5.0;
             bg_view_visible = true;
         }
-
-        // // Align left edge of modal with left edge of button
-        // let modal_x = button_rect.pos.x - button_rect.size.x - gap; // - modal_width;
-        // // Position modal above the button
-        // let modal_y = button_rect.pos.y - modal_content_height - gap;
 
         let modal = self.moly_modal(ids!(modal));
         modal.apply_over(
