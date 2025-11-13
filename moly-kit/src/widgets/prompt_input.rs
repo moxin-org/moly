@@ -385,24 +385,6 @@ impl PromptInput {
         }
     }
 
-    /// Set the selected bot ID in the model selector
-    pub fn set_selected_bot_id(&mut self, cx: &mut Cx, bot_id: Option<crate::protocol::BotId>) {
-        if let Some(mut inner) = self
-            .widget(ids!(model_selector))
-            .borrow_mut::<crate::widgets::model_selector::ModelSelector>()
-        {
-            inner.selected_bot_id = bot_id;
-            inner.redraw(cx);
-        }
-    }
-
-    /// Get the selected bot ID from the model selector
-    pub fn selected_bot_id(&self) -> Option<crate::protocol::BotId> {
-        self.widget(ids!(model_selector))
-            .borrow::<crate::widgets::model_selector::ModelSelector>()
-            .and_then(|inner| inner.selected_bot_id.clone())
-    }
-
     /// Set the capabilities of the currently selected bot
     pub fn set_bot_capabilities(&mut self, cx: &mut Cx, capabilities: Option<BotCapabilities>) {
         self.bot_capabilities = capabilities;
@@ -454,8 +436,10 @@ impl PromptInput {
         if supports_realtime {
             self.interactivity = Interactivity::Disabled;
             self.text_input_ref().set_is_read_only(cx, true);
-            self.text_input_ref()
-                .set_empty_text(cx, "For realtime models, use the audio feature ->".to_string());
+            self.text_input_ref().set_empty_text(
+                cx,
+                "For realtime models, use the audio feature ->".to_string(),
+            );
             self.redraw(cx);
         } else {
             self.interactivity = Interactivity::Enabled;

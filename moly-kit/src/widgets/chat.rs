@@ -539,23 +539,8 @@ impl ChatControllerPlugin for Plugin {
                         chat.handle_capabilities(cx);
                     });
                 }
-                ChatStateMutation::SetBotId(bot_id) => {
-                    let bot_id = bot_id.clone();
+                ChatStateMutation::SetBotId(_bot_id) => {
                     self.ui.defer(move |chat, cx, _| {
-                        // Update PromptInput's selected bot
-                        chat.prompt_input_ref()
-                            .write()
-                            .set_selected_bot_id(cx, bot_id.clone());
-
-                        // Also directly update ModelSelector's selected_bot_id for sync
-                        if let Some(mut selector) = chat
-                            .prompt_input_ref()
-                            .widget(ids!(model_selector))
-                            .borrow_mut::<crate::widgets::model_selector::ModelSelector>()
-                        {
-                            selector.selected_bot_id = bot_id.clone();
-                        }
-
                         chat.handle_capabilities(cx);
                     });
                 }

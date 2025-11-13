@@ -150,9 +150,6 @@ pub struct ModelSelector {
 
     #[rust]
     pub open: bool,
-
-    #[rust]
-    pub selected_bot_id: Option<BotId>,
 }
 
 impl Widget for ModelSelector {
@@ -189,8 +186,15 @@ impl Widget for ModelSelector {
     }
 
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        // Read selected bot from controller state (source of truth)
+        let selected_bot_id = if let Some(chat_controller) = &self.chat_controller {
+            chat_controller.lock().unwrap().state().bot_id.clone()
+        } else {
+            None
+        };
+
         // Update button text based on selected bot from controller state
-        if let Some(bot_id) = &self.selected_bot_id {
+        if let Some(bot_id) = &selected_bot_id {
             if let Some(chat_controller) = &self.chat_controller {
                 let state = chat_controller.lock().unwrap().state().clone();
                 if let Some(bot) = state.bots.iter().find(|b| &b.id == bot_id) {
@@ -214,7 +218,7 @@ impl Widget for ModelSelector {
                 .borrow_mut::<ModelSelectorList>()
             {
                 list.chat_controller = Some(controller.clone());
-                list.selected_bot_id = self.selected_bot_id.clone();
+                list.selected_bot_id = selected_bot_id;
             }
         }
 
@@ -243,9 +247,7 @@ impl WidgetMatchEvent for ModelSelector {
         for action in actions {
             match action.cast() {
                 ModelSelectorItemAction::BotSelected(bot_id) => {
-                    self.selected_bot_id = Some(bot_id.clone());
-
-                    // Dispatch mutation to controller instead of using Makepad actions
+                    // Dispatch mutation to controller
                     if let Some(controller) = &self.chat_controller {
                         controller
                             .lock()
@@ -256,6 +258,7 @@ impl WidgetMatchEvent for ModelSelector {
                     self.button(ids!(button)).reset_hover(cx);
                     self.close_modal(cx);
                     self.clear_search(cx);
+                    self.redraw(cx);
                 }
                 _ => {}
             }
@@ -355,18 +358,6 @@ impl ModelSelectorRef {
         if let Some(mut inner) = self.borrow_mut() {
             inner.chat_controller = controller;
         }
-    }
-
-    pub fn set_selected_bot_id(&mut self, cx: &mut Cx, bot_id: Option<BotId>) {
-        if let Some(mut inner) = self.borrow_mut() {
-            inner.selected_bot_id = bot_id;
-            inner.redraw(cx);
-        }
-    }
-
-    pub fn selected_bot_id(&self) -> Option<BotId> {
-        self.borrow()
-            .and_then(|inner| inner.selected_bot_id.clone())
     }
 
     /// Set a custom grouping function for organizing bots in the list

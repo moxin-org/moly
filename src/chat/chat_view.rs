@@ -235,11 +235,11 @@ impl ChatView {
     fn handle_current_bot(&mut self, scope: &mut Scope) {
         let store = scope.data.get_mut::<Store>().unwrap();
 
-        // Read bot_id from Controller (source of truth) instead of Store to avoid race conditions
-        let current_bot_id = self.chat_controller.lock().unwrap().state().bot_id.clone();
+        // Read bot_id from controller (runtime source of truth)
+        let controller_bot_id = self.chat_controller.lock().unwrap().state().bot_id.clone();
 
-        // Check if the current bot is still available in the enabled bots list
-        let bot_available = if let Some(bot_id) = &current_bot_id {
+        // Check if the controller's bot is currently available (prevents race condition with Store)
+        let controller_bot_available = if let Some(bot_id) = &controller_bot_id {
             store
                 .chats
                 .get_all_bots(true)
@@ -251,36 +251,48 @@ impl ChatView {
 
         let mut prompt_input = self.prompt_input(ids!(chat.prompt));
 
-        // Get controller state to check bot_id
-        let controller_bot_id = {
-            let controller = self.chat_controller.lock().unwrap();
-            controller.state().bot_id.clone()
-        };
-
-        // If the bot is not available and we know it won't be available soon, clear the bot_id in the controller
-        if !bot_available
-            && current_bot_id.is_some()
+        // CLEARING: Use controller_bot_id for availability check
+        // If the controller's bot is not available and we know it won't be available soon, clear it
+        if !controller_bot_available
+            && controller_bot_id.is_some()
             && store.provider_syncing_status == ProviderSyncingStatus::Synced
         {
+            // Temporarily clear controller state while provider is disabled
+            // (Store's associated_bot persists for restoration)
             self.chat_controller
                 .lock()
                 .unwrap()
                 .dispatch_mutation(ChatStateMutation::SetBotId(None));
-            // Model selector will be updated through the plugin architecture
-        } else if bot_available && controller_bot_id.is_none() {
-            // If the bot is available and the controller doesn't have a bot_id, set the bot_id in the controller
-            // This can happen if the bot or provider was re-enabled after being disabled while being selected
-            self.chat_controller
-                .lock()
-                .unwrap()
-                .dispatch_mutation(ChatStateMutation::SetBotId(current_bot_id));
+        }
+        // RESTORATION: Use Store's persistent state when controller is None
+        else if controller_bot_id.is_none() {
+            // Read stored bot from Store (persistent state)
+            if let Some(stored_bot_id) = store
+                .chats
+                .get_chat_by_id(self.chat_id)
+                .and_then(|chat| chat.borrow().associated_bot.clone())
+            {
+                // Check if stored bot is available
+                let stored_bot_available = store
+                    .chats
+                    .get_all_bots(true)
+                    .iter()
+                    .any(|bot| bot.id == stored_bot_id);
+
+                if stored_bot_available {
+                    self.chat_controller
+                        .lock()
+                        .unwrap()
+                        .dispatch_mutation(ChatStateMutation::SetBotId(Some(stored_bot_id)));
+                }
+            }
         }
 
         // If there is no selected bot, disable the prompt input
         let is_streaming = self.chat_controller.lock().unwrap().state().is_streaming;
         if !is_streaming
             && (controller_bot_id.is_none()
-                || !bot_available
+                || !controller_bot_available
                 || store.provider_syncing_status != ProviderSyncingStatus::Synced)
         {
             prompt_input.write().disable();
@@ -342,7 +354,8 @@ impl ChatView {
         // async loading (bots fetched after bot_context created at startup)
         let current_bots_len = store.chats.available_bots.len();
         if self.prev_bot_context_id != store_bot_context_id
-            || self.prev_available_bots_len != current_bots_len {
+            || self.prev_available_bots_len != current_bots_len
+        {
             self.prev_bot_context_id = store_bot_context_id;
             self.prev_available_bots_len = current_bots_len;
 
@@ -368,9 +381,8 @@ impl ChatView {
             // Create grouping function using lookup utility
             use moly_kit::widgets::model_selector::create_lookup_grouping;
 
-            let grouping_fn = create_lookup_grouping(move |bot_id: &BotId| {
-                bot_groups.get(bot_id).cloned()
-            });
+            let grouping_fn =
+                create_lookup_grouping(move |bot_id: &BotId| bot_groups.get(bot_id).cloned());
 
             // Set grouping on the ModelSelector inside PromptInput
             let chat = self.chat(ids!(chat));
