@@ -189,6 +189,7 @@ impl MolyModalRef {
     #[deprecated(note = "Use open_as_dialog or open_as_popup instead")]
     pub fn open(&self, cx: &mut Cx) {
         if let Some(mut inner) = self.borrow_mut() {
+            #[allow(deprecated)]
             inner.open(cx);
         }
     }
