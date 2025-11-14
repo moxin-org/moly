@@ -511,17 +511,12 @@ impl Messages {
             if let Some(mut hook_view) = item.as_hook_view().borrow_mut() {
                 hook_view.on_after_event(move |hook, cx, event, _scope| {
                     match event.hits(cx, hook.area()) {
-                        Hit::FingerUp(fu) => {
-                            if let Some(mouse_button) = fu.mouse_button()
-                                && mouse_button.is_secondary()
-                                && fu.was_tap()
-                            {
-                                if cx.display_context.is_desktop() {
-                                    hook.moly_modal(ids!(actions_modal))
-                                        .open_as_popup(cx, fu.abs.into_vec2());
-                                } else {
-                                    hook.moly_modal(ids!(actions_modal)).open_as_dialog(cx);
-                                }
+                        Hit::FingerUp(fu) if fu.was_tap() => {
+                            if cx.display_context.is_desktop() {
+                                hook.moly_modal(ids!(actions_modal))
+                                    .open_as_popup(cx, fu.abs.into_vec2());
+                            } else {
+                                hook.moly_modal(ids!(actions_modal)).open_as_dialog(cx);
                             }
                         }
                         _ => {}
