@@ -130,6 +130,8 @@
             "url": "https://api.deepseek.com/v1",
             "provider_type": "OpenAi",
             "supported_models": [
+                "deepseek-v4-flash",
+                "deepseek-v4-pro",
                 "deepseek-chat",
                 "deepseek-reasoner"
             ]
